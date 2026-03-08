@@ -18,6 +18,10 @@ from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigDict
 from etlplus.api import PaginationType
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -31,8 +35,8 @@ def test_local_fake_http_flow_wires_endpoint_client_stack(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
-    EndpointClient should compose URL, paginate, retry transient errors,
-    and enforce rate-limit pacing between pages.
+    Test that :class:`EndpointClient` composes URL, paginates, retries
+    transient errors, and enforces rate-limit pacing between pages.
     """
     request_calls: list[dict[str, Any]] = []
     attempts_by_page: dict[int, int] = {}

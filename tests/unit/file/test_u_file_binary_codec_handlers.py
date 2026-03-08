@@ -13,6 +13,10 @@ import pytest
 from etlplus.file import _binary_codec_handlers as mod
 from etlplus.file.enums import FileFormat
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -60,7 +64,9 @@ class TestBinaryCodecHandlers:
     """Unit tests for shared binary codec handler mixin behavior."""
 
     def test_codec_method_raises_for_missing_callable(self) -> None:
-        """Test missing codec method errors include format/module metadata."""
+        """
+        Test that missing codec method errors include format/module metadata.
+        """
         handler = _CodecHandler(_CodecModuleStub())
         with pytest.raises(
             AttributeError,
@@ -84,7 +90,9 @@ class TestBinaryCodecHandlers:
         data: object,
         expected_payload: object,
     ) -> None:
-        """Test dumps path preserving list-vs-dict payload semantics."""
+        """
+        Test that the dumps path preserves list-vs-dict payload semantics.
+        """
         codec = _CodecModuleStub()
         handler = _CodecHandler(codec)
 
@@ -94,7 +102,9 @@ class TestBinaryCodecHandlers:
         assert codec.encode_calls == [(expected_payload, {'encode_opt': 1})]
 
     def test_loads_bytes_decodes_and_coerces_records(self) -> None:
-        """Test loads path forwarding decode kwargs and coercing records."""
+        """
+        Test that the loads path forwards decode kwargs and coerces records.
+        """
         codec = _CodecModuleStub()
         handler = _CodecHandler(codec)
 

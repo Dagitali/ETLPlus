@@ -19,6 +19,10 @@ from etlplus.api.pagination import PaginationConfig
 from etlplus.api.pagination import PaginationType
 from etlplus.api.types import RequestOptions
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -35,7 +39,10 @@ class TestPaginationClient:
         return {}
 
     def test_collect_and_single_page_with_pagination_config(self) -> None:
-        """collect() and non-paginated single-page branches both work."""
+        """
+        Test that :meth:`collect` and non-paginated single-page branches both
+        work.
+        """
         pagination = PaginationConfig(
             type=PaginationType.PAGE,
             records_path='payload.items',
@@ -79,7 +86,9 @@ class TestPaginationClient:
         assert client.pagination_type == PaginationType.PAGE
 
     def test_iterate_single_page_uses_records_path(self) -> None:
-        """Single-page fallback should still extract records via dot path."""
+        """
+        Test that single-page fallback still extracts records via dot path.
+        """
         payload = {'payload': {'items': [{'id': 1}, {'id': 2}]}}
         seen_pages: list[int | None] = []
 
@@ -102,7 +111,10 @@ class TestPaginationClient:
         assert seen_pages == [None]
 
     def test_iterate_after_mutation_uses_paginator(self) -> None:
-        """Mutating the config to add ``type`` enables paginator iteration."""
+        """
+        Test that mutating the config to add ``type`` enables paginator
+        iteration.
+        """
         cfg: dict[str, Any] = {
             'records_path': 'items',
             'page_size': 1,
@@ -134,9 +146,9 @@ class TestPaginationClient:
         assert client.pagination_type == PaginationType.PAGE
 
     def test_iterate_allows_request_overrides(self) -> None:
-        """Explicit request snapshots can be supplied per invocation."""
-        # pylint: disable=unused-argument
-
+        """
+        Test that explicit request snapshots can be supplied per invocation.
+        """
         payload = {'payload': {'items': [{'id': 1}]}}
         captured: list[RequestOptions] = []
 
@@ -169,9 +181,10 @@ class TestPaginationClient:
         assert captured[0].timeout == 5
 
     def test_iterate_with_paginator_respects_request_snapshot(self) -> None:
-        """Paginator-backed iterations clone the provided RequestOptions."""
-        # pylint: disable=unused-argument
-
+        """
+        Test that paginator-backed iterations clone the provided
+        :class:`RequestOptions`.
+        """
         cfg = {
             'type': 'page',
             'records_path': 'items',

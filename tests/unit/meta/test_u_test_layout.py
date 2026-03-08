@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _LEGACY_SMOKE_ROOT = _REPO_ROOT / 'tests' / 'smoke'
 

@@ -19,13 +19,15 @@ from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import RDataPandasStub
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
 class _Dataset(ContextManagerSelfMixin):
     """Stub dataset supporting context management."""
-
-    # pylint: disable=unused-argument
 
     def __init__(
         self,
@@ -57,8 +59,6 @@ class _Dataset(ContextManagerSelfMixin):
 
 class _XarrayStub:
     """Stub for xarray module."""
-
-    # pylint: disable=unused-argument
 
     def __init__(self, dataset: _Dataset) -> None:
         self._dataset = dataset

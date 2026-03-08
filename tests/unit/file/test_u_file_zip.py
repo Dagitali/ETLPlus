@@ -17,6 +17,10 @@ from etlplus.file.base import WriteOptions
 
 from .pytest_file_contracts import ArchiveWrapperCoreDispatchModuleContract
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -77,7 +81,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test byte reads when the archive has exactly one member."""
+        """Test that byte reads when the archive has exactly one member."""
         path = self.archive_path(tmp_path, stem='single')
         _write_zip(path, {'payload.json': b'only'})
 
@@ -109,7 +113,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         entries: dict[str, bytes],
         error_pattern: str,
     ) -> None:
-        """Test invalid ZIP structures raising clear read-time errors."""
+        """Test that invalid ZIP structures raising clear read-time errors."""
         path = self.archive_path(tmp_path, stem=stem)
         _write_zip(path, entries)
 
@@ -148,7 +152,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         reader_method: str,
         needs_core_stub: bool,
     ) -> None:
-        """Test read APIs erroring for unknown archive members."""
+        """Test that read APIs erroring for unknown archive members."""
         if needs_core_stub:
             self.install_core_file_stub(monkeypatch)
         path = self.archive_path(tmp_path, stem='payloads')
@@ -187,7 +191,7 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         entries: dict[str, bytes],
         expected: object,
     ) -> None:
-        """Test read APIs selecting the configured archive member."""
+        """Test that read APIs selecting the configured archive member."""
         if needs_core_stub:
             self.install_core_file_stub(monkeypatch)
         path = self.archive_path(tmp_path, stem='payloads')
@@ -204,7 +208,9 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test ``write_inner_bytes`` default archive member naming."""
+        """
+        Test that :meth:`write_inner_bytes` uses default archive member naming.
+        """
         path = self.archive_path(tmp_path, stem='payload')
 
         mod.ZipFile().write_inner_bytes(path, b'data')

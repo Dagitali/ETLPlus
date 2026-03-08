@@ -14,6 +14,10 @@ import pytest
 from etlplus.file import _pandas_handlers as mod
 from etlplus.file.enums import FileFormat
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -106,8 +110,6 @@ class _WriteExcelFallbackFrameStub:
 class TestResolvePyarrowDependency:
     """Unit tests for pyarrow dependency resolution helper."""
 
-    # pylint: disable=protected-access
-
     def test_resolve_pyarrow_dependency_falls_back_to_resolve_dependency(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -146,7 +148,7 @@ class TestResolvePyarrowDependency:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test concrete-module ``get_pyarrow`` override path."""
+        """Test that concrete-module ``get_pyarrow`` override path."""
         sentinel = object()
         calls: list[str] = []
 
@@ -180,13 +182,11 @@ class TestResolvePyarrowDependency:
 class TestResolveSpreadsheetEngineDependency:
     """Unit tests for spreadsheet engine dependency resolution helper."""
 
-    # pylint: disable=protected-access
-
     def test_resolve_spreadsheet_engine_dependency_noops_for_unknown_engine(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test unknown engine names bypassing dependency resolution."""
+        """Test that unknown engine names bypass dependency resolution."""
         monkeypatch.setattr(
             mod,
             'resolve_dependency',
@@ -204,7 +204,9 @@ class TestResolveSpreadsheetEngineDependency:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test known engine resolution delegating with required semantics."""
+        """
+        Test that known engine resolution delegates with required semantics.
+        """
         calls: list[tuple[str, str, str | None, bool]] = []
 
         def _resolve(
@@ -231,8 +233,6 @@ class TestResolveSpreadsheetEngineDependency:
 
 class TestSpreadsheetDependencySpec:
     """Unit tests for spreadsheet dependency metadata helper."""
-
-    # pylint: disable=protected-access
 
     @pytest.mark.parametrize(
         ('engine', 'expected'),
@@ -267,21 +267,27 @@ class TestSpreadsheetEngineResolverMixin:
     def test_resolve_engine_prefers_write_override_for_write_operations(
         self,
     ) -> None:
-        """Test write operation resolving explicit write-engine overrides."""
+        """
+        Test that write operation resolves explicit write-engine overrides.
+        """
         handler = _SpreadsheetEngineWriteOverrideHandler()
         assert handler.resolve_engine('write') == 'odf'
 
     def test_resolve_read_engine_wrapper_uses_shared_engine_resolution(
         self,
     ) -> None:
-        """Test read-engine wrapper forwarding to operation-aware resolver."""
+        """
+        Test that read-engine wrapper forwards to operation-aware resolver.
+        """
         handler = _SpreadsheetReadHandler()
         assert handler.resolve_read_engine() == 'openpyxl'
 
     def test_resolve_write_engine_wrapper_uses_shared_engine_resolution(
         self,
     ) -> None:
-        """Test write-engine wrapper forwarding to operation-aware resolver."""
+        """
+        Test that write-engine wrapper forwards to operation-aware resolver.
+        """
         handler = _SpreadsheetWriteHandler()
         assert handler.resolve_write_engine() == 'odf'
 
@@ -289,7 +295,7 @@ class TestSpreadsheetEngineResolverMixin:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test dependency enforcement wiring for resolved engines."""
+        """Test that dependency enforcement wiring for resolved engines."""
         calls: list[tuple[str | None, str]] = []
 
         def _resolve(
@@ -316,10 +322,10 @@ class TestSpreadsheetEngineResolverMixin:
 class TestSpreadsheetReadWriteFallbacks:
     """Unit tests for spreadsheet read/write fallback helper branches."""
 
-    # pylint: disable=protected-access
-
     def test_read_excel_frame_falls_back_without_sheet_name(self) -> None:
-        """Test read helper retrying when ``sheet_name`` is unsupported."""
+        """
+        Test that read helper retries when ``sheet_name`` is unsupported.
+        """
         pandas = _ReadExcelFallbackPandasStub()
         path = Path('sample.xlsx')
 
@@ -342,7 +348,7 @@ class TestSpreadsheetReadWriteFallbacks:
 
     def test_read_excel_frame_without_engine_omits_engine_kwarg(self) -> None:
         """
-        Test read helper not injecting engine when ``engine`` is ``None``.
+        Test that read helper not injecting engine when ``engine`` is ``None``.
         """
         pandas = _ReadExcelFallbackPandasStub()
         path = Path('sample.xlsx')
@@ -361,7 +367,9 @@ class TestSpreadsheetReadWriteFallbacks:
         ]
 
     def test_write_excel_frame_falls_back_without_sheet_name(self) -> None:
-        """Test write helper retrying when ``sheet_name`` is unsupported."""
+        """
+        Test that write helper retries when ``sheet_name`` is unsupported.
+        """
         frame = _WriteExcelFallbackFrameStub()
         path = Path('sample.xlsx')
 
@@ -384,7 +392,7 @@ class TestSpreadsheetReadWriteFallbacks:
 
     def test_write_excel_frame_without_engine_omits_engine_kwarg(self) -> None:
         """
-        Test write helper not injecting engine when ``engine`` is ``None``.
+        Test that write helper not injecting engine when *engine* is ``None``.
         """
         frame = _WriteExcelFallbackFrameStub()
         path = Path('sample.xlsx')
@@ -408,5 +416,7 @@ class TestColumnarRuntimeDependencyValidation:
     def test_validate_runtime_dependencies_noops_when_pyarrow_not_required(
         self,
     ) -> None:
-        """Test runtime dependency validation when pyarrow is not required."""
+        """
+        Test runtime dependency validation when :mod:`pyarrow` is not required.
+        """
         _ColumnarNoPyarrowHandler().validate_runtime_dependencies()

@@ -14,6 +14,10 @@ from typing import Any
 
 import pytest
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonFileParser
@@ -40,7 +44,7 @@ class TestCliLoad:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test loading stdin payload into a JSON file target."""
+        """Test loading a STDIN payload into a JSON file target."""
         out_path = tmp_path / 'out.json'
         monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
         code, out, err = cli_invoke(

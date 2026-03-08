@@ -29,6 +29,10 @@ from .pytest_file_contract_utils import (
 from .pytest_file_contract_utils import make_payload
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: EXPORTS ========================================================== #
 
 

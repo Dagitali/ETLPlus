@@ -21,6 +21,10 @@ from etlplus.connector import parse_connector
 from etlplus.connector import utils as connector_utils
 from etlplus.connector.enums import DataConnectorType
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -34,7 +38,9 @@ class TestParseConnector:
     """
 
     def test_missing_type_raises(self) -> None:
-        """Connector payload without ``type`` should raise ``TypeError``."""
+        """
+        Test that connector payloads without ``type`` raise :class:`TypeError`.
+        """
         with pytest.raises(TypeError, match='requires a "type"'):
             parse_connector({'name': 'missing_type'})
 
@@ -46,12 +52,12 @@ class TestParseConnector:
         self,
         payload: object,
     ) -> None:
-        """Non-mapping payloads should raise ``TypeError``."""
+        """Test that non-mapping payloads raise :class:`TypeError`."""
         with pytest.raises(TypeError, match='must be a mapping'):
             parse_connector(payload)  # type: ignore[arg-type]
 
     @pytest.mark.parametrize(
-        'payload,expected_cls,expected_attrs',
+        ('payload', 'expected_cls', 'expected_attrs'),
         [
             pytest.param(
                 {
@@ -108,7 +114,7 @@ class TestParseConnector:
             assert getattr(connector, field) == value
 
     @pytest.mark.parametrize(
-        'payload,expected_exception',
+        ('payload', 'expected_exception'),
         [
             ({'name': 'x', 'type': 'unknown'}, TypeError),
             ({'type': 'unknown'}, TypeError),
@@ -137,10 +143,8 @@ class TestParseConnector:
 class TestInternalLoadConnector:
     """Unit tests for :func:`etlplus.connector.utils._load_connector`."""
 
-    # pylint: disable=protected-access
-
     @pytest.mark.parametrize(
-        'kind,expected',
+        ('kind', 'expected'),
         [
             (DataConnectorType.API, ConnectorApi),
             (DataConnectorType.DATABASE, ConnectorDb),
@@ -152,11 +156,11 @@ class TestInternalLoadConnector:
         kind: DataConnectorType,
         expected: type[object],
     ) -> None:
-        """Known connector kinds should resolve to concrete classes."""
+        """Test that known connector kinds resolve to concrete classes."""
         assert connector_utils._load_connector(kind) is expected
 
     def test_load_connector_rejects_unknown_kind(self) -> None:
-        """Unknown enum-like values should raise ``TypeError``."""
+        """Test that unknown enum-like values raise :class:`TypeError`."""
         with pytest.raises(TypeError, match='Unsupported connector type'):
             connector_utils._load_connector(
                 cast(DataConnectorType, 'unknown'),

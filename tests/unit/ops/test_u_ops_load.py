@@ -35,10 +35,19 @@ from etlplus.ops.load import load_to_database
 from etlplus.ops.load import load_to_file
 from etlplus.utils.types import JSONData
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
 load_mod = importlib.import_module('etlplus.ops.load')
+
+
+def _write_json_payload(path: str, payload: Any) -> None:
+    """Write one JSON payload using UTF-8 encoding."""
+    Path(path).write_text(js.dumps(payload), encoding='utf-8')
 
 
 @dataclass(slots=True)
@@ -133,7 +142,7 @@ class TestLoad:
             load({'test': 'data'}, 'invalid', 'target')
 
     @pytest.mark.parametrize(
-        'target_type,target,expected_status',
+        ('target_type', 'target', 'expected_status'),
         [
             (
                 'database',
@@ -172,14 +181,11 @@ class TestLoad:
         assert result['status'] == expected_status
 
     @pytest.mark.parametrize(
-        'file_format,write,expected_data',
+        ('file_format', 'write', 'expected_data'),
         [
             (
                 'json',
-                lambda p, d: js.dump(
-                    d,
-                    open(p, 'w', encoding='utf-8'),
-                ),
+                _write_json_payload,
                 {'test': 'data'},
             ),
         ],
@@ -224,7 +230,7 @@ class TestLoad:
         assert path.exists()
 
     @pytest.mark.parametrize(
-        'exc_type,call,args,err_msg',
+        ('exc_type', 'call', 'args', 'err_msg'),
         [
             (
                 ValueError,
@@ -275,7 +281,7 @@ class TestLoadErrors:
     """
 
     @pytest.mark.parametrize(
-        'exc_type,call,args,err_msg',
+        ('exc_type', 'call', 'args', 'err_msg'),
         [
             (
                 ValueError,
@@ -324,20 +330,23 @@ class TestLoadData:
 
     Notes
     -----
-    - Tests passthrough, file, string, stdin, and error cases.
+    - Tests passthrough, file, string, STDIN, and error cases.
     """
 
     def test_data_from_existing_path_falls_back_to_json_string(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Existing-path read failures should fall back to raw JSON parsing."""
+        """
+        Test that existing-path read failures falls back to raw JSON parsing.
+        """
 
         class _FailingFile:
             def __init__(self, *_args: object, **_kwargs: object) -> None:
                 return None
 
             def read(self) -> JSONData:
+                """Simulate a file read failure by raising an error."""
                 raise ValueError('cannot read as file')
 
         monkeypatch.setattr(load_mod.Path, 'exists', lambda _self: True)
@@ -391,7 +400,7 @@ class TestLoadData:
 
         class _FakeStdin:
             def read(self) -> str:
-                """Simulate reading JSON data from stdin."""
+                """Simulate reading JSON data from STDIN."""
                 return '{"items": [{"age": 30}, {"age": 20}]}'
 
         monkeypatch.setattr('sys.stdin', _FakeStdin())
@@ -407,7 +416,7 @@ class TestLoadData:
             load_data('not a valid json string')
 
     @pytest.mark.parametrize(
-        'input_data,expected_output',
+        ('input_data', 'expected_output'),
         [
             ({'test': 'data'}, {'test': 'data'}),
             ([{'test': 'data'}], [{'test': 'data'}]),
@@ -431,7 +440,7 @@ class TestLoadData:
         assert load_data(input_data) == expected_output
 
     def test_load_data_rejects_unsupported_source_type(self) -> None:
-        """Unsupported source types should raise :class:`TypeError`."""
+        """Test that unsupported source types raises :class:`TypeError`."""
         with pytest.raises(TypeError, match='source must be'):
             load_data(cast(Any, 123))
 
@@ -541,7 +550,7 @@ class TestLoadToFile:
         tmp_path: Path,
     ) -> None:
         """
-        Omitting file_format should infer from the output extension.
+        Test that omitting file_format infers from the output extension.
         """
         output_path = tmp_path / 'auto.json'
         payload = {'status': 'ok'}
@@ -621,7 +630,9 @@ class TestLoadToApi:
         assert first_call.kwargs['headers'] == {'X-Test': '1'}
 
     def test_load_to_api_env_requires_url(self) -> None:
-        """Missing URL in normalized API env should raise ValueError."""
+        """
+        Test that missing URL in normalized API env raises :class:`ValueError`.
+        """
         with pytest.raises(ValueError, match='API target missing "url"'):
             load_mod._load_to_api_env({'method': 'post'}, {})
 
@@ -629,21 +640,26 @@ class TestLoadToApi:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Normalized API env should forward headers and request kwargs."""
+        """
+        Test that normalized API env forwards headers and request kwargs.
+        """
 
         class _Response:
             status_code = 201
             text = 'fallback'
 
-            def raise_for_status(self) -> None:
-                return None
-
             def json(self) -> object:
+                """Simulate a successful JSON response."""
                 return {'ok': True}
+
+            def raise_for_status(self) -> None:
+                """No-op for status raising in stub."""
+                return None
 
         captured: dict[str, Any] = {}
 
         def _request(url: str, **kwargs: Any) -> _Response:
+            """Stub request function that captures URL and kwargs."""
             captured['url'] = url
             captured['kwargs'] = kwargs
             return _Response()
@@ -675,19 +691,22 @@ class TestLoadToApi:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """JSON decoding errors should fall back to response text."""
+        """Test that JSON decoding errors fall back to response text."""
 
         class _Response:
             status_code = 200
             text = 'text payload'
 
-            def raise_for_status(self) -> None:
-                return None
-
             def json(self) -> object:
+                """Simulate a JSON decoding failure."""
                 raise ValueError('bad json')
 
+            def raise_for_status(self) -> None:
+                """No-op for status raising in stub."""
+                return None
+
         def _request(url: str, **kwargs: Any) -> _Response:  # noqa: ARG001
+            """Stub request function that returns a predefined response."""
             return _Response()
 
         monkeypatch.setattr(
@@ -707,7 +726,10 @@ class TestLoadToDatabase:
     """Unit tests for :func:`etlplus.ops.load.load_to_database`."""
 
     def test_load_to_api_requires_callable(self) -> None:
-        """Missing HTTP method on custom session should raise TypeError."""
+        """
+        Test that missing HTTP method on custom session raises
+        :class:`TypeError`.
+        """
 
         class _BrokenSession:
             pass
@@ -721,7 +743,9 @@ class TestLoadToDatabase:
             )
 
     def test_load_to_database_returns_note(self) -> None:
-        """Placeholder implementation should echo the connection string."""
+        """
+        Test that placeholder implementation echoes the connection string.
+        """
 
         data = [{'name': 'Ada'}]
         result = load_to_database(data, 'sqlite:///tmp.db')
@@ -735,15 +759,21 @@ class TestParseJsonString:
     """Unit tests for :func:`etlplus.ops.load._parse_json_string`."""
 
     def test_parse_invalid_root_raises(self) -> None:
-        """Only dicts or lists of dicts are accepted."""
+        """Test that only dicts or lists of dicts are accepted."""
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match='JSON root must be an object or array',
+        ):
             _parse_json_string('"plain"')
 
     def test_parse_list_with_non_dicts_raises(self) -> None:
-        """Mixed arrays should raise ValueError."""
+        """Test that mixed arrays raise :class:`ValueError`."""
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match='JSON array must contain only objects',
+        ):
             _parse_json_string('[{"ok": 1}, 3]')
 
 
@@ -754,7 +784,9 @@ class TestLoadApiOrchestrator:
     """
 
     def test_load_api_with_default_method(self) -> None:
-        """Test :func:`load` defaulting to POST when API method omitted."""
+        """
+        Test that :func:`load` defaults to POST when the API method is omitted.
+        """
 
         session = _StubSession()
         result = load(
@@ -772,7 +804,7 @@ class TestLoadApiOrchestrator:
         assert first_call.method == 'post'
 
     def test_load_api_with_explicit_method(self) -> None:
-        """Test :func:`load` honoring custom :class:`HttpMethod`."""
+        """Test that :func:`load` honors custom :class:`HttpMethod` values."""
 
         session = _StubSession()
         load(
@@ -792,7 +824,10 @@ class TestLoadApiOrchestrator:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Unexpected connector coercion should trigger ValueError branch."""
+        """
+        Test that unexpected connector coercion triggers :class:`ValueError`
+        branch.
+        """
         monkeypatch.setattr(
             load_mod.DataConnectorType,
             'coerce',

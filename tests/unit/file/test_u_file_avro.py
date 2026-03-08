@@ -18,6 +18,10 @@ from .pytest_file_contract_utils import patch_dependency_resolver_unreachable
 from .pytest_file_contracts import BinaryDependencyModuleContract
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -26,8 +30,6 @@ _TYPE_ERROR_PATTERN = 'AVRO payloads must contain'
 
 class _FastAvroStub:
     """Stub for the :mod:`fastavro` module."""
-
-    # pylint: disable=unused-argument
 
     def __init__(self) -> None:
         self.parsed_schema: dict[str, object] | None = None
@@ -69,7 +71,7 @@ class TestAvroHandlerClass:
         self,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test binary helper methods delegating to :mod:`fastavro`."""
+        """Test that binary helper methods delegating to :mod:`fastavro`."""
         stub = _FastAvroStub()
         optional_module_stub({'fastavro': stub})
         handler = mod.AvroFile()
@@ -99,7 +101,8 @@ class TestAvroHandlerClass:
         expected: bytes | int,
     ) -> None:
         """
-        Test empty payload operations short-circuiting without dependency.
+        Test that empty payload operations short-circuit without loading
+        optional dependencies.
         """
         handler = mod.AvroFile()
         patch_dependency_resolver_unreachable(monkeypatch, mod)
@@ -107,14 +110,12 @@ class TestAvroHandlerClass:
         assert result == expected
 
     def test_format_constant(self) -> None:
-        """Test :class:`AvroFile` exposing the expected format enum."""
+        """Test that :class:`AvroFile` exposes the expected format enum."""
         assert mod.AvroFile.format is FileFormat.AVRO
 
 
 class TestAvroHelpers:
     """Unit tests for :mod:`etlplus.file.avro` helpers."""
-
-    # pylint: disable=protected-access
 
     @pytest.mark.parametrize(
         ('operation', 'payload'),
@@ -134,7 +135,7 @@ class TestAvroHelpers:
         operation: Callable[[object], object],
         payload: object,
     ) -> None:
-        """Test infer helpers raising for unsupported complex payloads."""
+        """Test that infer helpers raising for unsupported complex payloads."""
         with pytest.raises(TypeError, match=_TYPE_ERROR_PATTERN):
             operation(payload)
 
@@ -199,8 +200,6 @@ class TestAvroHelpers:
 
 class TestAvroIo(BinaryDependencyModuleContract):
     """Unit tests for AVRO handler read/write behavior."""
-
-    # pylint: disable=protected-access
 
     module = mod
     format_name = 'avro'

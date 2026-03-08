@@ -56,6 +56,7 @@ type SpreadsheetOperation = Literal['read', 'write']
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
+
 def _spreadsheet_dependency_spec(
     engine: str | None,
 ) -> SpreadsheetDependencySpec | None:

@@ -18,6 +18,10 @@ from etlplus.file.enums import FileFormat
 from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import RDataPandasStub
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -112,10 +116,10 @@ class _RequiredPyreadstatScientificHandler(_ScientificHandler):
 class TestScientificHandlers:
     """Unit tests for scientific mixin dependency wiring."""
 
-    # pylint: disable=protected-access
-
     def test_invalid_pyreadstat_mode_raises_value_error(self) -> None:
-        """Test invalid mode configuration raising a deterministic error."""
+        """
+        Test that invalid mode configuration raising a deterministic error.
+        """
         handler = _InvalidPyreadstatModeScientificHandler(
             pandas_dependency=RDataPandasStub(),
             pyreadstat_dependency=object(),
@@ -128,7 +132,7 @@ class TestScientificHandlers:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test read/write glue paths forwarding injected dependencies."""
+        """Test that read/write glue paths forwarding injected dependencies."""
         pandas = RDataPandasStub()
         pyreadstat = object()
         handler = _RequiredPyreadstatScientificHandler(
@@ -154,7 +158,7 @@ class TestScientificHandlers:
         )
 
     def test_resolve_pyreadstat_for_delegates_when_required(self) -> None:
-        """Test required pyreadstat branch delegating to resolver."""
+        """Test that required pyreadstat branch delegating to resolver."""
         sentinel = object()
         handler = _ReadRequiredPyreadstatScientificHandler(
             pandas_dependency=RDataPandasStub(),
@@ -169,7 +173,10 @@ class TestScientificHandlers:
     def test_resolve_pyreadstat_for_returns_none_when_not_required(
         self,
     ) -> None:
-        """Test optional pyreadstat branch when dependency is not required."""
+        """
+        Test that optional :mod:`pyreadstat` branch when dependency is not
+        required.
+        """
         handler = _ScientificHandler(
             pandas_dependency=RDataPandasStub(),
             pyreadstat_dependency=object(),

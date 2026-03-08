@@ -16,9 +16,16 @@ from .pytest_shared_support import RequestFactory
 from .pytest_shared_support import coerce_cli_args
 from .pytest_shared_support import parse_json
 
+# SECTION: PLUG-INS ========================================================= #
+
+
 pytest_plugins = [
     'tests.pytest_shared_fixtures',
 ]
+
+
+# SECTIONS: EXPORTS ========================================================= #
+
 
 __all__ = [
     'CaptureHandler',

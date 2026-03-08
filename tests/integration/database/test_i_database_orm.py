@@ -17,6 +17,10 @@ from etlplus.database.engine import make_engine
 from etlplus.database.orm import build_models
 from etlplus.database.schema import TableSpec
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: MARKERS ========================================================== #
 
 
@@ -37,7 +41,8 @@ class _IntegrationBase(DeclarativeBase):
 
 def test_build_model_create_table_and_roundtrip_row() -> None:
     """
-    Build a model dynamically, create the table, and roundtrip one row.
+    Test dynamically building a model, creating the table, and round-tripping
+    1 row.
     """
     table_spec = TableSpec.model_validate(
         {

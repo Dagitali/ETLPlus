@@ -10,11 +10,15 @@ from typing import get_args
 
 from etlplus.cli.types import DataConnectorContext
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
 def test_data_connector_context_alias_members() -> None:
-    """Type alias should enumerate ``source`` and ``target`` values."""
+    """Test that type alias enumerates ``source`` and ``target`` values."""
     alias_value = getattr(
         DataConnectorContext,
         '__value__',

@@ -17,6 +17,10 @@ from requests import Response  # type: ignore[import]
 from requests import Session  # type: ignore[import]
 from requests.structures import CaseInsensitiveDict  # type: ignore[import]
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: EXPORTS ========================================================== #
 
 

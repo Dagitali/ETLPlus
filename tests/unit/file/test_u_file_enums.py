@@ -12,6 +12,10 @@ from etlplus.file import CompressionFormat
 from etlplus.file import FileFormat
 from etlplus.file import infer_file_format_and_compression
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -49,7 +53,7 @@ class TestFileFormat:
     """Unit tests for :class:`etlplus.utils.enums.FileFormat`."""
 
     @pytest.mark.parametrize(
-        'value,expected',
+        ('value', 'expected'),
         [
             ('JSON', FileFormat.JSON),
             ('application/xml', FileFormat.XML),
@@ -61,15 +65,17 @@ class TestFileFormat:
         value: str,
         expected: FileFormat,
     ) -> None:
-        """Test alias coercions."""
+        """Test that :meth:`coerce` coerces alias values correctly."""
         assert FileFormat.coerce(value) is expected
 
     def test_coerce(self) -> None:
-        """Test :meth:`coerce`."""
+        """Test that :meth:`coerce` resolves supported inputs."""
         assert FileFormat.coerce('csv') is FileFormat.CSV
 
     def test_invalid_value(self) -> None:
-        """Test that invalid values raise ValueError."""
+        """
+        Test that :meth:`coerce` raises :class:`ValueError` for invalid values.
+        """
         with pytest.raises(ValueError, match='Invalid FileFormat'):
             FileFormat.coerce('badformat')
 
@@ -78,7 +84,7 @@ class TestInferFileFormatAndCompression:
     """Unit tests for :func:`infer_file_format_and_compression`."""
 
     @pytest.mark.parametrize(
-        'value,filename,expected_format,expected_compression',
+        ('value', 'filename', 'expected_format', 'expected_compression'),
         INFER_CASES,
     )
     def test_infers_format_and_compression(
@@ -88,7 +94,10 @@ class TestInferFileFormatAndCompression:
         expected_format: FileFormat | None,
         expected_compression: CompressionFormat | None,
     ) -> None:
-        """Test mixed inputs for format and compression inference."""
+        """
+        Test that :func:`infer_file_format_and_compression` handles mixed
+        inputs correctly.
+        """
         fmt, compression = infer_file_format_and_compression(value, filename)
         assert fmt is expected_format
         assert compression is expected_compression

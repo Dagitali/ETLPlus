@@ -27,6 +27,10 @@ from .pytest_shared_support import JsonOutputParser
 from .pytest_shared_support import coerce_cli_args
 from .pytest_shared_support import parse_json
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -155,7 +159,7 @@ def operations_json_fixture() -> str:
 
 @pytest.fixture(name='parse_json_output')
 def parse_json_output_fixture() -> JsonOutputParser:
-    """Parse JSON output emitted to stdout."""
+    """Parse JSON output emitted to STDOUT."""
 
     def _parse(output: str | Path) -> Any:
         return parse_json(output)
@@ -194,7 +198,7 @@ def cli_invoke(
     cli_runner: CliRunner,
     capsys: pytest.CaptureFixture[str],
 ) -> CliInvoke:
-    """Run CLI commands and return exit code, stdout, and stderr."""
+    """Run CLI commands and return exit code, STDOUT, and STDERR."""
 
     def _invoke(*cli_args: str | Sequence[str]) -> tuple[int, str, str]:
         exit_code = cli_runner(*cli_args)

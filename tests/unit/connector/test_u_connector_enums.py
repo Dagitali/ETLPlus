@@ -10,6 +10,10 @@ import pytest
 
 from etlplus.connector.enums import DataConnectorType
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -19,7 +23,7 @@ class TestDataConnectorType:
     """
 
     @pytest.mark.parametrize(
-        'value,expected',
+        ('value', 'expected'),
         [
             ('API', DataConnectorType.API),
             (' rest ', DataConnectorType.API),
@@ -32,7 +36,7 @@ class TestDataConnectorType:
         value: str,
         expected: DataConnectorType,
     ) -> None:
-        """Test alias coercions."""
+        """Test that alias values are coerced correctly."""
         assert DataConnectorType.coerce(value) is expected
 
     def test_invalid_value(self) -> None:

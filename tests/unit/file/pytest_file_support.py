@@ -9,6 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -28,8 +32,6 @@ def make_import_error_reader_module(
 
 def make_import_error_writer_module() -> object:
     """Build a pandas-like module whose DataFrame writes raise ImportError."""
-
-    # pylint: disable=unused-argument
 
     class _FailFrame:
         """Frame stub whose write-like attributes raise ImportError."""
@@ -65,8 +67,6 @@ class DictRecordsFrameStub:
     """
     Minimal records-only frame stub shared by scientific format tests.
     """
-
-    # pylint: disable=unused-argument
 
     def __init__(
         self,
@@ -113,8 +113,6 @@ class DictRecordsFrameStub:
 
 class PandasModuleStub:
     """Minimal pandas-module stub with reader and DataFrame helpers."""
-
-    # pylint: disable=invalid-name
 
     def __init__(
         self,
@@ -227,8 +225,6 @@ class PyreadrStub:
     Shared pyreadr-style stub for RDA/RDS tests.
     """
 
-    # pylint: disable=unused-argument
-
     def __init__(
         self,
         result: dict[str, object],
@@ -268,8 +264,6 @@ class PyreadstatTabularStub:
     """
     Configurable pyreadstat-style stub for SAV/XPT tabular handlers.
     """
-
-    # pylint: disable=unused-argument
 
     def __init__(
         self,
@@ -355,8 +349,6 @@ class RDataNoWriterStub:
     Minimal pyreadr-like stub exposing only ``read_r``.
     """
 
-    # pylint: disable=unused-argument
-
     def read_r(
         self,
         path: str,
@@ -367,8 +359,6 @@ class RDataNoWriterStub:
 
 class RecordsFrameStub:
     """Minimal frame stub that mimics pandas record/table APIs."""
-
-    # pylint: disable=unused-argument
 
     def __init__(
         self,
@@ -439,8 +429,6 @@ class RecordsFrameStub:
 class SpreadsheetSheetFrameStub(RecordsFrameStub):
     """Frame stub with optional support for ``sheet_name`` on writes."""
 
-    # pylint: disable=unused-argument
-
     def __init__(
         self,
         records: list[dict[str, object]],
@@ -465,8 +453,6 @@ class SpreadsheetSheetFrameStub(RecordsFrameStub):
 
 class SpreadsheetSheetPandasStub:
     """Pandas-like stub with configurable ``sheet_name`` support."""
-
-    # pylint: disable=invalid-name, unused-argument
 
     def __init__(
         self,

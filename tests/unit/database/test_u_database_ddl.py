@@ -14,6 +14,10 @@ import pytest
 
 from etlplus.database import ddl
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -89,8 +93,6 @@ class TestLoadTableSpec:
             yaml.safe_dump(sample_spec, sort_keys=False),
             encoding='utf-8',
         )
-        # pylint: disable=import-outside-toplevel,protected-access
-
         import etlplus.file._imports as import_helpers
         import etlplus.file.yaml as file_mod
 
@@ -147,7 +149,10 @@ class TestLoadTableSpec:
         spec_path = tmp_path / 'spec.txt'
         spec_path.write_text('{}', encoding='utf-8')
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=r'Spec must be \.json, \.yml, or \.yaml',
+        ):
             ddl.load_table_spec(spec_path)
 
 
@@ -185,10 +190,7 @@ class TestRenderTableSql:
         sample_spec: dict[str, object],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """
-        Test rendering SQL with an environment variable override for the
-        template path.
-        """
+        """Test rendering SQL with a template-path environment override."""
         template_path = tmp_path / 'env_template.sql.j2'
         template_path.write_text(
             '{{ spec.schema }}.{{ spec.table }}',
@@ -247,7 +249,7 @@ class TestRenderTableSql:
         sample_spec: dict[str, object],
     ) -> None:
         """Test that an unknown template key raises ValueError."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match='Unknown template key'):
             ddl.render_table_sql(
                 sample_spec,
                 template='does not exist',  # type: ignore[arg-type]
@@ -261,9 +263,7 @@ class TestRenderTables:
         self,
         sample_spec: dict[str, object],
     ) -> None:
-        """
-        Test rendering an iterable of table specs into SQL strings.
-        """
+        """Test rendering an iterable of table specs into SQL strings."""
         first = deepcopy(sample_spec)
         second = deepcopy(sample_spec)
         second['table'] = 'widgets_history'
@@ -285,9 +285,7 @@ class TestRenderTablesToString:
         tmp_path: Path,
         sample_spec: dict[str, object],
     ) -> None:
-        """
-        Test rendering multiple table specs to a string with a custom template.
-        """
+        """Test rendering multiple table specs with a custom template."""
         template_path = tmp_path / 'concat_template.sql.j2'
         template_path.write_text('{{ spec.table }}', encoding='utf-8')
 
@@ -307,7 +305,7 @@ class TestRenderTablesToString:
         sample_spec: dict[str, object],
     ) -> None:
         """
-        Test rendering multiple table specs from file paths into a single SQL
+        Test rendering multiple table specs from file paths to one SQL
         string.
         """
         spec_paths: list[Path] = []

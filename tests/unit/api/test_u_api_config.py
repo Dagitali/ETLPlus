@@ -26,6 +26,10 @@ from etlplus.api import HttpMethod
 from etlplus.api import PaginationConfig
 from etlplus.api import RateLimitConfig
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -40,7 +44,7 @@ class TestApiConfig:
     """
 
     @pytest.mark.parametrize(
-        'sleep,max_per',
+        ('sleep', 'max_per'),
         [
             (0.5, 2),
             (0.1, 10),
@@ -56,21 +60,6 @@ class TestApiConfig:
     ) -> None:
         """
         Test that API profile defaults for rate limit are mapped correctly.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        api_config_factory : Callable[[dict], ApiConfig]
-            Factory for building ApiConfig from dicts.
-        sleep : float
-            Sleep seconds for rate limit.
-        max_per : int
-            Max per second for rate limit.
-
-        Returns
-        -------
-        None
         """
         obj = {
             'profiles': {
@@ -102,15 +91,6 @@ class TestApiConfig:
         """
         Test that effective_base_url and build_endpoint_url compose URLs
         correctly.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        api_obj_factory : Callable[..., dict[str, Any]]
-            Factory for building API config objects.
-        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
-            Factory for building :class:`ApiConfig` from dicts.
         """
         obj = api_obj_factory(
             use_profiles=True,
@@ -132,17 +112,8 @@ class TestApiConfig:
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
         """
-        Test that flat API config shape is supported and headers/endpoints
-        are parsed.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        api_obj_factory : Callable[..., dict[str, Any]]
-            Factory for building API config objects.
-        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
-            Factory for building :class:`ApiConfig` from dicts.
+        Test that flat API config shape is supported and headers/endpoints are
+        parsed.
         """
         obj = api_obj_factory(
             use_profiles=False,
@@ -162,13 +133,6 @@ class TestApiConfig:
     ) -> None:
         """
         Test that profiles are parsed and default values are set correctly.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
-            Factory for building :class:`ApiConfig` from dicts.
         """
         obj = {
             'profiles': {
@@ -204,13 +168,6 @@ class TestApiConfig:
     ) -> None:
         """
         Test that profile attributes with defaults are handled correctly.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
-            Factory for building :class:`ApiConfig` from dicts.
         """
         obj = {
             'profiles': {
@@ -240,13 +197,6 @@ class TestApiConfig:
         """
         Test that profile attribute access returns None when profiles are
         absent.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
-            Factory for building :class:`ApiConfig` from dicts.
         """
         obj = {'base_url': base_url, 'endpoints': {}}
         cfg = api_config_factory(obj)
@@ -259,13 +209,6 @@ class TestApiConfig:
     ) -> None:
         """
         Test that header precedence and profile fields are handled correctly.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
-            Factory for building :class:`ApiConfig` from dicts.
         """
         obj = {
             'profiles': {
@@ -312,13 +255,6 @@ class TestApiConfig:
     ) -> None:
         """
         Test that pagination defaults are mapped correctly in profiles.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        api_config_factory : Callable[[dict[str, Any]], ApiConfig]
-            Factory for building :class:`ApiConfig` from dicts.
         """
         obj = {
             'profiles': {
@@ -393,15 +329,6 @@ class TestApiProfileConfig:
     ) -> None:
         """
         Test that invalid defaults blocks yield None or sanitized values.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        defaults : dict[str, object]
-            Defaults block to test.
-        profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
-            Factory for building :class:`ApiProfileConfig` from dicts.
         """
         obj = {
             'base_url': base_url,
@@ -429,13 +356,6 @@ class TestApiProfileConfig:
     ) -> None:
         """
         Test that headers from defaults are merged with low precedence.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
-            Factory for building :class:`ApiProfileConfig` from dicts.
         """
         obj = {
             'base_url': base_url,
@@ -454,15 +374,6 @@ class TestApiProfileConfig:
     ) -> None:
         """
         Test that defaults blocks are parsed and types are correct.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
-            Factory for building ApiProfileConfig from dicts.
-        api_profile_defaults_factory : Callable[..., dict[str, Any]]
-            Factory for building defaults blocks.
         """
         obj = {
             'base_url': base_url,
@@ -503,13 +414,6 @@ class TestApiProfileConfig:
     ) -> None:
         """
         Test that passthrough fields (base_path, auth) are preserved.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
-            Factory for building :class:`ApiProfileConfig` from dicts.
         """
         obj = {
             'base_url': base_url,
@@ -527,11 +431,6 @@ class TestApiProfileConfig:
     ) -> None:
         """
         Test that base_url is required for :class:`ApiProfileConfig`.
-
-        Parameters
-        ----------
-        profile_config_factory : Callable[[dict[str, Any]], ApiProfileConfig]
-            Factory for building :class:`ApiProfileConfig` from dicts.
         """
         with pytest.raises(TypeError):
             profile_config_factory({})
@@ -553,11 +452,6 @@ class TestEndpointConfig:
     ) -> None:
         """
         Test that path_params, query_params, and body are captured correctly.
-
-        Parameters
-        ----------
-        endpoint_config_factory : Callable[[dict[str, Any]], EndpointConfig]
-            Factory for building :class:`EndpointConfig` from dicts.
         """
         ep = endpoint_config_factory(
             {
@@ -570,7 +464,8 @@ class TestEndpointConfig:
         )
         assert ep.method == 'POST'
         assert ep.path_params == {'id': 'int'}
-        assert isinstance(ep.body, dict) and ep.body['type'] == 'file'
+        assert isinstance(ep.body, dict)
+        assert ep.body['type'] == 'file'
         assert ep.query_params == {'size': 'large'}
 
     def test_from_str_sets_no_method(
@@ -579,18 +474,13 @@ class TestEndpointConfig:
     ) -> None:
         """
         Test that from_str sets no method for :class:`EndpointConfig`.
-
-        Parameters
-        ----------
-        endpoint_config_factory : Callable[[str], EndpointConfig]
-            Factory for building :class:`EndpointConfig` from string.
         """
         ep = endpoint_config_factory('/ping')
         assert ep.path == '/ping'
         assert ep.method is None
 
     @pytest.mark.parametrize(
-        'payload, expected_exception',
+        ('payload', 'expected_exception'),
         [
             ({'method': 'GET'}, TypeError),  # missing path
             ({'path': 123}, TypeError),  # path wrong type
@@ -618,15 +508,6 @@ class TestEndpointConfig:
     ) -> None:
         """
         Test that invalid payloads raise the expected exceptions.
-
-        Parameters
-        ----------
-        payload : dict[str, object]
-            Payload to test for error handling.
-        expected_exception : type[Exception]
-            Expected exception type.
-        endpoint_config_factory : Callable[[str], EndpointConfig]
-            Factory for building :class:`EndpointConfig` from string.
         """
         with pytest.raises(expected_exception):
             endpoint_config_factory(payload)  # type: ignore[arg-type]
@@ -638,11 +519,6 @@ class TestEndpointConfig:
         """
         Test that lenient fields (method/body) do not raise errors and are
         permissive.
-
-        Parameters
-        ----------
-        endpoint_config_factory : Callable[[dict[str, Any]], EndpointConfig]
-            Factory for building :class:`EndpointConfig` from dicts.
         """
         # Lenient fields (method/body) accept any type and pass through.
         ep_method = endpoint_config_factory({'method': 200, 'path': '/x'})
@@ -657,11 +533,6 @@ class TestEndpointConfig:
         """
         Test that method and query_params are parsed correctly in
         :class:`EndpointConfig`.
-
-        Parameters
-        ----------
-        endpoint_config_factory : Callable[[dict[str, Any]], EndpointConfig]
-            Factory for building :class:`EndpointConfig` from dicts.
         """
         ep = endpoint_config_factory(
             {
@@ -678,20 +549,25 @@ class TestEndpointConfig:
 class TestConfigInternalBranches:
     """Targeted branch tests for internal config helpers."""
 
-    # pylint: disable=protected-access
-
     def test_api_profile_config_from_obj_requires_mapping(self) -> None:
-        """ApiProfileConfig.from_obj should fail for non-mapping inputs."""
+        """
+        Test that :meth:`ApiProfileConfig.from_obj` fails for non-mapping
+        inputs.
+        """
         with pytest.raises(TypeError, match='must be a mapping'):
             ApiProfileConfig.from_obj(cast(Any, 1))
 
     def test_api_config_from_obj_requires_mapping(self) -> None:
-        """ApiConfig.from_obj should fail on non-mapping values."""
+        """
+        Test that :meth:`ApiConfig.from_obj` fails on non-mapping values.
+        """
         with pytest.raises(TypeError, match='must be a mapping'):
             ApiConfig.from_obj(cast(Any, 1))
 
     def test_effective_defaults_requires_string_base_url(self) -> None:
-        """Fallback base URL must be a string when profiles are absent."""
+        """
+        Test that fallback base URL is a string when profiles are absent.
+        """
         with pytest.raises(TypeError, match='base_url'):
             config_module._effective_service_defaults(
                 profiles={},
@@ -700,7 +576,10 @@ class TestConfigInternalBranches:
             )
 
     def test_endpoint_config_from_obj_rejects_invalid_shape(self) -> None:
-        """EndpointConfig.from_obj accepts only string or mapping inputs."""
+        """
+        Test that :meth:`EndpointConfig.from_obj` accepts only string or
+        mapping inputs.
+        """
         with pytest.raises(TypeError, match='expected str or mapping'):
             EndpointConfig.from_obj(cast(Any, [1, 2, 3]))
 
@@ -709,7 +588,7 @@ class TestConfigInternalBranches:
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
     ) -> None:
-        """Rate-limit defaults should come from selected profile."""
+        """Test that rate-limit defaults come from selected profile."""
         cfg = api_config_factory(
             {
                 'profiles': {
@@ -728,7 +607,9 @@ class TestConfigInternalBranches:
         assert rate_limit.sleep_seconds == 0.25
 
     def test_normalize_method_branches(self) -> None:
-        """Method normalizer handles enum, blank, and invalid values."""
+        """
+        Test that method normalizer handles enum, blank, and invalid values.
+        """
         assert config_module._normalize_method(HttpMethod.GET) == 'GET'
         assert config_module._normalize_method('   ') is None
         with pytest.raises(ValueError, match='Unsupported HTTP method'):
@@ -738,7 +619,10 @@ class TestConfigInternalBranches:
         self,
         base_url: str,
     ) -> None:
-        """Skip profile entries that are not mappings."""
+        """
+        Test that :meth:`_parse_profiles` skips profile entries that are not
+        mappings.
+        """
         raw = {
             'good': {'base_url': base_url},
             'bad': ['not', 'mapping'],

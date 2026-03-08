@@ -10,6 +10,10 @@ import pytest
 
 from etlplus.file import _mixins as mod
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 

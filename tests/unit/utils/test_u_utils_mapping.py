@@ -16,6 +16,10 @@ from etlplus.utils import cast_str_dict
 from etlplus.utils import coerce_dict
 from etlplus.utils import maybe_mapping
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -37,8 +41,8 @@ def test_cast_str_dict(
     expected: dict[str, str],
 ) -> None:
     """
-    Test that :func:`cast_str_dict` coerces mapping keys/values to strings
-    and normalizes ``None`` to ``{}``.
+    Test that :func:`cast_str_dict` coerces mapping keys/values to strings and
+    normalizes ``None`` to ``{}``.
     """
     assert cast_str_dict(mapping) == expected
 

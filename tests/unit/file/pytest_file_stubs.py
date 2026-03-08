@@ -19,6 +19,10 @@ from .pytest_file_support import make_import_error_reader_module
 from .pytest_file_support import make_import_error_writer_module
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -55,7 +59,7 @@ def make_records_frame_fixture() -> Callable[
 @pytest.fixture(name='optional_module_stub')
 def optional_module_stub_fixture() -> Generator[OptionalModuleInstaller]:
     """Install dependency stubs and restore import cache afterward."""
-    cache = import_helpers._MODULE_CACHE  # pylint: disable=protected-access
+    cache = import_helpers._MODULE_CACHE
     original = dict(cache)
     cache.clear()
 

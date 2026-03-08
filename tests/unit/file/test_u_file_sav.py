@@ -18,6 +18,10 @@ from .pytest_file_support import PyreadstatTabularStub
 from .pytest_file_support import RDataPandasStub
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -33,7 +37,7 @@ class TestSav(SingleDatasetWritableContract):
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test SAV reads delegating to ``pyreadstat.read_sav``."""
+        """Test that SAV reads delegates to :func:`pyreadstat.read_sav`."""
         stub = PyreadstatTabularStub(
             frame=DictRecordsFrameStub([{'id': 1}]),
             read_method_name='read_sav',
@@ -55,7 +59,7 @@ class TestSav(SingleDatasetWritableContract):
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test SAV writes delegating to ``pyreadstat.write_sav``."""
+        """Test that SAV writes delegate to :func:`pyreadstat.write_sav`."""
         stub = PyreadstatTabularStub(
             frame=DictRecordsFrameStub([]),
             read_method_name='read_sav',

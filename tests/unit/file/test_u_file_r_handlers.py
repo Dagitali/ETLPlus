@@ -13,6 +13,10 @@ import pytest
 
 from etlplus.file import _r_handlers as mod
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -94,12 +98,10 @@ class _RDataHandler(mod.RDataHandlerMixin):
 class TestRHandlers:
     """Unit tests for shared R-data handler mixin behavior."""
 
-    # pylint: disable=protected-access
-
     def test_resolve_pyreadr_writer_returns_first_available_candidate(
         self,
     ) -> None:
-        """Test writer resolution using candidate method priority order."""
+        """Test that writer resolution uses candidate method priority order."""
         pyreadr = _PyreadrStub({'data': []})
         handler = _RDataHandler(pyreadr)
 
@@ -115,7 +117,9 @@ class TestRHandlers:
         ]
 
     def test_resolve_pyreadr_writer_raises_for_missing_methods(self) -> None:
-        """Test writer resolution failures raising the provided error text."""
+        """
+        Test that writer resolution failures raises the provided error text.
+        """
         handler = _RDataHandler(_PyreadrStub({'data': []}))
         with pytest.raises(ImportError, match='writer missing'):
             handler.resolve_pyreadr_writer(

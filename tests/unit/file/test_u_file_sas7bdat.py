@@ -21,13 +21,15 @@ from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import PandasReadSasStub
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestSas7bdatReadOnly(ReadOnlyScientificDatasetModuleContract):
     """Read-only scientific contract tests for :mod:`etlplus.file.sas7bdat`."""
-
-    # pylint: disable=unused-variable
 
     module = mod
     handler_cls = mod.Sas7bdatFile
@@ -56,7 +58,7 @@ class TestSas7bdatRead(PathMixin):
     format_name = 'sas7bdat'
 
     def test_list_datasets_returns_default_key(self) -> None:
-        """Test list_datasets exposing the single supported key."""
+        """Test that :meth:`list_datasets` exposes the single supported key."""
         assert mod.Sas7bdatFile().list_datasets(Path('ignored.sas7bdat')) == [
             'data',
         ]
@@ -66,7 +68,9 @@ class TestSas7bdatRead(PathMixin):
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test option-based default dataset selection for read_dataset."""
+        """
+        Test option-based default dataset selection for :meth:`read_dataset`.
+        """
         frame = DictRecordsFrameStub([{'id': 1}])
         pandas = PandasReadSasStub(frame)
         self._install_dependency_stubs(monkeypatch, pandas)
@@ -84,7 +88,10 @@ class TestSas7bdatRead(PathMixin):
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test read fallback when pandas rejects the format keyword."""
+        """
+        Test that read fallback occurs when :mod:`pandas` rejects the format
+        keyword.
+        """
         frame = DictRecordsFrameStub([{'id': 1}])
         pandas = PandasReadSasStub(frame, fail_on_format_kwarg=True)
         self._install_dependency_stubs(monkeypatch, pandas)
@@ -115,7 +122,9 @@ class TestSas7bdatRead(PathMixin):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test write_dataset preserving read-only runtime behavior."""
+        """
+        Test that :meth:`write_dataset` preserving read-only runtime behavior.
+        """
         path = self.format_path(tmp_path)
 
         with pytest.raises(RuntimeError, match='read-only'):

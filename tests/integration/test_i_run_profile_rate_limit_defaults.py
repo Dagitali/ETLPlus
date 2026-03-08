@@ -26,6 +26,10 @@ from etlplus.api import RateLimitConfig
 
 from .conftest import FakeEndpointClientProtocol
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -63,7 +67,7 @@ class TestRunProfileRateLimitDefaults:
         forced_sleep: float | None,
         expected_sleep: float,
     ) -> None:
-        """Test propagation of profile-level rate limit sleep configuration."""
+        """Test propagation of profile-level rate-limit sleep settings."""
         cfg = pipeline_cfg_factory(rate_limit_defaults=rate_cfg)
 
         fake_client, created = fake_endpoint_client

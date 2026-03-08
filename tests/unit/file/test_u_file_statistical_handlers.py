@@ -16,6 +16,10 @@ from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import PandasReadSasStub
 from .pytest_file_support import PyreadstatTabularStub
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -52,7 +56,7 @@ class TestStatisticalHandlers:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test direct pyreadstat read/write method dispatch."""
+        """Test that direct :mod:`pyreadstat` read/write methods dispatch."""
         path = tmp_path / 'sample.sav'
         frame = DictRecordsFrameStub([{'id': 1}])
         pyreadstat = PyreadstatTabularStub(
@@ -79,7 +83,10 @@ class TestStatisticalHandlers:
         pyreadstat.assert_last_write_path(path)
 
     def test_required_write_mixin_raises_when_writer_is_missing(self) -> None:
-        """Test required-write path raising for missing pyreadstat writers."""
+        """
+        Test that required-write path raises for missing :mod:`pyreadstat`
+        writers.
+        """
         handler = _PyreadstatRequiredWriteHandler()
         with pytest.raises(
             ImportError,
@@ -99,7 +106,10 @@ class TestStatisticalHandlers:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test SAS fallback handler using pyreadstat first when available."""
+        """
+        Test that SAS fallback handler uses :mod:`pyreadstat` first when
+        available.
+        """
         path = tmp_path / 'sample.sas7bdat'
         frame = DictRecordsFrameStub([{'id': 1}])
         pyreadstat = PyreadstatTabularStub(
@@ -123,7 +133,9 @@ class TestStatisticalHandlers:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test SAS fallback path delegating to pandas when needed."""
+        """
+        Test that SAS fallback path delegates to :mod:`pandas` when needed.
+        """
         path = tmp_path / 'sample.sas7bdat'
         frame = DictRecordsFrameStub([{'id': 1}])
         pandas = PandasReadSasStub(frame)

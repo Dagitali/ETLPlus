@@ -15,6 +15,10 @@ import pytest
 
 from etlplus.database.engine import load_database_url_from_config
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTIONS: HELPERS ========================================================= #
 
 
@@ -35,23 +39,13 @@ class TestLoadDatabaseUrlFromConfig:
     fixtures to keep tests DRY.
     """
 
-    @pytest.fixture()
+    @pytest.fixture
     def patch_read_file(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> Callable[[Any], None]:
         """
         Return a helper that patches :meth:`read` to return a payload.
-
-        Parameters
-        ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture for applying patches.
-
-        Returns
-        -------
-        Callable[[Any], None]
-            Function that patches ``File.read`` to return the payload.
         """
 
         def _apply(payload: Any) -> None:
@@ -68,7 +62,7 @@ class TestLoadDatabaseUrlFromConfig:
         patch_read_file: Callable[[Any], None],
     ) -> None:
         """
-        Test extracting URLs from default and named entries including nested
+        Test extracting URLs from default and named entries, including nested
         defaults.
         """
         config = {
@@ -93,7 +87,7 @@ class TestLoadDatabaseUrlFromConfig:
         )
 
     @pytest.mark.parametrize(
-        'payload, expected_exc',
+        ('payload', 'expected_exc'),
         [
             ({}, KeyError),
             ({'databases': None}, KeyError),
@@ -119,23 +113,13 @@ class TestLoadDatabaseUrlFromConfig:
 class TestMakeEngine:
     """Unit tests for :func:`make_engine` and module defaults."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def capture_create_engine(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> Callable[..., dict[str, Any]]:
         """
         Patch ``create_engine`` to capture calls.
-
-        Parameters
-        ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture for applying patches.
-
-        Returns
-        -------
-        Callable[..., dict[str, Any]]
-            Fake ``create_engine`` that records arguments.
         """
         captured: list[tuple[str, dict[str, Any]]] = []
 

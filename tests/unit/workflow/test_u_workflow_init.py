@@ -15,11 +15,15 @@ from etlplus.workflow.jobs import TransformRef
 from etlplus.workflow.jobs import ValidationRef
 from etlplus.workflow.profile import ProfileConfig
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
 def test_workflow_package_exports_expected_symbols() -> None:
-    """Package re-exports should match documented ``__all__``."""
+    """Test that package re-exports match documented ``__all__``."""
     assert workflow_pkg.ExtractRef is ExtractRef
     assert workflow_pkg.JobConfig is JobConfig
     assert workflow_pkg.LoadRef is LoadRef

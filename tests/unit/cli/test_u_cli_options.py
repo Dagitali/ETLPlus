@@ -10,6 +10,10 @@ import pytest
 
 from etlplus.cli.options import typer_format_option_kwargs
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -24,7 +28,7 @@ def test_typer_format_option_kwargs_context_specific_help(
     context: str,
     expected_fragment: str,
 ) -> None:
-    """Option helper should tailor help text by connector context."""
+    """Test that the option helper tailors help text by connector context."""
     kwargs = typer_format_option_kwargs(
         context=context,  # type: ignore[arg-type]
     )

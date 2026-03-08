@@ -19,6 +19,10 @@ from typing import cast
 from etlplus.file import File
 from etlplus.utils.types import JSONDict
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 

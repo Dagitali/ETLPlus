@@ -13,6 +13,10 @@ from typing import Any
 
 import pytest
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonOutputParser
@@ -37,7 +41,7 @@ class TestCliTransform:
         sample_records: list[dict[str, Any]],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test transforming stdin payload and project selected fields."""
+        """Test transforming a STDIN payload and projecting selected fields."""
         monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
         code, out, err = cli_invoke(
             ('transform', '--operations', operations_json, '-', '-'),

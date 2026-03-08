@@ -12,6 +12,10 @@ from typing import Any
 
 import pytest
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonOutputParser
@@ -34,7 +38,9 @@ class TestCliExtract:
         json_payload_file: Path,
         sample_records: list[dict[str, Any]],
     ) -> None:
-        """Test extracting JSON from a file and emit matching payload."""
+        """
+        Test extracting JSON from a file and emitting the matching payload.
+        """
         code, out, err = cli_invoke(('extract', str(json_payload_file)))
         assert code == 0
         assert err.strip() == ''

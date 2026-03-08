@@ -22,6 +22,10 @@ from pytest import MonkeyPatch
 
 from etlplus import Config
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -48,7 +52,7 @@ def test_target_service_endpoint_uses_base_path(
     endpoint_path: str,
     expected_suffix: str,
 ):
-    """Test composed API URLs across optional base_path configurations."""
+    """Test composed API URLs across optional *base_path* values."""
 
     cfg = file_to_api_pipeline_factory(
         base_path=base_path,

@@ -15,6 +15,10 @@ from etlplus.file import _core_dispatch as mod
 from etlplus.file import core as core_mod
 from etlplus.file.enums import FileFormat
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -25,11 +29,13 @@ class TestCoreDispatchHelpers:
         self,
         monkeypatch,
     ) -> None:
-        """Test read payload routing through core File wrapper."""
+        """
+        Test that payload reads route through the core :class:`File` wrapper.
+        """
         seen: dict[str, Any] = {}
 
         class FileStub:
-            """Stub core File wrapper for read dispatch tests."""
+            """Stub core :class:`File` wrapper for read dispatch tests."""
 
             def __init__(self, path: Path, fmt: FileFormat) -> None:
                 seen['path'] = path
@@ -56,7 +62,7 @@ class TestCoreDispatchHelpers:
 
     @pytest.mark.parametrize(
         'filename',
-        ('../escape.json', '/tmp/escape.json'),
+        ['../escape.json', '/tmp/escape.json'],
         ids=('parent_traversal', 'absolute'),
     )
     def test_write_payload_with_core_rejects_unsafe_paths(
@@ -64,7 +70,9 @@ class TestCoreDispatchHelpers:
         monkeypatch,
         filename: str,
     ) -> None:
-        """Test write payload rejecting paths that escape the temp root."""
+        """
+        Test that write payload rejecting paths that escape the temp root.
+        """
 
         class FileStub:
             """Fail fast if unsafe filenames ever reach File dispatch."""
@@ -86,7 +94,7 @@ class TestCoreDispatchHelpers:
         self,
         monkeypatch,
     ) -> None:
-        """Test write payload routing through core File wrapper."""
+        """Test that write payload routing through core File wrapper."""
         seen: dict[str, Any] = {}
 
         class FileStub:
@@ -97,6 +105,10 @@ class TestCoreDispatchHelpers:
                 seen['fmt'] = fmt
 
             def write(self, data: dict[str, object]) -> int:
+                """
+                Stub write method that captures the data dict and simulates
+                writing bytes.
+                """
                 path = seen['path']
                 seen['data'] = data
                 path.write_bytes(b'written')

@@ -29,6 +29,10 @@ from tests.unit.meta.pytest_meta_support import markdown_table_rows
 from tests.unit.meta.pytest_meta_support import read_lines
 from tests.unit.meta.pytest_meta_support import regex_matches
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
@@ -106,8 +110,6 @@ def _expected_matrix_row(file_format: FileFormat) -> MatrixRow:
 
 def _expected_supported_formats() -> set[FileFormat]:
     """Return non-stub formats from explicit registry mappings."""
-    # pylint: disable=protected-access
-
     expected: set[FileFormat] = set()
     for file_format in mod._HANDLER_CLASS_SPECS:
         handler_class = mod.get_handler_class(file_format)
@@ -184,16 +186,14 @@ def _override_attrs_from_text(override_text: str) -> frozenset[str]:
 class TestRegistryDocsMatrixGuardrail:
     """Contract tests for registry/documentation matrix consistency."""
 
-    # pylint: disable=protected-access
-
     def test_matrix_rows_cover_explicit_registry_mappings(self) -> None:
-        """Test both matrix docs covering every explicitly mapped format."""
+        """Test that both matrix docs cover every explicitly mapped format."""
         expected_formats = set(mod._HANDLER_CLASS_SPECS)
         assert set(_parse_matrix_rows(_README_MATRIX_PATH)) == expected_formats
         assert set(_parse_matrix_rows(_DOCS_MATRIX_PATH)) == expected_formats
 
     def test_matrix_rows_match_registry_metadata(self) -> None:
-        """Test matrix rows matching registry-resolved handler metadata."""
+        """Test that matrix rows match registry-resolved handler metadata."""
         readme_rows = _parse_matrix_rows(_README_MATRIX_PATH)
         docs_rows = _parse_matrix_rows(_DOCS_MATRIX_PATH)
         for file_format in mod._HANDLER_CLASS_SPECS:
@@ -209,7 +209,9 @@ class TestReadmeFileFormatTableGuardrail:
     def test_supported_table_matches_non_stub_registry_mappings(
         self,
     ) -> None:
-        """Test supported-format table matching explicit non-stub handlers."""
+        """
+        Test that supported-format table matchwes explicit non-stub handlers.
+        """
         documented_formats = _parse_file_package_supported_formats(
             _FILE_PACKAGE_README_PATH,
         )
@@ -220,7 +222,7 @@ class TestIntegrationFileReadmeGuardrail:
     """Contract tests for integration file-smoke README conventions."""
 
     def test_exception_table_matches_smoke_contract_constants(self) -> None:
-        """Test documented exception rows matching code constants."""
+        """Test that documented exception rows match code constants."""
         rows = _parse_integration_exception_rows(_INTEGRATION_FILE_README_PATH)
         assert set(rows) == SMOKE_ROUNDTRIP_EXCEPTION_MODULES
         observed_attrs = {

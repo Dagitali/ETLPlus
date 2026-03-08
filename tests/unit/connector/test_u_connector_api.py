@@ -11,6 +11,10 @@ import pytest
 from etlplus.connector.api import ConnectorApi
 from etlplus.connector.enums import DataConnectorType
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -18,7 +22,10 @@ class TestConnectorApi:
     """Unit tests for :class:`ConnectorApi`."""
 
     def test_from_obj_parses_service_alias_and_nested_configs(self) -> None:
-        """from_obj should support service alias and nested API settings."""
+        """
+        Test that :meth:`from_obj` supports service alias and nested API
+        settings.
+        """
         connector = ConnectorApi.from_obj(
             {
                 'name': 'users_api',
@@ -48,6 +55,8 @@ class TestConnectorApi:
         assert connector.rate_limit.sleep_seconds == 0.2
 
     def test_from_obj_requires_name(self) -> None:
-        """from_obj should reject mappings without a valid name."""
+        """
+        Test that :meth:`from_obj` rejects mappings without a valid name.
+        """
         with pytest.raises(TypeError, match='ConnectorApi requires a "name"'):
             ConnectorApi.from_obj({'type': 'api'})

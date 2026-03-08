@@ -34,6 +34,10 @@ from etlplus.file.base import TemplateFileHandlerABC
 from etlplus.file.base import TextFixedWidthFileHandlerABC
 from etlplus.file.stub import StubFileHandlerABC
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
@@ -217,7 +221,7 @@ class TestRegistryAbcConformance:
         file_format: FileFormat,
         expected_abc: type[object],
     ) -> None:
-        """Test mapped handlers inheriting each expected category ABC."""
+        """Test that mapped handlers inherit each expected category ABC."""
         handler_class = mod.get_handler_class(file_format)
         assert issubclass(handler_class, expected_abc)
 
@@ -225,14 +229,12 @@ class TestRegistryAbcConformance:
 class TestRegistryInternalHelpers:
     """Unit tests for internal symbol import and coercion helpers."""
 
-    # pylint: disable=protected-access
-
     @pytest.mark.parametrize(
         ('symbol', 'error_pattern'),
-        (
+        [
             (object(), 'must be a class'),
             (type('_NotAHandler', (), {}), 'must inherit FileHandlerABC'),
-        ),
+        ],
         ids=('non_class', 'wrong_base_class'),
     )
     def test_coerce_handler_class_rejects_invalid_symbols(
@@ -240,7 +242,7 @@ class TestRegistryInternalHelpers:
         symbol: object,
         error_pattern: str,
     ) -> None:
-        """Test class coercion rejecting invalid symbols."""
+        """Test that class coercion rejects invalid symbols."""
         with pytest.raises(ValueError, match=error_pattern):
             mod._coerce_handler_class(
                 symbol,
@@ -250,7 +252,9 @@ class TestRegistryInternalHelpers:
     def test_coerce_handler_class_rejects_mismatched_declared_format(
         self,
     ) -> None:
-        """Test coercion rejecting handler classes with mismatched format."""
+        """
+        Test that coercion rejects handler classes with mismatched format.
+        """
         from etlplus.file.json import JsonFile
 
         with pytest.raises(ValueError, match='declares mismatched format'):
@@ -264,7 +268,7 @@ class TestRegistryInternalHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test malformed map entries surfacing as unsupported format errors.
+        Test that malformed map entries surfaces as unsupported format errors.
         """
         monkeypatch.setitem(
             mod._HANDLER_CLASS_SPECS,
@@ -278,7 +282,7 @@ class TestRegistryInternalHelpers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test missing module attributes raising ValueError."""
+        """Test that missing module attributes raises :class:`ValueError`."""
         monkeypatch.setattr(
             mod.importlib,
             'import_module',
@@ -288,15 +292,13 @@ class TestRegistryInternalHelpers:
             mod._import_symbol('etlplus.file.csv:MissingHandler')
 
     def test_import_symbol_rejects_invalid_spec(self) -> None:
-        """Test malformed import specs raising ValueError."""
+        """Test that malformed import specs raising ValueError."""
         with pytest.raises(ValueError, match='Invalid handler spec'):
             mod._import_symbol('invalid-spec')
 
 
 class TestRegistryMappedResolution:
     """Unit tests for explicitly mapped handler class resolution."""
-
-    # pylint: disable=protected-access
 
     singleton_format = FileFormat.JSON
 
@@ -308,11 +310,14 @@ class TestRegistryMappedResolution:
         self,
         file_format: FileFormat,
     ) -> None:
-        """Test mapped formats resolving to concrete handler classes."""
+        """Test that mapped formats resolving to concrete handler classes."""
         assert mod.get_handler_class(file_format).format == file_format
 
     def test_get_handler_returns_singleton_instance(self) -> None:
-        """Test get_handler returning a cached singleton for mapped formats."""
+        """
+        Test that :func:`get_handler` returns a cached singleton for mapped
+        formats.
+        """
         expected_class = mod.get_handler_class(self.singleton_format)
         first = mod.get_handler(self.singleton_format)
         second = mod.get_handler(self.singleton_format)
@@ -329,7 +334,7 @@ class TestRegistryMappedResolution:
         file_format: FileFormat,
         expected_spec: str,
     ) -> None:
-        """Test placeholder modules mapping to their own class symbols."""
+        """Test that placeholder modules map to their own class symbols."""
         assert mod._HANDLER_CLASS_SPECS[file_format] == expected_spec
 
 
@@ -338,14 +343,12 @@ class TestRegistryStrictPolicy:
 
     fallback_format = FileFormat.GZ
 
-    # pylint: disable=protected-access
-
     @pytest.mark.parametrize(
         'resolver',
-        (
+        [
             mod.get_handler_class,
             mod.get_handler,
-        ),
+        ],
         ids=('class_lookup', 'instance_lookup'),
     )
     def test_lookups_raise_without_explicit_mapping(
@@ -353,7 +356,7 @@ class TestRegistryStrictPolicy:
         monkeypatch: pytest.MonkeyPatch,
         resolver: Callable[[FileFormat], object],
     ) -> None:
-        """Test strict mode rejecting unmapped formats across lookups."""
+        """Test that strict mode rejects unmapped formats across lookups."""
         monkeypatch.delitem(
             mod._HANDLER_CLASS_SPECS,
             self.fallback_format,
