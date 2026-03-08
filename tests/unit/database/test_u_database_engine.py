@@ -62,8 +62,8 @@ class TestLoadDatabaseUrlFromConfig:
         patch_read_file: Callable[[Any], None],
     ) -> None:
         """
-        Test that extracting URLs from default and named entries including
-        nested defaults.
+        Test extracting URLs from default and named entries, including nested
+        defaults.
         """
         config = {
             'databases': {

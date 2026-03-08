@@ -127,7 +127,7 @@ class TestLoadTableSpec:
         extension: str,
         sample_spec: dict[str, object],
     ) -> None:
-        """Test that loading a table spec from JSON and YAML formats."""
+        """Test loading a table spec from JSON and YAML formats."""
         spec_path = tmp_path / f'spec.{extension}'
         materialized = deepcopy(sample_spec)
         if extension == 'json':
@@ -164,7 +164,7 @@ class TestRenderTableSql:
         tmp_path: Path,
         sample_spec: dict[str, object],
     ) -> None:
-        """Test that rendering SQL with a custom template path."""
+        """Test rendering SQL with a custom template path."""
         template_path = tmp_path / 'custom.sql.j2'
         template_path.write_text('{{ spec.table }}', encoding='utf-8')
 
@@ -179,7 +179,7 @@ class TestRenderTableSql:
         self,
         sample_spec: dict[str, object],
     ) -> None:
-        """Test that rendering SQL with the default template."""
+        """Test rendering SQL with the default template."""
         sql = ddl.render_table_sql(sample_spec)
         assert f'CREATE TABLE [dbo].[{sample_spec["table"]}' in sql
         assert '[id] INT' in sql
@@ -190,10 +190,7 @@ class TestRenderTableSql:
         sample_spec: dict[str, object],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """
-        Test that rendering SQL with an environment variable override for the
-        template path.
-        """
+        """Test rendering SQL with a template-path environment override."""
         template_path = tmp_path / 'env_template.sql.j2'
         template_path.write_text(
             '{{ spec.schema }}.{{ spec.table }}',
@@ -266,9 +263,7 @@ class TestRenderTables:
         self,
         sample_spec: dict[str, object],
     ) -> None:
-        """
-        Test that rendering an iterable of table specs into SQL strings.
-        """
+        """Test rendering an iterable of table specs into SQL strings."""
         first = deepcopy(sample_spec)
         second = deepcopy(sample_spec)
         second['table'] = 'widgets_history'
@@ -290,10 +285,7 @@ class TestRenderTablesToString:
         tmp_path: Path,
         sample_spec: dict[str, object],
     ) -> None:
-        """
-        Test that rendering multiple table specs to a string with a custom
-        template.
-        """
+        """Test rendering multiple table specs with a custom template."""
         template_path = tmp_path / 'concat_template.sql.j2'
         template_path.write_text('{{ spec.table }}', encoding='utf-8')
 
@@ -313,8 +305,8 @@ class TestRenderTablesToString:
         sample_spec: dict[str, object],
     ) -> None:
         """
-        Test that rendering multiple table specs from file paths into a single
-        SQL string.
+        Test rendering multiple table specs from file paths to one SQL
+        string.
         """
         spec_paths: list[Path] = []
         for idx, table_name in enumerate(('widgets', 'widgets_history')):
