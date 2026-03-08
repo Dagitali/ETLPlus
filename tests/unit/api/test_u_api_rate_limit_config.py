@@ -58,9 +58,7 @@ class TestRateLimitConfig:
         self,
         rate_limit_config_factory: Callable[..., RateLimitConfig],
     ) -> None:
-        """
-        Test that equality semantics for RateLimitConfig instances.
-        """
+        """Test equality semantics for :class:`RateLimitConfig` instances."""
         a = rate_limit_config_factory(sleep_seconds=1.0, max_per_sec=3.0)
         b = rate_limit_config_factory(sleep_seconds=1.0, max_per_sec=3.0)
         c = rate_limit_config_factory(sleep_seconds=None, max_per_sec=3.0)

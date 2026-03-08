@@ -1510,9 +1510,7 @@ class TestUrlCompositionProperty:
         id_value: str,
         extract_stub_factory: Callable[..., Any],
     ) -> None:
-        """
-        Test that path parameter encoding in URLs.
-        """
+        """Test path-parameter encoding in URLs."""
         with extract_stub_factory() as calls:  # type: ignore[call-arg]
             client = EndpointClient(
                 base_url=EXAMPLE_BASE_URL,
@@ -1542,9 +1540,7 @@ class TestUrlCompositionProperty:
         params: dict[str, str],
         extract_stub_factory: Callable[..., Any],
     ) -> None:
-        """
-        Test that query parameter encoding in URLs.
-        """
+        """Test query-parameter encoding in URLs."""
         with extract_stub_factory() as calls:  # type: ignore[call-arg]
             client = EndpointClient(
                 base_url=EXAMPLE_BASE_URL,

@@ -171,7 +171,7 @@ class TestPaginator:
 
     def test_page_integration(self) -> None:
         """
-        Test that pagination over a multi-record iterator.
+        Test pagination over a multi-record iterator.
 
         Uses a lightweight EndpointClient subclass that overrides
         ``paginate_url_iter`` to simulate multiple pages of results and

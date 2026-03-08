@@ -140,7 +140,7 @@ class TestBuildHttpAdapter:
         assert calls == ['bad://', 'https://']
 
     def test_integer_retries_fallback(self) -> None:
-        """Test that handling integer max_retries fallback."""
+        """Test integer ``max_retries`` fallback handling."""
         cfg = {
             'pool_connections': 2,
             'pool_maxsize': 2,
@@ -161,7 +161,7 @@ class TestBuildHttpAdapter:
 
     def test_retry_coercion_lists(self) -> None:
         """
-        Test that handling list inputs for ``allowed_methods`` and
+        Test list-input handling for ``allowed_methods`` and
         ``status_forcelist``.
         """
         cfg = {
@@ -196,7 +196,7 @@ class TestBuildHttpAdapter:
 
     def test_retry_coercion_sets(self) -> None:
         """
-        Test that handling set and frozenset inputs for ``allowed_methods`` and
+        Test set and frozenset handling for ``allowed_methods`` and
         ``status_forcelist``.
         """
         # Provide sets to exercise set and frozenset handling in mapping.
