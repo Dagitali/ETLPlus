@@ -21,4 +21,4 @@ class TestTxt(SmokeRoundtripModuleContract):
     """Integration smoke tests for :mod:`etlplus.file.txt`."""
 
     module = mod
-    payload = {'text': '99\nGrace'}
+    payload = '99\nGrace'
