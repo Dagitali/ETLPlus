@@ -43,13 +43,13 @@ def test_from_obj_ignores_non_mapping_env_values() -> None:
 
 
 def test_from_obj_returns_defaults_for_non_mappings() -> None:
-    """Test that non-mapping payloads produce default profile config."""
+    """Test that non-mapping payloads produce a default profile config."""
     cfg = profile.ProfileConfig.from_obj('not-a-mapping')
     assert cfg.default_target is None
     assert cfg.env == {}
 
 
 def test_from_obj_returns_defaults_for_none() -> None:
-    """Test that ``None`` payload produces default profile config."""
+    """Test that a ``None`` payload produces a default profile config."""
     cfg = profile.ProfileConfig.from_obj(None)
     assert cfg == profile.ProfileConfig()
