@@ -18,7 +18,14 @@ from etlplus.utils.types import JSONData
 # SECTION: TYPES ============================================================ #
 
 
-type FormatCase = tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
+type FormatPayload = JSONData | str
+type FormatCase = tuple[
+    FileFormat,
+    str,
+    FormatPayload,
+    FormatPayload,
+    tuple[str, ...],
+]
 
 
 # SECTION: CONSTANTS ======================================================== #
@@ -27,16 +34,16 @@ type FormatCase = tuple[FileFormat, str, JSONData, JSONData, tuple[str, ...]]
 PYREADR_DEPS = ('pyreadr',)
 PYREADSTAT_DEPS = ('pyreadstat',)
 
-COMMON_ROWS_STR: JSONData = [{'name': 'Ada', 'age': '36'}]
-COMMON_ROWS_NUM: JSONData = [{'name': 'Ada', 'age': 36}]
-COMMON_ROWS_TXT: JSONData = [{'text': 'hello'}, {'text': 'world'}]
 COMMON_INI: JSONData = {'DEFAULT': {'name': 'Ada'}, 'main': {'age': '36'}}
-COMMON_TOML: JSONData = {'name': 'Ada', 'age': 36}
 COMMON_PROPERTIES: JSONData = {'name': 'Ada', 'age': '36'}
 COMMON_PROTO: JSONData = {
     'schema': 'syntax = "proto3";\nmessage Test { string name = 1; }\n',
 }
 COMMON_PB: JSONData = {'payload_base64': 'aGVsbG8='}
+COMMON_ROWS_STR: JSONData = [{'name': 'Ada', 'age': '36'}]
+COMMON_ROWS_NUM: JSONData = [{'name': 'Ada', 'age': 36}]
+COMMON_TEXT_TXT: FormatPayload = 'hello\nworld'
+COMMON_TOML: JSONData = {'name': 'Ada', 'age': 36}
 COMMON_XML: JSONData = {'root': {'items': [{'text': 'one'}]}}
 EMBEDDED_DB_MULTI_TABLE_CASES = (
     (FileFormat.DUCKDB, 'multi.duckdb'),
@@ -78,10 +85,10 @@ NUMERIC_ROUNDTRIP_NORMALIZED_FORMATS = frozenset({FileFormat.XLS})
 def _format_case(
     file_format: FileFormat,
     filename: str,
-    payload: JSONData,
+    payload: FormatPayload,
     requires: tuple[str, ...] = (),
     *,
-    expected: JSONData | None = None,
+    expected: FormatPayload | None = None,
 ) -> FormatCase:
     """Create one roundtrip format case with defensive payload copies."""
     expected_payload = payload if expected is None else expected
@@ -109,7 +116,7 @@ FORMAT_CASES: list[FormatCase] = [
     _format_case(FileFormat.PSV, 'sample.psv', COMMON_ROWS_STR),
     _format_case(FileFormat.TAB, 'sample.tab', COMMON_ROWS_STR),
     _format_case(FileFormat.TSV, 'sample.tsv', COMMON_ROWS_STR),
-    _format_case(FileFormat.TXT, 'sample.txt', COMMON_ROWS_TXT),
+    _format_case(FileFormat.TXT, 'sample.txt', COMMON_TEXT_TXT),
     # Semi-structured and interchange
     _format_case(FileFormat.BSON, 'sample.bson', COMMON_ROWS_NUM),
     _format_case(FileFormat.CBOR, 'sample.cbor', COMMON_ROWS_NUM),
