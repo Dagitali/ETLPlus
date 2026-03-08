@@ -31,6 +31,10 @@ from etlplus.database.orm import load_and_build_models
 from etlplus.database.orm import resolve_type
 from etlplus.database.schema import TableSpec
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -124,7 +128,7 @@ class TestHelpers:
     """Unit tests for helper utilities in :mod:`orm`."""
 
     @pytest.mark.parametrize(
-        'type_decl, expected_type, expected_attr',
+        ('type_decl', 'expected_type', 'expected_attr'),
         [
             ('VARCHAR(255)', String, {'length': 255}),
             ('numeric(10,2)', Numeric, {'precision': 10, 'scale': 2}),
@@ -138,7 +142,10 @@ class TestHelpers:
         expected_type: type,
         expected_attr: dict[str, object],
     ) -> None:
-        """resolve_type returns expected SQLAlchemy types and params."""
+        """
+        Test that :func:`resolve_type` returns expected SQLAlchemy types and
+        params.
+        """
 
         resolved = resolve_type(type_decl)
 
@@ -147,7 +154,7 @@ class TestHelpers:
             assert getattr(resolved, attr) == value
 
     @pytest.mark.parametrize(
-        'type_str, name, params',
+        ('type_str', 'name', 'params'),
         [
             ('VARCHAR(12)', 'varchar', [12]),
             ('decimal(10, 4)', 'decimal', [10, 4]),
@@ -163,10 +170,9 @@ class TestHelpers:
         params: list[int],
     ) -> None:
         """
-        Type parsing returns expected names/params and class names PascalCase.
+        Test that type parsing returns expected names/params and class names
+        in PascalCase.
         """
-        # pylint: disable=protected-access
-
         parsed_name, parsed_params = orm_mod._parse_type_decl(type_str)
         assert parsed_name == name
         assert parsed_params == params
@@ -191,8 +197,10 @@ class TestBuildModels:
         self,
         rich_spec: TableSpec,
     ) -> None:
-        """Composite keys, constraints, enums, defaults, and FKs are mapped."""
-
+        """
+        Test that composite keys, constraints, enums, defaults, and FKs are
+        mapped correctly.
+        """
         registry = build_models([rich_spec])
         model = registry['analytics.orders']
         table = cast(Table, model.__table__)
@@ -226,7 +234,7 @@ class TestBuildModels:
         )
 
         check_constraints = self._get_constraint(table, CheckConstraint)
-        assert any('ck_orders_region' == c.name for c in check_constraints)
+        assert any(c.name == 'ck_orders_region' for c in check_constraints)
 
         fk_constraints = self._get_constraint(table, ForeignKeyConstraint)
         assert any(
@@ -250,7 +258,10 @@ class TestBuildModels:
         self,
         simple_spec: TableSpec,
     ) -> None:
-        """Single-column PK marks the column as primary_key and in registry."""
+        """
+        Test that single-column PK marks the column as primary_key and in
+        registry.
+        """
 
         registry = build_models([simple_spec])
         model = registry['widgets']
@@ -271,7 +282,8 @@ class TestLoadAndBuildModels:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        load_and_build_models delegates to load_table_specs and honors base.
+        Test that :func:`load_and_build_models` delegates to
+        :func:`load_table_specs` and honors the :class:`Base`.
         """
 
         captured_paths: list[Path] = []

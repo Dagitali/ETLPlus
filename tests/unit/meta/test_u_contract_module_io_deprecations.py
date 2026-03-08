@@ -15,6 +15,10 @@ import pytest
 
 from etlplus.file import registry as file_registry
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
@@ -149,7 +153,7 @@ class TestFileFormatModules:
         api_name: str,
         file_format_modules: list[tuple[str, ModuleType]],
     ) -> None:
-        """Test mapped modules not exposing wrapper API attributes."""
+        """Test that mapped modules do not expose wrapper API attributes."""
         violations = [
             module_name
             for module_name, module in file_format_modules
@@ -161,7 +165,7 @@ class TestFileFormatModules:
         self,
         file_format_modules: list[tuple[str, ModuleType]],
     ) -> None:
-        """Test mapped modules not exposing ``_*_HANDLER`` constants."""
+        """Test that mapped modules do not expose ``_*_HANDLER`` constants."""
         violations = [
             f'{module_name}.{symbol_name}'
             for module_name, module in file_format_modules
@@ -178,7 +182,9 @@ class TestInternalRuntimeCode:
         self,
         internal_runtime_trees: list[tuple[Path, ast.AST]],
     ) -> None:
-        """Test runtime modules not importing/calling removed wrapper APIs."""
+        """
+        Test that runtime modules not importing/calling removed wrapper APIs.
+        """
         violations: list[str] = []
 
         for path, tree in internal_runtime_trees:

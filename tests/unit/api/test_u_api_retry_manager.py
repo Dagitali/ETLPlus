@@ -16,6 +16,10 @@ from etlplus.api.retry_manager import RetryManager
 from etlplus.api.retry_manager import RetryPolicyDict
 from etlplus.api.retry_manager import RetryStrategy
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -23,14 +27,14 @@ class TestRetryStrategy:
     """Tests for :class:`RetryStrategy`."""
 
     def test_defaults_when_policy_empty(self) -> None:
-        """Fallback to baked-in defaults when policy is empty."""
+        """Test that fallback to baked-in defaults when policy is empty."""
         strategy = RetryStrategy.from_policy({})
         assert strategy.max_attempts == 3
         assert strategy.backoff == pytest.approx(0.5)
         assert strategy.retry_on_codes == frozenset({429, 502, 503, 504})
 
     def test_policy_values_override_defaults(self) -> None:
-        """Provided policy values should be normalized and honored."""
+        """Test that provided policy values be normalized and honored."""
         strategy = RetryStrategy.from_policy(
             cast(
                 RetryPolicyDict,
@@ -53,7 +57,7 @@ class TestRetryManager:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """sleep time should never exceed the configured cap."""
+        """Test that sleep time never exceeds the configured cap."""
         monkeypatch.setattr(
             'etlplus.api.retry_manager.random.uniform',
             lambda _a, b: b,
@@ -67,7 +71,10 @@ class TestRetryManager:
     def test_should_retry_false_for_non_network_error_with_flag_enabled(
         self,
     ) -> None:
-        """retry_network_errors only retries timeout/connection exceptions."""
+        """
+        Test that *retry_network_errors* only retries timeout/connection
+        exceptions.
+        """
         manager = RetryManager(
             policy={'max_attempts': 2},
             retry_network_errors=True,
@@ -76,7 +83,9 @@ class TestRetryManager:
         assert manager.should_retry(None, err) is False
 
     def test_should_retry_network_errors(self) -> None:
-        """Network errors should honor the ``retry_network_errors`` flag."""
+        """
+        Test that network errors honors the ``retry_network_errors`` flag.
+        """
         manager = RetryManager(
             policy={'max_attempts': 2},
             retry_network_errors=True,
@@ -85,7 +94,7 @@ class TestRetryManager:
         assert manager.should_retry(None, err) is True
 
     def test_should_retry_returns_false_when_not_retryable(self) -> None:
-        """Non-retryable status/errors should return False."""
+        """Test that non-retryable status/errors returns ``False``."""
         manager = RetryManager(
             policy={'max_attempts': 2, 'retry_on': [429]},
             retry_network_errors=False,
@@ -94,7 +103,7 @@ class TestRetryManager:
         assert manager.should_retry(500, err) is False
 
     def test_raise_terminal_error_emits_auth_error_for_401(self) -> None:
-        """401/403 terminal failures should raise ApiAuthError."""
+        """Test that 401/403 terminal failures raises :class:`ApiAuthError`."""
         manager = RetryManager(policy={'max_attempts': 1})
         error = requests.HTTPError('auth')
         with pytest.raises(ApiAuthError):

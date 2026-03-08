@@ -9,6 +9,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 

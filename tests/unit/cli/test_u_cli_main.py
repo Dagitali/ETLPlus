@@ -21,6 +21,10 @@ from etlplus.cli.main import main as cli_main
 from .conftest import StubCommand
 from .conftest import StubCommandMain
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -34,19 +38,12 @@ main_module = importlib.import_module('etlplus.cli.main')
 class TestMain:
     """Unit tests for :func:`etlplus.cli.main`."""
 
-    # pylint: disable=protected-access,unused-argument
-
     def test_command_return_value_is_passthrough(
         self,
         stub_command_main: StubCommandMain,
     ) -> None:
         """
         Test that the command return values flow through unchanged.
-
-        Parameters
-        ----------
-        stub_command_main : StubCommandMain
-            Fixture that wires Typer's command execution to ``action``.
         """
 
         def _action(**kwargs: object) -> object:
@@ -60,7 +57,9 @@ class TestMain:
         assert captured['standalone_mode'] is False
 
     def test_emit_context_help_none_returns_false(self) -> None:
-        """Helper should return ``False`` when no context is provided."""
+        """
+        Test that the helper returns ``False`` when no context is provided.
+        """
         assert main_module._emit_context_help(None) is False
 
     def test_handles_os_error(
@@ -70,13 +69,6 @@ class TestMain:
     ) -> None:
         """
         Test that any :class:`OSError` surfaces to STDERR and return 1.
-
-        Parameters
-        ----------
-        stub_command : StubCommand
-            Fixture that wires Typer's command execution to ``action``.
-        capsys : pytest.CaptureFixture[str]
-            Capture fixture for STDOUT/STDERR.
         """
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
@@ -109,7 +101,8 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Illegal options without context should fall back to root help."""
+        """Test that illegal options without context fall back to root help.
+        """
 
         class _StubCommand:
             """Stub command that raises a usage error for any option."""
@@ -140,7 +133,7 @@ class TestMain:
 
     @pytest.mark.parametrize(
         ('exception', 'expected_code', 'expected_err'),
-        (
+        [
             pytest.param(
                 KeyboardInterrupt,
                 130,
@@ -148,7 +141,7 @@ class TestMain:
                 id='keyboard-interrupt',
             ),
             pytest.param(ValueError('fail'), 1, 'Error:', id='value-error'),
-        ),
+        ],
     )
     def test_maps_common_exceptions(
         self,
@@ -160,25 +153,10 @@ class TestMain:
     ) -> None:
         """
         Test that common exceptions map to expected exit codes.
-
-        Parameters
-        ----------
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
-        capsys : pytest.CaptureFixture[str]
-            Capture fixture for STDOUT/STDERR.
-        exception : BaseException | type[BaseException]
-            Exception instance or type to trigger.
-        expected_code : int
-            Expected exit code emitted by :func:`cli_main`.
-        expected_err : str | None
-            Expected STDERR substring when provided.
         """
-        side_effect: BaseException
-        if isinstance(exception, type):
-            side_effect = exception()
-        else:
-            side_effect = exception
+        side_effect: BaseException = (
+            exception() if isinstance(exception, type) else exception
+        )
         monkeypatch.setattr(
             cli_handlers_module,
             'extract_handler',
@@ -193,7 +171,9 @@ class TestMain:
         self,
         stub_command: StubCommand,
     ) -> None:
-        """Direct :class:`typer.Exit` from command.main should be mapped."""
+        """
+        Test that direct :class:`typer.Exit` from command.main are mapped.
+        """
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
             raise typer.Exit(9)
@@ -203,7 +183,7 @@ class TestMain:
 
     @pytest.mark.parametrize(
         ('setup', 'expected'),
-        (
+        [
             (
                 lambda mp: mp.setattr(
                     cli_handlers_module,
@@ -220,7 +200,7 @@ class TestMain:
                 ),
                 17,
             ),
-        ),
+        ],
     )
     def test_maps_typer_exits(
         self,
@@ -238,11 +218,11 @@ class TestMain:
 
     @pytest.mark.parametrize(
         ('cli_args', 'expected_message'),
-        (
+        [
             (['definitely-not-real'], 'No such command'),
             (['--definitely-not-real-option'], 'No such option'),
             (['extract', '--definitely-not-real-option'], 'No such option'),
-        ),
+        ],
     )
     def test_unknown_arguments_emit_usage(
         self,
@@ -252,15 +232,6 @@ class TestMain:
     ) -> None:
         """
         Test that unknown CLI arguments echo usage help.
-
-        Parameters
-        ----------
-        cli_args : list[str]
-            Command-line invocation passed to :func:`cli_main`.
-        expected_message : str
-            Substring expected in STDERR describing the error.
-        capsys : pytest.CaptureFixture[str]
-            Pytest capture fixture used to inspect STDERR output.
         """
         exit_code = cli_main(cli_args)
         captured = capsys.readouterr()
@@ -273,7 +244,7 @@ class TestMain:
         self,
         stub_command: StubCommand,
     ) -> None:
-        """Unhandled :class:`UsageError` cases should be re-raised."""
+        """Test that unhandled :class:`UsageError` cases be re-raised."""
 
         def _action(**kwargs: object) -> object:  # noqa: ARG001
             raise click.exceptions.UsageError('boom')

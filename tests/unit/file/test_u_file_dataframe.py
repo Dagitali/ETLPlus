@@ -11,6 +11,10 @@ from etlplus.file import _dataframe as mod
 from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import RDataPandasStub
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -18,7 +22,7 @@ class TestDataframeHelpers:
     """Unit tests for dataframe helper functions."""
 
     def test_dataframe_from_records(self) -> None:
-        """Test frame construction from record payloads."""
+        """Test that frame construction from record payloads."""
         records = [{'id': 1}, {'id': 2}]
         frame = mod.dataframe_from_records(
             RDataPandasStub(),
@@ -28,7 +32,7 @@ class TestDataframeHelpers:
         assert frame.to_dict(orient='records') == records
 
     def test_dataframe_from_data(self) -> None:
-        """Test data normalization and frame construction."""
+        """Test that data normalization and frame construction."""
         frame = mod.dataframe_from_data(
             RDataPandasStub(),
             {'id': 1},
@@ -38,7 +42,9 @@ class TestDataframeHelpers:
         assert frame.to_dict(orient='records') == [{'id': 1}]
 
     def test_dataframe_and_count_from_data(self) -> None:
-        """Test combined frame construction and normalized count output."""
+        """
+        Test that combined frame construction and normalized count output.
+        """
         frame, count = mod.dataframe_and_count_from_data(
             RDataPandasStub(),
             [{'id': 1}, {'id': 2}],

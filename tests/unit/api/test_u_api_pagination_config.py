@@ -18,6 +18,10 @@ import pytest
 
 from etlplus.api import PaginationConfig
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -32,7 +36,7 @@ class TestPaginationConfig:
     """
 
     def test_defaults_apply_response_fallback_path(self) -> None:
-        """Defaults mapping should surface response fallback_path."""
+        """Test that defaults mapping surfaces response ``fallback_path.``."""
         cfg = PaginationConfig.from_defaults(
             {
                 'type': 'page',
@@ -49,7 +53,8 @@ class TestPaginationConfig:
 
     def test_defaults_preserve_top_level_fallback_path(self) -> None:
         """
-        Nested fallback_path should not override explicit top-level value.
+        Test that nested ``fallback_path`` does not override explicit top-level
+        value.
         """
         cfg = PaginationConfig.from_defaults(
             {
@@ -67,12 +72,7 @@ class TestPaginationConfig:
         pagination_from_obj_factory: Callable[[Any], PaginationConfig],
     ) -> None:
         """
-        Test that from_obj coerces numeric fields correctly.
-
-        Parameters
-        ----------
-        pagination_from_obj_factory : Callable[[Any], PaginationConfig]
-            Factory for PaginationConfig.
+        Test that :meth:`from_obj` coerces numeric fields correctly.
         """
         obj = {
             'type': 'page',
@@ -97,12 +97,7 @@ class TestPaginationConfig:
         pagination_from_obj_factory: Callable[[Any], PaginationConfig],
     ) -> None:
         """
-        Test that from_obj ignores bad numeric values.
-
-        Parameters
-        ----------
-        pagination_from_obj_factory : Callable[[Any], PaginationConfig]
-            Factory for PaginationConfig.
+        Test that :meth:`from_obj` ignores bad numeric values.
         """
         obj: dict[str, Any] = {
             'type': 'page',
@@ -124,11 +119,6 @@ class TestPaginationConfig:
     ) -> None:
         """
         Test that offset mode warnings are produced correctly.
-
-        Parameters
-        ----------
-        pagination_config_factory : Callable[..., PaginationConfig]
-            Factory for PaginationConfig.
         """
         pc = pagination_config_factory(
             type='offset',
@@ -151,13 +141,6 @@ class TestPaginationConfig:
     ) -> None:
         """
         Test that unknown pagination types only yield general warnings.
-
-        Parameters
-        ----------
-        tval : str | None
-            Pagination type value to test.
-        pagination_config_factory : Callable[..., Any]
-            Factory for PaginationConfig.
         """
         pc = pagination_config_factory(
             type=tval,
@@ -202,13 +185,6 @@ class TestPaginationConfig:
         """
         Test that validate_bounds produces correct warnings for different
         pagination types.
-
-        Parameters
-        ----------
-        ptype : Literal['page', 'offset', 'cursor']
-            Pagination type to test.
-        pagination_config_factory : Callable[..., PaginationConfig]
-            Factory for PaginationConfig.
         """
         pc = pagination_config_factory(
             type=ptype,
@@ -243,11 +219,6 @@ class TestPaginationConfig:
     ) -> None:  # noqa: D401
         """
         Test that valid pagination values produce no warnings.
-
-        Parameters
-        ----------
-        pagination_config_factory : Callable[..., PaginationConfig]
-            Factory for PaginationConfig.
         """
         pc = pagination_config_factory(
             type='page',

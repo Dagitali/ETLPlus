@@ -37,6 +37,10 @@ from etlplus.cli import main
 
 from .conftest import FakeEndpointClientProtocol
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFileParser
     from tests.conftest import JsonOutputParser
@@ -294,7 +298,6 @@ def pipeline_cli_runner_fixture(
         Runner that writes the pipeline YAML, patches HTTP helpers, and
         returns the resulting config path.
     """
-    # pylint: disable=unused-argument
 
     def _run(
         *,
@@ -303,6 +306,7 @@ def pipeline_cli_runner_fixture(
         extract_func: Callable[..., Any],
         request_func: Callable[..., Any] | None = None,
     ) -> str:
+        """Run the CLI with the given pipeline YAML and patched extractors."""
         cfg_path = _write_pipeline(tmp_path, yaml_text)
         monkeypatch.setattr(cli_handlers, 'extract', extract_func)
         monkeypatch.setattr(extract_module, 'extract', extract_func)
@@ -363,7 +367,7 @@ class TestPaginationStrategies:
         parse_json_file: JsonFileParser,
     ) -> None:
         """
-        Test cursor-based pagination scenarios end-to-end via the CLI.
+        Test end-to-end cursor-based pagination via the CLI.
 
         Parameters
         ----------
@@ -372,7 +376,7 @@ class TestPaginationStrategies:
         tmp_path : Path
             Temporary directory managed by pytest.
         capsys : pytest.CaptureFixture[str]
-            Capture fixture for CLI STDOUT/stderr.
+            Capture fixture for CLI STDOUT/STDERR.
         pipeline_cli_runner : Callable[..., str]
             Helper that materializes and executes the pipeline configuration.
         parse_json_output : JsonOutputParser
@@ -451,7 +455,7 @@ class TestPaginationStrategies:
         parse_json_output: JsonOutputParser,
         parse_json_file: JsonFileParser,
     ) -> None:
-        """Test page/offset pagination end-to-end via CLI."""
+        """Test end-to-end page/offset pagination via the CLI."""
         out_path = tmp_path / f'{scenario.name}.json'
         job_name = f'job_{scenario.name}'
 
@@ -556,7 +560,7 @@ class TestPaginationStrategies:
         run_patched: Callable[..., dict[str, Any]],
     ) -> None:  # noqa: D401
         """
-        Test edge cases for pagination coalescing using shared fixtures.
+        Test pagination-coalescing edge cases with shared fixtures.
 
         This drives the runner wiring directly (not CLI) to assert the exact
         pagination mapping seen by the client after defaults/overrides.

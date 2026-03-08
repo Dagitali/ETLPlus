@@ -10,6 +10,10 @@ from etlplus.file import zsav as mod
 
 from .pytest_file_contracts import SingleDatasetPlaceholderContract
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

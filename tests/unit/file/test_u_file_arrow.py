@@ -16,6 +16,10 @@ from etlplus.file import arrow as mod
 
 from .pytest_file_contracts import PyarrowMissingDependencyMixin
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -42,8 +46,6 @@ class _ContextStub:
 
 class _PyarrowStub:
     """Minimal pyarrow-like module for Arrow handler tests."""
-
-    # pylint: disable=invalid-name
 
     def __init__(self) -> None:
         self.from_pylist_calls: list[list[dict[str, object]]] = []
@@ -176,7 +178,9 @@ class TestArrow(PyarrowMissingDependencyMixin):
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test ``read_table`` routing through pyarrow map/IPC APIs."""
+        """
+        Test that :meth:`read_table` routes through pyarrow map/IPC APIs.
+        """
         pyarrow_stub = _PyarrowStub()
         expected_table: Any = object()
         pyarrow_stub.read_table = expected_table
@@ -196,7 +200,9 @@ class TestArrow(PyarrowMissingDependencyMixin):
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test ``records_to_table`` converting records via pyarrow."""
+        """
+        Test that :meth:`records_to_table` converts records via :mod:`pyarrow`.
+        """
         pyarrow_stub = _PyarrowStub()
 
         def _dependency(*_a: object, **_k: object) -> _PyarrowStub:
@@ -210,7 +216,10 @@ class TestArrow(PyarrowMissingDependencyMixin):
         assert pyarrow_stub.from_pylist_calls == [[{'id': 1}]]
 
     def test_table_to_records_returns_pylist_rows(self) -> None:
-        """Test ``table_to_records`` delegating to ``table.to_pylist()``."""
+        """
+        Test that :meth:`table_to_records` delegates to
+        :meth:`table.to_pylist()`.
+        """
         table = _TableStub([{'id': 1}, {'id': 2}])
         assert mod.ArrowFile().table_to_records(table) == [
             {'id': 1},
@@ -221,7 +230,7 @@ class TestArrow(PyarrowMissingDependencyMixin):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test empty writes short-circuiting without file creation."""
+        """Test that empty writes short-circuit without file creation."""
         path = self.format_path(tmp_path)
         assert self.module_handler.write(path, []) == 0
         assert not path.exists()
@@ -231,7 +240,9 @@ class TestArrow(PyarrowMissingDependencyMixin):
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test ``write_table`` routing through pyarrow sink/writer APIs."""
+        """
+        Test that :meth:`write_table` routes through pyarrow sink/writer APIs.
+        """
         pyarrow_stub = _PyarrowStub()
 
         def _dependency(*_a: object, **_k: object) -> _PyarrowStub:

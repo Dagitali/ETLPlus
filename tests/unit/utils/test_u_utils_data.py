@@ -14,6 +14,10 @@ from etlplus.utils import count_records
 from etlplus.utils import print_json
 from etlplus.utils.types import JSONData
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -31,7 +35,7 @@ def test_count_records(
     payload: JSONData,
     expected: int,
 ) -> None:
-    """Test record counts consistently for dict and list payloads."""
+    """Test that record counts consistently for dict and list payloads."""
     assert count_records(payload) == expected
 
 
@@ -41,8 +45,8 @@ def test_print_json_uses_utf8_without_ascii_escaping(
     assert_json_output: Callable[[str, object], None],
 ) -> None:
     """
-    Test that :func:`print_json` prints UTF-8 JSON and keeps Unicode
-    characters readable.
+    Test that :func:`print_json` prints UTF-8 JSON and keeps Unicode characters
+    readable.
     """
     print_json(unicode_payload)
     captured = capsys.readouterr().out

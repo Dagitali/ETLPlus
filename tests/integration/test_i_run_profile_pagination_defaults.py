@@ -23,6 +23,10 @@ from etlplus.api import PaginationType
 
 from .conftest import FakeEndpointClientProtocol as Client
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

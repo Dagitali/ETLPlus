@@ -18,19 +18,23 @@ from .conftest import AssertCapturedText
 from .conftest import StubHandler
 from .conftest import TyperContextFactory
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestCommandsInternalHelpers:
     """Unit tests for command-level internal helper functions."""
 
-    # pylint: disable=protected-access
-
     def test_parse_json_option_wraps_value_errors(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Invalid JSON payloads should raise :class:`typer.BadParameter`."""
+        """
+        Test that invalid JSON payloads raise :class:`typer.BadParameter`.
+        """
 
         def _parse_json_payload(_value: str) -> Any:
             raise ValueError('bad json')
@@ -53,7 +57,7 @@ class TestCheckCommand:
         typer_ctx_factory: TyperContextFactory,
         stub_handler: StubHandler,
     ) -> None:
-        """Valid inputs should dispatch to ``check_handler``."""
+        """Test that valid inputs dispatch to ``check_handler``."""
         monkeypatch.setattr(
             commands_mod,
             'ensure_state',
@@ -129,8 +133,8 @@ class TestCommandsMissingInputs:
         expected_message: str,
     ) -> None:
         """
-        Commands should emit friendly usage errors when required inputs
-        are missing.
+        Test that commands emit friendly usage errors when required inputs are
+        missing.
         """
         command = getattr(commands_mod, command_name)
         with pytest.raises(typer.Exit) as exc:
@@ -171,9 +175,7 @@ class TestCommandsMissingInputs:
         argument_value: str,
         expected_message: str,
     ) -> None:
-        """
-        Positional arguments should reject option-like values.
-        """
+        """Test that positional arguments reject option-like values."""
         kwargs = {argument_name: argument_value}
         command = getattr(commands_mod, command_name)
         with pytest.raises(typer.Exit) as exc:
@@ -185,8 +187,6 @@ class TestCommandsMissingInputs:
 class TestTransformCommand:
     """Unit tests for :func:`etlplus.cli.commands.transform_cmd`."""
 
-    # pylint: disable=unused-argument
-
     def test_skips_source_validation_when_source_type_cannot_be_inferred(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -194,7 +194,7 @@ class TestTransformCommand:
         stub_handler: StubHandler,
     ) -> None:
         """
-        When source type is ``None``, source validation should be skipped.
+        Test that, when source type is ``None``, source validation is skipped.
         """
         monkeypatch.setattr(
             commands_mod,

@@ -8,6 +8,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: EXPORTS ========================================================== #
 
 

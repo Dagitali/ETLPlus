@@ -20,6 +20,10 @@ from ...pytest_file_common import call_handler_operation
 from ...pytest_file_common import resolve_module_handler
 from ...pytest_file_common import skip_on_known_file_io_error
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: EXPORTS ========================================================== #
 
 

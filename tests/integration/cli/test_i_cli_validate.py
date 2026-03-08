@@ -12,6 +12,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonOutputParser
@@ -35,7 +39,7 @@ class TestCliValidate:
         sample_records_json: str,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test validating stdin payload with basic rules."""
+        """Test validating a stdin payload with basic rules."""
         monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
         code, out, err = cli_invoke(('validate', '--rules', rules_json, '-'))
         assert code == 0

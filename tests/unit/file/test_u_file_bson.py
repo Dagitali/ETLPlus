@@ -15,6 +15,10 @@ from etlplus.file import bson as mod
 from .pytest_file_contracts import BinaryDependencyModuleContract
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -46,7 +50,6 @@ class _BsonModuleWithClass:
     """Stub exposing ``BSON`` class only."""
 
     def __init__(self) -> None:
-        # pylint: disable=invalid-name
         self.BSON = _BsonCodecStub()
 
 
@@ -55,8 +58,6 @@ class _BsonModuleWithClass:
 
 class TestBsonHelpers:
     """Unit tests for BSON encode/decode helpers."""
-
-    # pylint: disable=protected-access
 
     def test_decode_all_raises_without_support(self) -> None:
         """

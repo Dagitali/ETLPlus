@@ -6,22 +6,20 @@ Integration smoke tests for :mod:`etlplus.workflow.dag`.
 
 from __future__ import annotations
 
-import pytest
-
 from etlplus.workflow import JobConfig
 from etlplus.workflow import topological_sort_jobs
 
-# SECTION: MARKERS ========================================================== #
+# SECTION: PRAGMAS ========================================================== #
 
-
-pytestmark = pytest.mark.integration
-
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 # SECTION: TESTS ============================================================ #
 
 
 def test_topological_sort_jobs_from_jobconfig_payloads() -> None:
-    """Topological sorting should honor dependencies from parsed job blocks."""
+    """
+    Test that topological sorting honors dependencies from parsed job blocks.
+    """
     raw_jobs = [
         {
             'name': 'publish',

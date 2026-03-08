@@ -60,6 +60,8 @@ class _TemplateTextHandlerProtocol(Protocol):
         """
         Return effective text encoding for read/write options.
         """
+
+
 # SECTION: CLASSES ========================================================== #
 
 

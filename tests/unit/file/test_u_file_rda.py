@@ -18,13 +18,15 @@ from .pytest_file_support import RDataNoWriterStub
 from .pytest_file_support import RDataPandasStub
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
 class _PyreadrFallbackStub:
     """Stub exposing ``write_rda`` only."""
-
-    # pylint: disable=unused-argument
 
     def __init__(self) -> None:
         self.writes: list[tuple[str, object]] = []
@@ -112,7 +114,8 @@ class TestRda(RDataModuleContract):
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """
-        Test list_datasets returning default key when file has no objects.
+        Test that :meth:`list_datasets` returns default key when file has no
+        objects.
         """
         pyreadr = self.build_pyreadr_stub({})
         self._install_optional_dependencies(
@@ -129,7 +132,9 @@ class TestRda(RDataModuleContract):
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test list_datasets exposing keys from pyreadr payloads."""
+        """
+        Test that :meth:`list_datasets` exposes keys from pyreadr payloads.
+        """
         pyreadr = self.build_pyreadr_stub({'first': object(), 'second': 1})
         self._install_optional_dependencies(
             optional_module_stub,
@@ -145,7 +150,10 @@ class TestRda(RDataModuleContract):
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test write_dataset forwarding explicit dataset names to pyreadr."""
+        """
+        Test that :meth:`write_dataset` forwards explicit dataset names to
+        :mod:`pyreadr`.
+        """
         pyreadr = self.build_pyreadr_stub({})
         self._install_optional_dependencies(
             optional_module_stub,

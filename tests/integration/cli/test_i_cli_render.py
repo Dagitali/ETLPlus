@@ -10,6 +10,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.integration.cli.conftest import PipelineSchema
@@ -31,7 +35,10 @@ class TestCliRender:
         cli_invoke: CliInvoke,
         pipeline_table_schemas_config: PipelineSchema,
     ) -> None:
-        """Render SQL from a pipeline config containing table_schemas."""
+        """
+        Test that rendering SQL from a pipeline config containing table_schemas
+        works.
+        """
         cfg = pipeline_table_schemas_config
         code, out, err = cli_invoke(
             ('render', '--config', str(cfg.config_path), '--template', 'ddl'),
@@ -46,7 +53,7 @@ class TestCliRender:
         cli_invoke: CliInvoke,
         table_spec: TableSpec,
     ) -> None:
-        """Test rendering a minimal table spec and ensure SQL is produced."""
+        """Test rendering SQL from a minimal table spec."""
         code, out, err = cli_invoke(
             (
                 'render',

@@ -25,6 +25,10 @@ import etlplus.api.transport as transport_module
 from etlplus.api.transport import build_http_adapter
 from etlplus.api.transport import build_session_with_adapters
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -83,7 +87,7 @@ class TestBuildHttpAdapter:
         assert isinstance(adapter, requests.adapters.HTTPAdapter)
 
     def test_build_http_adapter_retry_dict_edge(self):
-        """Test retry dict with unknown keys is ignored."""
+        """Test that retry dict with unknown keys is ignored."""
         cfg = {
             'max_retries': {'total': 2, 'unknown_key': 123},
         }
@@ -98,7 +102,6 @@ class TestBuildHttpAdapter:
         """
         Test that invalid adapter configs are skipped but session is usable.
         """
-        # pylint: disable=broad-exception-caught
         adapters_cfg = [
             {'prefix': 'https://', 'pool_connections': 'bad'},
             {'prefix': 'http://', 'max_retries': {'total': 'bad'}},
@@ -115,7 +118,7 @@ class TestBuildHttpAdapter:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Invalid adapter builds should be skipped by session builder."""
+        """Test that invalid adapter builds are skipped by session builder."""
         real_builder = transport_module.build_http_adapter
         calls: list[str] = []
 
@@ -137,7 +140,7 @@ class TestBuildHttpAdapter:
         assert calls == ['bad://', 'https://']
 
     def test_integer_retries_fallback(self) -> None:
-        """Test handling integer max_retries fallback."""
+        """Test integer ``max_retries`` fallback handling."""
         cfg = {
             'pool_connections': 2,
             'pool_maxsize': 2,
@@ -158,7 +161,8 @@ class TestBuildHttpAdapter:
 
     def test_retry_coercion_lists(self) -> None:
         """
-        Test handling list inputs for allowed_methods and status_forcelist.
+        Test list-input handling for ``allowed_methods`` and
+        ``status_forcelist``.
         """
         cfg = {
             'pool_connections': 2,
@@ -192,8 +196,8 @@ class TestBuildHttpAdapter:
 
     def test_retry_coercion_sets(self) -> None:
         """
-        Test handling set and frozenset inputs for allowed_methods and
-        status_forcelist.
+        Test set and frozenset handling for ``allowed_methods`` and
+        ``status_forcelist``.
         """
         # Provide sets to exercise set and frozenset handling in mapping.
         cfg = {
@@ -224,7 +228,9 @@ class TestBuildHttpAdapter:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Retry mappings fall back to ``total`` when builder fails."""
+        """
+        Test that retry mappings fall back to ``total`` when builder fails.
+        """
 
         def _boom(_cfg: dict[str, object]) -> int:
             raise ValueError('bad retry config')

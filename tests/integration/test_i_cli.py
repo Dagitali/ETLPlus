@@ -26,6 +26,10 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFactory
     from tests.conftest import JsonOutputParser
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -144,7 +148,7 @@ class TestCliEndToEnd:
         should_pass,
         monkeypatch: pytest.MonkeyPatch,
     ):
-        """Test CLI required arguments and option order edge cases."""
+        """Test CLI required-argument and option-order edge cases."""
         if should_pass and args and args[0] == 'load':
             monkeypatch.setattr(
                 sys,
@@ -165,7 +169,9 @@ class TestCliEndToEnd:
         cli_invoke: CliInvoke,
         parse_json_output: JsonOutputParser,
     ) -> None:
-        """Explicit ``--source-format`` overrides file extension inference."""
+        """
+        Test that ``--source-format`` overrides file extension inference.
+        """
         source = tmp_path / 'records.txt'
         source.write_text('a,b\n1,2\n')
         code, out, err = cli_invoke(
@@ -182,7 +188,9 @@ class TestCliEndToEnd:
         cli_invoke: CliInvoke,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """``--target-format`` controls how file targets are written."""
+        """
+        Test that ``--target-format`` controls how file targets are written.
+        """
         output_path = tmp_path / 'output.bin'
         monkeypatch.setattr(
             sys,
@@ -204,7 +212,9 @@ class TestCliEndToEnd:
         cli_invoke: CliInvoke,
         parse_json_output: JsonOutputParser,
     ) -> None:
-        """``validate`` accepts CSV files lacking extensions via flag."""
+        """
+        Test that ``validate`` accepts CSV files lacking extensions via flag.
+        """
         source = tmp_path / 'dataset.data'
         source.write_text('id,val\n1,2\n')
         code, out, err = cli_invoke(
@@ -232,7 +242,7 @@ class TestCliEndToEnd:
         self,
         cli_invoke: CliInvoke,
     ) -> None:
-        """Test that running :func:`main` with an invalid command errors."""
+        """Test invalid-command handling in :func:`main`."""
         code, _out, err = cli_invoke(
             ('extract', '/nonexistent/file.json'),
         )

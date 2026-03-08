@@ -22,6 +22,10 @@ from .conftest import CaptureIo
 from .conftest import assert_emit_json
 from .conftest import assert_emit_or_write
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -31,7 +35,6 @@ class TestCliHandlersInternalHelpers:
     def test_check_sections_all(self, dummy_cfg: Config) -> None:
         """
         Test that :func:`_check_sections` includes all requested sections."""
-        # pylint: disable=protected-access
         result = handlers._check_sections(
             dummy_cfg,
             jobs=False,
@@ -47,7 +50,6 @@ class TestCliHandlersInternalHelpers:
         Test that :func:`_check_sections` defaults to jobs when no flags are
         set.
         """
-        # pylint: disable=protected-access
         result = handlers._check_sections(
             dummy_cfg,
             jobs=False,
@@ -62,7 +64,7 @@ class TestCliHandlersInternalHelpers:
         self,
         dummy_cfg: Config,
     ) -> None:
-        """Test jobs flag plus mapping-style transforms extraction."""
+        """Test that jobs flag plus mapping-style transforms extraction."""
         cfg = SimpleNamespace(
             name=dummy_cfg.name,
             version=dummy_cfg.version,
@@ -75,7 +77,6 @@ class TestCliHandlersInternalHelpers:
             },
         )
 
-        # pylint: disable=protected-access
         result = handlers._check_sections(
             cast(Config, cfg),
             jobs=True,
@@ -108,7 +109,6 @@ class TestCliHandlersInternalHelpers:
             ),
         )
 
-        # pylint: disable=protected-access
         specs = handlers._collect_table_specs(
             config_path='pipeline.yml',
             spec_path=str(spec_path),
@@ -123,8 +123,6 @@ class TestCliHandlersInternalHelpers:
         Test that :func:`_pipeline_summary` returns a mapping for a pipeline
         config.
         """
-        # pylint: disable=protected-access
-
         summary = handlers._pipeline_summary(dummy_cfg)
         result: Mapping[str, object] = summary
         assert result['name'] == 'p1'
@@ -340,7 +338,8 @@ class TestExtractHandler:
         capture_io: CaptureIo,
     ) -> None:
         """
-        ``target`` should take precedence over ``output`` when both are set.
+        Test that ``target`` takes precedence over ``output`` when both are
+        set.
         """
         monkeypatch.setattr(
             handlers,
@@ -627,7 +626,7 @@ class TestRenderHandler:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test output-file rendering without status log when quiet is set."""
+        """Test output-file rendering without a status log in quiet mode."""
         output_path = tmp_path / 'rendered.sql'
         monkeypatch.setattr(
             handlers,
@@ -662,7 +661,9 @@ class TestRenderHandler:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test template-path auto-detection from the ``template`` argument."""
+        """
+        Test that template-path auto-detection from the ``template`` argument.
+        """
         template_path = tmp_path / 'ddl.sql.j2'
         template_path.write_text('CREATE TABLE {{ table }}', encoding='utf-8')
         monkeypatch.setattr(
@@ -810,8 +811,6 @@ class TestRunHandler:
 class TestTransformHandler:
     """Unit tests for :func:`transform_handler`."""
 
-    # pylint: disable=unused-argument
-
     def test_emits_result_without_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -866,7 +865,9 @@ class TestTransformHandler:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Non-mapping operations payloads should raise :class:`ValueError`."""
+        """
+        Test that non-mapping operations payloads raise :class:`ValueError`.
+        """
 
         def _resolve_cli_payload(
             source: object,
@@ -896,8 +897,6 @@ class TestTransformHandler:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test that :func:`transform_handler` writes data to a target file."""
-        # pylint: disable=unused-argument
-
         monkeypatch.setattr(
             handlers.cli_io,
             'resolve_cli_payload',
@@ -944,8 +943,6 @@ class TestTransformHandler:
 
 class TestValidateHandler:
     """Unit tests for :func:`validate_handler`."""
-
-    # pylint: disable=unused-argument
 
     def test_emits_result_without_target(
         self,
@@ -1024,7 +1021,9 @@ class TestValidateHandler:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Non-mapping rules payloads should raise :class:`ValueError`."""
+        """
+        Test that non-mapping rules payloads raise :class:`ValueError`.
+        """
 
         def _resolve_cli_payload(
             source: object,
@@ -1054,7 +1053,7 @@ class TestValidateHandler:
         capture_io: CaptureIo,
     ) -> None:
         """
-        ``target='-'`` should emit full validation output to STDOUT.
+        Test that ``target='-'`` emits full validation output to STDOUT.
         """
         monkeypatch.setattr(
             handlers.cli_io,

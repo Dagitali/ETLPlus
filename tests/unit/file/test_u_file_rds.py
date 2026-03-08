@@ -17,6 +17,10 @@ from .pytest_file_support import RDataNoWriterStub
 from .pytest_file_support import RDataPandasStub
 from .pytest_file_types import OptionalModuleInstaller
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -64,7 +68,9 @@ class TestRds(RDataModuleContract):
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test dataset='data' alias selecting sole object in RDS payload."""
+        """
+        Test that ``dataset='data'`` alias selects sole object in RDS payload.
+        """
         pyreadr = self.build_pyreadr_stub(
             {'only': self.build_frame([{'id': 1}])},
         )
@@ -85,7 +91,7 @@ class TestRds(RDataModuleContract):
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test read_dataset selecting explicit object names."""
+        """Test that :meth:`read_dataset` selects explicit object names."""
         pyreadr = self.build_pyreadr_stub(
             {
                 'first': self.build_frame([{'id': 1}]),

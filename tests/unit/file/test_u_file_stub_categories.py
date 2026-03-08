@@ -19,6 +19,10 @@ from etlplus.file.stub import StubFileHandlerABC
 from etlplus.utils.types import JSONData
 from etlplus.utils.types import JSONList
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -122,13 +126,14 @@ class _TemplateStub(mod.StubTemplateFileHandlerABC):
 class TestStubCategoryHandlers:
     """Unit tests for category-specific stub handler ABCs."""
 
-    # pylint: disable=protected-access
-
     def test_binary_stub_loads_and_dumps_delegate_to_stub_io(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test binary payload methods delegating to StubFileHandlerABC."""
+        """
+        Test that binary payload methods delegates to
+        :class:`StubFileHandlerABC`.
+        """
         read_calls = _patch_stub_read(
             monkeypatch,
             result=RECORD_LIST,
@@ -145,7 +150,10 @@ class TestStubCategoryHandlers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test embedded-database methods delegating to StubFileHandlerABC."""
+        """
+        Test that embedded-database methods delegates to
+        :class:`StubFileHandlerABC`.
+        """
         source_path = Path('data.accdb')
         read_calls = _patch_stub_read(
             monkeypatch,
@@ -175,7 +183,9 @@ class TestStubCategoryHandlers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test log-event parse/serialize methods delegating to stub IO."""
+        """
+        Test that log-event parse/serialize methods delegating to stub IO.
+        """
         _patch_stub_read(
             monkeypatch,
             result=EVENT_DICT,
@@ -194,7 +204,9 @@ class TestStubCategoryHandlers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test semi-structured stub read/write/loads/dumps delegation."""
+        """
+        Test that semi-structured stub read/write/loads/dumps delegation.
+        """
         source_path = Path('data.conf')
         read_calls = _patch_stub_read(
             monkeypatch,
@@ -219,7 +231,7 @@ class TestStubCategoryHandlers:
     def test_single_dataset_stub_validates_dataset_key(
         self,
     ) -> None:
-        """Test single-dataset stub rejecting non-default dataset keys."""
+        """Test that single-dataset stub rejects non-default dataset keys."""
         handler = _SingleScientificStub()
         path = Path('data.mat')
         with pytest.raises(ValueError, match='supports only dataset key'):
@@ -231,7 +243,9 @@ class TestStubCategoryHandlers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test single-dataset stub read/write delegation for valid dataset."""
+        """
+        Test that single-dataset stub read/write delegation for valid dataset.
+        """
         read_calls = _patch_stub_read(
             monkeypatch,
             result=RECORD_LIST,
@@ -251,7 +265,10 @@ class TestStubCategoryHandlers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test spreadsheet stub methods forwarding to StubFileHandlerABC."""
+        """
+        Test that spreadsheet stub methods forwarding to
+        :class:`StubFileHandlerABC`.
+        """
         path = Path('book.wks')
         read_calls = _patch_stub_read(
             monkeypatch,
@@ -278,7 +295,7 @@ class TestStubCategoryHandlers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test template stub rendering delegating to stub read behavior."""
+        """Test template-stub rendering delegation to stub read behavior."""
         _patch_stub_read(
             monkeypatch,
             result='rendered',

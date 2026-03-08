@@ -20,6 +20,10 @@ from etlplus.utils import to_number
 from etlplus.utils import to_positive_float
 from etlplus.utils import to_positive_int
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -39,8 +43,8 @@ def test_to_float_coercion(
     expected: float | None,
 ) -> None:
     """
-    Test that :func:`to_float` coerces valid inputs and rejects
-    invalid/booleanvalues.
+    Test that :func:`to_float` coerces valid inputs and rejects invalid/boolean
+    values.
     """
     assert to_float(value) == expected
 
@@ -98,7 +102,7 @@ def test_float_helper_variants(
     value: tuple[object, ...],
     expected: float | None,
 ) -> None:
-    """Cover helper wrappers around float coercion."""
+    """Test that helper wrappers around float coercion are covered."""
     assert func(*value) == expected
 
 
@@ -159,7 +163,7 @@ def test_int_bound_helper_variants(
     value: tuple[object, ...],
     expected: int,
 ) -> None:
-    """Test min/max helper wrappers around int coercion."""
+    """Test that min/max helper wrappers around int coercion."""
     raw, default = value
     assert func(raw, default) == expected
 

@@ -35,6 +35,10 @@ from .pytest_file_contracts_tabular import PyarrowMissingDependencyMixin
 from .pytest_file_contracts_tabular import TextRowModuleContract
 from .pytest_file_contracts_tabular import WritableSpreadsheetModuleContract
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: EXPORTS ========================================================== #
 
 

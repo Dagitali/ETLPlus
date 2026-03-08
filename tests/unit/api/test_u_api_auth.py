@@ -31,6 +31,10 @@ from etlplus.api.auth import _truncate
 
 from ...conftest import RequestFactory
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -52,7 +56,6 @@ def token_sequence_fixture(
     dict[str, int]
         Dictionary tracking token fetch count.
     """
-    # pylint: disable=unused-argument
 
     calls: dict[str, int] = {'n': 0}
 
@@ -118,8 +121,6 @@ class TestEndpointCredentialsBearer:
     - Validates caching, refresh, and error handling behavior.
     """
 
-    # pylint: disable=protected-access
-
     def test_fetches_and_caches(
         self,
         base_url: str,
@@ -130,17 +131,6 @@ class TestEndpointCredentialsBearer:
         """
         Test that :class:`EndpointCredentialsBearer` fetches and caches tokens
         correctly.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        token_sequence : dict[str, int]
-            Fixture tracking token fetch count.
-        bearer_factory : Callable[..., EndpointCredentialsBearer]
-            Factory that builds :class:`EndpointCredentialsBearer` objects.
-        request_factory : RequestFactory
-            Factory that builds prepared requests.
         """
         auth = bearer_factory()
         s = requests.Session()
@@ -160,7 +150,7 @@ class TestEndpointCredentialsBearer:
         self,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
     ) -> None:
-        """Non-mapping token payloads should raise ValueError."""
+        """Test that non-mapping token payloads raise :class:`ValueError`."""
         auth = bearer_factory()
         resp = types.SimpleNamespace(
             text='[]',
@@ -173,7 +163,7 @@ class TestEndpointCredentialsBearer:
         self,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
     ) -> None:
-        """Invalid expires_in values should coerce to default TTL."""
+        """Test that invalid expires_in values coerce to default TTL."""
         auth = bearer_factory()
         resp = types.SimpleNamespace(
             text='{"access_token":"abc","expires_in":"bad"}',
@@ -210,20 +200,7 @@ class TestEndpointCredentialsBearer:
         """
         Test that :class:`EndpointCredentialsBearer` refreshes token when
         expiring.
-
-        Parameters
-        ----------
-        base_url : str
-            Common base URL used across tests.
-        monkeypatch : pytest.MonkeyPatch
-            Pytest monkeypatch fixture.
-        bearer_factory : Callable[..., EndpointCredentialsBearer]
-            Factory that builds :class:`EndpointCredentialsBearer` objects.
-        request_factory : RequestFactory
-            Factory that builds prepared requests.
         """
-        # pylint: disable=unused-argument
-
         calls: dict[str, int] = {'n': 0}
 
         def fake_post(
@@ -273,7 +250,9 @@ class TestEndpointCredentialsBearer:
             type[Exception],
         ],
     ) -> None:
-        """Token request exceptions should propagate with branch coverage."""
+        """
+        Test that token request exceptions propagate with branch coverage.
+        """
         exc, expected = auth_request_exception_case
 
         class _Client:
@@ -287,7 +266,7 @@ class TestEndpointCredentialsBearer:
             auth._request_token()
 
     def test_truncate_empty_text_returns_empty_string(self) -> None:
-        """Empty/None input should truncate to an empty string."""
+        """Test that empty/``None`` input truncates to an empty string."""
         assert _truncate('') == ''
         assert _truncate(None) == ''
 
@@ -295,6 +274,6 @@ class TestEndpointCredentialsBearer:
         self,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
     ) -> None:
-        """Whitespace-only scope should not be included in token payload."""
+        """Test that whitespace-only scope is not included in token payload."""
         auth = bearer_factory(scope='   ')
         assert auth._token_payload() == {'grant_type': 'client_credentials'}

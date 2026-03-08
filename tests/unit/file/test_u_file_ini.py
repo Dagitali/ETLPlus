@@ -18,6 +18,10 @@ from .pytest_file_contracts import SemiStructuredWriteDictModuleContract
 from .pytest_file_roundtrip_cases import ROUNDTRIP_CASES
 from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -66,7 +70,9 @@ class TestIni(
         assert reloaded['alpha'] == {'value': '1'}
 
     def test_loads_without_default_section_omits_default_key(self) -> None:
-        """Test INI parsing without defaults omitting the ``DEFAULT`` key."""
+        """
+        Test that INI parsing without defaults omitting the ``DEFAULT`` key.
+        """
         payload = mod.IniFile().loads('[alpha]\nvalue=1\n')
         assert payload == {'alpha': {'value': '1'}}
 

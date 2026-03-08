@@ -19,6 +19,10 @@ import pytest
 
 from etlplus import Config
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -31,8 +35,7 @@ class TestConfigLoad:
         substitute: bool,
     ) -> None:
         """
-        Test loading the configuration file with optional environment variable
-        substitution.
+        Test configuration loading with optional environment substitution.
         """
 
         # Ensure the configuration file parses under current models.

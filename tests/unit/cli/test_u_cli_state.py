@@ -20,6 +20,10 @@ from ...conftest import CaptureHandler
 from .conftest import InvokeCli
 from .conftest import assert_mapping_contains
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -28,7 +32,7 @@ class TestCliExtractState:
 
     @pytest.mark.parametrize(
         ('argv', 'expected'),
-        (
+        [
             pytest.param(
                 ('extract', '/path/to/file.csv', '--source-format', 'csv'),
                 {
@@ -54,7 +58,7 @@ class TestCliExtractState:
                 },
                 id='extract-api-quiet',
             ),
-        ),
+        ],
     )
     def test_maps_namespace(
         self,
@@ -77,7 +81,7 @@ class TestCliLoadState:
 
     @pytest.mark.parametrize(
         ('argv', 'expected'),
-        (
+        [
             pytest.param(
                 ('load', '--target-type', 'file', '/path/to/out.json'),
                 {
@@ -102,7 +106,7 @@ class TestCliLoadState:
                 {'source': '-', 'target': 'postgres://db.example.org/app'},
                 id='load-default-source',
             ),
-        ),
+        ],
     )
     def test_maps_namespace(
         self,
@@ -173,7 +177,7 @@ class TestCliTransformState:
 
     @pytest.mark.parametrize(
         ('argv', 'expected'),
-        (
+        [
             pytest.param(
                 (
                     'transform',
@@ -192,7 +196,7 @@ class TestCliTransformState:
                 {'source_format': 'csv'},
                 id='transform-source-format',
             ),
-        ),
+        ],
     )
     def test_maps_namespace(
         self,
@@ -215,7 +219,7 @@ class TestCliValidateState:
 
     @pytest.mark.parametrize(
         ('argv', 'expected'),
-        (
+        [
             pytest.param(
                 (
                     'validate',
@@ -234,7 +238,7 @@ class TestCliValidateState:
                 {'source_format': 'csv'},
                 id='validate-source-format',
             ),
-        ),
+        ],
     )
     def test_maps_namespace(
         self,
@@ -277,8 +281,8 @@ class TestInferResourceType:
 
     def test_file_path(self, tmp_path: Path) -> None:
         """
-        Test that :func:`infer_resource_type` detects local files via
-        extension parsing.
+        Test that :func:`infer_resource_type` detects local files via extension
+        parsing.
         """
         path = tmp_path / 'payload.csv'
         path.write_text('a,b\n1,2\n', encoding='utf-8')
@@ -286,18 +290,19 @@ class TestInferResourceType:
 
     def test_invalid_raises(self) -> None:
         """
-        Unknown resources raise ``ValueError`` to surface helpful guidance.
+        Test that unknown resources raise ``ValueError`` to surface helpful
+        guidance.
         """
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match='Could not infer resource type'):
             cli_state_module.infer_resource_type('unknown-resource')
 
     @pytest.mark.parametrize(
         ('raw', 'expected'),
-        (
+        [
             ('-', 'file'),
             ('https://example.com/data.json', 'api'),
             ('postgres://user@host/db', 'database'),
-        ),
+        ],
     )
     def test_variants(
         self,
@@ -316,7 +321,8 @@ class TestCliStateHelpers:
 
     def test_ensure_state_initializes_missing_context_state(self) -> None:
         """
-        Non-state ``ctx.obj`` values should be replaced with ``CliState``.
+        Test that non-state ``ctx.obj`` values are replaced with
+        :class:`CliState`.
         """
         command = typer.main.get_command(commands.app)
         ctx = typer.Context(command)
@@ -328,14 +334,14 @@ class TestCliStateHelpers:
         assert ctx.obj is state
 
     def test_infer_resource_type_soft_none_returns_none(self) -> None:
-        """Soft inference should return ``None`` for missing values."""
+        """Test that soft inference returns ``None`` for missing values."""
         assert cli_state_module.infer_resource_type_soft(None) is None
 
     def test_infer_resource_type_soft_swallows_inference_errors(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Soft inference should return ``None`` for invalid resources."""
+        """Test that soft inference returns ``None`` for invalid resources."""
         monkeypatch.setattr(
             cli_state_module,
             'infer_resource_type',
@@ -347,7 +353,7 @@ class TestCliStateHelpers:
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Verbose mode should emit inferred-resource diagnostics."""
+        """Test that verbose mode emits inferred-resource diagnostics."""
         cli_state_module.log_inferred_resource(
             cli_state_module.CliState(pretty=True, quiet=False, verbose=True),
             role='source',
@@ -357,7 +363,7 @@ class TestCliStateHelpers:
         assert 'Inferred source_type=file' in capsys.readouterr().err
 
     def test_resolve_resource_type_conflict_raises_bad_parameter(self) -> None:
-        """Conflicting explicit/override values should raise errors."""
+        """Test that conflicting explicit/override values raise errors."""
         with pytest.raises(typer.BadParameter, match='conflict'):
             cli_state_module.resolve_resource_type(
                 explicit_type='api',
@@ -370,7 +376,9 @@ class TestCliStateHelpers:
     def test_resolve_resource_type_legacy_file_raises_bad_parameter(
         self,
     ) -> None:
-        """Legacy file-specific explicit type should raise when disallowed."""
+        """
+        Test that legacy file-specific explicit type raises when disallowed.
+        """
         with pytest.raises(typer.BadParameter, match='legacy'):
             cli_state_module.resolve_resource_type(
                 explicit_type='file',
@@ -383,7 +391,7 @@ class TestCliStateHelpers:
     def test_resolve_resource_type_accepts_explicit_non_file_value(
         self,
     ) -> None:
-        """Explicit non-file values should pass through validation."""
+        """Test that explicit non-file values pass through validation."""
         resolved = cli_state_module.resolve_resource_type(
             explicit_type='api',
             override_type=None,
@@ -399,7 +407,7 @@ class TestOptionalChoice:
 
     @pytest.mark.parametrize(
         ('choice', 'expected'),
-        ((None, None), ('json', 'json')),
+        [(None, None), ('json', 'json')],
     )
     def test_passthrough_and_validation(
         self,
@@ -419,7 +427,7 @@ class TestOptionalChoice:
             == expected
         )
 
-    @pytest.mark.parametrize('invalid', ('yaml', 'parquet'))
+    @pytest.mark.parametrize('invalid', ['yaml', 'parquet'])
     def test_rejects_invalid(self, invalid: str) -> None:
         """Test that invalid choices raise :class:`typer.BadParameter`."""
         with pytest.raises(typer.BadParameter):

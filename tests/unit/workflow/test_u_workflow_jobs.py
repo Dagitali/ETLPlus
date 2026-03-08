@@ -14,6 +14,10 @@ from typing import TypeVar
 
 import pytest
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: MARKERS ========================================================== #
 
 
@@ -41,7 +45,7 @@ class SupportsFromObj(Protocol[T_co]):
 
 
 @pytest.mark.parametrize(
-    'ref_cls, obj, expected',
+    ('ref_cls', 'obj', 'expected'),
     [
         pytest.param(
             jobs.ExtractRef,
@@ -74,7 +78,7 @@ def test_ref_from_obj_valid(
     obj: dict[str, object],
     expected: dict[str, object],
 ) -> None:
-    """Test valid dict input yields the expected reference object."""
+    """Test that valid dict input yields the expected reference object."""
     ref = ref_cls.from_obj(obj)
     assert ref is not None
     for field, value in expected.items():
@@ -82,7 +86,7 @@ def test_ref_from_obj_valid(
 
 
 @pytest.mark.parametrize(
-    'ref_cls, obj',
+    ('ref_cls', 'obj'),
     [
         pytest.param(jobs.ExtractRef, None, id='extract-none'),
         pytest.param(jobs.ExtractRef, {'source': 123}, id='extract-bad'),
@@ -100,12 +104,14 @@ def test_ref_from_obj_invalid(
     ref_cls: type[SupportsFromObj[object]],
     obj: dict[str, object] | None,
 ) -> None:
-    """Test invalid dict input yields None for reference objects."""
+    """Test that invalid dict input yields ``None`` for reference objects."""
     assert ref_cls.from_obj(obj) is None
 
 
 def test_jobconfig_from_obj_valid() -> None:
-    """Test valid dict input yields expected :class:`JobConfig` instance."""
+    """
+    Test that valid dict input yields expected :class:`JobConfig` instance.
+    """
     obj = {
         'name': 'job1',
         'description': 'desc',
@@ -134,7 +140,7 @@ def test_jobconfig_from_obj_valid() -> None:
 def test_jobconfig_from_obj_invalid(
     obj: dict[str, object] | None,
 ) -> None:
-    """Test invalid dict input yields None for :class:`JobConfig`."""
+    """Test that invalid dict input yields ``None`` for :class:`JobConfig`."""
     assert jobs.JobConfig.from_obj(obj) is None
 
 
@@ -149,7 +155,7 @@ def test_jobconfig_description_coercion() -> None:
 
 
 def test_jobconfig_depends_on_filters_non_strings() -> None:
-    """Sequence dependencies should keep only string entries."""
+    """Test that sequence dependencies keep only string entries."""
     cfg = jobs.JobConfig.from_obj(
         {
             'name': 'x',
@@ -161,7 +167,7 @@ def test_jobconfig_depends_on_filters_non_strings() -> None:
 
 
 def test_jobconfig_depends_on_string_is_wrapped() -> None:
-    """Single-string dependencies should normalize to a one-item list."""
+    """Test that single-string dependencies normalize to a one-item list."""
     cfg = jobs.JobConfig.from_obj({'name': 'x', 'depends_on': 'prepare'})
     assert cfg is not None
     assert cfg.depends_on == ['prepare']

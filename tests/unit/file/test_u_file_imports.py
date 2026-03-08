@@ -12,13 +12,15 @@ import pytest
 
 from etlplus.file import _imports as mod
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestImportsHelpers:
     """Unit tests for dependency import helpers."""
-
-    # pylint: disable=protected-access, unused-argument
 
     @pytest.mark.parametrize(
         ('method_name', 'method_args', 'expected_call'),
@@ -36,7 +38,9 @@ class TestImportsHelpers:
         method_args: tuple[object, ...],
         expected_call: tuple[str, str, str | None, bool],
     ) -> None:
-        """Test dependency helper wrappers forwarding expected arguments."""
+        """
+        Test that dependency helper wrappers forwarding expected arguments.
+        """
         calls: list[tuple[str, str, str | None, bool]] = []
         sentinel = object()
 
@@ -57,13 +61,16 @@ class TestImportsHelpers:
 
     def test_dependency_label_formats_three_or_more_dependencies(self) -> None:
         """
-        Test dependency-label helper formatting 3+ dependency alternatives.
+        Test that dependency-label helper formatting 3+ dependency
+        alternatives.
         """
         label = mod._dependency_label(('netCDF4', 'h5netcdf', 'xarray'))
         assert label == '"netCDF4", "h5netcdf", or "xarray"'
 
     def test_dependency_label_raises_for_empty_names(self) -> None:
-        """Test dependency-label helper rejecting empty dependency sets."""
+        """
+        Test that dependency-label helper rejecting empty dependency sets.
+        """
         with pytest.raises(ValueError, match='must not be empty'):
             mod._dependency_label(())
 
@@ -82,7 +89,7 @@ class TestImportsHelpers:
         pip_name: str | None,
         dependency_name: str,
     ) -> None:
-        """Test import error messages rendering dependency and pip hints."""
+        """Test import-error messages with dependency and ``pip`` hints."""
         message = mod._error_message(
             module_name,
             format_name=format_name,
@@ -99,7 +106,8 @@ class TestImportsHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test optional dependency failures using normalized format messages.
+        Test that optional dependency failures using normalized format
+        messages.
         """
         monkeypatch.setattr(mod, '_MODULE_CACHE', {})
         monkeypatch.setattr(
@@ -122,7 +130,8 @@ class TestImportsHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test required dependency failures using normalized format messages.
+        Test that required dependency failures using normalized format
+        messages.
         """
         monkeypatch.setattr(mod, '_MODULE_CACHE', {})
         monkeypatch.setattr(
@@ -146,7 +155,7 @@ class TestImportsHelpers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test first import path storing module in cache."""
+        """Test that first import path store module in cache."""
         cache: dict[str, object] = {}
         sentinel = object()
 
@@ -163,7 +172,7 @@ class TestImportsHelpers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test missing dependency errors using formatted messages."""
+        """Test that missing dependency errors use formatted messages."""
         monkeypatch.setattr(
             mod,
             'import_module',
@@ -183,7 +192,7 @@ class TestImportsHelpers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test cache-first behavior avoiding import lookups."""
+        """Test that cache-first behavior avoids import lookups."""
         sentinel = object()
         monkeypatch.setitem(mod._MODULE_CACHE, 'cached_mod', sentinel)
         monkeypatch.setattr(
@@ -200,7 +209,7 @@ class TestImportsHelpers:
         )
 
     def test_normalize_dependency_names_rejects_empty_tuple(self) -> None:
-        """Test dependency-name normalization rejecting empty tuples."""
+        """Test that dependency-name normalization rejects empty tuples."""
         with pytest.raises(ValueError, match='must not be an empty tuple'):
             mod._normalize_dependency_names((), None)
 
@@ -219,7 +228,9 @@ class TestImportsHelpers:
         pip_name: str | None,
         dependency_name: str,
     ) -> None:
-        """Test required import error messages rendering dependency hints."""
+        """
+        Test that required import error messages renders dependency hints.
+        """
         message = mod._error_message(
             module_name,
             format_name=format_name,
@@ -235,7 +246,9 @@ class TestImportsHelpers:
     def test_resolve_module_callable_returns_none_when_module_is_missing(
         self,
     ) -> None:
-        """Test callable resolution returning ``None`` for missing modules."""
+        """
+        Test that callable resolution returns ``None`` for missing modules.
+        """
         handler_type = type(
             '_DetachedHandler',
             (),
@@ -248,7 +261,10 @@ class TestImportsHelpers:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test module override helper using fallback when override missing."""
+        """
+        Test that module override helper uses fallback when override is
+        missing.
+        """
         monkeypatch.setattr(mod, 'resolve_module_callable', lambda *_: None)
         calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
@@ -268,7 +284,9 @@ class TestImportsHelpers:
         assert calls == [((1,), {'token': 'x'})]
 
     def test_raise_engine_import_error_uses_shared_message(self) -> None:
-        """Test shared engine error helper raising standardized NC message."""
+        """
+        Test that shared engine error helper raises standardized NC message.
+        """
         expected = (
             'NC support requires optional dependency '
             '"netCDF4" or "h5netcdf".\n'
@@ -284,7 +302,8 @@ class TestImportsHelpers:
 
     def test_raise_engine_import_error_reraises_without_metadata(self) -> None:
         """
-        Test engine helper re-raising original error when metadata is missing.
+        Test that engine helper re-raises original error when metadata is
+        missing.
         """
         error = ImportError('engine missing')
         with pytest.raises(ImportError, match='engine missing'):

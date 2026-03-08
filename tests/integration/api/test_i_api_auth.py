@@ -16,10 +16,14 @@ from etlplus.api import EndpointClient
 from etlplus.api.auth import EndpointCredentialsBearer
 from etlplus.api.errors import ApiAuthError
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 
-# pylint: disable=protected-access,unused-argument
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 
 def _json_response(
@@ -44,7 +48,7 @@ def _json_response(
 def test_token_success_handshake_through_auth_and_request_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Token acquisition should authenticate the API request path."""
+    """Test that token acquisition authenticates the API request path."""
     token_url = 'https://auth.example.test/oauth/token'
     api_url = 'https://api.example.test/v1/items'
     seen: dict[str, Any] = {
@@ -96,7 +100,10 @@ def test_token_success_handshake_through_auth_and_request_path(
 def test_token_failure_handshake_raises_api_auth_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Token endpoint failures should surface as ApiAuthError on request."""
+    """
+    Test that token endpoint failures surface as :class:`ApiAuthError` on
+    request.
+    """
     token_url = 'https://auth.example.test/oauth/token'
 
     session = requests.Session()
