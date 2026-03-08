@@ -86,7 +86,7 @@ class TestBuildPaginationCfg:
 
     def test_cursor_config_without_base(self) -> None:
         """
-        Test that building cursor-based pagination config without base config.
+        Test building cursor-based pagination config without a base config.
         """
         overrides = {
             'type': 'cursor',
@@ -113,7 +113,7 @@ class TestBuildPaginationCfg:
         assert utils.build_pagination_cfg(None, None) is None
 
     def test_page_config_with_overrides(self) -> None:
-        """Test that building page-based pagination config with overrides."""
+        """Test building page-based pagination config with overrides."""
         pagination = PaginationConfig(
             type=PaginationType.PAGE,
             records_path='records',
