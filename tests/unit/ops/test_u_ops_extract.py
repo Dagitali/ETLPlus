@@ -137,7 +137,7 @@ class TestExtract:
         expected_extracts: Any,
     ) -> None:
         """
-        Test that extracting data from a file with a supported format.
+        Test extracting data from a file with a supported format.
 
         Parameters
         ----------
@@ -495,7 +495,7 @@ class TestExtractFromFile:
         request: pytest.FixtureRequest,
     ) -> None:
         """
-        Test that extracting data from a file with a supported format.
+        Test extracting data from a file with a supported format.
 
         Parameters
         ----------
@@ -553,7 +553,7 @@ class TestExtractFromFile:
         err_msg: str,
     ) -> None:
         """
-        Test that extracting data from a file with an unsupported format.
+        Test extracting data from a file with an unsupported format.
 
         Parameters
         ----------
