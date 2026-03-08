@@ -266,9 +266,7 @@ class TestMaterializeFilePayload:
             )
 
     def test_missing_path_with_inline_json_is_parsed(self) -> None:
-        """
-        Test that inline JSON parse even when treated as a missing file path.
-        """
+        """Test that inline JSON parses when treated as a missing file path."""
         payload = _io.materialize_file_payload(
             '{"inline": true}',
             format_hint='json',

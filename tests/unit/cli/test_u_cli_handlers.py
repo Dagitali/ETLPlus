@@ -626,9 +626,7 @@ class TestRenderHandler:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """
-        Test that output-file rendering without status log when quiet is set.
-        """
+        """Test output-file rendering without a status log in quiet mode."""
         output_path = tmp_path / 'rendered.sql'
         monkeypatch.setattr(
             handlers,
