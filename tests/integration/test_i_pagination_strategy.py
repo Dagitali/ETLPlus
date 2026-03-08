@@ -376,7 +376,7 @@ class TestPaginationStrategies:
         tmp_path : Path
             Temporary directory managed by pytest.
         capsys : pytest.CaptureFixture[str]
-            Capture fixture for CLI STDOUT/stderr.
+            Capture fixture for CLI STDOUT/STDERR.
         pipeline_cli_runner : Callable[..., str]
             Helper that materializes and executes the pipeline configuration.
         parse_json_output : JsonOutputParser
