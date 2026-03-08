@@ -56,7 +56,7 @@ def _emit_root_help(
     command: click.Command,
 ) -> None:
     """
-    Print the root ``etlplus`` help text to stderr.
+    Print the root ``etlplus`` help text to STDERR.
 
     Parameters
     ----------
