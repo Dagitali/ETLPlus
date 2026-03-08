@@ -440,7 +440,7 @@ class TestLoadData:
         assert load_data(input_data) == expected_output
 
     def test_load_data_rejects_unsupported_source_type(self) -> None:
-        """Test that unsupported source types raises :class:`TypeError`. """
+        """Test that unsupported source types raises :class:`TypeError`."""
         with pytest.raises(TypeError, match='source must be'):
             load_data(cast(Any, 123))
 
@@ -784,7 +784,9 @@ class TestLoadApiOrchestrator:
     """
 
     def test_load_api_with_default_method(self) -> None:
-        """Test :func:`load` defaulting to POST when API method omitted."""
+        """
+        Test that :func:`load` defaults to POST when the API method is omitted.
+        """
 
         session = _StubSession()
         result = load(
@@ -802,7 +804,7 @@ class TestLoadApiOrchestrator:
         assert first_call.method == 'post'
 
     def test_load_api_with_explicit_method(self) -> None:
-        """Test :func:`load` honoring custom :class:`HttpMethod`."""
+        """Test that :func:`load` honors custom :class:`HttpMethod` values."""
 
         session = _StubSession()
         load(

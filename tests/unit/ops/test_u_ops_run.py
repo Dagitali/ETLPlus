@@ -190,7 +190,7 @@ class TestRun:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test run() extracting from database connectors."""
+        """Test that :func:`run` extracts from database connectors."""
         job = _make_job(name='job', source='src', target='tgt')
         src = SimpleNamespace(
             name='src',
@@ -246,7 +246,7 @@ class TestRun:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test run() loading to database connectors."""
+        """Test that :func:`run` loads to database connectors."""
         job = _make_job(name='job', source='src', target='tgt')
         src = SimpleNamespace(
             name='src',
@@ -353,7 +353,7 @@ class TestRun:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test a file-to-file ETL pipeline execution."""
+        """Test that a file-to-file ETL pipeline execution."""
         job = _make_job(name='file_job', source='file_src', target='file_tgt')
         cfg = _base_config(
             job,
@@ -872,7 +872,9 @@ class TestRunInternals:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test run_pipeline should extract, transform, and return data."""
+        """
+        Test that :func:`run_pipeline` extracts, transforms, and returns data.
+        """
         extract_calls: list[tuple[Any, Any, dict[str, Any]]] = []
         transform_calls: list[tuple[Any, Any]] = []
 
@@ -946,7 +948,7 @@ class TestRunPipeline:
 
     def test_requires_record_payload_when_no_target(self) -> None:
         """
-        Test :func:`run_pipeline` enforcing dict/list payloads when not
+        Test that :func:`run_pipeline` enforces dict/list payloads when not
         loading.
         """
         with pytest.raises(
@@ -957,8 +959,8 @@ class TestRunPipeline:
 
     def test_requires_source_when_source_type_is_none(self) -> None:
         """
-        Test :func:`run_pipeline` requiring a source payload when no
-        source_type.
+        Test that :func:`run_pipeline` requires a source payload when no
+        *source_type* is provided.
         """
         with pytest.raises(
             ValueError,
@@ -968,15 +970,15 @@ class TestRunPipeline:
 
     def test_requires_source_when_source_type_is_set(self) -> None:
         """
-        Test :func:`run_pipeline` requiring a source payload when source_type
-        is provided.
+        Test that :func:`run_pipeline` requires a source payload when
+        *source_type* is provided.
         """
         with pytest.raises(ValueError, match='source is required'):
             run_mod.run_pipeline(source_type='file', source=None)
 
     def test_requires_target_when_target_type_is_set(self) -> None:
         """
-        Test :func:`run_pipeline` requiring a target when target_type is
+        Test that :func:`run_pipeline` requires a target when *target_type* is
         provided.
         """
         with pytest.raises(ValueError, match='target is required'):

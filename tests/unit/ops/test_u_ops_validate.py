@@ -39,25 +39,28 @@ validate_mod = importlib.import_module('etlplus.ops.validate')
 
 class TestLoadData:
     """
-    Unit tests for :func:`etlplus.ops.validate.load_data`.
+    Unit tests for :func:`load_data`.
     """
 
     def test_invalid_source(self) -> None:
-        """Test that invalid input string raises ValueError during loading."""
+        """
+        Test that invalid input string raises :class:`ValueError` during
+        loading.
+        """
         with pytest.raises(ValueError, match='Invalid data source'):
             load_data('not a valid json string')
 
 
 class TestValidateField:
-    """Unit tests for :func:`etlplus.ops.validate.validate_field`."""
+    """Unit tests for :func:`validate_field`."""
 
     def test_boolean_type_branch(self) -> None:
-        """Test explicit boolean type branch in type matching."""
+        """Test that explicit boolean type branch in type matches."""
         assert validate_field(True, {'type': 'boolean'})['valid'] is True
         assert validate_field(1, {'type': 'boolean'})['valid'] is False
 
     def test_enum_rule_requires_list(self) -> None:
-        """Test non-list enum rules adding an error entry."""
+        """Test that non-list enum rules add an error entry."""
 
         # Test expects the value for key ``enum`` to not be a list.
         result = validate_field('a', {'enum': 'abc'})  # type: ignore
@@ -80,7 +83,7 @@ class TestValidateField:
         assert any('must be a string' in err for err in invalid_type['errors'])
 
     def test_pattern_rule_with_invalid_regex(self) -> None:
-        """Test invalid regex patterns adding an error entry."""
+        """Test that invalid regex patterns add an error entry."""
 
         result = validate_field('abc', {'pattern': '['})
         assert result['valid'] is False
@@ -122,7 +125,7 @@ class TestValidateField:
 
 
 class TestValidate:
-    """Unit tests for :func:`etlplus.ops.validate.validate`."""
+    """Unit tests for :func:`validate`."""
 
     @pytest.mark.parametrize(
         ('data', 'rules', 'expected_valid'),
@@ -194,7 +197,7 @@ class TestValidate:
         temp_json_file: Callable[[JSONData], Path],
     ) -> None:
         """
-        Test from a JSON file path.
+        Test :func:`validate` using a JSON file path.
 
         Parameters
         ----------
@@ -208,7 +211,7 @@ class TestValidate:
         assert result['data'] == test_data
 
     def test_from_json_string(self) -> None:
-        """Test from a JSON string."""
+        """Test :func:`validate` using a JSON string."""
         json_str = '{"name": "John", "age": 30}'
         result = validate(json_str)
         assert result['valid']
@@ -219,7 +222,7 @@ class TestValidate:
             assert any(d.get('name') == 'John' for d in data)
 
     def test_list_with_non_dict_items(self) -> None:
-        """Test lists containing non-dicts recording item-level errors."""
+        """Test :func:`validate` with lists containing non-dict items."""
 
         payload: list[Any] = [{'name': 'Ada'}, 'bad']
         rules: dict[str, FieldRulesDict] = {'name': {'type': 'string'}}
@@ -228,15 +231,16 @@ class TestValidate:
         assert '[1]' in result['field_errors']
 
     def test_no_rules(self) -> None:
-        """Test without rules returns the data unchanged."""
+        """Test that without rules returns the data unchanged."""
         data = {'test': 'data'}
         result = validate(data)
         assert result['valid']
         assert result['data'] == data
 
     def test_validate_handles_load_errors(self) -> None:
-        """Test invalid sources reporting errors via the errors collection."""
-
+        """
+        Test that invalid sources report errors via the errors collection.
+        """
         rules: dict[str, FieldRulesDict] = {'name': {'required': True}}
         result = validate('not json', rules)
         assert result['valid'] is False

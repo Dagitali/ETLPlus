@@ -115,7 +115,7 @@ class TestExtract:
     """
 
     def test_invalid_source_type(self) -> None:
-        """Test error raised for invalid source type."""
+        """Test that error raised for invalid source type."""
         with pytest.raises(ValueError, match='Invalid DataConnectorType'):
             extract('invalid', 'source')
 
@@ -137,7 +137,7 @@ class TestExtract:
         expected_extracts: Any,
     ) -> None:
         """
-        Test extracting data from a file with a supported format.
+        Test that extracting data from a file with a supported format.
 
         Parameters
         ----------
@@ -198,7 +198,7 @@ class TestExtractErrors:
         err_msg: str | None,
     ) -> None:
         """
-        Test parametrized error case tests for extract/extract_from_file.
+        Test that parametrized error case tests for extract/extract_from_file.
 
         Parameters
         ----------
@@ -252,7 +252,7 @@ class TestExtractFromApi:
         assert session.calls[0]['kwargs']['headers'] == {'X-Test': '1'}
 
     def test_extract_from_api_env_requires_url(self) -> None:
-        """Test missing URL in normalized API env should raise ValueError."""
+        """Test that missing URL in normalized API env raise ValueError."""
         with pytest.raises(ValueError, match='API source missing URL'):
             extract_mod._extract_from_api_env({}, use_client=False)
 
@@ -450,7 +450,7 @@ class TestExtractFromFile:
         tmp_path: Path,
     ) -> None:
         """
-        Test that passing ``None`` for file_format defers to extension
+        Test that passing ``None`` for *file_format* defers to extension
         inference.
         """
         path = tmp_path / 'data.json'
@@ -495,7 +495,7 @@ class TestExtractFromFile:
         request: pytest.FixtureRequest,
     ) -> None:
         """
-        Test extracting data from a file with a supported format.
+        Test that extracting data from a file with a supported format.
 
         Parameters
         ----------
@@ -553,7 +553,7 @@ class TestExtractFromFile:
         err_msg: str,
     ) -> None:
         """
-        Test extracting data from a file with an unsupported format.
+        Test that extracting data from a file with an unsupported format.
 
         Parameters
         ----------
