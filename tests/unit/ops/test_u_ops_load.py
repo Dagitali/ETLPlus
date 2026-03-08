@@ -330,7 +330,7 @@ class TestLoadData:
 
     Notes
     -----
-    - Tests passthrough, file, string, stdin, and error cases.
+    - Tests passthrough, file, string, STDIN, and error cases.
     """
 
     def test_data_from_existing_path_falls_back_to_json_string(
@@ -400,7 +400,7 @@ class TestLoadData:
 
         class _FakeStdin:
             def read(self) -> str:
-                """Simulate reading JSON data from stdin."""
+                """Simulate reading JSON data from STDIN."""
                 return '{"items": [{"age": 30}, {"age": 20}]}'
 
         monkeypatch.setattr('sys.stdin', _FakeStdin())
