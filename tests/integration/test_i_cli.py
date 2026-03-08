@@ -242,7 +242,7 @@ class TestCliEndToEnd:
         self,
         cli_invoke: CliInvoke,
     ) -> None:
-        """Test that running :func:`main` with an invalid command errors."""
+        """Test invalid-command handling in :func:`main`."""
         code, _out, err = cli_invoke(
             ('extract', '/nonexistent/file.json'),
         )

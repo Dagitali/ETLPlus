@@ -44,7 +44,7 @@ class TestCliLoad:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that loading stdin payload into a JSON file target."""
+        """Test loading a stdin payload into a JSON file target."""
         out_path = tmp_path / 'out.json'
         monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
         code, out, err = cli_invoke(

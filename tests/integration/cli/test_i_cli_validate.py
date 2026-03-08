@@ -39,7 +39,7 @@ class TestCliValidate:
         sample_records_json: str,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that validating stdin payload with basic rules."""
+        """Test validating a stdin payload with basic rules."""
         monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
         code, out, err = cli_invoke(('validate', '--rules', rules_json, '-'))
         assert code == 0

@@ -53,9 +53,7 @@ class TestCliRender:
         cli_invoke: CliInvoke,
         table_spec: TableSpec,
     ) -> None:
-        """
-        Test that rendering a minimal table spec and ensure SQL is produced.
-        """
+        """Test rendering SQL from a minimal table spec."""
         code, out, err = cli_invoke(
             (
                 'render',

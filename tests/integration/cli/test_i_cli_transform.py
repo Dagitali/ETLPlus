@@ -41,7 +41,7 @@ class TestCliTransform:
         sample_records: list[dict[str, Any]],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that transforming stdin payload and project selected fields."""
+        """Test transforming a stdin payload and projecting selected fields."""
         monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
         code, out, err = cli_invoke(
             ('transform', '--operations', operations_json, '-', '-'),
