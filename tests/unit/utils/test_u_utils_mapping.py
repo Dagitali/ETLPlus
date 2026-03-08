@@ -41,8 +41,8 @@ def test_cast_str_dict(
     expected: dict[str, str],
 ) -> None:
     """
-    Test that :func:`cast_str_dict` coerces mapping keys/values to strings
-    and normalizes ``None`` to ``{}``.
+    Test that :func:`cast_str_dict` coerces mapping keys/values to strings and
+    normalizes ``None`` to ``{}``.
     """
     assert cast_str_dict(mapping) == expected
 

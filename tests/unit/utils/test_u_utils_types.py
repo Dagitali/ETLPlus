@@ -31,7 +31,7 @@ class TestTypesModule:
         assert template == 'ddl'
 
     def test_exports_include_expected_aliases(self) -> None:
-        """Test ``__all__``  includes the documented public aliases."""
+        """Test that ``__all__`` includes the documented public aliases."""
         expected = {
             'JSONData',
             'JSONDict',
