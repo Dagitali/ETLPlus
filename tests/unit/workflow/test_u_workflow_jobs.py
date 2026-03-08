@@ -78,7 +78,7 @@ def test_ref_from_obj_valid(
     obj: dict[str, object],
     expected: dict[str, object],
 ) -> None:
-    """Test valid dict input yields the expected reference object."""
+    """Test that valid dict input yields the expected reference object."""
     ref = ref_cls.from_obj(obj)
     assert ref is not None
     for field, value in expected.items():
@@ -104,12 +104,14 @@ def test_ref_from_obj_invalid(
     ref_cls: type[SupportsFromObj[object]],
     obj: dict[str, object] | None,
 ) -> None:
-    """Test invalid dict input yields None for reference objects."""
+    """Test that invalid dict input yields ``None`` for reference objects."""
     assert ref_cls.from_obj(obj) is None
 
 
 def test_jobconfig_from_obj_valid() -> None:
-    """Test valid dict input yields expected :class:`JobConfig` instance."""
+    """
+    Test that valid dict input yields expected :class:`JobConfig` instance.
+    """
     obj = {
         'name': 'job1',
         'description': 'desc',
@@ -138,7 +140,7 @@ def test_jobconfig_from_obj_valid() -> None:
 def test_jobconfig_from_obj_invalid(
     obj: dict[str, object] | None,
 ) -> None:
-    """Test invalid dict input yields None for :class:`JobConfig`."""
+    """Test that invalid dict input yields ``None`` for :class:`JobConfig`."""
     assert jobs.JobConfig.from_obj(obj) is None
 
 

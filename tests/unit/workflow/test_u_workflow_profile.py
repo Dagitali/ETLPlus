@@ -50,6 +50,6 @@ def test_from_obj_returns_defaults_for_non_mappings() -> None:
 
 
 def test_from_obj_returns_defaults_for_none() -> None:
-    """Test that none payload produces default profile config."""
+    """Test that ``None`` payload produces default profile config."""
     cfg = profile.ProfileConfig.from_obj(None)
     assert cfg == profile.ProfileConfig()

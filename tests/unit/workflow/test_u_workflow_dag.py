@@ -29,7 +29,7 @@ def _job(name: str, *depends_on: str) -> JobConfig:
 
 def test_dag_error_string_representation() -> None:
     """
-    Test that :class:`DagError` string conversion should return its message.
+    Test that :class:`DagError` string conversion returns its message.
     """
     assert str(DagError('boom')) == 'boom'
 
