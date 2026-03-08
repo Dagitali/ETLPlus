@@ -12,7 +12,6 @@ from types import ModuleType
 
 import pytest
 
-from etlplus.utils.types import JSONData
 from etlplus.utils.types import JSONDict
 from etlplus.utils.types import JSONList
 
@@ -66,7 +65,7 @@ class SmokeRoundtripModuleContract:
 
     module: ModuleType
     file_name: str | None = None
-    payload: JSONData | None = None
+    payload: object | None = None
     use_sample_record: bool = False
     write_kwargs: Mapping[str, object] | None = None
     expect_write_error: type[Exception] | None = None
@@ -87,7 +86,7 @@ class SmokeRoundtripModuleContract:
     ) -> None:
         """Test that read/write can be invoked with minimal payloads."""
         path = tmp_path / self.smoke_file_name()
-        payload: JSONData
+        payload: object
         if self.payload is not None:
             payload = self.payload
         elif self.use_sample_record:
@@ -107,7 +106,7 @@ class SmokeRoundtripModuleContract:
 def run_file_smoke(
     module: ModuleType,
     path: Path,
-    payload: JSONData,
+    payload: object,
     *,
     write_kwargs: Mapping[str, object] | None = None,
     expect_write_error: type[Exception] | None = None,
@@ -122,7 +121,7 @@ def run_file_smoke(
         File module exposing a singleton ``*_HANDLER`` instance.
     path : Path
         Target path for the test file.
-    payload : JSONData
+    payload : object
         Payload passed to ``write``.
     write_kwargs : Mapping[str, object] | None, optional
         Keyword arguments forwarded to ``write``.
