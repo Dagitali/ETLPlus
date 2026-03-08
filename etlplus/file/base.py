@@ -13,6 +13,7 @@ from dataclasses import field
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
+from typing import cast
 
 from ..utils.types import JSONData
 from ..utils.types import JSONDict
@@ -107,14 +108,18 @@ class BoundFileHandler:
 
     def write(
         self,
-        data: JSONData,
+        data: object,
         *,
         options: WriteOptions | None = None,
     ) -> int:
         """
         Write *data* to :attr:`path` using :attr:`handler`.
         """
-        return self.handler.write(self.path, data, options=options)
+        return cast(Any, self.handler).write(
+            self.path,
+            data,
+            options=options,
+        )
 
 
 @dataclass(slots=True, frozen=True)
