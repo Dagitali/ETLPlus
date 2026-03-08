@@ -109,7 +109,7 @@ class TestJinja2(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test reads honoring explicit text encoding options."""
+        """Test that :meth:`read` honors explicit text-encoding options."""
         path = self.format_path(tmp_path, stem='latin1')
         path.write_bytes('Olá {{ name }}'.encode('latin-1'))
 
@@ -124,7 +124,9 @@ class TestJinja2(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test reads returning one-row payload with template text."""
+        """
+        Test that :meth:`read` returns one-row payload with template text.
+        """
         path = self.format_path(tmp_path)
         path.write_text('Hello {{ name }}', encoding='utf-8')
 
@@ -136,7 +138,10 @@ class TestJinja2(RoundtripUnitModuleContract):
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test strict mode rendering through Environment.from_string."""
+        """
+        Test that strict mode rendering through
+        :meth:`Environment.from_string`.
+        """
         jinja2_stub = _Jinja2StrictStub()
         monkeypatch.setattr(
             mod,
@@ -164,7 +169,7 @@ class TestJinja2(RoundtripUnitModuleContract):
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test environment path when trim/lstrip flags are enabled."""
+        """Test that environment path when trim/lstrip flags are enabled."""
         jinja2_stub = _Jinja2StrictStub()
         monkeypatch.setattr(
             mod,
@@ -188,7 +193,7 @@ class TestJinja2(RoundtripUnitModuleContract):
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test render delegating to required Jinja2 dependency."""
+        """Test that :meth:`render` delegates to required Jinja2 dependency."""
         jinja2_stub = _Jinja2Stub()
         monkeypatch.setattr(
             mod,
@@ -212,7 +217,10 @@ class TestJinja2(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test writes requiring exactly one object with template string."""
+        """
+        Test that :meth:`write` requires exactly one object with a template
+        string.
+        """
         path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match='exactly one object'):
@@ -228,7 +236,10 @@ class TestJinja2(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test empty write payload returning zero without creating file."""
+        """
+        Test that :meth:`write` returns 0 for empty payload without creating
+        file.
+        """
         path = self.format_path(tmp_path)
 
         assert self.module_handler.write(path, []) == 0

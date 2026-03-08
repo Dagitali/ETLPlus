@@ -23,7 +23,7 @@ class TestFilePackageExports:
     """Unit tests for public package exports."""
 
     def test_all_exports_are_expected_and_importable(self) -> None:
-        """Test ``__all__`` and top-level package symbol wiring."""
+        """Test that ``__all__`` and top-level package symbol wiring."""
         assert mod.__all__ == [
             'File',
             'CompressionFormat',

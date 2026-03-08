@@ -65,15 +65,17 @@ class TestFileFormat:
         value: str,
         expected: FileFormat,
     ) -> None:
-        """Test alias coercions."""
+        """Test that :meth:`coerce` coerces alias values correctly."""
         assert FileFormat.coerce(value) is expected
 
     def test_coerce(self) -> None:
-        """Test :meth:`coerce`."""
+        """Test that :meth:`coerce` resolves supported inputs."""
         assert FileFormat.coerce('csv') is FileFormat.CSV
 
     def test_invalid_value(self) -> None:
-        """Test that invalid values raise ValueError."""
+        """
+        Test that :meth:`coerce` raises :class:`ValueError` for invalid values.
+        """
         with pytest.raises(ValueError, match='Invalid FileFormat'):
             FileFormat.coerce('badformat')
 
@@ -92,7 +94,10 @@ class TestInferFileFormatAndCompression:
         expected_format: FileFormat | None,
         expected_compression: CompressionFormat | None,
     ) -> None:
-        """Test mixed inputs for format and compression inference."""
+        """
+        Test that :func:`infer_file_format_and_compression` handles mixed
+        inputs correctly.
+        """
         fmt, compression = infer_file_format_and_compression(value, filename)
         assert fmt is expected_format
         assert compression is expected_compression

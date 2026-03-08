@@ -50,7 +50,9 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test reading decompressed bytes via ``read_inner_bytes``."""
+        """
+        Test that :meth:`read_inner_bytes` reads decompressed bytes correctly.
+        """
         path = self.archive_path(tmp_path, stem='payload.json')
         expected = b'{"ok": true}'
         with gzip.open(path, 'wb') as handle:
@@ -79,7 +81,7 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         text_content: str | None,
         error_pattern: str,
     ) -> None:
-        """Test invalid gzip read inputs raising clear errors."""
+        """Test that invalid gzip read inputs raise clear errors."""
         if suffix is None:
             path = self.archive_path(tmp_path, stem=stem)
         else:
@@ -94,7 +96,9 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test writing compressed bytes via ``write_inner_bytes``."""
+        """
+        Test that :meth:`write_inner_bytes` writes compressed bytes correctly.
+        """
         path = self.archive_path(tmp_path, stem='payload.json')
         payload = b'{"written": true}'
 

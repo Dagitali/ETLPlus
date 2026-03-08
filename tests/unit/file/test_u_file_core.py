@@ -206,7 +206,7 @@ class TestFile:
         file_format: FileFormat,
         filename: str,
     ) -> None:
-        """Test embedded DB readers rejecting multi-table files."""
+        """Test that embedded DB readers rejecting multi-table files."""
         path = tmp_path / filename
         if file_format is FileFormat.DUCKDB:
             import duckdb
@@ -236,7 +236,7 @@ class TestFile:
         raw_format: str,
         expected: FileFormat | None,
     ) -> None:
-        """Test explicit string file-format coercion and validation."""
+        """Test that explicit string file-format coercion and validation."""
         path = tmp_path / 'data.json'
         if expected is None:
             with pytest.raises(ValueError, match='Invalid FileFormat value'):
@@ -249,7 +249,7 @@ class TestFile:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test JSON round trip inside a gzip archive."""
+        """Test that JSON round trip inside a gzip archive."""
         path = tmp_path / 'data.json.gz'
         payload = [{'name': 'Ada'}]
 
@@ -269,7 +269,9 @@ class TestFile:
         filename: str,
         expected_format: FileFormat,
     ) -> None:
-        """Test inference from standard and compressed filename patterns."""
+        """
+        Test that inference from standard and compressed filename patterns.
+        """
         path = tmp_path / filename
         path.write_text('{}', encoding='utf-8')
 
@@ -281,9 +283,7 @@ class TestFile:
         self,
         tmp_path: Path,
     ) -> None:
-        """
-        Test module helpers accept ``Path`` inputs.
-        """
+        """Test that module helpers accept ``Path`` inputs."""
         cases: tuple[
             tuple[Any, str, JSONData, JSONData, dict[str, object]],
             ...,
@@ -319,7 +319,7 @@ class TestFile:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test CSV reader ignoring empty rows."""
+        """Test that CSV reader ignoring empty rows."""
         payload = 'name,age\nJohn,30\n,\nJane,25\n'
         path = tmp_path / 'data.csv'
         path.write_text(payload, encoding='utf-8')
@@ -333,7 +333,7 @@ class TestFile:
         ] == ['John', 'Jane']
 
     def test_read_json_type_errors(self, tmp_path: Path) -> None:
-        """Test list elements being dicts when reading JSON."""
+        """Test that list elements being dicts when reading JSON."""
         path = tmp_path / 'bad.json'
         path.write_text('[{"ok": 1}, 2]', encoding='utf-8')
 
@@ -344,7 +344,9 @@ class TestFile:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test missing path checks run before format inference on read."""
+        """
+        Test that missing path checks run before format inference on read.
+        """
         missing = tmp_path / 'missing.unknown'
         file = File(missing)
 
@@ -364,7 +366,7 @@ class TestFile:
         operation: Operation,
         error_pattern: str,
     ) -> None:
-        """Test unresolved formats deferring failure until dispatch."""
+        """Test that unresolved formats deferring failure until dispatch."""
         path = tmp_path / filename
         if contents is not None:
             path.write_text(contents, encoding='utf-8')
@@ -407,7 +409,7 @@ class TestFile:
         expected: JSONData,
         requires: tuple[str, ...],
     ) -> None:
-        """Test round-trip reads and writes across file formats."""
+        """Test that round-trip reads and writes across file formats."""
         _require_case_dependencies(requires)
         path = tmp_path / filename
 
@@ -442,7 +444,10 @@ class TestFile:
         filename: str,
         operation: Operation,
     ) -> None:
-        """Test stub formats raising NotImplementedError on read/write."""
+        """
+        Test that stub formats raising :class:`NotImplementedError` on
+        read/write.
+        """
         path = tmp_path / filename
         seed_content = {'read': 'stub', 'write': None}[operation]
         if seed_content is not None:
@@ -461,7 +466,8 @@ class TestFile:
         tmp_path: Path,
     ) -> None:
         """
-        Test non-dict entries raising a TypeError when writing CSV rows.
+        Test that non-dict entries raising a :class:`TypeError` when writing
+        CSV rows.
         """
         path = tmp_path / 'data.csv'
         invalid_entry = cast(dict[str, object], 'invalid')
@@ -475,7 +481,7 @@ class TestFile:
         tmp_path: Path,
     ) -> None:
         """
-        Test ``write_json`` returning the record count for lists.
+        Test that :meth:`write` returns the record count for lists.
         """
         path = tmp_path / 'data.json'
         records = [{'a': 1}, {'a': 2}]
@@ -504,7 +510,7 @@ class TestFile:
         tmp_path: Path,
     ) -> None:
         """
-        Test custom root_tag being used when data lacks a single root.
+        Test that custom root_tag being used when data lacks a single root.
         """
         path = tmp_path / 'export.xml'
         records = [{'name': 'Ada'}, {'name': 'Linus'}]
@@ -519,9 +525,7 @@ class TestFile:
         self,
         tmp_path: Path,
     ) -> None:
-        """
-        Test XML read/write preserves attribute fields.
-        """
+        """Test that XML read/write preserves attribute fields."""
         path = tmp_path / 'attrs.xml'
         payload: JSONData = {
             'root': {
@@ -540,7 +544,7 @@ class TestFile:
         tmp_path: Path,
     ) -> None:
         """
-        Test ZIP files with multiple entries return a dict payload.
+        Test that ZIP files with multiple entries return a dict payload.
         """
         path = tmp_path / 'bundle.zip'
         with zipfile.ZipFile(path, 'w') as archive:
@@ -560,7 +564,9 @@ class TestFileCoreDispatch:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test read dispatch through ``core.get_handler`` handlers."""
+        """
+        Test that read dispatch through :func:`core.get_handler` handlers.
+        """
         path = tmp_path / 'sample.csv'
         path.write_text('name\nAda\n', encoding='utf-8')
         read_result: JSONData = {'ok': True}
@@ -601,7 +607,7 @@ class TestFileCoreDispatch:
         expected_root_tag: str,
         write_result: int,
     ) -> None:
-        """Test write dispatch preserving XML ``root_tag`` in options."""
+        """Test that write dispatch preserving XML *root_tag* in options."""
         path = tmp_path / 'export.xml'
         payload: JSONData = [{'name': 'Ada'}]
         calls = _install_core_handler_stub(

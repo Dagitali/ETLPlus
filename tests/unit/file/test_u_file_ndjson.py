@@ -53,8 +53,8 @@ class TestNdjson(
         tmp_path: Path,
     ) -> None:
         """
-        Test that :func:`read` raises a JSONDecodeError for lines that do not
-        contain valid JSON.
+        Test that :func:`read` raises a :class:`json.JSONDecodeError` for lines
+        that do not contain valid JSON.
         """
         path = self.format_path(tmp_path)
         path.write_text('{"id": 1}\n{broken\n', encoding='utf-8')

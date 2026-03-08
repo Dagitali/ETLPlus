@@ -364,7 +364,7 @@ class TestBaseAbcContracts:
     """Unit tests for abstract base class contracts."""
 
     def test_at_returns_path_bound_facade(self) -> None:
-        """Test ``at(path)`` returning a callable bound handler facade."""
+        """Test that ``at(path)`` returning a callable bound handler facade."""
         handler = _DelimitedStub()
 
         bound = handler.at('ignored.csv')
@@ -413,7 +413,9 @@ class TestBaseAbcContracts:
         write_payload: JSONData,
         expected_written: int,
     ) -> None:
-        """Test concrete row-oriented subclasses being fully instantiable."""
+        """
+        Test that concrete row-oriented subclasses being fully instantiable.
+        """
         handler = handler_cls()
         path = Path(path_name)
 
@@ -422,7 +424,10 @@ class TestBaseAbcContracts:
         assert handler.write(path, write_payload) == expected_written
 
     def test_file_handler_abc_declares_read_write_as_abstract(self) -> None:
-        """Test FileHandlerABC preserving read/write abstract methods."""
+        """
+        Test that :class:`FileHandlerABC` preserving read/write abstract
+        methods.
+        """
         assert inspect.isabstract(FileHandlerABC)
         assert {'read', 'write'} <= FileHandlerABC.__abstractmethods__
 
@@ -471,7 +476,7 @@ class TestBaseAbcContracts:
         expected_error: type[Exception],
         error_pattern: str,
     ) -> None:
-        """Test read-only scientific write validation and guardrails."""
+        """Test that read-only scientific write validation and guardrails."""
         handler = handler_cls()
         with pytest.raises(expected_error, match=error_pattern):
             handler.write_dataset(
@@ -493,7 +498,9 @@ class TestBaseAbcContracts:
         operation: str,
         kwargs: dict[str, object],
     ) -> None:
-        """Test read-only spreadsheet handlers rejecting write operations."""
+        """
+        Test that read-only spreadsheet handlers rejecting write operations.
+        """
         handler = XlsFile()
         path = Path('ignored.xls')
         with pytest.raises(RuntimeError, match='read-only'):
@@ -508,7 +515,7 @@ class TestBaseAbcContracts:
         self,
         incomplete_handler_cls: type[FileHandlerABC],
     ) -> None:
-        """Test row-oriented ABCs requiring row-level methods."""
+        """Test that row-oriented ABCs require row-level methods."""
         assert inspect.isabstract(incomplete_handler_cls)
         assert {'read_rows', 'write_rows'} <= (
             incomplete_handler_cls.__abstractmethods__
@@ -529,7 +536,7 @@ class TestNamingConventions:
         read_method: str,
         write_method: str,
     ) -> None:
-        """Test handlers exposing category-level read/write methods."""
+        """Test that handlers expose category-level read/write methods."""
         for handler_cls in handlers:
             for method_name in ('read', 'write', read_method, write_method):
                 assert callable(getattr(handler_cls, method_name, None))
@@ -540,7 +547,8 @@ class TestOptionsContracts:
 
     def test_dataset_option_helpers_preserve_empty_string_values(self) -> None:
         """
-        Test dataset helpers preserving empty-string explicit/option values.
+        Test that dataset helpers preserving empty-string explicit/option
+        values.
         """
         handler = DtaFile()
         options = ReadOptions(dataset='')
@@ -556,7 +564,9 @@ class TestOptionsContracts:
         )
 
     def test_dataset_option_helpers_use_override_then_default(self) -> None:
-        """Test scientific dataset helpers using explicit then default data."""
+        """
+        Test that scientific dataset helpers using explicit then default data.
+        """
         handler = DtaFile()
         option_expectations = (
             (ReadOptions(dataset='features'), 'features'),
@@ -581,7 +591,7 @@ class TestOptionsContracts:
         self,
         case: _OptionHelperCase,
     ) -> None:
-        """Test paired read/write option helpers with override/default."""
+        """Test that paired read/write option helpers with override/default."""
         helper = getattr(case.handler_cls(), case.method_name)
 
         assert helper(None) == case.baseline
@@ -595,7 +605,7 @@ class TestOptionsContracts:
             )
 
     def test_read_options_use_independent_extras_dicts(self) -> None:
-        """Test each ReadOptions instance getting its own extras dict."""
+        """Test that each ReadOptions instance getting its own extras dict."""
         first = ReadOptions()
         second = ReadOptions()
 
@@ -604,7 +614,10 @@ class TestOptionsContracts:
         assert first.extras is not second.extras
 
     def test_root_tag_option_helper_use_override_then_default(self) -> None:
-        """Test root-tag helper using explicit values then defaults."""
+        """
+        Test that :class:`XlsFile` root-tag helper using explicit values then
+        defaults.
+        """
         handler = XlsFile()
         assert handler.root_tag_from_write_options(None) == 'root'
         assert (
@@ -617,7 +630,7 @@ class TestOptionsContracts:
         )
 
     def test_write_options_are_frozen(self) -> None:
-        """Test WriteOptions immutability contract."""
+        """Test :class:`WriteOptions` immutability contract."""
         options = WriteOptions()
 
         with pytest.raises(FrozenInstanceError):
@@ -635,7 +648,7 @@ class TestScientificDatasetContracts:
         self,
         handler_cls: type[ScientificDatasetFileHandlerABC],
     ) -> None:
-        """Test scientific handlers inheriting ScientificDataset ABC."""
+        """Test that scientific handlers inheriting ScientificDataset ABC."""
         assert issubclass(handler_cls, ScientificDatasetFileHandlerABC)
         assert handler_cls.dataset_key == 'data'
 
@@ -647,7 +660,9 @@ class TestScientificDatasetContracts:
         self,
         handler_cls: type[SingleDatasetScientificFileHandlerABC],
     ) -> None:
-        """Test single-dataset scientific handlers rejecting unknown keys."""
+        """
+        Test that single-dataset scientific handlers rejecting unknown keys.
+        """
         assert issubclass(
             handler_cls,
             SingleDatasetScientificFileHandlerABC,
@@ -670,7 +685,7 @@ class TestScientificStubConventions:
         self,
         handler_cls: type[StubSingleDatasetScientificFileHandlerABC],
     ) -> None:
-        """Test scientific stubs inheriting the unified stub base."""
+        """Test that scientific stubs inheriting the unified stub base."""
         assert issubclass(
             handler_cls,
             StubSingleDatasetScientificFileHandlerABC,

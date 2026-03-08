@@ -36,7 +36,9 @@ class TestHbs(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test reads returning one-row payload with template text."""
+        """
+        Test that :meth:`read` returns a one-row payload with template text.
+        """
         path = self.format_path(tmp_path)
         path.write_text('Hello {{name}}', encoding='utf-8')
 
@@ -45,7 +47,7 @@ class TestHbs(RoundtripUnitModuleContract):
         ]
 
     def test_render_substitutes_handlebars_tokens(self) -> None:
-        """Test render replacing simple Handlebars variables."""
+        """Test that :meth:`render` replaces simple Handlebars variables."""
         result = self.module_handler.render(
             'Hello {{name}} from {{city}}.',
             {'name': 'Ada', 'city': 'Paris'},
@@ -57,7 +59,10 @@ class TestHbs(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test writes requiring one payload object with template string."""
+        """
+        Test that :meth:`write` requires one payload object with a template
+        string.
+        """
         path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match='exactly one object'):
@@ -72,7 +77,10 @@ class TestHbs(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test empty write payload returning zero without creating file."""
+        """
+        Test that empty :meth:`write` payload returns zero without creating a
+        file.
+        """
         path = self.format_path(tmp_path)
 
         assert self.module_handler.write(path, []) == 0

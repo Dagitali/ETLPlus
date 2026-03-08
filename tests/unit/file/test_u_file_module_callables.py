@@ -25,7 +25,7 @@ class TestModuleCallables:
     def test_call_module_method_missing_method_uses_custom_module_name(
         self,
     ) -> None:
-        """Test missing-method errors including provided module metadata."""
+        """Test that missing-method errors include provided module metadata."""
         with pytest.raises(
             ImportError,
             match=(
@@ -43,7 +43,9 @@ class TestModuleCallables:
     def test_call_module_method_raises_when_dependency_is_missing(
         self,
     ) -> None:
-        """Test required module calls raising runtime errors for ``None``."""
+        """
+        Test that required module calls raise runtime errors for ``None``.
+        """
         with pytest.raises(
             RuntimeError,
             match='pyreadstat dependency is required for SAV write',
@@ -57,7 +59,7 @@ class TestModuleCallables:
             )
 
     def test_call_module_method_success_path(self) -> None:
-        """Test required module method invocation with args and kwargs."""
+        """Test that required module method invocation with args and kwargs."""
 
         class _Module:
             def read_any(self, path: str, *, limit: int) -> tuple[str, int]:
@@ -78,7 +80,9 @@ class TestModuleCallables:
     def test_read_module_frame_if_supported_returns_none_when_unsupported(
         self,
     ) -> None:
-        """Test optional read helper returning None for unsupported methods."""
+        """
+        Test that optional read helper returns None for unsupported methods.
+        """
         path = Path('sample.sav')
         assert (
             mod.read_module_frame_if_supported(
@@ -92,5 +96,7 @@ class TestModuleCallables:
     def test_resolve_module_method_returns_none_for_missing_module(
         self,
     ) -> None:
-        """Test callable resolution returning ``None`` for absent modules."""
+        """
+        Test that callable resolution returns ``None`` for absent modules.
+        """
         assert mod.resolve_module_method(None, 'read_any') is None

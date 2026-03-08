@@ -29,7 +29,7 @@ class TestCoreDispatchHelpers:
         self,
         monkeypatch,
     ) -> None:
-        """Test read payload routing through core File wrapper."""
+        """Test that read payload routing through core File wrapper."""
         seen: dict[str, Any] = {}
 
         class FileStub:
@@ -68,7 +68,9 @@ class TestCoreDispatchHelpers:
         monkeypatch,
         filename: str,
     ) -> None:
-        """Test write payload rejecting paths that escape the temp root."""
+        """
+        Test that write payload rejecting paths that escape the temp root.
+        """
 
         class FileStub:
             """Fail fast if unsafe filenames ever reach File dispatch."""
@@ -90,7 +92,7 @@ class TestCoreDispatchHelpers:
         self,
         monkeypatch,
     ) -> None:
-        """Test write payload routing through core File wrapper."""
+        """Test that write payload routing through core File wrapper."""
         seen: dict[str, Any] = {}
 
         class FileStub:

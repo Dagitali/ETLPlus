@@ -64,7 +64,9 @@ class TestBinaryCodecHandlers:
     """Unit tests for shared binary codec handler mixin behavior."""
 
     def test_codec_method_raises_for_missing_callable(self) -> None:
-        """Test missing codec method errors include format/module metadata."""
+        """
+        Test that missing codec method errors include format/module metadata.
+        """
         handler = _CodecHandler(_CodecModuleStub())
         with pytest.raises(
             AttributeError,
@@ -88,7 +90,7 @@ class TestBinaryCodecHandlers:
         data: object,
         expected_payload: object,
     ) -> None:
-        """Test dumps path preserving list-vs-dict payload semantics."""
+        """Test that dumps path preserving list-vs-dict payload semantics."""
         codec = _CodecModuleStub()
         handler = _CodecHandler(codec)
 
@@ -98,7 +100,9 @@ class TestBinaryCodecHandlers:
         assert codec.encode_calls == [(expected_payload, {'encode_opt': 1})]
 
     def test_loads_bytes_decodes_and_coerces_records(self) -> None:
-        """Test loads path forwarding decode kwargs and coercing records."""
+        """
+        Test that loads path forwarding decode kwargs and coercing records.
+        """
         codec = _CodecModuleStub()
         handler = _CodecHandler(codec)
 
@@ -111,7 +115,7 @@ class TestBinaryCodecHandlers:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test inherited binary path-level read/write behavior."""
+        """Test that inherited binary path-level read/write behavior."""
         codec = _CodecModuleStub()
         handler = _CodecHandler(codec)
         path = tmp_path / 'payload.cbor'

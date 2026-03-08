@@ -41,7 +41,7 @@ class TestSqlHelpers:
         assert mod.coerce_sql_value(value) == expected
 
     def test_collect_column_values(self) -> None:
-        """Test collection of sorted column names and aligned values."""
+        """Test that collection of sorted column names and aligned values."""
         columns, values = mod.collect_column_values(
             [
                 {'b': 2},
@@ -70,7 +70,7 @@ class TestSqlHelpers:
         assert mod.infer_column_type(values, mod.SQLITE_DIALECT) == expected
 
     def test_quote_identifier_escapes_double_quotes(self) -> None:
-        """Test SQL identifier quoting and escaping."""
+        """Test that :func:`quote_identifier` handles quoting and escaping."""
         assert mod.quote_identifier('table') == '"table"'
         assert mod.quote_identifier('a"b') == '"a""b"'
 
@@ -93,7 +93,10 @@ class TestSqlHelpers:
             )
 
     def test_write_table_rows_returns_zero_for_empty_rows(self) -> None:
-        """Test write short-circuit when no rows are provided."""
+        """
+        Test that :func:`write_table_rows` short-circuit when no rows are
+        provided.
+        """
 
         class _Connection:
             def execute(self, *_args: object, **_kwargs: object) -> None:

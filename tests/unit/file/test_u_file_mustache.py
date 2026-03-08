@@ -36,7 +36,9 @@ class TestMustache(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test reads returning one-row payload with template text."""
+        """
+        Test that :meth:`read` returns a 1-row payload with template text.
+        """
         path = self.format_path(tmp_path)
         path.write_text('Hello {{name}}', encoding='utf-8')
 
@@ -48,7 +50,10 @@ class TestMustache(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test writes requiring one payload object with template string."""
+        """
+        Test that :meth:`write` requires one payload object with a template
+        string.
+        """
         path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match='exactly one object'):
@@ -63,14 +68,17 @@ class TestMustache(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test empty write payload returning zero without creating file."""
+        """
+        Test that empty :meth:`write` returns 0 for an empty payload without
+        creating a file.
+        """
         path = self.format_path(tmp_path)
 
         assert self.module_handler.write(path, []) == 0
         assert not path.exists()
 
     def test_render_substitutes_mustache_tokens(self) -> None:
-        """Test render replacing simple Mustache variables."""
+        """Test that :meth:`render` replaces simple Mustache variables."""
         result = self.module_handler.render(
             'Hello {{name}} from {{city}}.',
             {'name': 'Ada', 'city': 'Paris'},

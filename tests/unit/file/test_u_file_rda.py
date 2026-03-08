@@ -114,7 +114,8 @@ class TestRda(RDataModuleContract):
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """
-        Test list_datasets returning default key when file has no objects.
+        Test that :meth:`list_datasets` returns default key when file has no
+        objects.
         """
         pyreadr = self.build_pyreadr_stub({})
         self._install_optional_dependencies(
@@ -131,7 +132,9 @@ class TestRda(RDataModuleContract):
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test list_datasets exposing keys from pyreadr payloads."""
+        """
+        Test that :meth:`list_datasets` exposes keys from pyreadr payloads.
+        """
         pyreadr = self.build_pyreadr_stub({'first': object(), 'second': 1})
         self._install_optional_dependencies(
             optional_module_stub,
@@ -147,7 +150,10 @@ class TestRda(RDataModuleContract):
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test write_dataset forwarding explicit dataset names to pyreadr."""
+        """
+        Test that :meth:`write_dataset` forwards explicit dataset names to
+        :mod:`pyreadr`.
+        """
         pyreadr = self.build_pyreadr_stub({})
         self._install_optional_dependencies(
             optional_module_stub,

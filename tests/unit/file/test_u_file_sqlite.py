@@ -64,7 +64,9 @@ class TestSqlite(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test explicit table selection bypassing multi-table ambiguity."""
+        """
+        Test that explicit table selection bypasses multi-table ambiguity.
+        """
         path = self.format_path(tmp_path)
         self._create_multi_table_db(
             path,
@@ -82,7 +84,9 @@ class TestSqlite(
         assert result == [{'id': 2}]
 
     def test_write_table_returns_zero_for_rows_without_columns(self) -> None:
-        """Test write_table short-circuiting records with no columns."""
+        """
+        Test that :meth:`write_table` short-circuits records with no columns.
+        """
         handler = mod.SqliteFile()
         with sqlite3.connect(':memory:') as conn:
             written = handler.write_table(conn, 'data', [{}])
@@ -97,7 +101,7 @@ class TestSqlite(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test writes honoring explicit table names via options."""
+        """Test that :meth:`write` honors explicit table names via options."""
         path = self.format_path(tmp_path)
         payload = [{'id': 1}]
 

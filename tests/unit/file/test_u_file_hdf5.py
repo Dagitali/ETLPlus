@@ -79,7 +79,10 @@ class TestHdf5Datasets(PathMixin):
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test list_datasets raising a tables dependency ImportError."""
+        """
+        Test that :meth:`list_datasets` raises a tables dependency
+        :class:`ImportError`.
+        """
         patch_dependency_resolver_value(
             monkeypatch,
             mod,
@@ -94,7 +97,7 @@ class TestHdf5Datasets(PathMixin):
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test list_datasets returning normalized dataset keys."""
+        """Test that :meth:`list_datasets` returns normalized dataset keys."""
         frame = DictRecordsFrameStub([{'id': 1}])
         store = _HDFStore(['data', 'other'], {'data': frame, 'other': frame})
         TestHdf5Read._install_store(optional_module_stub, store)
@@ -108,7 +111,9 @@ class TestHdf5Datasets(PathMixin):
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test read_dataset honoring explicit dataset selection."""
+        """
+        Test that :meth:`read_dataset` honors explicit dataset selection.
+        """
         default_frame = DictRecordsFrameStub([{'id': 1}])
         other_frame = DictRecordsFrameStub([{'id': 2}])
         store = _HDFStore(
@@ -129,7 +134,10 @@ class TestHdf5Datasets(PathMixin):
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test read_dataset honoring dataset selector from read options."""
+        """
+        Test that :meth:`read_dataset` honors dataset selection from read
+        options.
+        """
         default_frame = DictRecordsFrameStub([{'id': 1}])
         other_frame = DictRecordsFrameStub([{'id': 2}])
         store = _HDFStore(
@@ -149,7 +157,10 @@ class TestHdf5Datasets(PathMixin):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test write_dataset still raising the read-only RuntimeError."""
+        """
+        Test that :meth:`write_dataset` still raises the read-only
+        :class:`RuntimeError`.
+        """
         with pytest.raises(RuntimeError, match='read-only'):
             mod.Hdf5File().write_dataset(
                 self.format_path(tmp_path),

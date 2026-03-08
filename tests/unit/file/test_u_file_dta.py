@@ -75,7 +75,7 @@ class TestDta(SingleDatasetWritableContract):
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test DTA reads delegating to ``pandas.read_stata``."""
+        """Test that DTA reads delegating to ``pandas.read_stata``."""
         pandas = _PandasStub(_Frame([{'id': 1}]))
         optional_module_stub({'pandas': pandas, 'pyreadstat': object()})
         path = self.format_path(tmp_path)
@@ -94,7 +94,7 @@ class TestDta(SingleDatasetWritableContract):
         optional_module_stub: OptionalModuleInstaller,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test DTA writes disabling index serialization."""
+        """Test that DTA writes disabling index serialization."""
         frame = _Frame([])
         pandas = _PandasStub(_Frame([]))
         monkeypatch.setattr(

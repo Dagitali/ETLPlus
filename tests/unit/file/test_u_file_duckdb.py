@@ -152,7 +152,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         tmp_path: Path,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
-        """Test reads always closing the DuckDB connection."""
+        """Test that reads always closing the DuckDB connection."""
         conn, path = self._prepare_connection(
             tmp_path,
             optional_module_stub,
@@ -182,7 +182,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         description: list[tuple[str, ...]] | None,
         pragma_info: list[tuple[object, ...]],
     ) -> None:
-        """Test read column mapping via description or pragma fallback."""
+        """Test that read column mapping via description or pragma fallback."""
         _conn, path = self._prepare_connection(
             tmp_path,
             optional_module_stub,
@@ -214,7 +214,8 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         table_option: str,
     ) -> None:
         """
-        Test :meth:`read` honoring explicit table options, including quoting.
+        Test that :meth:`read` honors explicit table options, including
+        quoting.
         """
         conn, path = self._prepare_connection(
             tmp_path,
@@ -269,7 +270,8 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
 
     def test_write_table_returns_zero_for_rows_with_no_columns(self) -> None:
         """
-        Test :meth:`write_table` short-circuiting rows that provide no columns.
+        Test that :meth:`write_table` short-circuits rows that provide no
+        columns.
         """
         conn = _Connection()
         handler = mod.DuckdbFile()

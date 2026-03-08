@@ -58,7 +58,7 @@ class TestSas7bdatRead(PathMixin):
     format_name = 'sas7bdat'
 
     def test_list_datasets_returns_default_key(self) -> None:
-        """Test list_datasets exposing the single supported key."""
+        """Test that :meth:`list_datasets` exposes the single supported key."""
         assert mod.Sas7bdatFile().list_datasets(Path('ignored.sas7bdat')) == [
             'data',
         ]
@@ -68,7 +68,9 @@ class TestSas7bdatRead(PathMixin):
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test option-based default dataset selection for read_dataset."""
+        """
+        Test option-based default dataset selection for :meth:`read_dataset`.
+        """
         frame = DictRecordsFrameStub([{'id': 1}])
         pandas = PandasReadSasStub(frame)
         self._install_dependency_stubs(monkeypatch, pandas)
@@ -86,7 +88,10 @@ class TestSas7bdatRead(PathMixin):
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test read fallback when pandas rejects the format keyword."""
+        """
+        Test that read fallback occurs when :mod:`pandas` rejects the format
+        keyword.
+        """
         frame = DictRecordsFrameStub([{'id': 1}])
         pandas = PandasReadSasStub(frame, fail_on_format_kwarg=True)
         self._install_dependency_stubs(monkeypatch, pandas)
@@ -117,7 +122,9 @@ class TestSas7bdatRead(PathMixin):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test write_dataset preserving read-only runtime behavior."""
+        """
+        Test that :meth:`write_dataset` preserving read-only runtime behavior.
+        """
         path = self.format_path(tmp_path)
 
         with pytest.raises(RuntimeError, match='read-only'):

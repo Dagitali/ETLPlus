@@ -30,19 +30,23 @@ class TestTemplateHandlers:
     """Unit tests for shared template-handler mixins."""
 
     def test_brace_token_pattern_extracts_context_key(self) -> None:
-        """Test brace token regex extracting the ``key`` group."""
+        """Test that brace token regex extracting the ``key`` group."""
         match = _TemplateHandler.token_pattern.search('{{ user_name }}')
         assert match is not None
         assert match.group('key') == 'user_name'
 
     def test_render_substitutes_brace_tokens(self) -> None:
-        """Test brace-token render path replacing keys with context values."""
+        """
+        Test that brace-token render path replaces keys with context values.
+        """
         handler = _TemplateHandler()
         result = handler.render('Hello {{name}}!', {'name': 'Ada'})
         assert result == 'Hello Ada!'
 
     def test_render_missing_key_defaults_to_empty_string(self) -> None:
-        """Test brace-token render path using empty string for missing keys."""
+        """
+        Test that brace-token render path uses empty string for missing keys.
+        """
         handler = _TemplateHandler()
         result = handler.render('Hello {{missing}}!', {})
         assert result == 'Hello !'

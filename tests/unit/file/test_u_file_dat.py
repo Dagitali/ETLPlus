@@ -165,7 +165,7 @@ class TestDatSniff:
         expected_delimiter: str,
         expected_header: bool,
     ) -> None:
-        """Test sniff behavior across success and fallback paths."""
+        """Test that sniff behavior across success and fallback paths."""
         sniffer = sniffer_factory()
 
         dialect, has_header = mod._sniff(sample, sniffer=sniffer)
@@ -185,7 +185,7 @@ class TestDat(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test DAT reads honoring custom sniffer and delimiters options."""
+        """Test that DAT reads honor custom sniffer and delimiter options."""
         handler = mod.DatFile()
         sniffer = _StubSniffer(
             dialect=_make_dialect('|'),
@@ -213,7 +213,7 @@ class TestDat(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test reading empty input returning an empty list."""
+        """Test that reading empty input returning an empty list."""
         path = _write_fixture_file(tmp_path, 'empty.dat', '')
 
         assert not mod.DatFile().read(path)
@@ -248,7 +248,7 @@ class TestDat(RoundtripUnitModuleContract):
         has_header: bool,
         expected: list[dict[str, str]],
     ) -> None:
-        """Test no-header fallback and blank-row filtering behavior."""
+        """Test that no-header fallback and blank-row filtering behavior."""
         _patch_sniff(
             monkeypatch,
             dialect=csv.get_dialect('excel'),
@@ -263,7 +263,7 @@ class TestDat(RoundtripUnitModuleContract):
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test ``delimiters=None`` preserves default sniff delimiters."""
+        """Test that ``delimiters=None`` preserves default sniff delimiters."""
         captured_delimiters: list[str] = []
 
         def _sniff(
@@ -344,7 +344,9 @@ class TestDat(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test DAT writes honoring delimiter overrides from options extras."""
+        """
+        Test that DAT writes honor delimiter overrides from option extras.
+        """
         handler = mod.DatFile()
         path = tmp_path / 'delimiter_override.dat'
 

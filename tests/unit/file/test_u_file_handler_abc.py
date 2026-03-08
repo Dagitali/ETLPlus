@@ -27,7 +27,8 @@ class TestHandlerAbcHelpers:
         tmp_path: Path,
     ) -> None:
         """
-        Test empty payload writes short-circuiting without directory create.
+        Test that empty payload writes short-circuit without creating
+        directories.
         """
         path = tmp_path / 'nested' / 'data.csv'
 
@@ -45,7 +46,8 @@ class TestHandlerAbcHelpers:
         tmp_path: Path,
     ) -> None:
         """
-        Test non-empty payload writes normalizing rows and creating parent.
+        Test that non-empty payload writes normalizing rows and creates parent
+        directory.
         """
         path = tmp_path / 'nested' / 'data.csv'
 
@@ -60,7 +62,8 @@ class TestHandlerAbcHelpers:
 
     def test_use_connection_closes_on_success(self) -> None:
         """
-        Test connection helper closing resources after successful operation.
+        Test that connection helper closing resources after successful
+        operation.
         """
         calls: list[str] = []
         connection = object()
@@ -90,7 +93,8 @@ class TestHandlerAbcHelpers:
 
     def test_use_connection_closes_on_failure(self) -> None:
         """
-        Test connection helper closing resources even when operation fails.
+        Test that connection helper closes resources, even when operation
+        fails.
         """
         calls: list[str] = []
         connection = object()

@@ -92,7 +92,9 @@ class TestScientificStubDatasetKeys:
         self,
         scientific_module_case: ScientificModuleCase,
     ) -> None:
-        """Test list_datasets exposing only the default dataset key."""
+        """
+        Test that :meth:`list_datasets` exposes only the default dataset key.
+        """
         handler_cls, _ = scientific_module_case
         handler = handler_cls()
         assert handler.list_datasets(Path('ignored.file')) == ['data']
@@ -124,7 +126,9 @@ class TestScientificStubDatasetKeys:
         selector_mode: DatasetSelectorMode,
         scientific_module_case: ScientificModuleCase,
     ) -> None:
-        """Test unknown dataset keys are validated before stub operations."""
+        """
+        Test that unknown dataset keys are validated before stub operations.
+        """
         handler_cls, _ = scientific_module_case
         handler = handler_cls()
         self._assert_stub_not_called(
@@ -162,14 +166,14 @@ class TestScientificDatasetHelpers:
     """Unit tests for low-level scientific dataset-key helper functions."""
 
     def test_normalize_store_dataset_keys(self) -> None:
-        """Test store-key normalization removing leading separators."""
+        """Test that store-key normalization removing leading separators."""
         keys = scientific_dataset_mod.normalize_store_dataset_keys(
             ['/data', 'features', '//labels'],
         )
         assert keys == ['data', 'features', 'labels']
 
     def test_resolve_store_dataset_key_prefers_default_key(self) -> None:
-        """Test default-key selection when explicit dataset is omitted."""
+        """Test that default-key selection when explicit dataset is omitted."""
         assert (
             scientific_dataset_mod.resolve_store_dataset_key(
                 ['data', 'features'],
@@ -181,7 +185,9 @@ class TestScientificDatasetHelpers:
         )
 
     def test_resolve_store_dataset_key_prefers_explicit_dataset(self) -> None:
-        """Test explicit dataset selection when present in available keys."""
+        """
+        Test that explicit dataset selection when present in available keys.
+        """
         assert (
             scientific_dataset_mod.resolve_store_dataset_key(
                 ['data', 'features'],
@@ -195,7 +201,9 @@ class TestScientificDatasetHelpers:
     def test_resolve_store_dataset_key_raises_for_missing_explicit_dataset(
         self,
     ) -> None:
-        """Test explicit dataset validation for unavailable dataset keys."""
+        """
+        Test that explicit dataset validation for unavailable dataset keys.
+        """
         with pytest.raises(
             ValueError,
             match="HDF5 dataset 'missing' not found",
@@ -208,7 +216,7 @@ class TestScientificDatasetHelpers:
             )
 
     def test_resolve_store_dataset_key_rejects_ambiguous_key_set(self) -> None:
-        """Test ambiguous key sets requiring explicit selection."""
+        """Test that ambiguous key sets require explicit selection."""
         with pytest.raises(ValueError, match='Multiple datasets found'):
             scientific_dataset_mod.resolve_store_dataset_key(
                 ['features', 'labels'],
@@ -220,7 +228,7 @@ class TestScientificDatasetHelpers:
     def test_resolve_store_dataset_key_returns_none_for_empty_key_set(
         self,
     ) -> None:
-        """Test empty key sets returning ``None``."""
+        """Test that empty key sets returning ``None``."""
         assert (
             scientific_dataset_mod.resolve_store_dataset_key(
                 [],
@@ -232,7 +240,7 @@ class TestScientificDatasetHelpers:
         )
 
     def test_resolve_store_dataset_key_uses_single_key_fallback(self) -> None:
-        """Test one-key fallback when default key is absent."""
+        """Test that one-key fallback when default key is absent."""
         assert (
             scientific_dataset_mod.resolve_store_dataset_key(
                 ['features'],

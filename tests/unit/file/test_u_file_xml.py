@@ -33,21 +33,23 @@ class TestXml(RoundtripUnitModuleContract):
     )
 
     def test_dict_to_element_allows_none_payload(self) -> None:
-        """Test helper creating an empty element for ``None`` payloads."""
+        """Test that helper creates an empty element for ``None`` payloads."""
         element = mod._dict_to_element('node', None)
         assert element.tag == 'node'
         assert element.text is None
         assert list(element) == []
 
     def test_dumps_defaults_to_root_tag_for_non_single_mapping(self) -> None:
-        """Test dumps using the default root tag for list payloads."""
+        """
+        Test that :meth:`dumps` uses the default root tag for list payloads.
+        """
         text = mod.XmlFile().dumps([{'id': 1}])
 
         assert text.startswith('<root>')
         assert '<item>' in text
 
     def test_dumps_prefers_single_mapping_root_over_options(self) -> None:
-        """Test dumps preserving explicit single mapping roots."""
+        """Test that :meth:`dumps` preserves explicit single mapping roots."""
         text = mod.XmlFile().dumps(
             {'rows': [{'id': 1}]},
             options=WriteOptions(root_tag='ignored'),
@@ -57,7 +59,10 @@ class TestXml(RoundtripUnitModuleContract):
         assert 'ignored' not in text
 
     def test_loads_parses_attributes_and_repeated_tags(self) -> None:
-        """Test loads converting attributes and repeated tags predictably."""
+        """
+        Test that :meth:`loads` converts attributes and repeated tags
+        predictably.
+        """
         payload = (
             '<root id="7">'
             '<item code="A"><text>first</text></item>'
@@ -78,7 +83,7 @@ class TestXml(RoundtripUnitModuleContract):
         }
 
     def test_loads_three_repeated_tags_appends_to_existing_list(self) -> None:
-        """Test repeated XML tags appending when a list already exists."""
+        """Test that repeated XML tags append when a list already exists."""
         payload = (
             '<root>'
             '<item><text>first</text></item>'
@@ -103,7 +108,7 @@ class TestXml(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test XML write using explicit root tag and readable output."""
+        """Test that XML write using explicit root tag and readable output."""
         path = self.format_path(tmp_path)
 
         written = self.module_handler.write(

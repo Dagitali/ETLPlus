@@ -33,26 +33,26 @@ class TestLog(RoundtripUnitModuleContract):
     roundtrip_spec = build_roundtrip_spec(record_count=2)
 
     def test_parse_line_falls_back_for_non_object_json(self) -> None:
-        """Test line parser falling back for non-object JSON values."""
+        """Test that line parser falls back for non-object JSON values."""
         assert self.module_handler.parse_line('["a", "b"]') == {
             'message': '["a", "b"]',
         }
 
     def test_parse_line_falls_back_to_message_for_plain_text(self) -> None:
-        """Test line parser falling back for non-JSON log lines."""
+        """Test that line parser falls back for non-JSON log lines."""
         assert self.module_handler.parse_line('plain message') == {
             'message': 'plain message',
         }
 
     def test_parse_line_parses_json_object(self) -> None:
-        """Test line parser returning JSON objects as events."""
+        """Test that line parser returns JSON objects as events."""
         assert self.module_handler.parse_line('{"id": 1}') == {'id': 1}
 
     def test_read_skips_blank_lines_and_parses_entries(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test reads skipping blanks and parsing each non-empty line."""
+        """Test that reads skipping blanks and parsing each non-empty line."""
         path = self.format_path(tmp_path)
         path.write_text(
             '{"id": 1}\n\nplain text\n{"id": 2}\n',
@@ -69,7 +69,7 @@ class TestLog(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test writes rejecting non-object array payloads."""
+        """Test that :meth:`write` rejects non-object array payloads."""
         path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match='LOG payloads must contain'):
@@ -79,7 +79,10 @@ class TestLog(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test empty write payload returning zero without creating a file."""
+        """
+        Test that :meth:`write` returns zero for empty payload without creating
+        a file.
+        """
         path = self.format_path(tmp_path)
 
         assert self.module_handler.write(path, []) == 0
@@ -89,7 +92,7 @@ class TestLog(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test writes producing one JSON event per line."""
+        """Test that :meth:`write` produces one JSON event per line."""
         path = self.format_path(tmp_path)
         payload = [{'id': 1}, {'id': 2}]
 

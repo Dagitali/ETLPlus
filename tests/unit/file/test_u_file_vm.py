@@ -36,14 +36,18 @@ class TestVm(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test reads returning one-row payload with template text."""
+        """
+        Test that :meth:`read` returns one-row payload with template text.
+        """
         path = self.format_path(tmp_path)
         path.write_text('Hello $name', encoding='utf-8')
 
         assert self.module_handler.read(path) == [{'template': 'Hello $name'}]
 
     def test_render_substitutes_velocity_tokens(self) -> None:
-        """Test render replacing plain and braced Velocity variables."""
+        """
+        Test that :meth:`render` replaces plain and braced Velocity variables.
+        """
         result = self.module_handler.render(
             'Hello $name from ${city}.',
             {'name': 'Ada', 'city': 'Paris'},
@@ -55,7 +59,10 @@ class TestVm(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test writes requiring one payload object with template string."""
+        """
+        Test that :meth:`write` requires one payload object with a template
+        string.
+        """
         path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match='exactly one object'):
@@ -70,7 +77,7 @@ class TestVm(RoundtripUnitModuleContract):
         self,
         tmp_path: Path,
     ) -> None:
-        """Test empty write payload returning zero without creating file."""
+        """Test that empty write payload returns 0 without creating file."""
         path = self.format_path(tmp_path)
 
         assert self.module_handler.write(path, []) == 0

@@ -59,7 +59,9 @@ class TestIoHelpers:
     """Unit tests for shared file IO helpers."""
 
     def test_close_connection_noop_when_close_is_not_callable(self) -> None:
-        """Test connection cleanup no-op when ``close`` is non-callable."""
+        """
+        Test connection cleanup no-op when ``close`` is non-callable.
+        """
         connection = type('_Conn', (), {'close': 1})()
         mod.EmbeddedDatabaseTableOption().close_connection(connection)
 
