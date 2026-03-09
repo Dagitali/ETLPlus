@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.file.txt`.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -76,6 +77,16 @@ class TestTxt(RoundtripUnitModuleContract):
 
         assert written == 3
         assert path.read_text(encoding='utf-8') == 'alpha\n\nbeta'
+
+    def test_write_rows_rejects_non_string_lines(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that :func:`write_rows` rejects non-string line values."""
+        path = self.format_path(tmp_path)
+
+        with pytest.raises(TypeError, match='TXT row payloads must contain'):
+            mod.TxtFile().write_rows(path, cast(list[str], ['alpha', 1]))
 
     def test_write_rejects_legacy_text_records(
         self,
