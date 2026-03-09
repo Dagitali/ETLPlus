@@ -10,23 +10,23 @@
 
 from __future__ import annotations
 
+import importlib
 import sys
 from pathlib import Path
 
-from etlplus import __author__
-from etlplus import __version__
-
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+etlplus = importlib.import_module('etlplus')
 
 # -- Project Information -- #
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'ETLPlus'
 copyright = '2026, Dagitali LLC'
-author = __author__
-release = __version__
+author = etlplus.__author__
+release = etlplus.__version__
 
 # -- General Configuration -- #
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -71,7 +71,6 @@ napoleon_numpy_docstring = True
 # -- Options for HTML Output -- #
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 html_title = f'{project} {release}'
