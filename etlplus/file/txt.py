@@ -16,7 +16,6 @@ Notes
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from pathlib import Path
 
 from ._io import read_text
@@ -56,47 +55,17 @@ def _count_text_lines(
     return len(text.splitlines())
 
 
-def _legacy_text_value(
-    payload: object,
-) -> str | None:
-    """
-    Return one legacy ``{"text": "..."}`` value when present.
-
-    This supports legacy record payloads for TXT writes. The presence of a
-    ``"text"`` key with a string value indicates a legacy payload, and the
-    string value is returned. Otherwise, ``None`` is returned to indicate no
-    legacy text.
-
-    Parameters
-    ----------
-    payload : object
-        Potential legacy record payload to extract text from.
-
-    Returns
-    -------
-    str | None
-        The legacy text value if present, or ``None`` if not found.
-    """
-    if not isinstance(payload, Mapping):
-        return None
-    value = payload.get('text')
-    return value if isinstance(value, str) else None
-
-
 def _coerce_text_payload(
     data: object,
 ) -> str:
     """
     Normalize TXT write payloads into plain text.
 
-    Plain text writes prefer ``str`` or ``list[str]`` payloads. Legacy
-    ``{"text": "..."}`` record payloads remain accepted for compatibility.
-
     Parameters
     ----------
     data : object
-        The original TXT write payload, which may be a raw string, a list of
-        strings, or a legacy record.
+        The original TXT write payload, which must be raw text or a list of
+        strings.
 
     Returns
     -------
@@ -106,27 +75,15 @@ def _coerce_text_payload(
     if isinstance(data, str):
         return data
 
-    if (legacy_text := _legacy_text_value(data)) is not None:
-        return legacy_text
-
     if not isinstance(data, list):
         raise TypeError(
-            'TXT payloads must be raw text, a list of strings, or legacy '
-            '{"text": "..."} records',
+            'TXT payloads must be raw text or a list of strings',
         )
 
     if all(isinstance(line, str) for line in data):
         return '\n'.join(data)
 
-    legacy_lines: list[str] = []
-    for item in data:
-        if (legacy_text := _legacy_text_value(item)) is None:
-            raise TypeError(
-                'TXT payload lists must contain only strings or '
-                '{"text": "..."} records',
-            )
-        legacy_lines.append(legacy_text)
-    return '\n'.join(legacy_lines)
+    raise TypeError('TXT payload lists must contain only strings')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -208,8 +165,7 @@ class TxtFile(PlainTextFileHandlerABC):
         path : Path
             Path to the TXT file on disk.
         data : object
-            Text payload to write. Accepts raw strings, lists of strings,
-            and legacy ``{"text": "..."}`` record payloads.
+            Text payload to write. Accepts raw strings and lists of strings.
         options : WriteOptions | None, optional
             Optional write parameters.
 
