@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
+from typing import cast
 
-from ..utils.types import JSONData
 from . import xml
 from .base import BoundFileHandler
 from .base import FileHandlerABC
@@ -198,14 +199,14 @@ class File:
 
     # -- Instance Methods -- #
 
-    def read(self) -> JSONData:
+    def read(self) -> Any:
         """
         Read structured data from :attr:`path` using :attr:`file_format`.
 
         Returns
         -------
-        JSONData
-            The structured data read from the file.
+        Any
+            The parsed data read from the file.
 
         """
         self._assert_exists()
@@ -213,7 +214,7 @@ class File:
 
     def write(
         self,
-        data: JSONData,
+        data: object,
         *,
         root_tag: str = xml.DEFAULT_XML_ROOT,
     ) -> int:
@@ -222,7 +223,7 @@ class File:
 
         Parameters
         ----------
-        data : JSONData
+        data : object
             Data to write to the file.
         root_tag : str, optional
             Root tag name to use when writing XML files. Defaults to
@@ -234,7 +235,7 @@ class File:
             The number of records written.
 
         """
-        return self._bound_handler().write(
+        return cast(Any, self._bound_handler()).write(
             data,
             options=WriteOptions(root_tag=root_tag),
         )

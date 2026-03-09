@@ -22,6 +22,7 @@ from etlplus.utils.types import JSONData
 
 __all__ = [
     'RoundtripShape',
+    'RoundtripPayload',
     'RoundtripSpec',
     'RoundtripValueKind',
 ]
@@ -37,6 +38,7 @@ type RoundtripShape = Literal[
     'text',
     'mapping',
 ]
+type RoundtripPayload = JSONData | str
 type RoundtripValueKind = Literal['numeric', 'string', 'mixed']
 
 
@@ -49,8 +51,8 @@ class RoundtripSpec:
     Declarative roundtrip case for one format-aligned unit contract.
     """
 
-    payload: JSONData
-    expected: JSONData
+    payload: RoundtripPayload
+    expected: RoundtripPayload
     stem: str = 'roundtrip'
     read_options: ReadOptions | None = None
     write_options: WriteOptions | None = None
@@ -134,21 +136,24 @@ class RoundtripSpec:
             return cls(payload=template_row, expected=[template_row])
 
         if shape == 'text':
-            text_rows = [
-                {
-                    'text': (
-                        str(row_index + 1)
-                        if value_kind == 'numeric'
-                        else (
-                            words[row_index % len(words)]
-                            if value_kind == 'mixed'
-                            else f'text_{row_index + 1}'
-                        )
-                    ),
-                }
+            text_lines = [
+                (
+                    str(row_index + 1)
+                    if value_kind == 'numeric'
+                    else (
+                        words[row_index % len(words)]
+                        if value_kind == 'mixed'
+                        else f'text_{row_index + 1}'
+                    )
+                )
                 for row_index in range(record_count)
             ]
-            return cls(payload=text_rows, expected=text_rows)
+            text_payload = '\n'.join(text_lines)
+            return cls(
+                payload=text_payload,
+                expected=text_payload,
+                expected_written_count=record_count,
+            )
 
         if shape == 'mapping':
             payload_map: dict[str, int | str] = {

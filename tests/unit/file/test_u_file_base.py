@@ -43,7 +43,6 @@ from etlplus.file.sqlite import SqliteFile
 from etlplus.file.sylk import SylkFile
 from etlplus.file.tab import TabFile
 from etlplus.file.tsv import TsvFile
-from etlplus.file.txt import TxtFile
 from etlplus.file.xls import XlsFile
 from etlplus.file.xlsm import XlsmFile
 from etlplus.file.xlsx import XlsxFile
@@ -97,7 +96,6 @@ _DELIMITED_HANDLER_CLASSES = (
     PsvFile,
     TabFile,
     TsvFile,
-    TxtFile,
     FwfFile,
 )
 _EMBEDDED_DB_HANDLER_CLASSES = (SqliteFile,)

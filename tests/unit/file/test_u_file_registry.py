@@ -24,6 +24,7 @@ from etlplus.file.base import DelimitedTextFileHandlerABC
 from etlplus.file.base import EmbeddedDatabaseFileHandlerABC
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import LogEventFileHandlerABC
+from etlplus.file.base import PlainTextFileHandlerABC
 from etlplus.file.base import ReadOnlyFileHandlerABC
 from etlplus.file.base import ReadOnlySpreadsheetFileHandlerABC
 from etlplus.file.base import ScientificDatasetFileHandlerABC
@@ -89,7 +90,8 @@ _ABC_GROUPS: tuple[tuple[type[object], tuple[FileFormat, ...]], ...] = (
         SpreadsheetFileHandlerABC,
         (FileFormat.ODS, FileFormat.XLS, FileFormat.XLSM, FileFormat.XLSX),
     ),
-    (TextFixedWidthFileHandlerABC, (FileFormat.FWF, FileFormat.TXT)),
+    (PlainTextFileHandlerABC, (FileFormat.TXT,)),
+    (TextFixedWidthFileHandlerABC, (FileFormat.FWF,)),
     (ArchiveWrapperFileHandlerABC, (FileFormat.GZ, FileFormat.ZIP)),
     (LogEventFileHandlerABC, (FileFormat.LOG,)),
     (

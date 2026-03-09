@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from etlplus.utils.types import JSONData
 
+from .pytest_file_roundtrip_spec import RoundtripPayload
 from .pytest_file_roundtrip_spec import RoundtripShape
 from .pytest_file_roundtrip_spec import RoundtripSpec
 from .pytest_file_roundtrip_spec import RoundtripValueKind
@@ -52,8 +53,8 @@ ROUNDTRIP_CASES: dict[str, tuple[JSONData, JSONData]] = {
 
 
 def build_roundtrip_spec(
-    payload: JSONData | None = None,
-    expected: JSONData | None = None,
+    payload: RoundtripPayload | None = None,
+    expected: RoundtripPayload | None = None,
     *,
     case: str | None = None,
     shape: RoundtripShape = 'records',

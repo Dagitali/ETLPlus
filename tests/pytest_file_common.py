@@ -9,7 +9,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 from typing import Literal
+from typing import cast
 from typing import overload
 
 import pytest
@@ -17,7 +19,6 @@ import pytest
 from etlplus.file import FileFormat
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import WriteOptions
-from etlplus.utils.types import JSONData
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -101,7 +102,7 @@ def call_handler_operation(
     path: Path,
     payload: None = None,
     write_kwargs: Mapping[str, object] | None = None,
-) -> JSONData: ...
+) -> object: ...
 
 
 @overload
@@ -110,7 +111,7 @@ def call_handler_operation(
     *,
     operation: Literal['write'],
     path: Path,
-    payload: JSONData,
+    payload: object,
     write_kwargs: Mapping[str, object] | None = None,
 ) -> int: ...
 
@@ -120,9 +121,9 @@ def call_handler_operation(
     *,
     operation: Operation,
     path: Path,
-    payload: JSONData | None = None,
+    payload: object | None = None,
     write_kwargs: Mapping[str, object] | None = None,
-) -> JSONData | int:
+) -> object | int:
     """Call one module handler operation with normalized write options."""
     handler = resolve_module_handler(module)
     if operation == 'read':
@@ -130,7 +131,7 @@ def call_handler_operation(
     if payload is None:
         raise TypeError('payload is required for write operations')
     options = _resolve_write_options(write_kwargs)
-    return handler.write(path, payload, options=options)
+    return cast(Any, handler).write(path, payload, options=options)
 
 
 def is_orc_sysctl_error(error: OSError) -> bool:
