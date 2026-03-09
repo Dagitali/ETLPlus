@@ -1,5 +1,9 @@
-# Minimal makefile for Sphinx documentation
+# docs/Makefile
+# ETLPlus
 #
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Minimal makefile for Sphinx documentation.
 
 # You can set these variables from the command line, and also
 # from the environment for the first two.
