@@ -172,6 +172,12 @@ dist: ## Build sdist and wheel into ./dist using pyproject.toml
 	@$(PYTHON) -m twine check dist/*
 	@$(call ECHO_OK,"Built and validated distribution artifacts in ./dist")
 
+.PHONY: docs
+docs: ## Build HTML docs with Sphinx (in ./docs/_build/html)
+	@$(PYTHON) -m pip install -e $(PKG_DIR)[docs]
+	@$(PYTHON) -m sphinx -b html docs/source docs/_build/html
+	@$(call ECHO_OK,"Built HTML docs in ./docs/_build/html")
+
 .PHONY: file
 file: venv ## Install package + file extras
 	@$(PYTHON) -m pip install -e $(PKG_DIR)[file]
