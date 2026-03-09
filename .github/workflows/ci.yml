@@ -42,6 +42,7 @@ permissions: {}
 
 jobs:
   lint:
+    name: Lint on Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy: &python-matrix
       matrix:
@@ -69,6 +70,7 @@ jobs:
           fi
 
   test:
+    name: Test on Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy: *python-matrix
     permissions: *permissions_read
@@ -132,7 +134,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    name: Publish GitHub Release
+    name: Publish GitHub release
     runs-on: ubuntu-latest
     if: *release_tag_condition
     needs: build
@@ -170,3 +172,75 @@ jobs:
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e  # Pinned v1
         with:
           verbose: true
+
+  document:
+    name: Publish docs to Read the Docs
+    runs-on: ubuntu-latest
+    if: *release_tag_condition
+    needs: publish
+    permissions: {}
+    steps:
+      - name: Sync and trigger Read the Docs release build
+        env:
+          # Requires repo variable READTHEDOCS_PROJECT_SLUG and secret
+          # READTHEDOCS_TOKEN.
+          READTHEDOCS_PROJECT_SLUG: ${{ vars.READTHEDOCS_PROJECT_SLUG }}
+          READTHEDOCS_TOKEN: ${{ secrets.READTHEDOCS_TOKEN }}
+          READTHEDOCS_VERSION_SLUG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${READTHEDOCS_PROJECT_SLUG}" ]; then
+            echo 'Missing repository variable READTHEDOCS_PROJECT_SLUG' >&2
+            exit 1
+          fi
+          if [ -z "${READTHEDOCS_TOKEN}" ]; then
+            echo 'Missing repository secret READTHEDOCS_TOKEN' >&2
+            exit 1
+          fi
+
+          api_base="https://app.readthedocs.com/api/v3/projects/${READTHEDOCS_PROJECT_SLUG}"
+          version_url="${api_base}/versions/${READTHEDOCS_VERSION_SLUG}/"
+          auth_header="Authorization: Token ${READTHEDOCS_TOKEN}"
+
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "${auth_header}" \
+            "${api_base}/sync-versions/"
+
+          for attempt in $(seq 1 12); do
+            status_code="$(
+              curl --silent --show-error \
+                --output /tmp/readthedocs-version.json \
+                --write-out '%{http_code}' \
+                -H "${auth_header}" \
+                "${version_url}"
+            )"
+            if [ "${status_code}" = "200" ]; then
+              break
+            fi
+            if [ "${attempt}" -eq 12 ]; then
+              echo "Read the Docs version ${READTHEDOCS_VERSION_SLUG} was not available after sync." >&2
+              if [ -s /tmp/readthedocs-version.json ]; then
+                cat /tmp/readthedocs-version.json >&2
+              fi
+              exit 1
+            fi
+            sleep 5
+          done
+
+          if grep -q '"active":[[:space:]]*true' /tmp/readthedocs-version.json \
+            && grep -q '"hidden":[[:space:]]*false' /tmp/readthedocs-version.json; then
+            curl --fail --silent --show-error \
+              -X POST \
+              -H "${auth_header}" \
+              "${version_url}builds/"
+          else
+            curl --fail --silent --show-error \
+              -X PATCH \
+              -H "${auth_header}" \
+              -H 'Content-Type: application/json' \
+              -d '{"active": true, "hidden": false}' \
+              "${version_url}"
+          fi
