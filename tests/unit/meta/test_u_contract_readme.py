@@ -46,8 +46,8 @@ _SUPPORTED_FORMATS_SECTION = '## Supported File Formats'
 _SUPPORTED_FORMAT_ROW_PATTERN = re.compile(r'^\| (?P<format>[a-z0-9]+)\s+\|')
 _MATRIX_ROW_PATTERN = re.compile(
     r'^\| `(?P<format>[^`]+)` \| `(?P<handler>[^`]+)` \| '
-    r'`(?P<base>[^`]+)` \| `(?P<support>[^`]+)` \| '
-    r'`(?P<status>[^`]+)` \|$',
+    r'`(?P<base>[^`]+)` \| `?(?P<support>[^`|]+)`? \| '
+    r'`?(?P<status>[^`|]+)`? \|$',
 )
 _OVERRIDE_ATTR_PATTERN = re.compile(
     r'\b(?:' + '|'.join(sorted(SMOKE_ROUNDTRIP_OVERRIDE_ATTRS)) + r')\b',
