@@ -77,20 +77,18 @@ class TestTxt(RoundtripUnitModuleContract):
         assert written == 3
         assert path.read_text(encoding='utf-8') == 'alpha\n\nbeta'
 
-    def test_write_accepts_legacy_text_records(
+    def test_write_rejects_legacy_text_records(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test that legacy ``{"text": ...}`` payloads remain accepted."""
+        """Test that legacy ``{"text": ...}`` payloads are rejected."""
         path = self.format_path(tmp_path)
 
-        written = mod.TxtFile().write(
-            path,
-            [{'text': 'alpha'}, {'text': 'beta'}],
-        )
-
-        assert written == 2
-        assert path.read_text(encoding='utf-8') == 'alpha\nbeta'
+        with pytest.raises(TypeError, match='TXT payload lists must contain'):
+            mod.TxtFile().write(
+                path,
+                [{'text': 'alpha'}, {'text': 'beta'}],
+            )
 
     @pytest.mark.parametrize(
         'payload',
@@ -115,12 +113,14 @@ class TestTxt(RoundtripUnitModuleContract):
         'payload',
         [
             {'nope': 'value'},
+            {'text': 'alpha'},
             [{'text': 1}],
             [1],
             123,
         ],
         ids=[
             'mapping_without_text',
+            'legacy_mapping',
             'legacy_record_without_string_text',
             'non_string_list_item',
             'scalar',
