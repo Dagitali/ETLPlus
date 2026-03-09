@@ -1,3 +1,8 @@
+# conf.py
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
