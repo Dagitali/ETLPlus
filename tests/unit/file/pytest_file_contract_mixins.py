@@ -30,6 +30,7 @@ from .pytest_file_contract_utils import (
 )
 from .pytest_file_contract_utils import make_payload
 from .pytest_file_contract_utils import patch_dependency_resolver_value
+from .pytest_file_roundtrip_spec import RoundtripPayload
 from .pytest_file_roundtrip_spec import RoundtripSpec
 from .pytest_file_support import PandasModuleStub
 from .pytest_file_support import RecordsFrameStub
@@ -130,15 +131,15 @@ class RoundtripUnitModuleContract(PathMixin):
 
     def normalize_roundtrip_result(
         self,
-        result: JSONData,
-    ) -> JSONData:
+        result: RoundtripPayload,
+    ) -> RoundtripPayload:
         """Normalize actual read results before assertions."""
         return result
 
     def normalize_roundtrip_expected(
         self,
-        expected: JSONData,
-    ) -> JSONData:
+        expected: RoundtripPayload,
+    ) -> RoundtripPayload:
         """Normalize expected roundtrip payloads before assertions."""
         return expected
 
@@ -159,7 +160,10 @@ class RoundtripUnitModuleContract(PathMixin):
         )
         expected_written = spec.expected_written_count
         if expected_written is None:
-            expected_written = count_records(spec.payload)
+            if isinstance(spec.payload, str):
+                expected_written = len(spec.payload.splitlines())
+            else:
+                expected_written = count_records(spec.payload)
         assert written == expected_written
 
         result = self.module_handler.read(path, options=spec.read_options)

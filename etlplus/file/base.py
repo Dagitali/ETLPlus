@@ -11,7 +11,9 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
+from typing import Any
 from typing import ClassVar
+from typing import cast
 
 from ..utils.types import JSONData
 from ..utils.types import JSONDict
@@ -54,6 +56,7 @@ __all__ = [
     'DictPayloadSemiStructuredTextFileHandlerABC',
     'EmbeddedDatabaseFileHandlerABC',
     'LogEventFileHandlerABC',
+    'PlainTextFileHandlerABC',
     'RecordPayloadSemiStructuredTextFileHandlerABC',
     'ReadOnlySpreadsheetFileHandlerABC',
     'ScientificDatasetFileHandlerABC',
@@ -97,7 +100,7 @@ class BoundFileHandler:
         self,
         *,
         options: ReadOptions | None = None,
-    ) -> JSONData:
+    ) -> Any:
         """
         Read from :attr:`path` using :attr:`handler`.
         """
@@ -105,14 +108,18 @@ class BoundFileHandler:
 
     def write(
         self,
-        data: JSONData,
+        data: object,
         *,
         options: WriteOptions | None = None,
     ) -> int:
         """
         Write *data* to :attr:`path` using :attr:`handler`.
         """
-        return self.handler.write(self.path, data, options=options)
+        return cast(Any, self.handler).write(
+            self.path,
+            data,
+            options=options,
+        )
 
 
 @dataclass(slots=True, frozen=True)
@@ -240,7 +247,7 @@ class FileHandlerABC(FileHandlerOption, ABC):
         path: Path,
         *,
         options: ReadOptions | None = None,
-    ) -> JSONData:
+    ) -> Any:
         """
         Read and return data from *path*.
 
@@ -253,7 +260,7 @@ class FileHandlerABC(FileHandlerOption, ABC):
 
         Returns
         -------
-        JSONData
+        Any
             Parsed payload.
         """
 
@@ -490,11 +497,24 @@ class StandardDelimitedTextFileHandlerABC(DelimitedTextFileHandlerABC):
         )
 
 
+class PlainTextFileHandlerABC(FileHandlerABC):
+    """
+    Base contract for plain text file handlers.
+
+    Typical formats: TXT.
+    """
+
+    # -- Class Attributes -- #
+
+    category: ClassVar[str] = 'plain_text'
+    default_encoding: ClassVar[str] = 'utf-8'
+
+
 class TextFixedWidthFileHandlerABC(RowReadWriteABC, FileHandlerABC):
     """
-    Base contract for plain text and fixed-width text formats.
+    Base contract for fixed-width row-oriented text formats.
 
-    Typical formats: TXT, FWF.
+    Typical formats: FWF.
     """
 
     # -- Class Attributes -- #

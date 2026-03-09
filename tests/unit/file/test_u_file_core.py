@@ -41,6 +41,7 @@ from .pytest_file_core_cases import STUBBED_FORMATS
 from .pytest_file_core_cases import UNKNOWN_FORMAT_CASE_IDS
 from .pytest_file_core_cases import UNKNOWN_FORMAT_CASES
 from .pytest_file_core_cases import XML_ROUNDTRIP_NORMALIZED_FORMATS
+from .pytest_file_core_cases import FormatPayload
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -54,7 +55,7 @@ def _assert_core_write_dispatch(
     *,
     expected_format: FileFormat,
     expected_path: Path,
-    expected_data: JSONData,
+    expected_data: object,
     expected_root_tag: str,
 ) -> None:
     """Assert core write dispatch metadata with routed XML root tag."""
@@ -93,7 +94,7 @@ def _coerce_numeric_value(value: object) -> object:
 def _install_core_handler_stub(
     monkeypatch: pytest.MonkeyPatch,
     *,
-    read_result: JSONData | None = None,
+    read_result: FormatPayload | None = None,
     write_result: int = 0,
 ) -> dict[str, object]:
     """Install a configurable core handler stub and return call metadata."""
@@ -102,12 +103,12 @@ def _install_core_handler_stub(
     def _at(path: Path) -> object:
         calls['bound_path'] = path
 
-        def _read() -> JSONData:
+        def _read() -> FormatPayload:
             calls['read_path'] = path
             return [] if read_result is None else read_result
 
         def _write(
-            data: JSONData,
+            data: object,
             *,
             options: WriteOptions | None = None,
         ) -> int:
@@ -128,7 +129,7 @@ def _install_core_handler_stub(
     return calls
 
 
-def normalize_numeric_records(records: JSONData) -> JSONData:
+def normalize_numeric_records(records: FormatPayload) -> FormatPayload:
     """Normalize numeric values for deterministic record comparisons."""
     if not isinstance(records, list):
         return records
@@ -142,7 +143,7 @@ def normalize_numeric_records(records: JSONData) -> JSONData:
     ]
 
 
-def normalize_xml_payload(payload: JSONData) -> JSONData:
+def normalize_xml_payload(payload: FormatPayload) -> FormatPayload:
     """Normalize XML payloads to list-based item structures."""
     if not isinstance(payload, dict):
         return payload
@@ -159,9 +160,9 @@ def normalize_xml_payload(payload: JSONData) -> JSONData:
 def _normalize_roundtrip_values(
     *,
     file_format: FileFormat,
-    result: JSONData,
-    expected: JSONData,
-) -> tuple[JSONData, JSONData]:
+    result: FormatPayload,
+    expected: FormatPayload,
+) -> tuple[FormatPayload, FormatPayload]:
     """Normalize roundtrip values for format-specific assertion behavior."""
     normalized_result = result
     normalized_expected = expected
@@ -177,10 +178,10 @@ def _read_with_known_io_skip(
     *,
     path: Path,
     file_format: FileFormat,
-) -> JSONData:
+) -> FormatPayload:
     """Read one file while applying shared known I/O skip policy."""
     try:
-        return File(path, file_format).read()
+        return cast(FormatPayload, File(path, file_format).read())
     except OSError as err:
         skip_on_known_file_io_error(
             error=err,
@@ -405,8 +406,8 @@ class TestFile:
         tmp_path: Path,
         file_format: FileFormat,
         filename: str,
-        payload: JSONData,
-        expected: JSONData,
+        payload: FormatPayload,
+        expected: FormatPayload,
         requires: tuple[str, ...],
     ) -> None:
         """Test that round-trip reads and writes across file formats."""

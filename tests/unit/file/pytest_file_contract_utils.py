@@ -10,6 +10,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Literal
 from typing import cast
+from typing import overload
 
 import pytest
 
@@ -37,13 +38,43 @@ def _raise_unexpected_dependency_call(
 # SECTION: FUNCTIONS ======================================================== #
 
 
+@overload
+def call_module_operation(
+    module: ModuleType,
+    *,
+    operation: Literal['read'],
+    path: Path,
+    write_payload: None = None,
+) -> object: ...
+
+
+@overload
+def call_module_operation(
+    module: ModuleType,
+    *,
+    operation: Literal['write'],
+    path: Path,
+    write_payload: object | None = None,
+) -> int: ...
+
+
+@overload
 def call_module_operation(
     module: ModuleType,
     *,
     operation: Operation,
     path: Path,
-    write_payload: JSONData | None = None,
-) -> JSONData | int:
+    write_payload: object | None = None,
+) -> object | int: ...
+
+
+def call_module_operation(
+    module: ModuleType,
+    *,
+    operation: Operation,
+    path: Path,
+    write_payload: object | None = None,
+) -> object | int:
     """
     Invoke module handler ``read``/``write`` through shared test utilities.
     """
