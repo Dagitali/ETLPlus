@@ -28,6 +28,7 @@ etlplus = importlib.import_module('etlplus')
 project = 'ETLPlus'
 copyright = '2026, Dagitali LLC'
 author = etlplus.__author__
+version = etlplus.__version__
 release = etlplus.__version__
 
 # -- General Configuration -- #
