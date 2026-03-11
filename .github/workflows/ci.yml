@@ -109,6 +109,23 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}  # Omit for public repo
           verbose: true
 
+  document:
+    name: Build docs
+    runs-on: ubuntu-latest
+    permissions: *permissions_read
+    steps:
+      - *checkout_step
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: '3.13'
+          python-bootstrap: "-r docs/requirements.txt -e ."
+      - name: Build Sphinx HTML docs
+        run: |
+          python -m sphinx -T -W --keep-going \
+            -b html \
+            docs/source \
+            docs/build/html
+
   build:
     name: Build distributions
     runs-on: ubuntu-latest
