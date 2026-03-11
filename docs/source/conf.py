@@ -58,12 +58,20 @@ autodoc_default_options = {
     'show-inheritance': True,
 }
 autodoc_member_order = 'bysource'
+autodoc_typehints = 'none'
+python_use_unqualified_type_names = False
 autodoc_mock_imports = [
     'click',
+    'h5netcdf',
+    'netCDF4',
     'pydantic',
+    'pyreadr',
+    'pyreadstat',
     'requests',
     'sqlalchemy',
+    'tables',
     'typer',
+    'xarray',
 ]
 
 # -- Napoleon Configuration -- #
