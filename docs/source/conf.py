@@ -35,11 +35,17 @@ release = etlplus.__version__
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions: list[str] = [
+    'myst_parser',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
 ]
+
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.md': 'markdown',
+}
 
 templates_path = ['_templates'] if (DOCS / '_templates').is_dir() else []
 exclude_patterns: list[str] = [
@@ -78,6 +84,7 @@ autodoc_mock_imports = [
 
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
+myst_heading_anchors = 6
 
 # -- Options for HTML Output -- #
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

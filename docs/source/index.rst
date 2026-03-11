@@ -8,13 +8,14 @@ ETLPlus documentation
 
 ETLPlus is a veritable Swiss Army knife for enabling simple ETL operations,
 offering both a Python package and command-line interface for data extraction,
-validation, transformation, and loading. The API reference below is generated
-from the ETLplus package docstrings so the published docs track the Python
-source.
+validation, transformation, and loading. The user guides below are published
+from the project Markdown documents, and the API reference is generated from
+the ETLplus package docstrings so the published docs track the Python source.
 
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   guides/index
    api/index
