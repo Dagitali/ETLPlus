@@ -14,7 +14,9 @@ import importlib
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+CONFIG = Path(__file__).resolve()
+ROOT = CONFIG.parents[2]
+DOCS = CONFIG.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
@@ -38,7 +40,7 @@ extensions: list[str] = [
     'sphinx.ext.viewcode',
 ]
 
-templates_path = ['_templates']
+templates_path = ['_templates'] if (DOCS / '_templates').is_dir() else []
 exclude_patterns: list[str] = [
     '_build',
     'Thumbs.db',
@@ -72,5 +74,5 @@ napoleon_numpy_docstring = True
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
+html_static_path = ['_static'] if (DOCS / '_static').is_dir() else []
 html_title = f'{project} {release}'
