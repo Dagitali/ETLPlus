@@ -557,4 +557,4 @@ When adding new config objects or fields:
 
 Contributors: for the repo-wide typing approach (TypedDicts as editor hints, `Mapping[str, Any]`
 inputs, and overloads imported only under `TYPE_CHECKING`), see
-[`CONTRIBUTING.md#typing-philosophy`](../CONTRIBUTING.md#typing-philosophy).
+[`CONTRIBUTING.md#typing-philosophy`](https://github.com/Dagitali/ETLPlus/blob/main/CONTRIBUTING.md#typing-philosophy).
