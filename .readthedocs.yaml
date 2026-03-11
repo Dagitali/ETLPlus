@@ -3,24 +3,37 @@
 #
 # Copyright © 2026 Dagitali LLC. All rights reserved.
 #
-# Read the Docs build configuration for the ETLPlus API reference.
+# Read the Docs configuration file for Sphinx projects.
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details.
 
 ---
 
-# Required
+# Required.
 version: 2
 
-# Set the OS, Python version, & other tools needed for building the docs.
+# Set the OS, Python version, & other tools needed for building docs.
 build:
   os: ubuntu-24.04
   tools:
     python: "3.13"
 
-# Sphinx configuration file path.
-sphinx:
-  configuration: docs/source/conf.py
+# Optional: Build docs in additional formats.
+formats:
+  - epub
+  - pdf
 
-# Install the dependencies for building the docs.
+# Build docs in "docs/" directory with Sphinx.
+sphinx:
+  # Sphinx configuration file path.
+  configuration: docs/source/conf.py
+  # Fail on all warnings to avoid broken references.
+  fail_on_warning: true
+
+# Optional (recommended): Declare Python requirements required to build docs.
+# See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
 python:
   install:
     - requirements: docs/requirements.txt
+    # Install Python packages before building docs.
+    - method: pip
+      path: .
