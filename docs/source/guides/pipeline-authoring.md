@@ -1,0 +1,2 @@
+```{include} ../../pipeline-guide.md
+```
