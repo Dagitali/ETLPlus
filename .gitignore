@@ -491,3 +491,8 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/dropbox,emacs,linux,macos,pycharm+all,python,vim,visualstudiocode,windows
+
+### Read the Docs ###
+
+# Sphinx-generated API docs
+docs/source/api/generated/
