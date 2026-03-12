@@ -20,7 +20,6 @@ build:
 # Optional: Build docs in additional formats.
 formats:
   - epub
-  - pdf
 
 # Build docs in "docs/" directory with Sphinx.
 sphinx:
