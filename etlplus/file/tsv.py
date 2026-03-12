@@ -5,7 +5,7 @@ Helpers for reading/writing Tab-Separated Values (TSV) files.
 
 Notes
 -----
-- A TSV file is a plain text file that uses the tab character (``\t``) to
+- A TSV file is a plain text file that uses the tab character (``\\t``) to
     separate values.
 - Common cases:
     - Each line in the file represents a single record.
