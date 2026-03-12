@@ -33,7 +33,8 @@ sphinx:
 # See https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
 python:
   install:
-    - requirements: docs/requirements.txt
     # Install Python packages before building docs.
     - method: pip
       path: .
+      extra_requirements:
+        - docs
