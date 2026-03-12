@@ -17,8 +17,11 @@ from pathlib import Path
 CONFIG = Path(__file__).resolve()
 ROOT = CONFIG.parents[2]
 DOCS = CONFIG.parent
+EXTENSIONS = DOCS / '_ext'
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(EXTENSIONS) not in sys.path:
+    sys.path.insert(0, str(EXTENSIONS))
 
 etlplus = importlib.import_module('etlplus')
 
@@ -40,6 +43,7 @@ extensions: list[str] = [
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
+    'prefer_module_autosummary',
 ]
 
 source_suffix = {
