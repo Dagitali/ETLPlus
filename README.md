@@ -117,6 +117,8 @@ ETLPlus supports Python 3.13 and above.
 
 ## Installation
 
+<!-- docs:getting-started-installation:start -->
+
 ```bash
 pip install etlplus
 ```
@@ -143,11 +145,17 @@ For runtime-only optional file-format support:
 pip install -e ".[file]"
 ```
 
+<!-- docs:getting-started-installation:end -->
+
 ## Quickstart
+
+<!-- docs:getting-started-quickstart:start -->
 
 Get up and running in under a minute.
 
-[Command line interface](#command-line-interface):
+### Command line interface
+
+<!-- docs:getting-started-quickstart-cli:start -->
 
 ```bash
 # Inspect help and version
@@ -160,7 +168,11 @@ etlplus extract examples/data/sample.csv \
   - temp/sample_output.json
 ```
 
-[Python API](#python-api):
+<!-- docs:getting-started-quickstart-cli:end -->
+
+### Python API
+
+<!-- docs:getting-started-quickstart-python:start -->
 
 ```python
 from etlplus.ops import extract, transform, validate, load
@@ -172,6 +184,10 @@ rules = {"name": {"type": "string", "required": True}, "email": {"type": "string
 assert validate(filtered, rules)["valid"]
 load(filtered, "file", "temp/sample_output.json", file_format="json")
 ```
+
+<!-- docs:getting-started-quickstart-python:end -->
+
+<!-- docs:getting-started-quickstart:end -->
 
 ## Data Connectors
 
