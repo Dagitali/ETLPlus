@@ -495,4 +495,5 @@ $RECYCLE.BIN/
 ### Read the Docs ###
 
 # Sphinx-generated API docs
+docs/build/
 docs/source/api/generated/

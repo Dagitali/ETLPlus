@@ -1,5 +1,7 @@
 # Examples
 
+<!-- docs:guides-examples:start -->
+
 A few self-contained examples to get you started quickly.
 
 ## Python quickstart
@@ -38,7 +40,7 @@ For larger workflows, author a pipeline YAML and run it with your own orchestrat
 script.
 
 - Authoring: see the Pipeline Authoring Guide at `docs/pipeline-guide.md` and the example
-  `in/pipeline.yml` or `examples/configs/pipeline.yml`.
+  `examples/configs/pipeline.yml`.
 - Runner internals and Python entrypoint: see `etlplus.ops.run` docstrings and
   `docs/pipeline-guide.md`.
 
@@ -70,5 +72,7 @@ print(result["status"], result.get("records"))
 Design notes on config typing and merges:
 - Mapping inputs, dict outputs, and merge semantics are documented in
   `docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs`.
- - Typing philosophy (TypedDicts as editor hints, permissive runtime):
-   `CONTRIBUTING.md#typing-philosophy`.
+- Typing philosophy (TypedDicts as editor hints, permissive runtime):
+  `CONTRIBUTING.md#typing-philosophy`.
+
+<!-- docs:guides-examples:end -->

@@ -174,9 +174,19 @@ dist: ## Build sdist and wheel into ./dist using pyproject.toml
 
 .PHONY: docs
 docs: venv ## Build HTML docs with Sphinx (in ./docs/build/html)
-	@$(PYTHON) -m pip install -r docs/requirements.txt
+	@$(PYTHON) -m pip install -e $(PKG_DIR)[docs]
+	@find docs/source/api/generated -type f -name '*.rst' -delete 2>/dev/null || true
+	@rm -rf docs/build/html docs/build/doctrees/html
 	@$(MAKE) -C docs html SPHINXBUILD="$(abspath $(PYTHON)) -m sphinx"
 	@$(call ECHO_OK,"Built HTML docs in ./docs/build/html")
+
+.PHONY: docs-epub
+docs-epub: venv ## Build EPUB docs with Sphinx (in ./docs/build/epub)
+	@$(PYTHON) -m pip install -e $(PKG_DIR)[docs]
+	@find docs/source/api/generated -type f -name '*.rst' -delete 2>/dev/null || true
+	@rm -rf docs/build/epub docs/build/doctrees/epub
+	@$(MAKE) -C docs epub SPHINXBUILD="$(abspath $(PYTHON)) -m sphinx"
+	@$(call ECHO_OK,"Built EPUB docs in ./docs/build/epub")
 
 .PHONY: file
 file: venv ## Install package + file extras

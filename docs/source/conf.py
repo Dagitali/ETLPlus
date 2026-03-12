@@ -89,6 +89,7 @@ myst_heading_anchors = 6
 # -- Options for HTML Output -- #
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
+html_baseurl = 'https://etlplus.readthedocs.io/en/stable/'
 html_static_path = ['_static'] if (DOCS / '_static').is_dir() else []
+html_theme = 'sphinx_rtd_theme'
 html_title = f'{project} {release}'

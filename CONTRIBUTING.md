@@ -52,6 +52,8 @@ pip install types-requests
 We’ve added `# type: ignore` on imports where appropriate to keep editors happy without extra deps,
 but using the stubs can provide a nicer editing experience.
 
+<!-- docs:guides-contributing:start -->
+
 ## Typing Philosophy
 
 We optimize for a great editor experience and a permissive runtime:
@@ -197,3 +199,5 @@ Common commands:
 - API flows: stub `EndpointClient` or transport layer via `monkeypatch` to avoid real HTTP.
 - Runner tests: monkeypatch `load_config` to inject an in-memory `Config`.
 - Keep tests small and focused; prefer one behavior per test with clear assertions.
+
+<!-- docs:guides-contributing:end -->
