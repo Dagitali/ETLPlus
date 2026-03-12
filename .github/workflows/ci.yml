@@ -110,21 +110,27 @@ jobs:
           verbose: true
 
   document:
-    name: Build docs
+    name: Build docs (${{ matrix.builder }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        builder: [html, epub]
     permissions: *permissions_read
     steps:
       - *checkout_step
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: '3.13'
-          python-bootstrap: "-r docs/requirements.txt -e ."
-      - name: Build Sphinx HTML docs
+          python-bootstrap: "-e .[docs]"
+      - name: Build Sphinx docs
         run: |
+          find docs/source/api/generated -type f -name '*.rst' -delete 2>/dev/null || true
+          rm -rf docs/build/${{ matrix.builder }} docs/build/doctrees/${{ matrix.builder }}
           python -m sphinx -T -W --keep-going \
-            -b html \
+            -b ${{ matrix.builder }} \
+            -d docs/build/doctrees/${{ matrix.builder }} \
             docs/source \
-            docs/build/html
+            docs/build/${{ matrix.builder }}
 
   build:
     name: Build distributions
