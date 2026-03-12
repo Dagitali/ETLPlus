@@ -36,7 +36,7 @@ def _coerce_handler_class(
     symbol: object,
     *,
     file_format: FileFormat,
-) -> type[FileHandlerABC]:
+) -> HandlerClass:
     """
     Validate and coerce *symbol* into a handler class.
 
@@ -49,7 +49,7 @@ def _coerce_handler_class(
 
     Returns
     -------
-    type[FileHandlerABC]
+    HandlerClass
         Concrete handler class.
 
     Raises
@@ -218,7 +218,7 @@ _HANDLER_CLASS_SPECS: dict[FileFormat, str] = {
 @cache
 def get_handler_class(
     file_format: FileFormat,
-) -> type[FileHandlerABC]:
+) -> HandlerClass:
     """
     Resolve a handler class for *file_format*.
 
@@ -229,7 +229,7 @@ def get_handler_class(
 
     Returns
     -------
-    type[FileHandlerABC]
+    HandlerClass
         Concrete handler class for the format.
 
     Raises
