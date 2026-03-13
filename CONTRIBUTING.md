@@ -183,9 +183,9 @@ If a test calls `etlplus.cli.main()` or `etlplus.ops.run.run()`, it is integrati
   where intent applies.
 - Markers are declared in `pytest.ini`. Avoid introducing ad-hoc markers without adding them there.
 - For optional dependencies, prefer `pytest.importorskip("module")` so tests skip cleanly when the extra isn’t installed.
-- Base installs include common non-native file deps (`cbor2`, `duckdb`, `msgpack`, `pymongo`,
-  `tomli-w`).
-- For full local/CI coverage across remaining optional file formats, install `pip install -e
+- The default install includes the dependencies used by the built-in file handlers that are covered
+  by the default test matrix.
+- For full local/CI coverage across the remaining scientific and specialty optional formats, install `pip install -e
   ".[dev,file]"`.
 
 ### Running Tests
