@@ -188,6 +188,14 @@ docs-epub: venv ## Build EPUB docs with Sphinx (in ./docs/build/epub)
 	@$(MAKE) -C docs epub SPHINXBUILD="$(abspath $(PYTHON)) -m sphinx"
 	@$(call ECHO_OK,"Built EPUB docs in ./docs/build/epub")
 
+.PHONY: docs-linkcheck
+docs-linkcheck: venv ## Run Sphinx linkcheck against the published docs set
+	@$(PYTHON) -m pip install -e $(PKG_DIR)[docs]
+	@find docs/source/api/generated -type f -name '*.rst' -delete 2>/dev/null || true
+	@rm -rf docs/build/linkcheck docs/build/doctrees/linkcheck
+	@$(MAKE) -C docs linkcheck SPHINXBUILD="$(abspath $(PYTHON)) -m sphinx"
+	@$(call ECHO_OK,"Validated docs links in ./docs/build/linkcheck")
+
 .PHONY: file
 file: venv ## Install package + file extras
 	@$(PYTHON) -m pip install -e $(PKG_DIR)[file]
