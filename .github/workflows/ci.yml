@@ -148,6 +148,9 @@ jobs:
       - name: Build distributions
         run: |
           python -m build
+      - name: Audit release artifacts
+        run: |
+          python tools/check_release_artifacts.py dist/*
       - name: Validate distributions
         run: |
           python -m twine check dist/*
