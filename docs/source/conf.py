@@ -29,10 +29,12 @@ etlplus = importlib.import_module('etlplus')
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'ETLPlus'
-copyright = '2026, Dagitali LLC'
+project_copyright = '2026, Dagitali LLC'
 author = etlplus.__author__
 version = etlplus.__version__
 release = etlplus.__version__
+
+globals()['copyright'] = project_copyright
 
 # -- General Configuration -- #
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
