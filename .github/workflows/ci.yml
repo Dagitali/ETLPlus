@@ -114,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        builder: [html, epub]
+        builder: [html, epub, linkcheck]
     permissions: *permissions_read
     steps:
       - *checkout_step
@@ -132,12 +132,31 @@ jobs:
             docs/source \
             docs/build/${{ matrix.builder }}
 
+  smoke-cross-platform:
+    name: Smoke install on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    permissions: *permissions_read
+    steps:
+      - *checkout_step
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: '3.13'
+          python-bootstrap: '.'
+      - name: Verify CLI entrypoint
+        shell: bash
+        run: |
+          python -m etlplus --version
+          etlplus --version
+
   build:
     name: Build distributions
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
-    needs: [lint, test, document]
+    needs: [lint, test, document, smoke-cross-platform]
     permissions: *permissions_read
     steps:
       - *checkout_step
