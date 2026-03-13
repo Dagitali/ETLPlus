@@ -135,20 +135,28 @@ jobs:
   build:
     name: Build distributions
     runs-on: ubuntu-latest
-    if: &release_tag_condition >
-      startsWith(github.ref, 'refs/tags/v') ||
-      startsWith(github.ref, 'refs/tags/rc')
-    needs: [lint, test]
+    if: github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: [lint, test, document]
     permissions: *permissions_read
     steps:
       - *checkout_step
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: '3.13'
-          python-bootstrap: build
+          python-bootstrap: "build twine"
       - name: Build distributions
         run: |
           python -m build
+      - name: Validate distributions
+        run: |
+          python -m twine check dist/*
+      - name: Smoke-test wheel install
+        run: |
+          python -m venv .wheel-venv
+          .wheel-venv/bin/python -m pip install --upgrade pip
+          .wheel-venv/bin/python -m pip install dist/*.whl
+          .wheel-venv/bin/etlplus --version
       - name: Upload distributions
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # Pinned v4
         with:
@@ -159,7 +167,9 @@ jobs:
   release:
     name: Publish GitHub release
     runs-on: ubuntu-latest
-    if: *release_tag_condition
+    if: &release_tag_condition >
+      startsWith(github.ref, 'refs/tags/v') ||
+      startsWith(github.ref, 'refs/tags/rc')
     needs: build
     permissions:
       contents: write
