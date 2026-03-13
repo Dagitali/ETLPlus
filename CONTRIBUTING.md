@@ -39,13 +39,14 @@ reproducible bug reports are often as valuable as small code changes.
 
 ## Merge Request Process
 
-1. Ensure any install or build dependencies are removed before the end of the layer when doing a
-   build.
-2. Update the [README] with details of changes to the interface.  This includes new environment
+1. Update the [README] with details of changes to the interface. This includes new environment
    variables, exposed ports, useful file locations and container parameters.
-3. Increase the version numbers in any examples files and the [README] to the new version that this
-   pull request would represent.  The versioning scheme we use is [SemVer].
-4. You may merge in the merge request once you have the sign-off of two other developers.  If you do
+2. For release-affecting changes (packaging, CI, published docs, install snippets, or stable public
+   surface decisions), consult [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
+3. ETLPlus uses `setuptools-scm`, so do not hand-edit version numbers in `pyproject.toml`,
+   `setup.py`, or `etlplus/__version__.py`. If a change affects recorded version output, refresh the
+   generated demo/version snippets instead.
+4. You may merge in the merge request once you have the sign-off of two other developers. If you do
    not have permission to do that, you may request the second reviewer to merge it for you.
 
 ## Code of Conduct
