@@ -15,6 +15,7 @@ package and command-line interface for data extraction, validation, transformati
 
 - [ETLPlus](#etlplus)
   - [Getting Started](#getting-started)
+  - [Release Status](#release-status)
   - [Features](#features)
   - [Installation](#installation)
   - [Quickstart](#quickstart)
@@ -81,7 +82,30 @@ To get started:
 - Try the [Quickstart](#quickstart) for a minimal working example (CLI and Python).
 - Explore [Usage](#usage) for more detailed options and workflows.
 
-ETLPlus supports Python 3.13 and above.
+ETLPlus currently supports Python 3.13 and 3.14.
+
+## Release Status
+
+ETLPlus is still in the pre-`v1.0.0` phase. The project is usable today, but the repository still
+contains some placeholders and migration-era modules that should not be interpreted as part of a
+finished stable surface.
+
+The current intended stable surface for `v1.0.0` is:
+
+- The documented CLI commands: `check`, `extract`, `validate`, `transform`, `load`, `render`, and `run`
+- The documented Python ETL primitives in `etlplus.ops`
+- The implemented file handlers listed as `implemented` in the handler matrix
+- The documented API client and pagination helpers under `etlplus.api`
+
+The following are not part of the stable execution surface for `v1.0.0` unless explicitly promoted
+later:
+
+- Database extract/load execution paths that are still described as placeholders
+- Stubbed file handlers and placeholder formats
+- Defunct or migration-reference modules retained for historical context
+
+Maintainers handling packaging, CI, versioned docs, or release gating should consult
+[`RELEASE-CHECKLIST.md`](RELEASE-CHECKLIST.md).
 
 ## Features
 
