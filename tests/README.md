@@ -8,6 +8,7 @@ with pytest markers.
   - [Intent Markers](#intent-markers)
   - [Integration File Smoke Pattern](#integration-file-smoke-pattern)
   - [Discovery and Selection](#discovery-and-selection)
+  - [Dependency Prerequisites](#dependency-prerequisites)
   - [Common Commands](#common-commands)
   - [Post-Move Validation Checklist](#post-move-validation-checklist)
 
@@ -59,10 +60,10 @@ Default test discovery is controlled by `pytest.ini`:
 
 ## Dependency Prerequisites
 
-The base install already includes common non-native deps used by semi-structured and
-embedded-database handlers (`cbor2`, `duckdb`, `msgpack`, `pymongo`, `tomli-w`).
+The default install already includes the dependencies used by the built-in file handlers covered by
+the default test matrix.
 
-For full coverage of remaining optional file formats (local CI parity), install:
+For full coverage of the remaining optional scientific and specialty formats (local CI parity), install:
 
 ```bash
 pip install -e ".[dev,file]"
