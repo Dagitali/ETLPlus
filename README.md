@@ -209,6 +209,10 @@ Support is only one way to contribute. ETLPlus also benefits from codeless contr
 documentation fixes, issue triage, reproducible bug reports, usage feedback, examples, testing
 results, answering questions in discussions, and release validation.
 
+For community participation, use GitHub Discussions for questions, docs feedback, examples, and
+support conversations. Use GitHub Issues for confirmed bugs and concrete feature work. See
+[`docs/community-discussions.md`](docs/community-discussions.md) for the recommended setup.
+
 ## Data Connectors
 
 Data connectors abstract sources from which to extract data and targets to which to load data. They
