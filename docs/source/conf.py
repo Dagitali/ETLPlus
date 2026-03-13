@@ -99,3 +99,12 @@ html_baseurl = 'https://etlplus.readthedocs.io/en/stable/'
 html_static_path = ['_static'] if (DOCS / '_static').is_dir() else []
 html_theme = 'sphinx_rtd_theme'
 html_title = f'{project} {release}'
+
+linkcheck_ignore = [
+    r'https://github\.com/Dagitali/ETLPlus/(issues|discussions)$',
+    r'https://github\.com/sponsors/Dagitali$',
+    r'https://buymeacoffee\.com/djrlj694$',
+]
+linkcheck_anchors = False
+linkcheck_timeout = 10
+linkcheck_retries = 2
