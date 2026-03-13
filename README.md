@@ -195,14 +195,23 @@ load(filtered, "file", "temp/sample_output.json", file_format="json")
 ## Support ETLPlus
 
 If ETLPlus saves you engineering time, consider supporting the project through the repository
-sponsor button once the funding links are live on the default branch.
-
-Funding helps pay for:
+sponsor button once the funding links are live on the default branch. Funding helps to pay for:
 
 - Maintenance and bug fixes
 - New file, API, and database connectors
 - Documentation, examples, and release automation
 - Compatibility work for new Python and dependency versions
+
+The preferred sponsorship path is [GitHub Sponsors][GitHub Sponsors], with [Buy Me a Coffee][Buy Me
+a Coffee] as the lightweight fallback for one-time support.
+
+Support is only one way to contribute. ETLPlus also benefits from codeless contributions such as
+documentation fixes, issue triage, reproducible bug reports, usage feedback, examples, testing
+results, answering questions in discussions, and release validation.
+
+For community participation, use GitHub Discussions for questions, docs feedback, examples, and
+support conversations. Use GitHub Issues for confirmed bugs and concrete feature work. See
+[`docs/community-discussions.md`](docs/community-discussions.md) for the recommended setup.
 
 ## Data Connectors
 
@@ -913,6 +922,16 @@ If you choose to be a code contributor, please first refer these documents:
 - Typing philosophy (TypedDicts as editor hints, permissive runtime):
   [`CONTRIBUTING.md#typing-philosophy`](CONTRIBUTING.md#typing-philosophy)
 
+Valuable non-code contributions include:
+
+- Improving or correcting documentation
+- Reporting bugs with clear reproduction steps
+- Testing releases and platform-specific behavior
+- Proposing examples, tutorials, and workflow patterns
+- Answering questions in GitHub Discussions
+- Sponsoring the project through [GitHub Sponsors][GitHub Sponsors] or [Buy Me a Coffee][Buy Me a
+  Coffee]
+
 ## Documentation
 
 ### Python Packages/Subpackage
@@ -953,8 +972,10 @@ ETLPlus is inspired by common work patterns in data engineering and software eng
 Python development, aiming to increase productivity and reduce boilerplate code.  Feedback and
 contributions are always appreciated!
 
+[Buy Me a Coffee]: https://buymeacoffee.com/djrlj694
 [Codecov project]: https://codecov.io/github/Dagitali/ETLPlus?branch=main
 [GitHub Actions CI workflow]: https://github.com/Dagitali/ETLPlus/actions/workflows/ci.yml
+[GitHub Sponsors]: https://github.com/sponsors/Dagitali
 [GitHub contributors]: https://github.com/Dagitali/ETLPlus/graphs/contributors
 [GitHub issues]: https://github.com/Dagitali/ETLPlus/issues
 [GitHub PRs]: https://github.com/Dagitali/ETLPlus/pulls

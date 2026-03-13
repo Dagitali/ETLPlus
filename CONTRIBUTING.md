@@ -9,6 +9,7 @@ When contributing to this repository, please first discuss the change you wish t
 email, or any other method with the owners of this repository before making a change.
 
 - [Contributing Guidelines](#contributing-guidelines)
+  - [Ways to Contribute](#ways-to-contribute)
   - [Merge Request Process](#merge-request-process)
   - [Code of Conduct](#code-of-conduct)
   - [Type Checking](#type-checking)
@@ -19,6 +20,22 @@ email, or any other method with the owners of this repository before making a ch
     - [Test Configuration](#test-configuration)
     - [Running Tests](#running-tests)
     - [Common Patterns](#common-patterns)
+
+## Ways to Contribute
+
+Not every valuable contribution needs to be a pull request. ETLPlus also benefits from codeless
+contributions such as:
+
+- Sponsorship through [GitHub Sponsors] or [Buy Me a Coffee][Buy Me a Coffee]
+- Documentation corrections and clarity improvements
+- Reproducible bug reports with environment details and sample inputs
+- Validation of releases on different operating systems or Python versions
+- Examples, tutorials, and workflow suggestions
+- Issue triage and feedback on feature proposals
+- Answering usage questions in GitHub Discussions
+
+If you are looking for the lowest-friction way to help, strong documentation feedback and
+reproducible bug reports are often as valuable as small code changes.
 
 ## Merge Request Process
 
@@ -201,3 +218,6 @@ Common commands:
 - Keep tests small and focused; prefer one behavior per test with clear assertions.
 
 <!-- docs:guides-contributing:end -->
+
+[Buy Me a Coffee]: https://buymeacoffee.com/djrlj694
+[GitHub Sponsors]: https://github.com/sponsors/Dagitali
