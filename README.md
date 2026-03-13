@@ -18,6 +18,9 @@ package and command-line interface for data extraction, validation, transformati
   - [Features](#features)
   - [Installation](#installation)
   - [Quickstart](#quickstart)
+    - [Command line interface](#command-line-interface)
+    - [Python API](#python-api)
+  - [Support ETLPlus](#support-etlplus)
   - [Data Connectors](#data-connectors)
     - [REST APIs (`api`)](#rest-apis-api)
     - [Databases (`database`)](#databases-database)
@@ -35,7 +38,7 @@ package and command-line interface for data extraction, validation, transformati
       - [Data Archives](#data-archives)
       - [Templates](#templates)
   - [Usage](#usage)
-    - [Command Line Interface](#command-line-interface)
+    - [Command Line Interface](#command-line-interface-1)
       - [Argument Order and Required Options](#argument-order-and-required-options)
       - [Check Pipelines](#check-pipelines)
       - [Render SQL DDL](#render-sql-ddl)
@@ -43,7 +46,7 @@ package and command-line interface for data extraction, validation, transformati
       - [Validate Data](#validate-data)
       - [Transform Data](#transform-data)
       - [Load Data](#load-data)
-    - [Python API](#python-api)
+    - [Python API](#python-api-1)
     - [Complete ETL Pipeline Example](#complete-etl-pipeline-example)
     - [Format Overrides](#format-overrides)
   - [Transformation Operations](#transformation-operations)
@@ -188,6 +191,18 @@ load(filtered, "file", "temp/sample_output.json", file_format="json")
 <!-- docs:getting-started-quickstart-python:end -->
 
 <!-- docs:getting-started-quickstart:end -->
+
+## Support ETLPlus
+
+If ETLPlus saves you engineering time, consider supporting the project through the repository
+sponsor button once the funding links are live on the default branch.
+
+Funding helps pay for:
+
+- Maintenance and bug fixes
+- New file, API, and database connectors
+- Documentation, examples, and release automation
+- Compatibility work for new Python and dependency versions
 
 ## Data Connectors
 
