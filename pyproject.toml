@@ -79,6 +79,8 @@ etlplus = "etlplus.cli:main"
 [project.urls]
 Changelog = "https://etlplus.readthedocs.io/en/stable/changelog.html"
 Documentation = "https://etlplus.readthedocs.io/en/stable/"
+Donate = "https://buymeacoffee.com/djrlj694"
+Funding = "https://github.com/sponsors/Dagitali"
 Homepage = "https://github.com/Dagitali/ETLPlus"
 Repository = "https://github.com/Dagitali/ETLPlus"
 
