@@ -2,6 +2,21 @@
 
 Thank you for using ETLPlus!
 
+- [Support](#support)
+  - [Support the Project](#support-the-project)
+  - [Where to Get Help](#where-to-get-help)
+
+## Support the Project
+
+If ETLPlus is useful in your work, you can support its ongoing maintenance through the repository
+sponsor button.
+
+- GitHub Sponsors: https://github.com/sponsors/Dagitali
+- Buy Me a Coffee: https://buymeacoffee.com/djrlj694
+
+Financial support helps fund maintenance, documentation, examples, compatibility work, and future
+connector development.
+
 ## Where to Get Help
 
 - **Questions & Usage**: Please use [GitHub Discussions][discussions] for general questions, usage
