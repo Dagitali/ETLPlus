@@ -156,9 +156,9 @@ For development:
 pip install -e ".[dev]"
 ```
 
-The default install now includes non-native dependencies used by common semi-structured and
-embedded-database and spreadsheet handlers: `cbor2`, `duckdb`, `msgpack`, `pymongo` (`bson`),
-`tomli-w`, `openpyxl`, `xlrd`, and `odfpy`.
+The default install includes the non-native dependencies used by the built-in file handlers for
+common binary, columnar, spreadsheet, and embedded-database formats such as `cbor2`, `duckdb`,
+`fastavro`, `msgpack`, `openpyxl`, `odfpy`, `pandas`, `pyarrow`, `pymongo`, `xlrd`, and `xlwt`.
 
 For development with full optional file-format support:
 
@@ -171,6 +171,9 @@ For runtime-only optional file-format support:
 ```bash
 pip install -e ".[file]"
 ```
+
+The `file` extra is now reserved for the remaining scientific and specialty format dependencies such
+as `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`.
 
 <!-- docs:getting-started-installation:end -->
 
