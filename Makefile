@@ -260,7 +260,7 @@ test: ## Run tests with pytest
 
 .PHONY: typecheck
 typecheck: ## Type-check with mypy
-	@$(VENV_BIN)/mypy $(PKG_DIR)/src/etlplus || (echo "Hint: run 'make dev' first" && false)
+	@$(VENV_BIN)/mypy etlplus || (echo "Hint: run 'make dev' first" && false)
 
 .PHONY: up
 up: ## First-time setup: bootstrap, pull images, start DB+UI, wait healthy
