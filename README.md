@@ -81,6 +81,8 @@ To get started:
 - See [Installation](#installation) for setup instructions.
 - Try the [Quickstart](#quickstart) for a minimal working example (CLI and Python).
 - Explore [Usage](#usage) for more detailed options and workflows.
+- See [SUPPORT.md](SUPPORT.md) for the current support policy, supported Python versions, and
+  response targets.
 
 ETLPlus currently supports Python 3.13 and 3.14.
 
