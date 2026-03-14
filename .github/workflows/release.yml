@@ -3,13 +3,14 @@
 #
 # Copyright © 2026 Dagitali LLC. All rights reserved.
 #
-# A GitHub Actions workflow configuration file for release management.
-# Release workflow for tagged ETLPlus distributions.
+# A GitHub Actions workflow configuration file for tagged release distribution.
 #
 # Notes
-# - The workflow is designed to automate the release process for tagged ETLPlus
-#   distributions, including generating changelogs and publishing releases to
-#   GitHub and the Python Package Index (PyPI).
+# - This workflow automates the tagged release path: build, artifact audit,
+#   distribution validation, GitHub release publication, PyPI publication, and
+#   versioned docs publication.
+# - GitHub Release note categories are configured separately in
+#   `.github/release.yml`.
 # - The workflow is hardened by removing global permissions and setting per-job
 #   scopes.
 # - To harden workflow security, global permissions are absent, and per-job
