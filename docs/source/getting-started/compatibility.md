@@ -34,6 +34,11 @@ packaging and entrypoint regressions before release.
 | Docs | `pip install -e ".[docs]"` | Sphinx and Read the Docs-compatible documentation builds. |
 | File extras | `pip install -e ".[file]"` | Remaining scientific and specialty format dependencies such as `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`. |
 
+The broad base runtime is intentional. For the `v1.x` stable line, ETLPlus treats the documented
+CLI, `etlplus.ops`, `etlplus.api`, and the implemented built-in file handlers as one default
+supported experience, so their dependencies stay in the base install rather than being split across
+multiple extras. The `file` extra is reserved for narrower scientific and specialty workflows.
+
 ## Release interpretation
 
 - “Supported” means the combination is covered by package metadata and some CI validation.
