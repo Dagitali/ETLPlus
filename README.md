@@ -935,7 +935,11 @@ between the markers in [DEMO.md](DEMO.md).
 `setuptools-scm` derives the package version from Git tags, so publishing is now entirely tag
 driven—no hand-editing `pyproject.toml`, `setup.py`, or `etlplus/__version__.py`.
 
-1. Ensure `main` is green and the changelog/docs are up to date.
+GitHub Releases is the canonical release-history surface for ETLPlus. The docs changelog page links
+there, while the maintainer-facing release text is drafted from the template and category config in
+the `.github/` folder.
+
+1. Ensure `main` is green and the release notes/docs are up to date.
 2. Create and push a SemVer tag matching the `v*.*.*` pattern:
 
 ```bash
