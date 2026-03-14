@@ -23,6 +23,10 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
+# The default runtime install is intentionally broad for the stable line: it
+# includes the dependencies needed by the documented CLI, etlplus.ops,
+# etlplus.api, and the implemented built-in file handlers that ETLPlus treats
+# as part of the supported public surface.
 dependencies = [
   "cbor2>=5.6.4",
   "duckdb>=1.1.0",
@@ -67,6 +71,8 @@ docs = [
   "sphinx-rtd-theme>=3.1.0",
   "sphinxcontrib-napoleon>=0.7.0",
 ]
+# Keep the file extra for the narrower scientific/specialty stack that is not
+# required for the stable default runtime promise.
 file = [
   "netCDF4>=1.7.2",
   "pyreadr>=0.5.2",
