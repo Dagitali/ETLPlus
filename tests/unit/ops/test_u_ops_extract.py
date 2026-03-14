@@ -587,6 +587,7 @@ class TestExtractDefensiveDispatch:
         Test that unexpected connector coercion triggers the
         :class:`ValueError` branch.
         """
+
         def _coerce(_value: object) -> object:
             return object()
 

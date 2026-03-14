@@ -101,8 +101,7 @@ class TestMain:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Test that illegal options without context fall back to root help.
-        """
+        """Test that illegal options without context fall back to root help."""
 
         class _StubCommand:
             """Stub command that raises a usage error for any option."""

@@ -4,7 +4,6 @@
 Utility for auditing release artifacts for forbidden paths and untracked files.
 """
 
-
 from __future__ import annotations
 
 import re
@@ -56,9 +55,7 @@ def _artifact_members(path: Path) -> list[str]:
     if path.suffixes[-2:] == ['.tar', '.gz']:
         with tarfile.open(path, 'r:gz') as archive:
             return [
-                member.name
-                for member in archive.getmembers()
-                if member.name
+                member.name for member in archive.getmembers() if member.name
             ]
     raise ValueError(f'Unsupported artifact type: {path}')
 
@@ -126,9 +123,7 @@ def _find_untracked_members(path: Path) -> list[str]:
 
 def main(argv: list[str]) -> int:
     artifact_paths = (
-        [Path(arg) for arg in argv]
-        if argv
-        else sorted(Path('dist').glob('*'))
+        [Path(arg) for arg in argv] if argv else sorted(Path('dist').glob('*'))
     )
     if not artifact_paths:
         print('No artifacts found to audit.', file=sys.stderr)
