@@ -106,19 +106,18 @@ are no longer required reading to get started.
 
 ## Release Status
 
-ETLPlus is still in the pre-`v1.0.0` phase. The project is usable today, but the repository still
-contains some placeholders and migration-era modules that should not be interpreted as part of a
-finished stable surface.
+ETLPlus treats the `v1.x` line as its stable public release line. The repository still retains some
+placeholders, stubs, and migration-reference modules for historical or implementation reasons, but
+they are not part of the supported public contract unless they are explicitly documented as such.
 
-The current intended stable surface for `v1.0.0` is:
+The stable surface for `v1.0.0` and later `v1.x` releases is:
 
 - The documented CLI commands: `check`, `extract`, `validate`, `transform`, `load`, `render`, and `run`
 - The documented Python ETL primitives in `etlplus.ops`
 - The implemented file handlers listed as `implemented` in the handler matrix
 - The documented API client and pagination helpers under `etlplus.api`
 
-The following are not part of the stable execution surface for `v1.0.0` unless explicitly promoted
-later:
+The following are not part of the stable execution surface unless explicitly promoted later:
 
 - Database extract/load execution paths that are still described as placeholders
 - Stubbed file handlers and placeholder formats
@@ -910,9 +909,13 @@ pytest tests/unit tests/integration tests/e2e --cov=etlplus --cov-report=html
 ### Linting
 
 ```bash
-flake8 etlplus/
-black etlplus/
+make lint
+make doclint
+make typecheck
 ```
+
+`make lint` runs the Ruff-based source checks used in CI, `make doclint` runs `pydocstyle` and
+`pydoclint`, and `make typecheck` runs `mypy` against the shipped package.
 
 ### Updating Demo Snippets
 
@@ -940,8 +943,9 @@ git tag -a v1.4.0 -m "Release v1.4.0"
 git push origin v1.4.0
 ```
 
-3. GitHub Actions fetches tags, builds the sdist/wheel, and publishes to PyPI via the `publish` job
-   in [.github/workflows/ci.yml](.github/workflows/ci.yml).
+3. GitHub Actions runs the tagged release workflow in [.github/workflows/release.yml](.github/workflows/release.yml),
+  builds the sdist/wheel, validates the artifacts, publishes the GitHub release, publishes to PyPI,
+  and then triggers the versioned Read the Docs build.
 
 If you want an extra smoke-test before tagging, run `make dist && pip install dist/*.whl` locally;
 this exercises the same build path the workflow uses.
