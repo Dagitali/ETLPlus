@@ -91,9 +91,7 @@ class Hdf5File(
     ReadOnlyFileHandlerABC,
     ScientificDatasetFileHandlerABC,
 ):
-    """
-    Read-only handler implementation for HDF5 files.
-    """
+    """Read-only handler implementation for HDF5 files."""
 
     # -- Class Attributes -- #
 
@@ -126,9 +124,7 @@ class Hdf5File(
         self,
         path: Path,
     ) -> Any:
-        """
-        Open and return one HDFStore, wrapping missing tables dependency.
-        """
+        """Open and return one HDFStore, wrapping missing tables dependency."""
         pandas = self.resolve_pandas()
         try:
             return pandas.HDFStore(path)
@@ -174,9 +170,7 @@ class Hdf5File(
         *,
         dataset: str | None,
     ) -> str | None:
-        """
-        Resolve one selected HDF5 key from available keys.
-        """
+        """Resolve one selected HDF5 key from available keys."""
         return resolve_store_dataset_key(
             keys,
             dataset=dataset,

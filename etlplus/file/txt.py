@@ -95,9 +95,7 @@ def _coerce_text_payload(
 
 
 class TxtFile(PlainTextFileHandlerABC):
-    """
-    Handler implementation for TXT files.
-    """
+    """Handler implementation for TXT files."""
 
     # -- Class Attributes -- #
 

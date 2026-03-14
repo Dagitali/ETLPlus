@@ -186,9 +186,7 @@ class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
         return coerce_record_payload(decoded, format_name=self.format_name)
 
     def resolve_codec_module(self) -> Any:
-        """
-        Return the codec module for this handler.
-        """
+        """Return the codec module for this handler."""
         return get_dependency(
             self.codec_module_name,
             format_name=self.codec_format_name,

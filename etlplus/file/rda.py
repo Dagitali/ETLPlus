@@ -51,9 +51,7 @@ get_pandas = _get_pandas
 
 
 class RdaFile(RDataHandlerMixin, ScientificDatasetFileHandlerABC):
-    """
-    Handler implementation for RDA files.
-    """
+    """Handler implementation for RDA files."""
 
     # -- Class Attributes -- #
 

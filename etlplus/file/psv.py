@@ -35,9 +35,7 @@ __all__ = [
 
 
 class PsvFile(StandardDelimitedTextFileHandlerABC):
-    """
-    Handler implementation for PSV files.
-    """
+    """Handler implementation for PSV files."""
 
     # -- Class Attributes -- #
 

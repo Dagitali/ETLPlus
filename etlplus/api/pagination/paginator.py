@@ -207,9 +207,7 @@ class Paginator:
     # -- Magic Methods (Object Lifecycle) -- #
 
     def __post_init__(self) -> None:
-        """
-        Normalize and validate pagination configuration.
-        """
+        """Normalize and validate pagination configuration."""
         # Normalize type to supported PaginationType.
         if self.type not in (
             PaginationType.PAGE,

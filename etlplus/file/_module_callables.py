@@ -70,9 +70,7 @@ class _ModuleCallContext:
         method_name: str,
         operation: ModuleOperation,
     ) -> ImportError:
-        """
-        Build a standardized missing-method ImportError.
-        """
+        """Build a standardized missing-method ImportError."""
         return ImportError(
             f'{format_name} {operation} support requires '
             f'"{module_name}" with {method_name}().',
@@ -87,9 +85,7 @@ class _ModuleCallContext:
         args: tuple[Any, ...] = (),
         kwargs: Mapping[str, Any] | None = None,
     ) -> Any:
-        """
-        Resolve and call one required module method.
-        """
+        """Resolve and call one required module method."""
         module_method = resolve_module_method(
             self.require_module(),
             method_name,
@@ -192,9 +188,7 @@ def resolve_module_method(
     module: Any | None,
     method_name: str,
 ) -> Callable[..., Any] | None:
-    """
-    Return one callable by name when available on the provided module.
-    """
+    """Return one callable by name when available on the provided module."""
     if module is None:
         return None
     method = getattr(module, method_name, None)
@@ -209,9 +203,7 @@ def read_module_frame(
     method_name: str,
     path: Path,
 ) -> Any:
-    """
-    Read one table-like frame via one named module reader method.
-    """
+    """Read one table-like frame via one named module reader method."""
     frame, _meta = call_module_method(
         module,
         format_name=format_name,
@@ -229,9 +221,7 @@ def read_module_frame_if_supported(
     method_name: str,
     path: Path,
 ) -> Any | None:
-    """
-    Read one frame when the named module reader method exists.
-    """
+    """Read one frame when the named module reader method exists."""
     reader = resolve_module_method(module, method_name)
     if reader is None:
         return None
@@ -248,9 +238,7 @@ def write_module_frame(
     frame: Any,
     path: Path,
 ) -> None:
-    """
-    Write one table-like frame via one named module writer method.
-    """
+    """Write one table-like frame via one named module writer method."""
     call_module_method(
         module,
         format_name=format_name,

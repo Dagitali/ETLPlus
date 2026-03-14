@@ -79,9 +79,7 @@ def _coerce_handler_class(
 def _handler_class_name(
     file_format: FileFormat,
 ) -> str:
-    """
-    Build the canonical handler class name for one format.
-    """
+    """Build the canonical handler class name for one format."""
     value = file_format.value
     return f'{value[:1].upper()}{value[1:]}File'
 
@@ -89,9 +87,7 @@ def _handler_class_name(
 def _handler_spec(
     file_format: FileFormat,
 ) -> str:
-    """
-    Build the ``module:Class`` import spec for one handler format.
-    """
+    """Build the ``module:Class`` import spec for one handler format."""
     return (
         f'etlplus.file.{file_format.value}:{_handler_class_name(file_format)}'
     )

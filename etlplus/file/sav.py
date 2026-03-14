@@ -47,9 +47,7 @@ class SavFile(
     PyreadstatReadWriteFrameMixin,
     SingleDatasetTabularScientificReadWriteMixin,
 ):
-    """
-    Handler implementation for SAV files.
-    """
+    """Handler implementation for SAV files."""
 
     # -- Class Attributes -- #
 

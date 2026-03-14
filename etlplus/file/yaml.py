@@ -46,9 +46,7 @@ def _yaml() -> Any:
 
 
 class YamlFile(RecordPayloadTextCodecHandlerMixin):
-    """
-    Handler implementation for YAML files.
-    """
+    """Handler implementation for YAML files."""
 
     # -- Class Attributes -- #
 
@@ -60,9 +58,7 @@ class YamlFile(RecordPayloadTextCodecHandlerMixin):
         self,
         text: str,
     ) -> object:
-        """
-        Parse YAML *text* into a Python payload.
-        """
+        """Parse YAML *text* into a Python payload."""
         yaml = _yaml()
         return yaml.safe_load(StringIO(text))
 
@@ -70,9 +66,7 @@ class YamlFile(RecordPayloadTextCodecHandlerMixin):
         self,
         data: JSONData,
     ) -> str:
-        """
-        Serialize *data* to YAML text.
-        """
+        """Serialize *data* to YAML text."""
         stream = StringIO()
         yaml = _yaml()
         yaml.safe_dump(

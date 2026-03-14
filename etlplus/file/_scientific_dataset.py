@@ -24,9 +24,7 @@ __all__ = [
 def normalize_store_dataset_keys(
     keys: Iterable[str],
 ) -> list[str]:
-    """
-    Normalize store keys by removing leading separators.
-    """
+    """Normalize store keys by removing leading separators."""
     return [key.lstrip('/') for key in keys]
 
 
@@ -37,9 +35,7 @@ def resolve_store_dataset_key(
     default_key: str,
     format_name: str,
 ) -> str | None:
-    """
-    Resolve one selected dataset key from available store keys.
-    """
+    """Resolve one selected dataset key from available store keys."""
     if not keys:
         return None
     if dataset is not None:

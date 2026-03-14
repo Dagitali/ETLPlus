@@ -34,9 +34,7 @@ __all__ = [
 
 
 class CsvFile(StandardDelimitedTextFileHandlerABC):
-    """
-    Handler implementation for CSV files.
-    """
+    """Handler implementation for CSV files."""
 
     # -- Class Attributes -- #
 

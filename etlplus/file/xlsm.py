@@ -40,9 +40,7 @@ __all__ = [
 
 
 class XlsmFile(PandasSpreadsheetHandlerMixin):
-    """
-    Handler implementation for XLSM files.
-    """
+    """Handler implementation for XLSM files."""
 
     # -- Class Attributes -- #
 

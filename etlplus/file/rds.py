@@ -50,9 +50,7 @@ get_pandas = _get_pandas
 
 
 class RdsFile(RDataHandlerMixin, SingleDatasetScientificFileHandlerABC):
-    """
-    Handler implementation for RDS files.
-    """
+    """Handler implementation for RDS files."""
 
     # -- Class Attributes -- #
 

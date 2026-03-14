@@ -269,9 +269,7 @@ def _write_excel_frame(
 
 
 class _PandasModuleResolverMixin:
-    """
-    Resolve pandas via shared compatibility-first dependency lookup.
-    """
+    """Resolve pandas via shared compatibility-first dependency lookup."""
 
     # -- Class Attributes -- #
 
@@ -280,9 +278,7 @@ class _PandasModuleResolverMixin:
     # -- Instance Methods -- #
 
     def resolve_pandas(self) -> Any:
-        """
-        Return the pandas module for this handler.
-        """
+        """Return the pandas module for this handler."""
         return resolve_pandas_dependency(
             self,
             format_name=self.pandas_format_name,
@@ -331,16 +327,12 @@ class _PandasSpreadsheetEngineMixin(_PandasModuleResolverMixin):
 
 
 class _PandasSpreadsheetReadMixin(_PandasSpreadsheetEngineMixin):
-    """
-    Shared read path for pandas-backed spreadsheet handlers.
-    """
+    """Shared read path for pandas-backed spreadsheet handlers."""
 
     # -- Class Attributes -- #
 
     def resolve_read_engine(self) -> str:
-        """
-        Return the configured pandas read engine for this handler.
-        """
+        """Return the configured pandas read engine for this handler."""
         return self.resolve_engine('read')
 
     def read_sheet(
@@ -381,9 +373,7 @@ class PandasColumnarHandlerMixin(
     _PandasModuleResolverMixin,
     ColumnarFileHandlerABC,
 ):
-    """
-    Shared implementation for pandas-backed columnar handlers.
-    """
+    """Shared implementation for :mod:`pandas`-backed columnar handlers."""
 
     # -- Class Attributes -- #
 
@@ -425,9 +415,7 @@ class PandasColumnarHandlerMixin(
         self,
         data: JSONData,
     ) -> Any:
-        """
-        Convert row records into a pandas-backed table object.
-        """
+        """Convert row records into a :mod:`pandas`-backed table object."""
         self.validate_runtime_dependencies()
         return dataframe_from_data(
             self.resolve_pandas(),
@@ -436,9 +424,7 @@ class PandasColumnarHandlerMixin(
         )
 
     def resolve_pyarrow(self) -> Any:
-        """
-        Return the pyarrow module for this handler.
-        """
+        """Return the :mod:`pyarrow` module for this handler."""
         return _resolve_pyarrow_dependency(
             self,
             format_name=self.pandas_format_name,
@@ -464,9 +450,7 @@ class PandasColumnarHandlerMixin(
         return records_from_table(table)
 
     def validate_runtime_dependencies(self) -> None:
-        """
-        Validate runtime dependencies required by this handler.
-        """
+        """Validate runtime dependencies required by this handler."""
         if self.requires_pyarrow:
             self.resolve_pyarrow()
 
@@ -500,7 +484,8 @@ class PandasSpreadsheetHandlerMixin(
     SpreadsheetFileHandlerABC,
 ):
     """
-    Shared implementation for writable pandas-backed spreadsheet handlers.
+    Shared implementation for writable :mod:`pandas`-backed spreadsheet
+    handlers.
     """
 
     # -- Class Attributes -- #
@@ -566,7 +551,8 @@ class PandasReadOnlySpreadsheetHandlerMixin(
     ReadOnlySpreadsheetFileHandlerABC,
 ):
     """
-    Shared implementation for read-only pandas-backed spreadsheet handlers.
+    Shared implementation for read-only :mod:`pandas`-backed spreadsheet
+    handlers.
     """
 
     # -- Class Attributes -- #

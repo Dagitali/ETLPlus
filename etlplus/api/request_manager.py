@@ -488,7 +488,7 @@ class RequestManager:
     ) -> TimeoutInput:
         """
         Resolve the timeout value, defaulting to the instance's
-        ``default_timeout`` if not provided.
+        :attr:`default_timeout` if not provided.
 
         Parameters
         ----------

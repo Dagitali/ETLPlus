@@ -34,9 +34,7 @@ __all__ = [
 
 
 class ZsavFile(StubSingleDatasetScientificFileHandlerABC):
-    """
-    Handler implementation for ZSAV files.
-    """
+    """Handler implementation for ZSAV files."""
 
     # -- Class Attributes -- #
 

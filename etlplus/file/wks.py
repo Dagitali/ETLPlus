@@ -34,9 +34,7 @@ __all__ = [
 
 
 class WksFile(StubSpreadsheetFileHandlerABC):
-    """
-    Stub handler implementation for WKS files.
-    """
+    """Stub handler implementation for WKS files."""
 
     # -- Class Attributes -- #
 

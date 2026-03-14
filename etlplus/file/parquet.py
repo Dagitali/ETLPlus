@@ -39,9 +39,7 @@ __all__ = [
 
 
 class ParquetFile(PandasColumnarHandlerMixin):
-    """
-    Handler implementation for Parquet files.
-    """
+    """Handler implementation for Parquet files."""
 
     # -- Class Attributes -- #
 

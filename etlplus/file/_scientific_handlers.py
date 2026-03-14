@@ -60,20 +60,14 @@ _PYREADSTAT_REQUIRED_OPERATIONS: dict[
 
 
 class ScientificPandasResolverMixin(FormatPandasResolverMixin):
-    """
-    Shared pandas dependency resolver for scientific handlers.
-    """
+    """Shared pandas dependency resolver for scientific handlers."""
 
 
 class ScientificXarrayResolverMixin(FormatDependencyResolverMixin):
-    """
-    Shared xarray dependency resolver for scientific handlers.
-    """
+    """Shared xarray dependency resolver for scientific handlers."""
 
     def resolve_xarray(self) -> Any:
-        """
-        Return the xarray module for this handler.
-        """
+        """Return the xarray module for this handler."""
         return self.resolve_format_dependency('xarray')
 
 
@@ -81,9 +75,7 @@ class SingleDatasetTabularScientificReadMixin(
     ScientificPandasResolverMixin,
     SingleDatasetScientificFileHandlerABC,
 ):
-    """
-    Shared read implementation for single-dataset tabular scientific formats.
-    """
+    """Shared read support for single-dataset scientific tabular formats."""
 
     # -- Class Attributes -- #
 
@@ -193,9 +185,7 @@ class SingleDatasetTabularScientificReadMixin(
         dataset: str | None = None,
         options: ReadOptions | None = None,
     ) -> JSONList:
-        """
-        Read and return one selected dataset as records.
-        """
+        """Read and return one selected dataset as records."""
         self.resolve_single_dataset(dataset, options=options)
         frame = self.read_frame(
             path,
@@ -206,19 +196,14 @@ class SingleDatasetTabularScientificReadMixin(
         return records_from_table(frame)
 
     def resolve_pyreadstat(self) -> Any:
-        """
-        Return the pyreadstat module for this handler.
-        """
+        """Return the pyreadstat module for this handler."""
         return self.resolve_format_dependency('pyreadstat')
 
 
 class SingleDatasetTabularScientificReadWriteMixin(
     SingleDatasetTabularScientificReadMixin,
 ):
-    """
-    Shared read/write implementation for single-dataset tabular scientific
-    formats.
-    """
+    """Shared write support for single-dataset scientific tabular formats."""
 
     # -- Abstract Instance Methods -- #
 

@@ -34,9 +34,7 @@ __all__ = [
 
 
 class PbfFile(StubBinarySerializationFileHandlerABC):
-    """
-    Stub handler implementation for PBF files.
-    """
+    """Stub handler implementation for PBF files."""
 
     # -- Class Attributes -- #
 

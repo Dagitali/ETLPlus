@@ -46,9 +46,7 @@ __all__ = [
 
 
 class NdjsonFile(SemiStructuredTextFileHandlerABC):
-    """
-    Handler implementation for NDJSON files.
-    """
+    """Handler implementation for NDJSON files."""
 
     # -- Class Attributes -- #
 

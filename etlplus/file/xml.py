@@ -136,9 +136,7 @@ def _element_to_dict(
 
 
 class XmlFile(SemiStructuredTextFileHandlerABC):
-    """
-    Handler implementation for XML files.
-    """
+    """Handler implementation for XML files."""
 
     # -- Class Attributes -- #
 
@@ -152,9 +150,7 @@ class XmlFile(SemiStructuredTextFileHandlerABC):
         *,
         root_tag: str,
     ) -> ET.Element:
-        """
-        Build the XML root element from JSON-like input data.
-        """
+        """Build the XML root element from JSON-like input data."""
         if isinstance(data, dict) and len(data) == 1:
             root_name, payload = next(iter(data.items()))
             return _dict_to_element(str(root_name), payload)

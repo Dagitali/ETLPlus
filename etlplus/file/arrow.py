@@ -56,9 +56,7 @@ def _pyarrow() -> Any:
 
 
 class ArrowFile(ColumnarFileHandlerABC):
-    """
-    Handler implementation for Arrow IPC files.
-    """
+    """Handler implementation for Arrow IPC files."""
 
     # -- Class Attributes -- #
 

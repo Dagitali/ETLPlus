@@ -40,9 +40,7 @@ __all__ = [
 
 
 class OdsFile(PandasSpreadsheetHandlerMixin):
-    """
-    Handler implementation for ODS files.
-    """
+    """Handler implementation for ODS files."""
 
     # -- Class Attributes -- #
 

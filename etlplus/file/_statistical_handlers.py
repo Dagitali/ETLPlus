@@ -33,9 +33,7 @@ __all__ = [
 
 
 class _PyreadstatFrameMixin:
-    """
-    Internal helpers for pyreadstat-backed frame reads and writes.
-    """
+    """Internal helpers for pyreadstat-backed frame reads and writes."""
 
     format_name: ClassVar[str]
     pyreadstat_module_name: ClassVar[str] = 'pyreadstat'
@@ -200,7 +198,7 @@ class PandasStataReadWriteFrameMixin:
 
 class PyreadstatReadWriteFrameMixin(_PyreadstatFrameMixin):
     """
-    Shared frame read/write behavior for direct ``pyreadstat`` method pairs.
+    Shared frame read/write behavior for direct :mod:`pyreadstat` method pairs.
     """
 
     # -- Class Attributes -- #
@@ -284,7 +282,8 @@ class PyreadstatReadWriteFrameMixin(_PyreadstatFrameMixin):
 
 class PyreadstatReadSasFallbackFrameMixin(_PyreadstatFrameMixin):
     """
-    Shared read behavior using optional pyreadstat then pandas ``read_sas``.
+    Shared read behavior using optional :mod:`pyreadstat` then :mod:`pandas`
+    ``read_sas``.
     """
 
     # -- Class Attributes -- #
@@ -336,7 +335,7 @@ class PyreadstatReadSasFallbackFrameMixin(_PyreadstatFrameMixin):
 
 class PyreadstatRequiredWriteFrameMixin(_PyreadstatFrameMixin):
     """
-    Shared write behavior requiring one ``pyreadstat`` writer method.
+    Shared write behavior requiring one :mod:`pyreadstat` writer method.
     """
 
     # -- Class Attributes -- #

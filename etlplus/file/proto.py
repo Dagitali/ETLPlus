@@ -38,9 +38,7 @@ __all__ = [
 
 
 class ProtoFile(BinarySerializationFileHandlerABC):
-    """
-    Handler implementation for Protocol Buffers schema files.
-    """
+    """Handler implementation for Protocol Buffers schema files."""
 
     # -- Class Attributes -- #
 
