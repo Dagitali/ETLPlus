@@ -109,14 +109,6 @@ add-ignore = [
   # Keep parity with Ruff ignores for convenience when running pydocstyle
   # directly.
   "D105",
-  # Release-target doclint focuses on substantive API/docs mismatches, not the
-  # existing one-line formatting backlog across handler implementations.
-  "D200",
-  "D202",
-  "D205",
-  "D301",
-  "D400",
-  "D409",
 ]
 
 [tool.mypy]
