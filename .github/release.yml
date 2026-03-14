@@ -1,0 +1,48 @@
+# release.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# A GitHub Actions workflow configuration file for release management.
+#
+# Notes
+# - The workflow is designed to automate the release process, including
+#   generating changelogs and publishing releases to GitHub and the Python
+#   Package Index (PyPI).
+# - The workflow is hardened by removing global permissions and setting per-job
+#   scopes.
+# - To harden workflow security, global permissions are absent, and per-job
+#   permissions are set as needed.
+# - External GitHub Actions action references are each pinned to specific SHA
+#   to limit supply-chain risk.
+
+---
+
+changelog:
+  exclude:
+    labels:
+      - skip-release-notes
+      - internal
+  categories:
+    - title: Breaking Changes
+      labels:
+        - breaking-change
+        - breaking
+    - title: Features
+      labels:
+        - feature
+        - enhancement
+    - title: Fixes
+      labels:
+        - bug
+        - bugfix
+        - fix
+    - title: Documentation
+      labels:
+        - documentation
+        - docs
+    - title: Maintenance
+      labels:
+        - chore
+        - dependencies
+        - ci
