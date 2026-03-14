@@ -15,6 +15,7 @@ email, or any other method with the owners of this repository before making a ch
   - [Type Checking](#type-checking)
   - [Typing Philosophy](#typing-philosophy)
   - [Documentation Style](#documentation-style)
+  - [Linting And Formatting](#linting-and-formatting)
   - [Testing](#testing)
     - [Scope and Intent](#scope-and-intent)
     - [Test Configuration](#test-configuration)
@@ -130,6 +131,29 @@ Use NumPy-style docstrings for public APIs.
   keeping the full structured sections.
 - For `etlplus/file` module-level wrappers (`read`/`write`) specifically, preserve full
   `Parameters` and `Returns` sections.
+
+## Linting And Formatting
+
+ETLPlus maintains one supported contributor lint/format path.
+
+- Ruff is the authoritative source-code lint gate for imports, pyupgrade-style rewrites, and core
+  static checks.
+- `autopep8` is retained as the compatibility formatter used by `make fmt`, CI, and pre-commit for
+  the repository's existing whitespace and wrapping conventions.
+- `pydocstyle` and `pydoclint` remain separate because they enforce the NumPy-style public-docstring
+  contract rather than general source formatting.
+- `mypy` remains the type gate for the shipped package surface.
+
+Contributors should use:
+
+```bash
+make fmt
+make lint
+make doclint
+make typecheck
+```
+
+ETLPlus does not maintain separate Black or Flake8 contributor flows.
 
 [Code of Conduct]: CODE_OF_CONDUCT.md
 [owner]: https://dagitali.com
