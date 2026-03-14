@@ -15,11 +15,12 @@ package and command-line interface for data extraction, validation, transformati
 
 - [ETLPlus](#etlplus)
   - [Getting Started](#getting-started)
+  - [At a Glance](#at-a-glance)
   - [Release Status](#release-status)
   - [Features](#features)
   - [Installation](#installation)
   - [Quickstart](#quickstart)
-    - [Command line interface](#command-line-interface)
+    - [Command-line interface](#command-line-interface)
     - [Python API](#python-api)
   - [Support ETLPlus](#support-etlplus)
   - [Data Connectors](#data-connectors)
@@ -85,6 +86,23 @@ To get started:
   response targets.
 
 ETLPlus currently supports Python 3.13 and 3.14.
+
+## At a Glance
+
+- Install with `pip install etlplus` for the supported CLI, `etlplus.ops`, the API client, and the
+  built-in implemented file handlers.
+- Use `pip install -e ".[dev]"` for contributor tooling and `pip install -e ".[file]"` when you need
+  the remaining scientific and specialty format dependencies.
+- Expect the most stable execution surface from the documented CLI commands, `etlplus.ops`,
+  implemented file handlers, and `etlplus.api`.
+- See [docs/source/getting-started/compatibility.md](docs/source/getting-started/compatibility.md)
+  for the supported Python versions, platform coverage, and dependency groups.
+- See [docs/source/getting-started/quickstart.md](docs/source/getting-started/quickstart.md) if you
+  want the shortest path from install to a working ETL flow.
+
+Detailed file-handler coverage and migration notes are still available later in this README and in
+[docs/source/guides/file-handler-matrix.md](docs/source/guides/file-handler-matrix.md), but they
+are no longer required reading to get started.
 
 ## Release Status
 
@@ -185,7 +203,7 @@ as `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`.
 
 Get up and running in under a minute.
 
-### Command line interface
+### Command-line interface
 
 <!-- docs:getting-started-quickstart-cli:start -->
 
