@@ -91,12 +91,28 @@ jobs:
       - name: Run tests (with coverage)
         run: |
           pytest -q \
+            -m "not perf" \
             --cov \
             --cov-branch \
             --cov-config=.coveragerc \
             --cov-report=term-missing \
             --cov-report=xml \
             tests/
+
+  typecheck:
+    name: Type-check on Python 3.13
+    runs-on: ubuntu-latest
+    permissions: *permissions_read
+    steps:
+      - *checkout_step
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: '3.13'
+          python-bootstrap: "-e .[dev,file]"
+      - name: Run mypy
+        run: |
+          mypy --version
+          mypy etlplus
 
       - name: Upload coverage reports to Codecov
         if: matrix.python-version == '3.13'
@@ -156,7 +172,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' ||
       github.event.pull_request.head.repo.full_name == github.repository
-    needs: [lint, test, document, smoke-cross-platform]
+    needs: [lint, typecheck, test, document, smoke-cross-platform]
     permissions: *permissions_read
     steps:
       - *checkout_step
