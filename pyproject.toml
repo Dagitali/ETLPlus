@@ -112,6 +112,11 @@ line-length = 88
 target-version = "py313"
 extend-exclude = [
   "etlplus.egg-info",
+  "temp",
+  "etlplus/*_DEFUNCT",
+  "*_FIXED.py",
+  "*_NEW.py",
+  "*_ORIG.py",
 ]
 
 [tool.ruff.lint]
@@ -125,7 +130,7 @@ ignore = [
 ]
 
 [tool.mypy]
-exclude = '(^|/)etlplus/*_(OLD|ORIG|NEW)\.py$'
+exclude = '(^|/)(docs|etlplus)/*_(CURRENT|FIXED|OLD|ORIG|NEW)\.py$'
 
 [tool.setuptools.package-data]
 etlplus = ["py.typed", "templates/*.j2"]
