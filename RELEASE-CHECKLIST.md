@@ -85,7 +85,7 @@ polish still recommended before the first stable `v1.0.0` tag.
 - [x] Simplify or explicitly justify the contributor tooling stack.
   - Reduce overlap between Ruff, Flake8, Black, and autopep8 where practical.
   - Keep the documented maintainer workflow aligned with the actual CI/tooling path.
-- [ ] Revisit the default dependency surface with `v1.0.0` expectations in mind.
+- [x] Revisit the default dependency surface with `v1.0.0` expectations in mind.
   - Either keep the current batteries-included install deliberately, or move more heavyweight
     connector/file dependencies into extras.
   - Document the rationale clearly either way.
@@ -127,7 +127,7 @@ polish still recommended before the first stable `v1.0.0` tag.
   - Decide whether Ruff is the primary lint/format path and demote or remove overlapping tooling as
     appropriate.
   - Ensure the documented maintainer workflow matches the actual supported toolchain.
-- Revisit the default dependency surface with `v1.0.0` expectations in mind.
+- [x] Revisit the default dependency surface with `v1.0.0` expectations in mind.
   - Either commit to the current batteries-included install or move more heavyweight dependencies
     into extras before the stable support promise is locked.
   - Document the rationale in packaging and install docs.
