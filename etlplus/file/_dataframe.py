@@ -30,9 +30,7 @@ def dataframe_from_records(
     pandas: Any,
     records: JSONList,
 ) -> Any:
-    """
-    Build one DataFrame-like table from row records.
-    """
+    """Build one DataFrame-like table from row records."""
     return pandas.DataFrame.from_records(records)
 
 
@@ -42,9 +40,7 @@ def dataframe_from_data(
     *,
     format_name: str,
 ) -> Any:
-    """
-    Normalize JSON-like payload and build one DataFrame-like table.
-    """
+    """Normalize JSON-like payload and build one DataFrame-like table."""
     return dataframe_from_records(
         pandas,
         normalize_records(data, format_name),
@@ -57,8 +53,6 @@ def dataframe_and_count_from_data(
     *,
     format_name: str,
 ) -> tuple[Any, int]:
-    """
-    Normalize JSON-like payload and return one table plus record count.
-    """
+    """Normalize JSON-like payload and return one table plus record count."""
     records = normalize_records(data, format_name)
     return dataframe_from_records(pandas, records), len(records)

@@ -32,8 +32,7 @@ __all__ = [
 
 class StubFileHandlerABC(FileHandlerABC):
     """
-    Base class for placeholder formats that intentionally raise
-    :class:`NotImplementedError`.
+    Base class for placeholder formats that raise :class:`NotImplementedError`.
     """
 
     # -- Class Attributes -- #
@@ -46,9 +45,7 @@ class StubFileHandlerABC(FileHandlerABC):
     def _stub_path(
         self,
     ) -> Path:
-        """
-        Build a deterministic path used by non-path stub helper methods.
-        """
+        """Build a deterministic path used by non-path stub helper methods."""
         return Path(f'ignored.{self.format.value}')
 
     # -- Instance Methods -- #
@@ -59,9 +56,7 @@ class StubFileHandlerABC(FileHandlerABC):
         *,
         options: ReadOptions | None = None,
     ) -> JSONList:
-        """
-        Raise :class:`NotImplementedError` for placeholder reads.
-        """
+        """Raise :class:`NotImplementedError` for placeholder reads."""
         _ = path
         _ = options
         _raise_not_implemented('read', format_name=self.format.value.upper())
@@ -73,9 +68,7 @@ class StubFileHandlerABC(FileHandlerABC):
         *,
         options: WriteOptions | None = None,
     ) -> int:
-        """
-        Raise :class:`NotImplementedError` for placeholder writes.
-        """
+        """Raise :class:`NotImplementedError` for placeholder writes."""
         _ = path
         _ = data
         _ = options

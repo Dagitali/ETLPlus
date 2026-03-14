@@ -434,7 +434,8 @@ class ApiConfig:
 
     def effective_base_url(self) -> str:
         """
-        Compute ``base_url`` combined with effective ``base_path`` when set.
+        Compute :attr:`base_url` combined with effective ``base_path`` when
+        set.
         """
         parts = urlsplit(self.base_url)
         base_path = parts.path.rstrip('/')

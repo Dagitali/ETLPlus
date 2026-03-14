@@ -29,9 +29,7 @@ if TYPE_CHECKING:
 def _is_object_list(
     payload: object,
 ) -> TypeGuard[JSONList]:
-    """
-    Return whether *payload* is a list containing only dictionary objects.
-    """
+    """Return whether *payload* is a list of dictionary objects."""
     return isinstance(payload, list) and all(
         isinstance(item, dict) for item in payload
     )
@@ -412,9 +410,7 @@ def write_text(
 
 
 class FileHandlerOption:
-    """
-    Shared helpers for common read/write option extraction.
-    """
+    """Shared helpers for common read/write option extraction."""
 
     # -- Internal Instance Methods -- #
 
@@ -434,13 +430,13 @@ class FileHandlerOption:
             Options object to extract the attribute from.
         attr_name : str
             Name of the attribute to extract.
-        default : Any | None, optional
+        default : T | None, optional
             Fallback value to return when the attribute is missing.
             Defaults to ``None``.
 
         Returns
         -------
-        Any | None
+        T | None
             The attribute value when present, else *default*.
         """
         if options is None:
@@ -457,7 +453,10 @@ class FileHandlerOption:
         default: T | None = None,
     ) -> T | None:
         """
-        Resolve one value using explicit, options, then default precedence.
+        Resolve one value using the following parameter precedence:
+        1. *explicit*
+        2. *options*
+        3. *default*.
         """
         if explicit is not None:
             return explicit
@@ -560,9 +559,7 @@ class FileHandlerOption:
 
 
 class ArchiveInnerNameOption(FileHandlerOption):
-    """
-    Shared helpers for archive member selection options.
-    """
+    """Shared helpers for archive member selection options."""
 
     # -- Instance Methods -- #
 
@@ -572,16 +569,12 @@ class ArchiveInnerNameOption(FileHandlerOption):
         *,
         default: str | None = None,
     ) -> str | None:
-        """
-        Extract archive member selector from read/write options.
-        """
+        """Extract archive member selector from read/write options."""
         return self._option_attr(options, 'inner_name', default=default)
 
 
 class DelimitedOption(FileHandlerOption):
-    """
-    Shared helpers for delimiter overrides on delimited text handlers.
-    """
+    """Shared helpers for delimiter overrides on delimited text handlers."""
 
     # -- Class Attributes -- #
 
@@ -595,9 +588,7 @@ class DelimitedOption(FileHandlerOption):
         *,
         default: str | None = None,
     ) -> str:
-        """
-        Extract delimiter override from read/write options.
-        """
+        """Extract delimiter override from read/write options."""
         override = self.extra_option(options, 'delimiter')
         if override is not None:
             return str(override)
@@ -607,9 +598,7 @@ class DelimitedOption(FileHandlerOption):
 
 
 class EmbeddedDatabaseTableOption(FileHandlerOption):
-    """
-    Shared helpers for embedded-database table selection and cleanup.
-    """
+    """Shared helpers for embedded-database table selection and cleanup."""
 
     # -- Instance Methods -- #
 
@@ -617,9 +606,7 @@ class EmbeddedDatabaseTableOption(FileHandlerOption):
         self,
         connection: Any,
     ) -> None:
-        """
-        Close a database connection when it exposes a ``close`` method.
-        """
+        """Close a database connection when it exposes a ``close`` method."""
         closer = getattr(connection, 'close', None)
         if callable(closer):
             closer()
@@ -630,16 +617,12 @@ class EmbeddedDatabaseTableOption(FileHandlerOption):
         *,
         default: str | None = None,
     ) -> str | None:
-        """
-        Extract table selector from read/write options.
-        """
+        """Extract table selector from read/write options."""
         return self._option_attr(options, 'table', default=default)
 
 
 class ScientificDatasetOption(FileHandlerOption):
-    """
-    Shared helpers for scientific dataset selection options.
-    """
+    """Shared helpers for scientific dataset selection options."""
 
     # -- Instance Methods -- #
 
@@ -647,9 +630,7 @@ class ScientificDatasetOption(FileHandlerOption):
         self,
         options: ReadOptions | WriteOptions | None,
     ) -> str | None:
-        """
-        Extract dataset selector from read/write options.
-        """
+        """Extract dataset selector from read/write options."""
         return self._option_attr(options, 'dataset', default=None)
 
     def resolve_dataset(
@@ -660,8 +641,10 @@ class ScientificDatasetOption(FileHandlerOption):
         default: str | None = None,
     ) -> str | None:
         """
-        Resolve dataset selection using explicit, options, then
-        default.
+        Resolve dataset selection using the following order of parameter
+        precedence:
+        1. *options*
+        2. *default*
         """
         return self._resolve_option(
             dataset,
@@ -672,9 +655,7 @@ class ScientificDatasetOption(FileHandlerOption):
 
 
 class SpreadsheetSheetOption(FileHandlerOption):
-    """
-    Shared helpers for spreadsheet sheet-selection options.
-    """
+    """Shared helpers for spreadsheet sheet-selection options."""
 
     default_sheet: ClassVar[str | int]
 
@@ -684,9 +665,7 @@ class SpreadsheetSheetOption(FileHandlerOption):
         *,
         default: str | int | None = None,
     ) -> str | int:
-        """
-        Extract sheet selector from read/write options.
-        """
+        """Extract sheet selector from read/write options."""
         resolved_default = self.default_sheet if default is None else default
         sheet = self._option_attr(
             options,

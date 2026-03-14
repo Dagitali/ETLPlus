@@ -34,9 +34,7 @@ __all__ = [
 
 
 class HbsFile(BraceTokenTemplateHandlerMixin):
-    """
-    Handler implementation for HBS files.
-    """
+    """Handler implementation for HBS files."""
 
     # -- Class Attributes -- #
 

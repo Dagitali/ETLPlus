@@ -58,9 +58,7 @@ def _use_connection[ResultT](
     close: Callable[[Any], None],
     operation: Callable[[Any], ResultT],
 ) -> ResultT:
-    """
-    Execute *operation* with a connection that is always closed.
-    """
+    """Execute *operation* with a connection that is always closed."""
     connection = connect(path)
     try:
         return operation(connection)
@@ -72,9 +70,7 @@ def _use_connection[ResultT](
 
 
 class BinarySerializationABC(ABC):
-    """
-    Shared path-level read/write flow for binary serialization handlers.
-    """
+    """Shared path-level read/write flow for binary serialization handlers."""
 
     # -- Abstract Instance Methods -- #
 
@@ -85,9 +81,7 @@ class BinarySerializationABC(ABC):
         *,
         options: WriteOptions | None = None,
     ) -> bytes:
-        """
-        Serialize structured data into binary payload bytes.
-        """
+        """Serialize structured data into binary payload bytes."""
 
     @abstractmethod
     def loads_bytes(
@@ -171,9 +165,7 @@ class BinarySerializationABC(ABC):
 
 
 class ColumnarABC(ABC):
-    """
-    Shared read/write dispatch for columnar table handlers.
-    """
+    """Shared read/write dispatch for columnar table handlers."""
 
     # -- Class Attributes -- #
 
@@ -332,9 +324,7 @@ class ColumnarABC(ABC):
 
 
 class EmbeddedDatabaseABC(EmbeddedDatabaseTableOption, ABC):
-    """
-    Shared read/write dispatch for embedded-database handlers.
-    """
+    """Shared read/write dispatch for embedded-database handlers."""
 
     # -- Class Attributes -- #
 
@@ -531,9 +521,7 @@ class EmbeddedDatabaseABC(EmbeddedDatabaseTableOption, ABC):
 
 
 class RowReadWriteABC(ABC):
-    """
-    Shared read/write dispatch for row-oriented file handlers.
-    """
+    """Shared read/write dispatch for row-oriented file handlers."""
 
     # -- Class Attributes -- #
 
@@ -651,9 +639,7 @@ class RowReadWriteABC(ABC):
 
 
 class SemiStructuredTextABC(FileHandlerOption, ABC):
-    """
-    Shared path-level read/write flow for semi-structured text handlers.
-    """
+    """Shared path-level read/write flow for semi-structured text handlers."""
 
     # -- Class Attributes -- #
 
@@ -668,9 +654,7 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
         *,
         options: WriteOptions | None = None,
     ) -> str:
-        """
-        Serialize structured data into text.
-        """
+        """Serialize structured data into text."""
 
     @abstractmethod
     def loads(
@@ -679,9 +663,7 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
         *,
         options: ReadOptions | None = None,
     ) -> JSONData:
-        """
-        Parse *text* into structured data.
-        """
+        """Parse *text* into structured data."""
 
     # -- Instance Methods -- #
 
@@ -747,9 +729,7 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
 
 
 class ScientificDatasetABC(ScientificDatasetOption, ABC):
-    """
-    Shared read/write dispatch for scientific dataset handlers.
-    """
+    """Shared read/write dispatch for scientific dataset handlers."""
 
     # -- Abstract Instance Methods -- #
 
@@ -875,9 +855,7 @@ class ScientificDatasetABC(ScientificDatasetOption, ABC):
 
 
 class SpreadsheetSheetABC(SpreadsheetSheetOption, ABC):
-    """
-    Shared read/write dispatch for spreadsheet handlers.
-    """
+    """Shared read/write dispatch for spreadsheet handlers."""
 
     # -- Class Attributes -- #
 
@@ -893,9 +871,7 @@ class SpreadsheetSheetABC(SpreadsheetSheetOption, ABC):
         sheet: str | int,
         options: ReadOptions | None = None,
     ) -> JSONList:
-        """
-        Read a single sheet from *path*.
-        """
+        """Read a single sheet from *path*."""
 
     @abstractmethod
     def write_sheet(
@@ -906,9 +882,7 @@ class SpreadsheetSheetABC(SpreadsheetSheetOption, ABC):
         sheet: str | int,
         options: WriteOptions | None = None,
     ) -> int:
-        """
-        Write rows to a single sheet in *path*.
-        """
+        """Write rows to a single sheet in *path*."""
 
     # -- Instance Methods -- #
 
@@ -918,9 +892,7 @@ class SpreadsheetSheetABC(SpreadsheetSheetOption, ABC):
         *,
         options: ReadOptions | None = None,
     ) -> JSONList:
-        """
-        Read and return spreadsheet content from *path*.
-        """
+        """Read and return spreadsheet content from *path*."""
         sheet = self.sheet_from_options(options)
         return self.read_sheet(path, sheet=sheet, options=options)
 

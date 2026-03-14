@@ -35,9 +35,7 @@ __all__ = [
 
 
 class MdbFile(StubEmbeddedDatabaseFileHandlerABC):
-    """
-    Stub handler implementation for MDB files.
-    """
+    """Stub handler implementation for MDB files."""
 
     # -- Class Attributes -- #
 

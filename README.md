@@ -15,10 +15,12 @@ package and command-line interface for data extraction, validation, transformati
 
 - [ETLPlus](#etlplus)
   - [Getting Started](#getting-started)
+  - [At a Glance](#at-a-glance)
+  - [Release Status](#release-status)
   - [Features](#features)
   - [Installation](#installation)
   - [Quickstart](#quickstart)
-    - [Command line interface](#command-line-interface)
+    - [Command-line interface](#command-line-interface)
     - [Python API](#python-api)
   - [Support ETLPlus](#support-etlplus)
   - [Data Connectors](#data-connectors)
@@ -80,8 +82,49 @@ To get started:
 - See [Installation](#installation) for setup instructions.
 - Try the [Quickstart](#quickstart) for a minimal working example (CLI and Python).
 - Explore [Usage](#usage) for more detailed options and workflows.
+- See [SUPPORT.md](SUPPORT.md) for the current support policy, supported Python versions, and
+  response targets.
 
-ETLPlus supports Python 3.13 and above.
+ETLPlus currently supports Python 3.13 and 3.14.
+
+## At a Glance
+
+- Install with `pip install etlplus` for the supported CLI, `etlplus.ops`, the API client, and the
+  built-in implemented file handlers.
+- Use `pip install -e ".[dev]"` for contributor tooling and `pip install -e ".[file]"` when you need
+  the remaining scientific and specialty format dependencies.
+- Expect the most stable execution surface from the documented CLI commands, `etlplus.ops`,
+  implemented file handlers, and `etlplus.api`.
+- See [docs/source/getting-started/compatibility.md](docs/source/getting-started/compatibility.md)
+  for the supported Python versions, platform coverage, and dependency groups.
+- See [docs/source/getting-started/quickstart.md](docs/source/getting-started/quickstart.md) if you
+  want the shortest path from install to a working ETL flow.
+
+Detailed file-handler coverage and migration notes are still available later in this README and in
+[docs/source/guides/file-handler-matrix.md](docs/source/guides/file-handler-matrix.md), but they
+are no longer required reading to get started.
+
+## Release Status
+
+ETLPlus treats the `v1.x` line as its stable public release line. The repository still retains some
+placeholders, stubs, and migration-reference modules for historical or implementation reasons, but
+they are not part of the supported public contract unless they are explicitly documented as such.
+
+The stable surface for `v1.0.0` and later `v1.x` releases is:
+
+- The documented CLI commands: `check`, `extract`, `validate`, `transform`, `load`, `render`, and `run`
+- The documented Python ETL primitives in `etlplus.ops`
+- The implemented file handlers listed as `implemented` in the handler matrix
+- The documented API client and pagination helpers under `etlplus.api`
+
+The following are not part of the stable execution surface unless explicitly promoted later:
+
+- Database extract/load execution paths that are still described as placeholders
+- Stubbed file handlers and placeholder formats
+- Defunct or migration-reference modules retained for historical context
+
+Maintainers handling packaging, CI, versioned docs, or release gating should consult
+[`RELEASE-CHECKLIST.md`](RELEASE-CHECKLIST.md).
 
 ## Features
 
@@ -132,9 +175,14 @@ For development:
 pip install -e ".[dev]"
 ```
 
-The default install now includes non-native dependencies used by common semi-structured and
-embedded-database and spreadsheet handlers: `cbor2`, `duckdb`, `msgpack`, `pymongo` (`bson`),
-`tomli-w`, `openpyxl`, `xlrd`, and `odfpy`.
+The default install includes the non-native dependencies used by the built-in file handlers for
+common binary, columnar, spreadsheet, and embedded-database formats such as `cbor2`, `duckdb`,
+`fastavro`, `msgpack`, `openpyxl`, `odfpy`, `pandas`, `pyarrow`, `pymongo`, `xlrd`, and `xlwt`.
+
+This is intentional for the stable line. ETLPlus treats the documented CLI, `etlplus.ops`,
+`etlplus.api`, and the implemented built-in file handlers as one supported default runtime surface,
+so the base install keeps the dependencies needed for that surface together instead of pushing core
+implemented handlers behind extras.
 
 For development with full optional file-format support:
 
@@ -148,6 +196,13 @@ For runtime-only optional file-format support:
 pip install -e ".[file]"
 ```
 
+The `file` extra is now reserved for the remaining scientific and specialty format dependencies such
+as `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`.
+
+That split is also intentional: the `file` extra is reserved for narrower optional workflows rather
+than for the built-in formats that ETLPlus expects most users of the default runtime to have
+available.
+
 <!-- docs:getting-started-installation:end -->
 
 ## Quickstart
@@ -156,7 +211,7 @@ pip install -e ".[file]"
 
 Get up and running in under a minute.
 
-### Command line interface
+### Command-line interface
 
 <!-- docs:getting-started-quickstart-cli:start -->
 
@@ -863,9 +918,17 @@ pytest tests/unit tests/integration tests/e2e --cov=etlplus --cov-report=html
 ### Linting
 
 ```bash
-flake8 etlplus/
-black etlplus/
+make lint
+make doclint
+make fmt
+make typecheck
 ```
+
+`make lint` runs the Ruff-based source checks used in CI, `make doclint` runs `pydocstyle` and
+`pydoclint`, `make fmt` applies the supported Ruff-plus-`autopep8` formatting path, and `make
+typecheck` runs `mypy` against the shipped package. ETLPlus no longer maintains separate Black or
+Flake8 contributor paths; Ruff is the authoritative lint gate and `autopep8` remains as the
+compatibility formatter used by CI and pre-commit.
 
 ### Updating Demo Snippets
 
@@ -885,7 +948,11 @@ between the markers in [DEMO.md](DEMO.md).
 `setuptools-scm` derives the package version from Git tags, so publishing is now entirely tag
 driven—no hand-editing `pyproject.toml`, `setup.py`, or `etlplus/__version__.py`.
 
-1. Ensure `main` is green and the changelog/docs are up to date.
+GitHub Releases is the canonical release-history surface for ETLPlus. The docs changelog page links
+there, while the maintainer-facing release text is drafted from the template and category config in
+the `.github/` folder.
+
+1. Ensure `main` is green and the release notes/docs are up to date.
 2. Create and push a SemVer tag matching the `v*.*.*` pattern:
 
 ```bash
@@ -893,8 +960,12 @@ git tag -a v1.4.0 -m "Release v1.4.0"
 git push origin v1.4.0
 ```
 
-3. GitHub Actions fetches tags, builds the sdist/wheel, and publishes to PyPI via the `publish` job
-   in [.github/workflows/ci.yml](.github/workflows/ci.yml).
+3. GitHub Actions runs the tagged release workflow in [.github/workflows/release.yml](.github/workflows/release.yml),
+  builds the sdist/wheel, validates the artifacts, publishes the GitHub release, publishes to PyPI,
+  and then triggers the versioned Read the Docs build.
+4. Draft the GitHub Release notes using
+   [.github/RELEASE-NOTES-TEMPLATE.md](.github/RELEASE-NOTES-TEMPLATE.md) together with the
+   categorized notes configured in [.github/release.yml](.github/release.yml).
 
 If you want an extra smoke-test before tagging, run `make dist && pip install dist/*.whl` locally;
 this exercises the same build path the workflow uses.

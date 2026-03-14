@@ -27,9 +27,7 @@ __all__ = [
 
 
 class XlsxFile(PandasSpreadsheetHandlerMixin):
-    """
-    Handler implementation for XLSX files.
-    """
+    """Handler implementation for XLSX files."""
 
     # -- Class Attributes -- #
 

@@ -133,9 +133,7 @@ def _merge_types(types: list[str]) -> str | list[str]:
 
 
 class AvroFile(BinarySerializationFileHandlerABC):
-    """
-    Handler implementation for AVRO files.
-    """
+    """Handler implementation for AVRO files."""
 
     # -- Class Attributes -- #
 

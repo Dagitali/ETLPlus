@@ -62,9 +62,7 @@ def _resolve_format(
 
 
 class GzFile(ArchiveWrapperFileHandlerABC):
-    """
-    Handler implementation for GZ files.
-    """
+    """Handler implementation for GZ files."""
 
     # -- Class Attributes -- #
 

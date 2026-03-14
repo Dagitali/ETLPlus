@@ -39,9 +39,7 @@ __all__ = [
 
 
 class FeatherFile(PandasColumnarHandlerMixin):
-    """
-    Handler implementation for Feather files.
-    """
+    """Handler implementation for Feather files."""
 
     # -- Class Attributes -- #
 

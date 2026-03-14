@@ -34,7 +34,6 @@ on:
       - '**/chore/**'
       - '**/ci/**'
       - '**/docs/**'
-    tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ main, develop ]
 
@@ -91,13 +90,13 @@ jobs:
       - name: Run tests (with coverage)
         run: |
           pytest -q \
+            -m "not perf" \
             --cov \
             --cov-branch \
             --cov-config=.coveragerc \
             --cov-report=term-missing \
             --cov-report=xml \
             tests/
-
       - name: Upload coverage reports to Codecov
         if: matrix.python-version == '3.13'
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de  # Pinned v5.5.2
@@ -109,12 +108,48 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}  # Omit for public repo
           verbose: true
 
+  doclint:
+    name: Doclint on Python 3.13
+    runs-on: ubuntu-latest
+    permissions: *permissions_read
+    steps:
+      - *checkout_step
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: '3.13'
+          python-bootstrap: "-e .[dev,file]"
+      - name: Run pydocstyle
+        run: |
+          find etlplus -type f -name '*.py' \
+            ! -path '*/__pycache__/*' \
+            -print0 | xargs -0 pydocstyle
+      - name: Run pydoclint
+        run: |
+          pydoclint --style numpy \
+            --exclude 'config_DEFUNCT|database_DEFUNCT' \
+            etlplus
+
+  typecheck:
+    name: Type-check on Python 3.13
+    runs-on: ubuntu-latest
+    permissions: *permissions_read
+    steps:
+      - *checkout_step
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: '3.13'
+          python-bootstrap: "-e .[dev,file]"
+      - name: Run mypy
+        run: |
+          mypy --version
+          mypy etlplus
+
   document:
     name: Build docs (${{ matrix.builder }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        builder: [html, epub]
+        builder: [html, epub, linkcheck]
     permissions: *permissions_read
     steps:
       - *checkout_step
@@ -132,66 +167,56 @@ jobs:
             docs/source \
             docs/build/${{ matrix.builder }}
 
-  build:
-    name: Build distributions
-    runs-on: ubuntu-latest
-    if: &release_tag_condition >
-      startsWith(github.ref, 'refs/tags/v') ||
-      startsWith(github.ref, 'refs/tags/rc')
-    needs: [lint, test]
+  smoke-cross-platform:
+    name: Smoke install on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
     permissions: *permissions_read
     steps:
       - *checkout_step
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: '3.13'
-          python-bootstrap: build
+          python-bootstrap: '.'
+      - name: Verify CLI entrypoint
+        shell: bash
+        run: |
+          python -m etlplus --version
+          etlplus --version
+
+  build:
+    name: Build distributions
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: [lint, doclint, typecheck, test, document, smoke-cross-platform]
+    permissions: *permissions_read
+    steps:
+      - *checkout_step
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: '3.13'
+          python-bootstrap: "build twine"
       - name: Build distributions
         run: |
           python -m build
+      - name: Audit release artifacts
+        run: |
+          python tools/check_release_artifacts.py dist/*
+      - name: Validate distributions
+        run: |
+          python -m twine check dist/*
+      - name: Smoke-test wheel install
+        run: |
+          python -m venv .wheel-venv
+          .wheel-venv/bin/python -m pip install --upgrade pip
+          .wheel-venv/bin/python -m pip install dist/*.whl
+          .wheel-venv/bin/etlplus --version
       - name: Upload distributions
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # Pinned v4
         with:
           name: dist-artifacts
           path: dist/*
           if-no-files-found: error
-
-  release:
-    name: Publish GitHub release
-    runs-on: ubuntu-latest
-    if: *release_tag_condition
-    needs: build
-    permissions:
-      contents: write
-    steps:
-      - *checkout_step
-      - &download_dist_step
-        name: Download distributions
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # Pinned v4
-        with:
-          name: dist-artifacts
-          path: dist
-      - name: Publish GitHub release
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b  # Pinned v2
-        with:
-          files: dist/*
-          generate_release_notes: true
-
-  publish:
-    name: Publish to PyPI
-    runs-on: ubuntu-latest
-    if: *release_tag_condition
-    needs: build
-    permissions:
-      contents: read
-      id-token: write
-    environment:
-      name: pypi
-      url: https://pypi.org/project/etlplus/
-    steps:
-      - *checkout_step
-      - *download_dist_step
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e  # Pinned v1
-        with:
-          verbose: true

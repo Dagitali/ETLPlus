@@ -82,7 +82,6 @@ def _load_template_text(
     FileNotFoundError
         If the template file cannot be located in package data.
     """
-
     try:
         return (
             importlib.resources.files(
@@ -186,7 +185,6 @@ def load_table_spec(
     ValueError
         If the file suffix is not supported.
     """
-
     spec_path = Path(path)
     suffix = spec_path.suffix.lower()
 
@@ -268,7 +266,6 @@ def render_tables(
     list[str]
         Rendered SQL strings for each table spec.
     """
-
     return [
         render_table_sql(spec, template=template, template_path=template_path)
         for spec in specs
@@ -298,7 +295,6 @@ def render_tables_to_string(
     str
         Concatenated SQL payload suitable for writing to disk or stdout.
     """
-
     resolved_template_path = (
         str(template_path) if template_path is not None else None
     )

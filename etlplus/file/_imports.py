@@ -449,7 +449,7 @@ def resolve_pandas(
 
 class FormatDependencyResolverMixin:
     """
-    Shared dependency resolver for handlers keyed by ``self.format_name``.
+    Shared dependency resolver for handlers keyed by :attr:`format_name`.
     """
 
     # -- Class Attributes -- #
@@ -464,9 +464,7 @@ class FormatDependencyResolverMixin:
         *,
         pip_name: str | None = None,
     ) -> Any:
-        """
-        Resolve one dependency for this handler's format context.
-        """
+        """Resolve one dependency for this handler's format context."""
         return resolve_dependency(
             self,
             dependency_name,
@@ -477,13 +475,11 @@ class FormatDependencyResolverMixin:
 
 class FormatPandasResolverMixin(FormatDependencyResolverMixin):
     """
-    Shared pandas resolver for handlers keyed by ``self.format_name``.
+    Shared :mod:`pandas` resolver for handlers keyed by :attr:`format_name`.
     """
 
     # -- Instance Methods -- #
 
     def resolve_pandas(self) -> Any:
-        """
-        Return pandas using module-level override support.
-        """
+        """Return pandas using module-level override support."""
         return resolve_pandas(self, format_name=self.format_name)

@@ -27,9 +27,7 @@ __all__ = [
 
 
 class XlsFile(PandasReadOnlySpreadsheetHandlerMixin):
-    """
-    Read-only handler implementation for XLS files.
-    """
+    """Read-only handler implementation for XLS files."""
 
     # -- Class Attributes -- #
 

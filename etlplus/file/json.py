@@ -37,9 +37,7 @@ __all__ = [
 
 
 class JsonFile(RecordPayloadTextCodecHandlerMixin):
-    """
-    Handler implementation for JSON files.
-    """
+    """Handler implementation for JSON files."""
 
     # -- Class Attributes -- #
 
@@ -52,16 +50,12 @@ class JsonFile(RecordPayloadTextCodecHandlerMixin):
         self,
         text: str,
     ) -> object:
-        """
-        Parse raw JSON text into a Python payload.
-        """
+        """Parse raw JSON text into a Python payload."""
         return json.loads(text)
 
     def encode_text_payload(
         self,
         data: JSONData,
     ) -> str:
-        """
-        Serialize *data* to JSON text.
-        """
+        """Serialize *data* to JSON text."""
         return json.dumps(data, indent=2, ensure_ascii=False)

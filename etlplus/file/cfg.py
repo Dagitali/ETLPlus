@@ -35,9 +35,7 @@ __all__ = [
 
 
 class CfgFile(StubSemiStructuredTextFileHandlerABC):
-    """
-    Stub handler implementation for CFG files.
-    """
+    """Stub handler implementation for CFG files."""
 
     # -- Class Attributes -- #
 

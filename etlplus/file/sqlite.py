@@ -41,9 +41,7 @@ __all__ = [
 
 
 class SqliteFile(EmbeddedDatabaseFileHandlerABC):
-    """
-    Handler implementation for SQLite files.
-    """
+    """Handler implementation for SQLite files."""
 
     # -- Class Attributes -- #
 

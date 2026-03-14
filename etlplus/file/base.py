@@ -101,9 +101,7 @@ class BoundFileHandler:
         *,
         options: ReadOptions | None = None,
     ) -> Any:
-        """
-        Read from :attr:`path` using :attr:`handler`.
-        """
+        """Read from :attr:`path` using :attr:`handler`."""
         return self.handler.read(self.path, options=options)
 
     def write(
@@ -112,9 +110,7 @@ class BoundFileHandler:
         *,
         options: WriteOptions | None = None,
     ) -> int:
-        """
-        Write *data* to :attr:`path` using :attr:`handler`.
-        """
+        """Write *data* to :attr:`path` using :attr:`handler`."""
         return cast(Any, self.handler).write(
             self.path,
             data,
@@ -292,9 +288,7 @@ class FileHandlerABC(FileHandlerOption, ABC):
 
 
 class ReadOnlyFileHandlerABC(FileHandlerABC):
-    """
-    Base class for formats that support reads but not writes.
-    """
+    """Base class for formats that support reads but not writes."""
 
     # -- Class Attributes -- #
 
@@ -364,9 +358,7 @@ class ArchiveWrapperFileHandlerABC(
         *,
         options: ReadOptions | None = None,
     ) -> bytes:
-        """
-        Read inner member bytes from an archive at *path*.
-        """
+        """Read inner member bytes from an archive at *path*."""
 
     @abstractmethod
     def write_inner_bytes(
@@ -376,9 +368,7 @@ class ArchiveWrapperFileHandlerABC(
         *,
         options: WriteOptions | None = None,
     ) -> None:
-        """
-        Write inner member bytes to an archive at *path*.
-        """
+        """Write inner member bytes to an archive at *path*."""
 
 
 class BinarySerializationFileHandlerABC(
@@ -442,8 +432,7 @@ class StandardDelimitedTextFileHandlerABC(DelimitedTextFileHandlerABC):
         options: ReadOptions | None = None,
     ) -> JSONList:
         """
-        Read delimited rows from *path* using :attr:`delimiter` or option
-        overrides.
+        Read delimited rows from *path*.
 
         Parameters
         ----------
@@ -471,8 +460,7 @@ class StandardDelimitedTextFileHandlerABC(DelimitedTextFileHandlerABC):
         options: WriteOptions | None = None,
     ) -> int:
         """
-        Write delimited rows to *path* using :attr:`delimiter` or option
-        overrides.
+        Write delimited rows to *path*.
 
         Parameters
         ----------
@@ -615,9 +603,7 @@ class SemiStructuredTextFileHandlerABC(
 class RecordPayloadSemiStructuredTextFileHandlerABC(
     SemiStructuredTextFileHandlerABC,
 ):
-    """
-    Shared base for semi-structured formats with record-like roots.
-    """
+    """Shared base for semi-structured formats with record-like roots."""
 
     # -- Abstract Instance Methods -- #
 
@@ -628,9 +614,7 @@ class RecordPayloadSemiStructuredTextFileHandlerABC(
         *,
         options: ReadOptions | None = None,
     ) -> object:
-        """
-        Parse raw text into a Python payload prior to record coercion.
-        """
+        """Parse raw text into a Python payload prior to record coercion."""
 
     # -- Instance Methods -- #
 
@@ -664,9 +648,7 @@ class RecordPayloadSemiStructuredTextFileHandlerABC(
 class DictPayloadSemiStructuredTextFileHandlerABC(
     SemiStructuredTextFileHandlerABC,
 ):
-    """
-    Shared base for semi-structured formats that write dictionary payloads.
-    """
+    """Shared base for semi-structured formats with dictionary payloads."""
 
     # -- Class Attributes -- #
 
@@ -770,9 +752,7 @@ class SingleDatasetScientificFileHandlerABC(
     SingleDatasetValidation,
     ScientificDatasetFileHandlerABC,
 ):
-    """
-    Base contract for scientific formats with a single dataset key.
-    """
+    """Base contract for scientific formats with a single dataset key."""
 
 
 class SpreadsheetFileHandlerABC(SpreadsheetSheetABC, FileHandlerABC):
@@ -793,9 +773,7 @@ class ReadOnlySpreadsheetFileHandlerABC(
     ReadOnlyFileHandlerABC,
     SpreadsheetFileHandlerABC,
 ):
-    """
-    Base contract for read-only spreadsheet formats.
-    """
+    """Base contract for read-only spreadsheet formats."""
 
     # -- Instance Methods -- #
 

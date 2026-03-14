@@ -32,9 +32,7 @@ __all__ = [
 
 
 class NumbersFile(StubSpreadsheetFileHandlerABC):
-    """
-    Stub handler implementation for NUMBERS files.
-    """
+    """Stub handler implementation for NUMBERS files."""
 
     # -- Class Attributes -- #
 

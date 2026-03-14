@@ -50,9 +50,7 @@ get_pandas = _get_pandas
 
 
 class RdsFile(RDataHandlerMixin, SingleDatasetScientificFileHandlerABC):
-    """
-    Handler implementation for RDS files.
-    """
+    """Handler implementation for RDS files."""
 
     # -- Class Attributes -- #
 
@@ -113,11 +111,6 @@ class RdsFile(RDataHandlerMixin, SingleDatasetScientificFileHandlerABC):
         -------
         int
             Number of records written.
-
-        Raises
-        ------
-        ImportError
-            If "pyreadr" is not installed with write support.
         """
         records = self.prepare_single_dataset_write_records(
             data,

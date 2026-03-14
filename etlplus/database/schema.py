@@ -231,9 +231,7 @@ class TableSpec(BaseModel):
 
     @property
     def fq_name(self) -> str:
-        """
-        Fully qualified table name, including schema if specified.
-        """
+        """Fully qualified table name, including schema if specified."""
         return (
             f'{self.schema_name}.{self.table}'
             if self.schema_name

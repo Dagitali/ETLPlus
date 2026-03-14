@@ -32,9 +32,7 @@ __all__ = [
 class RecordPayloadTextCodecHandlerMixin(
     RecordPayloadSemiStructuredTextFileHandlerABC,
 ):
-    """
-    Shared record-payload text codec flow for JSON/YAML-style handlers.
-    """
+    """Shared record-payload text codec flow for JSON/YAML-style handlers."""
 
     # -- Abstract Instance Methods -- #
 
@@ -130,10 +128,7 @@ class RecordPayloadTextCodecHandlerMixin(
 class DictPayloadTextCodecHandlerMixin(
     DictPayloadSemiStructuredTextFileHandlerABC,
 ):
-    """
-    Shared dict-payload text codec flow for TOML/INI/PROPERTIES-style
-    handlers.
-    """
+    """Shared dict-payload text codec flow for TOML/INI/PROPERTIES handlers."""
 
     dict_root_error_message: ClassVar[str | None] = None
 
@@ -223,12 +218,6 @@ class DictPayloadTextCodecHandlerMixin(
         -------
         JSONData
             The decoded dictionary payload.
-
-        Raises
-        ------
-        TypeError
-            If the decoded text root is not a dict when a dict root is
-            expected.
         """
         _ = options
         decoded = self.decode_dict_payload_text(text)

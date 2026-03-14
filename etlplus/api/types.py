@@ -85,8 +85,7 @@ def _to_dict(
 
 class ApiConfigDict(TypedDict, total=False):
     """
-    Top-level API config shape parsed by
-    :meth:`etlplus.api.config.ApiConfig.from_obj`.
+    Top-level API config shape for :class:`etlplus.api.config.ApiConfig`.
 
     Either provide a :attr:`base_url` with optional :attr:`headers` and
     :attr:`endpoints`, or provide :attr:`profiles` with at least one profile
@@ -105,8 +104,7 @@ class ApiConfigDict(TypedDict, total=False):
 
 class ApiProfileConfigDict(TypedDict, total=False):
     """
-    Shape accepted for a profile entry under
-    :meth:`etlplus.api.config.ApiConfig.from_obj`.
+    Shape accepted for one API profile entry.
 
     Notes
     -----

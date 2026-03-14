@@ -34,9 +34,7 @@ __all__ = [
 
 
 class SylkFile(StubSingleDatasetScientificFileHandlerABC):
-    """
-    Handler implementation for SYLK files.
-    """
+    """Handler implementation for SYLK files."""
 
     # -- Class Attributes -- #
 

@@ -1,0 +1,17 @@
+# config.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# A GitHub issue template configuration file for ETLPlus.
+
+---
+
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and usage help
+    url: https://github.com/Dagitali/ETLPlus/discussions
+    about: Use GitHub Discussions for usage help, docs feedback, and design questions.
+  - name: Security disclosures
+    url: https://github.com/Dagitali/ETLPlus/security/policy
+    about: Report security issues privately under the repository security policy.

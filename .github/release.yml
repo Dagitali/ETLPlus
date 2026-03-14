@@ -1,0 +1,44 @@
+# release.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub Release Notes configuration.
+#
+# Notes
+# - This file configures the categories GitHub uses when auto-generating
+#   release notes for tagged releases.
+# - The release workflow itself lives in `.github/workflows/release.yml`.
+# - Maintainers should combine the generated notes with
+#   `.github/RELEASE-NOTES-TEMPLATE.md` when drafting final release text.
+
+---
+
+changelog:
+  exclude:
+    labels:
+      - skip-release-notes
+      - internal
+  categories:
+    - title: Breaking Changes
+      labels:
+        - breaking-change
+        - breaking
+    - title: Features
+      labels:
+        - feature
+        - enhancement
+    - title: Fixes
+      labels:
+        - bug
+        - bugfix
+        - fix
+    - title: Documentation
+      labels:
+        - documentation
+        - docs
+    - title: Maintenance
+      labels:
+        - chore
+        - dependencies
+        - ci

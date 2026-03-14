@@ -32,9 +32,7 @@ __all__ = [
 def __getattr__(
     name: str,
 ) -> object:
-    """
-    Lazily resolve heavyweight top-level exports.
-    """
+    """Lazily resolve heavyweight top-level exports."""
     if name == 'Config':
         from .config import Config
 

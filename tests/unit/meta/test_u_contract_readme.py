@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 from etlplus.file import FileFormat
 from etlplus.file import registry as mod
 from etlplus.file.base import FileHandlerABC
@@ -32,6 +34,13 @@ from tests.unit.meta.pytest_meta_support import regex_matches
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: MARKERS ========================================================== #
+
+
+# Directory-level marker for unit tests.
+pytestmark = [pytest.mark.unit, pytest.mark.contract]
+
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 

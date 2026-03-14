@@ -34,9 +34,7 @@ __all__ = [
 
 
 class MustacheFile(BraceTokenTemplateHandlerMixin):
-    """
-    Handler implementation for MUSTACHE files.
-    """
+    """Handler implementation for MUSTACHE files."""
 
     # -- Class Attributes -- #
 

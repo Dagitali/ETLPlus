@@ -105,6 +105,12 @@ endif
 # Default .env used by run targets (override: make run ENV=.env.local)
 ENV ?= $(PKG_DIR)/.env
 
+### Testing ###
+
+# Default test marker expression
+# (override: make test TEST_MARK_EXPRESSION="not perf and not slow")
+TEST_MARK_EXPRESSION ?= not perf
+
 
 # SECTION: MACROS =========================================================== #
 
@@ -188,6 +194,14 @@ docs-epub: venv ## Build EPUB docs with Sphinx (in ./docs/build/epub)
 	@$(MAKE) -C docs epub SPHINXBUILD="$(abspath $(PYTHON)) -m sphinx"
 	@$(call ECHO_OK,"Built EPUB docs in ./docs/build/epub")
 
+.PHONY: docs-linkcheck
+docs-linkcheck: venv ## Run Sphinx linkcheck against the published docs set
+	@$(PYTHON) -m pip install -e $(PKG_DIR)[docs]
+	@find docs/source/api/generated -type f -name '*.rst' -delete 2>/dev/null || true
+	@rm -rf docs/build/linkcheck docs/build/doctrees/linkcheck
+	@$(MAKE) -C docs linkcheck SPHINXBUILD="$(abspath $(PYTHON)) -m sphinx"
+	@$(call ECHO_OK,"Validated docs links in ./docs/build/linkcheck")
+
 .PHONY: file
 file: venv ## Install package + file extras
 	@$(PYTHON) -m pip install -e $(PKG_DIR)[file]
@@ -230,13 +244,11 @@ doclint: ## Run docstring linters (pydocstyle + pydoclint if available)
 	fi
 
 .PHONY: fmt
-fmt: ## Format code with ruff (imports + fixes) and black
+fmt: ## Format code with Ruff fixes plus autopep8 normalization
 	@$(VENV_BIN)/ruff check . --fix || (echo "Hint: run 'make dev' first" && false)
-# 	@$(VENV_BIN)/ruff format . || true
-# 	@$(VENV_BIN)/black . || true
 	@$(VENV_BIN)/autopep8 --in-place --max-line-length=79 \
-	  --exclude .venv,dist,build,etlplus.egg-info,.mypy_cache,.pytest_cache \
-	  $(shell git ls-files '*.py') || true
+	--exclude .venv,dist,build,etlplus.egg-info,.mypy_cache,.pytest_cache \
+	$(shell git ls-files '*.py') || true
 
 .PHONY: run
 run: ## Run the etlplus CLI (dry-run) using $(ENV)
@@ -255,12 +267,23 @@ show-venv: ## Print venv and interpreter locations
 	@echo "ETLPLUS    = $(ETLPLUS)"
 
 .PHONY: test
-test: ## Run tests with pytest
-	@PYTHONPATH=. $(VENV_BIN)/pytest || (echo "Hint: run 'make dev' first" && false)
+test: ## Run the default test suite (excluding perf markers)
+	@PYTHONPATH=. $(VENV_BIN)/pytest -m "$(TEST_MARK_EXPRESSION)" || (echo "Hint: run 'make dev' first" && false)
+
+.PHONY: test-full
+test-full: venv ## Install dev+file extras and run the default CI-parity test suite
+	@$(PYTHON) -m pip install -e $(PKG_DIR)[dev,file]
+	@PYTHONPATH=. $(VENV_BIN)/pytest -m "$(TEST_MARK_EXPRESSION)"
+	@$(call ECHO_OK,"Completed default non-perf test suite")
+
+.PHONY: perf
+perf: venv ## Run performance-smoke tests only
+	@$(PYTHON) -m pip install -e $(PKG_DIR)[dev,file]
+	@PYTHONPATH=. $(VENV_BIN)/pytest -m "perf" tests || (echo "Hint: run 'make dev file' first" && false)
 
 .PHONY: typecheck
 typecheck: ## Type-check with mypy
-	@$(VENV_BIN)/mypy $(PKG_DIR)/src/etlplus || (echo "Hint: run 'make dev' first" && false)
+	@$(VENV_BIN)/mypy etlplus || (echo "Hint: run 'make dev' first" && false)
 
 .PHONY: up
 up: ## First-time setup: bootstrap, pull images, start DB+UI, wait healthy

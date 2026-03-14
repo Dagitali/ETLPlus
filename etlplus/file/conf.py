@@ -37,9 +37,7 @@ __all__ = [
 
 
 class ConfFile(StubSemiStructuredTextFileHandlerABC):
-    """
-    Stub handler implementation for CONF files.
-    """
+    """Stub handler implementation for CONF files."""
 
     # -- Class Attributes -- #
 

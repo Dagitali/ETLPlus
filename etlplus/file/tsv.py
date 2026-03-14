@@ -1,4 +1,4 @@
-"""
+r"""
 :mod:`etlplus.file.tsv` module.
 
 Helpers for reading/writing Tab-Separated Values (TSV) files.
@@ -35,9 +35,7 @@ __all__ = [
 
 
 class TsvFile(StandardDelimitedTextFileHandlerABC):
-    """
-    Handler implementation for TSV files.
-    """
+    """Handler implementation for TSV files."""
 
     # -- Class Attributes -- #
 

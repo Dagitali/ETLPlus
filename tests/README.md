@@ -8,6 +8,7 @@ with pytest markers.
   - [Intent Markers](#intent-markers)
   - [Integration File Smoke Pattern](#integration-file-smoke-pattern)
   - [Discovery and Selection](#discovery-and-selection)
+  - [Dependency Prerequisites](#dependency-prerequisites)
   - [Common Commands](#common-commands)
   - [Post-Move Validation Checklist](#post-move-validation-checklist)
 
@@ -59,10 +60,10 @@ Default test discovery is controlled by `pytest.ini`:
 
 ## Dependency Prerequisites
 
-The base install already includes common non-native deps used by semi-structured and
-embedded-database handlers (`cbor2`, `duckdb`, `msgpack`, `pymongo`, `tomli-w`).
+The default install already includes the dependencies used by the built-in file handlers covered by
+the default test matrix.
 
-For full coverage of remaining optional file formats (local CI parity), install:
+For full coverage of the remaining optional scientific and specialty formats (local CI parity), install:
 
 ```bash
 pip install -e ".[dev,file]"
@@ -77,11 +78,11 @@ pip install -e ".[dev]"
 ## Common Commands
 
 ```bash
-# Full dependency install + full test run (recommended for CI parity)
+# Full dependency install + default non-perf test run (recommended for CI parity)
 make test-full
 
-# Default discovery from pytest.ini (unit + integration + e2e)
-pytest
+# Default discovery from pytest.ini (unit + integration + e2e, excluding perf)
+make test
 
 # Scope folders
 pytest tests/unit
@@ -96,6 +97,10 @@ pytest -m e2e
 # Marker-based selection by intent
 pytest -m smoke
 pytest -m contract
+
+# Perf smoke coverage (kept out of the default CI-parity suite)
+make perf
+pytest -m perf
 ```
 
 ## Post-Move Validation Checklist
