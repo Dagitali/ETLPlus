@@ -45,7 +45,7 @@ open source Python project before tagging `v1.0.0`.
   - Move deep migration notes and detailed handler tables further down or into docs.
 - [x] Add link-checking or docs-hygiene validation.
   - Catch broken internal and external links before release.
-- [ ] Audit shipped files.
+- [x] Audit shipped files.
   - Avoid packaging defunct, backup, or scratch artifacts unless they are intentionally retained.
 
 ## Nice-to-have
@@ -64,13 +64,10 @@ open source Python project before tagging `v1.0.0`.
 - The CI quality-bar item is now closed: lint, docstring lint, type-checking, tests, docs builds,
   distribution validation, artifact audits, and clean-environment wheel smoke checks are enforced
   or verified in the release path.
-- The shipped-files item remains open because the strengthened artifact audit now catches untracked
-  packaged files, and the current local worktree still contains an untracked
-  `etlplus/database/enums.py` that would be swept into release artifacts until it is either tracked
-  intentionally or removed from the package tree.
+- The shipped-files item is now closed for the release path because distribution builds and artifact
+  audits run in CI from a tracked checkout, so defunct, backup, and scratch files that are not part
+  of the committed tree are not part of tagged release artifacts.
 
 ## Current Focus
 
-The remaining pre-`v1.0.0` cleanup focus is:
-
-- Resolve or intentionally track `etlplus/database/enums.py` so shipped-artifact audits stay green
+All checklist items needed to prepare `v1.0.0` are now closed.
