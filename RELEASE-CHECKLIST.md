@@ -39,7 +39,7 @@ open source Python project before tagging `v1.0.0`.
   - Pull request checklist.
 - [x] Add at least one non-Linux CI target.
   - Run smoke coverage on macOS and Windows for CLI/package-install confidence.
-- [ ] Make the README more front-loaded for end users.
+- [x] Make the README more front-loaded for end users.
   - Keep the first screen focused on installation, quickstart, support policy, and stable
     capabilities.
   - Move deep migration notes and detailed handler tables further down or into docs.
@@ -52,22 +52,20 @@ open source Python project before tagging `v1.0.0`.
 
 - [x] Publish a documented support policy.
   - Clarify expected response times, supported Python versions, and deprecation windows.
-- [ ] Add release-drafter or structured release-note automation.
-- [ ] Add a small compatibility matrix in the docs.
+- [x] Add release-drafter or structured release-note automation.
+- [x] Add a small compatibility matrix in the docs.
   - Python versions, platforms, and optional dependency groups.
 - [ ] Add benchmark or performance-smoke coverage for large-file workflows.
-- [ ] Add provenance or supply-chain hardening beyond pinned GitHub actions.
+- [x] Add provenance or supply-chain hardening beyond pinned GitHub actions.
   - For example, dependency review or SBOM generation.
 
 ## Status Notes
 
 - The CI quality-bar item remains open because docs builds, distribution validation, artifact
-  audits, and smoke installs are in place, but docstring linting and type-checking are not yet
-  enforced in CI.
+  audits, and smoke installs are in place, but docstring linting has a large existing backlog and
+  mypy is not yet fast or quiet enough to turn on as a blocking gate without dedicated cleanup.
 - The tooling-consistency and shipped-files items remain open because stale and defunct repository
   content still exists, even though packaged-artifact auditing is now in place.
-- The README front-loading item remains open because the first screen is better than before, but the
-  document is still heavier than a polished `v1.0.0` landing page should be.
 
 ## Current Focus
 
