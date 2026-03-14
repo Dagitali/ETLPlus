@@ -34,9 +34,7 @@ __all__ = [
 
 
 class MatFile(StubSingleDatasetScientificFileHandlerABC):
-    """
-    Handler implementation for MAT files.
-    """
+    """Handler implementation for MAT files."""
 
     # -- Class Attributes -- #
 

@@ -44,9 +44,7 @@ _SEPARATORS = ('=', ':')
 def _parse_properties_text(
     text: str,
 ) -> JSONDict:
-    """
-    Parse Java-style properties text into key-value mappings.
-    """
+    """Parse Java-style properties text into key-value mappings."""
     payload: JSONDict = {}
     for line in text.splitlines():
         stripped = line.strip()
@@ -62,9 +60,7 @@ def _parse_properties_text(
 def _split_key_value(
     line: str,
 ) -> tuple[str, str]:
-    """
-    Split one normalized PROPERTIES line into ``(key, value)``.
-    """
+    """Split one normalized PROPERTIES line into ``(key, value)``."""
     separator_indexes = [line.find(sep) for sep in _SEPARATORS if sep in line]
     if not separator_indexes:
         return line, ''
@@ -77,9 +73,7 @@ def _split_key_value(
 
 
 class PropertiesFile(DictPayloadTextCodecHandlerMixin):
-    """
-    Handler implementation for Java-style properties files.
-    """
+    """Handler implementation for Java-style properties files."""
 
     # -- Class Attributes -- #
 
@@ -91,18 +85,14 @@ class PropertiesFile(DictPayloadTextCodecHandlerMixin):
         self,
         text: str,
     ) -> object:
-        """
-        Parse PROPERTIES *text* into dictionary payload.
-        """
+        """Parse PROPERTIES *text* into dictionary payload."""
         return _parse_properties_text(text)
 
     def encode_dict_payload_text(
         self,
         payload: JSONDict,
     ) -> str:
-        """
-        Serialize dictionary *data* into PROPERTIES text.
-        """
+        """Serialize dictionary *data* into PROPERTIES text."""
         return ''.join(
             f'{key}={stringify_value(value)}\n'
             for key, value in sorted(payload.items())

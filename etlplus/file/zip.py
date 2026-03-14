@@ -174,9 +174,7 @@ def _decode_entry_with_core(
 
 
 class ZipFile(ArchiveWrapperFileHandlerABC):
-    """
-    Handler implementation for ZIP files.
-    """
+    """Handler implementation for ZIP files."""
 
     # -- Class Attributes -- #
 

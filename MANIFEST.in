@@ -10,3 +10,17 @@
 
 # Include Jinja template files in the etlplus package
 recursive-include etlplus/templates *.j2
+
+# Keep release artifacts focused on the supported source tree.
+prune build
+prune docs/_build
+prune out
+prune temp
+exclude export.json
+exclude MONETIZATION.md
+exclude out.json
+exclude output.csv
+exclude output.json
+exclude roadmap.md
+exclude result.json
+global-exclude *_FIXED.* *_NEW.* *_ORIG.*

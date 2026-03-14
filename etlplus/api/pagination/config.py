@@ -133,8 +133,7 @@ class CursorPaginationConfigDict(TypedDict, total=False):
 
 class PagePaginationConfigDict(TypedDict, total=False):
     """
-    Configuration mapping for page-based and offset-based REST API response
-    pagination.
+    Configuration mapping for page-based and offset-based REST API pagination.
 
     Controls page-number or offset-based pagination. Values are optional
     except ``type``.

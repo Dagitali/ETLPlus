@@ -1,0 +1,70 @@
+# feature_request.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# A GitHub issue template for proposing user-facing features in ETLPlus.
+
+---
+
+name: Feature Request
+description: Propose a user-facing capability or workflow improvement.
+title: "feature: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for concrete feature requests. For general questions or exploratory ideas, use GitHub Discussions instead.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What workflow is blocked or unnecessarily difficult today?
+      placeholder: Describe the current pain point.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior, CLI/API shape, or docs change you want.
+      placeholder: Describe the requested feature.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workarounds have you tried, and why are they insufficient?
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example config or command
+      description: Include a pipeline snippet, CLI call, or API example if relevant.
+      render: yaml
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - CLI
+        - Python API
+        - File handlers
+        - Database support
+        - API client
+        - Documentation
+        - CI or packaging
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and discussions for related requests.
+          required: true
+        - label: This request describes a user-facing need rather than a broad brainstorming topic.
+          required: true

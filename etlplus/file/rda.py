@@ -51,9 +51,7 @@ get_pandas = _get_pandas
 
 
 class RdaFile(RDataHandlerMixin, ScientificDatasetFileHandlerABC):
-    """
-    Handler implementation for RDA files.
-    """
+    """Handler implementation for RDA files."""
 
     # -- Class Attributes -- #
 
@@ -137,11 +135,6 @@ class RdaFile(RDataHandlerMixin, ScientificDatasetFileHandlerABC):
         -------
         int
             Number of records written.
-
-        Raises
-        ------
-        ImportError
-            If "pyreadr" is not installed with write support.
         """
         dataset = self.resolve_dataset(dataset, options=options)
         frame, count = self.dataframe_from_data(data)

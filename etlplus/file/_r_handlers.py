@@ -34,26 +34,20 @@ __all__ = [
 
 
 class _PyreadrModuleProtocol(Protocol):
-    """
-    Structural protocol for pyreadr modules used by R-data handlers.
-    """
+    """Structural protocol for pyreadr modules used by R-data handlers."""
 
     def read_r(
         self,
         path: str,
     ) -> Mapping[str, object]:
-        """
-        Read one R-data payload mapping from a file path.
-        """
+        """Read one R-data payload mapping from a file path."""
 
 
 # SECTION: CLASSES ========================================================== #
 
 
 class RDataHandlerMixin(FormatPandasResolverMixin):
-    """
-    Shared dependency and payload helpers for R-data scientific handlers.
-    """
+    """Shared dependency and payload helpers for R-data scientific handlers."""
 
     # -- Class Attributes -- #
 

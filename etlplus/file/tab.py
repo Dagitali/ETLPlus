@@ -36,9 +36,7 @@ __all__ = [
 
 
 class TabFile(StandardDelimitedTextFileHandlerABC):
-    """
-    Handler implementation for TAB files.
-    """
+    """Handler implementation for TAB files."""
 
     # -- Class Attributes -- #
 

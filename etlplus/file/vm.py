@@ -36,9 +36,7 @@ __all__ = [
 
 
 class VmFile(RegexTemplateHandlerMixin):
-    """
-    Handler implementation for VM files.
-    """
+    """Handler implementation for VM files."""
 
     # -- Class Attributes -- #
 

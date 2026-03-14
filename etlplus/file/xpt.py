@@ -50,9 +50,7 @@ class XptFile(
     PyreadstatRequiredWriteFrameMixin,
     SingleDatasetTabularScientificReadWriteMixin,
 ):
-    """
-    Handler implementation for XPT files.
-    """
+    """Handler implementation for XPT files."""
 
     # -- Class Attributes -- #
 

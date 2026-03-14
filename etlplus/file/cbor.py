@@ -33,9 +33,7 @@ __all__ = [
 
 
 class CborFile(BinaryRecordCodecHandlerMixin):
-    """
-    Handler implementation for CBOR files.
-    """
+    """Handler implementation for CBOR files."""
 
     # -- Class Attributes -- #
 

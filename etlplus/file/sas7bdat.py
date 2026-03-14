@@ -18,10 +18,12 @@ Notes
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 from ..utils.types import JSONData
 from ._imports import get_dependency as _get_dependency
 from ._imports import get_pandas as _get_pandas
+from ._scientific_handlers import PyreadstatMode
 from ._scientific_handlers import SingleDatasetTabularScientificReadMixin
 from ._statistical_handlers import PyreadstatReadSasFallbackFrameMixin
 from .base import ReadOnlyFileHandlerABC
@@ -53,14 +55,12 @@ class Sas7bdatFile(
     PyreadstatReadSasFallbackFrameMixin,
     SingleDatasetTabularScientificReadMixin,
 ):
-    """
-    Read-only handler implementation for SAS7BDAT files.
-    """
+    """Read-only handler implementation for SAS7BDAT files."""
 
     # -- Class Attributes -- #
 
     format = FileFormat.SAS7BDAT
-    pyreadstat_mode = 'read'
+    pyreadstat_mode: ClassVar[PyreadstatMode] = 'read'
     sas_format_hint = 'sas7bdat'
 
     # -- Instance Methods -- #
@@ -73,9 +73,6 @@ class Sas7bdatFile(
         dataset: str | None = None,
         options: WriteOptions | None = None,
     ) -> int:
-        """
-        Reject writes for SAS7BDAT while preserving scientific dataset
-        contract.
-        """
+        """Reject writes for SAS7BDAT while preserving the dataset contract."""
         self.resolve_single_dataset(dataset, options=options)
         return self.write(path, data, options=options)

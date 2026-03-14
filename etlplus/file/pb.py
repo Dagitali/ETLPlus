@@ -38,9 +38,7 @@ __all__ = [
 
 
 class PbFile(BinarySerializationFileHandlerABC):
-    """
-    Handler implementation for Protocol Buffers binary payload files.
-    """
+    """Handler implementation for Protocol Buffers binary payload files."""
 
     # -- Class Attributes -- #
 

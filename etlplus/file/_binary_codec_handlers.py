@@ -65,6 +65,12 @@ class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
         -------
         Callable[..., Any]
             The resolved codec method.
+
+        Raises
+        ------
+        AttributeError
+            If the codec module does not provide a callable named
+            *method_name*.
         """
         method = getattr(codec_module, method_name, None)
         if callable(method):
@@ -180,9 +186,7 @@ class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
         return coerce_record_payload(decoded, format_name=self.format_name)
 
     def resolve_codec_module(self) -> Any:
-        """
-        Return the codec module for this handler.
-        """
+        """Return the codec module for this handler."""
         return get_dependency(
             self.codec_module_name,
             format_name=self.codec_format_name,

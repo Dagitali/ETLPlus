@@ -128,8 +128,7 @@ class ApiTargetEnvDict(BaseApiHttpEnvDict, total=False):
 
 class SessionConfigDict(TypedDict, total=False):
     """
-    Minimal session configuration schema accepted by the
-    :class:`requests.Session` runner.
+    Minimal session configuration schema for :class:`requests.Session` runners.
 
     Keys mirror common :class:`requests.Session` options; all are optional.
     """

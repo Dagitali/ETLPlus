@@ -52,9 +52,7 @@ def _tomli_w() -> Any:
 
 
 class TomlFile(DictPayloadTextCodecHandlerMixin):
-    """
-    Handler implementation for TOML files.
-    """
+    """Handler implementation for TOML files."""
 
     # -- Class Attributes -- #
 
@@ -67,16 +65,12 @@ class TomlFile(DictPayloadTextCodecHandlerMixin):
         self,
         text: str,
     ) -> object:
-        """
-        Parse TOML *text* into a dictionary payload.
-        """
+        """Parse TOML *text* into a dictionary payload."""
         return tomllib.loads(text)
 
     def encode_dict_payload_text(
         self,
         payload: JSONDict,
     ) -> str:
-        """
-        Serialize dictionary *data* into TOML text.
-        """
+        """Serialize dictionary *data* into TOML text."""
         return _tomli_w().dumps(payload)

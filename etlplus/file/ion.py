@@ -34,9 +34,7 @@ __all__ = [
 
 
 class IonFile(StubSemiStructuredTextFileHandlerABC):
-    """
-    Stub handler implementation for ION files.
-    """
+    """Stub handler implementation for ION files."""
 
     # -- Class Attributes -- #
 

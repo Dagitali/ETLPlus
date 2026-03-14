@@ -9,19 +9,24 @@ dynamic = ["version"]
 description = "A Swiss Army knife for simple ETL operations"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.13,<3.15"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
   {name = "ETLPlus Team"}
 ]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
   "Topic :: Software Development :: Libraries :: Python Modules",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
 ]
+# The default runtime install is intentionally broad for the stable line: it
+# includes the dependencies needed by the documented CLI, etlplus.ops,
+# etlplus.api, and the implemented built-in file handlers that ETLPlus treats
+# as part of the supported public surface.
 dependencies = [
   "cbor2>=5.6.4",
   "duckdb>=1.1.0",
@@ -49,10 +54,11 @@ dependencies = [
 # Development-only tools (install with: pip install -e .[dev])
 dev = [
   "autopep8>=2.3.2",
-  "black>=25.9.0",
+  # "black>=25.9.0",
   "build>=1.2.2",
-  "flake8>=7.3.0",
+  # "flake8>=7.3.0",
   # "hypothesis>=6.0.0",
+  "mypy>=1.19.1",
   "pydoclint>=0.8.1",
   "pydocstyle>=6.3.0",
   "pytest>=8.4.2",
@@ -65,6 +71,8 @@ docs = [
   "sphinx-rtd-theme>=3.1.0",
   "sphinxcontrib-napoleon>=0.7.0",
 ]
+# Keep the file extra for the narrower scientific/specialty stack that is not
+# required for the stable default runtime promise.
 file = [
   "netCDF4>=1.7.2",
   "pyreadr>=0.5.2",
@@ -98,39 +106,16 @@ skip-checking-short-docstrings = true
 convention = "numpy"
 match = '(?!.*__pycache__|.*\.egg-info).+\.py$'
 add-ignore = [
-  # Keep parity with Ruff ignores for convenience when running pydocstyle directly
+  # Keep parity with Ruff ignores for convenience when running pydocstyle
+  # directly.
   "D105",
 ]
 
-# ------------------------
-# Linting / Docstrings
-# ------------------------
-
-[tool.ruff]
-line-length = 88
-target-version = "py313"
-extend-exclude = [
-  "etlplus.egg-info",
-]
-
-[tool.ruff.lint]
-select = [
-  "E",  # pycodestyle errors
-  "F",  # pyflakes
-]
-ignore = [
-  # Prefer NumPy one-line summary then sections; allow docstrings on magic methods to be optional
-  "D105",  # Missing docstring in magic method
-]
-
 [tool.mypy]
-exclude = '(^|/)etlplus/*_(OLD|ORIG|NEW)\.py$'
+exclude = '(^|/)(docs|etlplus)/*_(CURRENT|FIXED|OLD|ORIG|NEW)\.py$'
 
 [tool.setuptools.package-data]
 etlplus = ["py.typed", "templates/*.j2"]
-
-[tool.setuptools]
-license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = [".", "src"]

@@ -75,6 +75,11 @@ def _load_connector(
     -------
     type[Connector]
         Connector class corresponding to *kind*.
+
+    Raises
+    ------
+    TypeError
+        If *kind* is unsupported.
     """
     match kind:
         case DataConnectorType.API:

@@ -44,9 +44,7 @@ __all__ = [
 
 
 class LogFile(LogEventFileHandlerABC):
-    """
-    Handler implementation for LOG files.
-    """
+    """Handler implementation for LOG files."""
 
     # -- Class Attributes -- #
 

@@ -48,9 +48,7 @@ class DtaFile(
     PandasStataReadWriteFrameMixin,
     SingleDatasetTabularScientificReadWriteMixin,
 ):
-    """
-    Handler implementation for DTA files.
-    """
+    """Handler implementation for DTA files."""
 
     # -- Class Attributes -- #
 

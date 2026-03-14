@@ -126,9 +126,7 @@ def _stringify_mapping(
 
 
 class IniFile(DictPayloadTextCodecHandlerMixin):
-    """
-    Handler implementation for INI files.
-    """
+    """Handler implementation for INI files."""
 
     # -- Class Attributes -- #
 
@@ -140,9 +138,7 @@ class IniFile(DictPayloadTextCodecHandlerMixin):
         self,
         text: str,
     ) -> object:
-        """
-        Parse INI *text* into dictionary payload.
-        """
+        """Parse INI *text* into dictionary payload."""
         parser = configparser.ConfigParser()
         parser.read_string(text)
         return _payload_from_parser(parser)
@@ -151,9 +147,7 @@ class IniFile(DictPayloadTextCodecHandlerMixin):
         self,
         payload: JSONDict,
     ) -> str:
-        """
-        Serialize dictionary *data* into INI text.
-        """
+        """Serialize dictionary *data* into INI text."""
         parser = _parser_from_payload(payload)
 
         stream = StringIO()

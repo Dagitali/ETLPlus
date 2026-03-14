@@ -44,9 +44,7 @@ __all__ = [
 
 
 class _StubDelegationMixin(StubFileHandlerABC):
-    """
-    Shared delegation helpers for category-specific stub handlers.
-    """
+    """Shared delegation helpers for category-specific stub handlers."""
 
     def _read_path(
         self,
@@ -57,7 +55,7 @@ class _StubDelegationMixin(StubFileHandlerABC):
         """
         Delegate one path-based read call to :class:`StubFileHandlerABC`.
 
-        Properties
+        Parameters
         ----------
         path : Path
             The file path to read from.
@@ -148,9 +146,7 @@ class StubBinarySerializationFileHandlerABC(
     BinarySerializationFileHandlerABC,
     _StubDelegationMixin,
 ):
-    """
-    Placeholder binary-serialization handler contract.
-    """
+    """Placeholder binary-serialization handler contract."""
 
     # -- Instance Methods -- #
 
@@ -256,9 +252,7 @@ class StubEmbeddedDatabaseFileHandlerABC(
     EmbeddedDatabaseFileHandlerABC,
     _StubDelegationMixin,
 ):
-    """
-    Placeholder embedded-database handler contract.
-    """
+    """Placeholder embedded-database handler contract."""
 
     # -- Instance Methods -- #
 
@@ -406,9 +400,7 @@ class StubLogEventFileHandlerABC(
     LogEventFileHandlerABC,
     _StubDelegationMixin,
 ):
-    """
-    Placeholder log-event handler contract.
-    """
+    """Placeholder log-event handler contract."""
 
     # -- Instance Methods -- #
 
@@ -457,9 +449,7 @@ class StubSemiStructuredTextFileHandlerABC(
     SemiStructuredTextFileHandlerABC,
     _StubDelegationMixin,
 ):
-    """
-    Placeholder semi-structured text handler contract.
-    """
+    """Placeholder semi-structured text handler contract."""
 
     # -- Instance Methods -- #
 
@@ -565,9 +555,7 @@ class StubSingleDatasetScientificFileHandlerABC(
     SingleDatasetScientificFileHandlerABC,
     _StubDelegationMixin,
 ):
-    """
-    Placeholder single-dataset scientific handler contract.
-    """
+    """Placeholder single-dataset scientific handler contract."""
 
     # -- Instance Methods -- #
 
@@ -689,9 +677,7 @@ class StubSpreadsheetFileHandlerABC(
     SpreadsheetFileHandlerABC,
     _StubDelegationMixin,
 ):
-    """
-    Placeholder spreadsheet handler contract.
-    """
+    """Placeholder spreadsheet handler contract."""
 
     # -- Class Attributes -- #
 
@@ -810,9 +796,7 @@ class StubTemplateFileHandlerABC(
     TemplateFileHandlerABC,
     _StubDelegationMixin,
 ):
-    """
-    Placeholder template handler contract.
-    """
+    """Placeholder template handler contract."""
 
     # -- Class Attributes -- #
 

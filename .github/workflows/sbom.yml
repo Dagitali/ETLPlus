@@ -1,0 +1,62 @@
+# sbom.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# A GitHub Actions workflow configuration file for Software Bill of Materials
+# (SBOM) generation.
+#
+# Notes
+# - The workflow includes jobs for linting, testing, building distributions,
+#   and publishing releases to GitHub and the Python Package Index (PyPI).
+# - The workflow is hardened by removing global permissions and setting per-job
+#   scopes.
+# - To harden workflow security, global permissions are absent, and per-job
+#   permissions are set as needed.
+# - External GitHub Actions action references are each pinned to specific SHA
+#   to limit supply-chain risk.
+
+---
+
+name: SBOM
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  generate-sbom:
+    name: Generate CycloneDX SBOM
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # Pinned v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: '3.13'
+          python-bootstrap: "."
+      - name: Install SBOM generator
+        run: |
+          python -m pip install cyclonedx-bom
+      - name: Generate SBOM
+        run: |
+          cyclonedx-py environment --output-format JSON --output-file sbom.json
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # Pinned v4
+        with:
+          name: sbom
+          path: sbom.json
+          if-no-files-found: error

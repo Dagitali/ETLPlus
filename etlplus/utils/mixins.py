@@ -4,7 +4,7 @@
 Shared mixin utilities used across configuration and API layers.
 
 Notes
-------
+-----
 - Mixins are stateless helpers.
 - ``__slots__`` prevents accidental attribute mutation at runtime.
 """

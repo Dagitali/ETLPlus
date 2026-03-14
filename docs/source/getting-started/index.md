@@ -5,4 +5,5 @@
 
 installation
 quickstart
+compatibility
 ```

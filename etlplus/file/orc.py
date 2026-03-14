@@ -39,9 +39,7 @@ __all__ = [
 
 
 class OrcFile(PandasColumnarHandlerMixin):
-    """
-    Handler implementation for ORC files.
-    """
+    """Handler implementation for ORC files."""
 
     # -- Class Attributes -- #
 

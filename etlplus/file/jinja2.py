@@ -52,9 +52,7 @@ def _jinja2() -> Any:
 
 
 class Jinja2File(TemplateTextIOMixin, TemplateFileHandlerABC):
-    """
-    Handler implementation for JINJA2 files.
-    """
+    """Handler implementation for JINJA2 files."""
 
     # -- Class Attributes -- #
 
@@ -72,9 +70,7 @@ class Jinja2File(TemplateTextIOMixin, TemplateFileHandlerABC):
         trim_blocks: bool = False,
         lstrip_blocks: bool = False,
     ) -> Any:
-        """
-        Build one Jinja2 template object for rendering.
-        """
+        """Build one Jinja2 template object for rendering."""
         if not (strict_undefined or trim_blocks or lstrip_blocks):
             return jinja2_module.Template(template)
         env_kwargs: dict[str, object] = {

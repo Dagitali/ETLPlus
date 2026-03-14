@@ -117,9 +117,7 @@ def _encode_doc(
 
 
 class BsonFile(BinarySerializationFileHandlerABC):
-    """
-    Handler implementation for BSON files.
-    """
+    """Handler implementation for BSON files."""
 
     # -- Class Attributes -- #
 

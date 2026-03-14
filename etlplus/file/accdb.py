@@ -35,9 +35,7 @@ __all__ = [
 
 
 class AccdbFile(StubEmbeddedDatabaseFileHandlerABC):
-    """
-    Stub handler implementation for ACCDB files.
-    """
+    """Stub handler implementation for ACCDB files."""
 
     # -- Class Attributes -- #
 

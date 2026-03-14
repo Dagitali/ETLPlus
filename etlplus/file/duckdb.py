@@ -59,9 +59,7 @@ def _duckdb() -> Any:
 
 
 class DuckdbFile(EmbeddedDatabaseFileHandlerABC):
-    """
-    Handler implementation for DuckDB files.
-    """
+    """Handler implementation for DuckDB files."""
 
     # -- Class Attributes -- #
 

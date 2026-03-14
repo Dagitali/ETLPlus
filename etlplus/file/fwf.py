@@ -51,9 +51,7 @@ def _pandas() -> Any:
 
 
 class FwfFile(TextFixedWidthFileHandlerABC):
-    """
-    Handler implementation for FWF files.
-    """
+    """Handler implementation for FWF files."""
 
     # -- Class Attributes -- #
 

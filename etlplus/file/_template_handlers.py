@@ -38,15 +38,11 @@ class RegexTemplateHandlerMixin(
     TemplateTextIOMixin,
     TemplateFileHandlerABC,
 ):
-    """
-    Shared regex-token template implementation.
-    """
+    """Shared regex-token template implementation."""
 
 
 class BraceTokenTemplateHandlerMixin(RegexTemplateHandlerMixin):
-    """
-    Shared Handlebars/Mustache-style token implementation.
-    """
+    """Shared Handlebars/Mustache-style token implementation."""
 
     # -- Class Attributes -- #
 

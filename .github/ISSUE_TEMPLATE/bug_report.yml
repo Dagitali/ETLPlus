@@ -1,0 +1,84 @@
+# bug_report.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# A GitHub issue template for reporting reproducible bugs in ETLPlus.
+
+---
+
+name: Bug Report
+description: Report a reproducible defect in ETLPlus.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please include enough detail to reproduce the problem on a clean checkout or install.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What failed, and what did you expect instead?
+      placeholder: A short description of the bug and the expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: Provide exact commands, config, and sample inputs needed to reproduce the bug.
+      placeholder: |
+        1. Install ETLPlus with ...
+        2. Run ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output
+      description: Paste the traceback, CLI output, or failing assertion.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: ETLPlus version
+      description: Output from `etlplus --version` or installed package version.
+      placeholder: etlplus 0.3.4
+    validations:
+      required: true
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      description: Output from `python --version`.
+      placeholder: Python 3.13.2
+    validations:
+      required: true
+  - type: dropdown
+    id: install-mode
+    attributes:
+      label: Install mode
+      description: How was ETLPlus installed?
+      options:
+        - pip install etlplus
+        - pip install -e .[dev]
+        - pip install -e .[dev,file]
+        - pip install -e .[file]
+        - other
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I can reproduce this on the current default branch or latest release.
+          required: true

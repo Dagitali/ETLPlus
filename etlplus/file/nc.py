@@ -61,9 +61,7 @@ class NcFile(
     ScientificPandasResolverMixin,
     SingleDatasetScientificFileHandlerABC,
 ):
-    """
-    Handler implementation for NC files.
-    """
+    """Handler implementation for NC files."""
 
     # -- Class Attributes -- #
 
@@ -75,9 +73,7 @@ class NcFile(
         self,
         frame: Any,
     ) -> Any:
-        """
-        Drop the index column when it is a simple 0..N-1 sequence.
-        """
+        """Drop the index column when it is a simple 0..N-1 sequence."""
         if 'index' not in frame.columns:
             return frame
         values = list(frame['index'])

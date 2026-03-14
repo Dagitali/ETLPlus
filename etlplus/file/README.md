@@ -9,14 +9,15 @@ and writing data files.
   types
 - Exposes format handler classes (for example, `CsvFile`, `JsonFile`) as the primary read/write path
 
-Base installs include common non-native file dependencies such as `cbor2`, `duckdb`, `msgpack`,
-`pymongo`, `tomli-w`, `fastavro`, `pyarrow`, `openpyxl`, `xlrd`, `odfpy`, `jinja2`, and `PyYAML`.
-Additional formats still require optional dependencies (for example, `netCDF4`, `pyreadr`,
-`pyreadstat`, and `xarray`). Install with:
+The default `etlplus` install includes the dependencies used by the built-in binary, columnar,
+spreadsheet, and embedded-database handlers. The `file` extra is reserved for the remaining
+scientific and specialty handlers that still need extra packages. Install those with:
 
 ```bash
 pip install -e ".[file]"
 ```
+
+The `file` extra currently pulls in `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`.
 
 Back to project overview: see the top-level [README](../../README.md).
 

@@ -33,9 +33,7 @@ __all__ = [
 
 
 class MsgpackFile(BinaryRecordCodecHandlerMixin):
-    """
-    Handler implementation for MessagePack files.
-    """
+    """Handler implementation for MessagePack files."""
 
     # -- Class Attributes -- #
 
