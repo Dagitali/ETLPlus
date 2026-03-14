@@ -35,8 +35,9 @@ polish still recommended before the first stable `v1.0.0` tag.
 
 ## Should
 
-- [x] Maintain an in-repository changelog.
+- [x] Maintain a clear canonical release-history surface.
   - Summarize user-visible changes, deprecations, and breaking changes per release.
+  - Keep the canonical release-history policy explicit in maintainer docs.
 - [x] Add issue and pull request templates.
   - Bug report template.
   - Feature request template.
@@ -76,7 +77,7 @@ polish still recommended before the first stable `v1.0.0` tag.
 
 ## Strongly Recommended Before `v1.0.0`
 
-- [ ] Finalize the canonical release-history policy and make docs agree.
+- [x] Finalize the canonical release-history policy and make docs agree.
   - Decide whether GitHub Releases is the canonical changelog or whether a root-level changelog will
     be maintained.
   - Align `README.md`, `docs/source/changelog.rst`, and maintainer release instructions with that
@@ -91,7 +92,7 @@ polish still recommended before the first stable `v1.0.0` tag.
 - [ ] Add or tighten public-surface contract tests.
   - Assert the documented CLI commands, supported import surfaces, and key stable entrypoints remain
     available across releases.
-- [ ] Tighten release workflow and release-doc wording drift.
+- [x] Tighten release workflow and release-doc wording drift.
   - Keep release automation comments, README release steps, and docs pages consistent with the actual
     `ci.yml` / `release.yml` split.
 - [ ] Clarify the `v1.x` maintenance promise beyond the initial support baseline.
@@ -109,12 +110,12 @@ polish still recommended before the first stable `v1.0.0` tag.
 
 ### Before `v0.27.0` Branch Cut
 
-- Finalize the canonical release-history policy and make docs agree.
+- Finalize the canonical release-history policy and make docs agree. Completed.
   - Choose the canonical release-notes surface now so `v0.27.0` already models the intended
     maintainer workflow.
   - Align `README.md`, `docs/source/changelog.rst`, and maintainer release instructions to that
     single policy.
-- Tighten release workflow and release-doc wording drift.
+- Tighten release workflow and release-doc wording drift. Completed.
   - Clean up comments and release instructions so the `ci.yml` / `release.yml` split is described
     consistently everywhere.
   - Keep this phase low-risk and documentation-heavy so it does not destabilize the `v0.27.0`
