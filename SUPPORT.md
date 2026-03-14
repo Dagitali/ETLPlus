@@ -5,6 +5,7 @@ Thank you for using ETLPlus.
 - [Support](#support)
   - [Support Policy](#support-policy)
   - [Supported Versions](#supported-versions)
+  - [Maintenance Expectations](#maintenance-expectations)
   - [Where to Get Help](#where-to-get-help)
   - [Response Targets](#response-targets)
   - [Deprecation Policy](#deprecation-policy)
@@ -37,6 +38,23 @@ After `v1.0.0`, the maintenance target is:
 - The immediately previous minor line for critical regressions and security fixes, when practical.
 
 Older versions may still work, but they should not be assumed to receive routine fixes.
+
+## Maintenance Expectations
+
+For the stable `v1.x` line, ETLPlus uses minor releases as the normal delivery vehicle for new
+features, non-urgent enhancements, broader dependency updates, and deprecations.
+
+Patch releases are intended for targeted, low-risk maintenance such as:
+
+- Confirmed regressions in documented `v1.x` behavior
+- Security fixes
+- Packaging, build, or install breakages
+- Docs or metadata corrections that are needed to keep the released artifact usable
+
+Backports are not guaranteed for every fix. When practical, critical regressions and security fixes
+may be applied to the latest released minor line and the immediately previous minor line. Routine
+feature work, behavior changes, and larger internal refactors are expected to land only on the
+latest active minor line.
 
 ## Where to Get Help
 
@@ -76,6 +94,7 @@ surfaces.
 - A deprecated CLI flag, documented API entrypoint, or documented config shape should normally
   remain available for at least one minor release after deprecation notice.
 - Deprecations should be called out in the changelog and nearby user-facing docs.
+- Patch releases should not normally remove or materially redefine documented public behavior.
 - Removal may happen sooner only for security, correctness, or ecosystem-compatibility reasons.
 
 Internal, defunct, placeholder, or undocumented modules are excluded from this deprecation policy.
