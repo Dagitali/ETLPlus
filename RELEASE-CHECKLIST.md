@@ -17,7 +17,7 @@ open source Python project before tagging `v1.0.0`.
     requests.
   - Validate built artifacts with `twine check`.
   - Smoke-test the built wheel in a clean environment.
-- [ ] Fix release-blocking tooling inconsistencies.
+- [x] Fix release-blocking tooling inconsistencies.
   - Ensure `make typecheck` targets the real package path.
   - Remove or isolate stale automation and temporary backup artifacts from release-critical paths.
 - [x] Refresh release-facing versioned docs before tagging.
@@ -55,22 +55,24 @@ open source Python project before tagging `v1.0.0`.
 - [x] Add release-drafter or structured release-note automation.
 - [x] Add a small compatibility matrix in the docs.
   - Python versions, platforms, and optional dependency groups.
-- [ ] Add benchmark or performance-smoke coverage for large-file workflows.
+- [x] Add benchmark or performance-smoke coverage for large-file workflows.
 - [x] Add provenance or supply-chain hardening beyond pinned GitHub actions.
   - For example, dependency review or SBOM generation.
 
 ## Status Notes
 
-- The CI quality-bar item remains open because docs builds, distribution validation, artifact
-  audits, and smoke installs are in place, but docstring linting has a large existing backlog and
-  mypy is not yet fast or quiet enough to turn on as a blocking gate without dedicated cleanup.
-- The tooling-consistency and shipped-files items remain open because stale and defunct repository
-  content still exists, even though packaged-artifact auditing is now in place.
+- The CI quality-bar item remains open because lint, mypy, tests, docs builds, distribution
+  validation, artifact audits, and clean-environment wheel smoke checks are now enforced or
+  verified, but docstring linting still has a large existing backlog before it can be turned on as a
+  blocking pull-request gate.
+- The shipped-files item remains open because the strengthened artifact audit now catches untracked
+  packaged files, and the current local worktree still contains an untracked
+  `etlplus/database/enums.py` that would be swept into release artifacts until it is either tracked
+  intentionally or removed from the package tree.
 
 ## Current Focus
 
-The first cleanup batch implemented as part of this checklist is:
+The remaining pre-`v1.0.0` cleanup focus is:
 
-- Reduce packaging metadata drift
-- Enforce more of the stated quality bar in CI
-- Fix local tooling inconsistencies that would weaken a `v1.0.0` release
+- Finish enough docstring-lint remediation to make the CI quality bar fully blocking
+- Resolve or intentionally track `etlplus/database/enums.py` so shipped-artifact audits stay green
