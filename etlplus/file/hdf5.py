@@ -186,8 +186,6 @@ class Hdf5File(
         dataset: str | None = None,
         options: WriteOptions | None = None,
     ) -> int:
-        """
-        Reject writes for HDF5 while preserving scientific dataset contract.
-        """
+        """Reject writes while preserving the scientific dataset contract."""
         _ = dataset
         return self.write(path, data, options=options)

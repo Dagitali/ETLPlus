@@ -641,10 +641,10 @@ class ScientificDatasetOption(FileHandlerOption):
         default: str | None = None,
     ) -> str | None:
         """
-        Resolve dataset selection using the following order of parameter
-        precedence:
-        1. *options*
-        2. *default*
+        Resolve dataset selection using the standard parameter precedence.
+
+        Resolution prefers the explicit *dataset* argument, then *options*,
+        and finally *default*.
         """
         return self._resolve_option(
             dataset,

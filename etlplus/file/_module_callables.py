@@ -120,9 +120,7 @@ class _ModuleCallContext:
         raise ImportError(*error.args) from None
 
     def require_module(self) -> Any:
-        """
-        Return the required module object or raise a runtime dependency error.
-        """
+        """Return the required module or raise a runtime dependency error."""
         if self.module is None:  # pragma: no cover - guarded by mixin flags
             raise RuntimeError(
                 f'{self.module_name} dependency is required for '

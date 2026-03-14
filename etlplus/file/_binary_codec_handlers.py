@@ -31,9 +31,7 @@ __all__ = [
 
 
 class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
-    """
-    Shared implementation for binary codecs that encode/decode record payloads.
-    """
+    """Shared implementation for binary record codecs."""
 
     codec_module_name: ClassVar[str]
     codec_format_name: ClassVar[str]
