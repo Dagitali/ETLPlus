@@ -78,11 +78,11 @@ pip install -e ".[dev]"
 ## Common Commands
 
 ```bash
-# Full dependency install + full test run (recommended for CI parity)
+# Full dependency install + default non-perf test run (recommended for CI parity)
 make test-full
 
-# Default discovery from pytest.ini (unit + integration + e2e)
-pytest
+# Default discovery from pytest.ini (unit + integration + e2e, excluding perf)
+make test
 
 # Scope folders
 pytest tests/unit
@@ -97,6 +97,10 @@ pytest -m e2e
 # Marker-based selection by intent
 pytest -m smoke
 pytest -m contract
+
+# Perf smoke coverage (kept out of the default CI-parity suite)
+make perf
+pytest -m perf
 ```
 
 ## Post-Move Validation Checklist
