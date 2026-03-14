@@ -1,7 +1,7 @@
 # .ruff.toml
 # ETLPlus
 #
-# Copyright © 2025 Dagitali LLC. All rights reserved.
+# Copyright © 2026 Dagitali LLC. All rights reserved.
 #
 # Ruff configuration.
 #
@@ -9,6 +9,14 @@
 
 line-length = 79  # 88 is Ruff's default, popularized by Black.
 target-version = "py313"
+extend-exclude = [
+  "etlplus.egg-info",
+  "temp",
+  "etlplus/*_DEFUNCT",
+  "*_FIXED.py",
+  "*_NEW.py",
+  "*_ORIG.py",
+]
 
 [lint]
 select = [
@@ -24,7 +32,9 @@ extend-select = [
   "E203",  # Enforce autopep8 slice spacing (no space before ':')
 ]
 ignore = [
-  # Allow module-level variable use for caches/helpers, if needed
+  # Prefer NumPy one-line summary then sections; allow docstrings on magic
+  # methods to be optional.
+  "D105",  # Missing docstring in magic method
 ]
 
 [lint.isort]
