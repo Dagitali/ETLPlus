@@ -12,7 +12,7 @@ open source Python project before tagging `v1.0.0`.
 - [x] Keep packaging metadata consistent and single-sourced.
   - Treat `pyproject.toml` as canonical.
   - Keep `setup.py` as a minimal compatibility shim only.
-- [ ] Enforce the documented quality bar in CI.
+- [x] Enforce the documented quality bar in CI.
   - Run lint, docstring lint, type-checking, tests, docs builds, and distribution builds on pull
     requests.
   - Validate built artifacts with `twine check`.
@@ -61,10 +61,9 @@ open source Python project before tagging `v1.0.0`.
 
 ## Status Notes
 
-- The CI quality-bar item remains open because lint, mypy, tests, docs builds, distribution
-  validation, artifact audits, and clean-environment wheel smoke checks are now enforced or
-  verified, but docstring linting still has a large existing backlog before it can be turned on as a
-  blocking pull-request gate.
+- The CI quality-bar item is now closed: lint, docstring lint, type-checking, tests, docs builds,
+  distribution validation, artifact audits, and clean-environment wheel smoke checks are enforced
+  or verified in the release path.
 - The shipped-files item remains open because the strengthened artifact audit now catches untracked
   packaged files, and the current local worktree still contains an untracked
   `etlplus/database/enums.py` that would be swept into release artifacts until it is either tracked
@@ -74,5 +73,4 @@ open source Python project before tagging `v1.0.0`.
 
 The remaining pre-`v1.0.0` cleanup focus is:
 
-- Finish enough docstring-lint remediation to make the CI quality bar fully blocking
 - Resolve or intentionally track `etlplus/database/enums.py` so shipped-artifact audits stay green
