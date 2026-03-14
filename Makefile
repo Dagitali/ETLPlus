@@ -244,10 +244,8 @@ doclint: ## Run docstring linters (pydocstyle + pydoclint if available)
 	fi
 
 .PHONY: fmt
-fmt: ## Format code with ruff (imports + fixes) and black
+fmt: ## Format code with Ruff fixes plus autopep8 normalization
 	@$(VENV_BIN)/ruff check . --fix || (echo "Hint: run 'make dev' first" && false)
-# 	@$(VENV_BIN)/ruff format . || true
-# 	@$(VENV_BIN)/black . || true
 	@$(VENV_BIN)/autopep8 --in-place --max-line-length=79 \
 	--exclude .venv,dist,build,etlplus.egg-info,.mypy_cache,.pytest_cache \
 	$(shell git ls-files '*.py') || true
