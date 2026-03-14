@@ -123,20 +123,12 @@ repos:
   #   hooks:
   #     - id: reorder-python-imports
   #       args: [--py3-plus]
-
-  # Formatting (authoritative)
-  # - repo: https://github.com/psf/black
-  #   rev: 25.1.0
-  #   hooks:
-  #     - id: black
-  #       args: [--target-version=py313]
-
   # - repo: https://github.com/asottile/setup-cfg-fmt
   #   rev: v2.8.0
   #   hooks:
   #     - id: setup-cfg-fmt
 
-  # Python: linting, import ordering, pyupgrade-like rules
+  # Python: authoritative linting, import ordering, and pyupgrade-style rules
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.8
     hooks:
@@ -165,11 +157,6 @@ repos:
           - --ignore-missing-imports
           - --install-types
           - --non-interactive
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.3.0
-    hooks:
-      - id: flake8
 
   - repo: local
     hooks:
