@@ -946,6 +946,9 @@ git push origin v1.4.0
 3. GitHub Actions runs the tagged release workflow in [.github/workflows/release.yml](.github/workflows/release.yml),
   builds the sdist/wheel, validates the artifacts, publishes the GitHub release, publishes to PyPI,
   and then triggers the versioned Read the Docs build.
+4. Draft the GitHub Release notes using
+   [.github/RELEASE-NOTES-TEMPLATE.md](.github/RELEASE-NOTES-TEMPLATE.md) together with the
+   categorized notes configured in [.github/release.yml](.github/release.yml).
 
 If you want an extra smoke-test before tagging, run `make dist && pip install dist/*.whl` locally;
 this exercises the same build path the workflow uses.
