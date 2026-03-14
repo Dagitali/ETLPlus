@@ -911,11 +911,15 @@ pytest tests/unit tests/integration tests/e2e --cov=etlplus --cov-report=html
 ```bash
 make lint
 make doclint
+make fmt
 make typecheck
 ```
 
 `make lint` runs the Ruff-based source checks used in CI, `make doclint` runs `pydocstyle` and
-`pydoclint`, and `make typecheck` runs `mypy` against the shipped package.
+`pydoclint`, `make fmt` applies the supported Ruff-plus-`autopep8` formatting path, and `make
+typecheck` runs `mypy` against the shipped package. ETLPlus no longer maintains separate Black or
+Flake8 contributor paths; Ruff is the authoritative lint gate and `autopep8` remains as the
+compatibility formatter used by CI and pre-commit.
 
 ### Updating Demo Snippets
 
