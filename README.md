@@ -179,6 +179,11 @@ The default install includes the non-native dependencies used by the built-in fi
 common binary, columnar, spreadsheet, and embedded-database formats such as `cbor2`, `duckdb`,
 `fastavro`, `msgpack`, `openpyxl`, `odfpy`, `pandas`, `pyarrow`, `pymongo`, `xlrd`, and `xlwt`.
 
+This is intentional for the stable line. ETLPlus treats the documented CLI, `etlplus.ops`,
+`etlplus.api`, and the implemented built-in file handlers as one supported default runtime surface,
+so the base install keeps the dependencies needed for that surface together instead of pushing core
+implemented handlers behind extras.
+
 For development with full optional file-format support:
 
 ```bash
@@ -193,6 +198,10 @@ pip install -e ".[file]"
 
 The `file` extra is now reserved for the remaining scientific and specialty format dependencies such
 as `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`.
+
+That split is also intentional: the `file` extra is reserved for narrower optional workflows rather
+than for the built-in formats that ETLPlus expects most users of the default runtime to have
+available.
 
 <!-- docs:getting-started-installation:end -->
 
