@@ -50,9 +50,9 @@ dependencies = [
 # Development-only tools (install with: pip install -e .[dev])
 dev = [
   "autopep8>=2.3.2",
-  "black>=25.9.0",
+  # "black>=25.9.0",
   "build>=1.2.2",
-  "flake8>=7.3.0",
+  # "flake8>=7.3.0",
   # "hypothesis>=6.0.0",
   "mypy>=1.19.1",
   "pydoclint>=0.8.1",
@@ -111,32 +111,6 @@ add-ignore = [
   "D301",
   "D400",
   "D409",
-]
-
-# ------------------------
-# Linting / Docstrings
-# ------------------------
-
-[tool.ruff]
-line-length = 88
-target-version = "py313"
-extend-exclude = [
-  "etlplus.egg-info",
-  "temp",
-  "etlplus/*_DEFUNCT",
-  "*_FIXED.py",
-  "*_NEW.py",
-  "*_ORIG.py",
-]
-
-[tool.ruff.lint]
-select = [
-  "E",  # pycodestyle errors
-  "F",  # pyflakes
-]
-ignore = [
-  # Prefer NumPy one-line summary then sections; allow docstrings on magic methods to be optional
-  "D105",  # Missing docstring in magic method
 ]
 
 [tool.mypy]
