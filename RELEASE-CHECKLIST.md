@@ -3,6 +3,10 @@
 This checklist tracks the remaining work to make ETLPlus look and behave like a stable, well-run
 open source Python project before tagging `v1.0.0`.
 
+The currently committed release-polish changes are targeted for `v0.27.0`. The sections below
+therefore distinguish between work already in place for the next pre-1.0 release and additional
+polish still recommended before the first stable `v1.0.0` tag.
+
 ## Must
 
 - [x] Define the supported stable surface area for `v1.0.0`.
@@ -67,7 +71,80 @@ open source Python project before tagging `v1.0.0`.
 - The shipped-files item is now closed for the release path because distribution builds and artifact
   audits run in CI from a tracked checkout, so defunct, backup, and scratch files that are not part
   of the committed tree are not part of tagged release artifacts.
+- The latest released version is `v0.26.1`, and the changes completed so far in this checklist are
+  expected to ship first as part of `v0.27.0`, not `v1.0.0`.
+
+## Strongly Recommended Before `v1.0.0`
+
+- [ ] Finalize the canonical release-history policy and make docs agree.
+  - Decide whether GitHub Releases is the canonical changelog or whether a root-level changelog will
+    be maintained.
+  - Align `README.md`, `docs/source/changelog.rst`, and maintainer release instructions with that
+    choice.
+- [ ] Simplify or explicitly justify the contributor tooling stack.
+  - Reduce overlap between Ruff, Flake8, Black, and autopep8 where practical.
+  - Keep the documented maintainer workflow aligned with the actual CI/tooling path.
+- [ ] Revisit the default dependency surface with `v1.0.0` expectations in mind.
+  - Either keep the current batteries-included install deliberately, or move more heavyweight
+    connector/file dependencies into extras.
+  - Document the rationale clearly either way.
+- [ ] Add or tighten public-surface contract tests.
+  - Assert the documented CLI commands, supported import surfaces, and key stable entrypoints remain
+    available across releases.
+- [ ] Tighten release workflow and release-doc wording drift.
+  - Keep release automation comments, README release steps, and docs pages consistent with the actual
+    `ci.yml` / `release.yml` split.
+- [ ] Clarify the `v1.x` maintenance promise beyond the initial support baseline.
+  - Define the expected role of patch releases versus minor releases.
+  - Clarify what kinds of fixes are expected to be backported, if any.
+
+## Safe To Defer Until `v1.0.1`
+
+- [ ] Ratchet docstring-style enforcement beyond the current pragmatic ignore set.
+  - Tighten the remaining `pydocstyle` backlog incrementally once the stable line is out.
+- [ ] Further trim or rationalize dependency groups after observing real user install patterns.
+- [ ] Expand performance-smoke and cross-platform coverage once `v1.0.0` usage patterns are clearer.
+
+## Prioritized Implementation Plan
+
+### Before `v0.27.0` Branch Cut
+
+- Finalize the canonical release-history policy and make docs agree.
+  - Choose the canonical release-notes surface now so `v0.27.0` already models the intended
+    maintainer workflow.
+  - Align `README.md`, `docs/source/changelog.rst`, and maintainer release instructions to that
+    single policy.
+- Tighten release workflow and release-doc wording drift.
+  - Clean up comments and release instructions so the `ci.yml` / `release.yml` split is described
+    consistently everywhere.
+  - Keep this phase low-risk and documentation-heavy so it does not destabilize the `v0.27.0`
+    release branch.
+
+### Before `v1.0.0-rc1`
+
+- Simplify or explicitly justify the contributor tooling stack.
+  - Decide whether Ruff is the primary lint/format path and demote or remove overlapping tooling as
+    appropriate.
+  - Ensure the documented maintainer workflow matches the actual supported toolchain.
+- Revisit the default dependency surface with `v1.0.0` expectations in mind.
+  - Either commit to the current batteries-included install or move more heavyweight dependencies
+    into extras before the stable support promise is locked.
+  - Document the rationale in packaging and install docs.
+- Add or tighten public-surface contract tests.
+  - Cover documented CLI commands, supported import surfaces, and other promised stable entrypoints.
+  - Treat these as release-gating tests for the first stable line.
+- Clarify the `v1.x` maintenance promise beyond the initial support baseline.
+  - Define patch-vs-minor expectations and any backport posture before calling the line stable.
+
+### Safe After Stable Release
+
+- Ratchet docstring-style enforcement incrementally once the stable line is out.
+- Continue trimming dependency groups after observing actual install and support patterns.
+- Expand performance-smoke and cross-platform coverage in response to real `v1.x` usage.
 
 ## Current Focus
 
-All checklist items needed to prepare `v1.0.0` are now closed.
+The current release-prep posture is:
+
+- `v0.27.0`: ship the already-completed polish and workflow improvements
+- Pre-`v1.0.0`: finish the strongly recommended alignment work above
