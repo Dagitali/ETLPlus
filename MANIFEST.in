@@ -14,10 +14,13 @@ recursive-include etlplus/templates *.j2
 # Keep release artifacts focused on the supported source tree.
 prune build
 prune docs/_build
+prune out
 prune temp
 exclude export.json
+exclude MONETIZATION.md
 exclude out.json
 exclude output.csv
 exclude output.json
+exclude roadmap.md
 exclude result.json
-global-exclude *_NEW.* *_ORIG.py *_FIXED.* *_ORIG.*
+global-exclude *_FIXED.* *_NEW.* *_ORIG.*
