@@ -105,6 +105,12 @@ endif
 # Default .env used by run targets (override: make run ENV=.env.local)
 ENV ?= $(PKG_DIR)/.env
 
+### Testing ###
+
+# Default test marker expression
+# (override: make test TEST_MARK_EXPRESSION="not perf and not slow")
+TEST_MARK_EXPRESSION ?= not perf
+
 
 # SECTION: MACROS =========================================================== #
 
@@ -243,8 +249,8 @@ fmt: ## Format code with ruff (imports + fixes) and black
 # 	@$(VENV_BIN)/ruff format . || true
 # 	@$(VENV_BIN)/black . || true
 	@$(VENV_BIN)/autopep8 --in-place --max-line-length=79 \
-	  --exclude .venv,dist,build,etlplus.egg-info,.mypy_cache,.pytest_cache \
-	  $(shell git ls-files '*.py') || true
+	--exclude .venv,dist,build,etlplus.egg-info,.mypy_cache,.pytest_cache \
+	$(shell git ls-files '*.py') || true
 
 .PHONY: run
 run: ## Run the etlplus CLI (dry-run) using $(ENV)
@@ -263,8 +269,19 @@ show-venv: ## Print venv and interpreter locations
 	@echo "ETLPLUS    = $(ETLPLUS)"
 
 .PHONY: test
-test: ## Run tests with pytest
-	@PYTHONPATH=. $(VENV_BIN)/pytest || (echo "Hint: run 'make dev' first" && false)
+test: ## Run the default test suite (excluding perf markers)
+	@PYTHONPATH=. $(VENV_BIN)/pytest -m "$(TEST_MARK_EXPRESSION)" || (echo "Hint: run 'make dev' first" && false)
+
+.PHONY: test-full
+test-full: venv ## Install dev+file extras and run the default CI-parity test suite
+	@$(PYTHON) -m pip install -e $(PKG_DIR)[dev,file]
+	@PYTHONPATH=. $(VENV_BIN)/pytest -m "$(TEST_MARK_EXPRESSION)"
+	@$(call ECHO_OK,"Completed default non-perf test suite")
+
+.PHONY: perf
+perf: venv ## Run performance-smoke tests only
+	@$(PYTHON) -m pip install -e $(PKG_DIR)[dev,file]
+	@PYTHONPATH=. $(VENV_BIN)/pytest -m "perf" tests || (echo "Hint: run 'make dev file' first" && false)
 
 .PHONY: typecheck
 typecheck: ## Type-check with mypy
