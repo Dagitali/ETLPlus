@@ -9,11 +9,16 @@ from __future__ import annotations
 from pathlib import Path
 from time import perf_counter
 
-import pytest
-
+from etlplus.file import csv as mod
 from etlplus.file.csv import CsvFile
 
-pytestmark = [pytest.mark.integration, pytest.mark.perf]
+from .conftest import SmokeRoundtripModuleContract
+
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
 
 
 def _large_csv_payload(
@@ -29,6 +34,15 @@ def _large_csv_payload(
         }
         for row in range(rows)
     ]
+
+
+# SECTION: TESTS ============================================================ #
+
+
+class TestCsvPerf(SmokeRoundtripModuleContract):
+    """CSV perf-smoke tests following the integration contract shape."""
+
+    module = mod
 
 
 def test_large_csv_roundtrip_perf_smoke(
