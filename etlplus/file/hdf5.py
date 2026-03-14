@@ -158,11 +158,6 @@ class Hdf5File(
         -------
         JSONList
             Parsed records.
-
-        Raises
-        ------
-        ValueError
-            If the selected dataset key is missing or ambiguous.
         """
         dataset = self.resolve_dataset(dataset, options=options)
         with self.open_store(path) as store:

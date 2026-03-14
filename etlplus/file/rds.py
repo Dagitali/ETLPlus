@@ -113,11 +113,6 @@ class RdsFile(RDataHandlerMixin, SingleDatasetScientificFileHandlerABC):
         -------
         int
             Number of records written.
-
-        Raises
-        ------
-        ImportError
-            If "pyreadr" is not installed with write support.
         """
         records = self.prepare_single_dataset_write_records(
             data,

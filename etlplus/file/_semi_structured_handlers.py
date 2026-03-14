@@ -223,12 +223,6 @@ class DictPayloadTextCodecHandlerMixin(
         -------
         JSONData
             The decoded dictionary payload.
-
-        Raises
-        ------
-        TypeError
-            If the decoded text root is not a dict when a dict root is
-            expected.
         """
         _ = options
         decoded = self.decode_dict_payload_text(text)

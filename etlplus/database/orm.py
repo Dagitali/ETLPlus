@@ -206,7 +206,7 @@ def build_models(
     ----------
     specs : list[TableSpec]
         List of table specifications.
-    base : DeclarativeBase subclass, optional
+    base : type[DeclarativeBase], optional
         Base class for the ORM models (default: :class:`Base`).
 
     Returns
@@ -322,7 +322,7 @@ def load_and_build_models(
     ----------
     path : StrPath
         Path to the YAML file containing table specifications.
-    base : DeclarativeBase subclass, optional
+    base : type[DeclarativeBase], optional
         Base class for the ORM models (default: :class:`Base`).
 
     Returns

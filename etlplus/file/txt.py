@@ -71,6 +71,11 @@ def _coerce_text_payload(
     -------
     str
         The normalized plain text payload to write to the file.
+
+    Raises
+    ------
+    TypeError
+        If *data* is neither raw text nor a list of strings.
     """
     if isinstance(data, str):
         return data
@@ -205,6 +210,11 @@ class TxtFile(PlainTextFileHandlerABC):
         -------
         int
             Number of logical lines written to the file.
+
+        Raises
+        ------
+        TypeError
+            If *rows* contains non-string entries.
         """
         if not all(isinstance(row, str) for row in rows):
             raise TypeError('TXT row payloads must contain only strings')

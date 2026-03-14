@@ -57,7 +57,7 @@ class _StubDelegationMixin(StubFileHandlerABC):
         """
         Delegate one path-based read call to :class:`StubFileHandlerABC`.
 
-        Properties
+        Parameters
         ----------
         path : Path
             The file path to read from.

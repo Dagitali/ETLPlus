@@ -65,6 +65,12 @@ class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
         -------
         Callable[..., Any]
             The resolved codec method.
+
+        Raises
+        ------
+        AttributeError
+            If the codec module does not provide a callable named
+            *method_name*.
         """
         method = getattr(codec_module, method_name, None)
         if callable(method):

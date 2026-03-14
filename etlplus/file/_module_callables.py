@@ -115,12 +115,13 @@ class _ModuleCallContext:
         ImportError
             Raised when the required module method is missing.
         """
-        raise self.build_missing_module_method_error(
+        error = self.build_missing_module_method_error(
             format_name=self.format_name,
             module_name=self.module_name,
             method_name=method_name,
             operation=self.operation,
         )
+        raise ImportError(*error.args) from None
 
     def require_module(self) -> Any:
         """

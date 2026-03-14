@@ -434,13 +434,13 @@ class FileHandlerOption:
             Options object to extract the attribute from.
         attr_name : str
             Name of the attribute to extract.
-        default : Any | None, optional
+        default : T | None, optional
             Fallback value to return when the attribute is missing.
             Defaults to ``None``.
 
         Returns
         -------
-        Any | None
+        T | None
             The attribute value when present, else *default*.
         """
         if options is None:
