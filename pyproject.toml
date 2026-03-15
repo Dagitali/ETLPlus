@@ -109,6 +109,9 @@ add-ignore = [
   # Keep parity with Ruff ignores for convenience when running pydocstyle
   # directly.
   "D105",
+  # Preserve intentionally wrapped single-sentence docstrings while still
+  # enforcing the higher-value structural rules.
+  "D200",
 ]
 
 [tool.mypy]
