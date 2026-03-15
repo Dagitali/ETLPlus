@@ -8,11 +8,13 @@
 # Notes
 # - This workflow automates the tagged release path: build, artifact audit,
 #   distribution validation, GitHub release publication, PyPI publication, and
-#   versioned docs publication.
+#   tagged docs validation.
 # - GitHub Release note categories are configured separately in
 #   `.github/release.yml`.
 # - PyPI trusted publishing must be configured against this workflow file
 #   (`.github/workflows/release.yml`) and the `pypi` GitHub environment.
+# - Hosted Read the Docs publication is handled by the Read the Docs GitHub App;
+#   this workflow only validates the tagged docs build locally.
 # - The workflow is hardened by removing global permissions and setting per-job
 #   scopes.
 # - To harden workflow security, global permissions are absent, and per-job
@@ -108,71 +110,25 @@ jobs:
         with:
           verbose: true
 
-  publish-docs:
-    name: Publish docs to Read the Docs
+  document:
+    name: Build docs (${{ matrix.builder }})
     runs-on: ubuntu-latest
-    needs: publish
-    permissions: {}
+    strategy:
+      matrix:
+        builder: [html, epub]
+    permissions: *permissions_read
     steps:
-      - name: Sync and trigger Read the Docs release build
-        env:
-          READTHEDOCS_PROJECT_SLUG: ${{ vars.READTHEDOCS_PROJECT_SLUG }}
-          READTHEDOCS_TOKEN: ${{ secrets.READTHEDOCS_TOKEN }}
-          READTHEDOCS_VERSION_SLUG: ${{ github.ref_name }}
-        shell: bash
+      - *checkout_step
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: '3.13'
+          python-bootstrap: "-e .[docs]"
+      - name: Build Sphinx docs
         run: |
-          set -euo pipefail
-
-          if [ -z "${READTHEDOCS_PROJECT_SLUG}" ]; then
-            echo 'Missing repository variable READTHEDOCS_PROJECT_SLUG' >&2
-            exit 1
-          fi
-          if [ -z "${READTHEDOCS_TOKEN}" ]; then
-            echo 'Missing repository secret READTHEDOCS_TOKEN' >&2
-            exit 1
-          fi
-
-          api_base="https://app.readthedocs.com/api/v3/projects/${READTHEDOCS_PROJECT_SLUG}"
-          version_url="${api_base}/versions/${READTHEDOCS_VERSION_SLUG}/"
-          auth_header="Authorization: Token ${READTHEDOCS_TOKEN}"
-
-          curl --fail --silent --show-error \
-            -X POST \
-            -H "${auth_header}" \
-            "${api_base}/sync-versions/"
-
-          for attempt in $(seq 1 12); do
-            status_code="$(
-              curl --silent --show-error \
-                --output /tmp/readthedocs-version.json \
-                --write-out '%{http_code}' \
-                -H "${auth_header}" \
-                "${version_url}"
-            )"
-            if [ "${status_code}" = '200' ]; then
-              break
-            fi
-            if [ "${attempt}" -eq 12 ]; then
-              echo "Read the Docs version ${READTHEDOCS_VERSION_SLUG} was not available after sync." >&2
-              if [ -s /tmp/readthedocs-version.json ]; then
-                cat /tmp/readthedocs-version.json >&2
-              fi
-              exit 1
-            fi
-            sleep 5
-          done
-
-          if grep -q '"active":[[:space:]]*true' /tmp/readthedocs-version.json \
-            && grep -q '"hidden":[[:space:]]*false' /tmp/readthedocs-version.json; then
-            curl --fail --silent --show-error \
-              -X POST \
-              -H "${auth_header}" \
-              "${version_url}builds/"
-          else
-            curl --fail --silent --show-error \
-              -X PATCH \
-              -H "${auth_header}" \
-              -H 'Content-Type: application/json' \
-              -d '{"active": true, "hidden": false}' \
-              "${version_url}"
-          fi
+          find docs/source/api/generated -type f -name '*.rst' -delete 2>/dev/null || true
+          rm -rf docs/build/${{ matrix.builder }} docs/build/doctrees/${{ matrix.builder }}
+          python -m sphinx -T -W --keep-going \
+            -b ${{ matrix.builder }} \
+            -d docs/build/doctrees/${{ matrix.builder }} \
+            docs/source \
+            docs/build/${{ matrix.builder }}
