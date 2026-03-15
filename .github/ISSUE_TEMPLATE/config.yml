@@ -3,7 +3,14 @@
 #
 # Copyright © 2026 Dagitali LLC. All rights reserved.
 #
-# A GitHub issue template configuration file for ETLPlus.
+# GitHub issue template configuration.
+#
+# Responsibilities
+# - Disable blank issues and direct users toward the supported support paths.
+#
+# Maintainer Notes
+# - Keep these links aligned with the repository's current Discussions and
+#   security-reporting surfaces.
 
 ---
 

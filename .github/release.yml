@@ -5,12 +5,14 @@
 #
 # GitHub Release Notes configuration.
 #
-# Notes
-# - This file configures the categories GitHub uses when auto-generating
-#   release notes for tagged releases.
+# Responsibilities
+# - Define the categories GitHub uses when auto-generating release notes for
+#   tagged releases.
+#
+# Maintainer Notes
 # - The release workflow itself lives in `.github/workflows/release.yml`.
-# - Maintainers should combine the generated notes with
-#   `.github/RELEASE-NOTES-TEMPLATE.md` when drafting final release text.
+# - Combine the generated notes with `.github/RELEASE-NOTES-TEMPLATE.md` when
+#   drafting final release text.
 
 ---
 
