@@ -47,7 +47,7 @@ repos:
 
   # Conventional commits / branch naming
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.10.0
+    rev: v4.13.9
     hooks:
       - id: commitizen
         stages: [commit-msg]
@@ -130,7 +130,7 @@ repos:
 
   # Python: authoritative linting, import ordering, and pyupgrade-style rules
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.8
+    rev: v0.15.6
     hooks:
       - id: ruff
         args:
@@ -149,7 +149,7 @@ repos:
 
   # Python: type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.0
+    rev: v1.19.1
     hooks:
       - id: mypy
         args:
