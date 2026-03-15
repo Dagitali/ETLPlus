@@ -5,7 +5,9 @@
 #
 # Ruff configuration.
 #
-# Target Python 3.13, keep it fast and opinionated but not overbearing.
+# Target the minimum supported syntax level: Python 3.13. Keep it fast and
+# opinionated but not overbearing. Avoid conflicts with the more specific rules
+# enforced by pydocstyle/pydoclint in pyproject.toml.
 
 line-length = 79  # 88 is Ruff's default, popularized by Black.
 target-version = "py313"
@@ -19,6 +21,7 @@ extend-exclude = [
 ]
 
 [lint]
+# Docstring enforcement is handled by pydocstyle/pydoclint in pyproject.toml.
 select = [
   "E",   # pycodestyle errors
   "F",   # pyflakes
@@ -30,11 +33,6 @@ select = [
 preview = true
 extend-select = [
   "E203",  # Enforce autopep8 slice spacing (no space before ':')
-]
-ignore = [
-  # Prefer NumPy one-line summary then sections; allow docstrings on magic
-  # methods to be optional.
-  "D105",  # Missing docstring in magic method
 ]
 
 [lint.isort]

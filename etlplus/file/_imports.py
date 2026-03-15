@@ -448,9 +448,7 @@ def resolve_pandas(
 
 
 class FormatDependencyResolverMixin:
-    """
-    Shared dependency resolver for handlers keyed by :attr:`format_name`.
-    """
+    """Shared dependency resolver keyed by :attr:`format_name`."""
 
     # -- Class Attributes -- #
 
@@ -474,9 +472,7 @@ class FormatDependencyResolverMixin:
 
 
 class FormatPandasResolverMixin(FormatDependencyResolverMixin):
-    """
-    Shared :mod:`pandas` resolver for handlers keyed by :attr:`format_name`.
-    """
+    """Shared pandas resolver keyed by :attr:`format_name`."""
 
     # -- Instance Methods -- #
 

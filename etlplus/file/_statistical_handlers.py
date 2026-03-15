@@ -117,9 +117,7 @@ class _PyreadstatFrameMixin:
 
 
 class PandasStataReadWriteFrameMixin:
-    """
-    Shared frame read/write behavior for pandas ``read_stata``/``to_stata``.
-    """
+    """Shared frame read/write behavior for :mod:`pandas` Stata I/O."""
 
     # -- Class Attributes -- #
 
@@ -282,8 +280,10 @@ class PyreadstatReadWriteFrameMixin(_PyreadstatFrameMixin):
 
 class PyreadstatReadSasFallbackFrameMixin(_PyreadstatFrameMixin):
     """
-    Shared read behavior using optional :mod:`pyreadstat` then :mod:`pandas`
-    ``read_sas``.
+    Shared read behavior using optional :mod:`pyreadstat` fallback.
+
+    Falls back to :mod:`pandas` ``read_sas`` when direct pyreadstat support
+    is unavailable.
     """
 
     # -- Class Attributes -- #
@@ -334,9 +334,7 @@ class PyreadstatReadSasFallbackFrameMixin(_PyreadstatFrameMixin):
 
 
 class PyreadstatRequiredWriteFrameMixin(_PyreadstatFrameMixin):
-    """
-    Shared write behavior requiring one :mod:`pyreadstat` writer method.
-    """
+    """Shared write behavior requiring one pyreadstat writer method."""
 
     # -- Class Attributes -- #
 

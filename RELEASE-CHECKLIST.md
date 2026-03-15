@@ -101,8 +101,9 @@ polish still recommended before the first stable `v1.0.0` tag.
 
 ## Safe To Defer Until `v1.0.1`
 
-- [x] Ratchet docstring-style enforcement beyond the current pragmatic ignore set.
-  - Tighten the remaining `pydocstyle` backlog incrementally once the stable line is out.
+- [ ] Ratchet docstring-style enforcement beyond the current pragmatic ignore set.
+  - `D200` is intentionally tolerated for wrapped one-sentence docstrings; keep tightening the
+    remaining `pydocstyle` backlog incrementally once the stable line is out.
 - [ ] Further trim or rationalize dependency groups after observing real user install patterns.
 - [ ] Expand performance-smoke and cross-platform coverage once `v1.0.0` usage patterns are clearer.
 
