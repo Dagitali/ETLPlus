@@ -457,8 +457,9 @@ class RequestManager:
         session: requests.Session | None,
     ) -> Callable[..., Response]:
         """
-        Resolve the request callable from the given session or default to
-        :func:`requests.request`.
+        Resolve the request callable from the given session.
+
+        Falls back to :func:`requests.request` when no session is provided.
 
         Parameters
         ----------
@@ -487,8 +488,9 @@ class RequestManager:
         timeout: TimeoutInput | object,
     ) -> TimeoutInput:
         """
-        Resolve the timeout value, defaulting to the instance's
-        :attr:`default_timeout` if not provided.
+        Resolve the timeout value for the request.
+
+        Defaults to the instance's :attr:`default_timeout` when not provided.
 
         Parameters
         ----------
@@ -577,8 +579,9 @@ class RequestManager:
         method: str | None,
     ) -> str:
         """
-        Normalize the HTTP method to uppercase, defaulting to 'GET' if not
-        provided.
+        Normalize the HTTP method to uppercase.
+
+        Defaults to ``'GET'`` when *method* is not provided.
 
         Parameters
         ----------

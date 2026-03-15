@@ -32,7 +32,7 @@ __all__ = [
 
 class StubFileHandlerABC(FileHandlerABC):
     """
-    Base class for placeholder formats that raise :class:`NotImplementedError`.
+    Base class for placeholder formats raising :class:`NotImplementedError`.
     """
 
     # -- Class Attributes -- #

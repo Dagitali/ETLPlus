@@ -370,9 +370,7 @@ class ApiConfig:
     # -- Internal Instance Methods -- #
 
     def _selected_profile(self) -> ApiProfileConfig | None:
-        """
-        Return the active profile object (``default`` preferred) or ``None``.
-        """
+        """Return the active profile object, preferring ``default``."""
         if not (profiles := self.profiles):
             return None
 
@@ -434,8 +432,10 @@ class ApiConfig:
 
     def effective_base_url(self) -> str:
         """
-        Compute :attr:`base_url` combined with effective ``base_path`` when
-        set.
+        Compute :attr:`base_url` combined with the effective ``base_path``.
+
+        The returned URL preserves the existing scheme, host, query, and
+        fragment components.
         """
         parts = urlsplit(self.base_url)
         base_path = parts.path.rstrip('/')

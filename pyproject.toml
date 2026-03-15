@@ -106,9 +106,12 @@ skip-checking-short-docstrings = true
 convention = "numpy"
 match = '(?!.*__pycache__|.*\.egg-info).+\.py$'
 add-ignore = [
-  # Keep parity with Ruff ignores for convenience when running pydocstyle
-  # directly.
-  "D105",
+  # Docstrings follow NumPy style, but these pragmatic exceptions are
+  # intentionally tolerated for readability and legacy consistency.
+  "D105",  # Missing docstring in magic method
+  "D200",  # Allow wrapped single-sentence docstrings
+  "D205",  # Allow summary/description without a forced blank separator
+  "D400",  # Allow non-period docstring summary endings
 ]
 
 [tool.mypy]

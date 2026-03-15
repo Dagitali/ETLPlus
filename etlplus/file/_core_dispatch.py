@@ -126,9 +126,7 @@ def read_payload_with_core(
     payload: bytes,
     filename: str,
 ) -> JSONData:
-    """
-    Parse payload bytes by materializing a temporary typed file and reading it.
-    """
+    """Parse payload bytes via a temporary typed file."""
     with _temporary_dispatch_path(
         filename=filename,
         keep_dirs=False,
@@ -143,9 +141,7 @@ def write_payload_with_core(
     data: JSONData,
     filename: str,
 ) -> tuple[int, bytes]:
-    """
-    Serialize data by writing to a temporary typed file and returning bytes.
-    """
+    """Serialize data via a temporary typed file and return bytes."""
     with _temporary_dispatch_path(
         filename=filename,
         keep_dirs=True,

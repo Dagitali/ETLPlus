@@ -286,9 +286,7 @@ class _PandasModuleResolverMixin:
 
 
 class _PandasSpreadsheetEngineMixin(_PandasModuleResolverMixin):
-    """
-    Shared spreadsheet engine resolution/dependency checks for pandas handlers.
-    """
+    """Shared spreadsheet engine resolution for pandas handlers."""
 
     # -- Class Attributes -- #
 
@@ -302,9 +300,7 @@ class _PandasSpreadsheetEngineMixin(_PandasModuleResolverMixin):
         self,
         operation: SpreadsheetOperation,
     ) -> str:
-        """
-        Return the effective engine configured for one spreadsheet operation.
-        """
+        """Return the effective engine for one spreadsheet operation."""
         configured_engine = (
             self.read_engine if operation == 'read' else self.write_engine
         )
@@ -314,9 +310,7 @@ class _PandasSpreadsheetEngineMixin(_PandasModuleResolverMixin):
         self,
         operation: SpreadsheetOperation,
     ) -> str:
-        """
-        Resolve engine dependency for one operation and return engine name.
-        """
+        """Resolve engine dependency for one operation and return it."""
         engine = self.resolve_engine(operation)
         _resolve_spreadsheet_engine_dependency(
             self,
@@ -484,8 +478,10 @@ class PandasSpreadsheetHandlerMixin(
     SpreadsheetFileHandlerABC,
 ):
     """
-    Shared implementation for writable :mod:`pandas`-backed spreadsheet
-    handlers.
+    Shared implementation for writable :mod:`pandas` spreadsheet handlers.
+
+    This mixin provides spreadsheet write support on top of the shared pandas
+    read path.
     """
 
     # -- Class Attributes -- #
@@ -551,8 +547,10 @@ class PandasReadOnlySpreadsheetHandlerMixin(
     ReadOnlySpreadsheetFileHandlerABC,
 ):
     """
-    Shared implementation for read-only :mod:`pandas`-backed spreadsheet
-    handlers.
+    Shared implementation for read-only :mod:`pandas` spreadsheet handlers.
+
+    This mixin keeps the shared pandas sheet-reading path without exposing a
+    write surface.
     """
 
     # -- Class Attributes -- #
