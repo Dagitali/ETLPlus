@@ -3,7 +3,14 @@
 #
 # Copyright © 2026 Dagitali LLC. All rights reserved.
 #
-# A GitHub issue template for reporting reproducible bugs in ETLPlus.
+# GitHub issue template for reporting reproducible bugs.
+#
+# Responsibilities
+# - Gather the minimum information needed to reproduce and triage defects.
+#
+# Maintainer Notes
+# - Keep the prompts focused on actionable reproduction details for
+#   maintainers.
 
 ---
 

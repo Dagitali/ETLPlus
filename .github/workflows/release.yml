@@ -3,24 +3,23 @@
 #
 # Copyright © 2026 Dagitali LLC. All rights reserved.
 #
-# A GitHub Actions workflow configuration file for tagged release distribution.
+# A GitHub Actions workflow for tagged release distribution.
 #
-# Notes
-# - This workflow automates the tagged release path: build, artifact audit,
-#   distribution validation, GitHub release publication, PyPI publication, and
-#   tagged docs validation.
+# Responsibilities
+# - Build, audit, validate, and smoke-test tagged distribution artifacts.
+# - Publish the tagged GitHub Release and publish the package to PyPI.
+# - Validate the tagged documentation build locally; hosted publication is
+#   handled by the Read the Docs GitHub App.
+#
+# Maintainer Notes
 # - GitHub Release note categories are configured separately in
 #   `.github/release.yml`.
-# - PyPI trusted publishing must be configured against this workflow file
-#   (`.github/workflows/release.yml`) and the `pypi` GitHub environment.
-# - Hosted Read the Docs publication is handled by the Read the Docs GitHub App;
-#   this workflow only validates the tagged docs build locally.
-# - The workflow is hardened by removing global permissions and setting per-job
-#   scopes.
-# - To harden workflow security, global permissions are absent, and per-job
-#   permissions are set as needed.
-# - External GitHub Actions action references are each pinned to specific SHA
-#   to limit supply-chain risk.
+# - Python Package Index (PyPI trusted publishing must be configured for
+#   `.github/workflows/release.yml` and the `pypi` GitHub environment.
+# - Global permissions are intentionally omitted; each job declares the minimum
+#   permissions it needs.
+# - External GitHub Actions are pinned to full commit SHAs to reduce
+#   supply-chain risk.
 
 ---
 

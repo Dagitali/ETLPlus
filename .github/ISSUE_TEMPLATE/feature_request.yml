@@ -3,7 +3,14 @@
 #
 # Copyright © 2026 Dagitali LLC. All rights reserved.
 #
-# A GitHub issue template for proposing user-facing features in ETLPlus.
+# GitHub issue template for proposing user-facing features.
+#
+# Responsibilities
+# - Gather concrete problem statements, proposed solutions, and alternatives.
+#
+# Maintainer Notes
+# - Keep this template oriented toward actionable product improvements rather
+#   than general support questions.
 
 ---
 
