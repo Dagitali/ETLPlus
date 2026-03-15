@@ -11,6 +11,8 @@
 #   versioned docs publication.
 # - GitHub Release note categories are configured separately in
 #   `.github/release.yml`.
+# - PyPI trusted publishing must be configured against this workflow file
+#   (`.github/workflows/release.yml`) and the `pypi` GitHub environment.
 # - The workflow is hardened by removing global permissions and setting per-job
 #   scopes.
 # - To harden workflow security, global permissions are absent, and per-job
@@ -94,12 +96,14 @@ jobs:
       contents: read
       id-token: write
     environment:
+      # Keep this environment name aligned with the PyPI trusted publisher.
       name: pypi
       url: https://pypi.org/project/etlplus/
     steps:
       - *checkout_step
       - *download_dist_step
       - name: Publish to PyPI
+        # PyPI must trust `.github/workflows/release.yml`, not `ci.yml`.
         uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e  # Pinned v1
         with:
           verbose: true
