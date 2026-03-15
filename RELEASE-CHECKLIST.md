@@ -69,6 +69,8 @@ polish still recommended before the first stable `v1.0.0` tag.
 - The CI quality-bar item is now closed: lint, docstring lint, type-checking, tests, docs builds,
   distribution validation, artifact audits, and clean-environment wheel smoke checks are enforced
   or verified in the release path.
+- The Python Package Index (PyPI) trusted publisher must point at `.github/workflows/release.yml`
+  with the `pypi` GitHub environment; pointing it at `ci.yml` will cause trusted publishing to fail.
 - The shipped-files item is now closed for the release path because distribution builds and artifact
   audits run in CI from a tracked checkout, so defunct, backup, and scratch files that are not part
   of the committed tree are not part of tagged release artifacts.
