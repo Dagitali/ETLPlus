@@ -23,9 +23,7 @@ from .pytest_file_contract_mixins import ScientificSingleDatasetHandlerMixin
 from .pytest_file_contract_mixins import SemiStructuredReadMixin
 from .pytest_file_contract_mixins import SemiStructuredWriteDictMixin
 from .pytest_file_contract_utils import Operation
-from .pytest_file_contract_utils import (
-    call_module_operation as _call_module_operation,
-)
+from .pytest_file_contract_utils import call_module_operation as _call_module_operation
 from .pytest_file_contract_utils import make_payload
 from .pytest_file_types import OptionalModuleInstaller
 

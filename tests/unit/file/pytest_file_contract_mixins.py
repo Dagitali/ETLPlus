@@ -25,9 +25,7 @@ from etlplus.utils import count_records
 from etlplus.utils.types import JSONData
 
 from ...pytest_file_common import resolve_module_handler
-from .pytest_file_contract_utils import (
-    assert_single_dataset_rejects_non_default_key,
-)
+from .pytest_file_contract_utils import assert_single_dataset_rejects_non_default_key
 from .pytest_file_contract_utils import make_payload
 from .pytest_file_contract_utils import patch_dependency_resolver_value
 from .pytest_file_roundtrip_spec import RoundtripPayload
@@ -103,8 +101,7 @@ class PathMixin:
             ):
                 return spec
         raise AssertionError(
-            'No spreadsheet dependency mapping found for '
-            f'{self.module.__name__}',
+            f'No spreadsheet dependency mapping found for {self.module.__name__}',
         )
 
 

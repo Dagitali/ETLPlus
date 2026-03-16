@@ -487,8 +487,7 @@ class TestLoadHandler:
 
         def fail_materialize(*_args: object, **_kwargs: object) -> None:
             raise AssertionError(
-                'materialize_file_payload should not be called '
-                'for STDIN sources',
+                'materialize_file_payload should not be called for STDIN sources',
             )
 
         monkeypatch.setattr(
@@ -901,9 +900,7 @@ class TestTransformHandler:
             handlers.cli_io,
             'resolve_cli_payload',
             lambda source, **_kwargs: (
-                {'source': source}
-                if source == 'data.json'
-                else {'select': ['id']}
+                {'source': source} if source == 'data.json' else {'select': ['id']}
             ),
         )
         monkeypatch.setattr(
@@ -936,9 +933,7 @@ class TestTransformHandler:
                 'ops': {'select': ['id']},
             },
         )
-        assert (
-            'Data transformed and saved to out.json' in capsys.readouterr().out
-        )
+        assert 'Data transformed and saved to out.json' in capsys.readouterr().out
 
 
 class TestValidateHandler:

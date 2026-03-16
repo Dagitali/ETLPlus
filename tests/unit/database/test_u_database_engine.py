@@ -78,9 +78,7 @@ class TestLoadDatabaseUrlFromConfig:
 
         patch_read_file(config)
 
-        assert (
-            load_database_url_from_config('cfg.yml') == 'sqlite:///default.db'
-        )
+        assert load_database_url_from_config('cfg.yml') == 'sqlite:///default.db'
         assert (
             load_database_url_from_config('cfg.yml', name='reporting')
             == 'postgresql://reporting'

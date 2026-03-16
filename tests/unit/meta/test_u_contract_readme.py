@@ -109,11 +109,7 @@ def _expected_matrix_row(file_format: FileFormat) -> MatrixRow:
         handler_class.__name__,
         _matrix_base_abc_name(handler_class),
         _matrix_support_text(handler_class),
-        (
-            'stub'
-            if issubclass(handler_class, StubFileHandlerABC)
-            else 'implemented'
-        ),
+        ('stub' if issubclass(handler_class, StubFileHandlerABC) else 'implemented'),
     )
 
 

@@ -45,8 +45,7 @@ def _write_json_payload(path: str, payload: dict[str, Any]) -> None:
 def _write_xml_person_payload(path: str) -> None:
     """Write one minimal XML person payload using UTF-8 encoding."""
     Path(path).write_text(
-        '<?xml version="1.0"?>\n'
-        '<person><name>John</name><age>30</age></person>',
+        '<?xml version="1.0"?>\n<person><name>John</name><age>30</age></person>',
         encoding='utf-8',
     )
 
@@ -297,11 +296,7 @@ class TestExtractFromApi:
         response = _StubResponse(
             headers={'content-type': 'application/json'},
             payload=payload,
-            text=(
-                json.dumps(payload)
-                if not isinstance(payload, str)
-                else payload
-            ),
+            text=(json.dumps(payload) if not isinstance(payload, str) else payload),
         )
         session = _StubSession(response)
         result = extract_from_api(f'{base_url}/data', session=session)

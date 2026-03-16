@@ -39,9 +39,7 @@ def test_scope_conftests_declare_expected_scope_markers() -> None:
     """
     for scope_name, marker_name in _SCOPE_MARKERS:
         conftests = scope_conftests(scope_name)
-        assert conftests, (
-            f'No conftest.py files found under tests/{scope_name}'
-        )
+        assert conftests, f'No conftest.py files found under tests/{scope_name}'
         missing = sorted(
             path.relative_to(REPO_ROOT).as_posix()
             for path in conftests
@@ -50,6 +48,6 @@ def test_scope_conftests_declare_expected_scope_markers() -> None:
                 encoding='utf-8',
             )
         )
-        assert not missing, (
-            f'Missing pytest.mark.{marker_name} in:\n- ' + '\n- '.join(missing)
+        assert not missing, f'Missing pytest.mark.{marker_name} in:\n- ' + '\n- '.join(
+            missing,
         )

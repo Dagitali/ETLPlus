@@ -155,12 +155,8 @@ class TestPaginator:
 
         paginator = Paginator.from_config(cfg, fetch=_dummy_fetch)
 
-        assert (
-            paginator.page_param == Paginator.PAGE_PARAMS[PaginationType.PAGE]
-        )
-        assert (
-            paginator.size_param == Paginator.SIZE_PARAMS[PaginationType.PAGE]
-        )
+        assert paginator.page_param == Paginator.PAGE_PARAMS[PaginationType.PAGE]
+        assert paginator.size_param == Paginator.SIZE_PARAMS[PaginationType.PAGE]
         assert paginator.limit_param == Paginator.LIMIT_PARAM
         assert paginator.cursor_param == Paginator.CURSOR_PARAM
         assert paginator.records_path is None
@@ -489,9 +485,7 @@ class TestPaginatorInternalBranches:
         traversal inputs.
         """
         assert Paginator.next_cursor_from([], 'meta.next') is None
-        assert (
-            Paginator.next_cursor_from({'meta': 'oops'}, 'meta.next') is None
-        )
+        assert Paginator.next_cursor_from({'meta': 'oops'}, 'meta.next') is None
 
     def test_paginate_iter_exits_when_type_is_unrecognized(self) -> None:
         """

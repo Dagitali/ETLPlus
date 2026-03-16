@@ -90,10 +90,7 @@ class TestStatisticalHandlers:
         handler = _PyreadstatRequiredWriteHandler()
         with pytest.raises(
             ImportError,
-            match=(
-                'XPT write support requires "pyreadstat" '
-                'with write_xport\\(\\)'
-            ),
+            match=('XPT write support requires "pyreadstat" with write_xport\\(\\)'),
         ):
             handler.write_frame(
                 Path('sample.xpt'),
