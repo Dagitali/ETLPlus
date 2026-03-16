@@ -140,6 +140,10 @@ ETLPlus maintains one supported contributor lint/format path.
   static checks.
 - `autopep8` is retained as the compatibility formatter used by `make fmt`, CI, and pre-commit for
   the repository's existing whitespace and wrapping conventions.
+- The repository uses an 88-character line-length target so local formatting, CI, and lint guidance
+  stay aligned with the same wrapping convention.
+- `.ruff.toml` is the canonical line-length source; any duplicated formatter width in Make or CI
+  should match that setting exactly.
 - `pydocstyle` and `pydoclint` remain separate because they enforce the NumPy-style public-docstring
   contract rather than general source formatting.
 - `mypy` remains the type gate for the shipped package surface.
