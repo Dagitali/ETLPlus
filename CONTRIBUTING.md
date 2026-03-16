@@ -143,13 +143,12 @@ make doclint
 make typecheck
 ```
 
-Note that:
-
 - Ruff is the authoritative source-code lint gate for imports, pyupgrade-style rewrites, and core
   static checks.
 - `.ruff.toml` is the canonical source for the Python line-length policy, currently 88 characters.
+- Any duplicated width setting in supporting tooling must match `.ruff.toml`.
 - `autopep8` is retained only as a compatibility formatter for the existing `make fmt`, CI, and
-  pre-commit workflow; any duplicated width setting in supporting tooling must match `.ruff.toml`.
+  pre-commit workflow.
 - `pydocstyle` and `pydoclint` remain separate because they enforce the NumPy-style public-docstring
   contract rather than general source formatting.
 - `mypy` remains the type gate for the shipped package surface.
