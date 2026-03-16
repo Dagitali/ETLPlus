@@ -1,9 +1,10 @@
 Changelog
 =========
 
-GitHub Releases is the canonical release-history surface for ETLPlus. This page exists to point
-readers and maintainers to the tagged release history and to summarize how release notes are
-managed.
+GitHub Releases is the canonical release-history surface for ETLPlus. It also serves as the earlier
+developer-preview and release-announcement surface for tagged releases, whereas the Python Package
+Index (PyPI) is the later public package-install channel. This page exists to point readers and
+maintainers to the tagged release history and to summarize how release notes are managed.
 
 Current Release
 ---------------
