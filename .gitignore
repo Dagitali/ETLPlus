@@ -497,3 +497,16 @@ $RECYCLE.BIN/
 # Sphinx-generated API docs
 docs/build/
 docs/source/api/generated/
+
+### Local Scratch And Release Staging ###
+
+## Temporary local module snapshots and scratch backups.
+etlplus/**/*.py.txt
+
+# Local release/output scratch files.
+export.json
+out.json
+output.csv
+output.json
+result.json
+temp/
