@@ -54,9 +54,7 @@ def _artifact_members(path: Path) -> list[str]:
             return archive.namelist()
     if path.suffixes[-2:] == ['.tar', '.gz']:
         with tarfile.open(path, 'r:gz') as archive:
-            return [
-                member.name for member in archive.getmembers() if member.name
-            ]
+            return [member.name for member in archive.getmembers() if member.name]
     raise ValueError(f'Unsupported artifact type: {path}')
 
 
@@ -110,11 +108,7 @@ def _find_violations(path: Path) -> list[str]:
 def _find_untracked_members(path: Path) -> list[str]:
     tracked = _tracked_repo_files()
     return sorted(
-        {
-            member
-            for member in _normalized_member_paths(path)
-            if member not in tracked
-        },
+        {member for member in _normalized_member_paths(path) if member not in tracked},
     )
 
 
