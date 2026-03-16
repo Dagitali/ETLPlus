@@ -928,7 +928,8 @@ make typecheck
 `pydoclint`, `make fmt` applies the supported Ruff-plus-`autopep8` formatting path, and `make
 typecheck` runs `mypy` against the shipped package. ETLPlus no longer maintains separate Black or
 Flake8 contributor paths; Ruff is the authoritative lint gate and `autopep8` remains as the
-compatibility formatter used by CI and pre-commit.
+compatibility formatter used by CI and pre-commit. `.ruff.toml` is the canonical line-length source,
+and any duplicated formatter width in supporting tooling is expected to match it.
 
 ### Updating Demo Snippets
 
