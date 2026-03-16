@@ -962,13 +962,15 @@ the `.github/` folder.
     ```
 
 3. GitHub Actions runs the tagged release workflow in [.github/workflows/release.yml][release wf],
-   builds the sdist/wheel, validates the artifacts, validates the tagged docs build, publishes to
-   [PyPI][PyPI], and then publishes the GitHub Release.
+  builds the sdist/wheel, validates the artifacts, validates the tagged docs build, publishes the
+  GitHub Release, and then publishes to [PyPI][PyPI].
 4. Draft the GitHub Release notes using [.github/RELEASE-NOTES-TEMPLATE.md][release notes] together
    with the categorized notes configured in [.github/release.yml][release cfg].
 
 The tagged docs publication itself is handled by the Read the Docs GitHub App after the tag push;
-the release workflow only validates that the docs build cleanly from the tagged source.
+the release workflow only validates that the docs build cleanly from the tagged source. ETLPlus uses
+the GitHub Release as the earlier developer-preview and announcement surface, while PyPI is the
+later public package-install channel.
 
 If you want an extra smoke-test before tagging, run `make dist && pip install dist/*.whl` locally;
 this exercises the same build path the workflow uses.
