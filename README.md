@@ -949,9 +949,10 @@ between the markers in [DEMO.md](DEMO.md).
 `setuptools-scm` derives the package version from Git tags, so publishing is now entirely tag
 driven—no hand-editing `pyproject.toml`, `setup.py`, or `etlplus/__version__.py`.
 
-GitHub Releases is the canonical release-history surface for ETLPlus. The docs changelog page links
-there, while the maintainer-facing release text is drafted from the template and category config in
-the `.github/` folder.
+GitHub Releases is the canonical release-history surface for ETLPlus. It is also the earlier
+developer-preview and release-announcement surface for tagged releases, whereas PyPI is the later
+public package-install channel. The docs changelog page links there, and the maintainer-facing
+release text is drafted from the template and category config in the `.github/` folder.
 
 1. Ensure `main` is green and the release notes/docs are up to date.
 2. Create and push a SemVer tag matching the `v*.*.*` pattern:
@@ -968,9 +969,7 @@ the `.github/` folder.
    with the categorized notes configured in [.github/release.yml][release cfg].
 
 The tagged docs publication itself is handled by the Read the Docs GitHub App after the tag push;
-the release workflow only validates that the docs build cleanly from the tagged source. ETLPlus uses
-the GitHub Release as the earlier developer-preview and announcement surface, while PyPI is the
-later public package-install channel.
+the release workflow only validates that the docs build cleanly from the tagged source.
 
 If you want an extra smoke-test before tagging, run `make dist && pip install dist/*.whl` locally;
 this exercises the same build path the workflow uses.
