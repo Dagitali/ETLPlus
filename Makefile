@@ -100,6 +100,9 @@ else
 	ETLPLUS  := $(VENV_BIN)/etlplus
 endif
 
+# Python formatter width; keep aligned with .ruff.toml:line-length.
+PY_LINE_LENGTH ?= 88
+
 ### SDLC ###
 
 # Default .env used by run targets (override: make run ENV=.env.local)
@@ -246,7 +249,7 @@ doclint: ## Run docstring linters (pydocstyle + pydoclint if available)
 .PHONY: fmt
 fmt: ## Format code with Ruff fixes plus autopep8 normalization
 	@$(VENV_BIN)/ruff check . --fix || (echo "Hint: run 'make dev' first" && false)
-	@$(VENV_BIN)/autopep8 --in-place --max-line-length=79 \
+	@$(VENV_BIN)/autopep8 --in-place --max-line-length=$(PY_LINE_LENGTH) \
 	--exclude .venv,dist,build,etlplus.egg-info,.mypy_cache,.pytest_cache \
 	$(shell git ls-files '*.py') || true
 
