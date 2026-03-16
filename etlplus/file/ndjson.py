@@ -181,6 +181,4 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         """
         _ = options
         rows = normalize_records(data, 'NDJSON')
-        return ''.join(
-            f'{json.dumps(row, ensure_ascii=False)}\n' for row in rows
-        )
+        return ''.join(f'{json.dumps(row, ensure_ascii=False)}\n' for row in rows)

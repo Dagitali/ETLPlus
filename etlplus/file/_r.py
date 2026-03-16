@@ -46,9 +46,7 @@ def coerce_r_object(value: Any, pandas: Any) -> JSONData:
         return records_from_table(value)
     if isinstance(value, dict):
         return value
-    if isinstance(value, list) and all(
-        isinstance(item, dict) for item in value
-    ):
+    if isinstance(value, list) and all(isinstance(item, dict) for item in value):
         return value
     return {'value': value}
 

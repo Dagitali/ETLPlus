@@ -603,9 +603,7 @@ def _apply_filter_step(
     op_func = _resolve_operator(op)
 
     return [
-        r
-        for r in records
-        if _eval_condition(r, field, op_func, value, catch_all=True)
+        r for r in records if _eval_condition(r, field, op_func, value, catch_all=True)
     ]
 
 
@@ -744,9 +742,7 @@ def _is_plain_fields_list(
         True if obj is a non-text sequence of non-mapping items, False
         otherwise.
     """
-    return _is_sequence_not_text(obj) and not any(
-        isinstance(x, Mapping) for x in obj
-    )
+    return _is_sequence_not_text(obj) and not any(isinstance(x, Mapping) for x in obj)
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -896,11 +892,7 @@ def apply_map(
             if old_key in record
         }
         renamed.update(
-            {
-                key: value
-                for key, value in record.items()
-                if key not in rename_map
-            },
+            {key: value for key, value in record.items() if key not in rename_map},
         )
         result.append(renamed)
 
@@ -926,9 +918,7 @@ def apply_select(
     JSONList
         Records containing the requested fields; missing fields are ``None``.
     """
-    return [
-        {field: record.get(field) for field in fields} for record in records
-    ]
+    return [{field: record.get(field) for field in fields} for record in records]
 
 
 def apply_sort(

@@ -268,12 +268,9 @@ def write_table_rows(
     )
     insert_columns = ', '.join(quote_identifier(column) for column in columns)
     placeholders = ', '.join('?' for _ in columns)
-    insert_sql = (
-        f'INSERT INTO {table_ident} ({insert_columns}) VALUES ({placeholders})'
-    )
+    insert_sql = f'INSERT INTO {table_ident} ({insert_columns}) VALUES ({placeholders})'
     values = [
-        tuple(coerce_sql_value(row.get(column)) for column in columns)
-        for row in rows
+        tuple(coerce_sql_value(row.get(column)) for column in columns) for row in rows
     ]
 
     connection.execute(f'DROP TABLE IF EXISTS {table_ident}')

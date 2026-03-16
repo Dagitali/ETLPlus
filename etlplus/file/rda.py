@@ -143,9 +143,7 @@ class RdaFile(RDataHandlerMixin, ScientificDatasetFileHandlerABC):
         writer = self.resolve_pyreadr_writer(
             'write_rdata',
             'write_rda',
-            error_message=(
-                'RDA write support requires "pyreadr" with write_rdata().'
-            ),
+            error_message='RDA write support requires "pyreadr" with write_rdata().',
         )
         self.call_pyreadr_writer(
             writer,

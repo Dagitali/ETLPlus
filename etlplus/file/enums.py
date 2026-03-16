@@ -261,10 +261,7 @@ class FileFormat(CoercibleStrEnum):
             'application/vnd.apache.arrow.file': 'feather',
             'application/vnd.apache.orc': 'orc',
             'application/vnd.ms-excel': 'xls',
-            (
-                'application/vnd.openxmlformats-'
-                'officedocument.spreadsheetml.sheet'
-            ): 'xlsx',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
             'application/x-avro': 'avro',
             'application/x-csv': 'csv',
             'application/x-feather': 'feather',
@@ -350,15 +347,12 @@ def infer_file_format_and_compression(
         suffix_source = None
 
     suffixes = (
-        PurePath(str(suffix_source)).suffixes
-        if suffix_source is not None
-        else []
+        PurePath(str(suffix_source)).suffixes if suffix_source is not None else []
     )
     if suffixes:
         normalized_suffixes = [suffix.casefold() for suffix in suffixes]
         compression = (
-            CompressionFormat.try_coerce(normalized_suffixes[-1])
-            or compression
+            CompressionFormat.try_coerce(normalized_suffixes[-1]) or compression
         )
         if compression is not None:
             normalized_suffixes = normalized_suffixes[:-1]

@@ -311,9 +311,7 @@ def extract_from_database(
         {
             'message': 'Database extraction not yet implemented',
             'connection_string': connection_string,
-            'note': (
-                'Install database-specific drivers to enable this feature'
-            ),
+            'note': 'Install database-specific drivers to enable this feature',
         },
     ]
 

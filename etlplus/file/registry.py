@@ -88,9 +88,7 @@ def _handler_spec(
     file_format: FileFormat,
 ) -> str:
     """Build the ``module:Class`` import spec for one handler format."""
-    return (
-        f'etlplus.file.{file_format.value}:{_handler_class_name(file_format)}'
-    )
+    return f'etlplus.file.{file_format.value}:{_handler_class_name(file_format)}'
 
 
 def _import_symbol(

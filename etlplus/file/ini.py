@@ -96,9 +96,7 @@ def _payload_from_parser(
     defaults = dict(parser.defaults())
     for section in parser.sections():
         payload[section] = {
-            key: value
-            for key, value in parser.items(section)
-            if key not in defaults
+            key: value for key, value in parser.items(section) if key not in defaults
         }
     return payload
 

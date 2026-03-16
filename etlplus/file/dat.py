@@ -203,9 +203,7 @@ class DatFile(DelimitedTextFileHandlerABC):
                 delimiters=delimiters,
             )
             reader = csv.reader(handle, dialect)
-            rows = [
-                row for row in reader if any(field.strip() for field in row)
-            ]
+            rows = [row for row in reader if any(field.strip() for field in row)]
             if not rows:
                 return []
 

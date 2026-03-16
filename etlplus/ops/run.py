@@ -366,8 +366,7 @@ def run_pipeline(
     if target_type is None:
         if not isinstance(data, (dict, list)):
             raise TypeError(
-                f'Expected data to be dict or list of dicts, '
-                f'got {type(data).__name__}',
+                f'Expected data to be dict or list of dicts, got {type(data).__name__}',
             )
         return data
     if target is None:
