@@ -5,6 +5,18 @@
 #
 # Facilitates automation for setting up Unix-based systems.
 #
+# Responsibilities
+# - Automate common local development, linting, testing, packaging, and docs
+#   workflows for the repository.
+# - Provide consistent entry points for environment setup, database helpers,
+#   and pipeline-related tasks.
+#
+# Maintainer Notes
+# - Keep target names and help text aligned with the supported contributor and
+#   CI workflows.
+# - Preserve the reference URLs and common-flow examples below as maintainer
+#   context for future Makefile changes.
+#
 # See:
 # 1. https://earthly.dev/blog/python-makefile/
 # 2. https://www.gnu.org/prep/standards/html_node/Makefile-Conventions.html
