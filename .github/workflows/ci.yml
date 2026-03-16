@@ -40,6 +40,10 @@ on:
 
 permissions: {}
 
+env:
+  # Keep this width aligned with .ruff.toml:line-length.
+  PY_LINE_LENGTH: '88'
+
 jobs:
   lint:
     name: Lint on Python ${{ matrix.python-version }}
@@ -66,7 +70,7 @@ jobs:
           # ruff format --check .
           files="$(git ls-files '*.py')"
           if [ -n "$files" ]; then
-            autopep8 --diff --exit-code --max-line-length=79 $files
+            autopep8 --diff --exit-code --max-line-length=${PY_LINE_LENGTH} $files
           fi
 
   test:
