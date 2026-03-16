@@ -150,5 +150,6 @@ polish still recommended before the first stable `v1.0.0` tag.
 
 The current release-prep posture is:
 
-- `v0.27.0`: ship the already-completed polish and workflow improvements
-- Pre-`v1.0.0`: finish the strongly recommended alignment work above
+- `v0.27.x`: ship the already-completed polish and workflow improvements
+- Pre-`v1.0.0`: preserve that aligned release surface, keep the tracked release docs/workflows in
+  sync, and focus remaining effort on final execution hygiene rather than new policy churn
