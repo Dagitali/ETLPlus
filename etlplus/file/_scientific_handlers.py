@@ -143,9 +143,7 @@ class SingleDatasetTabularScientificReadMixin(
             If *pyreadstat_mode* is set to an unsupported value.
         """
         try:
-            required_operations = _PYREADSTAT_REQUIRED_OPERATIONS[
-                self.pyreadstat_mode
-            ]
+            required_operations = _PYREADSTAT_REQUIRED_OPERATIONS[self.pyreadstat_mode]
         except KeyError as error:
             raise ValueError(
                 'Unsupported pyreadstat mode '

@@ -28,9 +28,7 @@ class TestModuleCallables:
         """Test that missing-method errors include provided module metadata."""
         with pytest.raises(
             ImportError,
-            match=(
-                'XPT read support requires "pyreadstat" with read_xpt\\(\\)\\.'
-            ),
+            match=('XPT read support requires "pyreadstat" with read_xpt\\(\\)\\.'),
         ):
             mod.call_module_method(
                 object(),

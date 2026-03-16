@@ -284,8 +284,7 @@ class TestStubCategoryHandlers:
         assert handler.write_sheet(path, RECORD_ROWS, sheet='Sheet1') == 4
         assert [read_path for read_path, _ in read_calls] == [path, path]
         assert [
-            (write_path, write_data)
-            for write_path, write_data, _ in write_calls
+            (write_path, write_data) for write_path, write_data, _ in write_calls
         ] == [
             (path, RECORD_LIST),
             (path, RECORD_LIST),

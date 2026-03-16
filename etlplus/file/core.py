@@ -139,9 +139,7 @@ class File:
             The resolved file format.
         """
         return (
-            self.file_format
-            if self.file_format is not None
-            else self._guess_format()
+            self.file_format if self.file_format is not None else self._guess_format()
         )
 
     def _guess_format(self) -> FileFormat:

@@ -45,14 +45,8 @@ CLI_DESCRIPTION: Final[str] = '\n'.join(
             '    etlplus transform in.json --source-type file out.json '
             '--target-type file --operations "{"select": ["id"]}"'
         ),
-        (
-            '    etlplus extract in.csv | '
-            'etlplus load out.json --target-type file'
-        ),
-        (
-            '    cat data.json | '
-            'etlplus load https://example.com/data --target-type api'
-        ),
+        '    etlplus extract in.csv | etlplus load out.json --target-type file',
+        '    cat data.json | etlplus load https://example.com/data --target-type api',
         '',
         'Override format inference when extensions are misleading:',
         '',

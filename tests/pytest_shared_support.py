@@ -96,11 +96,7 @@ def parse_json(
     output: str | Path,
 ) -> Any:
     """Parse JSON from a string or file path."""
-    raw = (
-        output.read_text(encoding='utf-8')
-        if isinstance(output, Path)
-        else output
-    )
+    raw = output.read_text(encoding='utf-8') if isinstance(output, Path) else output
     try:
         return json.loads(raw)
     except json.JSONDecodeError as exc:

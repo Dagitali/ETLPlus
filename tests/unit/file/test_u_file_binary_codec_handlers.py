@@ -71,8 +71,7 @@ class TestBinaryCodecHandlers:
         with pytest.raises(
             AttributeError,
             match=(
-                'CBOR codec module "codec_stub" must provide '
-                'callable missing\\(\\)\\.'
+                'CBOR codec module "codec_stub" must provide callable missing\\(\\)\\.'
             ),
         ):
             handler._codec_method(object(), 'missing')

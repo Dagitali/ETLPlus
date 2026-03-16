@@ -142,10 +142,14 @@ repos:
         # - apply pyupgrade-like rules for py313
       # - id: ruff-format
 
+  # Python: compatibility formatting; align with .ruff.toml.
   - repo: https://github.com/hhatto/autopep8
     rev: v2.3.2
     hooks:
       - id: autopep8
+        args:
+          - --in-place
+          - --max-line-length=88
 
   # Python: type checking
   - repo: https://github.com/pre-commit/mirrors-mypy

@@ -16,9 +16,7 @@ from typing import cast
 import pytest
 
 from etlplus.file import FileFormat
-from etlplus.file._stub_categories import (
-    StubSingleDatasetScientificFileHandlerABC,
-)
+from etlplus.file._stub_categories import StubSingleDatasetScientificFileHandlerABC
 from etlplus.file.base import BoundFileHandler
 from etlplus.file.base import DelimitedTextFileHandlerABC
 from etlplus.file.base import FileHandlerABC
@@ -52,9 +50,7 @@ from etlplus.file.zsav import ZsavFile
 from etlplus.utils.types import JSONData
 from etlplus.utils.types import JSONList
 
-from .pytest_file_contract_utils import (
-    assert_single_dataset_rejects_non_default_key,
-)
+from .pytest_file_contract_utils import assert_single_dataset_rejects_non_default_key
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -575,9 +571,7 @@ class TestOptionsContracts:
         for options, expected in option_expectations:
             assert handler.dataset_from_options(options) == expected
             assert handler.resolve_dataset(None, options=options) == expected
-            assert handler.resolve_dataset('explicit', options=options) == (
-                'explicit'
-            )
+            assert handler.resolve_dataset('explicit', options=options) == ('explicit')
         assert handler.resolve_dataset(None, default='fallback') == 'fallback'
 
     @pytest.mark.parametrize(
@@ -598,9 +592,7 @@ class TestOptionsContracts:
         if case.read_default is not _NO_DEFAULT:
             assert helper(None, default=case.read_default) == case.read_default
         if case.write_default is not _NO_DEFAULT:
-            assert (
-                helper(None, default=case.write_default) == case.write_default
-            )
+            assert helper(None, default=case.write_default) == case.write_default
 
     def test_read_options_use_independent_extras_dicts(self) -> None:
         """
@@ -624,10 +616,7 @@ class TestOptionsContracts:
             handler.root_tag_from_write_options(WriteOptions(root_tag='items'))
             == 'items'
         )
-        assert (
-            handler.root_tag_from_write_options(None, default='dataset')
-            == 'dataset'
-        )
+        assert handler.root_tag_from_write_options(None, default='dataset') == 'dataset'
 
     def test_write_options_are_frozen(self) -> None:
         """Test :class:`WriteOptions` immutability contract."""

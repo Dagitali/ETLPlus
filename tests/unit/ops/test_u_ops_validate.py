@@ -71,9 +71,7 @@ class TestValidateField:
         """Test pattern mismatch and non-string pattern validation paths."""
         mismatch = validate_field('abc', {'pattern': '^z'})
         assert mismatch['valid'] is False
-        assert any(
-            'does not match pattern' in err for err in mismatch['errors']
-        )
+        assert any('does not match pattern' in err for err in mismatch['errors'])
 
         matched = validate_field('abc', {'pattern': '^a'})
         assert matched['valid'] is True

@@ -134,17 +134,7 @@ Use NumPy-style docstrings for public APIs.
 
 ## Linting And Formatting
 
-ETLPlus maintains one supported contributor lint/format path.
-
-- Ruff is the authoritative source-code lint gate for imports, pyupgrade-style rewrites, and core
-  static checks.
-- `autopep8` is retained as the compatibility formatter used by `make fmt`, CI, and pre-commit for
-  the repository's existing whitespace and wrapping conventions.
-- `pydocstyle` and `pydoclint` remain separate because they enforce the NumPy-style public-docstring
-  contract rather than general source formatting.
-- `mypy` remains the type gate for the shipped package surface.
-
-Contributors should use:
+ETLPlus maintains one supported contributor lint/format workflow. Contributors should use:
 
 ```bash
 make fmt
@@ -153,13 +143,16 @@ make doclint
 make typecheck
 ```
 
-ETLPlus does not maintain separate Black or Flake8 contributor flows.
-
-[Code of Conduct]: CODE_OF_CONDUCT.md
-[owner]: https://dagitali.com
-[pull request]: https://github.com/Dagitali/ETLPlus/pulls
-[README]: README.md
-[SemVer]: http://semver.org
+- Ruff is the authoritative source-code lint gate for imports, pyupgrade-style rewrites, and core
+  static checks.
+- `.ruff.toml` is the canonical source for the Python line-length policy, currently 88 characters.
+- Any duplicated width setting in supporting tooling must match `.ruff.toml`.
+- `autopep8` is retained only as a compatibility formatter for the existing `make fmt`, CI, and
+  pre-commit workflow.
+- `pydocstyle` and `pydoclint` remain separate because they enforce the NumPy-style public-docstring
+  contract rather than general source formatting.
+- `mypy` remains the type gate for the shipped package surface.
+- ETLPlus does not maintain separate Black or Flake8 contributor flows.
 
 ## Testing
 
@@ -245,4 +238,9 @@ Common commands:
 <!-- docs:guides-contributing:end -->
 
 [Buy Me a Coffee]: https://buymeacoffee.com/djrlj694
+[Code of Conduct]: CODE_OF_CONDUCT.md
 [GitHub Sponsors]: https://github.com/sponsors/Dagitali
+[owner]: https://dagitali.com
+[pull request]: https://github.com/Dagitali/ETLPlus/pulls
+[README]: README.md
+[SemVer]: http://semver.org

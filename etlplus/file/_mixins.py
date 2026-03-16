@@ -158,8 +158,7 @@ class SingleDatasetValidation(ScientificDatasetOption):
         if dataset is None or dataset == self.dataset_key:
             return
         raise ValueError(
-            f'{self.format_name} supports only dataset key '
-            f'{self.dataset_key!r}',
+            f'{self.format_name} supports only dataset key {self.dataset_key!r}',
         )
 
 

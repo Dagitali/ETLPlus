@@ -287,10 +287,7 @@ class EndpointClient:
         ]
         if invalid:
             sample = invalid[:3]
-            msg = (
-                'endpoints must map str -> non-empty str; '
-                f'invalid entries: {sample}'
-            )
+            msg = f'endpoints must map str -> non-empty str; invalid entries: {sample}'
             raise ValueError(msg)
         # Wrap in a read-only mapping to ensure immutability
         object.__setattr__(self, 'endpoints', MappingProxyType(eps))
@@ -787,10 +784,7 @@ class EndpointClient:
         if '{' in rel_path:
             try:
                 encoded = (
-                    {
-                        k: quote(str(v), safe='')
-                        for k, v in path_parameters.items()
-                    }
+                    {k: quote(str(v), safe='') for k, v in path_parameters.items()}
                     if path_parameters
                     else {}
                 )

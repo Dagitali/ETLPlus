@@ -80,8 +80,7 @@ class TestIoHelpers:
             ([{'a': 1}, {'a': 2}], [{'a': 1}, {'a': 2}]),
         ):
             assert (
-                mod.coerce_record_payload(valid_payload, format_name='JSON')
-                == expected
+                mod.coerce_record_payload(valid_payload, format_name='JSON') == expected
             )
 
         for invalid_payload, pattern in cast(
@@ -169,10 +168,7 @@ class TestIoHelpers:
         """Test dict/string key payload validators."""
         payload = mod.require_dict_payload({'key': 'value'}, format_name='INI')
         assert payload == {'key': 'value'}
-        assert (
-            mod.require_str_key(payload, format_name='INI', key='key')
-            == 'value'
-        )
+        assert mod.require_str_key(payload, format_name='INI', key='key') == 'value'
         with pytest.raises(TypeError, match='must be a dict'):
             mod.require_dict_payload(
                 [],

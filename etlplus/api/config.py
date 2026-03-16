@@ -185,10 +185,7 @@ def _parse_endpoints(
     """
     if not (mapping := maybe_mapping(raw)):
         return {}
-    return {
-        str(name): EndpointConfig.from_obj(data)
-        for name, data in mapping.items()
-    }
+    return {str(name): EndpointConfig.from_obj(data) for name, data in mapping.items()}
 
 
 def _parse_profiles(raw: Any) -> dict[str, ApiProfileConfig]:

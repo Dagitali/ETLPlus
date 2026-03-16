@@ -77,10 +77,7 @@ class TestSqlHelpers:
     def test_resolve_table(self) -> None:
         """Test table resolution behavior for supported branches."""
         assert mod.resolve_table([], engine_name='sqlite') is None
-        assert (
-            mod.resolve_table(['data', 'other'], engine_name='sqlite')
-            == 'data'
-        )
+        assert mod.resolve_table(['data', 'other'], engine_name='sqlite') == 'data'
         assert mod.resolve_table(['single'], engine_name='sqlite') == 'single'
         with pytest.raises(
             ValueError,

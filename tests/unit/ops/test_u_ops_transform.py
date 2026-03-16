@@ -495,8 +495,7 @@ class TestTransform:
         monkeypatch.delitem(transform_mod._STEP_APPLIERS, 'filter')
         data = [{'a': 1}]
         assert (
-            transform(data, {'filter': {'field': 'a', 'op': 'eq', 'value': 1}})
-            == data
+            transform(data, {'filter': {'field': 'a', 'op': 'eq', 'value': 1}}) == data
         )
 
     def test_with_aggregate(self) -> None:

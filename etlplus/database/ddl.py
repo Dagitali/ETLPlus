@@ -92,8 +92,7 @@ def _load_template_text(
         )
     except FileNotFoundError as exc:  # pragma: no cover - deployment guard
         raise FileNotFoundError(
-            f'Could not load template {filename} '
-            f'from etlplus.templates package data.',
+            f'Could not load template {filename} from etlplus.templates package data.',
         ) from exc
 
 
@@ -295,9 +294,7 @@ def render_tables_to_string(
     str
         Concatenated SQL payload suitable for writing to disk or stdout.
     """
-    resolved_template_path = (
-        str(template_path) if template_path is not None else None
-    )
+    resolved_template_path = str(template_path) if template_path is not None else None
     rendered_sql: list[str] = []
     for spec_path in spec_paths:
         spec = load_table_spec(spec_path)

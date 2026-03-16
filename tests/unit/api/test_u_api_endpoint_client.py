@@ -815,8 +815,7 @@ class TestPagePagination:
         patch_request_once(
             _page_responder(
                 tuple(
-                    tuple({'p': page, 'i': i} for i in range(3))
-                    for page in range(1, 5)
+                    tuple({'p': page, 'i': i} for i in range(3)) for page in range(1, 5)
                 ),
             ),
         )
@@ -1297,9 +1296,7 @@ class TestUrlComposition:
             query_parameters={'a': '1', 'dup': '2'},
             pagination=None,
         )
-        assert request_once_stub['urls'][0] == (
-            f'{base_url}/ep?z=9&dup=1&a=1&dup=2'
-        )
+        assert request_once_stub['urls'][0] == (f'{base_url}/ep?z=9&dup=1&a=1&dup=2')
 
 
 class TestEndpointClientInternalBranches:
