@@ -5,6 +5,18 @@
 #
 # Facilitates automation for setting up Unix-based systems.
 #
+# Responsibilities
+# - Automate common local development, linting, testing, packaging, and docs
+#   workflows for the repository.
+# - Provide consistent entry points for environment setup, database helpers,
+#   and pipeline-related tasks.
+#
+# Maintainer Notes
+# - Keep target names and help text aligned with the supported contributor and
+#   CI workflows.
+# - Preserve the reference URLs and common-flow examples below as maintainer
+#   context for future Makefile changes.
+#
 # See:
 # 1. https://earthly.dev/blog/python-makefile/
 # 2. https://www.gnu.org/prep/standards/html_node/Makefile-Conventions.html
@@ -99,6 +111,9 @@ else
 	PIP      := $(VENV_BIN)/pip
 	ETLPLUS  := $(VENV_BIN)/etlplus
 endif
+
+# Python formatter width; keep aligned with .ruff.toml:line-length.
+PY_LINE_LENGTH ?= 88
 
 ### SDLC ###
 
@@ -246,7 +261,7 @@ doclint: ## Run docstring linters (pydocstyle + pydoclint if available)
 .PHONY: fmt
 fmt: ## Format code with Ruff fixes plus autopep8 normalization
 	@$(VENV_BIN)/ruff check . --fix || (echo "Hint: run 'make dev' first" && false)
-	@$(VENV_BIN)/autopep8 --in-place --max-line-length=79 \
+	@$(VENV_BIN)/autopep8 --in-place --max-line-length=$(PY_LINE_LENGTH) \
 	--exclude .venv,dist,build,etlplus.egg-info,.mypy_cache,.pytest_cache \
 	$(shell git ls-files '*.py') || true
 

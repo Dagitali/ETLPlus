@@ -28,9 +28,7 @@ from etlplus.file.stub import StubFileHandlerABC
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_SCIENTIFIC_STUB_MODULES: list[
-    tuple[type[ScientificDatasetFileHandlerABC], str]
-] = [
+_SCIENTIFIC_STUB_MODULES: list[tuple[type[ScientificDatasetFileHandlerABC], str]] = [
     (mat_mod.MatFile, 'mat'),
     (sylk_mod.SylkFile, 'sylk'),
     (zsav_mod.ZsavFile, 'zsav'),

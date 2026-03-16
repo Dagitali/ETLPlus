@@ -134,16 +134,12 @@ class TestIntegrationFileSmokeConventions:
             for path in _integration_file_test_modules()
         }
         observed_exception_modules = {
-            module_name
-            for module_name, attrs in overrides_by_module.items()
-            if attrs
+            module_name for module_name, attrs in overrides_by_module.items() if attrs
         }
         assert observed_exception_modules == SMOKE_ROUNDTRIP_EXCEPTION_MODULES
 
         for module_name, attrs in overrides_by_module.items():
             if module_name in SMOKE_ROUNDTRIP_EXCEPTION_MODULES:
-                assert (
-                    attrs == SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES[module_name]
-                )
+                assert attrs == SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES[module_name]
             else:
                 assert not attrs

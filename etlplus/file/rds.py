@@ -122,9 +122,7 @@ class RdsFile(RDataHandlerMixin, SingleDatasetScientificFileHandlerABC):
 
         writer = self.resolve_pyreadr_writer(
             'write_rds',
-            error_message=(
-                'RDS write support requires "pyreadr" with write_rds().'
-            ),
+            error_message='RDS write support requires "pyreadr" with write_rds().',
         )
         self.call_pyreadr_writer(writer, path=path, frame=frame)
         return count

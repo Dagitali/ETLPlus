@@ -275,9 +275,7 @@ class TestComputeRlSleepSeconds:
     def test_override_wins(self) -> None:
         """Test that override value takes precedence."""
         base = {'sleep_seconds': 0.4, 'max_per_sec': None}
-        assert (
-            utils.compute_rl_sleep_seconds(base, {'sleep_seconds': 0.1}) == 0.1
-        )
+        assert utils.compute_rl_sleep_seconds(base, {'sleep_seconds': 0.1}) == 0.1
 
 
 class TestPaginateWithClient:
@@ -663,14 +661,9 @@ class TestUtilsInternalBranches:
     def test_compute_rl_sleep_seconds_variants(self) -> None:
         """Test that rate-limit sleep helper filters overrides correctly."""
         rl_obj = RateLimitConfig(sleep_seconds=0.5, max_per_sec=None)
-        assert (
-            utils.compute_rl_sleep_seconds(rl_obj, {'max_per_sec': 4}) == 0.5
-        )
+        assert utils.compute_rl_sleep_seconds(rl_obj, {'max_per_sec': 4}) == 0.5
         assert utils.compute_rl_sleep_seconds(None, {'max_per_sec': 4}) == 0.25
-        assert (
-            utils.compute_rl_sleep_seconds({'sleep_seconds': 0.2}, {'x': 1})
-            == 0.2
-        )
+        assert utils.compute_rl_sleep_seconds({'sleep_seconds': 0.2}, {'x': 1}) == 0.2
 
     def test_resolve_request_raises_when_method_missing(self) -> None:
         """

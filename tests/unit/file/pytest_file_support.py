@@ -231,9 +231,7 @@ class PyreadrStub:
     ) -> None:
         self._result = result
         self.write_rds_calls: list[tuple[str, object]] = []
-        self.write_rdata_calls: list[
-            tuple[str, object, dict[str, object]]
-        ] = []
+        self.write_rdata_calls: list[tuple[str, object, dict[str, object]]] = []
 
     def read_r(
         self,

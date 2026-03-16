@@ -470,9 +470,7 @@ def render_handler(
         template=template_key,
         template_path=file_override,
     )
-    sql_text = (
-        '\n'.join(chunk.rstrip() for chunk in rendered_chunks).rstrip() + '\n'
-    )
+    sql_text = '\n'.join(chunk.rstrip() for chunk in rendered_chunks).rstrip() + '\n'
     rendered_output = sql_text if pretty else sql_text.rstrip('\n')
 
     output_path = output

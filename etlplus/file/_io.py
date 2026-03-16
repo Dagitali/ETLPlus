@@ -30,9 +30,7 @@ def _is_object_list(
     payload: object,
 ) -> TypeGuard[JSONList]:
     """Return whether *payload* is a list of dictionary objects."""
-    return isinstance(payload, list) and all(
-        isinstance(item, dict) for item in payload
-    )
+    return isinstance(payload, list) and all(isinstance(item, dict) for item in payload)
 
 
 # SECTION: FUNCTIONS ======================================================== #

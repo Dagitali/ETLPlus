@@ -131,8 +131,7 @@ def infer_resource_type(
         return 'file'
 
     raise ValueError(
-        'Could not infer resource type. '
-        'Use --source-type/--target-type to specify it.',
+        'Could not infer resource type. Use --source-type/--target-type to specify it.',
     )
 
 

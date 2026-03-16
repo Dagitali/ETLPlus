@@ -22,9 +22,7 @@ from .pytest_file_contract_mixins import PathMixin
 from .pytest_file_contract_mixins import SpreadsheetSheetNameRoutingMixin
 from .pytest_file_contract_mixins import SpreadsheetWritableMixin
 from .pytest_file_contract_utils import Operation
-from .pytest_file_contract_utils import (
-    call_module_operation as _call_module_operation,
-)
+from .pytest_file_contract_utils import call_module_operation as _call_module_operation
 from .pytest_file_contract_utils import make_payload
 from .pytest_file_support import PandasModuleStub
 from .pytest_file_support import RecordsFrameStub

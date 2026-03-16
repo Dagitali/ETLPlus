@@ -43,12 +43,8 @@ def test_normalize_choice_with_default_normalizer() -> None:
     default for unknown values.
     """
     mapping = {'file': 'file', 'api': 'api'}
-    assert (
-        normalize_choice('  FILE  ', mapping=mapping, default='file') == 'file'
-    )
-    assert (
-        normalize_choice('unknown', mapping=mapping, default='file') == 'file'
-    )
+    assert normalize_choice('  FILE  ', mapping=mapping, default='file') == 'file'
+    assert normalize_choice('unknown', mapping=mapping, default='file') == 'file'
     assert normalize_choice(None, mapping=mapping, default='file') == 'file'
 
 

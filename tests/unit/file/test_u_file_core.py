@@ -328,9 +328,7 @@ class TestFile:
         rows = File(path, FileFormat.CSV).read()
 
         assert [
-            row['name']
-            for row in rows
-            if isinstance(row, dict) and 'name' in row
+            row['name'] for row in rows if isinstance(row, dict) and 'name' in row
         ] == ['John', 'Jane']
 
     def test_read_json_type_errors(self, tmp_path: Path) -> None:

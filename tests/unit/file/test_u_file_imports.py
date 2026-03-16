@@ -238,8 +238,7 @@ class TestImportsHelpers:
             required=True,
         )
         assert (
-            f'{format_name} support requires dependency '
-            f'"{dependency_name}"' in message
+            f'{format_name} support requires dependency "{dependency_name}"' in message
         )
         assert f'pip install {dependency_name}' in message
 

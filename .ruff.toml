@@ -5,11 +5,17 @@
 #
 # Ruff configuration.
 #
-# Target the minimum supported syntax level: Python 3.13. Keep it fast and
-# opinionated but not overbearing. Avoid conflicts with the more specific rules
-# enforced by pydocstyle/pydoclint in pyproject.toml.
+# Responsibilities
+# - Define the repository's Ruff linting and formatting policy for Python
+#   sources.
+# - Target the minimum supported syntax level: Python 3.13.
+#
+# Maintainer Notes
+# - Keep Ruff fast and opinionated but not overbearing.
+# - Avoid conflicts with the more specific docstring rules enforced by
+#   pydocstyle/pydoclint in pyproject.toml.
 
-line-length = 79  # 88 is Ruff's default, popularized by Black.
+line-length = 88  # Matches Ruff's default, popularized by Black.
 target-version = "py313"
 extend-exclude = [
   "etlplus.egg-info",

@@ -261,10 +261,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         written = handler.write(path, payload, options=options)
 
         assert written == len(payload)
-        assert any(
-            f'CREATE TABLE "{expected_table}"' in stmt
-            for stmt in conn.executed
-        )
+        assert any(f'CREATE TABLE "{expected_table}"' in stmt for stmt in conn.executed)
         assert conn.executemany_calls
         assert conn.closed is True
 

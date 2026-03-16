@@ -27,9 +27,7 @@ class _PyreadrStub:
         self._result = result
         self.read_calls: list[str] = []
         self.write_calls: list[tuple[str, object]] = []
-        self.write_with_kwargs_calls: list[
-            tuple[str, object, dict[str, object]]
-        ] = []
+        self.write_with_kwargs_calls: list[tuple[str, object, dict[str, object]]] = []
 
     def read_r(self, path: str) -> dict[str, object]:
         """Record read calls and return configured mapping."""

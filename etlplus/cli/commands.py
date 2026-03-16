@@ -179,9 +179,7 @@ RenderTemplatePathOption = Annotated[
     typer.Option(
         '--template-path',
         metavar='PATH',
-        help=(
-            'Explicit path to a Jinja template file (overrides template key).'
-        ),
+        help='Explicit path to a Jinja template file (overrides template key).',
     ),
 ]
 
@@ -222,9 +220,7 @@ SourceTypeOption = Annotated[
         metavar='CONNECTOR',
         show_default=False,
         rich_help_panel='I/O overrides',
-        help=(
-            'Override the inferred source type (api, database, file, folder).'
-        ),
+        help='Override the inferred source type (api, database, file, folder).',
     ),
 ]
 
@@ -272,9 +268,7 @@ TargetTypeOption = Annotated[
         metavar='CONNECTOR',
         show_default=False,
         rich_help_panel='I/O overrides',
-        help=(
-            'Override the inferred target type (api, database, file, folder).'
-        ),
+        help='Override the inferred target type (api, database, file, folder).',
     ),
 ]
 
