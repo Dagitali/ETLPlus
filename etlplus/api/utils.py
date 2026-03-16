@@ -449,9 +449,7 @@ def compose_api_request_env(
         use_client_endpoints = True
         client_base_url = api_cfg.base_url
         client_base_path = api_cfg.effective_base_path()
-        client_endpoints_map = {
-            k: v.path for k, v in api_cfg.endpoints.items()
-        }
+        client_endpoints_map = {k: v.path for k, v in api_cfg.endpoints.items()}
         selected_endpoint_key = endpoint_name
     _update_mapping(
         params,
@@ -549,9 +547,7 @@ def compose_api_target_env(
         ),
     )
     _update_mapping(headers, cast(Mapping[str, str] | None, ov.get('headers')))
-    timeout: Timeout = (
-        cast(Timeout, ov.get('timeout')) if 'timeout' in ov else None
-    )
+    timeout: Timeout = cast(Timeout, ov.get('timeout')) if 'timeout' in ov else None
     sess_cfg: SessionConfigDict | None = cast(
         SessionConfigDict | None,
         ov.get('session'),
@@ -628,21 +624,13 @@ def build_pagination_cfg(
             page_size = overrides.get('page_size') if overrides else None
             if pagination:
                 page_param = (
-                    page_param
-                    or getattr(pagination, 'page_param', None)
-                    or 'page'
+                    page_param or getattr(pagination, 'page_param', None) or 'page'
                 )
                 size_param = (
-                    size_param
-                    or getattr(pagination, 'size_param', None)
-                    or 'per_page'
+                    size_param or getattr(pagination, 'size_param', None) or 'per_page'
                 )
-                start_page = (
-                    start_page or getattr(pagination, 'start_page', None) or 1
-                )
-                page_size = (
-                    page_size or getattr(pagination, 'page_size', None) or 100
-                )
+                start_page = start_page or getattr(pagination, 'start_page', None) or 1
+                page_size = page_size or getattr(pagination, 'page_size', None) or 100
             cfg.update(
                 {
                     'page_param': str(page_param or 'page'),
@@ -667,9 +655,7 @@ def build_pagination_cfg(
                     'cursor_path',
                     None,
                 )
-                page_size = (
-                    page_size or getattr(pagination, 'page_size', None) or 100
-                )
+                page_size = page_size or getattr(pagination, 'page_size', None) or 100
                 start_cursor = getattr(pagination, 'start_cursor', None)
             cfg.update(
                 {
@@ -888,8 +874,7 @@ def resolve_request(
     request_callable = getattr(requester, http_method.value, None)
     if not callable(request_callable):
         raise TypeError(
-            'Session object must supply a callable '
-            f'"{http_method.value}" method',
+            f'Session object must supply a callable "{http_method.value}" method',
         )
     typed_request_callable = cast(
         Callable[..., requests.Response],
