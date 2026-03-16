@@ -157,9 +157,7 @@ class TestCliEndToEnd:
             )
         code, _out, err = cli_invoke(args)
         if should_pass:
-            assert code == 0, (
-                f'Expected success for args: {args}, got error: {err}'
-            )
+            assert code == 0, f'Expected success for args: {args}, got error: {err}'
         else:
             assert code != 0, f'Expected failure for args: {args}'
 
