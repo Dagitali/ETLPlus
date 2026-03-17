@@ -25,14 +25,17 @@ S3-compatible object storage, and Azure storage services.
 
 ## Public API
 
+- `AbfsStorageBackend`: Stub backend for `abfs://filesystem@account/path` locations.
 - `AzureBlobStorageBackend`: Skeleton backend for `azure-blob://container/blob` locations.
 - `coerce_location(value)`: Normalize a mixed input into `StorageLocation`.
+- `FtpStorageBackend`: Stub backend for `ftp://host/path` locations.
 - `get_backend(value)`: Resolve the backend that can open or inspect the location.
 - `LocalStorageBackend`: Local filesystem backend for `file` locations and `file://` URIs.
+- `S3StorageBackend`: Skeleton backend for `s3://bucket/key` locations.
 - `StorageLocation.from_value(value)`: Parse a local path or storage URI into a normalized
   location object.
 - `StorageScheme`: Scheme enum used by parsed locations and backend resolution.
-- `S3StorageBackend`: Skeleton backend for `s3://bucket/key` locations.
+- `StubStorageBackendABC`: Shared placeholder base for unsupported remote backends.
 
 ## Example
 
@@ -49,8 +52,8 @@ with backend.open(location, encoding='utf-8') as handle:
 
 ## Supported Schemes
 
-- `abfs`: Reserved for future Azure Data Lake Storage Gen2 backend support
+- `abfs`: Azure Data Lake Storage Gen2 stub backend with validation-only runtime hooks
 - `azure-blob`: Azure Blob skeleton backend with validation-only runtime hooks
 - `file`: Local filesystem paths and `file://` URIs
-- `ftp`: Reserved for future backend support
+- `ftp`: FTP stub backend with validation-only runtime hooks
 - `s3`: AWS S3 skeleton backend with validation-only runtime hooks
