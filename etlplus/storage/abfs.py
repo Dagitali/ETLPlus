@@ -277,8 +277,7 @@ class AbfsStorageBackend(RemoteStorageBackend):
         if kwargs:
             unexpected = ', '.join(sorted(kwargs))
             raise TypeError(
-                'Unsupported ABFS open() keyword arguments: '
-                f'{unexpected}',
+                f'Unsupported ABFS open() keyword arguments: {unexpected}',
             )
 
         if kind == 'read':
