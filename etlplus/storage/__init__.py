@@ -15,8 +15,9 @@ from .local import LocalStorageBackend
 from .location import StorageLocation
 from .registry import coerce_location
 from .registry import get_backend
+from .remote import RemoteStorageBackend
 from .s3 import S3StorageBackend
-from .stub import StubStorageBackendABC
+from .stub import StubStorageBackend
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -27,8 +28,9 @@ __all__ = [
     'AzureBlobStorageBackend',
     'FtpStorageBackend',
     'LocalStorageBackend',
+    'RemoteStorageBackend',
     'S3StorageBackend',
-    'StubStorageBackendABC',
+    'StubStorageBackend',
     'StorageBackendABC',
     'StorageLocation',
     # Enums

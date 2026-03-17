@@ -7,7 +7,7 @@ FTP storage backend skeleton.
 from __future__ import annotations
 
 from .enums import StorageScheme
-from .stub import StubStorageBackendABC
+from .stub import StubStorageBackend
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -21,7 +21,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class FtpStorageBackend(StubStorageBackendABC):
+class FtpStorageBackend(StubStorageBackend):
     """
     Storage backend skeleton for ``ftp://host/path`` locations.
 

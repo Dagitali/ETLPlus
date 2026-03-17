@@ -11,16 +11,15 @@ from typing import Any
 from typing import ClassVar
 from typing import Never
 
-from .base import StorageBackendABC
-from .enums import StorageScheme
 from .location import StorageLocation
+from .remote import RemoteStorageBackend
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
     # Classes
-    'StubStorageBackendABC',
+    'StubStorageBackend',
 ]
 
 
@@ -61,87 +60,45 @@ def _raise_not_implemented(
 # SECTION: CLASSES ========================================================== #
 
 
-class StubStorageBackendABC(StorageBackendABC):
+class StubStorageBackend(RemoteStorageBackend):
     """
     Base class for placeholder storage services.
 
-    Concrete subclasses provide scheme and naming metadata, while this class
-    centralizes validation and placeholder runtime behavior.
+    Concrete subclasses provide runtime package metadata, while this class
+    layers placeholder runtime behavior on top of the shared remote backend
+    validation.
     """
 
     # -- Class Attributes -- #
 
-    authority_label: ClassVar[str] = 'service authority'
     package_name: ClassVar[str]
-    path_label: ClassVar[str] = 'resource path'
-    scheme: ClassVar[StorageScheme]
-    service_name: ClassVar[str]
 
     # -- Internal Instance Methods -- #
 
-    def _raise_not_implemented(
-        self,
-    ) -> Never:
+    def _raise_not_implemented(self) -> Never:
         """Raise the canonical placeholder error for this service."""
         _raise_not_implemented(
             self.service_name,
             package_name=self.package_name,
         )
 
-    def _validate(
+    def exists(
         self,
         location: StorageLocation,
-    ) -> None:
+    ) -> bool:
         """
-        Validate that *location* matches this stub backend.
+        Validate *location* and raise until the backend is implemented.
 
         Parameters
         ----------
         location : StorageLocation
             Parsed storage location.
 
-        Raises
-        ------
-        TypeError
-            If *location* uses a different scheme.
-        ValueError
-            If required authority or path components are missing.
+        Returns
+        -------
+        bool
+            Never, until the backend is implemented.
         """
-        if location.scheme is not self.scheme:
-            raise TypeError(
-                f'{type(self).__name__} only supports '
-                f'{self.scheme.value!r} locations, got '
-                f'{location.scheme.value!r}',
-            )
-        if not location.authority:
-            raise ValueError(
-                f'{self.service_name} locations require a {self.authority_label}',
-            )
-        if not location.path:
-            raise ValueError(
-                f'{self.service_name} locations require a {self.path_label}',
-            )
-
-    # -- Instance Methods -- #
-
-    def ensure_parent_dir(
-        self,
-        location: StorageLocation,
-    ) -> None:
-        """
-        Validate *location* and treat parent preparation as a no-op.
-
-        Stubbed remote backends do not create containers or virtual
-        directories, but validating the target early keeps the public surface
-        consistent with the local backend.
-        """
-        self._validate(location)
-
-    def exists(
-        self,
-        location: StorageLocation,
-    ) -> bool:
-        """Validate *location* and raise until the backend is implemented."""
         self._validate(location)
         self._raise_not_implemented()
 
@@ -151,7 +108,24 @@ class StubStorageBackendABC(StorageBackendABC):
         mode: str = 'r',
         **kwargs: Any,
     ) -> IO[Any]:
-        """Validate *location* and raise until the backend is implemented."""
+        """
+        Validate *location* and raise until the backend is implemented.
+
+        Parameters
+        ----------
+        location : StorageLocation
+            Parsed storage location.
+        mode : str, optional
+            Remote open mode. Supports ``r``, ``rb``, ``rt``, ``w``,
+            ``wb``, and ``wt``.
+        **kwargs : Any
+            Additional keyword arguments.
+
+        Returns
+        -------
+        IO[Any]
+            Never, until the backend is implemented.
+        """
         del mode, kwargs
         self._validate(location)
         self._raise_not_implemented()

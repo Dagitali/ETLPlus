@@ -7,7 +7,7 @@ ABFS storage backend skeleton.
 from __future__ import annotations
 
 from .enums import StorageScheme
-from .stub import StubStorageBackendABC
+from .stub import StubStorageBackend
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -21,7 +21,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class AbfsStorageBackend(StubStorageBackendABC):
+class AbfsStorageBackend(StubStorageBackend):
     """
     Storage backend skeleton for ``abfs://filesystem@account/path`` locations.
 
