@@ -929,7 +929,9 @@ make typecheck
 typecheck` runs `mypy` against the shipped package. ETLPlus no longer maintains separate Black or
 Flake8 contributor paths; Ruff is the authoritative lint gate and `autopep8` remains as the
 compatibility formatter used by CI and pre-commit. `.ruff.toml` is the canonical line-length source,
-and any duplicated formatter width in supporting tooling is expected to match it.
+and any duplicated formatter width in supporting tooling is expected to match it. If an external
+tool still invokes Flake8, the repository `.flake8` file exists only as a compatibility shim for the
+overlapping basics that Flake8 can understand.
 
 ### Updating Demo Snippets
 
