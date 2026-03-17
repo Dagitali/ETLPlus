@@ -168,11 +168,11 @@ repos:
         name: pytest meta guardrails
         entry: >-
           python -m pytest -q
-          tests/unit/meta/test_u_test_layout.py
-          tests/unit/meta/test_u_test_filenames.py
-          tests/unit/meta/test_u_marker_coverage.py
-          tests/unit/meta/test_u_integration_file_conventions.py
-          tests/unit/meta/test_u_contract_readme.py
+          tests/meta/test_m_test_layout.py
+          tests/meta/test_m_test_filenames.py
+          tests/meta/test_m_marker_coverage.py
+          tests/meta/test_m_integration_file_conventions.py
+          tests/meta/test_m_contract_readme.py
         language: system
         pass_filenames: false
         always_run: true
