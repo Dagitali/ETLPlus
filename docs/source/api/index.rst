@@ -9,10 +9,11 @@ grows.
    :maxdepth: 1
 
    core
-   api-clients
+   api
    connectors
    database
    files
    operations
+   storage
    utilities
    workflow
