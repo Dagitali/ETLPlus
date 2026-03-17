@@ -9,10 +9,12 @@ from __future__ import annotations
 from functools import cache
 
 from ..utils.types import StrPath
+from .azure_blob import AzureBlobStorageBackend
 from .base import StorageBackend
 from .enums import StorageScheme
 from .local import LocalStorageBackend
 from .location import StorageLocation
+from .s3 import S3StorageBackend
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -28,9 +30,21 @@ __all__ = [
 
 
 @cache
+def _azure_blob_backend() -> AzureBlobStorageBackend:
+    """Return the cached Azure Blob storage backend skeleton."""
+    return AzureBlobStorageBackend()
+
+
+@cache
 def _local_backend() -> LocalStorageBackend:
     """Return the cached local-storage backend instance."""
     return LocalStorageBackend()
+
+
+@cache
+def _s3_backend() -> S3StorageBackend:
+    """Return the cached S3 storage backend skeleton."""
+    return S3StorageBackend()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -83,8 +97,12 @@ def get_backend(
     """
     location = coerce_location(value)
     match location.scheme:
+        case StorageScheme.AZURE_BLOB:
+            return _azure_blob_backend()
         case StorageScheme.FILE:
             return _local_backend()
+        case StorageScheme.S3:
+            return _s3_backend()
         case _:
             raise NotImplementedError(
                 'Storage backend support is not implemented yet for '
