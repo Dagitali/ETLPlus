@@ -6,6 +6,7 @@ Unit tests for :mod:`etlplus.storage`.
 
 from __future__ import annotations
 
+from io import BytesIO
 from pathlib import Path
 
 import pytest
@@ -14,10 +15,12 @@ from etlplus.storage import AbfsStorageBackend
 from etlplus.storage import AzureBlobStorageBackend
 from etlplus.storage import FtpStorageBackend
 from etlplus.storage import LocalStorageBackend
+from etlplus.storage import RemoteStorageBackend
 from etlplus.storage import S3StorageBackend
 from etlplus.storage import StorageLocation
 from etlplus.storage import StorageScheme
-from etlplus.storage import StubStorageBackendABC
+from etlplus.storage import StubStorageBackend
+from etlplus.storage import azure_blob as azure_blob_mod
 from etlplus.storage import coerce_location
 from etlplus.storage import get_backend
 
@@ -27,19 +30,38 @@ from etlplus.storage import get_backend
 class TestAzureBlobStorageBackend:
     """Unit tests for :class:`etlplus.storage.AzureBlobStorageBackend`."""
 
-    def test_inherits_stub_storage_backend_base(self) -> None:
-        """Test that Azure Blob uses the shared storage-stub base class."""
-        assert issubclass(AzureBlobStorageBackend, StubStorageBackendABC)
+    def test_exists_uses_blob_client(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that Azure Blob exists delegates to the blob client."""
+        backend = AzureBlobStorageBackend()
+        location = StorageLocation.from_value(
+            'azure-blob://container/blob.json',
+        )
 
-    def test_exists_raises_placeholder_error(self) -> None:
-        """Test that Azure Blob runtime operations are placeholders."""
+        class FakeBlobClient:
+            """Blob client test double."""
+
+            def exists(self) -> bool:
+                """Return a present-object result."""
+                return True
+
+        def fake_blob_client(_location: StorageLocation) -> FakeBlobClient:
+            return FakeBlobClient()
+
+        monkeypatch.setattr(backend, '_blob_client', fake_blob_client)
+        assert backend.exists(location) is True
+
+    def test_exists_raises_import_error_without_sdk(self) -> None:
+        """Test that Azure Blob runtime needs the optional SDK package."""
         backend = AzureBlobStorageBackend()
         location = StorageLocation.from_value(
             'azure-blob://container/path/to/blob.json',
         )
         with pytest.raises(
-            NotImplementedError,
-            match='azure-storage-blob-backed',
+            ImportError,
+            match='azure-storage-blob',
         ):
             backend.exists(location)
 
@@ -49,6 +71,106 @@ class TestAzureBlobStorageBackend:
         location = StorageLocation.from_value('azure-blob://container')
         with pytest.raises(ValueError, match='blob path'):
             backend.ensure_parent_dir(location)
+
+    def test_inherits_remote_storage_backend_base(self) -> None:
+        """Test that Azure Blob uses the shared remote backend base class."""
+        assert issubclass(AzureBlobStorageBackend, RemoteStorageBackend)
+        assert not issubclass(AzureBlobStorageBackend, StubStorageBackend)
+
+    def test_open_reads_text_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that Azure Blob reads return text buffers when requested."""
+        backend = AzureBlobStorageBackend()
+        location = StorageLocation.from_value(
+            'azure-blob://container/blob.json',
+        )
+
+        class FakeDownload:
+            """Blob download test double."""
+
+            def readall(self) -> bytes:
+                """Return a fixed payload."""
+                return b'{"ok": true}'
+
+        class FakeBlobClient:
+            """Blob client test double."""
+
+            def download_blob(self) -> FakeDownload:
+                """Return the fake download wrapper."""
+                return FakeDownload()
+
+        def fake_blob_client(_location: StorageLocation) -> FakeBlobClient:
+            return FakeBlobClient()
+
+        monkeypatch.setattr(backend, '_blob_client', fake_blob_client)
+        with backend.open(location, encoding='utf-8') as handle:
+            assert handle.read() == '{"ok": true}'
+
+    def test_open_writes_binary_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that Azure Blob writes upload buffered payloads on close."""
+        backend = AzureBlobStorageBackend()
+        location = StorageLocation.from_value(
+            'azure-blob://container/blob.bin',
+        )
+        uploads: list[dict[str, object]] = []
+
+        class FakeBlobClient:
+            """Blob client upload test double."""
+
+            def upload_blob(self, **kwargs: object) -> None:
+                """Record upload arguments."""
+                uploads.append(kwargs)
+
+        def fake_blob_client(_location: StorageLocation) -> FakeBlobClient:
+            return FakeBlobClient()
+
+        monkeypatch.setattr(backend, '_blob_client', fake_blob_client)
+        monkeypatch.setattr(
+            azure_blob_mod,
+            '_import_blob_types',
+            lambda: (object, None),
+        )
+
+        with backend.open(location, 'wb') as handle:
+            handle.write(b'payload')
+
+        assert uploads == [{'data': b'payload', 'overwrite': True}]
+
+    def test_service_client_uses_connection_string_env(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that Azure Blob resolves the service client from env config."""
+        backend = AzureBlobStorageBackend()
+        calls: list[str] = []
+
+        class FakeBlobServiceClient:
+            """Blob service client test double."""
+
+            @classmethod
+            def from_connection_string(cls, value: str) -> str:
+                """Return a sentinel service client."""
+                calls.append(value)
+                return 'service-client'
+
+        monkeypatch.setenv(
+            'AZURE_STORAGE_CONNECTION_STRING',
+            'UseDevelopmentStorage=true',
+        )
+        monkeypatch.setattr(
+            azure_blob_mod,
+            '_import_blob_types',
+            lambda: (FakeBlobServiceClient, None),
+        )
+
+        service_client = backend._service_client()
+        assert service_client == 'service-client'
+        assert calls == ['UseDevelopmentStorage=true']
 
 
 class TestLocalStorageBackend:
@@ -76,9 +198,31 @@ class TestLocalStorageBackend:
 class TestS3StorageBackend:
     """Unit tests for :class:`etlplus.storage.S3StorageBackend`."""
 
-    def test_inherits_stub_storage_backend_base(self) -> None:
-        """Test that S3 uses the shared storage-stub base class."""
-        assert issubclass(S3StorageBackend, StubStorageBackendABC)
+    def test_exists_returns_true_when_object_is_found(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that S3 existence checks return true for present objects."""
+        backend = S3StorageBackend()
+        location = StorageLocation.from_value('s3://bucket/data.json')
+
+        class FakeS3Client:
+            """S3 client existence test double."""
+
+            def head_object(self, **kwargs: object) -> None:
+                """Assert the requested object identity."""
+                assert kwargs == {'Bucket': 'bucket', 'Key': 'data.json'}
+
+        def fake_client() -> FakeS3Client:
+            return FakeS3Client()
+
+        monkeypatch.setattr(backend, '_client', fake_client)
+        assert backend.exists(location) is True
+
+    def test_inherits_remote_storage_backend_base(self) -> None:
+        """Test that S3 uses the shared remote backend base class."""
+        assert issubclass(S3StorageBackend, RemoteStorageBackend)
+        assert not issubclass(S3StorageBackend, StubStorageBackend)
 
     def test_ensure_parent_dir_validates_bucket_and_key(self) -> None:
         """Test that invalid S3 locations fail validation early."""
@@ -91,8 +235,89 @@ class TestS3StorageBackend:
         """Test that runtime S3 operations are explicit placeholders."""
         backend = S3StorageBackend()
         location = StorageLocation.from_value('s3://bucket/data.json')
-        with pytest.raises(NotImplementedError, match='boto3-backed'):
+        with pytest.raises(ImportError, match='boto3'):
             backend.exists(location)
+
+    def test_exists_returns_false_for_missing_object(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that S3 existence checks treat not-found errors as false."""
+        backend = S3StorageBackend()
+        location = StorageLocation.from_value('s3://bucket/missing.json')
+
+        class FakeS3Error(Exception):
+            """S3 not-found error test double."""
+
+            def __init__(self) -> None:
+                self.response = {'Error': {'Code': 'NoSuchKey'}}
+
+        class FakeS3Client:
+            """S3 client missing-object test double."""
+
+            def head_object(self, **kwargs: object) -> None:
+                """Raise a not-found error for the requested object."""
+                raise FakeS3Error()
+
+        def fake_client() -> FakeS3Client:
+            return FakeS3Client()
+
+        monkeypatch.setattr(backend, '_client', fake_client)
+        assert backend.exists(location) is False
+
+    def test_open_reads_text_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that S3 reads return text buffers when requested."""
+        backend = S3StorageBackend()
+        location = StorageLocation.from_value('s3://bucket/data.json')
+
+        class FakeS3Client:
+            """S3 client read test double."""
+
+            def get_object(self, **kwargs: object) -> dict[str, object]:
+                """Return the requested object payload."""
+                assert kwargs == {'Bucket': 'bucket', 'Key': 'data.json'}
+                return {'Body': BytesIO(b'{"ok": true}')}
+
+        def fake_client() -> FakeS3Client:
+            return FakeS3Client()
+
+        monkeypatch.setattr(backend, '_client', fake_client)
+        with backend.open(location, encoding='utf-8') as handle:
+            assert handle.read() == '{"ok": true}'
+
+    def test_open_writes_binary_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that S3 writes upload buffered payloads on close."""
+        backend = S3StorageBackend()
+        location = StorageLocation.from_value('s3://bucket/data.bin')
+        uploads: list[dict[str, object]] = []
+
+        class FakeS3Client:
+            """S3 client write test double."""
+
+            def put_object(self, **kwargs: object) -> None:
+                """Record upload arguments."""
+                uploads.append(kwargs)
+
+        def fake_client() -> FakeS3Client:
+            return FakeS3Client()
+
+        monkeypatch.setattr(backend, '_client', fake_client)
+        with backend.open(location, 'wb') as handle:
+            handle.write(b'payload')
+
+        assert uploads == [
+            {
+                'Body': b'payload',
+                'Bucket': 'bucket',
+                'Key': 'data.bin',
+            },
+        ]
 
 
 class TestStorageLocation:
@@ -199,7 +424,7 @@ class TestOtherStubStorageBackends:
         """Test that FTP routes through the shared placeholder behavior."""
         backend = FtpStorageBackend()
         location = StorageLocation.from_value('ftp://example.com/data.json')
-        with pytest.raises(NotImplementedError, match='ftplib-backed'):
+        with pytest.raises(NotImplementedError, match='ftplib'):
             backend.exists(location)
 
     def test_abfs_exists_raises_placeholder_error(self) -> None:
@@ -210,6 +435,6 @@ class TestOtherStubStorageBackends:
         )
         with pytest.raises(
             NotImplementedError,
-            match='azure-storage-file-datalake-backed',
+            match='azure-storage-file-datalake',
         ):
             backend.exists(location)
