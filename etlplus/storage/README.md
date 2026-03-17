@@ -6,8 +6,13 @@ under the file-format layer.
 - Separates where bytes live from how payloads are encoded
 - Normalizes local paths and storage URIs into a shared `StorageLocation` model
 - Resolves the active storage backend for a location
-- Starts with local-disk support while reserving scheme-aware entry points for future remote
-  backends
+- Includes local-disk support plus SDK-backed S3 and Azure Blob object access
+
+Install the cloud storage dependencies with:
+
+```bash
+pip install -e ".[storage]"
+```
 
 Back to project overview: see the top-level [README](../../README.md).
 
@@ -50,10 +55,17 @@ with backend.open(location, encoding='utf-8') as handle:
     payload = handle.read()
 ```
 
+S3 uses the standard boto3 credential chain.
+
+Azure Blob uses either `AZURE_STORAGE_CONNECTION_STRING` or
+`AZURE_STORAGE_ACCOUNT_URL`. When using account URLs, you can also provide
+`AZURE_STORAGE_CREDENTIAL`, or instantiate `AzureBlobStorageBackend` directly
+with explicit connection settings.
+
 ## Supported Schemes
 
 - `abfs`: Azure Data Lake Storage Gen2 stub backend with validation-only runtime hooks
-- `azure-blob`: Azure Blob skeleton backend with validation-only runtime hooks
+- `azure-blob`: Azure Blob backend wired to `azure-storage-blob`
 - `file`: Local filesystem paths and `file://` URIs
 - `ftp`: FTP stub backend with validation-only runtime hooks
-- `s3`: AWS S3 skeleton backend with validation-only runtime hooks
+- `s3`: AWS S3 backend wired to `boto3`

@@ -153,6 +153,9 @@ make typecheck
   contract rather than general source formatting.
 - `mypy` remains the type gate for the shipped package surface.
 - ETLPlus does not maintain separate Black or Flake8 contributor flows.
+- If an external editor or integration still invokes Flake8, use the repository `.flake8` file only
+  as a compatibility shim for overlapping basics such as line length and excludes; Ruff remains
+  canonical.
 
 ## Testing
 
