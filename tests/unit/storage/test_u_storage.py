@@ -10,7 +10,9 @@ from pathlib import Path
 
 import pytest
 
+from etlplus.storage import AzureBlobStorageBackend
 from etlplus.storage import LocalStorageBackend
+from etlplus.storage import S3StorageBackend
 from etlplus.storage import StorageLocation
 from etlplus.storage import StorageScheme
 from etlplus.storage import coerce_location
@@ -19,8 +21,40 @@ from etlplus.storage import get_backend
 # SECTION: TESTS ============================================================ #
 
 
+class TestAzureBlobStorageBackend:
+    """Unit tests for :class:`etlplus.storage.AzureBlobStorageBackend`."""
+
+    def test_exists_raises_placeholder_error(self) -> None:
+        """Test that Azure Blob runtime operations are placeholders."""
+        backend = AzureBlobStorageBackend()
+        location = StorageLocation.from_value(
+            'azure-blob://container/path/to/blob.json',
+        )
+        with pytest.raises(
+            NotImplementedError,
+            match='azure-storage-blob-backed',
+        ):
+            backend.exists(location)
+
+    def test_ensure_parent_dir_validates_container_and_blob(self) -> None:
+        """Test that invalid Azure Blob locations fail validation early."""
+        backend = AzureBlobStorageBackend()
+        location = StorageLocation.from_value('azure-blob://container')
+        with pytest.raises(ValueError, match='blob path'):
+            backend.ensure_parent_dir(location)
+
+
 class TestStorageLocation:
     """Unit tests for :class:`etlplus.storage.StorageLocation`."""
+
+    def test_from_azure_blob_uri(self) -> None:
+        """Test that Azure Blob URIs keep container and blob path segments."""
+        location = StorageLocation.from_value(
+            'azure-blob://container/path/to/blob.json',
+        )
+        assert location.scheme is StorageScheme.AZURE_BLOB
+        assert location.authority == 'container'
+        assert location.path == 'path/to/blob.json'
 
     def test_from_local_path_string(self) -> None:
         """Test that plain paths are treated as local storage."""
@@ -70,15 +104,25 @@ class TestStorageRegistry:
         location = StorageLocation.from_value('data/input.csv')
         assert coerce_location(location) is location
 
+    def test_get_backend_for_azure_blob_location(self) -> None:
+        """Test that Azure Blob locations resolve to the Azure backend."""
+        backend = get_backend('azure-blob://container/path.json')
+        assert isinstance(backend, AzureBlobStorageBackend)
+
     def test_get_backend_for_local_location(self) -> None:
         """Test that local storage resolves to the local backend."""
         backend = get_backend('data/input.csv')
         assert isinstance(backend, LocalStorageBackend)
 
-    def test_get_backend_for_remote_location_raises(self) -> None:
-        """Test that unimplemented remote schemes raise a clear error."""
-        with pytest.raises(NotImplementedError, match="'s3'"):
-            get_backend('s3://bucket/path.json')
+    def test_get_backend_for_s3_location(self) -> None:
+        """Test that S3 locations resolve to the S3 backend skeleton."""
+        backend = get_backend('s3://bucket/path.json')
+        assert isinstance(backend, S3StorageBackend)
+
+    def test_get_backend_for_unsupported_remote_location_raises(self) -> None:
+        """Test that unsupported remote schemes still raise clearly."""
+        with pytest.raises(NotImplementedError, match="'ftp'"):
+            get_backend('ftp://example.com/path.json')
 
 
 class TestLocalStorageBackend:
@@ -101,3 +145,21 @@ class TestLocalStorageBackend:
             handle.write('payload')
 
         assert target.read_text(encoding='utf-8') == 'payload'
+
+
+class TestS3StorageBackend:
+    """Unit tests for :class:`etlplus.storage.S3StorageBackend`."""
+
+    def test_exists_raises_placeholder_error(self) -> None:
+        """Test that runtime S3 operations are explicit placeholders."""
+        backend = S3StorageBackend()
+        location = StorageLocation.from_value('s3://bucket/data.json')
+        with pytest.raises(NotImplementedError, match='boto3-backed'):
+            backend.exists(location)
+
+    def test_ensure_parent_dir_validates_bucket_and_key(self) -> None:
+        """Test that invalid S3 locations fail validation early."""
+        backend = S3StorageBackend()
+        location = StorageLocation.from_value('s3://bucket')
+        with pytest.raises(ValueError, match='object key'):
+            backend.ensure_parent_dir(location)
