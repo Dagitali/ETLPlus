@@ -44,6 +44,46 @@ class TestAzureBlobStorageBackend:
             backend.ensure_parent_dir(location)
 
 
+class TestLocalStorageBackend:
+    """Unit tests for :class:`etlplus.storage.LocalStorageBackend`."""
+
+    def test_exists(self, tmp_path: Path) -> None:
+        """Test that :meth:`exists` reflects local filesystem state."""
+        target = tmp_path / 'exists.txt'
+        target.write_text('hello', encoding='utf-8')
+        backend = LocalStorageBackend()
+        assert backend.exists(StorageLocation.from_value(target)) is True
+
+    def test_open_creates_parent_for_write_modes(self, tmp_path: Path) -> None:
+        """Test that write modes create missing parent directories."""
+        target = tmp_path / 'nested' / 'output.txt'
+        backend = LocalStorageBackend()
+        location = StorageLocation.from_value(target)
+
+        with backend.open(location, 'w', encoding='utf-8') as handle:
+            handle.write('payload')
+
+        assert target.read_text(encoding='utf-8') == 'payload'
+
+
+class TestS3StorageBackend:
+    """Unit tests for :class:`etlplus.storage.S3StorageBackend`."""
+
+    def test_ensure_parent_dir_validates_bucket_and_key(self) -> None:
+        """Test that invalid S3 locations fail validation early."""
+        backend = S3StorageBackend()
+        location = StorageLocation.from_value('s3://bucket')
+        with pytest.raises(ValueError, match='object key'):
+            backend.ensure_parent_dir(location)
+
+    def test_exists_raises_placeholder_error(self) -> None:
+        """Test that runtime S3 operations are explicit placeholders."""
+        backend = S3StorageBackend()
+        location = StorageLocation.from_value('s3://bucket/data.json')
+        with pytest.raises(NotImplementedError, match='boto3-backed'):
+            backend.exists(location)
+
+
 class TestStorageLocation:
     """Unit tests for :class:`etlplus.storage.StorageLocation`."""
 
@@ -55,6 +95,13 @@ class TestStorageLocation:
         assert location.scheme is StorageScheme.AZURE_BLOB
         assert location.authority == 'container'
         assert location.path == 'path/to/blob.json'
+
+    def test_from_file_uri(self) -> None:
+        """Test that ``file://`` URIs normalize to local file locations."""
+        location = StorageLocation.from_value('file:///tmp/example.csv')
+        assert location.scheme is StorageScheme.FILE
+        assert location.path == '/tmp/example.csv'
+        assert location.as_path() == Path('/tmp/example.csv')
 
     def test_from_local_path_string(self) -> None:
         """Test that plain paths are treated as local storage."""
@@ -70,12 +117,11 @@ class TestStorageLocation:
         assert location.scheme is StorageScheme.FILE
         assert location.as_path() == target
 
-    def test_from_file_uri(self) -> None:
-        """Test that ``file://`` URIs normalize to local file locations."""
-        location = StorageLocation.from_value('file:///tmp/example.csv')
-        assert location.scheme is StorageScheme.FILE
-        assert location.path == '/tmp/example.csv'
-        assert location.as_path() == Path('/tmp/example.csv')
+    def test_remote_location_as_path_raises(self) -> None:
+        """Test that remote locations cannot be converted to local paths."""
+        location = StorageLocation.from_value('ftp://example.com/export.csv')
+        with pytest.raises(TypeError, match='Only local storage locations'):
+            location.as_path()
 
     def test_from_remote_uri(self) -> None:
         """Test that remote URIs keep scheme, authority, and relative path."""
@@ -86,12 +132,6 @@ class TestStorageLocation:
         assert location.authority == 'bucket'
         assert location.path == 'path/to/object.parquet'
         assert location.is_remote is True
-
-    def test_remote_location_as_path_raises(self) -> None:
-        """Test that remote locations cannot be converted to local paths."""
-        location = StorageLocation.from_value('ftp://example.com/export.csv')
-        with pytest.raises(TypeError, match='Only local storage locations'):
-            location.as_path()
 
 
 class TestStorageRegistry:
@@ -123,43 +163,3 @@ class TestStorageRegistry:
         """Test that unsupported remote schemes still raise clearly."""
         with pytest.raises(NotImplementedError, match="'ftp'"):
             get_backend('ftp://example.com/path.json')
-
-
-class TestLocalStorageBackend:
-    """Unit tests for :class:`etlplus.storage.LocalStorageBackend`."""
-
-    def test_exists(self, tmp_path: Path) -> None:
-        """Test that :meth:`exists` reflects local filesystem state."""
-        target = tmp_path / 'exists.txt'
-        target.write_text('hello', encoding='utf-8')
-        backend = LocalStorageBackend()
-        assert backend.exists(StorageLocation.from_value(target)) is True
-
-    def test_open_creates_parent_for_write_modes(self, tmp_path: Path) -> None:
-        """Test that write modes create missing parent directories."""
-        target = tmp_path / 'nested' / 'output.txt'
-        backend = LocalStorageBackend()
-        location = StorageLocation.from_value(target)
-
-        with backend.open(location, 'w', encoding='utf-8') as handle:
-            handle.write('payload')
-
-        assert target.read_text(encoding='utf-8') == 'payload'
-
-
-class TestS3StorageBackend:
-    """Unit tests for :class:`etlplus.storage.S3StorageBackend`."""
-
-    def test_exists_raises_placeholder_error(self) -> None:
-        """Test that runtime S3 operations are explicit placeholders."""
-        backend = S3StorageBackend()
-        location = StorageLocation.from_value('s3://bucket/data.json')
-        with pytest.raises(NotImplementedError, match='boto3-backed'):
-            backend.exists(location)
-
-    def test_ensure_parent_dir_validates_bucket_and_key(self) -> None:
-        """Test that invalid S3 locations fail validation early."""
-        backend = S3StorageBackend()
-        location = StorageLocation.from_value('s3://bucket')
-        with pytest.raises(ValueError, match='object key'):
-            backend.ensure_parent_dir(location)
