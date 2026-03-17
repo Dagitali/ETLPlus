@@ -323,15 +323,6 @@ class TestS3StorageBackend:
 class TestStorageLocation:
     """Unit tests for :class:`etlplus.storage.StorageLocation`."""
 
-    def test_from_azure_blob_uri(self) -> None:
-        """Test that Azure Blob URIs keep container and blob path segments."""
-        location = StorageLocation.from_value(
-            'azure-blob://container/path/to/blob.json',
-        )
-        assert location.scheme is StorageScheme.AZURE_BLOB
-        assert location.authority == 'container'
-        assert location.path == 'path/to/blob.json'
-
     def test_from_abfs_uri(self) -> None:
         """Test that ABFS URIs keep authority and filesystem path segments."""
         location = StorageLocation.from_value(
@@ -340,6 +331,15 @@ class TestStorageLocation:
         assert location.scheme is StorageScheme.ABFS
         assert location.authority == 'filesystem@example.dfs.core.windows.net'
         assert location.path == 'path/to/blob.parquet'
+
+    def test_from_azure_blob_uri(self) -> None:
+        """Test that Azure Blob URIs keep container and blob path segments."""
+        location = StorageLocation.from_value(
+            'azure-blob://container/path/to/blob.json',
+        )
+        assert location.scheme is StorageScheme.AZURE_BLOB
+        assert location.authority == 'container'
+        assert location.path == 'path/to/blob.json'
 
     def test_from_file_uri(self) -> None:
         """Test that ``file://`` URIs normalize to local file locations."""
@@ -389,10 +389,22 @@ class TestStorageRegistry:
         location = StorageLocation.from_value('data/input.csv')
         assert coerce_location(location) is location
 
+    def test_get_backend_for_abfs_location(self) -> None:
+        """Test that ABFS locations resolve to the ABFS backend stub."""
+        backend = get_backend(
+            'abfs://filesystem@example.dfs.core.windows.net/path.json',
+        )
+        assert isinstance(backend, AbfsStorageBackend)
+
     def test_get_backend_for_azure_blob_location(self) -> None:
         """Test that Azure Blob locations resolve to the Azure backend."""
         backend = get_backend('azure-blob://container/path.json')
         assert isinstance(backend, AzureBlobStorageBackend)
+
+    def test_get_backend_for_ftp_location(self) -> None:
+        """Test that FTP locations resolve to the FTP backend stub."""
+        backend = get_backend('ftp://example.com/path.json')
+        assert isinstance(backend, FtpStorageBackend)
 
     def test_get_backend_for_local_location(self) -> None:
         """Test that local storage resolves to the local backend."""
@@ -404,28 +416,9 @@ class TestStorageRegistry:
         backend = get_backend('s3://bucket/path.json')
         assert isinstance(backend, S3StorageBackend)
 
-    def test_get_backend_for_ftp_location(self) -> None:
-        """Test that FTP locations resolve to the FTP backend stub."""
-        backend = get_backend('ftp://example.com/path.json')
-        assert isinstance(backend, FtpStorageBackend)
-
-    def test_get_backend_for_abfs_location(self) -> None:
-        """Test that ABFS locations resolve to the ABFS backend stub."""
-        backend = get_backend(
-            'abfs://filesystem@example.dfs.core.windows.net/path.json',
-        )
-        assert isinstance(backend, AbfsStorageBackend)
-
 
 class TestOtherStubStorageBackends:
     """Unit tests for other placeholder storage backends."""
-
-    def test_ftp_exists_raises_placeholder_error(self) -> None:
-        """Test that FTP routes through the shared placeholder behavior."""
-        backend = FtpStorageBackend()
-        location = StorageLocation.from_value('ftp://example.com/data.json')
-        with pytest.raises(NotImplementedError, match='ftplib'):
-            backend.exists(location)
 
     def test_abfs_exists_raises_placeholder_error(self) -> None:
         """Test that ABFS routes through the shared placeholder behavior."""
@@ -437,4 +430,11 @@ class TestOtherStubStorageBackends:
             NotImplementedError,
             match='azure-storage-file-datalake',
         ):
+            backend.exists(location)
+
+    def test_ftp_exists_raises_placeholder_error(self) -> None:
+        """Test that FTP routes through the shared placeholder behavior."""
+        backend = FtpStorageBackend()
+        location = StorageLocation.from_value('ftp://example.com/data.json')
+        with pytest.raises(NotImplementedError, match='ftplib'):
             backend.exists(location)
