@@ -9,9 +9,11 @@ from __future__ import annotations
 from functools import cache
 
 from ..utils.types import StrPath
+from .abfs import AbfsStorageBackend
 from .azure_blob import AzureBlobStorageBackend
-from .base import StorageBackend
+from .base import StorageBackendABC
 from .enums import StorageScheme
+from .ftp import FtpStorageBackend
 from .local import LocalStorageBackend
 from .location import StorageLocation
 from .s3 import S3StorageBackend
@@ -30,9 +32,21 @@ __all__ = [
 
 
 @cache
+def _abfs_backend() -> AbfsStorageBackend:
+    """Return the cached ABFS storage backend stub."""
+    return AbfsStorageBackend()
+
+
+@cache
 def _azure_blob_backend() -> AzureBlobStorageBackend:
     """Return the cached Azure Blob storage backend skeleton."""
     return AzureBlobStorageBackend()
+
+
+@cache
+def _ftp_backend() -> FtpStorageBackend:
+    """Return the cached FTP storage backend stub."""
+    return FtpStorageBackend()
 
 
 @cache
@@ -75,7 +89,7 @@ def coerce_location(
 
 def get_backend(
     value: StorageLocation | StrPath | str,
-) -> StorageBackend:
+) -> StorageBackendABC:
     """
     Resolve a backend for *value*.
 
@@ -97,10 +111,14 @@ def get_backend(
     """
     location = coerce_location(value)
     match location.scheme:
+        case StorageScheme.ABFS:
+            return _abfs_backend()
         case StorageScheme.AZURE_BLOB:
             return _azure_blob_backend()
         case StorageScheme.FILE:
             return _local_backend()
+        case StorageScheme.FTP:
+            return _ftp_backend()
         case StorageScheme.S3:
             return _s3_backend()
         case _:

@@ -18,14 +18,14 @@ from .location import StorageLocation
 
 __all__ = [
     # Classes
-    'StorageBackend',
+    'StorageBackendABC',
 ]
 
 
 # SECTION: CLASSES ========================================================== #
 
 
-class StorageBackend(ABC):
+class StorageBackendABC(ABC):
     """
     Abstract interface for a storage backend.
 
