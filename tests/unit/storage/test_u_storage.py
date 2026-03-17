@@ -20,11 +20,168 @@ from etlplus.storage import S3StorageBackend
 from etlplus.storage import StorageLocation
 from etlplus.storage import StorageScheme
 from etlplus.storage import StubStorageBackend
+from etlplus.storage import abfs as abfs_mod
 from etlplus.storage import azure_blob as azure_blob_mod
 from etlplus.storage import coerce_location
 from etlplus.storage import get_backend
 
 # SECTION: TESTS ============================================================ #
+
+
+class TestAbfsStorageBackend:
+    """Unit tests for :class:`etlplus.storage.AbfsStorageBackend`."""
+
+    def test_exists_raises_import_error_without_sdk(self) -> None:
+        """Test that ABFS runtime needs the optional SDK package."""
+        backend = AbfsStorageBackend()
+        location = StorageLocation.from_value(
+            'abfs://filesystem@example.dfs.core.windows.net/data.parquet',
+        )
+        with pytest.raises(
+            ImportError,
+            match='azure-storage-file-datalake',
+        ):
+            backend.exists(location)
+
+    def test_exists_uses_file_client(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ABFS exists delegates to the file client."""
+        backend = AbfsStorageBackend()
+        location = StorageLocation.from_value(
+            'abfs://filesystem@example.dfs.core.windows.net/blob.json',
+        )
+
+        class FakeFileClient:
+            """Data Lake file client test double."""
+
+            def exists(self) -> bool:
+                """Return a present-file result."""
+                return True
+
+        def fake_file_client(_location: StorageLocation) -> FakeFileClient:
+            return FakeFileClient()
+
+        monkeypatch.setattr(backend, '_file_client', fake_file_client)
+        assert backend.exists(location) is True
+
+    def test_inherits_remote_storage_backend_base(self) -> None:
+        """Test that ABFS uses the shared remote backend base class."""
+        assert issubclass(AbfsStorageBackend, RemoteStorageBackend)
+        assert not issubclass(AbfsStorageBackend, StubStorageBackend)
+
+    def test_open_reads_text_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ABFS reads return text buffers when requested."""
+        backend = AbfsStorageBackend()
+        location = StorageLocation.from_value(
+            'abfs://filesystem@example.dfs.core.windows.net/blob.json',
+        )
+
+        class FakeDownload:
+            """Data Lake download test double."""
+
+            def readall(self) -> bytes:
+                """Return a fixed payload."""
+                return b'{"ok": true}'
+
+        class FakeFileClient:
+            """Data Lake file client test double."""
+
+            def download_file(self) -> FakeDownload:
+                """Return the fake download wrapper."""
+                return FakeDownload()
+
+        def fake_file_client(_location: StorageLocation) -> FakeFileClient:
+            return FakeFileClient()
+
+        monkeypatch.setattr(backend, '_file_client', fake_file_client)
+        with backend.open(location, encoding='utf-8') as handle:
+            assert handle.read() == '{"ok": true}'
+
+    def test_open_writes_binary_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ABFS writes upload buffered payloads on close."""
+        backend = AbfsStorageBackend()
+        location = StorageLocation.from_value(
+            'abfs://filesystem@example.dfs.core.windows.net/blob.bin',
+        )
+        uploads: list[dict[str, object]] = []
+
+        class FakeFileClient:
+            """Data Lake file client upload test double."""
+
+            def upload_data(self, **kwargs: object) -> None:
+                """Record upload arguments."""
+                uploads.append(kwargs)
+
+        def fake_file_client(_location: StorageLocation) -> FakeFileClient:
+            return FakeFileClient()
+
+        monkeypatch.setattr(backend, '_file_client', fake_file_client)
+        monkeypatch.setattr(
+            abfs_mod,
+            '_import_datalake_types',
+            lambda: (object, None),
+        )
+
+        with backend.open(location, 'wb') as handle:
+            handle.write(b'payload')
+
+        assert uploads == [{'data': b'payload', 'overwrite': True}]
+
+    def test_service_client_uses_connection_string_env(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ABFS resolves client config from env settings."""
+        backend = AbfsStorageBackend()
+        location = StorageLocation.from_value(
+            'abfs://filesystem@example.dfs.core.windows.net/blob.parquet',
+        )
+        calls: list[str] = []
+
+        class FakeFileClient:
+            """Data Lake file client existence test double."""
+
+            def exists(self) -> bool:
+                """Return a present-file result."""
+                return True
+
+        class FakeServiceClient:
+            """Data Lake service client test double."""
+
+            @classmethod
+            def from_connection_string(cls, value: str) -> object:
+                """Return a configured service client instance."""
+                calls.append(value)
+                return cls()
+
+            def get_file_client(self, **kwargs: object) -> FakeFileClient:
+                """Return a file client for the requested location."""
+                assert kwargs == {
+                    'file_path': 'blob.parquet',
+                    'file_system': 'filesystem',
+                }
+                return FakeFileClient()
+
+        monkeypatch.setenv(
+            'AZURE_STORAGE_CONNECTION_STRING',
+            'UseDevelopmentStorage=true',
+        )
+        monkeypatch.setattr(
+            abfs_mod,
+            '_import_datalake_types',
+            lambda: (FakeServiceClient, None),
+        )
+
+        assert backend.exists(location) is True
+        assert calls == ['UseDevelopmentStorage=true']
 
 
 class TestAzureBlobStorageBackend:
@@ -145,18 +302,34 @@ class TestAzureBlobStorageBackend:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that Azure Blob resolves the service client from env config."""
+        """Test that Azure Blob resolves client config from env settings."""
         backend = AzureBlobStorageBackend()
+        location = StorageLocation.from_value('azure-blob://container/blob.json')
         calls: list[str] = []
+
+        class FakeBlobClient:
+            """Blob client existence test double."""
+
+            def exists(self) -> bool:
+                """Return a present-object result."""
+                return True
 
         class FakeBlobServiceClient:
             """Blob service client test double."""
 
             @classmethod
-            def from_connection_string(cls, value: str) -> str:
-                """Return a sentinel service client."""
+            def from_connection_string(cls, value: str) -> object:
+                """Return a configured service client instance."""
                 calls.append(value)
-                return 'service-client'
+                return cls()
+
+            def get_blob_client(self, **kwargs: object) -> FakeBlobClient:
+                """Return a blob client for the requested location."""
+                assert kwargs == {
+                    'blob': 'blob.json',
+                    'container': 'container',
+                }
+                return FakeBlobClient()
 
         monkeypatch.setenv(
             'AZURE_STORAGE_CONNECTION_STRING',
@@ -168,8 +341,7 @@ class TestAzureBlobStorageBackend:
             lambda: (FakeBlobServiceClient, None),
         )
 
-        service_client = backend._service_client()
-        assert service_client == 'service-client'
+        assert backend.exists(location) is True
         assert calls == ['UseDevelopmentStorage=true']
 
 
@@ -390,7 +562,7 @@ class TestStorageRegistry:
         assert coerce_location(location) is location
 
     def test_get_backend_for_abfs_location(self) -> None:
-        """Test that ABFS locations resolve to the ABFS backend stub."""
+        """Test that ABFS locations resolve to the ABFS backend."""
         backend = get_backend(
             'abfs://filesystem@example.dfs.core.windows.net/path.json',
         )
@@ -419,18 +591,6 @@ class TestStorageRegistry:
 
 class TestOtherStubStorageBackends:
     """Unit tests for other placeholder storage backends."""
-
-    def test_abfs_exists_raises_placeholder_error(self) -> None:
-        """Test that ABFS routes through the shared placeholder behavior."""
-        backend = AbfsStorageBackend()
-        location = StorageLocation.from_value(
-            'abfs://filesystem@example.dfs.core.windows.net/data.parquet',
-        )
-        with pytest.raises(
-            NotImplementedError,
-            match='azure-storage-file-datalake',
-        ):
-            backend.exists(location)
 
     def test_ftp_exists_raises_placeholder_error(self) -> None:
         """Test that FTP routes through the shared placeholder behavior."""
