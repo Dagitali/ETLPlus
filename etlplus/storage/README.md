@@ -25,12 +25,14 @@ S3-compatible object storage, and Azure storage services.
 
 ## Public API
 
-- `StorageLocation.from_value(value)`: Parse a local path or storage URI into a normalized
-  location object.
+- `AzureBlobStorageBackend`: Skeleton backend for `azure-blob://container/blob` locations.
 - `coerce_location(value)`: Normalize a mixed input into `StorageLocation`.
 - `get_backend(value)`: Resolve the backend that can open or inspect the location.
 - `LocalStorageBackend`: Local filesystem backend for `file` locations and `file://` URIs.
+- `StorageLocation.from_value(value)`: Parse a local path or storage URI into a normalized
+  location object.
 - `StorageScheme`: Scheme enum used by parsed locations and backend resolution.
+- `S3StorageBackend`: Skeleton backend for `s3://bucket/key` locations.
 
 ## Example
 
@@ -48,7 +50,7 @@ with backend.open(location, encoding='utf-8') as handle:
 ## Supported Schemes
 
 - `abfs`: Reserved for future Azure Data Lake Storage Gen2 backend support
-- `azure-blob`: Reserved for future backend support
+- `azure-blob`: Azure Blob skeleton backend with validation-only runtime hooks
 - `file`: Local filesystem paths and `file://` URIs
 - `ftp`: Reserved for future backend support
-- `s3`: Reserved for future backend support
+- `s3`: AWS S3 skeleton backend with validation-only runtime hooks
