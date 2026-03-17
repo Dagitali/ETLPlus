@@ -182,9 +182,9 @@ def _read_with_known_io_skip(
     """Read one file while applying shared known I/O skip policy."""
     try:
         return cast(FormatPayload, File(path, file_format).read())
-    except OSError as err:
+    except OSError as e:
         skip_on_known_file_io_error(
-            error=err,
+            error=e,
             file_format=file_format,
         )
         raise

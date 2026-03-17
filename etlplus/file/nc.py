@@ -111,9 +111,9 @@ class NcFile(
         xarray = self.resolve_xarray()
         try:
             xarray_dataset = xarray.open_dataset(path)
-        except ImportError as err:  # pragma: no cover
+        except ImportError as e:  # pragma: no cover
             raise_engine_import_error(
-                err,
+                e,
                 format_name='NC',
                 dependency_names=('netCDF4', 'h5netcdf'),
                 pip_name='netCDF4',
@@ -165,9 +165,9 @@ class NcFile(
         ensure_parent_dir(path)
         try:
             ds.to_netcdf(path)
-        except ImportError as err:  # pragma: no cover
+        except ImportError as e:  # pragma: no cover
             raise_engine_import_error(
-                err,
+                e,
                 format_name='NC',
                 dependency_names=('netCDF4', 'h5netcdf'),
                 pip_name='netCDF4',

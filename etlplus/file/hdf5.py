@@ -128,8 +128,8 @@ class Hdf5File(
         pandas = self.resolve_pandas()
         try:
             return pandas.HDFStore(path)
-        except ImportError as err:  # pragma: no cover
-            _raise_tables_error(err)
+        except ImportError as e:  # pragma: no cover
+            _raise_tables_error(e)
 
     def read_dataset(
         self,
