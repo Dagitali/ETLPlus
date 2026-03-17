@@ -63,7 +63,7 @@ package and command-line interface for data extraction, validation, transformati
     - [Code Coverage](#code-coverage)
     - [Linting](#linting)
     - [Updating Demo Snippets](#updating-demo-snippets)
-    - [Releasing to PyPI](#releasing-to-pypi)
+    - [Releasing to the Python Package Index (PyPI)](#releasing-to-the-python-package-index-pypi)
   - [License](#license)
   - [Contributing](#contributing)
   - [Documentation](#documentation)
@@ -944,29 +944,32 @@ The helper script in [tools/update_demo_snippets.py](tools/update_demo_snippets.
 installs it into a throwaway virtual environment, runs `etlplus --version`, and rewrites the snippet
 between the markers in [DEMO.md](DEMO.md).
 
-### Releasing to PyPI
+### Releasing to the Python Package Index (PyPI)
 
 `setuptools-scm` derives the package version from Git tags, so publishing is now entirely tag
 driven—no hand-editing `pyproject.toml`, `setup.py`, or `etlplus/__version__.py`.
 
-GitHub Releases is the canonical release-history surface for ETLPlus. The docs changelog page links
-there, while the maintainer-facing release text is drafted from the template and category config in
-the `.github/` folder.
+GitHub Releases is the canonical release-history surface for ETLPlus. It is also the earlier
+developer-preview and release-announcement surface for tagged releases, whereas PyPI is the later
+public package-install channel. The docs changelog page links there, and the maintainer-facing
+release text is drafted from the template and category config in the `.github/` folder.
 
 1. Ensure `main` is green and the release notes/docs are up to date.
 2. Create and push a SemVer tag matching the `v*.*.*` pattern:
 
-```bash
-git tag -a v1.4.0 -m "Release v1.4.0"
-git push origin v1.4.0
-```
+    ```bash
+    git tag -a v1.4.0 -m "Release v1.4.0"
+    git push origin v1.4.0
+    ```
 
-3. GitHub Actions runs the tagged release workflow in [.github/workflows/release.yml](.github/workflows/release.yml),
-  builds the sdist/wheel, validates the artifacts, publishes the GitHub release, publishes to PyPI,
-  and then triggers the versioned Read the Docs build.
-4. Draft the GitHub Release notes using
-   [.github/RELEASE-NOTES-TEMPLATE.md](.github/RELEASE-NOTES-TEMPLATE.md) together with the
-   categorized notes configured in [.github/release.yml](.github/release.yml).
+3. GitHub Actions runs the tagged release workflow in [.github/workflows/release.yml][release wf],
+  builds the sdist/wheel, validates the artifacts, validates the tagged docs build, publishes the
+  GitHub Release, and then publishes to [PyPI][PyPI].
+4. Draft the GitHub Release notes using [.github/RELEASE-NOTES-TEMPLATE.md][release notes] together
+   with the categorized notes configured in [.github/release.yml][release cfg].
+
+The tagged docs publication itself is handled by the Read the Docs GitHub App after the tag push;
+the release workflow only validates that the docs build cleanly from the tagged source.
 
 If you want an extra smoke-test before tagging, run `make dist && pip install dist/*.whl` locally;
 this exercises the same build path the workflow uses.
@@ -1052,4 +1055,8 @@ contributions are always appreciated!
 [GitHub issues]: https://github.com/Dagitali/ETLPlus/issues
 [GitHub PRs]: https://github.com/Dagitali/ETLPlus/pulls
 [GitHub release]: https://github.com/Dagitali/ETLPlus/releases
+[PyPI]: https://pypi.org
 [PyPI package]: https://pypi.org/project/etlplus/
+[release cfg]: .github/release.yml
+[release notes]: .github/RELEASE-NOTES-TEMPLATE.md
+[release wf]: .github/workflows/release.yml
