@@ -12,11 +12,12 @@ Back to project overview: see the top-level [README](../README.md).
 ## Subpackages
 
 - [etlplus.api](api/README.md): Lightweight HTTP client and paginated REST helpers
-- [etlplus.file](file/README.md): Unified file format support and helpers
 - [etlplus.cli](cli/README.md): Command-line interface definitions for `etlplus`
 - [etlplus.database](database/README.md): Database engine, schema, and ORM helpers
-- [etlplus.templates](templates/README.md): SQL and DDL template helpers
+- [etlplus.file](file/README.md): Unified file format support and helpers
 - [etlplus.ops](ops/README.md): Extract/validate/transform/load primitives
+- [etlplus.storage](storage/README.md): Storage location parsing and backend helpers
+- [etlplus.templates](templates/README.md): SQL and DDL template helpers
 - [etlplus.workflow](workflow/README.md): Helpers for data connectors, pipelines, jobs, and
   profiles
 
