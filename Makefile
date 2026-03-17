@@ -291,8 +291,12 @@ test-full: venv ## Install dev+file extras and run the default CI-parity test su
 	@PYTHONPATH=. $(VENV_BIN)/pytest -m "$(TEST_MARK_EXPRESSION)"
 	@$(call ECHO_OK,"Completed default non-perf test suite")
 
-.PHONY: perf
-perf: venv ## Run performance-smoke tests only
+.PHONY: test-meta
+test-meta: ## Run repository meta guardrail tests only
+	@PYTHONPATH=. $(VENV_BIN)/pytest tests/meta || (echo "Hint: run 'make dev' first" && false)
+
+.PHONY: test-perf
+test-perf: venv ## Run performance-smoke tests only
 	@$(PYTHON) -m pip install -e $(PKG_DIR)[dev,file]
 	@PYTHONPATH=. $(VENV_BIN)/pytest -m "perf" tests || (echo "Hint: run 'make dev file' first" && false)
 

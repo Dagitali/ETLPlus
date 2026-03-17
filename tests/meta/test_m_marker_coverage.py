@@ -1,14 +1,14 @@
 """
-:mod:`tests.unit.meta.test_u_marker_coverage` module.
+:mod:`tests.meta.test_m_marker_coverage` module.
 
 Guardrails for scope-marker coverage in test :mod:`conftest.py` modules.
 """
 
 from __future__ import annotations
 
-from tests.unit.meta.pytest_meta_support import REPO_ROOT
-from tests.unit.meta.pytest_meta_support import TESTS_ROOT
-from tests.unit.meta.pytest_meta_support import scope_conftests
+from tests.meta.pytest_meta_support import REPO_ROOT
+from tests.meta.pytest_meta_support import TESTS_ROOT
+from tests.meta.pytest_meta_support import scope_conftests
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -18,6 +18,7 @@ from tests.unit.meta.pytest_meta_support import scope_conftests
 
 
 _SCOPE_MARKERS = (
+    ('meta', 'meta'),
     ('unit', 'unit'),
     ('integration', 'integration'),
 )

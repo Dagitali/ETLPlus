@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.meta.test_u_integration_file_conventions` module.
+:mod:`tests.meta.test_m_integration_file_conventions` module.
 
 Guardrails for integration file-smoke contract conventions.
 """
@@ -18,8 +18,8 @@ from tests.integration.file.pytest_smoke_file_contracts import (
 from tests.integration.file.pytest_smoke_file_contracts import (
     SMOKE_ROUNDTRIP_OVERRIDE_ATTRS,
 )
-from tests.unit.meta.pytest_meta_support import REPO_ROOT
-from tests.unit.meta.pytest_meta_support import sorted_glob
+from tests.meta.pytest_meta_support import REPO_ROOT
+from tests.meta.pytest_meta_support import sorted_glob
 
 # SECTION: PRAGMAS ========================================================== #
 

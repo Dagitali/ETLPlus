@@ -16,6 +16,7 @@ with pytest markers.
 
 | Marker | Path | Scope | Meaning |
 | --- | --- | --- | --- |
+| `meta` | `tests/meta/` | Repository guardrails and compatibility policy | Fast checks for layout, docs, markers, and stable public surface |
 | `unit` | `tests/unit/` | Isolated function/class behavior | Fast, deterministic, minimal external I/O |
 | `integration` | `tests/integration/` | Cross-module behavior and boundary wiring | May use temp files and fakes/mocks |
 | `e2e` | `tests/e2e/` | Full workflow/system-boundary behavior | Slowest, broadest confidence checks |
@@ -56,7 +57,7 @@ Structural exceptions are intentionally limited to:
 
 Default test discovery is controlled by `pytest.ini`:
 
-- `testpaths = tests/e2e tests/integration tests/unit`
+- `testpaths = tests/meta tests/e2e tests/integration tests/unit`
 
 ## Dependency Prerequisites
 
@@ -85,11 +86,13 @@ make test-full
 make test
 
 # Scope folders
+pytest tests/meta
 pytest tests/unit
 pytest tests/integration
 pytest tests/e2e
 
 # Marker-based selection by scope (within configured testpaths)
+pytest -m meta
 pytest -m unit
 pytest -m integration
 pytest -m e2e
@@ -99,7 +102,7 @@ pytest -m smoke
 pytest -m contract
 
 # Perf smoke coverage (kept out of the default CI-parity suite)
-make perf
+make test-perf
 pytest -m perf
 ```
 
@@ -110,20 +113,21 @@ directories.
 
 ```bash
 # 1) Fast import/collection sanity checks
-python -m pytest --collect-only -q tests/unit tests/integration tests/e2e
+python -m pytest --collect-only -q tests/meta tests/unit tests/integration tests/e2e
 
 # 2) Scope-layout guardrails (legacy paths, filename patterns, marker coverage)
 python -m pytest -q \
-  tests/unit/meta/test_u_test_layout.py \
-  tests/unit/meta/test_u_test_filenames.py \
-  tests/unit/meta/test_u_marker_coverage.py \
-  tests/unit/meta/test_u_integration_file_conventions.py \
-  tests/unit/meta/test_u_contract_readme.py
+  tests/meta/test_m_test_layout.py \
+  tests/meta/test_m_test_filenames.py \
+  tests/meta/test_m_marker_coverage.py \
+  tests/meta/test_m_integration_file_conventions.py \
+  tests/meta/test_m_contract_readme.py
 
 # 3) Scope-focused smoke run (catches broken imports quickly)
-python -m pytest -q tests/unit tests/integration
+python -m pytest -q tests/meta tests/unit tests/integration
 
 # 4) Conftest scope-marker grep checks
+rg -n "pytest\\.mark\\.meta" tests/meta/conftest.py
 rg -n "pytest\\.mark\\.unit" tests/unit/**/conftest.py tests/unit/conftest.py
 rg -n "pytest\\.mark\\.integration" tests/integration/**/conftest.py tests/integration/conftest.py
 rg -n "pytest\\.mark\\.smoke" tests/integration/file/conftest.py

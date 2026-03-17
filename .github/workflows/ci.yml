@@ -84,14 +84,14 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           python-bootstrap: "-e .[dev,file]"
-      - name: Run fast meta guardrails
+      - name: Run meta guardrails
         run: |
           pytest -q \
-            tests/unit/meta/test_u_test_layout.py \
-            tests/unit/meta/test_u_test_filenames.py \
-            tests/unit/meta/test_u_marker_coverage.py \
-            tests/unit/meta/test_u_integration_file_conventions.py \
-            tests/unit/meta/test_u_contract_readme.py
+            tests/meta/test_m_test_layout.py \
+            tests/meta/test_m_test_filenames.py \
+            tests/meta/test_m_marker_coverage.py \
+            tests/meta/test_m_integration_file_conventions.py \
+            tests/meta/test_m_contract_readme.py
       - name: Run tests (with coverage)
         run: |
           pytest -q \
