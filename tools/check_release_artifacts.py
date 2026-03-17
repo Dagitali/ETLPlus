@@ -18,7 +18,7 @@ from pathlib import Path
 
 
 FORBIDDEN_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r'(^|/)(doc-NEW|docs-CURRENT|out|temp)(/|$)'),
+    re.compile(r'(^|/)(docs-NEW|docs-CURRENT|out|temp)(/|$)'),
     re.compile(r'(^|/)\.vscode(/|$)'),
     re.compile(r'(^|/)build(/|$)'),
     re.compile(r'(^|/)etlplus/[^/]+_DEFUNCT(/|$)'),
@@ -32,7 +32,7 @@ FORBIDDEN_PATTERNS: tuple[re.Pattern[str], ...] = (
         r'output\.csv|output\.json|result\.json|roadmap\.md)$',
     ),
     re.compile(r'(^|/)\.DS_Store$'),
-    re.compile(r'(^|/)etlplus/enum_base\.py\.txt$'),
+    re.compile(r'(^|/)etlplus/.+\.py\.txt$'),
     re.compile(
         r'(^|/)\.github/'
         r'(FUNDING_(NEW|ORIG)\.yml|'
@@ -116,6 +116,10 @@ def _find_untracked_members(path: Path) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
+    """
+    Audit distribution artifacts for forbidden and untracked packaged files.
+    """
+
     artifact_paths = (
         [Path(arg) for arg in argv] if argv else sorted(Path('dist').glob('*'))
     )
