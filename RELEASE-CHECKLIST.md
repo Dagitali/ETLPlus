@@ -13,6 +13,8 @@ polish still recommended before the first stable `v1.0.0` tag.
   - Confirm which APIs, CLI commands, config shapes, and file handlers are covered by the stability
     promise.
   - Mark placeholders and experimental areas explicitly in user-facing docs.
+  - Keep `etlplus.file` as the format layer and treat `etlplus.storage` as the distinct storage
+    backend/location surface.
 - [x] Keep packaging metadata consistent and single-sourced.
   - Treat `pyproject.toml` as canonical.
   - Keep `setup.py` as a minimal compatibility shim only.
