@@ -53,7 +53,7 @@ def _raise_not_implemented(
     """
     raise NotImplementedError(
         f'{service} storage backend skeleton is present, but runtime '
-        f'operations are not wired yet. Add the :mod:`{package_name}`-backed '
+        f'operations are not wired yet. Add the {package_name}-backed '
         f'implementation before using exists/open against {service}.',
     )
 
