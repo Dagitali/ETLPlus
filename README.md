@@ -93,6 +93,8 @@ ETLPlus currently supports Python 3.13 and 3.14.
   built-in implemented file handlers.
 - Use `pip install -e ".[dev]"` for contributor tooling and `pip install -e ".[file]"` when you need
   the remaining scientific and specialty format dependencies.
+- Use `pip install -e ".[storage]"` when you want cloud storage backends for `s3://`,
+  `azure-blob://`, or `abfs://` URIs through `etlplus.storage` and `etlplus.file.File`.
 - Expect the most stable execution surface from the documented CLI commands, `etlplus.ops`,
   implemented file handlers, and `etlplus.api`.
 - See [docs/source/getting-started/compatibility.md](docs/source/getting-started/compatibility.md)
@@ -194,6 +196,12 @@ For runtime-only optional file-format support:
 
 ```bash
 pip install -e ".[file]"
+```
+
+For runtime cloud-storage support:
+
+```bash
+pip install -e ".[storage]"
 ```
 
 The `file` extra is now reserved for the remaining scientific and specialty format dependencies such
