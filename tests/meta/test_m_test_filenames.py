@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.meta.test_u_test_filenames` module.
+:mod:`tests.meta.test_m_test_filenames` module.
 
 Guardrails for test-module filename conventions.
 """
@@ -16,7 +16,7 @@ from pathlib import Path
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 _TESTS_ROOT = _REPO_ROOT / 'tests'
 _DUPLICATE_SUFFIX_PATTERN = re.compile(r'\s+\d+\.py$')
 
