@@ -10,11 +10,14 @@ from pathlib import Path
 
 import pytest
 
+from etlplus.storage import AbfsStorageBackend
 from etlplus.storage import AzureBlobStorageBackend
+from etlplus.storage import FtpStorageBackend
 from etlplus.storage import LocalStorageBackend
 from etlplus.storage import S3StorageBackend
 from etlplus.storage import StorageLocation
 from etlplus.storage import StorageScheme
+from etlplus.storage import StubStorageBackendABC
 from etlplus.storage import coerce_location
 from etlplus.storage import get_backend
 
@@ -23,6 +26,10 @@ from etlplus.storage import get_backend
 
 class TestAzureBlobStorageBackend:
     """Unit tests for :class:`etlplus.storage.AzureBlobStorageBackend`."""
+
+    def test_inherits_stub_storage_backend_base(self) -> None:
+        """Test that Azure Blob uses the shared storage-stub base class."""
+        assert issubclass(AzureBlobStorageBackend, StubStorageBackendABC)
 
     def test_exists_raises_placeholder_error(self) -> None:
         """Test that Azure Blob runtime operations are placeholders."""
@@ -69,6 +76,10 @@ class TestLocalStorageBackend:
 class TestS3StorageBackend:
     """Unit tests for :class:`etlplus.storage.S3StorageBackend`."""
 
+    def test_inherits_stub_storage_backend_base(self) -> None:
+        """Test that S3 uses the shared storage-stub base class."""
+        assert issubclass(S3StorageBackend, StubStorageBackendABC)
+
     def test_ensure_parent_dir_validates_bucket_and_key(self) -> None:
         """Test that invalid S3 locations fail validation early."""
         backend = S3StorageBackend()
@@ -95,6 +106,15 @@ class TestStorageLocation:
         assert location.scheme is StorageScheme.AZURE_BLOB
         assert location.authority == 'container'
         assert location.path == 'path/to/blob.json'
+
+    def test_from_abfs_uri(self) -> None:
+        """Test that ABFS URIs keep authority and filesystem path segments."""
+        location = StorageLocation.from_value(
+            ('abfs://filesystem@example.dfs.core.windows.net/path/to/blob.parquet'),
+        )
+        assert location.scheme is StorageScheme.ABFS
+        assert location.authority == 'filesystem@example.dfs.core.windows.net'
+        assert location.path == 'path/to/blob.parquet'
 
     def test_from_file_uri(self) -> None:
         """Test that ``file://`` URIs normalize to local file locations."""
@@ -159,7 +179,37 @@ class TestStorageRegistry:
         backend = get_backend('s3://bucket/path.json')
         assert isinstance(backend, S3StorageBackend)
 
-    def test_get_backend_for_unsupported_remote_location_raises(self) -> None:
-        """Test that unsupported remote schemes still raise clearly."""
-        with pytest.raises(NotImplementedError, match="'ftp'"):
-            get_backend('ftp://example.com/path.json')
+    def test_get_backend_for_ftp_location(self) -> None:
+        """Test that FTP locations resolve to the FTP backend stub."""
+        backend = get_backend('ftp://example.com/path.json')
+        assert isinstance(backend, FtpStorageBackend)
+
+    def test_get_backend_for_abfs_location(self) -> None:
+        """Test that ABFS locations resolve to the ABFS backend stub."""
+        backend = get_backend(
+            'abfs://filesystem@example.dfs.core.windows.net/path.json',
+        )
+        assert isinstance(backend, AbfsStorageBackend)
+
+
+class TestOtherStubStorageBackends:
+    """Unit tests for other placeholder storage backends."""
+
+    def test_ftp_exists_raises_placeholder_error(self) -> None:
+        """Test that FTP routes through the shared placeholder behavior."""
+        backend = FtpStorageBackend()
+        location = StorageLocation.from_value('ftp://example.com/data.json')
+        with pytest.raises(NotImplementedError, match='ftplib-backed'):
+            backend.exists(location)
+
+    def test_abfs_exists_raises_placeholder_error(self) -> None:
+        """Test that ABFS routes through the shared placeholder behavior."""
+        backend = AbfsStorageBackend()
+        location = StorageLocation.from_value(
+            'abfs://filesystem@example.dfs.core.windows.net/data.parquet',
+        )
+        with pytest.raises(
+            NotImplementedError,
+            match='azure-storage-file-datalake-backed',
+        ):
+            backend.exists(location)
