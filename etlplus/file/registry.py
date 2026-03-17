@@ -118,10 +118,10 @@ def _import_symbol(
     module = importlib.import_module(module_name)
     try:
         return getattr(module, attr)
-    except AttributeError as err:
+    except AttributeError as e:
         raise ValueError(
             f'Handler symbol {attr!r} not found in module {module_name!r}',
-        ) from err
+        ) from e
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -235,8 +235,8 @@ def get_handler_class(
     if spec is not None:
         try:
             symbol = _import_symbol(spec)
-        except (ModuleNotFoundError, ValueError) as err:
-            raise ValueError(f'Unsupported format: {file_format}') from err
+        except (ModuleNotFoundError, ValueError) as e:
+            raise ValueError(f'Unsupported format: {file_format}') from e
         return _coerce_handler_class(symbol, file_format=file_format)
 
     raise ValueError(f'Unsupported format: {file_format}')

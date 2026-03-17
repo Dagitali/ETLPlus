@@ -80,6 +80,10 @@ file = [
   # "tables>=3.10.2",
   "xarray>=2024.9.0",
 ]
+storage = [
+  "azure-storage-blob>=12.26.0",
+  "boto3>=1.40.0",
+]
 
 [project.scripts]
 etlplus = "etlplus.cli:main"

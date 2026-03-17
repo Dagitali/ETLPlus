@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import IO
 from typing import Any
 
-from .base import StorageBackend
+from .base import StorageBackendABC
 from .location import StorageLocation
 
 # SECTION: EXPORTS ========================================================== #
@@ -25,7 +25,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-class LocalStorageBackend(StorageBackend):
+class LocalStorageBackend(StorageBackendABC):
     """Storage backend for local filesystem paths and ``file://`` URIs."""
 
     # -- Internal Instance Methods -- #

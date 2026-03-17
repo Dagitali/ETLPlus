@@ -81,9 +81,6 @@ class StubFile(StubFileHandlerABC):
     format = FileFormat.STUB
 
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
