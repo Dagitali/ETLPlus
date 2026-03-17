@@ -100,7 +100,7 @@ def get_backend(
 
     Returns
     -------
-    StorageBackend
+    StorageBackendABC
         Backend capable of serving *value*.
 
     Raises
