@@ -10,6 +10,7 @@ import math
 import numbers
 import sqlite3
 import zipfile
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -280,6 +281,24 @@ class TestFile:
 
         assert file.file_format == expected_format
 
+    def test_path_property_reflects_local_location(self, tmp_path: Path) -> None:
+        """Test that local files expose a :class:`Path` via ``file.path``."""
+        path = tmp_path / 'data.json'
+
+        file = File(path)
+
+        assert file.location.is_local
+        assert file.path == path
+
+    def test_path_property_reflects_remote_location(self) -> None:
+        """Test that remote files expose the original URI via ``file.path``."""
+        uri = 's3://bucket/data.json'
+
+        file = File(uri, FileFormat.JSON)
+
+        assert not file.location.is_local
+        assert file.path == uri
+
     def test_path_support_for_module_helpers(
         self,
         tmp_path: Path,
@@ -315,6 +334,82 @@ class TestFile:
             path = tmp_path / filename
             handler.write(path, payload, **write_kwargs)
             assert handler.read(path) == expected
+
+    def test_remote_read_stages_payload_through_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote reads download to a local temp path first."""
+        calls: list[tuple[str, str]] = []
+
+        class FakeBackend:
+            """Remote backend read test double."""
+
+            def exists(self, location: object) -> bool:
+                """Report the remote object as present."""
+                calls.append(('exists', str(location)))
+                return True
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> BytesIO:
+                """Return a readable byte stream for the remote object."""
+                del kwargs
+                calls.append((mode, str(location)))
+                return BytesIO(b'{"name": "Ada"}')
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        result = File('s3://bucket/data.json', FileFormat.JSON).read()
+
+        assert result == {'name': 'Ada'}
+        assert calls[0][0] == 'exists'
+        assert calls[1][0] == 'rb'
+
+    def test_remote_write_uploads_staged_payload_via_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote writes upload the local staged file content."""
+        uploads: list[bytes] = []
+
+        class CaptureUpload(BytesIO):
+            """Writable remote upload stream test double."""
+
+            def close(self) -> None:
+                """Capture uploaded bytes before closing the stream."""
+                uploads.append(self.getvalue())
+                super().close()
+
+        class FakeBackend:
+            """Remote backend write test double."""
+
+            def ensure_parent_dir(self, location: object) -> None:
+                """Accept parent preparation for remote storage."""
+                del location
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> CaptureUpload:
+                """Return a writable byte stream for the remote object."""
+                del location, kwargs
+                assert mode == 'wb'
+                return CaptureUpload()
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        written = File('s3://bucket/data.json', FileFormat.JSON).write(
+            {'name': 'Ada'},
+        )
+
+        assert written == 1
+        assert uploads == [b'{\n  "name": "Ada"\n}\n']
 
     def test_read_csv_skips_blank_rows(
         self,
