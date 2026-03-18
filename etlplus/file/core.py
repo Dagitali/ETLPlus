@@ -42,7 +42,7 @@ __all__ = [
 
 
 type FileFormatArg = FileFormat | str | None
-type FilePathArg = StrPath | str
+type FilePathArg = StrPath
 
 
 # SECTION: CLASSES ========================================================== #
