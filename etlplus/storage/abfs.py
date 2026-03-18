@@ -149,6 +149,13 @@ class AbfsStorageBackend(RemoteStorageBackend):
         -------
         Any
             Azure Data Lake service client instance.
+
+        Raises
+        ------
+        ValueError
+            If neither a connection string nor an account URL can be
+            resolved from explicit configuration, environment variables, or
+            the provided location authority.
         """
         service_client_type, _ = _import_datalake_types()
         connection_string = self.connection_string or os.getenv(
@@ -215,6 +222,21 @@ class AbfsStorageBackend(RemoteStorageBackend):
         return file_system, account_host
 
     # -- Instance Methods -- #
+
+    def delete(
+        self,
+        location: StorageLocation,
+    ) -> None:
+        """
+        Delete one ADLS Gen2 file if it exists.
+
+        Parameters
+        ----------
+        location : StorageLocation
+            Parsed storage location.
+        """
+        self._validate(location)
+        self._file_client(location).delete_file()
 
     def exists(
         self,

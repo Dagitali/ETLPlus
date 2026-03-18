@@ -7,11 +7,20 @@ files.
 
 from __future__ import annotations
 
+import shutil
+import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
+from dataclasses import field
 from pathlib import Path
+from pathlib import PurePath
 from typing import Any
 from typing import cast
 
+from ..storage import StorageLocation
+from ..storage import get_backend
+from ..utils.types import StrPath
 from . import xml
 from .base import BoundFileHandler
 from .base import FileHandlerABC
@@ -32,13 +41,20 @@ __all__ = [
 # SECTION: TYPE ALIASES ===================================================== #
 
 
+# File formats can be:
+# 1. Enums
+# 2. Strings coercible to enums
+# 3. Left as None for inference.
 type FileFormatArg = FileFormat | str | None
+
+# Remote storage URIs are accepted as the ``str`` arm of ``StrPath``.
+type FilePathArg = StrPath
 
 
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(slots=True)
+@dataclass(init=False, slots=True)
 class File:
     """
     Convenience wrapper around structured file IO.
@@ -49,41 +65,58 @@ class File:
 
     Attributes
     ----------
-    path : Path
-        Path to the file on disk.
     file_format : FileFormat | None, optional
         Explicit format. If omitted, the format is inferred from the file
         extension (``.csv``, ``.json``, etc.).
+    location : StorageLocation
+        Parsed storage location.
 
     Parameters
     ----------
-    path : StrPath
-        Path to the file on disk.
+    path : FilePathArg
+        Local filesystem path supplied as ``str``/``Path``/``PathLike[str]``,
+        or a remote storage URI supplied as ``str`` such as
+        ``s3://bucket/file.csv``, ``https://example.com/files/data.csv``, or
+        ``https://account.blob.core.windows.net/container/file.csv``.
     file_format : FileFormat | str | None, optional
         Explicit format. If omitted, the format is inferred from the file
         extension (``.csv``, ``.json``, etc.).
     """
 
-    # -- Attributes -- #
+    # -- Instance Attributes -- #
 
-    path: Path
     file_format: FileFormat | None = None
+    location: StorageLocation = field(init=False, repr=False)
 
     # -- Magic Methods (Object Lifecycle) -- #
 
-    def __post_init__(self) -> None:
-        """
-        Auto-detect and set the file format on initialization.
-
-        If no explicit :attr:`file_format` is provided, attempt to infer it
-        from the file path's extension and update :attr:`file_format`. If the
-        extension is unknown, the attribute is left as ``None`` and will be
-        validated later by :meth:`_ensure_format`.
-        """
-        self.path = Path(self.path)
-        self.file_format = self._coerce_format(self.file_format)
+    def __init__(
+        self,
+        path: FilePathArg,
+        file_format: FileFormat | str | None = None,
+    ) -> None:
+        self.location = StorageLocation.from_value(path)
+        self.file_format = self._coerce_format(file_format)
         if self.file_format is None:
             self.file_format = self._maybe_guess_format()
+
+    # -- Magic Methods (Object Representation) -- #
+
+    def __repr__(self) -> str:
+        """Return a concise debug representation preserving the public path."""
+        return (
+            f'{self.__class__.__name__}('
+            f'path={self.path!r}, file_format={self.file_format!r})'
+        )
+
+    # -- Getters -- #
+
+    @property
+    def path(self) -> FilePathArg:
+        """Return the public path view derived from :attr:`location`."""
+        if self.location.is_local:
+            return self.location.as_path()
+        return self.location.raw
 
     # -- Internal Instance Methods -- #
 
@@ -93,19 +126,32 @@ class File:
 
         This centralizes existence checks across multiple read methods.
         """
-        if not self.path.exists():
-            raise FileNotFoundError(f'File not found: {self.path}')
+        if self.location.is_local:
+            if not self.location.as_path().exists():
+                raise FileNotFoundError(f'File not found: {self.path}')
+            return
 
-    def _bound_handler(self) -> BoundFileHandler:
+        if not get_backend(self.location).exists(self.location):
+            raise FileNotFoundError(f'File not found: {self.location.raw}')
+
+    def _bound_handler(
+        self,
+        path: Path,
+    ) -> BoundFileHandler:
         """
-        Resolve and bind the active handler to :attr:`path`.
+        Resolve and bind the active handler to *path*.
+
+        Parameters
+        ----------
+        path : Path
+            Local file path to bind to the resolved handler.
 
         Returns
         -------
         BoundFileHandler
-            A handler instance bound to :attr:`path` for the active format.
+            A handler instance bound to *path* for the active format.
         """
-        return self._resolve_handler().at(self.path)
+        return self._resolve_handler().at(path)
 
     def _coerce_format(
         self,
@@ -128,6 +174,38 @@ class File:
         if file_format is None or isinstance(file_format, FileFormat):
             return file_format
         return FileFormat.coerce(file_format)
+
+    @contextmanager
+    def _dispatch_path(
+        self,
+        *,
+        for_write: bool,
+    ) -> Iterator[Path]:
+        """
+        Yield one local path for handler dispatch.
+
+        Local files are dispatched directly. Remote objects are staged through
+        a temporary local path so the existing path-based file handlers can
+        run unchanged.
+        """
+        if self.location.is_local:
+            yield self.location.as_path()
+            return
+
+        backend = get_backend(self.location)
+        filename = self._staging_filename()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dispatch_path = Path(tmpdir) / filename
+            if not for_write:
+                with backend.open(self.location, 'rb') as source:
+                    with dispatch_path.open('wb') as target:
+                        shutil.copyfileobj(source, target)
+            yield dispatch_path
+            if for_write:
+                backend.ensure_parent_dir(self.location)
+                with dispatch_path.open('rb') as source:
+                    with backend.open(self.location, 'wb') as target:
+                        shutil.copyfileobj(source, target)
 
     def _ensure_format(self) -> FileFormat:
         """
@@ -156,16 +234,20 @@ class File:
         ValueError
             If the extension is unknown or unsupported.
         """
-        fmt, compression = infer_file_format_and_compression(self.path)
+        suffix_source: object = (
+            self.location.as_path() if self.location.is_local else self.location.path
+        )
+        fmt, compression = infer_file_format_and_compression(suffix_source)
         if fmt is not None:
             return fmt
         if compression is not None:
             raise ValueError(
                 'Cannot infer file format from compressed file '
-                f'{self.path!r} with compression {compression.value!r}',
+                f'{self.location.raw!r} with compression {compression.value!r}',
             )
         raise ValueError(
-            f'Cannot infer file format from extension {self.path.suffix!r}',
+            'Cannot infer file format from extension '
+            f'{PurePath(str(suffix_source)).suffix!r}',
         )
 
     def _maybe_guess_format(self) -> FileFormat | None:
@@ -195,6 +277,15 @@ class File:
         fmt = self._ensure_format()
         return get_handler(fmt)
 
+    def _staging_filename(self) -> str:
+        """Return one safe staging filename for remote dispatch."""
+        filename = PurePath(self.location.path).name
+        if filename:
+            return filename
+        if self.file_format is not None:
+            return f'payload.{self.file_format.value}'
+        return 'payload.tmp'
+
     # -- Instance Methods -- #
 
     def read(self) -> Any:
@@ -208,7 +299,8 @@ class File:
 
         """
         self._assert_exists()
-        return self._bound_handler().read()
+        with self._dispatch_path(for_write=False) as path:
+            return self._bound_handler(path).read()
 
     def write(
         self,
@@ -233,7 +325,8 @@ class File:
             The number of records written.
 
         """
-        return cast(Any, self._bound_handler()).write(
-            data,
-            options=WriteOptions(root_tag=root_tag),
-        )
+        with self._dispatch_path(for_write=True) as path:
+            return cast(Any, self._bound_handler(path)).write(
+                data,
+                options=WriteOptions(root_tag=root_tag),
+            )

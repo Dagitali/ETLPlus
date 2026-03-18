@@ -58,6 +58,17 @@ class LocalStorageBackend(StorageBackendABC):
         """Ensure that the parent directory for *location* exists."""
         self._path(location).parent.mkdir(parents=True, exist_ok=True)
 
+    def delete(
+        self,
+        location: StorageLocation,
+    ) -> None:
+        """Delete *location* from local disk when present."""
+        path = self._path(location)
+        if path.is_dir():
+            path.rmdir()
+            return
+        path.unlink(missing_ok=True)
+
     def exists(
         self,
         location: StorageLocation,

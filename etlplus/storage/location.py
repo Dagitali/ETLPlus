@@ -27,6 +27,43 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _from_https_azure_url(
+    raw: str,
+    *,
+    authority: str,
+    path: str,
+) -> StorageLocation | None:
+    """Parse Azure HTTPS object URLs into storage-native locations."""
+    host = authority.casefold()
+    parts = [segment for segment in unquote(path).split('/') if segment]
+
+    if host.endswith('.blob.core.windows.net'):
+        container = parts[0] if parts else ''
+        blob_path = '/'.join(parts[1:])
+        return StorageLocation(
+            raw=raw,
+            scheme=StorageScheme.AZURE_BLOB,
+            path=blob_path,
+            authority=(
+                f'{container}@{authority}' if container else f'@{authority}'
+            ),
+        )
+
+    if host.endswith('.dfs.core.windows.net'):
+        file_system = parts[0] if parts else ''
+        file_path = '/'.join(parts[1:])
+        return StorageLocation(
+            raw=raw,
+            scheme=StorageScheme.ABFS,
+            path=file_path,
+            authority=(
+                f'{file_system}@{authority}' if file_system else f'@{authority}'
+            ),
+        )
+
+    return None
+
+
 def _looks_like_windows_drive(
     raw: str,
 ) -> bool:
@@ -66,14 +103,14 @@ class StorageLocation:
     @classmethod
     def from_value(
         cls,
-        value: StrPath | str,
+        value: StrPath,
     ) -> StorageLocation:
         """
         Parse a path or URI into a :class:`StorageLocation`.
 
         Parameters
         ----------
-        value : StrPath | str
+        value : StrPath
             Local path-like input or storage URI.
 
         Returns
@@ -92,6 +129,15 @@ class StorageLocation:
 
         parsed = urlsplit(raw)
         if parsed.scheme and not _looks_like_windows_drive(raw):
+            if parsed.scheme.casefold() == 'https':
+                azure_location = _from_https_azure_url(
+                    raw,
+                    authority=parsed.netloc,
+                    path=parsed.path,
+                )
+                if azure_location is not None:
+                    return azure_location
+
             scheme = StorageScheme.coerce(parsed.scheme)
             if scheme is StorageScheme.FILE:
                 local_path = unquote(

@@ -63,9 +63,11 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
     Storage backend for Azure Blob object locations.
 
     The canonical URI form for this surface is
-    ``azure-blob://container/blob/path``. Runtime operations use
-    :mod:`azure-storage-blob` and can be configured with an explicit connection
-    string, an account URL, or the corresponding Azure environment variables.
+    ``azure-blob://container/blob/path``. HTTPS object URLs in the form
+    ``https://account.blob.core.windows.net/container/blob/path`` are also
+    accepted. Runtime operations use :mod:`azure-storage-blob` and can be
+    configured with an explicit connection string, an account URL, or the
+    corresponding Azure environment variables.
     """
 
     # -- Class Attributes -- #
@@ -106,12 +108,44 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
         Any
             Azure Blob client for the specified location.
         """
-        return self._service_client().get_blob_client(
+        container, _ = self._split_authority(location.authority)
+        return self._service_client(location).get_blob_client(
             blob=location.path,
-            container=location.authority,
+            container=container,
         )
 
-    def _service_client(self) -> Any:
+    def _account_url_from_authority(
+        self,
+        authority: str,
+    ) -> str | None:
+        """Derive one HTTPS account URL from an extended authority string."""
+        _, account_host = self._split_authority(authority)
+        if account_host is None:
+            return None
+        return f'https://{account_host}'
+
+    def _split_authority(
+        self,
+        authority: str,
+    ) -> tuple[str, str | None]:
+        """Split authority into container and optional account host."""
+        container, separator, account_host = authority.partition('@')
+        if not container:
+            raise ValueError(
+                'Azure Blob locations require authority in the form '
+                '"container" or "container@account.blob.core.windows.net"',
+            )
+        if separator and not account_host:
+            raise ValueError(
+                'Azure Blob locations require authority in the form '
+                '"container" or "container@account.blob.core.windows.net"',
+            )
+        return container, account_host or None
+
+    def _service_client(
+        self,
+        location: StorageLocation | None = None,
+    ) -> Any:
         """Return one Azure Blob service client."""
         blob_service_client_type, _ = _import_blob_types()
         connection_string = self.connection_string or os.getenv(
@@ -123,10 +157,13 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
             )
 
         account_url = self.account_url or os.getenv('AZURE_STORAGE_ACCOUNT_URL')
+        if not account_url and location is not None:
+            account_url = self._account_url_from_authority(location.authority)
         if not account_url:
             raise ValueError(
                 'Azure Blob backend requires AZURE_STORAGE_CONNECTION_STRING '
-                'or AZURE_STORAGE_ACCOUNT_URL',
+                'or AZURE_STORAGE_ACCOUNT_URL, or an authority containing '
+                'the account host',
             )
 
         credential = self.credential
@@ -140,6 +177,21 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
         )
 
     # -- Instance Methods -- #
+
+    def delete(
+        self,
+        location: StorageLocation,
+    ) -> None:
+        """
+        Delete one Azure Blob object if it exists.
+
+        Parameters
+        ----------
+        location : StorageLocation
+            Parsed storage location.
+        """
+        self._validate(location)
+        self._blob_client(location).delete_blob(delete_snapshots='include')
 
     def exists(
         self,

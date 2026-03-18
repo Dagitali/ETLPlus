@@ -38,6 +38,20 @@ class StorageBackendABC(ABC):
     # -- Abstract Instance Methods -- #
 
     @abstractmethod
+    def delete(
+        self,
+        location: StorageLocation,
+    ) -> None:
+        """
+        Delete *location* if it exists.
+
+        Parameters
+        ----------
+        location : StorageLocation
+            Parsed storage location.
+        """
+
+    @abstractmethod
     def ensure_parent_dir(
         self,
         location: StorageLocation,

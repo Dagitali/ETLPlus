@@ -52,13 +52,18 @@ def test_s3_json_roundtrip_via_file_api_integration() -> None:
     target_uri = _child_uri(base_uri, f'etlplus-{uuid4().hex}.json')
     remote_uri = cast(Any, target_uri)
     payload = [{'name': 'Ada'}]
+    location = StorageLocation.from_value(target_uri)
+    backend = get_backend(location)
 
-    written = File(remote_uri, FileFormat.JSON).write(payload)
-    result = File(remote_uri, FileFormat.JSON).read()
+    try:
+        written = File(remote_uri, FileFormat.JSON).write(payload)
+        result = File(remote_uri, FileFormat.JSON).read()
 
-    assert written == 1
-    assert result == payload
-    assert get_backend(target_uri).exists(StorageLocation.from_value(target_uri))
+        assert written == 1
+        assert result == payload
+        assert backend.exists(location)
+    finally:
+        backend.delete(location)
 
 
 def test_azure_blob_json_roundtrip_via_file_api_integration() -> None:
@@ -67,10 +72,15 @@ def test_azure_blob_json_roundtrip_via_file_api_integration() -> None:
     target_uri = _child_uri(base_uri, f'etlplus-{uuid4().hex}.json')
     remote_uri = cast(Any, target_uri)
     payload = [{'name': 'Ada'}]
+    location = StorageLocation.from_value(target_uri)
+    backend = get_backend(location)
 
-    written = File(remote_uri, FileFormat.JSON).write(payload)
-    result = File(remote_uri, FileFormat.JSON).read()
+    try:
+        written = File(remote_uri, FileFormat.JSON).write(payload)
+        result = File(remote_uri, FileFormat.JSON).read()
 
-    assert written == 1
-    assert result == payload
-    assert get_backend(target_uri).exists(StorageLocation.from_value(target_uri))
+        assert written == 1
+        assert result == payload
+        assert backend.exists(location)
+    finally:
+        backend.delete(location)

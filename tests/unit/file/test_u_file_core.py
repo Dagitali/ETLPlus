@@ -10,6 +10,7 @@ import math
 import numbers
 import sqlite3
 import zipfile
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -24,6 +25,10 @@ from etlplus.file import csv as csv_file
 from etlplus.file import json as json_file
 from etlplus.file import xml as xml_file
 from etlplus.file.base import WriteOptions
+from etlplus.storage import S3StorageBackend
+from etlplus.storage import StorageScheme
+from etlplus.storage import get_backend
+from etlplus.storage import http as http_storage_mod
 from etlplus.utils.types import JSONData
 
 from ...pytest_file_common import Operation
@@ -129,6 +134,61 @@ def _install_core_handler_stub(
     return calls
 
 
+class _FakeHttpResponse:
+    """Minimal HTTP response test double for File-level HTTP tests."""
+
+    def __init__(
+        self,
+        *,
+        status_code: int,
+        payload: bytes = b'',
+    ) -> None:
+        self.status_code = status_code
+        self.content = payload
+
+    def close(self) -> None:
+        """Close the response without side effects."""
+
+    def raise_for_status(self) -> None:
+        """Raise one error for non-successful response codes."""
+        if self.status_code >= 400:
+            raise RuntimeError(f'HTTP {self.status_code}')
+
+
+class _FakeHttpSession:
+    """Minimal session test double for end-to-end HTTP File reads."""
+
+    def __init__(
+        self,
+        *,
+        head_status: int = 200,
+        get_status: int = 200,
+        payload: bytes = b'',
+    ) -> None:
+        self.calls: list[tuple[str, str, bool]] = []
+        self.head_status = head_status
+        self.get_status = get_status
+        self.payload = payload
+
+    def close(self) -> None:
+        """Close the fake session without side effects."""
+
+    def get(self, url: str, **kwargs: Any) -> _FakeHttpResponse:
+        """Return one fake GET response and capture call metadata."""
+        self.calls.append(('get', url, bool(kwargs.get('stream', False))))
+        return _FakeHttpResponse(
+            status_code=self.get_status,
+            payload=self.payload,
+        )
+
+    def head(self, url: str, **kwargs: Any) -> _FakeHttpResponse:
+        """Return one fake HEAD response and capture call metadata."""
+        self.calls.append(
+            ('head', url, bool(kwargs.get('allow_redirects', False))),
+        )
+        return _FakeHttpResponse(status_code=self.head_status)
+
+
 def normalize_numeric_records(records: FormatPayload) -> FormatPayload:
     """Normalize numeric values for deterministic record comparisons."""
     if not isinstance(records, list):
@@ -212,9 +272,9 @@ class TestFile:
         if file_format is FileFormat.DUCKDB:
             import duckdb
 
-            conn = duckdb.connect(str(path))
+            conn = cast(Any, duckdb.connect(str(path)))
         else:
-            conn = sqlite3.connect(path)
+            conn = cast(Any, sqlite3.connect(path))
         try:
             conn.execute('CREATE TABLE one (id INTEGER)')
             conn.execute('CREATE TABLE two (id INTEGER)')
@@ -259,6 +319,36 @@ class TestFile:
 
         assert result == payload
 
+    def test_http_read_uses_real_backend_path_via_requests_session(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that HTTP File reads flow through the real HTTP backend."""
+        session = _FakeHttpSession(
+            payload=b'{"name": "Ada"}',
+        )
+
+        monkeypatch.setattr(http_storage_mod.requests, 'Session', lambda: session)
+
+        file = File('https://example.com/files/data.json?download=1')
+        result = file.read()
+
+        assert file.file_format is FileFormat.JSON
+        assert file.location.scheme is StorageScheme.HTTP
+        assert result == {'name': 'Ada'}
+        assert session.calls == [
+            ('head', 'https://example.com/files/data.json?download=1', True),
+            ('get', 'https://example.com/files/data.json?download=1', False),
+        ]
+
+    def test_http_uri_infers_http_backend_and_csv_format(self) -> None:
+        """Test that generic HTTPS URIs infer HTTP storage and CSV format."""
+        file = File('https://example.com/files/my_file.csv?download=1')
+
+        assert file.file_format is FileFormat.CSV
+        assert file.location.scheme is StorageScheme.HTTP
+        assert file.path == 'https://example.com/files/my_file.csv?download=1'
+
     @pytest.mark.parametrize(
         ('filename', 'expected_format'),
         FORMAT_INFERENCE_CASES,
@@ -279,6 +369,24 @@ class TestFile:
         file = File(path)
 
         assert file.file_format == expected_format
+
+    def test_path_property_reflects_local_location(self, tmp_path: Path) -> None:
+        """Test that local files expose a :class:`Path` via ``file.path``."""
+        path = tmp_path / 'data.json'
+
+        file = File(path)
+
+        assert file.location.is_local
+        assert file.path == path
+
+    def test_path_property_reflects_remote_location(self) -> None:
+        """Test that remote files expose the original URI via ``file.path``."""
+        uri = 's3://bucket/data.json'
+
+        file = File(uri, FileFormat.JSON)
+
+        assert not file.location.is_local
+        assert file.path == uri
 
     def test_path_support_for_module_helpers(
         self,
@@ -315,6 +423,91 @@ class TestFile:
             path = tmp_path / filename
             handler.write(path, payload, **write_kwargs)
             assert handler.read(path) == expected
+
+    def test_remote_read_stages_payload_through_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote reads download to a local temp path first."""
+        calls: list[tuple[str, str]] = []
+
+        class FakeBackend:
+            """Remote backend read test double."""
+
+            def exists(self, location: object) -> bool:
+                """Report the remote object as present."""
+                calls.append(('exists', str(location)))
+                return True
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> BytesIO:
+                """Return a readable byte stream for the remote object."""
+                del kwargs
+                calls.append((mode, str(location)))
+                return BytesIO(b'{"name": "Ada"}')
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        result = File('s3://bucket/data.json', FileFormat.JSON).read()
+
+        assert result == {'name': 'Ada'}
+        assert calls[0][0] == 'exists'
+        assert calls[1][0] == 'rb'
+
+    def test_remote_uri_infers_s3_backend_and_csv_format(self) -> None:
+        """Test that remote URI strings infer both storage scheme and format."""
+        file = File('s3://my-bucket/my_file.csv')
+
+        assert file.file_format is FileFormat.CSV
+        assert file.location.scheme is StorageScheme.S3
+        assert isinstance(get_backend(file.location), S3StorageBackend)
+        assert file.path == 's3://my-bucket/my_file.csv'
+
+    def test_remote_write_uploads_staged_payload_via_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote writes upload the local staged file content."""
+        uploads: list[bytes] = []
+
+        class CaptureUpload(BytesIO):
+            """Writable remote upload stream test double."""
+
+            def close(self) -> None:
+                """Capture uploaded bytes before closing the stream."""
+                uploads.append(self.getvalue())
+                super().close()
+
+        class FakeBackend:
+            """Remote backend write test double."""
+
+            def ensure_parent_dir(self, location: object) -> None:
+                """Accept parent preparation for remote storage."""
+                del location
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> CaptureUpload:
+                """Return a writable byte stream for the remote object."""
+                del location, kwargs
+                assert mode == 'wb'
+                return CaptureUpload()
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        written = File('s3://bucket/data.json', FileFormat.JSON).write(
+            {'name': 'Ada'},
+        )
+
+        assert written == 1
+        assert uploads == [b'{\n  "name": "Ada"\n}\n']
 
     def test_read_csv_skips_blank_rows(
         self,

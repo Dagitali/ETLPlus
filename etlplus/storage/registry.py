@@ -14,6 +14,7 @@ from .azure_blob import AzureBlobStorageBackend
 from .base import StorageBackendABC
 from .enums import StorageScheme
 from .ftp import FtpStorageBackend
+from .http import HttpStorageBackend
 from .local import LocalStorageBackend
 from .location import StorageLocation
 from .s3 import S3StorageBackend
@@ -26,6 +27,12 @@ __all__ = [
     'coerce_location',
     'get_backend',
 ]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type ValueArg = StorageLocation | StrPath
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -50,6 +57,12 @@ def _ftp_backend() -> FtpStorageBackend:
 
 
 @cache
+def _http_backend() -> HttpStorageBackend:
+    """Return the cached HTTP storage backend instance."""
+    return HttpStorageBackend()
+
+
+@cache
 def _local_backend() -> LocalStorageBackend:
     """Return the cached local-storage backend instance."""
     return LocalStorageBackend()
@@ -65,14 +78,14 @@ def _s3_backend() -> S3StorageBackend:
 
 
 def coerce_location(
-    value: StorageLocation | StrPath | str,
+    value: ValueArg,
 ) -> StorageLocation:
     """
     Normalize *value* into a :class:`StorageLocation`.
 
     Parameters
     ----------
-    value : StorageLocation | StrPath | str
+    value : ValueArg
         Storage location value.
 
     Returns
@@ -88,14 +101,14 @@ def coerce_location(
 
 
 def get_backend(
-    value: StorageLocation | StrPath | str,
+    value: ValueArg,
 ) -> StorageBackendABC:
     """
     Resolve a backend for *value*.
 
     Parameters
     ----------
-    value : StorageLocation | StrPath | str
+    value : ValueArg
         Storage location value.
 
     Returns
@@ -119,6 +132,8 @@ def get_backend(
             return _local_backend()
         case StorageScheme.FTP:
             return _ftp_backend()
+        case StorageScheme.HTTP:
+            return _http_backend()
         case StorageScheme.S3:
             return _s3_backend()
         case _:

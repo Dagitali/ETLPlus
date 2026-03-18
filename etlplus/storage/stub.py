@@ -82,6 +82,23 @@ class StubStorageBackend(RemoteStorageBackend):
             package_name=self.package_name,
         )
 
+    # -- Instance Methods -- #
+
+    def delete(
+        self,
+        location: StorageLocation,
+    ) -> None:
+        """
+        Validate *location* and raise until the backend is implemented.
+
+        Parameters
+        ----------
+        location : StorageLocation
+            Parsed storage location.
+        """
+        self._validate(location)
+        self._raise_not_implemented()
+
     def exists(
         self,
         location: StorageLocation,
