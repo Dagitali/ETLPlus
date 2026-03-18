@@ -14,6 +14,7 @@ from .azure_blob import AzureBlobStorageBackend
 from .base import StorageBackendABC
 from .enums import StorageScheme
 from .ftp import FtpStorageBackend
+from .http import HttpStorageBackend
 from .local import LocalStorageBackend
 from .location import StorageLocation
 from .s3 import S3StorageBackend
@@ -53,6 +54,12 @@ def _azure_blob_backend() -> AzureBlobStorageBackend:
 def _ftp_backend() -> FtpStorageBackend:
     """Return the cached FTP storage backend stub."""
     return FtpStorageBackend()
+
+
+@cache
+def _http_backend() -> HttpStorageBackend:
+    """Return the cached HTTP storage backend instance."""
+    return HttpStorageBackend()
 
 
 @cache
@@ -125,6 +132,8 @@ def get_backend(
             return _local_backend()
         case StorageScheme.FTP:
             return _ftp_backend()
+        case StorageScheme.HTTP:
+            return _http_backend()
         case StorageScheme.S3:
             return _s3_backend()
         case _:
