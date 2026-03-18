@@ -66,14 +66,14 @@ class StorageLocation:
     @classmethod
     def from_value(
         cls,
-        value: StrPath | str,
+        value: StrPath,
     ) -> StorageLocation:
         """
         Parse a path or URI into a :class:`StorageLocation`.
 
         Parameters
         ----------
-        value : StrPath | str
+        value : StrPath
             Local path-like input or storage URI.
 
         Returns
