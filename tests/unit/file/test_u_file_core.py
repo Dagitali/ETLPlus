@@ -28,6 +28,7 @@ from etlplus.file.base import WriteOptions
 from etlplus.storage import S3StorageBackend
 from etlplus.storage import StorageScheme
 from etlplus.storage import get_backend
+from etlplus.storage import http as http_storage_mod
 from etlplus.utils.types import JSONData
 
 from ...pytest_file_common import Operation
@@ -131,6 +132,61 @@ def _install_core_handler_stub(
 
     monkeypatch.setattr(core_mod, 'get_handler', _get_handler)
     return calls
+
+
+class _FakeHttpResponse:
+    """Minimal HTTP response test double for File-level HTTP tests."""
+
+    def __init__(
+        self,
+        *,
+        status_code: int,
+        payload: bytes = b'',
+    ) -> None:
+        self.status_code = status_code
+        self.content = payload
+
+    def close(self) -> None:
+        """Close the response without side effects."""
+
+    def raise_for_status(self) -> None:
+        """Raise one error for non-successful response codes."""
+        if self.status_code >= 400:
+            raise RuntimeError(f'HTTP {self.status_code}')
+
+
+class _FakeHttpSession:
+    """Minimal session test double for end-to-end HTTP File reads."""
+
+    def __init__(
+        self,
+        *,
+        head_status: int = 200,
+        get_status: int = 200,
+        payload: bytes = b'',
+    ) -> None:
+        self.calls: list[tuple[str, str, bool]] = []
+        self.head_status = head_status
+        self.get_status = get_status
+        self.payload = payload
+
+    def close(self) -> None:
+        """Close the fake session without side effects."""
+
+    def get(self, url: str, **kwargs: Any) -> _FakeHttpResponse:
+        """Return one fake GET response and capture call metadata."""
+        self.calls.append(('get', url, bool(kwargs.get('stream', False))))
+        return _FakeHttpResponse(
+            status_code=self.get_status,
+            payload=self.payload,
+        )
+
+    def head(self, url: str, **kwargs: Any) -> _FakeHttpResponse:
+        """Return one fake HEAD response and capture call metadata."""
+        self.calls.append(
+            ('head', url, bool(kwargs.get('allow_redirects', False))),
+        )
+        return _FakeHttpResponse(status_code=self.head_status)
 
 
 def normalize_numeric_records(records: FormatPayload) -> FormatPayload:
@@ -262,6 +318,28 @@ class TestFile:
         result = File(path, FileFormat.GZ).read()
 
         assert result == payload
+
+    def test_http_read_uses_real_backend_path_via_requests_session(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that HTTP File reads flow through the real HTTP backend."""
+        session = _FakeHttpSession(
+            payload=b'{"name": "Ada"}',
+        )
+
+        monkeypatch.setattr(http_storage_mod.requests, 'Session', lambda: session)
+
+        file = File('https://example.com/files/data.json?download=1')
+        result = file.read()
+
+        assert file.file_format is FileFormat.JSON
+        assert file.location.scheme is StorageScheme.HTTP
+        assert result == {'name': 'Ada'}
+        assert session.calls == [
+            ('head', 'https://example.com/files/data.json?download=1', True),
+            ('get', 'https://example.com/files/data.json?download=1', False),
+        ]
 
     def test_http_uri_infers_http_backend_and_csv_format(self) -> None:
         """Test that generic HTTPS URIs infer HTTP storage and CSV format."""
