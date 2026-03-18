@@ -298,6 +298,56 @@ class TestAzureBlobStorageBackend:
 
         assert uploads == [{'data': b'payload', 'overwrite': True}]
 
+    def test_service_client_derives_account_url_from_https_authority(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that HTTPS Azure Blob URLs provide the account host."""
+        backend = AzureBlobStorageBackend()
+        location = StorageLocation.from_value(
+            'https://example.blob.core.windows.net/container/blob.json',
+        )
+        calls: list[str] = []
+
+        class FakeBlobClient:
+            """Blob client existence test double."""
+
+            def exists(self) -> bool:
+                """Return a present-object result."""
+                return True
+
+        class FakeBlobServiceClient:
+            """Blob service client test double."""
+
+            def __init__(
+                self,
+                *,
+                account_url: str,
+                credential: object | None = None,
+            ) -> None:
+                assert credential is None
+                calls.append(account_url)
+
+            def get_blob_client(self, **kwargs: object) -> FakeBlobClient:
+                """Return a blob client for the requested location."""
+                assert kwargs == {
+                    'blob': 'blob.json',
+                    'container': 'container',
+                }
+                return FakeBlobClient()
+
+        monkeypatch.delenv('AZURE_STORAGE_CONNECTION_STRING', raising=False)
+        monkeypatch.delenv('AZURE_STORAGE_ACCOUNT_URL', raising=False)
+        monkeypatch.delenv('AZURE_STORAGE_CREDENTIAL', raising=False)
+        monkeypatch.setattr(
+            azure_blob_mod,
+            '_import_blob_types',
+            lambda: (FakeBlobServiceClient, None),
+        )
+
+        assert backend.exists(location) is True
+        assert calls == ['https://example.blob.core.windows.net']
+
     def test_service_client_uses_connection_string_env(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -495,6 +545,26 @@ class TestS3StorageBackend:
 class TestStorageLocation:
     """Unit tests for :class:`etlplus.storage.StorageLocation`."""
 
+    @pytest.mark.parametrize(
+        ('raw', 'scheme'),
+        [
+            (
+                'abfss://filesystem@example.dfs.core.windows.net/data.parquet',
+                StorageScheme.ABFS,
+            ),
+            ('wasbs://container/path/to/blob.json', StorageScheme.AZURE_BLOB),
+            ('s3a://bucket/data.json', StorageScheme.S3),
+        ],
+    )
+    def test_from_scheme_alias_uri(
+        self,
+        raw: str,
+        scheme: StorageScheme,
+    ) -> None:
+        """Test that known remote scheme aliases normalize correctly."""
+        location = StorageLocation.from_value(raw)
+        assert location.scheme is scheme
+
     def test_from_abfs_uri(self) -> None:
         """Test that ABFS URIs keep authority and filesystem path segments."""
         location = StorageLocation.from_value(
@@ -511,6 +581,24 @@ class TestStorageLocation:
         )
         assert location.scheme is StorageScheme.AZURE_BLOB
         assert location.authority == 'container'
+        assert location.path == 'path/to/blob.json'
+
+    def test_from_https_abfs_url(self) -> None:
+        """Test that ADLS HTTPS URLs normalize into ABFS storage locations."""
+        location = StorageLocation.from_value(
+            'https://example.dfs.core.windows.net/filesystem/path/to/blob.parquet',
+        )
+        assert location.scheme is StorageScheme.ABFS
+        assert location.authority == 'filesystem@example.dfs.core.windows.net'
+        assert location.path == 'path/to/blob.parquet'
+
+    def test_from_https_azure_blob_url(self) -> None:
+        """Test that Azure Blob HTTPS URLs normalize into blob locations."""
+        location = StorageLocation.from_value(
+            'https://example.blob.core.windows.net/container/path/to/blob.json',
+        )
+        assert location.scheme is StorageScheme.AZURE_BLOB
+        assert location.authority == 'container@example.blob.core.windows.net'
         assert location.path == 'path/to/blob.json'
 
     def test_from_file_uri(self) -> None:
