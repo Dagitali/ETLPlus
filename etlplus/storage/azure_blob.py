@@ -178,6 +178,21 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
 
     # -- Instance Methods -- #
 
+    def delete(
+        self,
+        location: StorageLocation,
+    ) -> None:
+        """
+        Delete one Azure Blob object if it exists.
+
+        Parameters
+        ----------
+        location : StorageLocation
+            Parsed storage location.
+        """
+        self._validate(location)
+        self._blob_client(location).delete_blob(delete_snapshots='include')
+
     def exists(
         self,
         location: StorageLocation,

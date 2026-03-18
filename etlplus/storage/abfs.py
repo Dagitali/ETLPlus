@@ -216,6 +216,21 @@ class AbfsStorageBackend(RemoteStorageBackend):
 
     # -- Instance Methods -- #
 
+    def delete(
+        self,
+        location: StorageLocation,
+    ) -> None:
+        """
+        Delete one ADLS Gen2 file if it exists.
+
+        Parameters
+        ----------
+        location : StorageLocation
+            Parsed storage location.
+        """
+        self._validate(location)
+        self._file_client(location).delete_file()
+
     def exists(
         self,
         location: StorageLocation,

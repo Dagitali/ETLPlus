@@ -139,6 +139,26 @@ class HttpStorageBackend(RemoteStorageBackend):
 
     # -- Instance Methods -- #
 
+    def delete(
+        self,
+        location: StorageLocation,
+    ) -> None:
+        """
+        Reject deletion for HTTP resources.
+
+        Parameters
+        ----------
+        location : StorageLocation
+            Parsed storage location.
+
+        Raises
+        ------
+        ValueError
+            Always, because generic HTTP resources are treated as read-only.
+        """
+        self._validate(location)
+        raise ValueError('HTTP storage backend is read-only; delete is not supported')
+
     def exists(
         self,
         location: StorageLocation,

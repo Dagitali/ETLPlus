@@ -104,6 +104,24 @@ class S3StorageBackend(RemoteStorageBackend):
 
     # -- Instance Methods -- #
 
+    def delete(
+        self,
+        location: StorageLocation,
+    ) -> None:
+        """
+        Delete one S3 object.
+
+        Parameters
+        ----------
+        location : StorageLocation
+            Parsed storage location.
+        """
+        self._validate(location)
+        self._client().delete_object(
+            Bucket=location.authority,
+            Key=location.path,
+        )
+
     def exists(
         self,
         location: StorageLocation,
