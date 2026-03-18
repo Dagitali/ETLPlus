@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from contextlib import contextmanager
 from typing import IO
 from typing import Any
+from typing import Protocol
 from typing import cast
 
 import requests  # type: ignore[import]
@@ -28,6 +29,50 @@ __all__ = [
     # Classes
     'HttpStorageBackend',
 ]
+
+
+# SECTION: PROTOCOLS ======================================================== #
+
+
+class HttpResponseProtocol(Protocol):
+    """Protocol for the subset of HTTP response behavior this backend uses."""
+
+    content: bytes
+    status_code: int
+
+    def close(self) -> None:
+        """Close the response and release any underlying resources."""
+
+    def raise_for_status(self) -> None:
+        """Raise an exception when the response indicates failure."""
+
+
+class HttpSessionProtocol(Protocol):
+    """Protocol for the subset of session behavior this backend uses."""
+
+    def close(self) -> None:
+        """Close the session and release any underlying resources."""
+
+    def get(
+        self,
+        url: str,
+        *,
+        allow_redirects: bool = True,
+        headers: Mapping[str, str] | None = None,
+        stream: bool = False,
+        timeout: float | None = None,
+    ) -> HttpResponseProtocol:
+        """Return one HTTP GET response object."""
+
+    def head(
+        self,
+        url: str,
+        *,
+        allow_redirects: bool = True,
+        headers: Mapping[str, str] | None = None,
+        timeout: float | None = None,
+    ) -> HttpResponseProtocol:
+        """Return one HTTP HEAD response object."""
 
 
 # SECTION: CLASSES ========================================================== #
@@ -53,7 +98,7 @@ class HttpStorageBackend(RemoteStorageBackend):
     def __init__(
         self,
         *,
-        session: requests.Session | None = None,
+        session: HttpSessionProtocol | None = None,
         timeout: float | None = 30.0,
         headers: Mapping[str, str] | None = None,
         allow_redirects: bool = True,
@@ -80,13 +125,13 @@ class HttpStorageBackend(RemoteStorageBackend):
         return self.timeout if timeout is None else timeout
 
     @contextmanager
-    def _session_scope(self) -> Iterator[requests.Session]:
+    def _session_scope(self) -> Iterator[HttpSessionProtocol]:
         """Yield a requests session, closing owned sessions on exit."""
         if self.session is not None:
             yield self.session
             return
 
-        session = requests.Session()
+        session = cast(HttpSessionProtocol, requests.Session())
         try:
             yield session
         finally:
