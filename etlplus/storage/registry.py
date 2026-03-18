@@ -28,6 +28,12 @@ __all__ = [
 ]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type ValueArg = StorageLocation | StrPath
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
@@ -65,14 +71,14 @@ def _s3_backend() -> S3StorageBackend:
 
 
 def coerce_location(
-    value: StorageLocation | StrPath | str,
+    value: ValueArg,
 ) -> StorageLocation:
     """
     Normalize *value* into a :class:`StorageLocation`.
 
     Parameters
     ----------
-    value : StorageLocation | StrPath | str
+    value : ValueArg
         Storage location value.
 
     Returns
@@ -88,14 +94,14 @@ def coerce_location(
 
 
 def get_backend(
-    value: StorageLocation | StrPath | str,
+    value: ValueArg,
 ) -> StorageBackendABC:
     """
     Resolve a backend for *value*.
 
     Parameters
     ----------
-    value : StorageLocation | StrPath | str
+    value : ValueArg
         Storage location value.
 
     Returns
