@@ -11,6 +11,7 @@ from .azure_blob import AzureBlobStorageBackend
 from .base import StorageBackendABC
 from .enums import StorageScheme
 from .ftp import FtpStorageBackend
+from .http import HttpStorageBackend
 from .local import LocalStorageBackend
 from .location import StorageLocation
 from .registry import coerce_location
@@ -27,6 +28,7 @@ __all__ = [
     'AbfsStorageBackend',
     'AzureBlobStorageBackend',
     'FtpStorageBackend',
+    'HttpStorageBackend',
     'LocalStorageBackend',
     'RemoteStorageBackend',
     'S3StorageBackend',
