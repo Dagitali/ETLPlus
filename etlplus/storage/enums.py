@@ -30,6 +30,7 @@ class StorageScheme(CoercibleStrEnum):
     AZURE_BLOB = 'azure-blob'
     FILE = 'file'
     FTP = 'ftp'
+    HTTP = 'http'
     S3 = 's3'
 
     # -- Class Methods -- #
@@ -54,6 +55,7 @@ class StorageScheme(CoercibleStrEnum):
             'filesystem': 'file',
             'local': 'file',
             'fs': 'file',
+            'https': 'http',
             's3a': 's3',
             's3n': 's3',
             'wasb': 'azure-blob',
