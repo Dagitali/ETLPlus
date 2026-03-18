@@ -8,12 +8,14 @@ from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from etlplus.storage import AbfsStorageBackend
 from etlplus.storage import AzureBlobStorageBackend
 from etlplus.storage import FtpStorageBackend
+from etlplus.storage import HttpStorageBackend
 from etlplus.storage import LocalStorageBackend
 from etlplus.storage import RemoteStorageBackend
 from etlplus.storage import S3StorageBackend
@@ -24,6 +26,71 @@ from etlplus.storage import abfs as abfs_mod
 from etlplus.storage import azure_blob as azure_blob_mod
 from etlplus.storage import coerce_location
 from etlplus.storage import get_backend
+
+# SECTION: HELPERS ========================================================== #
+
+
+class FakeHttpResponse:
+    """Minimal HTTP response test double."""
+
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __init__(
+        self,
+        *,
+        status_code: int,
+        payload: bytes = b'',
+    ) -> None:
+        self.status_code = status_code
+        self.content = payload
+
+    # -- Instance Methods -- #
+
+    def close(self) -> None:
+        """Close the response without side effects."""
+
+    def raise_for_status(self) -> None:
+        """Raise one error for non-successful response codes."""
+        if self.status_code >= 400:
+            raise RuntimeError(f'HTTP {self.status_code}')
+
+
+class FakeHttpSession:
+    """Minimal requests-session test double for HTTP storage tests."""
+
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __init__(
+        self,
+        *,
+        head_status: int = 200,
+        get_status: int = 200,
+        payload: bytes = b'',
+    ) -> None:
+        self.calls: list[tuple[str, str, bool]] = []
+        self.head_status = head_status
+        self.get_status = get_status
+        self.payload = payload
+
+    # -- Instance Methods -- #
+
+    def close(self) -> None:
+        """Close the fake session without side effects."""
+
+    def get(self, url: str, **kwargs: Any) -> FakeHttpResponse:
+        """Return one fake GET response and capture call metadata."""
+        self.calls.append(('get', url, bool(kwargs.get('stream', False))))
+        return FakeHttpResponse(
+            status_code=self.get_status,
+            payload=self.payload,
+        )
+
+    def head(self, url: str, **kwargs: Any) -> FakeHttpResponse:
+        """Return one fake HEAD response and capture call metadata."""
+        self.calls.append(
+            ('head', url, bool(kwargs.get('allow_redirects', False))),
+        )
+        return FakeHttpResponse(status_code=self.head_status)
 
 # SECTION: TESTS ============================================================ #
 
@@ -348,6 +415,59 @@ class TestAzureBlobStorageBackend:
         assert backend.exists(location) is True
         assert calls == ['https://example.blob.core.windows.net']
 
+
+class TestHttpStorageBackend:
+    """Unit tests for :class:`etlplus.storage.HttpStorageBackend`."""
+
+    def test_exists_returns_false_for_not_found(self) -> None:
+        """Test that HTTP exists returns false for 404 responses."""
+        backend = HttpStorageBackend(session=FakeHttpSession(head_status=404))
+        location = StorageLocation.from_value('https://example.com/files/data.csv')
+
+        assert backend.exists(location) is False
+
+    def test_exists_returns_true_for_successful_head(self) -> None:
+        """Test that HTTP exists returns true for successful HEAD calls."""
+        session = FakeHttpSession(head_status=200)
+        backend = HttpStorageBackend(session=session)
+        location = StorageLocation.from_value('https://example.com/files/data.csv')
+
+        assert backend.exists(location) is True
+        assert session.calls == [
+            ('head', 'https://example.com/files/data.csv', True),
+        ]
+
+    def test_exists_falls_back_to_get_when_head_not_supported(self) -> None:
+        """Test that HTTP exists falls back to GET when HEAD is unsupported."""
+        session = FakeHttpSession(head_status=405, get_status=200)
+        backend = HttpStorageBackend(session=session)
+        location = StorageLocation.from_value('https://example.com/files/data.csv')
+
+        assert backend.exists(location) is True
+        assert session.calls == [
+            ('head', 'https://example.com/files/data.csv', True),
+            ('get', 'https://example.com/files/data.csv', True),
+        ]
+
+    def test_open_reads_text_payload(self) -> None:
+        """Test that HTTP open returns a readable text buffer."""
+        backend = HttpStorageBackend(
+            session=FakeHttpSession(get_status=200, payload=b'name\nAda\n'),
+        )
+        location = StorageLocation.from_value('https://example.com/files/data.csv')
+
+        with backend.open(location, encoding='utf-8') as handle:
+            assert handle.read() == 'name\nAda\n'
+
+    @pytest.mark.parametrize('mode', ['w', 'wb', 'wt'])
+    def test_open_rejects_write_modes(self, mode: str) -> None:
+        """Test that HTTP backend is explicitly read-only."""
+        backend = HttpStorageBackend(session=FakeHttpSession(get_status=200))
+        location = StorageLocation.from_value('https://example.com/files/data.csv')
+
+        with pytest.raises(ValueError, match='read-only'):
+            backend.open(location, mode)
+
     def test_service_client_uses_connection_string_env(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -552,6 +672,7 @@ class TestStorageLocation:
                 'abfss://filesystem@example.dfs.core.windows.net/data.parquet',
                 StorageScheme.ABFS,
             ),
+            ('https://example.com/files/data.csv', StorageScheme.HTTP),
             ('wasbs://container/path/to/blob.json', StorageScheme.AZURE_BLOB),
             ('s3a://bucket/data.json', StorageScheme.S3),
         ],
@@ -600,6 +721,15 @@ class TestStorageLocation:
         assert location.scheme is StorageScheme.AZURE_BLOB
         assert location.authority == 'container@example.blob.core.windows.net'
         assert location.path == 'path/to/blob.json'
+
+    def test_from_https_url(self) -> None:
+        """Test that generic HTTPS URLs normalize into HTTP locations."""
+        location = StorageLocation.from_value(
+            'https://example.com/files/data.csv?download=1',
+        )
+        assert location.scheme is StorageScheme.HTTP
+        assert location.authority == 'example.com'
+        assert location.path == 'files/data.csv'
 
     def test_from_file_uri(self) -> None:
         """Test that ``file://`` URIs normalize to local file locations."""
@@ -665,6 +795,11 @@ class TestStorageRegistry:
         """Test that FTP locations resolve to the FTP backend stub."""
         backend = get_backend('ftp://example.com/path.json')
         assert isinstance(backend, FtpStorageBackend)
+
+    def test_get_backend_for_http_location(self) -> None:
+        """Test that HTTP locations resolve to the HTTP backend."""
+        backend = get_backend('https://example.com/files/data.csv')
+        assert isinstance(backend, HttpStorageBackend)
 
     def test_get_backend_for_local_location(self) -> None:
         """Test that local storage resolves to the local backend."""
