@@ -7,13 +7,20 @@ Shared helpers for record normalization and delimited text formats.
 from __future__ import annotations
 
 import csv
+import shutil
+import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
+from typing import IO
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import ClassVar
 from typing import TypeGuard
 from typing import cast
 
+from ..storage import StorageLocation
+from ..storage import get_backend
 from ..utils.types import JSONData
 from ..utils.types import JSONDict
 from ..utils.types import JSONList
@@ -31,6 +38,59 @@ def _is_object_list(
 ) -> TypeGuard[JSONList]:
     """Return whether *payload* is a list of dictionary objects."""
     return isinstance(payload, list) and all(isinstance(item, dict) for item in payload)
+
+
+def _staging_filename(location: StorageLocation) -> str:
+    """Return one safe temporary filename for a storage location."""
+    filename = Path(location.path).name
+    return filename or 'payload.tmp'
+
+
+@contextmanager
+def _open_text_handle(
+    path: StrPath,
+    *,
+    mode: str,
+    encoding: str,
+    newline: str | None = None,
+) -> Iterator[IO[str]]:
+    """Open a text handle for local paths and remote storage URIs."""
+    location = StorageLocation.from_value(path)
+    if location.is_local:
+        with location.as_path().open(
+            mode,
+            encoding=encoding,
+            newline=newline,
+        ) as handle:
+            yield handle
+        return
+
+    with get_backend(location).open(
+        location,
+        mode,
+        encoding=encoding,
+        newline=newline,
+    ) as handle:
+        yield cast(IO[str], handle)
+
+
+@contextmanager
+def _staged_local_read_path(
+    path: StrPath,
+) -> Iterator[Path]:
+    """Yield one local readable path, staging remote content when needed."""
+    location = StorageLocation.from_value(path)
+    if location.is_local:
+        yield location.as_path()
+        return
+
+    backend = get_backend(location)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        staged_path = Path(tmpdir) / _staging_filename(location)
+        with backend.open(location, 'rb') as source:
+            with staged_path.open('wb') as target:
+                shutil.copyfileobj(source, target)
+        yield staged_path
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -104,8 +164,8 @@ def ensure_parent_dir(
     path : StrPath
         Target path to ensure the parent directory for.
     """
-    path = coerce_path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    location = StorageLocation.from_value(path)
+    get_backend(location).ensure_parent_dir(location)
 
 
 def normalize_records(
@@ -165,8 +225,12 @@ def read_delimited(
     JSONList
         The list of dictionaries read from the delimited file.
     """
-    path = coerce_path(path)
-    with path.open('r', encoding='utf-8', newline='') as handle:
+    with _open_text_handle(
+        path,
+        mode='r',
+        encoding='utf-8',
+        newline='',
+    ) as handle:
         reader: csv.DictReader[str] = csv.DictReader(
             handle,
             delimiter=delimiter,
@@ -191,13 +255,13 @@ def read_sas_table(
     Some pandas-compatible readers accept ``format=...`` while others raise
     ``TypeError``; this helper preserves a single fallback path.
     """
-    resolved_path = coerce_path(path)
-    if format_hint is None:
-        return pandas.read_sas(resolved_path)
-    try:
-        return pandas.read_sas(resolved_path, format=format_hint)
-    except TypeError:
-        return pandas.read_sas(resolved_path)
+    with _staged_local_read_path(path) as resolved_path:
+        if format_hint is None:
+            return pandas.read_sas(resolved_path)
+        try:
+            return pandas.read_sas(resolved_path, format=format_hint)
+        except TypeError:
+            return pandas.read_sas(resolved_path)
 
 
 def read_text(
@@ -220,8 +284,7 @@ def read_text(
     str
         File contents as text.
     """
-    path = coerce_path(path)
-    with path.open('r', encoding=encoding) as handle:
+    with _open_text_handle(path, mode='r', encoding=encoding) as handle:
         return handle.read()
 
 
@@ -356,12 +419,16 @@ def write_delimited(
     int
         The number of rows written.
     """
-    path = coerce_path(path)
     rows = normalize_records(data, format_name)
 
     fieldnames = sorted({key for row in rows for key in row})
     ensure_parent_dir(path)
-    with path.open('w', encoding='utf-8', newline='') as handle:
+    with _open_text_handle(
+        path,
+        mode='w',
+        encoding='utf-8',
+        newline='',
+    ) as handle:
         writer = csv.DictWriter(
             handle,
             fieldnames=fieldnames,
@@ -399,8 +466,12 @@ def write_text(
     payload = text
     if trailing_newline and not payload.endswith('\n'):
         payload = f'{payload}\n'
-    path = coerce_path(path)
-    with path.open('w', encoding=encoding, newline='') as handle:
+    with _open_text_handle(
+        path,
+        mode='w',
+        encoding=encoding,
+        newline='',
+    ) as handle:
         handle.write(payload)
 
 
