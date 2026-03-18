@@ -308,6 +308,16 @@ class File:
 
     # -- Instance Methods -- #
 
+    def delete(self) -> None:
+        """Delete :attr:`path` through the active storage backend."""
+        get_backend(self.location).delete(self.location)
+
+    def exists(self) -> bool:
+        """Return whether :attr:`path` currently exists."""
+        if self.location.is_local:
+            return self.location.as_path().exists()
+        return get_backend(self.location).exists(self.location)
+
     def read(
         self,
         *,
