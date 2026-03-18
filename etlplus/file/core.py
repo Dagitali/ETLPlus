@@ -76,7 +76,7 @@ class File:
     path : FilePathArg
         Local filesystem path supplied as ``str``/``Path``/``PathLike[str]``,
         or a remote storage URI supplied as ``str`` such as
-        ``s3://bucket/file.csv`` or
+        ``s3://bucket/file.csv``, ``https://example.com/files/data.csv``, or
         ``https://account.blob.core.windows.net/container/file.csv``.
     file_format : FileFormat | str | None, optional
         Explicit format. If omitted, the format is inferred from the file
