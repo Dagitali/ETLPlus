@@ -13,6 +13,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import replace
 from pathlib import Path
 from pathlib import PurePath
 from typing import Any
@@ -24,6 +25,7 @@ from ..utils.types import StrPath
 from . import xml
 from .base import BoundFileHandler
 from .base import FileHandlerABC
+from .base import ReadOptions
 from .base import WriteOptions
 from .enums import FileFormat
 from .enums import infer_file_format_and_compression
@@ -137,6 +139,8 @@ class File:
     def _bound_handler(
         self,
         path: Path,
+        *,
+        handler: FileHandlerABC | None = None,
     ) -> BoundFileHandler:
         """
         Resolve and bind the active handler to *path*.
@@ -145,13 +149,16 @@ class File:
         ----------
         path : Path
             Local file path to bind to the resolved handler.
+        handler : FileHandlerABC | None, optional
+            Explicit handler instance to bind. When omitted, the handler is
+            resolved from the active file format.
 
         Returns
         -------
         BoundFileHandler
             A handler instance bound to *path* for the active format.
         """
-        return self._resolve_handler().at(path)
+        return (handler or self._resolve_handler()).at(path)
 
     def _coerce_format(
         self,
@@ -277,6 +284,19 @@ class File:
         fmt = self._ensure_format()
         return get_handler(fmt)
 
+    def _resolved_write_options(
+        self,
+        *,
+        options: WriteOptions | None,
+        root_tag: str,
+    ) -> WriteOptions:
+        """Return write options with one resolved XML root tag."""
+        if options is None:
+            return WriteOptions(root_tag=root_tag)
+        if root_tag == xml.DEFAULT_XML_ROOT or options.root_tag == root_tag:
+            return options
+        return replace(options, root_tag=root_tag)
+
     def _staging_filename(self) -> str:
         """Return one safe staging filename for remote dispatch."""
         filename = PurePath(self.location.path).name
@@ -288,25 +308,43 @@ class File:
 
     # -- Instance Methods -- #
 
-    def read(self) -> Any:
+    def read(
+        self,
+        *,
+        options: ReadOptions | None = None,
+        handler: FileHandlerABC | None = None,
+    ) -> Any:
         """
         Read structured data from :attr:`path` using :attr:`file_format`.
+
+        Parameters
+        ----------
+        options : ReadOptions | None, optional
+            Optional read parameters forwarded to the active handler.
+        handler : FileHandlerABC | None, optional
+            Explicit handler instance to use instead of resolving one from the
+            registry. This is primarily used by bound handler facades so they
+            preserve handler-specific behavior for remote URIs.
 
         Returns
         -------
         Any
             The parsed data read from the file.
-
         """
         self._assert_exists()
         with self._dispatch_path(for_write=False) as path:
-            return self._bound_handler(path).read()
+            bound_handler = self._bound_handler(path, handler=handler)
+            if options is None:
+                return bound_handler.read()
+            return bound_handler.read(options=options)
 
     def write(
         self,
         data: object,
         *,
+        options: WriteOptions | None = None,
         root_tag: str = xml.DEFAULT_XML_ROOT,
+        handler: FileHandlerABC | None = None,
     ) -> int:
         """
         Write *data* to *path* using :attr:`file_format`.
@@ -315,9 +353,15 @@ class File:
         ----------
         data : object
             Data to write to the file.
+        options : WriteOptions | None, optional
+            Optional write parameters forwarded to the active handler.
         root_tag : str, optional
             Root tag name to use when writing XML files. Defaults to
             ``xml.DEFAULT_XML_ROOT``.
+        handler : FileHandlerABC | None, optional
+            Explicit handler instance to use instead of resolving one from the
+            registry. This is primarily used by bound handler facades so they
+            preserve handler-specific behavior for remote URIs.
 
         Returns
         -------
@@ -325,8 +369,12 @@ class File:
             The number of records written.
 
         """
+        resolved_options = self._resolved_write_options(
+            options=options,
+            root_tag=root_tag,
+        )
         with self._dispatch_path(for_write=True) as path:
-            return cast(Any, self._bound_handler(path)).write(
+            return cast(Any, self._bound_handler(path, handler=handler)).write(
                 data,
-                options=WriteOptions(root_tag=root_tag),
+                options=resolved_options,
             )
