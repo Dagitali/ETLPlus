@@ -133,6 +133,31 @@ class TestAbfsStorageBackend:
         monkeypatch.setattr(backend, '_file_client', fake_file_client)
         assert backend.exists(location) is True
 
+    def test_delete_uses_file_client(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ABFS delete delegates to the file client."""
+        backend = AbfsStorageBackend()
+        location = StorageLocation.from_value(
+            'abfs://filesystem@example.dfs.core.windows.net/blob.json',
+        )
+        deleted: list[bool] = []
+
+        class FakeFileClient:
+            """Data Lake file client delete test double."""
+
+            def delete_file(self) -> None:
+                """Record that delete_file was invoked."""
+                deleted.append(True)
+
+        def fake_file_client(_location: StorageLocation) -> FakeFileClient:
+            return FakeFileClient()
+
+        monkeypatch.setattr(backend, '_file_client', fake_file_client)
+        backend.delete(location)
+        assert deleted == [True]
+
     def test_inherits_remote_storage_backend_base(self) -> None:
         """Test that ABFS uses the shared remote backend base class."""
         assert issubclass(AbfsStorageBackend, RemoteStorageBackend)
@@ -276,6 +301,29 @@ class TestAzureBlobStorageBackend:
 
         monkeypatch.setattr(backend, '_blob_client', fake_blob_client)
         assert backend.exists(location) is True
+
+    def test_delete_uses_blob_client(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that Azure Blob delete delegates to the blob client."""
+        backend = AzureBlobStorageBackend()
+        location = StorageLocation.from_value('azure-blob://container/blob.json')
+        deletes: list[object] = []
+
+        class FakeBlobClient:
+            """Blob client delete test double."""
+
+            def delete_blob(self, **kwargs: object) -> None:
+                """Record blob deletion arguments."""
+                deletes.append(kwargs)
+
+        def fake_blob_client(_location: StorageLocation) -> FakeBlobClient:
+            return FakeBlobClient()
+
+        monkeypatch.setattr(backend, '_blob_client', fake_blob_client)
+        backend.delete(location)
+        assert deletes == [{'delete_snapshots': 'include'}]
 
     def test_exists_raises_import_error_without_sdk(self) -> None:
         """Test that Azure Blob runtime needs the optional SDK package."""
@@ -468,6 +516,14 @@ class TestHttpStorageBackend:
         with pytest.raises(ValueError, match='read-only'):
             backend.open(location, mode)
 
+    def test_delete_rejects_cleanup(self) -> None:
+        """Test that HTTP backend explicitly rejects deletion."""
+        backend = HttpStorageBackend(session=FakeHttpSession(get_status=200))
+        location = StorageLocation.from_value('https://example.com/files/data.csv')
+
+        with pytest.raises(ValueError, match='read-only'):
+            backend.delete(location)
+
     def test_service_client_uses_connection_string_env(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -518,12 +574,31 @@ class TestHttpStorageBackend:
 class TestLocalStorageBackend:
     """Unit tests for :class:`etlplus.storage.LocalStorageBackend`."""
 
+    def test_delete_missing_is_noop(self, tmp_path: Path) -> None:
+        """Test that deleting a missing local file is a no-op."""
+        target = tmp_path / 'missing.txt'
+        backend = LocalStorageBackend()
+
+        backend.delete(StorageLocation.from_value(target))
+
+        assert target.exists() is False
+
     def test_exists(self, tmp_path: Path) -> None:
         """Test that :meth:`exists` reflects local filesystem state."""
         target = tmp_path / 'exists.txt'
         target.write_text('hello', encoding='utf-8')
         backend = LocalStorageBackend()
         assert backend.exists(StorageLocation.from_value(target)) is True
+
+    def test_delete_existing_file(self, tmp_path: Path) -> None:
+        """Test that delete removes existing local files."""
+        target = tmp_path / 'delete.txt'
+        target.write_text('hello', encoding='utf-8')
+        backend = LocalStorageBackend()
+
+        backend.delete(StorageLocation.from_value(target))
+
+        assert target.exists() is False
 
     def test_open_creates_parent_for_write_modes(self, tmp_path: Path) -> None:
         """Test that write modes create missing parent directories."""
@@ -539,6 +614,29 @@ class TestLocalStorageBackend:
 
 class TestS3StorageBackend:
     """Unit tests for :class:`etlplus.storage.S3StorageBackend`."""
+
+    def test_delete_uses_client(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that S3 delete delegates to the client."""
+        backend = S3StorageBackend()
+        location = StorageLocation.from_value('s3://bucket/data.json')
+        deletes: list[dict[str, object]] = []
+
+        class FakeS3Client:
+            """S3 client delete test double."""
+
+            def delete_object(self, **kwargs: object) -> None:
+                """Record object deletion arguments."""
+                deletes.append(kwargs)
+
+        def fake_client() -> FakeS3Client:
+            return FakeS3Client()
+
+        monkeypatch.setattr(backend, '_client', fake_client)
+        backend.delete(location)
+        assert deletes == [{'Bucket': 'bucket', 'Key': 'data.json'}]
 
     def test_exists_returns_true_when_object_is_found(
         self,
@@ -821,3 +919,10 @@ class TestOtherStubStorageBackends:
         location = StorageLocation.from_value('ftp://example.com/data.json')
         with pytest.raises(NotImplementedError, match='ftplib'):
             backend.exists(location)
+
+    def test_ftp_delete_raises_placeholder_error(self) -> None:
+        """Test that FTP delete routes through the shared placeholder behavior."""
+        backend = FtpStorageBackend()
+        location = StorageLocation.from_value('ftp://example.com/data.json')
+        with pytest.raises(NotImplementedError, match='ftplib'):
+            backend.delete(location)
