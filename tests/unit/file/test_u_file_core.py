@@ -256,6 +256,39 @@ def _read_with_known_io_skip(
 class TestFile:
     """Unit tests for :class:`etlplus.file.File`."""
 
+    def test_delete_delegates_to_remote_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote deletes delegate to the storage layer."""
+        calls: list[object] = []
+
+        class FakeBackend:
+            """Remote backend delete test double."""
+
+            def delete(self, location: object) -> None:
+                """Capture the deleted location."""
+                calls.append(location)
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        File('s3://bucket/data.json', FileFormat.JSON).delete()
+
+        assert len(calls) == 1
+
+    def test_delete_removes_local_files(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that local deletes remove the underlying file."""
+        path = tmp_path / 'delete_me.json'
+        path.write_text('{}', encoding='utf-8')
+
+        file = File(path, FileFormat.JSON)
+        file.delete()
+
+        assert not path.exists()
+
     @pytest.mark.parametrize(
         ('file_format', 'filename'),
         EMBEDDED_DB_MULTI_TABLE_CASES,
@@ -285,6 +318,43 @@ class TestFile:
 
         with pytest.raises(ValueError, match='Multiple tables'):
             File(path, file_format).read()
+
+    def test_exists_delegates_to_remote_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote existence checks delegate to the storage layer."""
+        calls: list[object] = []
+
+        class FakeBackend:
+            """Remote backend existence test double."""
+
+            def exists(self, location: object) -> bool:
+                """Capture the location and report it as existing."""
+                calls.append(location)
+                return True
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        assert File('s3://bucket/data.json', FileFormat.JSON).exists() is True
+        assert len(calls) == 1
+
+    def test_exists_returns_false_for_missing_local_files(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that missing local files report ``False`` for exists."""
+        assert File(tmp_path / 'missing.json', FileFormat.JSON).exists() is False
+
+    def test_exists_returns_true_for_local_files(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that local existence checks use the local filesystem."""
+        path = tmp_path / 'present.json'
+        path.write_text('{}', encoding='utf-8')
+
+        assert File(path, FileFormat.JSON).exists() is True
 
     @pytest.mark.parametrize(
         ('raw_format', 'expected'),
