@@ -25,6 +25,9 @@ from etlplus.file import csv as csv_file
 from etlplus.file import json as json_file
 from etlplus.file import xml as xml_file
 from etlplus.file.base import WriteOptions
+from etlplus.storage import S3StorageBackend
+from etlplus.storage import StorageScheme
+from etlplus.storage import get_backend
 from etlplus.utils.types import JSONData
 
 from ...pytest_file_common import Operation
@@ -213,9 +216,9 @@ class TestFile:
         if file_format is FileFormat.DUCKDB:
             import duckdb
 
-            conn = duckdb.connect(str(path))
+            conn = cast(Any, duckdb.connect(str(path)))
         else:
-            conn = sqlite3.connect(path)
+            conn = cast(Any, sqlite3.connect(path))
         try:
             conn.execute('CREATE TABLE one (id INTEGER)')
             conn.execute('CREATE TABLE two (id INTEGER)')
@@ -368,6 +371,15 @@ class TestFile:
         assert result == {'name': 'Ada'}
         assert calls[0][0] == 'exists'
         assert calls[1][0] == 'rb'
+
+    def test_remote_uri_infers_s3_backend_and_csv_format(self) -> None:
+        """Test that remote URI strings infer both storage scheme and format."""
+        file = File('s3://my-bucket/my_file.csv')
+
+        assert file.file_format is FileFormat.CSV
+        assert file.location.scheme is StorageScheme.S3
+        assert isinstance(get_backend(file.location), S3StorageBackend)
+        assert file.path == 's3://my-bucket/my_file.csv'
 
     def test_remote_write_uploads_staged_payload_via_storage_backend(
         self,
