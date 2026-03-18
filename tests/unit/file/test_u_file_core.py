@@ -263,6 +263,14 @@ class TestFile:
 
         assert result == payload
 
+    def test_http_uri_infers_http_backend_and_csv_format(self) -> None:
+        """Test that generic HTTPS URIs infer HTTP storage and CSV format."""
+        file = File('https://example.com/files/my_file.csv?download=1')
+
+        assert file.file_format is FileFormat.CSV
+        assert file.location.scheme is StorageScheme.HTTP
+        assert file.path == 'https://example.com/files/my_file.csv?download=1'
+
     @pytest.mark.parametrize(
         ('filename', 'expected_format'),
         FORMAT_INFERENCE_CASES,
