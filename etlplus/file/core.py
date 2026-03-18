@@ -41,7 +41,13 @@ __all__ = [
 # SECTION: TYPE ALIASES ===================================================== #
 
 
+# File formats can be:
+# 1. Enums
+# 2. Strings coercible to enums
+# 3. Left as None for inference.
 type FileFormatArg = FileFormat | str | None
+
+# Remote storage URIs are accepted as the ``str`` arm of ``StrPath``.
 type FilePathArg = StrPath
 
 
@@ -68,7 +74,10 @@ class File:
     Parameters
     ----------
     path : FilePathArg
-        Local filesystem path or remote storage URI.
+        Local filesystem path supplied as ``str``/``Path``/``PathLike[str]``,
+        or a remote storage URI supplied as ``str`` such as
+        ``s3://bucket/file.csv`` or
+        ``https://account.blob.core.windows.net/container/file.csv``.
     file_format : FileFormat | str | None, optional
         Explicit format. If omitted, the format is inferred from the file
         extension (``.csv``, ``.json``, etc.).
