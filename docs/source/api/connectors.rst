@@ -7,8 +7,6 @@ Normalized connector definitions used by config-driven ETL workflows.
    :toctree: generated
 
    etlplus.connector.api
-   etlplus.connector.core
    etlplus.connector.database
    etlplus.connector.enums
    etlplus.connector.file
-   etlplus.connector.utils
