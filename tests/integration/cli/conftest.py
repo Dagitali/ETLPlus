@@ -10,6 +10,8 @@ from __future__ import annotations
 import importlib
 import itertools
 import json
+import os
+from collections.abc import Iterator
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -17,8 +19,13 @@ from textwrap import dedent
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Protocol
+from typing import cast
+from uuid import uuid4
 
 import pytest
+
+from etlplus.storage import StorageLocation
+from etlplus.storage import get_backend
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFactory
@@ -54,6 +61,15 @@ class PipelineSchema:
     config_path: Path
     schema_name: str
     table_name: str
+
+
+@dataclass(slots=True)
+class RealRemoteTarget:
+    """Real cloud-backed target allocated for one integration test."""
+
+    uri: str
+    location: StorageLocation
+    backend: Any
 
 
 @dataclass(slots=True)
@@ -96,6 +112,31 @@ class PipelineConfigFactory(Protocol):
         self,
         data: list[dict[str, Any]] | list[Any],
     ) -> PipelineConfig: ...
+
+
+class RealRemoteTargetFactory(Protocol):
+    """Create a real cloud-backed target URI for one test."""
+
+    def __call__(
+        self,
+        env_name: str,
+        *,
+        suffix: str,
+        extension: str = 'json',
+    ) -> RealRemoteTarget: ...
+
+
+def _child_uri(base_uri: str, filename: str) -> str:
+    """Append one test filename to a remote base URI."""
+    return f'{base_uri.rstrip("/")}/{filename}'
+
+
+def _require_env(name: str) -> str:
+    """Return one required env var or skip the integration test."""
+    value = os.getenv(name)
+    if not value:
+        pytest.skip(f'{name} is not configured for cloud integration tests')
+    return cast(str, value)
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -206,6 +247,38 @@ def pipeline_table_schemas_config_fixture(
         schema_name=schema_name,
         table_name=table_name,
     )
+
+
+@pytest.fixture(name='real_remote_target_factory')
+def real_remote_target_factory_fixture() -> Iterator[RealRemoteTargetFactory]:
+    """Provision env-gated real cloud target URIs and clean them up."""
+    created: list[RealRemoteTarget] = []
+
+    def _build(
+        env_name: str,
+        *,
+        suffix: str,
+        extension: str = 'json',
+    ) -> RealRemoteTarget:
+        base_uri = _require_env(env_name)
+        uri = _child_uri(
+            base_uri,
+            f'etlplus-cli-{suffix}-{uuid4().hex}.{extension}',
+        )
+        location = StorageLocation.from_value(uri)
+        target = RealRemoteTarget(
+            uri=uri,
+            location=location,
+            backend=get_backend(location),
+        )
+        created.append(target)
+        return target
+
+    yield _build
+
+    for target in reversed(created):
+        if target.backend.exists(target.location):
+            target.backend.delete(target.location)
 
 
 @pytest.fixture(name='remote_storage_harness')
