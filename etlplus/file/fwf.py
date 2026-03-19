@@ -22,6 +22,7 @@ from typing import Any
 
 from ..utils.types import JSONList
 from ._imports import get_pandas
+from ._io import _open_text_handle
 from ._io import ensure_parent_dir
 from ._io import records_from_table
 from ._io import stringify_value
@@ -126,8 +127,9 @@ class FwfFile(TextFixedWidthFileHandlerABC):
                 )
 
         ensure_parent_dir(path)
-        with path.open(
-            'w',
+        with _open_text_handle(
+            path,
+            mode='w',
             encoding=self.default_encoding,
             newline='',
         ) as handle:
