@@ -130,6 +130,11 @@ class BoundFileHandler:
         ----------
         options : ReadOptions | None, optional
             Optional read parameters. Defaults to ``None``.
+
+        Returns
+        -------
+        Any
+            The parsed payload read from the file.
         """
         location = StorageLocation.from_value(self.path)
         if location.is_local:
@@ -154,6 +159,13 @@ class BoundFileHandler:
             Data to write.
         options : WriteOptions | None, optional
             Optional write parameters. Defaults to ``None``.
+
+        Returns
+        -------
+        int
+            The number of records written, if applicable to the format.
+            Otherwise, returns 0 or 1 depending on whether the write was
+            successful.
         """
         location = StorageLocation.from_value(self.path)
         if location.is_local:
