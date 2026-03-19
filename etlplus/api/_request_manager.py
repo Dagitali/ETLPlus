@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.request_manager` module.
+:mod:`etlplus.api._request_manager` module.
 
 HTTP request orchestration with retries and session lifecycle control.
 
