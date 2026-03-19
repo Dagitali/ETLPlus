@@ -7,7 +7,6 @@ Helpers to extract data from files, databases, and REST APIs.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
 from typing import Any
 from typing import cast
 from urllib.parse import urlsplit
@@ -23,6 +22,7 @@ from ..api.utils import resolve_request
 from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
+from ..file.base import ReadOptions
 from ..utils.types import JSONData
 from ..utils.types import JSONDict
 from ..utils.types import JSONList
@@ -84,6 +84,39 @@ def _build_client(
         retry=retry,
         retry_network_errors=retry_network_errors,
         session=session,
+    )
+
+
+def _coerce_optional_str(
+    value: object,
+) -> str | None:
+    """Normalize optional string-like option values."""
+    if value is None:
+        return None
+    return value if isinstance(value, str) else str(value)
+
+
+def _coerce_read_options(
+    options: ReadOptions | Mapping[str, Any] | None,
+) -> ReadOptions | None:
+    """Normalize file-read option mappings into :class:`ReadOptions`."""
+    if options is None or isinstance(options, ReadOptions):
+        return options
+
+    extras = dict(options)
+    encoding = extras.pop('encoding', 'utf-8')
+    sheet = extras.pop('sheet', None)
+    table = extras.pop('table', None)
+    dataset = extras.pop('dataset', None)
+    inner_name = extras.pop('inner_name', None)
+
+    return ReadOptions(
+        encoding=encoding if isinstance(encoding, str) else str(encoding),
+        sheet=sheet,
+        table=_coerce_optional_str(table),
+        dataset=_coerce_optional_str(dataset),
+        inner_name=_coerce_optional_str(inner_name),
+        extras=cast(JSONDict, extras),
     )
 
 
@@ -319,33 +352,37 @@ def extract_from_database(
 def extract_from_file(
     file_path: StrPath,
     file_format: FileFormat | str | None = FileFormat.JSON,
+    options: ReadOptions | Mapping[str, Any] | None = None,
 ) -> JSONData:
     """
-    Extract (semi-)structured data from a local file.
+    Extract (semi-)structured data from a local file path or remote URI.
 
     Parameters
     ----------
     file_path : StrPath
-        Source file path.
+        Source local file path or remote URI.
     file_format : FileFormat | str | None, optional
         File format to parse. If ``None``, infer from the filename
         extension. Defaults to `'json'` for backward compatibility when
         explicitly provided.
+    options : ReadOptions | Mapping[str, Any] | None, optional
+        Optional file-read options such as ``encoding`` plus format-specific
+        extras like ``delimiter``.
 
     Returns
     -------
     JSONData
         Parsed data as a mapping or a list of mappings.
     """
-    path = Path(file_path)
+    resolved_options = _coerce_read_options(options)
+    file = File(file_path, file_format)
 
     # If no explicit format is provided, let File infer from extension.
-    if file_format is None:
-        return File(path, None).read()
-    fmt = FileFormat.coerce(file_format)
+    if resolved_options is None:
+        return file.read()
 
     # Let file module perform existence and format validation.
-    return File(path, fmt).read()
+    return file.read(options=resolved_options)
 
 
 # -- Orchestration -- #
@@ -384,7 +421,7 @@ def extract(
     match DataConnectorType.coerce(source_type):
         case DataConnectorType.FILE:
             # Prefer explicit format if provided, else infer from filename.
-            return extract_from_file(source, file_format)
+            return extract_from_file(source, file_format, kwargs or None)
         case DataConnectorType.DATABASE:
             return extract_from_database(str(source))
         case DataConnectorType.API:
