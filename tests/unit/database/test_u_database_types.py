@@ -1,14 +1,14 @@
 """
 :mod:`tests.unit.database.test_u_database_types` module.
 
-Unit tests for :mod:`etlplus.database.types`.
+Unit tests for :mod:`etlplus.database._types`.
 """
 
 from __future__ import annotations
 
 from sqlalchemy import String
 
-from etlplus.database import types as database_types
+import etlplus.database._types as database_types
 
 # SECTION: PRAGMAS ========================================================== #
 

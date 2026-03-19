@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.connector.test_u_connector_utils` module.
 
-Unit tests for :mod:`etlplus.connector.utils`.
+Unit tests for :mod:`etlplus.connector._utils`.
 
 Notes
 -----
@@ -14,11 +14,11 @@ from typing import cast
 
 import pytest
 
+import etlplus.connector._utils as connector_utils
 from etlplus.connector import ConnectorApi
 from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorFile
 from etlplus.connector import parse_connector
-from etlplus.connector import utils as connector_utils
 from etlplus.connector.enums import DataConnectorType
 
 # SECTION: PRAGMAS ========================================================== #
@@ -141,7 +141,7 @@ class TestParseConnector:
 
 
 class TestInternalLoadConnector:
-    """Unit tests for :func:`etlplus.connector.utils._load_connector`."""
+    """Unit tests for :func:`etlplus.connector._utils._load_connector`."""
 
     @pytest.mark.parametrize(
         ('kind', 'expected'),

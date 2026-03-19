@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.file.test_u_file_registry` module.
 
-Unit tests for :mod:`etlplus.file.registry`.
+Unit tests for :mod:`etlplus.file._registry`.
 """
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ from collections.abc import Iterator
 import pytest
 
 import etlplus.file as file_pkg
+import etlplus.file._registry as mod
 from etlplus.file import FileFormat
-from etlplus.file import registry as mod
 from etlplus.file.base import ArchiveWrapperFileHandlerABC
 from etlplus.file.base import BinarySerializationFileHandlerABC
 from etlplus.file.base import ColumnarFileHandlerABC
