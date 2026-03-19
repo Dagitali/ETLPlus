@@ -14,7 +14,7 @@ from typing import Self
 from typing import runtime_checkable
 
 from ..utils.types import StrAnyMap
-from ._types import ConnectorType
+from .types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #
 
