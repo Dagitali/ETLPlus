@@ -12,8 +12,8 @@ from typing import Any
 import pytest
 import requests  # type: ignore[import]
 
+import etlplus.api._request_manager as rm_module
 import etlplus.api.rate_limiting.rate_limiter as rl_module
-import etlplus.api.request_manager as rm_module
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigDict
 from etlplus.api import PaginationType

@@ -30,8 +30,8 @@ from typing import Any
 
 import pytest
 
-import etlplus.api.request_manager as rm_module
-import etlplus.cli.handlers as cli_handlers
+import etlplus.api._request_manager as rm_module
+import etlplus.cli._handlers as cli_handlers
 from etlplus import Config
 from etlplus.cli import main
 

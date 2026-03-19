@@ -142,10 +142,7 @@ class TestRun:
         assert payload.get('status') == 'ok'
         assert isinstance(payload.get('result'), dict)
         assert payload['result'].get('status') == 'success'
-        assert (
-            payload['result'].get('message')
-            == f'Data loaded to {target_uri}'
-        )
+        assert payload['result'].get('message') == f'Data loaded to {target_uri}'
         rows = list(
             csv.DictReader(
                 StringIO(remote_storage_harness.read_text(target_uri)),
@@ -220,8 +217,5 @@ class TestRun:
         assert payload.get('status') == 'ok'
         assert isinstance(payload.get('result'), dict)
         assert payload['result'].get('status') == 'success'
-        assert (
-            payload['result'].get('message')
-            == f'Data loaded to {target.uri}'
-        )
+        assert payload['result'].get('message') == f'Data loaded to {target.uri}'
         assert File(target.uri, FileFormat.JSON).read() == sample_records
