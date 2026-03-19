@@ -9,13 +9,16 @@ from __future__ import annotations
 import inspect
 from dataclasses import FrozenInstanceError
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
+from typing import Any
 from typing import NoReturn
 from typing import cast
 
 import pytest
 
 from etlplus.file import FileFormat
+from etlplus.file import core as core_mod
 from etlplus.file._stub_categories import StubSingleDatasetScientificFileHandlerABC
 from etlplus.file.base import BoundFileHandler
 from etlplus.file.base import DelimitedTextFileHandlerABC
@@ -30,6 +33,7 @@ from etlplus.file.csv import CsvFile
 from etlplus.file.dat import DatFile
 from etlplus.file.dta import DtaFile
 from etlplus.file.fwf import FwfFile
+from etlplus.file.json import JsonFile
 from etlplus.file.mat import MatFile
 from etlplus.file.nc import NcFile
 from etlplus.file.ods import OdsFile
@@ -47,6 +51,7 @@ from etlplus.file.xlsx import XlsxFile
 from etlplus.file.xpt import XptFile
 from etlplus.file.zip import ZipFile
 from etlplus.file.zsav import ZsavFile
+from etlplus.storage import http as http_storage_mod
 from etlplus.utils.types import JSONData
 from etlplus.utils.types import JSONList
 
@@ -60,6 +65,54 @@ from .pytest_file_contract_utils import assert_single_dataset_rejects_non_defaul
 
 
 _NO_DEFAULT: object = object()
+
+
+class _FakeHttpResponse:
+    """Minimal HTTP response double for bound-handler tests."""
+
+    def __init__(
+        self,
+        *,
+        status_code: int,
+        payload: bytes = b'',
+    ) -> None:
+        self.status_code = status_code
+        self.content = payload
+
+    def close(self) -> None:
+        """Close the response without side effects."""
+
+    def raise_for_status(self) -> None:
+        """Raise one error for non-successful response codes."""
+        if self.status_code >= 400:
+            raise RuntimeError(f'HTTP {self.status_code}')
+
+
+class _FakeHttpSession:
+    """Minimal HTTP session double for bound-handler tests."""
+
+    def __init__(
+        self,
+        *,
+        payload: bytes = b'',
+    ) -> None:
+        self.calls: list[tuple[str, str, bool]] = []
+        self.payload = payload
+
+    def close(self) -> None:
+        """Close the fake session without side effects."""
+
+    def get(self, url: str, **kwargs: Any) -> _FakeHttpResponse:
+        """Return one fake GET response and capture call metadata."""
+        self.calls.append(('get', url, bool(kwargs.get('stream', False))))
+        return _FakeHttpResponse(status_code=200, payload=self.payload)
+
+    def head(self, url: str, **kwargs: Any) -> _FakeHttpResponse:
+        """Return one fake HEAD response and capture call metadata."""
+        self.calls.append(
+            ('head', url, bool(kwargs.get('allow_redirects', False))),
+        )
+        return _FakeHttpResponse(status_code=200)
 
 
 @dataclass(slots=True, frozen=True)
@@ -368,6 +421,68 @@ class TestBaseAbcContracts:
         assert bound.path == Path('ignored.csv')
         assert bound.read() == [{'id': 1}]
         assert bound.write([{'id': 1}, {'id': 2}]) == 2
+
+    def test_at_supports_remote_uri_reads(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``at(path)`` routes remote URI reads through storage."""
+        uri = 'https://example.com/files/data.json?download=1'
+        session = _FakeHttpSession(payload=b'{"name": "Ada"}')
+        handler = JsonFile()
+
+        monkeypatch.setattr(http_storage_mod.requests, 'Session', lambda: session)
+
+        bound = handler.at(uri)
+
+        assert bound.handler is handler
+        assert bound.path == uri
+        assert bound.read() == {'name': 'Ada'}
+        assert session.calls == [
+            ('head', uri, True),
+            ('get', uri, False),
+        ]
+
+    def test_at_supports_remote_uri_writes(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``at(path)`` routes remote URI writes through storage."""
+        uploads: list[bytes] = []
+
+        class CaptureUpload(BytesIO):
+            """Writable upload stream test double."""
+
+            def close(self) -> None:
+                """Capture uploaded bytes before closing the stream."""
+                uploads.append(self.getvalue())
+                super().close()
+
+        class FakeBackend:
+            """Remote backend write test double."""
+
+            def ensure_parent_dir(self, location: object) -> None:
+                """Accept parent preparation for remote storage."""
+                del location
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> CaptureUpload:
+                """Return one writable byte stream for the remote object."""
+                del location, kwargs
+                assert mode == 'wb'
+                return CaptureUpload()
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        handler = JsonFile()
+        written = handler.at('s3://bucket/data.json').write({'name': 'Ada'})
+
+        assert written == 1
+        assert uploads == [b'{\n  "name": "Ada"\n}\n']
 
     @pytest.mark.parametrize(
         (

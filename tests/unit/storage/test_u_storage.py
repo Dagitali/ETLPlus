@@ -92,6 +92,7 @@ class FakeHttpSession:
         )
         return FakeHttpResponse(status_code=self.head_status)
 
+
 # SECTION: TESTS ============================================================ #
 
 

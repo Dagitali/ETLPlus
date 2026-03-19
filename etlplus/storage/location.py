@@ -44,9 +44,7 @@ def _from_https_azure_url(
             raw=raw,
             scheme=StorageScheme.AZURE_BLOB,
             path=blob_path,
-            authority=(
-                f'{container}@{authority}' if container else f'@{authority}'
-            ),
+            authority=(f'{container}@{authority}' if container else f'@{authority}'),
         )
 
     if host.endswith('.dfs.core.windows.net'):
