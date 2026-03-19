@@ -19,6 +19,7 @@ import pytest
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonOutputParser
+    from tests.integration.cli.conftest import RemoteStorageHarness
 
 # SECTION: MARKS ============================================================ #
 
@@ -42,6 +43,26 @@ class TestCliExtract:
         Test extracting JSON from a file and emitting the matching payload.
         """
         code, out, err = cli_invoke(('extract', str(json_payload_file)))
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload == sample_records
+
+    def test_extract_remote_json_file(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        remote_storage_harness: RemoteStorageHarness,
+        sample_records: list[dict[str, Any]],
+    ) -> None:
+        """Test extracting JSON from a remote URI via the CLI."""
+        remote_storage_harness.set_json(
+            's3://bucket/input.json',
+            sample_records,
+        )
+
+        code, out, err = cli_invoke(('extract', 's3://bucket/input.json'))
+
         assert code == 0
         assert err.strip() == ''
         payload = parse_json_output(out)
