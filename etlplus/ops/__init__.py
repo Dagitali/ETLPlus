@@ -8,8 +8,7 @@ about: ``extract``, ``transform``, ``load``, ``validate``, ``run``, and
 ``run_pipeline``. Each helper delegates to the richer modules under
 ``etlplus.ops.*`` while presenting a compact public API surface. Conditional
 validation orchestration is available via
-:func:`etlplus.ops.utils.maybe_validate`. The legacy compatibility module
-:mod:`etlplus.ops.__init__validation` is deprecated in favor of this package.
+:func:`etlplus.ops.utils.maybe_validate`.
 
 Examples
 --------

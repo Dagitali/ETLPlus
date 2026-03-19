@@ -78,9 +78,9 @@ polish still recommended before the first stable `v1.0.0` tag.
   of the committed tree are not part of tagged release artifacts.
 - The latest released version is `v0.26.1`, and the changes completed so far in this checklist are
   expected to ship first as part of `v0.27.0`, not `v1.0.0`.
-- The stable-surface trimming work now treats CLI support modules, storage registry/base plumbing,
-  connector support modules, the file-handler registry, database typing helpers, and API request
-  manager plumbing as protected underscore-prefixed implementation modules.
+- The stable-surface trimming work now treats CLI support modules and command wiring, storage
+  registry/base plumbing, connector support modules, the file-handler registry, database typing
+  helpers, and API request manager plumbing as protected underscore-prefixed implementation modules.
 
 ## Strongly Recommended Before `v1.0.0`
 

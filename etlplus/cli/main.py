@@ -14,7 +14,7 @@ import sys
 import click
 import typer
 
-from .commands import app
+from ._commands import app
 
 # SECTION: EXPORTS ========================================================== #
 

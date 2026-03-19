@@ -12,9 +12,9 @@ import pytest
 import typer
 
 import etlplus
+import etlplus.cli._commands as commands
 import etlplus.cli._handlers as handlers
 import etlplus.cli._state as cli_state_module
-import etlplus.cli.commands as commands
 
 from ...conftest import CaptureHandler
 from .conftest import InvokeCli

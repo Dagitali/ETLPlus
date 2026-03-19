@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli.commands` module.
+:mod:`etlplus.cli._commands` module.
 
 Typer application and subcommands for the ``etlplus`` command-line interface
 (CLI). Typer (Click) is used for CLI parsing, help text, and subcommand

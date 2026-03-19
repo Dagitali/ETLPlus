@@ -7,8 +7,8 @@
 ## CLI Parser Status
 
 - The CLI is Typer/Click-only. The historical `argparse` parser has been removed.
-- Downstream tools should invoke the Typer app exported at `etlplus.cli.commands.app` (e.g., `python
-  -m etlplus` or `etlplus ...`).
+- Downstream tools should invoke the Typer app exported at `etlplus.cli._commands.app` (e.g.,
+  `python -m etlplus` or `etlplus ...`).
 - Handler functions still accept keyword arguments; the legacy namespace shim is temporary and will
   be removed in a future release. Avoid constructing `argparse.Namespace` objects and instead call
   handlers with explicit keyword arguments if you integrate programmatically.

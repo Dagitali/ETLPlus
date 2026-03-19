@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.cli.test_u_cli_commands` module.
 
-Unit tests for :mod:`etlplus.cli.commands`.
+Unit tests for :mod:`etlplus.cli._commands`.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 import typer
 
-import etlplus.cli.commands as commands_mod
+import etlplus.cli._commands as commands_mod
 from etlplus.cli._state import CliState
 
 from .conftest import AssertCapturedText
@@ -49,7 +49,7 @@ class TestCommandsInternalHelpers:
 
 
 class TestCheckCommand:
-    """Unit tests for :func:`etlplus.cli.commands.check_cmd`."""
+    """Unit tests for :func:`etlplus.cli._commands.check_cmd`."""
 
     def test_delegates_to_handler(
         self,
@@ -185,7 +185,7 @@ class TestCommandsMissingInputs:
 
 
 class TestTransformCommand:
-    """Unit tests for :func:`etlplus.cli.commands.transform_cmd`."""
+    """Unit tests for :func:`etlplus.cli._commands.transform_cmd`."""
 
     def test_skips_source_validation_when_source_type_cannot_be_inferred(
         self,
