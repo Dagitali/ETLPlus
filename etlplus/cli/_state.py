@@ -16,7 +16,7 @@ from typing import Final
 import typer
 
 from ..utils import normalize_str
-from .constants import DATA_CONNECTORS
+from ._constants import DATA_CONNECTORS
 
 # SECTION: EXPORTS ========================================================== #
 

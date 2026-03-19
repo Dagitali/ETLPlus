@@ -9,7 +9,7 @@ Notes
 
 Examples
 --------
->>> from etlplus.cli.types import DataConnectorContext
+>>> from etlplus.cli._types import DataConnectorContext
 >>> connector: DataConnectorContext = 'source'
 """
 
