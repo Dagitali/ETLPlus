@@ -11,7 +11,7 @@ import pytest
 import etlplus
 import etlplus.api as api_pkg
 import etlplus.cli as cli_pkg
-import etlplus.cli.commands as cli_commands
+import etlplus.cli._commands as cli_commands
 import etlplus.ops as ops_pkg
 from etlplus import Config
 from etlplus.api import EndpointClient
