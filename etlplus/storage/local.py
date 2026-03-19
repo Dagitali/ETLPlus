@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import IO
 from typing import Any
 
-from .base import StorageBackendABC
+from ._base import StorageBackendABC
 from .location import StorageLocation
 
 # SECTION: EXPORTS ========================================================== #

@@ -12,11 +12,11 @@ from typing import IO
 from typing import Any
 from typing import cast
 
+from ._remote import RemoteStorageBackend
 from ._remote_buffer import open_remote_buffer
 from ._remote_buffer import parse_remote_open_mode
 from .enums import StorageScheme
 from .location import StorageLocation
-from .remote import RemoteStorageBackend
 
 # SECTION: EXPORTS ========================================================== #
 
