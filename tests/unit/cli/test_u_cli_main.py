@@ -15,7 +15,7 @@ import click
 import pytest
 import typer
 
-import etlplus.cli.handlers as cli_handlers_module
+import etlplus.cli._handlers as cli_handlers_module
 from etlplus.cli.main import main as cli_main
 
 from .conftest import StubCommand

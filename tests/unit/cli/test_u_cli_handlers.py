@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.cli.test_u_cli_handlers` module.
 
-Unit tests for :mod:`etlplus.cli.handlers`.
+Unit tests for :mod:`etlplus.cli._handlers`.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from unittest.mock import ANY
 
 import pytest
 
-import etlplus.cli.handlers as handlers
+import etlplus.cli._handlers as handlers
 from etlplus import Config
 
 from .conftest import CaptureIo

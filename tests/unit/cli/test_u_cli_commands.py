@@ -12,7 +12,7 @@ import pytest
 import typer
 
 import etlplus.cli.commands as commands_mod
-from etlplus.cli.state import CliState
+from etlplus.cli._state import CliState
 
 from .conftest import AssertCapturedText
 from .conftest import StubHandler

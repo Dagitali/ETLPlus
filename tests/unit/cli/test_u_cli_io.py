@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.cli.test_u_cli_io` module.
 
-Unit tests for :mod:`etlplus.cli.io`.
+Unit tests for :mod:`etlplus.cli._io`.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from unittest.mock import Mock
 
 import pytest
 
-import etlplus.cli.io as _io
+import etlplus.cli._io as _io
 from etlplus.file import FileFormat
 
 # SECTION: PRAGMAS ========================================================== #
