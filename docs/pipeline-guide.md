@@ -263,6 +263,14 @@ sources:
       delimiter: ","
       encoding: utf-8
 
+  - name: remote_customers_csv
+    type: file
+    format: csv
+    path: "s3://my-etlplus-bucket/customers.csv"
+    options:
+      delimiter: ","
+      encoding: utf-8
+
   - name: github_repos
     type: api
     service: github   # reference into apis
@@ -292,12 +300,16 @@ job. Those values are merged into the client configuration and forwarded to
 `EndpointClient.paginate(..., rate_limit_overrides=...)`, ensuring only that job’s paginator is sped
 up or slowed down.
 
-Format override note:
+File source notes:
 
-When extracting from file sources, ETLPlus still infers the format from the filename extension
-(`.csv`, `.json`, `.xml`, `.yaml`). However, `--source-format` and `--target-format` override that
-inference in the Typer CLI. This means you can safely point at files without extensions or with
-misleading suffixes and force the desired parser or writer without renaming the file first.
+- File connector `path` values can be local paths or supported remote URIs such as `s3://...`, Azure
+  Blob/Data Lake URIs, and HTTP/HTTPS URLs.
+- Connector-level `options` are forwarded to file reads. Job-level `jobs[].extract.options` values
+  override connector-level file options for that job.
+- ETLPlus still infers the format from the filename extension (`.csv`, `.json`, `.xml`, `.yaml`).
+  However, `--source-format` and `--target-format` override that inference in the Typer CLI. This
+  means you can safely point at files without extensions or with misleading suffixes and force the
+  desired parser or writer without renaming the file first.
 
 Note: When using a service + endpoint in a source, URL composition (including `base_path`) is
 handled automatically. See “Runner behavior with base_path (sources and targets)” in the APIs
@@ -352,6 +364,13 @@ targets:
     format: json
     path: "${out_dir}/customers_clean.json"
 
+  - name: customers_json_archive
+    type: file
+    format: json
+    path: "s3://my-etlplus-bucket/archive/customers_clean.json"
+    options:
+      encoding: utf-8
+
   - name: webhook_out
     type: api
     url: "https://httpbin.org/post"
@@ -362,6 +381,12 @@ targets:
 
 Note: API targets that reference a service + endpoint also honor `base_path` via the same runner
 behavior described in the APIs section.
+
+File target notes:
+
+- File target `path` values can be local paths or supported remote URIs.
+- Connector-level `options` are forwarded to file writes. Job-level `jobs[].load.overrides` values
+  override connector-level file options for that job.
 
 Service + endpoint target example:
 

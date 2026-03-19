@@ -26,6 +26,7 @@ from etlplus.ops.extract import extract
 from etlplus.ops.extract import extract_from_api
 from etlplus.ops.extract import extract_from_database
 from etlplus.ops.extract import extract_from_file
+from etlplus.utils.types import JSONData
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -440,6 +441,38 @@ class TestExtractFromFile:
     - Tests supported and unsupported file formats.
     """
 
+    def test_extract_file_dispatch_forwards_remote_uri_and_options(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that file dispatch forwards kwargs as read options."""
+        calls: list[tuple[str, object, object]] = []
+
+        def _extract_from_file(
+            source: str,
+            file_format: object,
+            options: object | None = None,
+        ) -> JSONData:
+            calls.append((source, file_format, options))
+            return {'ok': True}
+
+        monkeypatch.setattr(extract_mod, 'extract_from_file', _extract_from_file)
+
+        result = extract(
+            'file',
+            'https://example.com/files/data.csv?download=1',
+            file_format='csv',
+            encoding='utf-8',
+            delimiter=';',
+        )
+
+        assert result == {'ok': True}
+        assert len(calls) == 1
+        assert calls[0][0] == 'https://example.com/files/data.csv?download=1'
+        options = calls[0][2]
+        assert options is not None
+        assert options == {'encoding': 'utf-8', 'delimiter': ';'}
+
     def test_infers_format_when_file_format_is_none(
         self,
         tmp_path: Path,
@@ -454,6 +487,46 @@ class TestExtractFromFile:
         result = extract_from_file(str(path), None)
 
         assert result == {'ok': True}
+
+    def test_remote_uri_preserves_path_and_coerces_read_options(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote file extraction uses the original URI plus options."""
+        captured: dict[str, Any] = {}
+
+        class _FakeFile:
+            def __init__(
+                self,
+                path: str,
+                file_format: object = None,
+            ) -> None:
+                captured['path'] = path
+                captured['file_format'] = file_format
+
+            def read(
+                self,
+                *,
+                options: object | None = None,
+            ) -> JSONData:
+                captured['options'] = options
+                return {'ok': True}
+
+        monkeypatch.setattr(extract_mod, 'File', _FakeFile)
+
+        result = extract_from_file(
+            's3://bucket/data.csv',
+            'csv',
+            {'encoding': 'latin-1', 'delimiter': '|'},
+        )
+
+        assert result == {'ok': True}
+        assert captured['path'] == 's3://bucket/data.csv'
+        assert captured['file_format'] == extract_mod.FileFormat.CSV
+        options = captured['options']
+        assert options is not None
+        assert options.encoding == 'latin-1'
+        assert options.extras == {'delimiter': '|'}
 
     @pytest.mark.parametrize(
         ('file_format', 'write', 'expected_extracts'),
