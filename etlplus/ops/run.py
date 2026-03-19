@@ -6,6 +6,7 @@ A module for running ETL jobs defined in YAML configurations.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 from typing import Final
 from typing import cast
@@ -80,6 +81,19 @@ def _index_connectors(
             raise ValueError(f'Duplicate {label} connector name: {name}')
         indexed[name] = connector
     return indexed
+
+
+def _merge_file_options(
+    *option_sets: object,
+) -> dict[str, Any]:
+    """Merge connector-level and job-level file options with later wins."""
+    merged: dict[str, Any] = {}
+    for option_set in option_sets:
+        if isinstance(option_set, Mapping):
+            merged.update(option_set)
+    merged.pop('path', None)
+    merged.pop('format', None)
+    return merged
 
 
 def _require_named_connector(
@@ -201,7 +215,7 @@ def run(
     stype_raw = getattr(source_obj, 'type', None)
     match DataConnectorType.coerce(stype_raw or ''):
         case DataConnectorType.FILE:
-            path = getattr(source_obj, 'path', None)
+            path = ex_opts.get('path') or getattr(source_obj, 'path', None)
             fmt = ex_opts.get('format') or getattr(
                 source_obj,
                 'format',
@@ -209,7 +223,15 @@ def run(
             )
             if not path:
                 raise ValueError('File source missing "path"')
-            data = extract('file', path, file_format=fmt)
+            data = extract(
+                'file',
+                path,
+                file_format=fmt,
+                **_merge_file_options(
+                    getattr(source_obj, 'options', None),
+                    ex_opts,
+                ),
+            )
         case DataConnectorType.DATABASE:
             conn = getattr(source_obj, 'connection_string', '')
             data = extract('database', conn)
@@ -276,7 +298,16 @@ def run(
             )
             if not path:
                 raise ValueError('File target missing "path"')
-            result = load(data, 'file', path, file_format=fmt)
+            result = load(
+                data,
+                'file',
+                path,
+                file_format=fmt,
+                **_merge_file_options(
+                    getattr(target_obj, 'options', None),
+                    overrides,
+                ),
+            )
         case DataConnectorType.API:
             result = load_to_api_target(cfg, target_obj, overrides, data)
         case DataConnectorType.DATABASE:
