@@ -379,11 +379,23 @@ class File:
                 return bound_handler.read()
             return bound_handler.read(options=options)
 
+    def read_bytes(self) -> bytes:
+        """
+        Read and return binary content from :attr:`path`.
+
+        Returns
+        -------
+        bytes
+            Binary payload read from the active storage backend.
+        """
+        with self.open('rb') as handle:
+            return cast(bytes, handle.read())
+
     def touch(self) -> None:
         """Create :attr:`path` when missing without truncating existing data."""
         if self.location.is_local:
             local_path = self.location.as_path()
-            local_path.parent.mkdir(parents=True, exist_ok=True)
+            self.ensure_parent_dir()
             local_path.touch(exist_ok=True)
             return
 
@@ -434,3 +446,18 @@ class File:
                 data,
                 options=resolved_options,
             )
+
+    def write_bytes(
+        self,
+        payload: bytes,
+    ) -> None:
+        """
+        Write binary *payload* to :attr:`path`.
+
+        Parameters
+        ----------
+        payload : bytes
+            Binary payload to write through the active storage backend.
+        """
+        with self.open('wb') as handle:
+            handle.write(payload)
