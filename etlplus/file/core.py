@@ -312,6 +312,10 @@ class File:
         """Delete :attr:`path` through the active storage backend."""
         get_backend(self.location).delete(self.location)
 
+    def ensure_parent_dir(self) -> None:
+        """Ensure the parent container for :attr:`path` exists."""
+        get_backend(self.location).ensure_parent_dir(self.location)
+
     def exists(self) -> bool:
         """Return whether :attr:`path` currently exists."""
         if self.location.is_local:
@@ -347,6 +351,21 @@ class File:
             if options is None:
                 return bound_handler.read()
             return bound_handler.read(options=options)
+
+    def touch(self) -> None:
+        """Create :attr:`path` when missing without truncating existing data."""
+        if self.location.is_local:
+            local_path = self.location.as_path()
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+            local_path.touch(exist_ok=True)
+            return
+
+        backend = get_backend(self.location)
+        if backend.exists(self.location):
+            return
+        backend.ensure_parent_dir(self.location)
+        with backend.open(self.location, 'wb'):
+            return
 
     def write(
         self,
