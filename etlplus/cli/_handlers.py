@@ -27,7 +27,7 @@ from ..ops import validate
 from ..ops.validate import FieldRulesDict
 from ..utils.types import JSONData
 from ..utils.types import TemplateKey
-from . import _io as cli_io
+from . import _io
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -229,10 +229,10 @@ def check_handler(
     """
     cfg = Config.from_yaml(config, substitute=substitute)
     if summary:
-        cli_io.emit_json(_pipeline_summary(cfg), pretty=True)
+        _io.emit_json(_pipeline_summary(cfg), pretty=True)
         return 0
 
-    cli_io.emit_json(
+    _io.emit_json(
         _check_sections(
             cfg,
             jobs=jobs,
@@ -285,12 +285,12 @@ def extract_handler(
     explicit_format = format_hint if format_explicit else None
 
     if source == '-':
-        text = cli_io.read_stdin_text()
-        payload = cli_io.parse_text_payload(
+        text = _io.read_stdin_text()
+        payload = _io.parse_text_payload(
             text,
             format_hint,
         )
-        cli_io.emit_json(payload, pretty=pretty)
+        _io.emit_json(payload, pretty=pretty)
 
         return 0
 
@@ -301,7 +301,7 @@ def extract_handler(
     )
     output_path = target or output
 
-    cli_io.emit_or_write(
+    _io.emit_or_write(
         result,
         output_path,
         pretty=pretty,
@@ -356,7 +356,7 @@ def load_handler(
     # Allow piping into load.
     source_value = cast(
         str | Path | os.PathLike[str] | dict[str, Any] | list[dict[str, Any]],
-        cli_io.resolve_cli_payload(
+        _io.resolve_cli_payload(
             source,
             format_hint=source_format,
             format_explicit=source_format is not None,
@@ -366,12 +366,12 @@ def load_handler(
 
     # Allow piping out of load for file targets.
     if target_type == 'file' and target == '-':
-        payload = cli_io.materialize_file_payload(
+        payload = _io.materialize_file_payload(
             source_value,
             format_hint=source_format,
             format_explicit=source_format is not None,
         )
-        cli_io.emit_json(payload, pretty=pretty)
+        _io.emit_json(payload, pretty=pretty)
         return 0
 
     result = load(
@@ -382,7 +382,7 @@ def load_handler(
     )
 
     output_path = output
-    cli_io.emit_or_write(
+    _io.emit_or_write(
         result,
         output_path,
         pretty=pretty,
@@ -515,10 +515,10 @@ def run_handler(
     job_name = job or pipeline
     if job_name:
         result = run(job=job_name, config_path=config)
-        cli_io.emit_json({'status': 'ok', 'result': result}, pretty=pretty)
+        _io.emit_json({'status': 'ok', 'result': result}, pretty=pretty)
         return 0
 
-    cli_io.emit_json(_pipeline_summary(cfg), pretty=pretty)
+    _io.emit_json(_pipeline_summary(cfg), pretty=pretty)
     return 0
 
 
@@ -575,14 +575,14 @@ def transform_handler(
 
     payload = cast(
         JSONData | str,
-        cli_io.resolve_cli_payload(
+        _io.resolve_cli_payload(
             source,
             format_hint=format_hint,
             format_explicit=format_explicit,
         ),
     )
 
-    operations_payload = cli_io.resolve_cli_payload(
+    operations_payload = _io.resolve_cli_payload(
         operations,
         format_hint=None,
         format_explicit=format_explicit,
@@ -598,7 +598,7 @@ def transform_handler(
         print(f'Data transformed and saved to {target}')
         return 0
 
-    cli_io.emit_json(data, pretty=pretty)
+    _io.emit_json(data, pretty=pretty)
     return 0
 
 
@@ -643,14 +643,14 @@ def validate_handler(
     format_hint: str | None = source_format
     payload = cast(
         JSONData | str,
-        cli_io.resolve_cli_payload(
+        _io.resolve_cli_payload(
             source,
             format_hint=format_hint,
             format_explicit=format_explicit,
         ),
     )
 
-    rules_payload = cli_io.resolve_cli_payload(
+    rules_payload = _io.resolve_cli_payload(
         rules,
         format_hint=None,
         format_explicit=format_explicit,
@@ -664,7 +664,7 @@ def validate_handler(
     if target and target != '-':
         validated_data = result.get('data')
         if validated_data is not None:
-            cli_io.write_json_output(
+            _io.write_json_output(
                 validated_data,
                 target,
                 success_message='ValidationDict result saved to',
@@ -675,6 +675,6 @@ def validate_handler(
                 file=sys.stderr,
             )
     else:
-        cli_io.emit_json(result, pretty=pretty)
+        _io.emit_json(result, pretty=pretty)
 
     return 0
