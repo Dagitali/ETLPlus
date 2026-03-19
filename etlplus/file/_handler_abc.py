@@ -22,7 +22,9 @@ from ._io import FileHandlerOption
 from ._io import ScientificDatasetOption
 from ._io import SpreadsheetSheetOption
 from ._io import normalize_records
+from ._io import read_bytes
 from ._io import read_text
+from ._io import write_bytes
 from ._io import write_text
 from ._sql import resolve_table
 
@@ -131,7 +133,7 @@ class BinarySerializationABC(ABC):
         JSONData
             Structured data parsed from the binary payload.
         """
-        return self.loads_bytes(path.read_bytes(), options=options)
+        return self.loads_bytes(read_bytes(path), options=options)
 
     def write(
         self,
@@ -159,8 +161,7 @@ class BinarySerializationABC(ABC):
             Number of records written.
         """
         payload = self.dumps_bytes(data, options=options)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(payload)
+        write_bytes(path, payload)
         return count_records(data)
 
 
