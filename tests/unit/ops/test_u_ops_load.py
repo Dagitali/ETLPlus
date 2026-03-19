@@ -34,6 +34,7 @@ from etlplus.ops.load import load_to_api
 from etlplus.ops.load import load_to_database
 from etlplus.ops.load import load_to_file
 from etlplus.utils.types import JSONData
+from etlplus.utils.types import JSONDict
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -384,7 +385,38 @@ class TestLoadData:
         assert isinstance(result, dict)
         assert result['test'] == 'data'
 
-    # Already covered by test_load_data_passthrough
+    def test_data_from_remote_json_uri(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test loading JSON input from a remote file URI."""
+        captured: dict[str, Any] = {}
+
+        class _FakeFile:
+            def __init__(
+                self,
+                path: str,
+                file_format: object = None,
+            ) -> None:
+                captured['path'] = path
+                captured['file_format'] = file_format
+
+            def exists(self) -> bool:
+                return True
+
+            def read(self) -> JSONData:
+                return {'remote': True}
+
+        monkeypatch.setattr(load_mod, 'File', _FakeFile)
+
+        result = load_data('s3://bucket/input.json')
+
+        assert result == {'remote': True}
+        assert captured['path'] == 's3://bucket/input.json'
+        assert captured['file_format'] == load_mod.FileFormat.JSON
+
+    # TODO: Already covered by test_load_data_passthrough.
+    # TODO: Consider removing or refactoring to avoid redundancy.
     def test_data_from_stdin(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -454,6 +486,52 @@ class TestLoadToFile:
     - Tests writing to CSV and JSON files,
         directory creation, and error handling.
     """
+
+    def test_remote_uri_preserves_path_and_coerces_write_options(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote file loads keep the URI and forward write options."""
+        captured: dict[str, Any] = {}
+
+        class _FakeFile:
+            file_format = load_mod.FileFormat.CSV
+
+            def __init__(
+                self,
+                path: str,
+                file_format: object = None,
+            ) -> None:
+                captured['path'] = path
+                captured['file_format'] = file_format
+
+            def write(
+                self,
+                data: JSONData,
+                *,
+                options: object | None = None,
+            ) -> int:
+                captured['data'] = data
+                captured['options'] = options
+                return 1
+
+        monkeypatch.setattr(load_mod, 'File', _FakeFile)
+
+        result = load_to_file(
+            [{'name': 'Ada'}],
+            's3://bucket/output.csv',
+            'csv',
+            {'encoding': 'utf-16', 'delimiter': '|'},
+        )
+
+        assert result['status'] == 'success'
+        assert result['message'] == 'Data loaded to s3://bucket/output.csv'
+        assert captured['path'] == 's3://bucket/output.csv'
+        assert captured['file_format'] == load_mod.FileFormat.CSV
+        options = captured['options']
+        assert options is not None
+        assert options.encoding == 'utf-16'
+        assert options.extras == {'delimiter': '|'}
 
     def test_to_csv_file(
         self,
@@ -835,3 +913,37 @@ class TestLoadApiOrchestrator:
         )
         with pytest.raises(ValueError, match='Invalid target type'):
             load({'ok': True}, 'file', 'ignored')
+
+    def test_load_file_dispatch_forwards_write_options(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that file dispatch forwards kwargs as write options."""
+        calls: list[tuple[Any, Any, Any, Any]] = []
+
+        def _load_to_file(
+            data: JSONData,
+            target: str,
+            file_format: object,
+            options: object | None = None,
+        ) -> JSONDict:
+            calls.append((data, target, file_format, options))
+            return {'status': 'success'}
+
+        monkeypatch.setattr(load_mod, 'load_to_file', _load_to_file)
+
+        result = load(
+            {'ok': True},
+            DataConnectorType.FILE,
+            'https://example.com/files/data.csv?download=1',
+            file_format='csv',
+            encoding='utf-8',
+            delimiter=';',
+        )
+
+        assert result == {'status': 'success'}
+        assert len(calls) == 1
+        assert calls[0][1] == 'https://example.com/files/data.csv?download=1'
+        options = calls[0][3]
+        assert options is not None
+        assert options == {'encoding': 'utf-8', 'delimiter': ';'}
