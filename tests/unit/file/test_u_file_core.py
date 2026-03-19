@@ -426,6 +426,43 @@ class TestFile:
         with File(path).open(encoding='utf-8') as handle:
             assert handle.read() == 'alpha'
 
+    def test_read_bytes_delegates_to_remote_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``File.read_bytes()`` uses the storage backend."""
+        calls: list[tuple[object, str]] = []
+
+        class FakeBackend:
+            """Remote backend read-bytes test double."""
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> BytesIO:
+                """Capture the open request and return a binary stream."""
+                del kwargs
+                calls.append((location, mode))
+                return BytesIO(b'payload')
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        assert File('s3://bucket/data.bin').read_bytes() == b'payload'
+        assert len(calls) == 1
+        assert calls[0][1] == 'rb'
+
+    def test_read_bytes_uses_local_backend(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that ``File.read_bytes()`` returns local binary content."""
+        path = tmp_path / 'data.bin'
+        path.write_bytes(b'payload')
+
+        assert File(path).read_bytes() == b'payload'
+
     def test_touch_creates_missing_local_file(
         self,
         tmp_path: Path,
@@ -437,6 +474,52 @@ class TestFile:
 
         assert path.exists()
         assert path.read_text(encoding='utf-8') == ''
+
+    def test_write_bytes_delegates_to_remote_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``File.write_bytes()`` uses the storage backend."""
+        uploads: list[bytes] = []
+
+        class CaptureUpload(BytesIO):
+            """Writable remote upload stream test double."""
+
+            def close(self) -> None:
+                """Capture uploaded bytes before closing the stream."""
+                uploads.append(self.getvalue())
+                super().close()
+
+        class FakeBackend:
+            """Remote backend write-bytes test double."""
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> CaptureUpload:
+                """Capture the write open request and return a binary sink."""
+                del location, kwargs
+                assert mode == 'wb'
+                return CaptureUpload()
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        File('s3://bucket/data.bin').write_bytes(b'payload')
+
+        assert uploads == [b'payload']
+
+    def test_write_bytes_uses_local_backend(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that ``File.write_bytes()`` writes local binary content."""
+        path = tmp_path / 'data.bin'
+
+        File(path).write_bytes(b'payload')
+
+        assert path.read_bytes() == b'payload'
 
     def test_touch_remote_creates_empty_object_when_missing(
         self,
