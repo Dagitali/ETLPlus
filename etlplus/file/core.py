@@ -24,13 +24,13 @@ from ..storage import StorageLocation
 from ..storage import get_backend
 from ..utils.types import StrPath
 from . import xml
+from ._registry import get_handler
 from .base import BoundFileHandler
 from .base import FileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
 from .enums import FileFormat
 from .enums import infer_file_format_and_compression
-from .registry import get_handler
 
 # SECTION: EXPORTS ========================================================== #
 
