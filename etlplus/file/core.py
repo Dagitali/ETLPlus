@@ -16,6 +16,7 @@ from dataclasses import field
 from dataclasses import replace
 from pathlib import Path
 from pathlib import PurePath
+from typing import IO
 from typing import Any
 from typing import cast
 
@@ -321,6 +322,32 @@ class File:
         if self.location.is_local:
             return self.location.as_path().exists()
         return get_backend(self.location).exists(self.location)
+
+    def open(
+        self,
+        mode: str = 'r',
+        **kwargs: Any,
+    ) -> IO[Any]:
+        """
+        Open :attr:`path` through the active storage backend.
+
+        Parameters
+        ----------
+        mode : str, optional
+            Standard Python file mode. Defaults to ``'r'``.
+        **kwargs : Any
+            Keyword arguments forwarded to the active storage backend.
+
+        Returns
+        -------
+        IO[Any]
+            Open file-like handle backed by the active storage backend.
+        """
+        return get_backend(self.location).open(
+            self.location,
+            mode,
+            **kwargs,
+        )
 
     def read(
         self,
