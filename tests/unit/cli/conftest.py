@@ -27,8 +27,8 @@ from click.testing import Result
 from typer.testing import CliRunner
 
 from etlplus import Config
+from etlplus.cli._commands import app as cli_app
 from etlplus.cli._state import CliState
-from etlplus.cli.commands import app as cli_app
 
 # SECTION: MARKERS ========================================================== #
 
