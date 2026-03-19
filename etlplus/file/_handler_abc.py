@@ -21,6 +21,7 @@ from ._io import EmbeddedDatabaseTableOption
 from ._io import FileHandlerOption
 from ._io import ScientificDatasetOption
 from ._io import SpreadsheetSheetOption
+from ._io import ensure_parent_dir
 from ._io import normalize_records
 from ._io import read_bytes
 from ._io import read_text
@@ -49,7 +50,7 @@ def _prepare_rows_for_write(
     rows = normalize_records(data, format_name)
     if not rows:
         return None
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_parent_dir(path)
     return rows
 
 
