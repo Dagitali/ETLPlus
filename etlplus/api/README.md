@@ -222,9 +222,9 @@ providers can fall back to their own defaults. If you already possess a static t
   (including `RetryPolicy`) live in `etlplus/api/retry_manager.py`; rate-limit helpers live in
   `etlplus/api/rate_limiting/rate_limiter.py`. These are all re-exported from `etlplus.api` for
   convenience.
-- Transport/session: `etlplus/api/transport.py` contains the HTTP adapter helpers and
-  `etlplus/api/request_manager.py` wraps `requests` sessions plus retry orchestration. Advanced
-  users may consult those modules to adapt behavior.
+- Transport/session: `etlplus/api/transport.py` contains the HTTP adapter helpers and the internal
+  `etlplus/api/_request_manager.py` module wraps `requests` sessions plus retry orchestration.
+  Advanced users may consult those internals to adapt behavior.
 
 ## Config Schemas
 
