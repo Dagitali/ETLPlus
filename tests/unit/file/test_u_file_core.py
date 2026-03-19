@@ -387,6 +387,45 @@ class TestFile:
 
         assert File(path, FileFormat.JSON).exists() is True
 
+    def test_open_delegates_to_remote_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``File.open()`` forwards to the remote backend."""
+        calls: list[tuple[object, str, dict[str, object]]] = []
+
+        class FakeBackend:
+            """Remote backend open test double."""
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> BytesIO:
+                """Capture the open request and return a stream."""
+                calls.append((location, mode, dict(kwargs)))
+                return BytesIO(b'payload')
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        with File('s3://bucket/data.bin').open('rb') as handle:
+            assert handle.read() == b'payload'
+
+        assert len(calls) == 1
+        assert calls[0][1] == 'rb'
+
+    def test_open_uses_local_backend_for_text_reads(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that ``File.open()`` reads local text content."""
+        path = tmp_path / 'data.txt'
+        path.write_text('alpha', encoding='utf-8')
+
+        with File(path).open(encoding='utf-8') as handle:
+            assert handle.read() == 'alpha'
+
     def test_touch_creates_missing_local_file(
         self,
         tmp_path: Path,
