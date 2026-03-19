@@ -890,6 +890,53 @@ class TestTransformHandler:
                 pretty=True,
             )
 
+    def test_writes_remote_target_file(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Test that :func:`transform_handler` preserves remote URI targets."""
+        monkeypatch.setattr(
+            handlers.cli_io,
+            'resolve_cli_payload',
+            lambda source, **_kwargs: (
+                {'source': source} if source == 'data.json' else {'select': ['id']}
+            ),
+        )
+        monkeypatch.setattr(
+            handlers,
+            'transform',
+            lambda payload, ops: {'payload': payload, 'ops': ops},
+        )
+        write_calls: dict[str, object] = {}
+
+        def fake_write(self, data, **kwargs):
+            write_calls['params'] = (self.path, data)
+
+        monkeypatch.setattr(handlers.File, 'write', fake_write)
+
+        assert (
+            handlers.transform_handler(
+                source='data.json',
+                operations='ops.json',
+                target='s3://bucket/out.json',
+                target_format='json',
+                pretty=True,
+            )
+            == 0
+        )
+        assert write_calls['params'] == (
+            's3://bucket/out.json',
+            {
+                'payload': {'source': 'data.json'},
+                'ops': {'select': ['id']},
+            },
+        )
+        assert (
+            'Data transformed and saved to s3://bucket/out.json'
+            in capsys.readouterr().out
+        )
+
     def test_writes_target_file(
         self,
         monkeypatch: pytest.MonkeyPatch,
