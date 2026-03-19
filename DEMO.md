@@ -228,7 +228,7 @@ else:
 ✅ **Command-Line Interface**: Easy to use CLI for all operations
 ✅ **Python API**: Programmatic access for integration
 ✅ **Chainable Operations**: Build complex ETL pipelines
-✅ **Comprehensive Testing**: 66 tests covering all functionality
+✅ **Comprehensive Testing**: Broad unit, integration, end-to-end, smoke, and contract coverage
 
 ## Performance Notes
 
