@@ -24,6 +24,7 @@ from pathlib import Path
 from ..utils.types import JSONData
 from ..utils.types import JSONDict
 from ..utils.types import JSONList
+from ._io import _open_text_handle
 from ._io import normalize_records
 from ._io import write_text
 from .base import LogEventFileHandlerABC
@@ -100,7 +101,7 @@ class LogFile(LogEventFileHandlerABC):
         """
         encoding = self.encoding_from_options(options)
         rows: JSONList = []
-        with path.open('r', encoding=encoding) as handle:
+        with _open_text_handle(path, mode='r', encoding=encoding) as handle:
             for raw_line in handle:
                 line = raw_line.rstrip('\n')
                 if not line.strip():
