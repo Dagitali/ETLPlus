@@ -149,27 +149,20 @@ def materialize_file_payload(
     if not isinstance(source, (str, os.PathLike)):
         return source
 
-    path = Path(source)
-
     normalized_hint = (format_hint or '').strip().lower()
-    fmt: FileFormat | None = None
+    file: File | None = None
 
     if format_explicit and normalized_hint:
         try:
-            fmt = FileFormat(normalized_hint)
+            file = File(source, FileFormat(normalized_hint))
         except ValueError:
-            fmt = None
+            file = None
     elif not format_explicit:
-        suffix = path.suffix.lower().lstrip('.')
-        if suffix:
-            try:
-                fmt = FileFormat(suffix)
-            except ValueError:
-                fmt = None
+        file = File(source)
 
-    if fmt is None:
+    if file is None or file.file_format is None:
         return source
-    if not path.exists():
+    if not file.exists():
         if isinstance(source, str):
             stripped = source.lstrip()
             hint = (format_hint or '').strip().lower()
@@ -179,10 +172,8 @@ def materialize_file_payload(
                 or (hint == 'csv' and ',' in source)
             ):
                 return parse_text_payload(source, format_hint)
-        raise FileNotFoundError(f'File not found: {path}')
-    if fmt == FileFormat.CSV:
-        return read_csv_rows(path)
-    return File(path, fmt).read()
+        raise FileNotFoundError(f'File not found: {source}')
+    return cast(JSONData, file.read())
 
 
 def parse_json_payload(text: str) -> JSONData:
@@ -331,6 +322,6 @@ def write_json_output(
     """
     if not output_path or output_path == '-':
         return False
-    File(Path(output_path), FileFormat.JSON).write(data)
+    File(output_path, FileFormat.JSON).write(data)
     print(f'{success_message} {output_path}')
     return True

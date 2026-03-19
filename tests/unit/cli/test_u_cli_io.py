@@ -203,9 +203,19 @@ class TestMaterializeFilePayload:
             on read.
             """
 
-            def __init__(self, path_arg: Path, fmt_arg: FileFormat) -> None:
-                captured['path'] = Path(path_arg)
+            file_format = FileFormat.XML
+
+            def __init__(
+                self,
+                path_arg: object,
+                fmt_arg: FileFormat | None = None,
+            ) -> None:
+                captured['path'] = path_arg
                 captured['fmt'] = fmt_arg
+
+            def exists(self) -> bool:
+                """Report that the test file exists."""
+                return True
 
             def read(self) -> object:
                 """Return the sentinel object."""
@@ -220,8 +230,8 @@ class TestMaterializeFilePayload:
         )
 
         assert payload is sentinel
-        assert captured['path'] == file_path
-        assert captured['fmt'] == FileFormat.XML
+        assert captured['path'] == str(file_path)
+        assert captured['fmt'] is None
 
     def test_inline_payload_with_hint(self) -> None:
         """
@@ -313,6 +323,46 @@ class TestMaterializeFilePayload:
             )
             is payload
         )
+
+    def test_remote_uri_uses_file_reader(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote URIs are hydrated via :class:`File`."""
+        captured: dict[str, object] = {}
+
+        class DummyFile:
+            """Capture remote URI construction and reads."""
+
+            file_format = FileFormat.JSON
+
+            def __init__(
+                self,
+                path_arg: object,
+                fmt_arg: FileFormat | None = None,
+            ) -> None:
+                captured['path'] = path_arg
+                captured['fmt'] = fmt_arg
+
+            def exists(self) -> bool:
+                """Report that the remote object exists."""
+                return True
+
+            def read(self) -> object:
+                """Return a sentinel JSON payload."""
+                return {'remote': True}
+
+        monkeypatch.setattr(_io, 'File', DummyFile)
+
+        payload = _io.materialize_file_payload(
+            's3://bucket/payload.json',
+            format_hint=None,
+            format_explicit=False,
+        )
+
+        assert payload == {'remote': True}
+        assert captured['path'] == 's3://bucket/payload.json'
+        assert captured['fmt'] is None
 
     def test_respects_hint(
         self,
@@ -510,3 +560,37 @@ class TestWriteJsonOutput:
             )
             is False
         )
+
+    def test_writing_to_remote_uri(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote JSON targets are written via :class:`File`."""
+        captured: dict[str, object] = {}
+
+        class DummyFile:
+            """Capture the remote URI passed to :class:`File`."""
+
+            def __init__(self, path_arg: object, fmt_arg: FileFormat) -> None:
+                captured['path'] = path_arg
+                captured['fmt'] = fmt_arg
+
+            def write(self, data: object) -> None:
+                """Capture the written JSON payload."""
+                captured['data'] = data
+
+        monkeypatch.setattr(_io, 'File', DummyFile)
+
+        assert (
+            _io.write_json_output(
+                {'remote': True},
+                's3://bucket/out.json',
+                success_message='msg',
+            )
+            is True
+        )
+        assert captured == {
+            'path': 's3://bucket/out.json',
+            'fmt': FileFormat.JSON,
+            'data': {'remote': True},
+        }
