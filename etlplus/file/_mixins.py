@@ -19,6 +19,7 @@ from ..utils.types import JSONList
 from ._io import ScientificDatasetOption
 from ._io import coerce_record_payload as _coerce_record_payload
 from ._io import normalize_records
+from ._io import read_text
 from ._io import require_dict_payload as _require_dict_payload
 from ._io import stringify_value
 from ._io import write_text
@@ -193,7 +194,8 @@ class TemplateTextIOMixin:
         template_handler = cast(_TemplateTextHandlerProtocol, self)
         return [
             {
-                template_handler.template_key: path.read_text(
+                template_handler.template_key: read_text(
+                    path,
                     encoding=template_handler.encoding_from_options(options),
                 ),
             },

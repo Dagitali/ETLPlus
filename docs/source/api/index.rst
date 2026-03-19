@@ -14,5 +14,6 @@ grows.
    database
    files
    operations
+   storage
    utilities
    workflow

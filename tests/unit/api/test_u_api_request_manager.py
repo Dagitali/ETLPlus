@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_api_request_manager` module.
 
-Unit tests for :class:`etlplus.api.request_manager.RequestManager`.
+Unit tests for :class:`etlplus.api._request_manager.RequestManager`.
 
 These tests focus on:
 
@@ -25,7 +25,7 @@ from unittest.mock import Mock
 import pytest
 import requests  # type: ignore[import]
 
-from etlplus.api.request_manager import RequestManager
+from etlplus.api._request_manager import RequestManager
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -140,7 +140,7 @@ def session_builder_fixture(
 
 
 class TestRequestManager:
-    """Unit tests for :class:`etlplus.api.request_manager.RequestManager`."""
+    """Unit tests for :class:`etlplus.api._request_manager.RequestManager`."""
 
     def test_adapter_session_built_and_closed(
         self,
@@ -152,7 +152,7 @@ class TestRequestManager:
         """
 
         monkeypatch.setattr(
-            'etlplus.api.request_manager.build_session_with_adapters',
+            'etlplus.api._request_manager.build_session_with_adapters',
             session_builder,
         )
 
@@ -182,7 +182,7 @@ class TestRequestManager:
         """Test that context manager reuses one adapter-backed session."""
 
         monkeypatch.setattr(
-            'etlplus.api.request_manager.build_session_with_adapters',
+            'etlplus.api._request_manager.build_session_with_adapters',
             session_builder,
         )
 
@@ -233,7 +233,7 @@ class TestRequestManager:
             raise ValueError('bad config')
 
         monkeypatch.setattr(
-            'etlplus.api.request_manager.build_session_with_adapters',
+            'etlplus.api._request_manager.build_session_with_adapters',
             _bad_builder,
         )
 

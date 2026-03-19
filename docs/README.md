@@ -7,17 +7,16 @@
 ## CLI Parser Status
 
 - The CLI is Typer/Click-only. The historical `argparse` parser has been removed.
-- Downstream tools should invoke the Typer app exported at `etlplus.cli.commands.app` (e.g., `python
-  -m etlplus` or `etlplus ...`).
-- Handler functions still accept keyword arguments; the legacy namespace shim is temporary and will
-  be removed in a future release. Avoid constructing `argparse.Namespace` objects and instead call
-  handlers with explicit keyword arguments if you integrate programmatically.
+- The supported invocation surface is the installed `etlplus` command or `python -m etlplus`.
+- If you are integrating ETLPlus into your own Python code, prefer the documented public APIs in
+  `etlplus.api`, `etlplus.ops`, and the published file/storage helpers instead of importing CLI
+  implementation modules.
 
 ## Migration Hints
 
-- Replace any `argparse`-based integrations with Typer invocations (`etlplus` binary or `app`
-  directly).
-- If you maintained custom subcommands around the old parser, port them to Typer by attaching to
-  `app` or wrapping the `etlplus` executable.
+- Replace any `argparse`-based integrations with the supported command surface (`etlplus ...` or
+  `python -m etlplus ...`).
+- If you maintained custom wrappers around the old parser, migrate them to shell out to the
+  installed CLI or move the workflow into the documented Python APIs.
 - Tests and examples now target the Typer surface; expect argparse-focused helpers (e.g., namespace
   format flags) to be absent.

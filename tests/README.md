@@ -9,6 +9,7 @@ with pytest markers.
   - [Integration File Smoke Pattern](#integration-file-smoke-pattern)
   - [Discovery and Selection](#discovery-and-selection)
   - [Dependency Prerequisites](#dependency-prerequisites)
+  - [Cloud CLI Integration](#cloud-cli-integration)
   - [Common Commands](#common-commands)
   - [Post-Move Validation Checklist](#post-move-validation-checklist)
 
@@ -16,6 +17,7 @@ with pytest markers.
 
 | Marker | Path | Scope | Meaning |
 | --- | --- | --- | --- |
+| `meta` | `tests/meta/` | Repository guardrails and compatibility policy | Fast checks for layout, docs, markers, and stable public surface |
 | `unit` | `tests/unit/` | Isolated function/class behavior | Fast, deterministic, minimal external I/O |
 | `integration` | `tests/integration/` | Cross-module behavior and boundary wiring | May use temp files and fakes/mocks |
 | `e2e` | `tests/e2e/` | Full workflow/system-boundary behavior | Slowest, broadest confidence checks |
@@ -56,7 +58,7 @@ Structural exceptions are intentionally limited to:
 
 Default test discovery is controlled by `pytest.ini`:
 
-- `testpaths = tests/e2e tests/integration tests/unit`
+- `testpaths = tests/meta tests/e2e tests/integration tests/unit`
 
 ## Dependency Prerequisites
 
@@ -75,6 +77,50 @@ For lighter development without the remaining optional format coverage:
 pip install -e ".[dev]"
 ```
 
+## Cloud CLI Integration
+
+The CLI integration suite includes two layers of remote-storage coverage:
+
+- default in-memory remote harness for deterministic local smoke coverage
+- env-gated real cloud tests for stricter S3/Azure Blob realism
+
+The real cloud layer is skipped unless these environment variables are set:
+
+- `ETLPLUS_TEST_S3_URI`
+- `ETLPLUS_TEST_AZURE_BLOB_URI`
+
+Safe example placeholder values:
+
+```bash
+export ETLPLUS_TEST_S3_URI="s3://my-etlplus-integration-bucket/cli"
+export ETLPLUS_TEST_AZURE_BLOB_URI="azure-blob://etlplus-integration/cli"
+```
+
+These values may expose internal bucket/container names, so do not commit real values into the
+repository. Prefer setting them in one of these places:
+
+- Local shell startup files or one-off terminal exports
+- `.envrc` or another developer-local environment loader
+- Local IDE (e.g., VS Code) test/debug environment settings
+- CI secret stores and workflow environment configuration
+
+The variables should contain only base URIs. Authentication should come from the normal cloud SDK
+credential chain already configured in the environment.
+
+Useful commands:
+
+```bash
+# Full CLI integration suite (real cloud tests auto-skip if env vars are unset)
+pytest tests/integration/cli
+
+# Focus on the real-cloud read/write CLI paths
+pytest tests/integration/cli/test_i_cli_extract.py \
+  tests/integration/cli/test_i_cli_load.py \
+  tests/integration/cli/test_i_cli_run.py \
+  tests/integration/cli/test_i_cli_transform.py \
+  tests/integration/cli/test_i_cli_validate.py
+```
+
 ## Common Commands
 
 ```bash
@@ -85,11 +131,13 @@ make test-full
 make test
 
 # Scope folders
+pytest tests/meta
 pytest tests/unit
 pytest tests/integration
 pytest tests/e2e
 
 # Marker-based selection by scope (within configured testpaths)
+pytest -m meta
 pytest -m unit
 pytest -m integration
 pytest -m e2e
@@ -99,7 +147,7 @@ pytest -m smoke
 pytest -m contract
 
 # Perf smoke coverage (kept out of the default CI-parity suite)
-make perf
+make test-perf
 pytest -m perf
 ```
 
@@ -110,20 +158,21 @@ directories.
 
 ```bash
 # 1) Fast import/collection sanity checks
-python -m pytest --collect-only -q tests/unit tests/integration tests/e2e
+python -m pytest --collect-only -q tests/meta tests/unit tests/integration tests/e2e
 
 # 2) Scope-layout guardrails (legacy paths, filename patterns, marker coverage)
 python -m pytest -q \
-  tests/unit/meta/test_u_test_layout.py \
-  tests/unit/meta/test_u_test_filenames.py \
-  tests/unit/meta/test_u_marker_coverage.py \
-  tests/unit/meta/test_u_integration_file_conventions.py \
-  tests/unit/meta/test_u_contract_readme.py
+  tests/meta/test_m_test_layout.py \
+  tests/meta/test_m_test_filenames.py \
+  tests/meta/test_m_marker_coverage.py \
+  tests/meta/test_m_integration_file_conventions.py \
+  tests/meta/test_m_contract_readme.py
 
 # 3) Scope-focused smoke run (catches broken imports quickly)
-python -m pytest -q tests/unit tests/integration
+python -m pytest -q tests/meta tests/unit tests/integration
 
 # 4) Conftest scope-marker grep checks
+rg -n "pytest\\.mark\\.meta" tests/meta/conftest.py
 rg -n "pytest\\.mark\\.unit" tests/unit/**/conftest.py tests/unit/conftest.py
 rg -n "pytest\\.mark\\.integration" tests/integration/**/conftest.py tests/integration/conftest.py
 rg -n "pytest\\.mark\\.smoke" tests/integration/file/conftest.py

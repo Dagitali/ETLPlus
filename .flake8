@@ -1,0 +1,33 @@
+# .flake8
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Flake8 configuration.
+#
+# Responsibilities
+# - Mirror the subset of the repository's canonical Ruff style policy that
+#   Flake8 can understand.
+# - Support external tools or editors that still invoke Flake8 directly.
+#
+# Maintainer Notes
+# - `.ruff.toml` remains the canonical lint/format source of truth.
+# - Keep the overlapping settings here aligned with `.ruff.toml`.
+# - Flake8 does not enforce Ruff's formatter choices such as single quotes,
+#   import sorting, or pyupgrade rewrites without separate plugins.
+
+[flake8]
+max-line-length = 88
+exclude =
+    .git,
+    __pycache__,
+    build,
+    dist,
+    docs/build,
+    docs/source/api/generated,
+    etlplus.egg-info,
+    temp,
+    etlplus/*_DEFUNCT,
+    *_FIXED.py,
+    *_NEW.py,
+    *_ORIG.py

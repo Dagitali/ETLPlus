@@ -291,8 +291,12 @@ test-full: venv ## Install dev+file extras and run the default CI-parity test su
 	@PYTHONPATH=. $(VENV_BIN)/pytest -m "$(TEST_MARK_EXPRESSION)"
 	@$(call ECHO_OK,"Completed default non-perf test suite")
 
-.PHONY: perf
-perf: venv ## Run performance-smoke tests only
+.PHONY: test-meta
+test-meta: ## Run repository meta guardrail tests only
+	@PYTHONPATH=. $(VENV_BIN)/pytest tests/meta || (echo "Hint: run 'make dev' first" && false)
+
+.PHONY: test-perf
+test-perf: venv ## Run performance-smoke tests only
 	@$(PYTHON) -m pip install -e $(PKG_DIR)[dev,file]
 	@PYTHONPATH=. $(VENV_BIN)/pytest -m "perf" tests || (echo "Hint: run 'make dev file' first" && false)
 
@@ -326,6 +330,24 @@ ci-smoke: ## Boot DB, wait healthy, run 'select 1', then stop (keep volumes)
 	@$(MAKE) compose-wait-db
 	@$(MAKE) db-run-sql Q="select 1"
 	@$(MAKE) compose-stop
+
+
+##@ Azure (optional, local debugging)
+
+.PHONY: af-venv
+af-venv: ## Create Azure Function venv and install local requirements
+	@if [ ! -d "$(AF_VENV)" ]; then \
+		@$(call ECHO_INFO,"Creating Azure Function venv"); \
+		cd "$(AF_DIR)" && $(PY) -m venv .venv; \
+	fi
+	@$(AF_BIN)/python -m pip install --upgrade pip >/dev/null
+	@$(AF_BIN)/pip install -r "$(AF_DIR)/requirements.local.txt"
+	@$(AF_BIN)/pip install -e "$(PKG_DIR)"
+	@$(call ECHO_OK,"Azure Function venv ready")
+
+.PHONY: af-start
+af-start: af-venv ## Start the Azure Functions host (requires Azure Functions Core Tools)
+	@cd "$(AF_DIR)" && func start
 
 ##@ Docker
 

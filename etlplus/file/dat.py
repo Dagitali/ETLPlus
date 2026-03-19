@@ -25,6 +25,7 @@ from typing import cast
 
 from ..utils.types import JSONDict
 from ..utils.types import JSONList
+from ._io import _open_text_handle
 from ._io import write_delimited
 from .base import DelimitedTextFileHandlerABC
 from .base import ReadOptions
@@ -194,7 +195,12 @@ class DatFile(DelimitedTextFileHandlerABC):
         if extra_sniffer is not None:
             sniffer = cast(_CsvSniffer, extra_sniffer)
 
-        with path.open('r', encoding='utf-8', newline='') as handle:
+        with _open_text_handle(
+            path,
+            mode='r',
+            encoding='utf-8',
+            newline='',
+        ) as handle:
             sample = handle.read(4096)
             handle.seek(0)
             dialect, has_header = self.sniff(

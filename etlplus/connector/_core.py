@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.connector.core` module.
+:mod:`etlplus.connector._core` module.
 
 Protocols and base classes for connector implementations.
 """

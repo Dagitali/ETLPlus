@@ -12,7 +12,6 @@ See also: :doc:`../guides/file-handler-matrix`
    etlplus.file.base
    etlplus.file.core
    etlplus.file.enums
-   etlplus.file.registry
 
 .. toctree::
    :maxdepth: 1

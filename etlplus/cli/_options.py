@@ -7,7 +7,7 @@ configuration.
 
 from __future__ import annotations
 
-from .types import DataConnectorContext
+from ._types import DataConnectorContext
 
 # SECTION: EXPORTS ========================================================== #
 

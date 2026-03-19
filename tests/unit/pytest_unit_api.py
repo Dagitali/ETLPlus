@@ -186,7 +186,7 @@ def request_once_stub(
             kwargs: list[dict[str, Any]]
     """
     # Locally import to avoid cycles.
-    import etlplus.api.request_manager as rm_module
+    import etlplus.api._request_manager as rm_module
 
     calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
@@ -222,7 +222,7 @@ def extract_stub_factory() -> Callable[..., Any]:
     (Hypothesis-friendly).
 
     Each invocation patches
-    :meth:`etlplus.api.request_manager.RequestManager.request_once` for the
+    :meth:`etlplus.api._request_manager.RequestManager.request_once` for the
     duration of the context manager and restores the original afterwards.
 
     Returns
@@ -243,7 +243,7 @@ def extract_stub_factory() -> Callable[..., Any]:
     ) -> Any:
         import contextlib
 
-        import etlplus.api.request_manager as rm_module
+        import etlplus.api._request_manager as rm_module
 
         calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 

@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.cli.test_u_cli_state` module.
 
-Unit tests for :mod:`etlplus.cli.state`.
+Unit tests for :mod:`etlplus.cli._state`.
 """
 
 from __future__ import annotations
@@ -12,9 +12,9 @@ import pytest
 import typer
 
 import etlplus
-import etlplus.cli.commands as commands
-import etlplus.cli.handlers as handlers
-import etlplus.cli.state as cli_state_module
+import etlplus.cli._commands as commands
+import etlplus.cli._handlers as handlers
+import etlplus.cli._state as cli_state_module
 
 from ...conftest import CaptureHandler
 from .conftest import InvokeCli
@@ -317,7 +317,7 @@ class TestInferResourceType:
 
 
 class TestCliStateHelpers:
-    """Unit tests for :mod:`etlplus.cli.state` helper branches."""
+    """Unit tests for :mod:`etlplus.cli._state` helper branches."""
 
     def test_ensure_state_initializes_missing_context_state(self) -> None:
         """

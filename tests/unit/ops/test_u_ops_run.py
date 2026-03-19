@@ -295,6 +295,104 @@ class TestRun:
         assert load_calls == [('database', 'sqlite:///target.db')]
         assert result == {'status': 'ok'}
 
+    def test_file_pipeline_merges_options_and_preserves_remote_uris(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test file connector option forwarding for remote pipeline paths."""
+        job = _make_job(
+            name='file_job',
+            source='file_src',
+            target='file_tgt',
+            options={'delimiter': '|', 'sheet': 'Sheet1'},
+        )
+        job.load = SimpleNamespace(
+            target='file_tgt',
+            overrides={'encoding': 'utf-16', 'delimiter': ';'},
+        )
+        cfg = _base_config(
+            job,
+            SimpleNamespace(
+                name='file_src',
+                type='file',
+                path='s3://bucket/input.csv',
+                format='csv',
+                options={'encoding': 'latin-1', 'delimiter': ','},
+            ),
+            SimpleNamespace(
+                name='file_tgt',
+                type='file',
+                path='s3://bucket/output.csv',
+                format='csv',
+                options={'encoding': 'utf-8'},
+            ),
+        )
+
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+
+        extract_calls: list[tuple[Any, Any, dict[str, Any]]] = []
+
+        def _capture_extract(
+            stype: str,
+            source: str,
+            **kwargs: Any,
+        ) -> list[dict[str, int]]:
+            extract_calls.append((stype, source, kwargs))
+            return [{'id': 1}]
+
+        monkeypatch.setattr(run_mod, 'extract', _capture_extract)
+        monkeypatch.setattr(
+            run_mod,
+            'maybe_validate',
+            lambda data, *_a, **_k: data,
+        )
+        monkeypatch.setattr(run_mod, 'transform', lambda data, _ops: data)
+
+        load_calls: list[tuple[Any, Any, Any, dict[str, Any]]] = []
+
+        def _capture_load(
+            data: Any,
+            connector: str,
+            target: str,
+            **kwargs: Any,
+        ) -> dict[str, str]:
+            load_calls.append((data, connector, target, kwargs))
+            return {'status': 'ok'}
+
+        monkeypatch.setattr(run_mod, 'load', _capture_load)
+
+        result = run_mod.run('file_job')
+
+        assert result == {'status': 'ok'}
+        assert extract_calls == [
+            (
+                'file',
+                's3://bucket/input.csv',
+                {
+                    'file_format': 'csv',
+                    'encoding': 'latin-1',
+                    'delimiter': '|',
+                    'sheet': 'Sheet1',
+                },
+            ),
+        ]
+        assert load_calls == [
+            (
+                [{'id': 1}],
+                'file',
+                's3://bucket/output.csv',
+                {
+                    'file_format': 'csv',
+                    'encoding': 'utf-16',
+                    'delimiter': ';',
+                },
+            ),
+        ]
+
     def test_file_source_missing_path_raises(
         self,
         monkeypatch: pytest.MonkeyPatch,

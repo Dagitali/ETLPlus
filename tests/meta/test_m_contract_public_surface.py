@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.meta.test_u_contract_public_surface` module.
+:mod:`tests.meta.test_m_contract_public_surface` module.
 
 Contract tests for ETLPlus stable CLI and import surfaces.
 """
@@ -11,7 +11,7 @@ import pytest
 import etlplus
 import etlplus.api as api_pkg
 import etlplus.cli as cli_pkg
-import etlplus.cli.commands as cli_commands
+import etlplus.cli._commands as cli_commands
 import etlplus.ops as ops_pkg
 from etlplus import Config
 from etlplus.api import EndpointClient
@@ -36,8 +36,8 @@ from etlplus.ops.validate import validate
 # SECTION: MARKERS ========================================================== #
 
 
-# Directory-level marker for unit tests.
-pytestmark = [pytest.mark.unit, pytest.mark.contract]
+# Directory-level marker for meta tests.
+pytestmark = [pytest.mark.meta, pytest.mark.contract]
 
 
 # SECTIONS: CONSTANTS ======================================================= #

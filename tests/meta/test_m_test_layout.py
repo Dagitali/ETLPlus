@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.meta.test_u_test_layout` module.
+:mod:`tests.meta.test_m_test_layout` module.
 
 Guardrails for repository test-layout conventions.
 """
@@ -12,7 +12,7 @@ from pathlib import Path
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 _LEGACY_SMOKE_ROOT = _REPO_ROOT / 'tests' / 'smoke'
 
 

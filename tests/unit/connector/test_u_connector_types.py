@@ -1,12 +1,12 @@
 """
 :mod:`tests.unit.connector.test_u_connector_types` module.
 
-Unit tests for :mod:`etlplus.connector.types`.
+Unit tests for :mod:`etlplus.connector._types`.
 """
 
 from __future__ import annotations
 
-from etlplus.connector import types as connector_types
+import etlplus.connector.types as connector_types
 from etlplus.connector.enums import DataConnectorType
 
 # SECTION: PRAGMAS ========================================================== #

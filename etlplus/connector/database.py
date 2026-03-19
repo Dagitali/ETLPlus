@@ -20,7 +20,7 @@ from typing import TypedDict
 from typing import overload
 
 from ..utils.types import StrAnyMap
-from .core import ConnectorBase
+from ._core import ConnectorBase
 from .enums import DataConnectorType
 from .types import ConnectorType
 

@@ -78,10 +78,10 @@ def _safe_tmp_path(
     resolved = (root / relative).resolve()
     try:
         resolved.relative_to(root)
-    except ValueError as err:
+    except ValueError as e:
         raise ValueError(
             'filename must not escape the temporary directory',
-        ) from err
+        ) from e
     return resolved
 
 

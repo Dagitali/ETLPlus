@@ -60,6 +60,7 @@ import requests  # type: ignore[import]
 
 from ..utils.types import JSONData
 from ..utils.types import JSONDict
+from ._request_manager import RequestManager
 from .errors import ApiRequestError
 from .errors import PaginationError
 from .pagination import PaginationClient
@@ -68,7 +69,6 @@ from .pagination import Paginator
 from .rate_limiting import RateLimitConfigDict
 from .rate_limiting import RateLimiter
 from .rate_limiting import RateLimitOverrides
-from .request_manager import RequestManager
 from .retry_manager import RetryManager
 from .retry_manager import RetryPolicyDict
 from .retry_manager import RetryStrategy

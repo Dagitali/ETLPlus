@@ -3,9 +3,8 @@
 This checklist tracks the remaining work to make ETLPlus look and behave like a stable, well-run
 open source Python project before tagging `v1.0.0`.
 
-The currently committed release-polish changes are targeted for `v0.27.0`. The sections below
-therefore distinguish between work already in place for the next pre-1.0 release and additional
-polish still recommended before the first stable `v1.0.0` tag.
+The sections below distinguish between work already in place for the next pre-1.0 release and
+additional polish still recommended before the first stable `v1.0.0` tag.
 
 ## Must
 
@@ -13,6 +12,8 @@ polish still recommended before the first stable `v1.0.0` tag.
   - Confirm which APIs, CLI commands, config shapes, and file handlers are covered by the stability
     promise.
   - Mark placeholders and experimental areas explicitly in user-facing docs.
+  - Keep `etlplus.file` as the format layer and treat `etlplus.storage` as the distinct storage
+    backend/location surface.
 - [x] Keep packaging metadata consistent and single-sourced.
   - Treat `pyproject.toml` as canonical.
   - Keep `setup.py` as a minimal compatibility shim only.
@@ -74,8 +75,13 @@ polish still recommended before the first stable `v1.0.0` tag.
 - The shipped-files item is now closed for the release path because distribution builds and artifact
   audits run in CI from a tracked checkout, so defunct, backup, and scratch files that are not part
   of the committed tree are not part of tagged release artifacts.
-- The latest released version is `v0.26.1`, and the changes completed so far in this checklist are
-  expected to ship first as part of `v0.27.0`, not `v1.0.0`.
+- Regenerated demo/version snippets and GitHub Releases should be treated as the canonical source
+  for the latest published pre-1.0 version number when preparing a tag.
+- The changes completed so far in this checklist are intended to land on the next pre-1.0 release,
+  not to wait for `v1.0.0`.
+- The stable-surface trimming work now treats CLI support modules and command wiring, storage
+  registry/base plumbing, connector support modules, the file-handler registry, database typing
+  helpers, and API request manager plumbing as protected underscore-prefixed implementation modules.
 
 ## Strongly Recommended Before `v1.0.0`
 
@@ -111,17 +117,17 @@ polish still recommended before the first stable `v1.0.0` tag.
 
 ## Prioritized Implementation Plan
 
-### Before `v0.27.0` Branch Cut
+### Before The Next Pre-1.0 Branch Cut
 
 - [x] Finalize the canonical release-history policy and make docs agree.
-  - Choose the canonical release-notes surface now so `v0.27.0` already models the intended
+  - Choose the canonical release-notes surface now so the next pre-1.0 release already models the intended
     maintainer workflow.
   - Align `README.md`, `docs/source/changelog.rst`, and maintainer release instructions to that
     single policy.
 - [x] Tighten release workflow and release-doc wording drift.
   - Clean up comments and release instructions so the `ci.yml` / `release.yml` split is described
     consistently everywhere.
-  - Keep this phase low-risk and documentation-heavy so it does not destabilize the `v0.27.0`
+  - Keep this phase low-risk and documentation-heavy so it does not destabilize the next pre-1.0
     release branch.
 
 ### Before `v1.0.0-rc1`
@@ -150,6 +156,6 @@ polish still recommended before the first stable `v1.0.0` tag.
 
 The current release-prep posture is:
 
-- `v0.27.x`: ship the already-completed polish and workflow improvements
+- Next pre-1.0 release: ship the already-completed polish and workflow improvements
 - Pre-`v1.0.0`: preserve that aligned release surface, keep the tracked release docs/workflows in
   sync, and focus remaining effort on final execution hygiene rather than new policy churn

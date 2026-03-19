@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.meta.test_u_contract_readme` module.
+:mod:`tests.meta.test_m_contract_readme` module.
 
 Contract tests for README consistency against runtime registry metadata.
 """
@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import FileFormat
-from etlplus.file import registry as mod
+from etlplus.file import _registry as mod
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
@@ -26,10 +26,10 @@ from tests.integration.file.pytest_smoke_file_contracts import (
 from tests.integration.file.pytest_smoke_file_contracts import (
     SMOKE_ROUNDTRIP_OVERRIDE_ATTRS,
 )
-from tests.unit.meta.pytest_meta_support import REPO_ROOT
-from tests.unit.meta.pytest_meta_support import markdown_table_rows
-from tests.unit.meta.pytest_meta_support import read_lines
-from tests.unit.meta.pytest_meta_support import regex_matches
+from tests.meta.pytest_meta_support import REPO_ROOT
+from tests.meta.pytest_meta_support import markdown_table_rows
+from tests.meta.pytest_meta_support import read_lines
+from tests.meta.pytest_meta_support import regex_matches
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -38,8 +38,8 @@ from tests.unit.meta.pytest_meta_support import regex_matches
 # SECTION: MARKERS ========================================================== #
 
 
-# Directory-level marker for unit tests.
-pytestmark = [pytest.mark.unit, pytest.mark.contract]
+# Directory-level marker for meta tests.
+pytestmark = [pytest.mark.meta, pytest.mark.contract]
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #

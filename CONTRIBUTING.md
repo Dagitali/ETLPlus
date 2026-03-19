@@ -153,6 +153,9 @@ make typecheck
   contract rather than general source formatting.
 - `mypy` remains the type gate for the shipped package surface.
 - ETLPlus does not maintain separate Black or Flake8 contributor flows.
+- If an external editor or integration still invokes Flake8, use the repository `.flake8` file only
+  as a compatibility shim for overlapping basics such as line length and excludes; Ruff remains
+  canonical.
 
 ## Testing
 
@@ -160,10 +163,16 @@ make typecheck
 
 Use these guidelines to decide where tests live and how to label intent.
 
+- Meta tests (put under `tests/meta/`):
+  - Guard repository conventions, public-surface promises, documentation tables, and test-layout policy.
+  - Keep them fast and deterministic; they should inspect source, docs, metadata, or test structure rather than product runtime behavior.
+  - Use the `test_m_*.py` naming convention.
+
 - Unit tests (put under `tests/unit/`):
   - Exercise a single function or class directly in isolation (no orchestration across modules).
   - Avoid real file system or network I/O; use `tmp_path` for local files and stubs/mocks for external calls.
   - Fast and deterministic; rely on `monkeypatch` to stub collaborators.
+  - Use the `test_u_*.py` naming convention.
   - Examples in this repo:
     - Small helpers in `etlplus.utils`
     - Validation and transform functions.
@@ -171,6 +180,7 @@ Use these guidelines to decide where tests live and how to label intent.
 - Integration tests (put under `tests/integration/`):
   - Exercise end-to-end flows across modules and boundaries.
   - Can use CLI argv, temporary files/directories, and stub network with fakes/mocks.
+  - Use the `test_i_*.py` naming convention.
   - Examples in this repo:
     - CLI `main()` end-to-end
     - `run()` pipeline orchestration
@@ -182,6 +192,7 @@ Use these guidelines to decide where tests live and how to label intent.
 - E2E tests (put under `tests/e2e/`):
   - Validate full system-boundary workflows.
   - Keep slower, higher-scope checks here.
+  - Use the `test_e_*.py` naming convention.
 
 - Smoke tests are an intent marker, not a scope folder:
   - Place smoke tests in `tests/unit/`, `tests/integration/`, or `tests/e2e/`
@@ -194,8 +205,8 @@ If a test calls `etlplus.cli.main()` or `etlplus.ops.run.run()`, it is integrati
 ### Test Configuration
 
 - Each test folder should include a `conftest.py` for shared fixtures.
-- Use scope markers (`unit`, `integration`, `e2e`) and intent markers
-  (`smoke`, `contract`) from `pytest.ini`.
+- Use scope markers (`meta`, `unit`, `integration`, `e2e`) and intent markers (`smoke`, `contract`)
+  from `pytest.ini`.
 - Add `@pytest.mark.smoke` and `@pytest.mark.contract` directly on modules/tests
   where intent applies.
 - Markers are declared in `pytest.ini`. Avoid introducing ad-hoc markers without adding them there.
@@ -216,12 +227,14 @@ Common commands:
   - `pytest`
   - `make test-full` (installs `.[dev,file]` and runs pytest)
 - Run a specific suite:
+  - `pytest -m meta`
   - `pytest -m unit`
   - `pytest -m integration`
   - `pytest -m e2e`
   - `pytest -m smoke`
   - `pytest -m contract`
 - Run a specific file or test:
+  - `pytest tests/meta/test_m_contract_readme.py`
   - `pytest tests/unit/file/test_u_file_core.py`
   - `pytest tests/unit/file/test_u_file_core.py::TestFile::test_roundtrip_by_format`
 - Run by keyword:

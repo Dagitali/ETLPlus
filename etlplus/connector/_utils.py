@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.connector.utils` module.
+:mod:`etlplus.connector._utils` module.
 
 Shared connector parsing helpers.
 """
@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from ._connector import Connector
 from .api import ConnectorApi
-from .connector import Connector
 from .database import ConnectorDb
 from .enums import DataConnectorType
 from .file import ConnectorFile

@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.meta.test_u_contract_module_io_deprecations` module.
+:mod:`tests.meta.test_m_contract_module_io_deprecations` module.
 
 Contract tests for removal of legacy module-level file I/O wrappers.
 """
@@ -13,7 +13,7 @@ from types import ModuleType
 
 import pytest
 
-from etlplus.file import registry as file_registry
+from etlplus.file import _registry as file_registry
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -36,7 +36,7 @@ _MODULE_SHORT_NAMES: frozenset[str] = frozenset(
 )
 _WRAPPER_API_NAMES: tuple[str, ...] = ('read', 'write')
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 _ETLPLUS_ROOT = _REPO_ROOT / 'etlplus'
 
 

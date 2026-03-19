@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.connector.connector` module.
+:mod:`etlplus.connector._connector` module.
 
 Compatibility re-exports for connector configuration classes.
 """

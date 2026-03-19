@@ -1,6 +1,7 @@
 # Compatibility
 
-ETLPlus currently targets a narrow, explicit support window ahead of `v1.0.0`.
+ETLPlus documents a narrow, explicit support window. The statements on this page describe the
+supported release contract that the project intends to carry into the stable `v1.0.0` line.
 
 ## Python support
 
@@ -33,11 +34,13 @@ packaging and entrypoint regressions before release.
 | Development | `pip install -e ".[dev]"` | Local development, linting, type-checking, tests, and packaging work. |
 | Docs | `pip install -e ".[docs]"` | Sphinx and Read the Docs-compatible documentation builds. |
 | File extras | `pip install -e ".[file]"` | Remaining scientific and specialty format dependencies such as `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`. |
+| Storage extras | `pip install -e ".[storage]"` | Cloud storage backends for `s3://`, `azure-blob://`, and `abfs://` locations through `etlplus.storage` and `etlplus.file.File`. |
 
 The broad base runtime is intentional. For the `v1.x` stable line, ETLPlus treats the documented
 CLI, `etlplus.ops`, `etlplus.api`, and the implemented built-in file handlers as one default
 supported experience, so their dependencies stay in the base install rather than being split across
-multiple extras. The `file` extra is reserved for narrower scientific and specialty workflows.
+multiple extras. The `file` extra is reserved for narrower scientific and specialty workflows, and
+the `storage` extra is reserved for optional remote-storage backends.
 
 ## Release interpretation
 

@@ -15,6 +15,7 @@ from typing import Any
 from typing import ClassVar
 from typing import cast
 
+from ..storage import StorageLocation
 from ..utils.types import JSONData
 from ..utils.types import JSONDict
 from ..utils.types import JSONList
@@ -29,7 +30,6 @@ from ._handler_abc import SpreadsheetSheetABC
 from ._io import ArchiveInnerNameOption
 from ._io import DelimitedOption
 from ._io import FileHandlerOption
-from ._io import coerce_path
 from ._io import read_delimited
 from ._io import write_delimited
 from ._mixins import SemiStructuredPayloadMixin
@@ -89,20 +89,60 @@ class BoundFileHandler:
     ----------
     handler : FileHandlerABC
         Concrete format handler instance.
-    path : Path
-        Bound file path used by :meth:`read` and :meth:`write`.
+    path : StrPath
+        Bound local file path or remote URI used by :meth:`read` and
+        :meth:`write`. Local string inputs are normalized to
+        :class:`~pathlib.Path` at bind time.
     """
 
+    # -- Instance Attributes -- #
+
     handler: FileHandlerABC
-    path: Path
+
+    # Local paths are normalized to `:class:`~pathlib.Path` during binding,
+    # while remote locations remain their original URI string.
+    path: StrPath
+
+    # -- Internal Instance Methods -- #
+
+    def _core_file(self) -> Any:
+        """
+        Return one core :class:`File` wrapper bound to this handler format.
+
+        This is used for non-local paths to delegate read/write operations to
+        the core file logic, which handles remote interactions and format-aware.
+        """
+        from .core import File
+
+        return File(self.path, self.handler.format)
+
+    # -- Instance Methods -- #
 
     def read(
         self,
         *,
         options: ReadOptions | None = None,
     ) -> Any:
-        """Read from :attr:`path` using :attr:`handler`."""
-        return self.handler.read(self.path, options=options)
+        """
+        Read from :attr:`path` using :attr:`handler`.
+
+        Parameters
+        ----------
+        options : ReadOptions | None, optional
+            Optional read parameters. Defaults to ``None``.
+
+        Returns
+        -------
+        Any
+            The parsed payload read from the file.
+        """
+        location = StorageLocation.from_value(self.path)
+        if location.is_local:
+            return self.handler.read(location.as_path(), options=options)
+        return self._core_file().read(
+            options=options,
+            handler=self.handler,
+        )
 
     def write(
         self,
@@ -110,11 +150,34 @@ class BoundFileHandler:
         *,
         options: WriteOptions | None = None,
     ) -> int:
-        """Write *data* to :attr:`path` using :attr:`handler`."""
-        return cast(Any, self.handler).write(
-            self.path,
+        """
+        Write *data* to :attr:`path` using :attr:`handler`.
+
+        Parameters
+        ----------
+        data : object
+            Data to write.
+        options : WriteOptions | None, optional
+            Optional write parameters. Defaults to ``None``.
+
+        Returns
+        -------
+        int
+            The number of records written, if applicable to the format.
+            Otherwise, returns 0 or 1 depending on whether the write was
+            successful.
+        """
+        location = StorageLocation.from_value(self.path)
+        if location.is_local:
+            return cast(Any, self.handler).write(
+                location.as_path(),
+                data,
+                options=options,
+            )
+        return cast(Any, self._core_file()).write(
             data,
             options=options,
+            handler=self.handler,
         )
 
 
@@ -233,7 +296,9 @@ class FileHandlerABC(FileHandlerOption, ABC):
             Facade exposing ``read()`` and ``write(data)`` without a *path*
             argument.
         """
-        return BoundFileHandler(self, coerce_path(path))
+        location = StorageLocation.from_value(path)
+        bound_path: StrPath = location.as_path() if location.is_local else location.raw
+        return BoundFileHandler(self, bound_path)
 
     # -- Abstract Instance Methods -- #
 

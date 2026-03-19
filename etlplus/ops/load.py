@@ -19,6 +19,8 @@ from ..api.utils import resolve_request
 from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
+from ..file.base import WriteOptions
+from ..storage import StorageLocation
 from ..utils import count_records
 from ..utils.types import JSONData
 from ..utils.types import JSONDict
@@ -39,6 +41,41 @@ __all__ = [
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
+
+
+def _coerce_optional_str(
+    value: object,
+) -> str | None:
+    """Normalize optional string-like option values."""
+    if value is None:
+        return None
+    return value if isinstance(value, str) else str(value)
+
+
+def _coerce_write_options(
+    options: WriteOptions | Mapping[str, Any] | None,
+) -> WriteOptions | None:
+    """Normalize file-write option mappings into :class:`WriteOptions`."""
+    if options is None or isinstance(options, WriteOptions):
+        return options
+
+    extras = dict(options)
+    encoding = extras.pop('encoding', 'utf-8')
+    root_tag = extras.pop('root_tag', 'root')
+    sheet = extras.pop('sheet', None)
+    table = extras.pop('table', None)
+    dataset = extras.pop('dataset', None)
+    inner_name = extras.pop('inner_name', None)
+
+    return WriteOptions(
+        encoding=encoding if isinstance(encoding, str) else str(encoding),
+        root_tag=root_tag if isinstance(root_tag, str) else str(root_tag),
+        sheet=sheet,
+        table=_coerce_optional_str(table),
+        dataset=_coerce_optional_str(dataset),
+        inner_name=_coerce_optional_str(inner_name),
+        extras=cast(JSONDict, extras),
+    )
 
 
 def _load_data_from_str(
@@ -62,10 +99,18 @@ def _load_data_from_str(
         raw = sys.stdin.read()
         return _parse_json_string(raw)
 
-    candidate = Path(source)
-    if candidate.exists():
+    location = StorageLocation.from_value(source)
+    if location.is_local:
+        candidate = location.as_path()
+        file = File(candidate, FileFormat.JSON)
+        exists = candidate.exists()
+    else:
+        file = File(source, FileFormat.JSON)
+        exists = file.exists()
+
+    if exists:
         try:
-            return File(candidate, FileFormat.JSON).read()
+            return file.read()
         except (OSError, json.JSONDecodeError, ValueError):
             # Fall back to treating the string as raw JSON content.
             pass
@@ -329,40 +374,51 @@ def load_to_file(
     data: JSONData,
     file_path: StrPath,
     file_format: FileFormat | str | None = None,
+    options: WriteOptions | Mapping[str, Any] | None = None,
 ) -> JSONDict:
     """
-    Persist data to a local file.
+    Persist data to a local file path or remote URI.
 
     Parameters
     ----------
     data : JSONData
         Data to write.
     file_path : StrPath
-        Target file path.
+        Target local file path or remote URI.
     file_format : FileFormat | str | None, optional
         Output format. If omitted (None), the format is inferred from the
         filename extension.
+    options : WriteOptions | Mapping[str, Any] | None, optional
+        Optional file-write options such as ``encoding`` plus format-specific
+        extras like ``delimiter``.
 
     Returns
     -------
     JSONDict
         Result dictionary with status and record count.
     """
-    path = Path(file_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    resolved_options = _coerce_write_options(options)
+    target_label = str(file_path)
 
     # If no explicit format is provided, let File infer from extension.
     if file_format is None:
-        records = File(path).write(data)
-        ext = path.suffix.lstrip('.').lower()
-        fmt = FileFormat.coerce(ext) if ext else FileFormat.JSON
+        file = File(file_path)
+        if resolved_options is None:
+            records = file.write(data)
+        else:
+            records = file.write(data, options=resolved_options)
+        fmt = file.file_format or FileFormat.JSON
     else:
         fmt = FileFormat.coerce(file_format)
-        records = File(path, fmt).write(data)
+        file = File(file_path, fmt)
+        if resolved_options is None:
+            records = file.write(data)
+        else:
+            records = file.write(data, options=resolved_options)
     if fmt is FileFormat.CSV and records == 0:
         message = 'No data to write'
     else:
-        message = f'Data loaded to {path}'
+        message = f'Data loaded to {target_label}'
 
     return {
         'status': 'success',
@@ -415,7 +471,7 @@ def load(
     match DataConnectorType.coerce(target_type):
         case DataConnectorType.FILE:
             # Prefer explicit format if provided, else infer from filename.
-            return load_to_file(data, target, file_format)
+            return load_to_file(data, target, file_format, kwargs or None)
         case DataConnectorType.DATABASE:
             return load_to_database(data, str(target))
         case DataConnectorType.API:

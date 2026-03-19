@@ -1,5 +1,5 @@
 """
-:mod:`tests.unit.meta.pytest_meta_support` module.
+:mod:`tests.meta.pytest_meta_support` module.
 
 Shared helpers for meta-level repository guardrail tests.
 """
@@ -13,10 +13,10 @@ from pathlib import Path
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
+# SECTION: CONSTANTS ======================================================== #
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 TESTS_ROOT = REPO_ROOT / 'tests'
 
 
@@ -49,6 +49,26 @@ def markdown_table_rows(
     return rows
 
 
+def read_lines(
+    path: Path,
+) -> list[str]:
+    """
+    Return UTF-8 text content split into lines.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the text file.
+
+    Returns
+    -------
+    list[str]
+        List of lines from the file, with leading and trailing whitespace
+        removed.
+    """
+    return path.read_text(encoding='utf-8').splitlines()
+
+
 def regex_matches(
     path: Path,
     pattern: re.Pattern[str],
@@ -73,26 +93,6 @@ def regex_matches(
         if (match := pattern.match(line)) is not None:
             matches.append(match)
     return matches
-
-
-def read_lines(
-    path: Path,
-) -> list[str]:
-    """
-    Return UTF-8 text content split into lines.
-
-    Parameters
-    ----------
-    path : Path
-        Path to the text file.
-
-    Returns
-    -------
-    list[str]
-        List of lines from the file, with leading and trailing whitespace
-        removed.
-    """
-    return path.read_text(encoding='utf-8').splitlines()
 
 
 def sorted_glob(
