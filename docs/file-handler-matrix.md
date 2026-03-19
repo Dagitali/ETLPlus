@@ -1,10 +1,11 @@
 # File Handler Matrix
 
-This page is the file-handler guardrail for migration tracking and asymmetry checks.
+This page summarizes the current ETLPlus file-handler coverage for documented formats.
 
-Update this page after each `etlplus/file` migration batch.
+Use it to confirm whether a format is implemented, read-only, or still a stub before depending on
+it in production workflows.
 
-- Source of truth: `etlplus/file/registry.py` explicit handler map.
+- Source of truth: `etlplus/file/_registry.py` explicit handler map.
 - `status = stub` means the handler inherits `StubFileHandlerABC` directly or via internal category
   stubs in `etlplus/file/_stub_categories.py` (read/write raise `NotImplementedError`).
 - `read/write support` reflects handler contract (`read/write` or `read-only`).

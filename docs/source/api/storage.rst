@@ -9,8 +9,6 @@ storage providers.
 
    etlplus.storage
    etlplus.storage.azure_blob
-   etlplus.storage.enums
    etlplus.storage.local
-   etlplus.storage.location
    etlplus.storage.s3
    etlplus.storage.stub

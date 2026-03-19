@@ -1,7 +1,7 @@
 # Pipeline Authoring Guide
 
-This guide explains how to author an ETLPlus pipeline YAML, using the example at `in/pipeline.yml`
-as a reference.
+This guide explains how to author an ETLPlus pipeline YAML, using `examples/configs/pipeline.yml` as
+a reference.
 
 - [Pipeline Authoring Guide](#pipeline-authoring-guide)
   - [Overview](#overview)

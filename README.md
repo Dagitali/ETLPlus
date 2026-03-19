@@ -41,7 +41,7 @@ package and command-line interface for data extraction, validation, transformati
       - [Templates](#templates)
   - [Usage](#usage)
     - [Command Line Interface](#command-line-interface-1)
-      - [Argument Order and Required Options](#argument-order-and-required-options)
+      - [Command Shapes](#command-shapes)
       - [Check Pipelines](#check-pipelines)
       - [Render SQL DDL](#render-sql-ddl)
       - [Extract Data](#extract-data)
@@ -526,27 +526,23 @@ etlplus --version
 The CLI is implemented with Typer (Click-based). The legacy argparse parser has been removed, so
 rely on the documented commands/flags and run `etlplus <command> --help` for current options.
 
-**Example error messages:**
+#### Command Shapes
 
-- If you omit a required argument: `Error: Missing required argument 'SOURCE'.`
-- If you place an option before its argument: `Error: Option '--source-format' must follow the
-  'SOURCE' argument.`
+The core commands accept positional source and target arguments when you want to read from or write
+to explicit paths or URIs. When you omit them, ETLPlus falls back to standard streams:
 
-#### Argument Order and Required Options
+- **extract**: `etlplus extract [SOURCE]`
+  - Omit `SOURCE` to read from STDIN.
+- **transform**: `etlplus transform [SOURCE] [TARGET]`
+  - Omit `SOURCE` to read from STDIN and omit `TARGET` to write to STDOUT.
+- **load**: `etlplus load [TARGET]`
+  - Omit `TARGET` to write to STDOUT.
+- **validate**: `etlplus validate [SOURCE]`
+  - Omit `SOURCE` to read from STDIN and use `--output` if you want file output instead of
+    STDOUT.
 
-For each command, positional arguments must precede options. Required options must follow their
-associated argument:
-
-- **extract**: `etlplus extract SOURCE [--source-format ...] [--source-type ...]`
-  - `SOURCE` is required. `--source-format` and `--source-type` must follow `SOURCE`.
-- **transform**: `etlplus transform [--operations ...] SOURCE [--source-format ...] [--source-type ...] TARGET [--target-format ...] [--target-type ...]`
-  - `SOURCE` and `TARGET` are required. Format/type options must follow their respective argument.
-- **load**: `etlplus load TARGET [--target-format ...] [--target-type ...] [--source-format ...]`
-  - `TARGET` is required. `--target-format` and `--target-type` must follow `TARGET`.
-- **validate**: `etlplus validate SOURCE [--rules ...] [--source-format ...] [--source-type ...]`
-  - `SOURCE` is required. `--rules` and format/type options must follow `SOURCE`.
-
-If required arguments or options are missing, or if options are placed before their associated argument, the CLI will display a clear error message.
+Use `--source-format`, `--target-format`, `--source-type`, and `--target-type` to override the
+usual inference rules when a filename, URI, or stream does not provide enough context.
 
 #### Check Pipelines
 

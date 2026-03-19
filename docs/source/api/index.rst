@@ -9,7 +9,7 @@ grows.
    :maxdepth: 1
 
    core
-   api
+   api-clients
    connectors
    database
    files
