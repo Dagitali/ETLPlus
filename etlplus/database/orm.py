@@ -41,11 +41,11 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.types import TypeEngine
 
 from ..utils.types import StrPath
+from ._types import ModelRegistry
+from ._types import TypeFactory
 from .schema import ForeignKeySpec
 from .schema import TableSpec
 from .schema import load_table_specs
-from .types import ModelRegistry
-from .types import TypeFactory
 
 # SECTION: EXPORTS ========================================================== #
 
