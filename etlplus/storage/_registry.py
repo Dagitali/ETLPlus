@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.storage.registry` module.
+:mod:`etlplus.storage._registry` module.
 
 Storage backend resolution helpers.
 """
@@ -9,9 +9,9 @@ from __future__ import annotations
 from functools import cache
 
 from ..utils.types import StrPath
+from ._base import StorageBackendABC
 from .abfs import AbfsStorageBackend
 from .azure_blob import AzureBlobStorageBackend
-from .base import StorageBackendABC
 from .enums import StorageScheme
 from .ftp import FtpStorageBackend
 from .http import HttpStorageBackend

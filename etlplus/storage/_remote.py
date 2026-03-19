@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.storage.base` module.
+:mod:`etlplus.storage._remote` module.
 
 Abstract storage backend contracts.
 """
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from .base import StorageBackendABC
+from ._base import StorageBackendABC
 from .enums import StorageScheme
 from .location import StorageLocation
 

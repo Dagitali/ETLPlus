@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.storage.base` module.
+:mod:`etlplus.storage._base` module.
 
 Abstract storage backend contracts.
 """
