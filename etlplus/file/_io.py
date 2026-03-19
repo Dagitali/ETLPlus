@@ -46,6 +46,29 @@ def _staging_filename(location: StorageLocation) -> str:
     return filename or 'payload.tmp'
 
 
+# SECTION: INTERNAL CONTEXT MANAGER FUNCTIONS =============================== #
+
+
+@contextmanager
+def _open_binary_handle(
+    path: StrPath,
+    *,
+    mode: str,
+) -> Iterator[IO[bytes]]:
+    """Open a binary handle for local paths and remote storage URIs."""
+    location = StorageLocation.from_value(path)
+    if location.is_local:
+        with location.as_path().open(  # pylint: disable=unspecified-encoding
+            mode,
+            encoding=None,
+        ) as handle:
+            yield cast(IO[bytes], handle)
+        return
+
+    with get_backend(location).open(location, mode) as handle:
+        yield cast(IO[bytes], handle)
+
+
 @contextmanager
 def _open_text_handle(
     path: StrPath,
@@ -203,6 +226,14 @@ def normalize_records(
     raise TypeError(
         f'{format_name} payloads must be an object or an array of objects',
     )
+
+
+def read_bytes(
+    path: StrPath,
+) -> bytes:
+    """Read and return binary content from *path*."""
+    with _open_binary_handle(path, mode='rb') as handle:
+        return handle.read()
 
 
 def read_delimited(
@@ -390,6 +421,16 @@ def stringify_value(value: Any) -> str:
     if value is None:
         return ''
     return str(value)
+
+
+def write_bytes(
+    path: StrPath,
+    payload: bytes,
+) -> None:
+    """Write binary *payload* to *path*."""
+    ensure_parent_dir(path)
+    with _open_binary_handle(path, mode='wb') as handle:
+        handle.write(payload)
 
 
 def write_delimited(
