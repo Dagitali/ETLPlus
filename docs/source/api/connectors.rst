@@ -10,3 +10,4 @@ Normalized connector definitions used by config-driven ETL workflows.
    etlplus.connector.database
    etlplus.connector.enums
    etlplus.connector.file
+   etlplus.connector.types
