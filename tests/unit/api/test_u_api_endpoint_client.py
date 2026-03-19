@@ -25,8 +25,8 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
+import etlplus.api._request_manager as rm_module
 import etlplus.api.endpoint_client as ec_module
-import etlplus.api.request_manager as rm_module
 from etlplus.api import CursorPaginationConfigDict
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigDict
