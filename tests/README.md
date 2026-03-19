@@ -99,9 +99,9 @@ export ETLPLUS_TEST_AZURE_BLOB_URI="azure-blob://etlplus-integration/cli"
 These values may expose internal bucket/container names, so do not commit real values into the
 repository. Prefer setting them in one of these places:
 
-- local shell startup files or one-off terminal exports
+- Local shell startup files or one-off terminal exports
 - `.envrc` or another developer-local environment loader
-- local VS Code test/debug environment settings
+- Local IDE (e.g., VS Code) test/debug environment settings
 - CI secret stores and workflow environment configuration
 
 The variables should contain only base URIs. Authentication should come from the normal cloud SDK
