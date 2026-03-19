@@ -319,6 +319,37 @@ class TestFile:
         with pytest.raises(ValueError, match='Multiple tables'):
             File(path, file_format).read()
 
+    def test_ensure_parent_dir_creates_missing_local_parent(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that local parent directories are created on demand."""
+        path = tmp_path / 'nested' / 'data.json'
+
+        File(path, FileFormat.JSON).ensure_parent_dir()
+
+        assert path.parent.exists()
+
+    def test_ensure_parent_dir_delegates_to_remote_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote parent preparation delegates to storage."""
+        calls: list[object] = []
+
+        class FakeBackend:
+            """Remote backend parent-preparation test double."""
+
+            def ensure_parent_dir(self, location: object) -> None:
+                """Capture the prepared location."""
+                calls.append(location)
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        File('s3://bucket/data.json', FileFormat.JSON).ensure_parent_dir()
+
+        assert len(calls) == 1
+
     def test_exists_delegates_to_remote_storage_backend(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -355,6 +386,106 @@ class TestFile:
         path.write_text('{}', encoding='utf-8')
 
         assert File(path, FileFormat.JSON).exists() is True
+
+    def test_touch_creates_missing_local_file(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that local touch creates missing files and parents."""
+        path = tmp_path / 'nested' / 'data.json'
+
+        File(path, FileFormat.JSON).touch()
+
+        assert path.exists()
+        assert path.read_text(encoding='utf-8') == ''
+
+    def test_touch_remote_creates_empty_object_when_missing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote touch creates an empty object when absent."""
+        uploads: list[bytes] = []
+
+        class CaptureUpload(BytesIO):
+            """Writable remote upload stream test double."""
+
+            def close(self) -> None:
+                """Capture uploaded bytes before closing the stream."""
+                uploads.append(self.getvalue())
+                super().close()
+
+        class FakeBackend:
+            """Remote backend touch test double."""
+
+            def __init__(self) -> None:
+                self.parent_calls = 0
+                self.exists_calls = 0
+
+            def ensure_parent_dir(self, location: object) -> None:
+                """Record parent preparation for the new object."""
+                del location
+                self.parent_calls += 1
+
+            def exists(self, location: object) -> bool:
+                """Report the object as missing on first touch."""
+                del location
+                self.exists_calls += 1
+                return False
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> CaptureUpload:
+                """Return a writable stream for the new object."""
+                del location, kwargs
+                assert mode == 'wb'
+                return CaptureUpload()
+
+        backend = FakeBackend()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+
+        File('s3://bucket/data.json', FileFormat.JSON).touch()
+
+        assert backend.exists_calls == 1
+        assert backend.parent_calls == 1
+        assert uploads == [b'']
+
+    def test_touch_remote_is_noop_when_object_exists(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote touch avoids truncating existing objects."""
+        calls: list[str] = []
+
+        class FakeBackend:
+            """Remote backend touch no-op test double."""
+
+            def exists(self, location: object) -> bool:
+                """Report the object as already present."""
+                del location
+                calls.append('exists')
+                return True
+
+            def ensure_parent_dir(self, location: object) -> None:
+                """Fail if parent preparation happens unexpectedly."""
+                raise AssertionError('ensure_parent_dir should not be called')
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> BytesIO:
+                """Fail if open happens unexpectedly."""
+                raise AssertionError('open should not be called')
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        File('s3://bucket/data.json', FileFormat.JSON).touch()
+
+        assert calls == ['exists']
 
     @pytest.mark.parametrize(
         ('raw_format', 'expected'),
