@@ -37,21 +37,21 @@ import typer
 
 from .. import __version__
 from ..file import FileFormat
-from . import handlers
-from .constants import CLI_DESCRIPTION
-from .constants import CLI_EPILOG
-from .constants import DATA_CONNECTORS
-from .constants import FILE_FORMATS
-from .io import parse_json_payload
-from .options import typer_format_option_kwargs
-from .state import CliState
-from .state import ensure_state
-from .state import infer_resource_type_or_exit
-from .state import infer_resource_type_soft
-from .state import log_inferred_resource
-from .state import optional_choice
-from .state import resolve_resource_type
-from .state import validate_choice
+from . import _handlers as handlers
+from ._constants import CLI_DESCRIPTION
+from ._constants import CLI_EPILOG
+from ._constants import DATA_CONNECTORS
+from ._constants import FILE_FORMATS
+from ._io import parse_json_payload
+from ._options import typer_format_option_kwargs
+from ._state import CliState
+from ._state import ensure_state
+from ._state import infer_resource_type_or_exit
+from ._state import infer_resource_type_soft
+from ._state import log_inferred_resource
+from ._state import optional_choice
+from ._state import resolve_resource_type
+from ._state import validate_choice
 
 # SECTION: EXPORTS ========================================================== #
 
