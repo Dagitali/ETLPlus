@@ -13,7 +13,7 @@ from types import ModuleType
 
 import pytest
 
-from etlplus.file import registry as file_registry
+from etlplus.file import _registry as file_registry
 
 # SECTION: PRAGMAS ========================================================== #
 

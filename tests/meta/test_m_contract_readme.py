@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import FileFormat
-from etlplus.file import registry as mod
+from etlplus.file import _registry as mod
 from etlplus.file.base import FileHandlerABC
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
