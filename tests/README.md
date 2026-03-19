@@ -9,6 +9,7 @@ with pytest markers.
   - [Integration File Smoke Pattern](#integration-file-smoke-pattern)
   - [Discovery and Selection](#discovery-and-selection)
   - [Dependency Prerequisites](#dependency-prerequisites)
+  - [Cloud CLI Integration](#cloud-cli-integration)
   - [Common Commands](#common-commands)
   - [Post-Move Validation Checklist](#post-move-validation-checklist)
 
@@ -74,6 +75,50 @@ For lighter development without the remaining optional format coverage:
 
 ```bash
 pip install -e ".[dev]"
+```
+
+## Cloud CLI Integration
+
+The CLI integration suite includes two layers of remote-storage coverage:
+
+- default in-memory remote harness for deterministic local smoke coverage
+- env-gated real cloud tests for stricter S3/Azure Blob realism
+
+The real cloud layer is skipped unless these environment variables are set:
+
+- `ETLPLUS_TEST_S3_URI`
+- `ETLPLUS_TEST_AZURE_BLOB_URI`
+
+Safe example placeholder values:
+
+```bash
+export ETLPLUS_TEST_S3_URI="s3://my-etlplus-integration-bucket/cli"
+export ETLPLUS_TEST_AZURE_BLOB_URI="azure-blob://etlplus-integration/cli"
+```
+
+These values may expose internal bucket/container names, so do not commit real values into the
+repository. Prefer setting them in one of these places:
+
+- local shell startup files or one-off terminal exports
+- `.envrc` or another developer-local environment loader
+- local VS Code test/debug environment settings
+- CI secret stores and workflow environment configuration
+
+The variables should contain only base URIs. Authentication should come from the normal cloud SDK
+credential chain already configured in the environment.
+
+Useful commands:
+
+```bash
+# Full CLI integration suite (real cloud tests auto-skip if env vars are unset)
+pytest tests/integration/cli
+
+# Focus on the real-cloud read/write CLI paths
+pytest tests/integration/cli/test_i_cli_extract.py \
+  tests/integration/cli/test_i_cli_load.py \
+  tests/integration/cli/test_i_cli_run.py \
+  tests/integration/cli/test_i_cli_transform.py \
+  tests/integration/cli/test_i_cli_validate.py
 ```
 
 ## Common Commands
