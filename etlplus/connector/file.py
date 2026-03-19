@@ -23,9 +23,9 @@ from typing import overload
 
 from ..utils import coerce_dict
 from ..utils.types import StrAnyMap
-from .core import ConnectorBase
+from ._core import ConnectorBase
+from ._types import ConnectorType
 from .enums import DataConnectorType
-from .types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #
 

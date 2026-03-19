@@ -30,9 +30,9 @@ from ..utils import coerce_dict
 from ..utils import maybe_mapping
 from ..utils.types import StrAnyMap
 from ..utils.types import StrStrMap
-from .core import ConnectorBase
+from ._core import ConnectorBase
+from ._types import ConnectorType
 from .enums import DataConnectorType
-from .types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #
 
