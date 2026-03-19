@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.connector.core` module.
+:mod:`etlplus.connector._core` module.
 
 Protocols and base classes for connector implementations.
 """
@@ -14,7 +14,7 @@ from typing import Self
 from typing import runtime_checkable
 
 from ..utils.types import StrAnyMap
-from .types import ConnectorType
+from ._types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #
 

@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.connector.utils` module.
+:mod:`etlplus.connector._utils` module.
 
 Shared connector parsing helpers.
 """
