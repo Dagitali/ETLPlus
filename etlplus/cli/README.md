@@ -38,5 +38,5 @@ etlplus run --config configs/pipeline.yml --job file_to_file_customers
 ## See Also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
-- Command handlers in [handlers.py](handlers.py)
-- Command options in [options.py](options.py)
+- Command handlers in [_handlers.py](_handlers.py)
+- Command options in [_options.py](_options.py)
