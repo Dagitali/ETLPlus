@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.file.registry` module.
+:mod:`etlplus.file._registry` module.
 
 Class-based file handler registry.
 """
