@@ -64,6 +64,15 @@ class PipelineSchema:
 
 
 @dataclass(slots=True)
+class RealRemoteSource:
+    """Real cloud-backed source object seeded for one integration test."""
+
+    uri: str
+    location: StorageLocation
+    backend: Any
+
+
+@dataclass(slots=True)
 class RealRemoteTarget:
     """Real cloud-backed target allocated for one integration test."""
 
@@ -114,6 +123,19 @@ class PipelineConfigFactory(Protocol):
     ) -> PipelineConfig: ...
 
 
+class RealRemoteSourceFactory(Protocol):
+    """Create and seed a real cloud-backed source URI for one test."""
+
+    def __call__(
+        self,
+        env_name: str,
+        *,
+        payload: Any,
+        suffix: str,
+        file_format: str = 'json',
+    ) -> RealRemoteSource: ...
+
+
 class RealRemoteTargetFactory(Protocol):
     """Create a real cloud-backed target URI for one test."""
 
@@ -132,7 +154,17 @@ def _child_uri(base_uri: str, filename: str) -> str:
 
 
 def _require_env(name: str) -> str:
-    """Return one required env var or skip the integration test."""
+    """
+    Return one required env var or skip the integration test.
+
+    Example safe placeholder values:
+    - ``ETLPLUS_TEST_S3_URI=s3://my-etlplus-integration-bucket/cli``
+    - ``ETLPLUS_TEST_AZURE_BLOB_URI=azure-blob://etlplus-integration/cli``
+
+    Real values should be supplied from developer shell config, ``.envrc``,
+    VS Code test environment settings, or CI secret stores rather than being
+    committed to the repository.
+    """
     value = os.getenv(name)
     if not value:
         pytest.skip(f'{name} is not configured for cloud integration tests')
@@ -247,6 +279,36 @@ def pipeline_table_schemas_config_fixture(
         schema_name=schema_name,
         table_name=table_name,
     )
+
+
+@pytest.fixture(name='real_remote_source_factory')
+def real_remote_source_factory_fixture(
+    real_remote_target_factory: RealRemoteTargetFactory,
+) -> RealRemoteSourceFactory:
+    """Provision and seed env-gated real cloud source URIs for tests."""
+
+    def _build(
+        env_name: str,
+        *,
+        payload: Any,
+        suffix: str,
+        file_format: str = 'json',
+    ) -> RealRemoteSource:
+        target = real_remote_target_factory(
+            env_name,
+            suffix=suffix,
+            extension=file_format,
+        )
+        content = json.dumps(payload)
+        with target.backend.open(target.location, mode='wb') as handle:
+            handle.write(content.encode('utf-8'))
+        return RealRemoteSource(
+            uri=target.uri,
+            location=target.location,
+            backend=target.backend,
+        )
+
+    return _build
 
 
 @pytest.fixture(name='real_remote_target_factory')
