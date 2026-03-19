@@ -54,6 +54,22 @@ class _PandasReadSasStub:
         return {'ok': True}
 
 
+class _RemoteBinaryWriter(BytesIO):
+    """Capture binary payloads written through one storage-backed handle."""
+
+    def __init__(
+        self,
+        bucket: list[bytes],
+    ) -> None:
+        super().__init__()
+        self._bucket = bucket
+
+    def close(self) -> None:
+        """Persist captured bytes before closing the handle."""
+        self._bucket.append(self.getvalue())
+        super().close()
+
+
 class _RemoteTextWriter(StringIO):
     """Capture text written through one storage-backed file handle."""
 
@@ -131,6 +147,41 @@ class TestIoHelpers:
         ):
             with pytest.raises(TypeError, match=pattern):
                 mod.normalize_records(invalid_payload, 'CSV')
+
+    def test_read_and_write_bytes_support_remote_locations(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test binary helpers against one storage-backed remote location."""
+        writes: list[bytes] = []
+
+        class FakeBackend:
+            """Minimal remote backend for binary helper tests."""
+
+            def ensure_parent_dir(self, location: object) -> None:
+                """Accept parent preparation for remote writes."""
+                del location
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> BytesIO:
+                """Return one binary handle for the requested mode."""
+                del location, kwargs
+                if mode == 'rb':
+                    return BytesIO(b'payload')
+                assert mode == 'wb'
+                return _RemoteBinaryWriter(writes)
+
+        monkeypatch.setattr(mod, 'get_backend', lambda location: FakeBackend())
+
+        uri = 's3://bucket/data.bin'
+        mod.write_bytes(uri, b'payload')
+
+        assert writes == [b'payload']
+        assert mod.read_bytes(uri) == b'payload'
 
     def test_read_and_write_delimited(
         self,
