@@ -177,9 +177,8 @@ def _write_file_payload(
     format_hint : str | None
         Optional format hint for :class:`FileFormat`.
     """
-    file_path = Path(target)
     file_format = FileFormat.coerce(format_hint) if format_hint else None
-    File(file_path, file_format=file_format).write(payload)
+    File(target, file_format=file_format).write(payload)
 
 
 # SECTION: FUNCTIONS ======================================================== #
