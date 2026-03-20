@@ -212,12 +212,12 @@ RulesOption = Annotated[
     ),
 ]
 
-RunEventFormatOption = Annotated[
+StructuredEventFormatOption = Annotated[
     Literal['jsonl'] | None,
     typer.Option(
         '--event-format',
         metavar='FORMAT',
-        help='Emit structured run events to STDERR (currently: jsonl).',
+        help='Emit structured command events to STDERR (currently: jsonl).',
         show_default=False,
     ),
 ]
@@ -513,6 +513,7 @@ def extract_cmd(
     source: SourceArg = '-',
     source_format: SourceFormatOption = None,
     source_type: SourceTypeOption = None,
+    event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
     Extract data from files, databases, or REST APIs.
@@ -531,6 +532,8 @@ def extract_cmd(
     source_type : SourceTypeOption, optional
         Data source type. Overrides the inferred type (``api``, ``database``,
         ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+    event_format : StructuredEventFormatOption, optional
+        Structured event format emitted to STDERR. Default is ``None``.
 
     Returns
     -------
@@ -582,6 +585,7 @@ def extract_cmd(
         handlers.extract_handler(
             source_type=resolved_source_type,
             source=source,
+            event_format=event_format,
             format_hint=source_format,
             format_explicit=source_format is not None,
             pretty=state.pretty,
@@ -596,6 +600,7 @@ def load_cmd(
     target: TargetArg = '-',
     target_format: TargetFormatOption = None,
     target_type: TargetTypeOption = None,
+    event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
     Load data into a file, database, or REST API.
@@ -617,6 +622,8 @@ def load_cmd(
     target_type : TargetTypeOption, optional
         Data target type. Overrides the inferred type (``api``, ``database``,
         ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+    event_format : StructuredEventFormatOption, optional
+        Structured event format emitted to STDERR. Default is ``None``.
 
     Returns
     -------
@@ -689,6 +696,7 @@ def load_cmd(
             source=resolved_source_value,
             target_type=resolved_target_type,
             target=resolved_target,
+            event_format=event_format,
             source_format=source_format,
             target_format=target_format,
             format_explicit=target_format is not None,
@@ -767,7 +775,7 @@ def run_cmd(
     config: ConfigOption,
     job: JobOption = None,
     pipeline: PipelineOption = None,
-    event_format: RunEventFormatOption = None,
+    event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
     Execute an ETL job or pipeline from a YAML configuration.
@@ -782,7 +790,7 @@ def run_cmd(
         Name of the job to run. Default is ``None``.
     pipeline : PipelineOption, optional
         Name of the pipeline to run. Default is ``None``.
-    event_format : RunEventFormatOption, optional
+    event_format : StructuredEventFormatOption, optional
         Structured event format emitted to STDERR. Default is ``None``.
 
     Returns
@@ -822,6 +830,7 @@ def transform_cmd(
     target: TargetArg = '-',
     target_format: TargetFormatOption = None,
     target_type: TargetTypeOption = None,
+    event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
     Transform records using JSON-described operations.
@@ -851,6 +860,8 @@ def transform_cmd(
     target_type : TargetTypeOption, optional
         Data target type. Overrides the inferred type (``api``, ``database``,
         ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+    event_format : StructuredEventFormatOption, optional
+        Structured event format emitted to STDERR. Default is ``None``.
 
     Returns
     -------
@@ -922,6 +933,7 @@ def transform_cmd(
             source=resolved_source_value,
             operations=_parse_json_option(operations, '--operations'),
             target=resolved_target_value,
+            event_format=event_format,
             source_format=source_format,
             target_format=target_format,
             format_explicit=target_format is not None,
@@ -938,6 +950,7 @@ def validate_cmd(
     source_format: SourceFormatOption = None,
     source_type: SourceTypeOption = None,
     output: OutputOption = '-',
+    event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
     Validate data against JSON-described rules.
@@ -959,6 +972,8 @@ def validate_cmd(
         ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
     output : OutputOption, optional
         Output file for validated output (- for STDOUT). Default is ``None``.
+    event_format : StructuredEventFormatOption, optional
+        Structured event format emitted to STDERR. Default is ``None``.
 
     Returns
     -------
@@ -992,6 +1007,7 @@ def validate_cmd(
         handlers.validate_handler(
             source=source,
             rules=_parse_json_option(rules, '--rules'),
+            event_format=event_format,
             source_format=source_format,
             target=output,
             format_explicit=source_format is not None,
