@@ -19,8 +19,8 @@ authoritative enforcement layer.
 Use one simplified required-check baseline for both `main` and `develop`.
 
 Because `.github/workflows/ci.yml` uses matrices for Python versions, docs builders, and operating
-systems, GitHub exposes the required checks as the expanded matrix job names rather than the
-template names shown in the YAML. Select the exact expanded names in the GitHub ruleset UI.
+systems, GitHub exposes expanded matrix job names in the ruleset UI rather than the template names
+shown in the YAML. Select those expanded names when configuring required checks.
 
 ### Policy Categories
 
@@ -45,7 +45,7 @@ In the current CI workflow, the baseline above resolves to:
 - `Build distributions`
 
 Additional CI jobs are still useful, but they should usually stay advisory unless you intentionally
-want a stricter gate:
+want a stricter gate.
 
 ### Advisory Categories
 
@@ -57,7 +57,7 @@ want a stricter gate:
 
 ### Current Advisory Examples
 
-In the current CI workflow, those advisory categories currently resolve to:
+In the current CI workflow, those advisory categories resolve to:
 
 - `Lint on Python 3.14`
 - `Test on Python 3.14`
@@ -87,7 +87,10 @@ Apply this baseline to both protected branches:
 - If merge queue is enabled, keep the `merge_group` trigger in CI so the same checks run for queued
   merges
 
-Branch protections:
+In GitHub, these controls are typically split across pull request rules, status check rules, and
+branch protections.
+
+### Branch Protections
 
 - Block force pushes
 - Block branch deletion
@@ -153,14 +156,13 @@ With that configuration in place:
 - Contributors push to feature, bugfix, hotfix, release, chore, ci, or docs branches
 - Pull requests carry the CI results
 - `main` and `develop` cannot be updated directly by ordinary pushes
-- merges remain blocked until the required checks pass
+- Merges remain blocked until the required checks pass
 
 ## Maintenance Notes
 
 - GitHub required checks are tied to the exact job names emitted by the CI workflow after matrix
   expansion. In this repository, that means the ruleset should reference concrete names such as
-  `Lint on Python 3.13` rather than the template string `Lint on Python ${{ matrix.python-version
-  }}` shown in the YAML.
+  `Lint on Python 3.13`, not the template string shown in the YAML.
 - Treat version-specific and OS-specific names in this document as current examples, not permanent
   policy. When the support matrix changes, refresh the exact examples here and in the GitHub ruleset
   UI to match the emitted checks.
