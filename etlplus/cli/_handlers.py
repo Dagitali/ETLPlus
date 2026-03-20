@@ -10,9 +10,11 @@ import os
 import sys
 from collections.abc import Mapping
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 from typing import Literal
 from typing import cast
+from uuid import uuid4
 
 from .. import Config
 from ..database import load_table_spec
@@ -26,6 +28,8 @@ from ..ops import transform
 from ..ops import validate
 from ..ops.validate import FieldRulesDict
 from ..runtime import build_readiness_report
+from ..runtime.events import emit_structured_event
+from ..runtime.events import utc_now_iso
 from ..utils.types import JSONData
 from ..utils.types import TemplateKey
 from . import _io
@@ -506,6 +510,7 @@ def run_handler(
     config: str,
     job: str | None = None,
     pipeline: str | None = None,
+    event_format: str | None = None,
     pretty: bool = True,
 ) -> int:
     """
@@ -520,6 +525,9 @@ def run_handler(
         Default is ``None``.
     pipeline : str | None, optional
         Alias for *job*. Default is ``None``.
+    event_format : str | None, optional
+        Optional structured event format emitted to STDERR. Default is
+        ``None``.
     pretty : bool, optional
         Whether to pretty-print output. Default is ``True``.
 
@@ -527,13 +535,67 @@ def run_handler(
     -------
     int
         Zero on success.
+
+    Raises
+    ------
+    Exception
+        Re-raises the underlying execution error after emitting a failure
+        event when structured event output is enabled.
     """
     cfg = Config.from_yaml(config, substitute=True)
 
     job_name = job or pipeline
     if job_name:
-        result = run(job=job_name, config_path=config)
-        _io.emit_json({'status': 'ok', 'result': result}, pretty=pretty)
+        run_id = str(uuid4())
+        started_at = utc_now_iso()
+        started_perf = perf_counter()
+        emit_structured_event(
+            {
+                'event': 'run.started',
+                'command': 'run',
+                'config_path': config,
+                'job': job_name,
+                'run_id': run_id,
+                'timestamp': started_at,
+            },
+            event_format=event_format,
+        )
+        try:
+            result = run(job=job_name, config_path=config)
+        except Exception as exc:
+            duration_ms = int((perf_counter() - started_perf) * 1000)
+            emit_structured_event(
+                {
+                    'duration_ms': duration_ms,
+                    'error_message': str(exc),
+                    'error_type': type(exc).__name__,
+                    'event': 'run.failed',
+                    'job': job_name,
+                    'run_id': run_id,
+                    'status': 'error',
+                    'timestamp': utc_now_iso(),
+                },
+                event_format=event_format,
+            )
+            raise
+
+        duration_ms = int((perf_counter() - started_perf) * 1000)
+        emit_structured_event(
+            {
+                'duration_ms': duration_ms,
+                'event': 'run.completed',
+                'job': job_name,
+                'result_status': result.get('status'),
+                'run_id': run_id,
+                'status': 'ok',
+                'timestamp': utc_now_iso(),
+            },
+            event_format=event_format,
+        )
+        _io.emit_json(
+            {'run_id': run_id, 'status': 'ok', 'result': result},
+            pretty=pretty,
+        )
         return 0
 
     _io.emit_json(_pipeline_summary(cfg), pretty=pretty)
