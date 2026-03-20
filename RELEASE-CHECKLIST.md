@@ -90,8 +90,10 @@ additional polish still recommended before the first stable `v1.0.0` tag.
 - Runtime execution hygiene progress on the current branch includes:
   - Shared runtime logging policy and config precedence documentation
   - `check --readiness` runtime/config checks with optional dependency and connector-gap detection
-  - `run --event-format jsonl` structured execution events on STDERR for the supported `run` CLI
-    surface
+  - Stable `etlplus.event.v1` structured execution events on STDERR for supported execution
+    commands: `extract`, `load`, `run`, `transform`, and `validate`
+  - Local run-history persistence keyed by `run_id` for `etlplus run`, backed by SQLite by default
+    with JSONL fallback support
 
 ## Strongly Recommended Before `v1.0.0`
 
