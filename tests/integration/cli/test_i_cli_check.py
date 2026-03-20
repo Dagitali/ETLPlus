@@ -94,6 +94,98 @@ class TestCliCheck:
         )
         assert substitution_check['status'] == 'ok'
 
+    def test_readiness_rejects_inspection_flags(
+        self,
+        cli_invoke: CliInvoke,
+    ) -> None:
+        """Test that readiness mode cannot be mixed with inspection flags."""
+        code, _out, err = cli_invoke(('check', '--readiness', '--jobs'))
+        assert code == 2
+        assert '--readiness cannot be combined with inspection flags' in err
+
+    def test_readiness_reports_connector_gaps(
+        self,
+        tmp_path: Path,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+    ) -> None:
+        """Test that readiness reports connector-specific config gaps."""
+        config_path = tmp_path / 'check_readiness_connector_gap.yml'
+        config_path.write_text(
+            dedent(
+                """
+                name: Readiness Check
+                targets:
+                  - name: warehouse
+                    type: database
+                """,
+            ).strip(),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            ('check', '--readiness', '--config', str(config_path)),
+        )
+        assert code == 1
+        assert err == ''
+        payload = parse_json_output(out)
+        connector_check = next(
+            check
+            for check in payload['checks']
+            if check['name'] == 'connector-readiness'
+        )
+        assert connector_check['status'] == 'error'
+        assert connector_check['gaps'][0]['issue'] == 'missing connection_string'
+
+    def test_readiness_reports_missing_storage_extra(
+        self,
+        tmp_path: Path,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that readiness flags missing optional storage dependencies."""
+        from etlplus.runtime import readiness as readiness_module
+
+        original_package_available = readiness_module._package_available
+        monkeypatch.setattr(
+            readiness_module,
+            '_package_available',
+            lambda module_name: (
+                False
+                if module_name == 'boto3'
+                else original_package_available(module_name)
+            ),
+        )
+        config_path = tmp_path / 'check_readiness_missing_storage_extra.yml'
+        config_path.write_text(
+            dedent(
+                """
+                name: Readiness Check
+                targets:
+                  - name: out
+                    type: file
+                    format: json
+                    path: "s3://bucket/out.json"
+                """,
+            ).strip(),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            ('check', '--readiness', '--config', str(config_path)),
+        )
+        assert code == 1
+        assert err == ''
+        payload = parse_json_output(out)
+        dependency_check = next(
+            check
+            for check in payload['checks']
+            if check['name'] == 'optional-dependencies'
+        )
+        assert dependency_check['status'] == 'error'
+        assert dependency_check['missing_requirements'][0]['missing_package'] == 'boto3'
+
     def test_readiness_reports_unresolved_substitutions(
         self,
         tmp_path: Path,
@@ -137,15 +229,6 @@ class TestCliCheck:
         )
         assert substitution_check['status'] == 'error'
         assert 'ETLPLUS_READINESS_TOKEN' in substitution_check['unresolved_tokens']
-
-    def test_readiness_rejects_inspection_flags(
-        self,
-        cli_invoke: CliInvoke,
-    ) -> None:
-        """Test that readiness mode cannot be mixed with inspection flags."""
-        code, _out, err = cli_invoke(('check', '--readiness', '--jobs'))
-        assert code == 2
-        assert '--readiness cannot be combined with inspection flags' in err
 
     def test_readiness_runtime_only(
         self,
