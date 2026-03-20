@@ -16,13 +16,18 @@ authoritative enforcement layer.
 
 ## Recommended Required Checks
 
-Use one simplified required-check baseline for both `main` and `develop`.
+Choose the required-check baseline that matches how the repository accepts pull requests.
 
 Because `.github/workflows/ci.yml` uses matrices for Python versions, docs builders, and operating
 systems, GitHub exposes expanded matrix job names in the ruleset UI rather than the template names
 shown in the YAML. Select those expanded names when configuring required checks.
 
-### Policy Categories
+### Internal Or Trusted Baseline
+
+Use this baseline when protected branches primarily receive pushes and pull requests from trusted
+repository collaborators, where the distribution build job is expected to run.
+
+#### Policy Categories
 
 - Lint on the primary supported Python line
 - Tests on the primary supported Python line
@@ -33,7 +38,7 @@ shown in the YAML. Select those expanded names when configuring required checks.
 
 These categories define the minimum merge gate for protected branches.
 
-### Current Resolved Check Names
+#### Current Resolved Check Names
 
 In the current CI workflow, the baseline above resolves to:
 
@@ -43,6 +48,29 @@ In the current CI workflow, the baseline above resolves to:
 - `Build docs (html)`
 - `Smoke install on macos-latest`
 - `Build distributions`
+
+### Public Or Fork-Friendly Baseline
+
+Use this baseline when protected branches regularly receive pull requests from forks, because the
+`Build distributions` job is conditionally skipped for fork-origin pull requests in CI.
+
+#### Policy Categories
+
+- Lint on the primary supported Python line
+- Tests on the primary supported Python line
+- Type-checking on the primary supported Python line
+- HTML docs build
+- One non-Linux smoke install job
+
+#### Current Resolved Check Names
+
+In the current CI workflow, the fork-friendly baseline resolves to:
+
+- `Lint on Python 3.13`
+- `Test on Python 3.13`
+- `Type-check on Python 3.13`
+- `Build docs (html)`
+- `Smoke install on macos-latest`
 
 Additional CI jobs are still useful, but they should usually stay advisory unless you intentionally
 want a stricter gate.
@@ -107,7 +135,14 @@ Target:
 Branch-specific additions:
 
 - Require `2` approvals
-- Require Code Owners review if `CODEOWNERS` is later added
+- Require Code Owners review
+
+Recommended baseline:
+
+- Prefer the internal or trusted baseline when `main` is maintained by repository collaborators and
+  release-gating checks are expected to run.
+- If `main` regularly accepts fork-origin pull requests, use the public or fork-friendly baseline
+  instead.
 
 Optional hardening:
 
@@ -125,9 +160,14 @@ Branch-specific additions:
 
 - Require `1` approval
 
+Recommended baseline:
+
+- Prefer the public or fork-friendly baseline unless `develop` is restricted to trusted in-repo
+  collaborators.
+
 Optional hardening:
 
-- Require Code Owners review for sensitive paths if `CODEOWNERS` is later added
+- Require Code Owners review for sensitive paths
 - Require merge queue if `develop` receives enough concurrent PR traffic to make merge-order
   conflicts common
 
@@ -145,11 +185,12 @@ In GitHub:
 4. Create one ruleset for `main` and one for `develop`.
 5. Target the corresponding branch name.
 6. Enable `Require a pull request before merging`.
-7. Enable `Require status checks to pass before merging`.
-8. Enable `Require branches to be up to date before merging`.
-9. Enable `Block force pushes`.
-10. Enable `Block deletions`.
-11. Remove bypass actors unless there is a strict operational need.
+7. For `main`, enable `Require review from Code Owners`.
+8. Enable `Require status checks to pass before merging`.
+9. Enable `Require branches to be up to date before merging`.
+10. Enable `Block force pushes`.
+11. Enable `Block deletions`.
+12. Remove bypass actors unless there is a strict operational need.
 
 With that configuration in place:
 
@@ -166,9 +207,7 @@ With that configuration in place:
 - Treat version-specific and OS-specific names in this document as current examples, not permanent
   policy. When the support matrix changes, refresh the exact examples here and in the GitHub ruleset
   UI to match the emitted checks.
-- The `Build distributions` job is conditionally skipped for pull requests from forks. If
-  fork-origin pull requests are a normal part of your workflow, confirm how your GitHub ruleset
-  treats skipped required checks before making `Build distributions` mandatory, or relax that
-  requirement for branches that regularly accept external fork PRs.
+- The `Build distributions` job is conditionally skipped for pull requests from forks. Prefer the
+  public or fork-friendly baseline for branches that regularly accept external fork PRs.
 - The local `no-commit-to-branch` pre-commit hook should protect `main` and `develop`, but it is
   only a contributor convenience. GitHub rulesets remain authoritative.
