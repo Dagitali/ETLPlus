@@ -82,6 +82,7 @@ additional polish still recommended before the first stable `v1.0.0` tag.
 - The stable-surface trimming work now treats CLI support modules and command wiring, storage
   registry/base plumbing, connector support modules, the file-handler registry, database typing
   helpers, and API request manager plumbing as protected underscore-prefixed implementation modules.
+- The documented stable CLI surface keeps readiness under `check --readiness`.
 
 ## Strongly Recommended Before `v1.0.0`
 
