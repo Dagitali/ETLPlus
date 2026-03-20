@@ -10,16 +10,21 @@ import os
 import re
 import sys
 from collections.abc import Mapping
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 from typing import Final
 from typing import Literal
 from typing import cast
+from urllib.parse import urlsplit
 
 from .. import __version__
 from ..config import Config
+from ..connector import Connector
+from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
+from ..storage import StorageScheme
 from ..utils import deep_substitute
 from ..utils import maybe_mapping
 from ..utils.types import StrAnyMap
@@ -42,9 +47,41 @@ type CheckStatus = Literal['ok', 'warn', 'error', 'skipped']
 
 
 _TOKEN_PATTERN: Final[re.Pattern[str]] = re.compile(r'\$\{([^}]+)\}')
+_FORMAT_EXTRA_REQUIREMENTS: Final[
+    dict[str, tuple[tuple[str, ...], str, str | None]]
+] = {
+    'dta': (('pyreadstat',), 'pyreadstat', 'file'),
+    'hdf5': (('tables',), 'tables', None),
+    'rda': (('pyreadr',), 'pyreadr', 'file'),
+    'rds': (('pyreadr',), 'pyreadr', 'file'),
+    'sav': (('pyreadstat',), 'pyreadstat', 'file'),
+    'zsav': (('pyreadstat',), 'pyreadstat', 'file'),
+}
+_SCHEME_EXTRA_REQUIREMENTS: Final[
+    dict[str, tuple[tuple[str, ...], str, str | None]]
+] = {
+    'abfs': (('azure.storage.filedatalake',), 'azure-storage-file-datalake', 'storage'),
+    'azure-blob': (('azure.storage.blob',), 'azure-storage-blob', 'storage'),
+    's3': (('boto3',), 'boto3', 'storage'),
+}
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _coerce_storage_scheme(
+    path: str,
+) -> str | None:
+    """Return one normalized storage scheme for *path* when present."""
+    if '://' not in path:
+        return None
+    parsed = urlsplit(path)
+    if not parsed.scheme:
+        return None
+    try:
+        return str(StorageScheme.coerce(parsed.scheme))
+    except ValueError:
+        return parsed.scheme.lower()
 
 
 def _collect_substitution_tokens(
@@ -69,6 +106,16 @@ def _collect_substitution_tokens(
 
     _walk(value)
     return tokens
+
+
+def _iter_connectors(
+    cfg: Config,
+) -> list[tuple[str, Connector]]:
+    """Return source/target connectors tagged with their role."""
+    connectors: list[tuple[str, Connector]] = []
+    connectors.extend(('source', connector) for connector in cfg.sources)
+    connectors.extend(('target', connector) for connector in cfg.targets)
+    return connectors
 
 
 def _load_raw_config(
@@ -110,6 +157,16 @@ def _overall_status(
     return 'ok'
 
 
+def _package_available(
+    module_name: str,
+) -> bool:
+    """Return whether *module_name* is importable without importing it."""
+    try:
+        return find_spec(module_name) is not None
+    except (ImportError, ModuleNotFoundError, ValueError):
+        return False
+
+
 def _supported_python_check() -> dict[str, Any]:
     """Return runtime Python compatibility check."""
     version = (
@@ -132,6 +189,192 @@ def _supported_python_check() -> dict[str, Any]:
         ),
         version=version,
     )
+
+
+def _connector_gap_rows(
+    cfg: Config,
+) -> list[dict[str, str]]:
+    """Return connector configuration gaps that will block execution."""
+    gaps: list[dict[str, str]] = []
+    for role, connector in _iter_connectors(cfg):
+        connector_name = str(getattr(connector, 'name', '<unnamed>'))
+        connector_type = str(getattr(connector, 'type', ''))
+
+        if DataConnectorType.coerce(connector_type) == DataConnectorType.FILE:
+            path = getattr(connector, 'path', None)
+            if not path:
+                gaps.append(
+                    {
+                        'connector': connector_name,
+                        'issue': 'missing path',
+                        'role': role,
+                        'type': connector_type,
+                    },
+                )
+        elif DataConnectorType.coerce(connector_type) == DataConnectorType.API:
+            url = getattr(connector, 'url', None)
+            api_ref = getattr(connector, 'api', None)
+            if not url and not api_ref:
+                gaps.append(
+                    {
+                        'connector': connector_name,
+                        'issue': 'missing url or api reference',
+                        'role': role,
+                        'type': connector_type,
+                    },
+                )
+            elif api_ref and api_ref not in cfg.apis:
+                gaps.append(
+                    {
+                        'connector': connector_name,
+                        'issue': f'unknown api reference: {api_ref}',
+                        'role': role,
+                        'type': connector_type,
+                    },
+                )
+        elif DataConnectorType.coerce(connector_type) == DataConnectorType.DATABASE:
+            connection_string = getattr(connector, 'connection_string', None)
+            if not connection_string:
+                gaps.append(
+                    {
+                        'connector': connector_name,
+                        'issue': 'missing connection_string',
+                        'role': role,
+                        'type': connector_type,
+                    },
+                )
+
+    return gaps
+
+
+def _missing_requirement_rows(
+    *,
+    cfg: Config,
+) -> list[dict[str, str]]:
+    """Return missing optional dependency rows for configured connectors."""
+    rows: list[dict[str, str]] = []
+
+    for role, connector in _iter_connectors(cfg):
+        connector_name = str(getattr(connector, 'name', '<unnamed>'))
+        path = getattr(connector, 'path', None)
+        format_name = str(getattr(connector, 'format', '') or '').lower()
+
+        if path:
+            scheme = _coerce_storage_scheme(path)
+            if scheme in _SCHEME_EXTRA_REQUIREMENTS:
+                module_names, pip_name, extra_name = _SCHEME_EXTRA_REQUIREMENTS[scheme]
+                if not any(
+                    _package_available(module_name) for module_name in module_names
+                ):
+                    rows.append(
+                        {
+                            'connector': connector_name,
+                            'extra': extra_name or '',
+                            'missing_package': pip_name,
+                            'reason': f'{scheme} storage path requires {pip_name}',
+                            'role': role,
+                        },
+                    )
+
+        if format_name == 'nc':
+            has_xarray = _package_available('xarray')
+            has_engine = _package_available('netCDF4') or _package_available('h5netcdf')
+            if not (has_xarray and has_engine):
+                rows.append(
+                    {
+                        'connector': connector_name,
+                        'extra': 'file',
+                        'missing_package': 'xarray/netCDF4',
+                        'reason': 'nc format requires xarray and netCDF4 or h5netcdf',
+                        'role': role,
+                    },
+                )
+            continue
+
+        if format_name in _FORMAT_EXTRA_REQUIREMENTS:
+            module_names, pip_name, extra_name = _FORMAT_EXTRA_REQUIREMENTS[format_name]
+            if not any(_package_available(module_name) for module_name in module_names):
+                rows.append(
+                    {
+                        'connector': connector_name,
+                        'extra': extra_name or '',
+                        'missing_package': pip_name,
+                        'reason': f'{format_name} format requires {pip_name}',
+                        'role': role,
+                    },
+                )
+
+    unique_rows: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str, str, str]] = set()
+    for row in rows:
+        key = (
+            row['connector'],
+            row['role'],
+            row['missing_package'],
+            row['reason'],
+            row['extra'],
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_rows.append(row)
+    return unique_rows
+
+
+def _connector_readiness_checks(
+    cfg: Config,
+) -> list[dict[str, Any]]:
+    """Return connector configuration and dependency readiness checks."""
+    checks: list[dict[str, Any]] = []
+
+    gaps = _connector_gap_rows(cfg)
+    if gaps:
+        checks.append(
+            _make_check(
+                'connector-readiness',
+                'error',
+                (
+                    'One or more configured connectors are missing required '
+                    'runtime fields.'
+                ),
+                gaps=gaps,
+            ),
+        )
+    else:
+        checks.append(
+            _make_check(
+                'connector-readiness',
+                'ok',
+                'Configured connectors include the required runtime fields.',
+            ),
+        )
+
+    missing_requirements = _missing_requirement_rows(cfg=cfg)
+    if missing_requirements:
+        checks.append(
+            _make_check(
+                'optional-dependencies',
+                'error',
+                (
+                    'Configured connectors require optional dependencies that '
+                    'are not installed.'
+                ),
+                missing_requirements=missing_requirements,
+            ),
+        )
+    else:
+        checks.append(
+            _make_check(
+                'optional-dependencies',
+                'ok',
+                (
+                    'No missing optional dependencies were detected for '
+                    'configured connectors.'
+                ),
+            ),
+        )
+
+    return checks
 
 
 def _config_checks(
@@ -188,7 +431,7 @@ def _config_checks(
         )
         return checks
 
-    Config.from_dict(cast(StrAnyMap, resolved))
+    resolved_cfg = Config.from_dict(cast(StrAnyMap, resolved))
     checks.append(
         _make_check(
             'config-substitution',
@@ -196,6 +439,7 @@ def _config_checks(
             'Configuration substitutions resolved successfully.',
         ),
     )
+    checks.extend(_connector_readiness_checks(resolved_cfg))
     return checks
 
 
