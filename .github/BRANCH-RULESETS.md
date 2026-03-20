@@ -22,7 +22,7 @@ Because `.github/workflows/ci.yml` uses matrices for Python versions, docs build
 systems, GitHub exposes the required checks as the expanded matrix job names rather than the
 template names shown in the YAML. Select the exact expanded names in the GitHub ruleset UI.
 
-Recommended baseline categories:
+### Policy Categories
 
 - Lint on the primary supported Python line
 - Tests on the primary supported Python line
@@ -31,7 +31,11 @@ Recommended baseline categories:
 - One non-Linux smoke install job
 - Distribution build validation
 
-In the current CI workflow, that baseline currently resolves to:
+These categories define the minimum merge gate for protected branches.
+
+### Current Resolved Check Names
+
+In the current CI workflow, the baseline above resolves to:
 
 - `Lint on Python 3.13`
 - `Test on Python 3.13`
@@ -40,18 +44,20 @@ In the current CI workflow, that baseline currently resolves to:
 - `Smoke install on macos-latest`
 - `Build distributions`
 
-These are the recommended minimum merge gate for protected branches.
-
 Additional CI jobs are still useful, but they should usually stay advisory unless you intentionally
 want a stricter gate:
 
-- lint on additional supported Python lines
-- tests on additional supported Python lines
-- docstring linting
-- non-HTML docs builders
-- the second cross-platform smoke install job
+### Advisory Categories
 
-In the current CI workflow, those advisory examples resolve to:
+- Lint on additional supported Python lines
+- Tests on additional supported Python lines
+- Docstring linting
+- Non-HTML docs builders
+- The second cross-platform smoke install job
+
+### Current Advisory Examples
+
+In the current CI workflow, those advisory categories currently resolve to:
 
 - `Lint on Python 3.14`
 - `Test on Python 3.14`
@@ -115,11 +121,10 @@ Target:
 Branch-specific additions:
 
 - Require `1` approval
-- Require Code Owners review for sensitive paths if `CODEOWNERS` is later added
 
 Optional hardening:
 
-- Require Code Owners review for sensitive paths
+- Require Code Owners review for sensitive paths if `CODEOWNERS` is later added
 - Require merge queue if `develop` receives enough concurrent PR traffic to make merge-order
   conflicts common
 
