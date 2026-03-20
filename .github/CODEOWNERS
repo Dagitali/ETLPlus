@@ -1,0 +1,17 @@
+# Repository automation and governance
+/.github/                         @djrlj694
+
+# Release and packaging surfaces
+/Makefile                         @djrlj694
+/MANIFEST.in                      @djrlj694
+/pyproject.toml                   @djrlj694
+/RELEASE-CHECKLIST.md             @djrlj694
+/setup.py                         @djrlj694
+/tools/check_release_artifacts.py @djrlj694
+
+# Security and community health
+/SECURITY.md                      @djrlj694
+/SUPPORT.md                       @djrlj694
+
+# Published documentation
+/docs/source/                     @djrlj694
