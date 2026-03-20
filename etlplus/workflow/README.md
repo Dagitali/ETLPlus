@@ -17,7 +17,7 @@ Back to project overview: see the top-level [README](../../README.md).
 ## Supported Configuration Types
 
 - **Connector**: Connection details for databases, files, or APIs
-- **Job**: ETL job definitions and scheduling
+- **Job**: ETL job definitions, dependencies, and execution references
 - **Pipeline**: End-to-end pipeline configuration
 - **Profile**: User or environment-specific settings
 
