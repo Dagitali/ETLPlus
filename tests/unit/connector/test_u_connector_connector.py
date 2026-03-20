@@ -6,8 +6,7 @@ Unit tests for :mod:`etlplus.connector.connector`.
 
 from __future__ import annotations
 
-from etlplus.connector.connector import Connector
-
+from etlplus.connector._connector import Connector
 from etlplus.connector.api import ConnectorApi
 from etlplus.connector.database import ConnectorDb
 from etlplus.connector.file import ConnectorFile
@@ -42,6 +41,6 @@ class TestConnectorAlias:
         Test that the connector module only exports the :class:`Connector`
         alias.
         """
-        from etlplus.connector import connector as connector_mod
+        from etlplus.connector import _connector as connector_mod
 
         assert connector_mod.__all__ == ['Connector']
