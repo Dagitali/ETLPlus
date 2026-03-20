@@ -783,6 +783,42 @@ class TestRunHandler:
             'from_yaml',
             lambda path, substitute: dummy_cfg,
         )
+        monkeypatch.setattr(handlers, 'create_run_id', lambda: 'run-123')
+
+        history_calls: dict[str, object] = {}
+
+        class _FakeHistoryStore:
+            def record_run_started(self, record: object) -> None:
+                history_calls['started'] = record
+
+            def record_run_finished(
+                self,
+                run_id: str,
+                *,
+                status: str,
+                finished_at: str,
+                duration_ms: int,
+                result_summary: object | None = None,
+                error_type: str | None = None,
+                error_message: str | None = None,
+                error_traceback: str | None = None,
+            ) -> None:
+                history_calls['finished'] = {
+                    'duration_ms': duration_ms,
+                    'error_message': error_message,
+                    'error_traceback': error_traceback,
+                    'error_type': error_type,
+                    'finished_at': finished_at,
+                    'result_summary': result_summary,
+                    'run_id': run_id,
+                    'status': status,
+                }
+
+        monkeypatch.setattr(
+            handlers,
+            'open_history_store',
+            lambda: _FakeHistoryStore(),
+        )
         run_calls: dict[str, object] = {}
 
         def fake_run(*, job: str, config_path: str) -> dict[str, object]:
@@ -800,9 +836,24 @@ class TestRunHandler:
             == 0
         )
         assert run_calls['params'] == ('job1', 'pipeline.yml')
+        assert cast(Any, history_calls['started']).run_id == 'run-123'
+        assert history_calls['finished'] == {
+            'duration_ms': ANY,
+            'error_message': None,
+            'error_traceback': None,
+            'error_type': None,
+            'finished_at': ANY,
+            'result_summary': {'job': 'job1', 'ok': True},
+            'run_id': 'run-123',
+            'status': 'succeeded',
+        }
         assert_emit_json(
             capture_io,
-            {'status': 'ok', 'result': {'job': 'job1', 'ok': True}},
+            {
+                'run_id': 'run-123',
+                'status': 'ok',
+                'result': {'job': 'job1', 'ok': True},
+            },
             pretty=False,
         )
 

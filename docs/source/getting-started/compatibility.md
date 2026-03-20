@@ -1,7 +1,7 @@
 # Compatibility
 
 ETLPlus documents a narrow, explicit support window. The statements on this page describe the
-supported release contract that the project intends to carry into the stable `v1.0.0` line.
+supported release contract for the stable `v1.x` line.
 
 ## Python support
 

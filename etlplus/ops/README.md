@@ -6,7 +6,7 @@ runner.
 - Extract data from files, APIs, and databases (database extract is a placeholder today)
 - Validate JSON-like data with schema-style rules
 - Transform records (filter, map, select, sort, aggregate)
-- Load data into files and APIs (database load is a placeholder today)
+- Load data into files and APIs (database execution paths remain placeholders today)
 
 Back to project overview: see the top-level [README](../../README.md).
 

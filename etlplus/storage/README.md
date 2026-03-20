@@ -26,8 +26,8 @@ Back to project overview: see the top-level [README](../../README.md).
 ## Relationship to `etlplus.file`
 
 `etlplus.file` remains the format layer for CSV, JSON, Parquet, and similar handlers.
-`etlplus.storage` is the storage layer for local paths and future remote backends such as FTP,
-S3-compatible object storage, and Azure storage services.
+`etlplus.storage` is the storage layer for local paths, supported remote backends such as
+S3-compatible object storage and Azure storage services, and placeholder backends such as FTP.
 
 The top-level `etlplus.file.File` wrapper now stages remote objects through
 `etlplus.storage`, so URIs such as `s3://bucket/data.json`,
