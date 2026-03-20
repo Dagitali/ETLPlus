@@ -20,6 +20,8 @@ Subcommands
 Notes
 -----
 - Use ``-`` to read from STDIN or to write to STDOUT.
+- Command ``check --readiness`` performs lightweight runtime and config
+    readiness checks.
 - Commands ``extract`` and ``transform`` support the command-line option
     ``--source-type`` to override inferred resource types.
 - Commands ``transform`` and ``load`` support the command-line option
@@ -37,6 +39,7 @@ import typer
 
 from .. import __version__
 from ..file import FileFormat
+from ..runtime import configure_logging
 from . import _handlers as handlers
 from ._constants import CLI_DESCRIPTION
 from ._constants import CLI_EPILOG
@@ -61,6 +64,16 @@ __all__ = ['app']
 
 # SECTION: TYPE ALIASES ==================================================== #
 
+
+CheckConfigOption = Annotated[
+    str | None,
+    typer.Option(
+        '--config',
+        metavar='PATH',
+        help='Path to YAML-formatted configuration file.',
+        show_default=False,
+    ),
+]
 
 ConfigOption = Annotated[
     str,
@@ -121,6 +134,14 @@ PipelinesOption = Annotated[
     typer.Option(
         '--pipelines',
         help='List ETL pipelines',
+    ),
+]
+
+ReadinessOption = Annotated[
+    bool,
+    typer.Option(
+        '--readiness',
+        help='Run runtime and optional config readiness checks.',
     ),
 ]
 
@@ -388,6 +409,7 @@ def _root(
         When ``--version`` is provided or no subcommand is invoked.
     """
     ctx.obj = CliState(pretty=pretty, quiet=quiet, verbose=verbose)
+    configure_logging(quiet=quiet, verbose=verbose, force=True)
 
     if version:
         typer.echo(f'etlplus {__version__}')
@@ -401,9 +423,10 @@ def _root(
 @app.command('check')
 def check_cmd(
     ctx: typer.Context,
-    config: ConfigOption,
+    config: CheckConfigOption = None,
     jobs: JobsOption = False,
     pipelines: PipelinesOption = False,
+    readiness: ReadinessOption = False,
     sources: SourcesOption = False,
     summary: SummaryOption = False,
     targets: TargetsOption = False,
@@ -416,12 +439,15 @@ def check_cmd(
     ----------
     ctx : typer.Context
         The Typer context.
-    config : ConfigOption
+    config : CheckConfigOption, optional
         Path to pipeline YAML configuration file.
     jobs : JobsOption, optional
         List available job names and exit. Default is ``False``.
     pipelines : PipelinesOption, optional
         List ETL pipelines. Default is ``False``.
+    readiness : ReadinessOption, optional
+        Run runtime and optional config readiness checks. Default is
+        ``False``.
     sources : SourcesOption, optional
         List data sources. Default is ``False``.
     summary : SummaryOption, optional
@@ -442,8 +468,16 @@ def check_cmd(
     typer.Exit
         When argument order is invalid or required arguments are missing.
     """
-    # Argument order enforcement.
-    if not config:
+    inspection_requested = any((jobs, pipelines, sources, summary, targets, transforms))
+
+    if readiness and inspection_requested:
+        typer.echo(
+            'Error: --readiness cannot be combined with inspection flags.',
+            err=True,
+        )
+        raise typer.Exit(2)
+
+    if not readiness and not config:
         typer.echo("Error: Missing required option '--config'.", err=True)
         raise typer.Exit(2)
 
@@ -453,6 +487,7 @@ def check_cmd(
             config=config,
             jobs=jobs,
             pipelines=pipelines,
+            readiness=readiness,
             sources=sources,
             summary=summary,
             targets=targets,
