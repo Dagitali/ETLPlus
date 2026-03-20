@@ -37,6 +37,8 @@ on:
       - '**/docs/**'
   pull_request:
     branches: [ main, develop ]
+  merge_group:
+    branches: [ main, develop ]
 
 permissions: {}
 
@@ -103,7 +105,8 @@ jobs:
             --cov-report=xml \
             tests/
       - name: Upload coverage reports to Codecov
-        if: matrix.python-version == '3.13'
+        if: github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de  # Pinned v5.5.2
         with:
           fail_ci_if_error: true
