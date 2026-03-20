@@ -40,15 +40,20 @@ reproducible bug reports are often as valuable as small code changes.
 
 ## Merge Request Process
 
-1. Update the [README] with details of changes to the interface. This includes new environment
+1. Do not commit or push directly to the protected `main` or `develop` branches. Work from a topic
+   branch and open a pull request instead.
+2. Update the [README] with details of changes to the interface. This includes new environment
    variables, exposed ports, useful file locations and container parameters.
-2. For release-affecting changes (packaging, CI, published docs, install snippets, or stable public
+3. For release-affecting changes (packaging, CI, published docs, install snippets, or stable public
    surface decisions), consult [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
-3. ETLPlus uses `setuptools-scm`, so do not hand-edit version numbers in `pyproject.toml`,
+4. For the protected-branch ruleset, required CI checks, and the exact GitHub settings to disable
+   direct pushes, consult [.github/BRANCH-RULESETS.md](.github/BRANCH-RULESETS.md).
+5. ETLPlus uses `setuptools-scm`, so do not hand-edit version numbers in `pyproject.toml`,
    `setup.py`, or `etlplus/__version__.py`. If a change affects recorded version output, refresh the
    generated demo/version snippets instead.
-4. You may merge in the merge request once you have the sign-off of two other developers. If you do
-   not have permission to do that, you may request the second reviewer to merge it for you.
+6. You may merge once the protected-branch ruleset has been satisfied. The recommended baseline is
+   one approval for `develop` and two approvals (one approval for small teams) for `main`. If you do
+   not have permission to merge, request a maintainer review and handoff.
 
 ## Code of Conduct
 
