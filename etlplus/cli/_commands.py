@@ -212,6 +212,16 @@ RulesOption = Annotated[
     ),
 ]
 
+RunEventFormatOption = Annotated[
+    Literal['jsonl'] | None,
+    typer.Option(
+        '--event-format',
+        metavar='FORMAT',
+        help='Emit structured run events to STDERR (currently: jsonl).',
+        show_default=False,
+    ),
+]
+
 SourceArg = Annotated[
     str,
     typer.Argument(
@@ -757,6 +767,7 @@ def run_cmd(
     config: ConfigOption,
     job: JobOption = None,
     pipeline: PipelineOption = None,
+    event_format: RunEventFormatOption = None,
 ) -> int:
     """
     Execute an ETL job or pipeline from a YAML configuration.
@@ -771,6 +782,8 @@ def run_cmd(
         Name of the job to run. Default is ``None``.
     pipeline : PipelineOption, optional
         Name of the pipeline to run. Default is ``None``.
+    event_format : RunEventFormatOption, optional
+        Structured event format emitted to STDERR. Default is ``None``.
 
     Returns
     -------
@@ -793,6 +806,7 @@ def run_cmd(
             config=config,
             job=job,
             pipeline=pipeline,
+            event_format=event_format,
             pretty=state.pretty,
         ),
     )
