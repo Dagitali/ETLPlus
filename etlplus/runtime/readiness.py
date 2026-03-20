@@ -113,9 +113,7 @@ def _overall_status(
 def _supported_python_check() -> dict[str, Any]:
     """Return runtime Python compatibility check."""
     version = (
-        f'{sys.version_info.major}.'
-        f'{sys.version_info.minor}.'
-        f'{sys.version_info.micro}'
+        f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}'
     )
     supported = (3, 13) <= sys.version_info[:2] < (3, 15)
     if supported:
