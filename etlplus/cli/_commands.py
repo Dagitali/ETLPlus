@@ -20,6 +20,8 @@ Subcommands
 Notes
 -----
 - Use ``-`` to read from STDIN or to write to STDOUT.
+- Command ``check --readiness`` performs lightweight runtime and config
+    readiness checks.
 - Commands ``extract`` and ``transform`` support the command-line option
     ``--source-type`` to override inferred resource types.
 - Commands ``transform`` and ``load`` support the command-line option
@@ -37,6 +39,7 @@ import typer
 
 from .. import __version__
 from ..file import FileFormat
+from ..runtime import configure_logging
 from . import _handlers as handlers
 from ._constants import CLI_DESCRIPTION
 from ._constants import CLI_EPILOG
@@ -61,6 +64,16 @@ __all__ = ['app']
 
 # SECTION: TYPE ALIASES ==================================================== #
 
+
+CheckConfigOption = Annotated[
+    str | None,
+    typer.Option(
+        '--config',
+        metavar='PATH',
+        help='Path to YAML-formatted configuration file.',
+        show_default=False,
+    ),
+]
 
 ConfigOption = Annotated[
     str,
@@ -121,6 +134,14 @@ PipelinesOption = Annotated[
     typer.Option(
         '--pipelines',
         help='List ETL pipelines',
+    ),
+]
+
+ReadinessOption = Annotated[
+    bool,
+    typer.Option(
+        '--readiness',
+        help='Run runtime and optional config readiness checks.',
     ),
 ]
 
@@ -188,6 +209,16 @@ RulesOption = Annotated[
     typer.Option(
         '--rules',
         help='Validation rules as JSON string.',
+    ),
+]
+
+StructuredEventFormatOption = Annotated[
+    Literal['jsonl'] | None,
+    typer.Option(
+        '--event-format',
+        metavar='FORMAT',
+        help='Emit structured command events to STDERR (currently: jsonl).',
+        show_default=False,
     ),
 ]
 
@@ -388,6 +419,7 @@ def _root(
         When ``--version`` is provided or no subcommand is invoked.
     """
     ctx.obj = CliState(pretty=pretty, quiet=quiet, verbose=verbose)
+    configure_logging(quiet=quiet, verbose=verbose, force=True)
 
     if version:
         typer.echo(f'etlplus {__version__}')
@@ -401,9 +433,10 @@ def _root(
 @app.command('check')
 def check_cmd(
     ctx: typer.Context,
-    config: ConfigOption,
+    config: CheckConfigOption = None,
     jobs: JobsOption = False,
     pipelines: PipelinesOption = False,
+    readiness: ReadinessOption = False,
     sources: SourcesOption = False,
     summary: SummaryOption = False,
     targets: TargetsOption = False,
@@ -416,12 +449,15 @@ def check_cmd(
     ----------
     ctx : typer.Context
         The Typer context.
-    config : ConfigOption
+    config : CheckConfigOption, optional
         Path to pipeline YAML configuration file.
     jobs : JobsOption, optional
         List available job names and exit. Default is ``False``.
     pipelines : PipelinesOption, optional
         List ETL pipelines. Default is ``False``.
+    readiness : ReadinessOption, optional
+        Run runtime and optional config readiness checks. Default is
+        ``False``.
     sources : SourcesOption, optional
         List data sources. Default is ``False``.
     summary : SummaryOption, optional
@@ -442,8 +478,16 @@ def check_cmd(
     typer.Exit
         When argument order is invalid or required arguments are missing.
     """
-    # Argument order enforcement.
-    if not config:
+    inspection_requested = any((jobs, pipelines, sources, summary, targets, transforms))
+
+    if readiness and inspection_requested:
+        typer.echo(
+            'Error: --readiness cannot be combined with inspection flags.',
+            err=True,
+        )
+        raise typer.Exit(2)
+
+    if not readiness and not config:
         typer.echo("Error: Missing required option '--config'.", err=True)
         raise typer.Exit(2)
 
@@ -453,6 +497,7 @@ def check_cmd(
             config=config,
             jobs=jobs,
             pipelines=pipelines,
+            readiness=readiness,
             sources=sources,
             summary=summary,
             targets=targets,
@@ -468,6 +513,7 @@ def extract_cmd(
     source: SourceArg = '-',
     source_format: SourceFormatOption = None,
     source_type: SourceTypeOption = None,
+    event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
     Extract data from files, databases, or REST APIs.
@@ -486,6 +532,8 @@ def extract_cmd(
     source_type : SourceTypeOption, optional
         Data source type. Overrides the inferred type (``api``, ``database``,
         ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+    event_format : StructuredEventFormatOption, optional
+        Structured event format emitted to STDERR. Default is ``None``.
 
     Returns
     -------
@@ -537,6 +585,7 @@ def extract_cmd(
         handlers.extract_handler(
             source_type=resolved_source_type,
             source=source,
+            event_format=event_format,
             format_hint=source_format,
             format_explicit=source_format is not None,
             pretty=state.pretty,
@@ -551,6 +600,7 @@ def load_cmd(
     target: TargetArg = '-',
     target_format: TargetFormatOption = None,
     target_type: TargetTypeOption = None,
+    event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
     Load data into a file, database, or REST API.
@@ -572,6 +622,8 @@ def load_cmd(
     target_type : TargetTypeOption, optional
         Data target type. Overrides the inferred type (``api``, ``database``,
         ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+    event_format : StructuredEventFormatOption, optional
+        Structured event format emitted to STDERR. Default is ``None``.
 
     Returns
     -------
@@ -644,6 +696,7 @@ def load_cmd(
             source=resolved_source_value,
             target_type=resolved_target_type,
             target=resolved_target,
+            event_format=event_format,
             source_format=source_format,
             target_format=target_format,
             format_explicit=target_format is not None,
@@ -722,6 +775,7 @@ def run_cmd(
     config: ConfigOption,
     job: JobOption = None,
     pipeline: PipelineOption = None,
+    event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
     Execute an ETL job or pipeline from a YAML configuration.
@@ -736,6 +790,8 @@ def run_cmd(
         Name of the job to run. Default is ``None``.
     pipeline : PipelineOption, optional
         Name of the pipeline to run. Default is ``None``.
+    event_format : StructuredEventFormatOption, optional
+        Structured event format emitted to STDERR. Default is ``None``.
 
     Returns
     -------
@@ -758,6 +814,7 @@ def run_cmd(
             config=config,
             job=job,
             pipeline=pipeline,
+            event_format=event_format,
             pretty=state.pretty,
         ),
     )
@@ -773,6 +830,7 @@ def transform_cmd(
     target: TargetArg = '-',
     target_format: TargetFormatOption = None,
     target_type: TargetTypeOption = None,
+    event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
     Transform records using JSON-described operations.
@@ -802,6 +860,8 @@ def transform_cmd(
     target_type : TargetTypeOption, optional
         Data target type. Overrides the inferred type (``api``, ``database``,
         ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+    event_format : StructuredEventFormatOption, optional
+        Structured event format emitted to STDERR. Default is ``None``.
 
     Returns
     -------
@@ -873,6 +933,7 @@ def transform_cmd(
             source=resolved_source_value,
             operations=_parse_json_option(operations, '--operations'),
             target=resolved_target_value,
+            event_format=event_format,
             source_format=source_format,
             target_format=target_format,
             format_explicit=target_format is not None,
@@ -889,6 +950,7 @@ def validate_cmd(
     source_format: SourceFormatOption = None,
     source_type: SourceTypeOption = None,
     output: OutputOption = '-',
+    event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
     Validate data against JSON-described rules.
@@ -910,6 +972,8 @@ def validate_cmd(
         ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
     output : OutputOption, optional
         Output file for validated output (- for STDOUT). Default is ``None``.
+    event_format : StructuredEventFormatOption, optional
+        Structured event format emitted to STDERR. Default is ``None``.
 
     Returns
     -------
@@ -943,6 +1007,7 @@ def validate_cmd(
         handlers.validate_handler(
             source=source,
             rules=_parse_json_option(rules, '--rules'),
+            event_format=event_format,
             source_format=source_format,
             target=output,
             format_explicit=source_format is not None,

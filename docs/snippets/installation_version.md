@@ -1,2 +1,2 @@
 $ etlplus --version
-etlplus 0.26.8
+etlplus 1.0.3

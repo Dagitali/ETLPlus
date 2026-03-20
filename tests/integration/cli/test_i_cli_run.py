@@ -13,6 +13,8 @@ Notes
 from __future__ import annotations
 
 import csv
+import json
+import sqlite3
 from io import StringIO
 from pathlib import Path
 from textwrap import dedent
@@ -22,6 +24,8 @@ import pytest
 
 from etlplus.file import File
 from etlplus.file import FileFormat
+from etlplus.runtime import EVENT_SCHEMA
+from etlplus.runtime import EVENT_SCHEMA_VERSION
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -73,6 +77,7 @@ class TestRun:
 
         # CLI should have printed a JSON object with status ok.
         assert payload.get('status') == 'ok'
+        assert isinstance(payload.get('run_id'), str)
         assert isinstance(payload.get('result'), dict)
         assert payload['result'].get('status') == 'success'
 
@@ -140,6 +145,7 @@ class TestRun:
         assert code == 0
         payload = parse_json_output(out)
         assert payload.get('status') == 'ok'
+        assert isinstance(payload.get('run_id'), str)
         assert isinstance(payload.get('result'), dict)
         assert payload['result'].get('status') == 'success'
         assert payload['result'].get('message') == f'Data loaded to {target_uri}'
@@ -215,7 +221,99 @@ class TestRun:
         assert code == 0
         payload = parse_json_output(out)
         assert payload.get('status') == 'ok'
+        assert isinstance(payload.get('run_id'), str)
         assert isinstance(payload.get('result'), dict)
         assert payload['result'].get('status') == 'success'
         assert payload['result'].get('message') == f'Data loaded to {target.uri}'
-        assert File(target.uri, FileFormat.JSON).read() == sample_records
+
+    def test_run_emits_jsonl_events_to_stderr(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        pipeline_config_factory: PipelineConfigFactory,
+        sample_records: list[dict[str, object]],
+    ) -> None:
+        """Test that ``run --event-format jsonl`` emits structured events."""
+        cfg = pipeline_config_factory(sample_records)
+
+        code, out, err = cli_invoke(
+            (
+                'run',
+                '--config',
+                str(cfg.config_path),
+                '--job',
+                cfg.job_name,
+                '--event-format',
+                'jsonl',
+            ),
+        )
+
+        assert code == 0
+        payload = parse_json_output(out)
+        assert payload.get('status') == 'ok'
+        assert isinstance(payload.get('run_id'), str)
+
+        lines = [json.loads(line) for line in err.splitlines() if line.strip()]
+        assert [line['event'] for line in lines] == ['run.started', 'run.completed']
+        assert all(line['run_id'] == payload['run_id'] for line in lines)
+        assert all(line['job'] == cfg.job_name for line in lines)
+        assert all(line['schema'] == EVENT_SCHEMA for line in lines)
+        assert all(line['schema_version'] == EVENT_SCHEMA_VERSION for line in lines)
+        assert all(line['command'] == 'run' for line in lines)
+        assert all(line['lifecycle'] in {'started', 'completed'} for line in lines)
+        assert File(cfg.output_path, FileFormat.JSON).read() == sample_records
+
+    def test_run_persists_history_record(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        pipeline_config_factory: PipelineConfigFactory,
+        sample_records: list[dict[str, object]],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``run`` persists its stable run record locally."""
+        cfg = pipeline_config_factory(sample_records)
+        monkeypatch.setenv('ETLPLUS_STATE_DIR', str(tmp_path / 'state'))
+
+        code, out, err = cli_invoke(
+            (
+                'run',
+                '--config',
+                str(cfg.config_path),
+                '--job',
+                cfg.job_name,
+            ),
+        )
+
+        assert code == 0
+        assert err == ''
+        payload = parse_json_output(out)
+        history_db = tmp_path / 'state' / 'history.sqlite'
+        assert history_db.exists()
+
+        with sqlite3.connect(history_db) as conn:
+            row = conn.execute(
+                """
+                SELECT
+                    run_id,
+                    pipeline_name,
+                    job_name,
+                    config_path,
+                    status,
+                    duration_ms,
+                    result_summary
+                FROM runs
+                WHERE run_id = ?
+                """,
+                (payload['run_id'],),
+            ).fetchone()
+
+        assert row is not None
+        assert row[0] == payload['run_id']
+        assert row[1] == 'Smoke Test'
+        assert row[2] == cfg.job_name
+        assert row[3] == str(cfg.config_path)
+        assert row[4] == 'succeeded'
+        assert isinstance(row[5], int)
+        assert row[6] is not None

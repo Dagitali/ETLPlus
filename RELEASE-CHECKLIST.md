@@ -1,10 +1,17 @@
-# Pre-v1.0 Release Checklist
+# Release Checklist And Stable-Line Maintenance
 
-This checklist tracks the remaining work to make ETLPlus look and behave like a stable, well-run
-open source Python project before tagging `v1.0.0`.
+This file now serves two purposes:
 
-The sections below distinguish between work already in place for the next pre-1.0 release and
-additional polish still recommended before the first stable `v1.0.0` tag.
+1. Preserve the archived pre-`v1.0.0` release-readiness record
+2. Track the remaining maintenance work for the current stable `v1.x` line
+
+The pre-1.0 sections below are retained as release-history context. They are no longer the active
+checklist for ETLPlus now that the project is on the stable line.
+
+## Archived Pre-`v1.0.0` Readiness Record
+
+These sections capture the work that was completed or deferred while preparing the first stable
+release.
 
 ## Must
 
@@ -67,6 +74,10 @@ additional polish still recommended before the first stable `v1.0.0` tag.
 
 ## Status Notes
 
+- Checked pre-`v1.0.0` items in this file are retained as release-audit history, not as active
+  tracking work.
+- Active tracking in this file should now focus on stable-line follow-up, post-`v1.0.0`
+  maintenance, and execution-hygiene notes that affect the supported CLI/runtime surface.
 - The CI quality-bar item is now closed: lint, docstring lint, type-checking, tests, docs builds,
   distribution validation, artifact audits, and clean-environment wheel smoke checks are enforced
   or verified in the release path.
@@ -76,14 +87,47 @@ additional polish still recommended before the first stable `v1.0.0` tag.
   audits run in CI from a tracked checkout, so defunct, backup, and scratch files that are not part
   of the committed tree are not part of tagged release artifacts.
 - Regenerated demo/version snippets and GitHub Releases should be treated as the canonical source
-  for the latest published pre-1.0 version number when preparing a tag.
-- The changes completed so far in this checklist are intended to land on the next pre-1.0 release,
-  not to wait for `v1.0.0`.
+  for the latest published stable version number when preparing a tag.
+- The completed items in the archived sections landed across the path to `v1.0.0` and the early
+  stable releases; they are retained here as audit history rather than as pending work.
 - The stable-surface trimming work now treats CLI support modules and command wiring, storage
   registry/base plumbing, connector support modules, the file-handler registry, database typing
   helpers, and API request manager plumbing as protected underscore-prefixed implementation modules.
+- The documented stable CLI surface keeps readiness under `check --readiness`.
+- Runtime execution hygiene progress on the current branch includes:
+  - Shared runtime logging policy and config precedence documentation
+  - `check --readiness` runtime/config checks with optional dependency and connector-gap detection
+  - Stable `etlplus.event.v1` structured execution events on STDERR for supported execution
+    commands: `extract`, `load`, `run`, `transform`, and `validate`
+  - Local run-history persistence keyed by `run_id` for `etlplus run`, backed by SQLite by default
+    with JSONL fallback support
 
-## Strongly Recommended Before `v1.0.0`
+## Current Stable-Line Maintenance Checklist
+
+These are the active follow-up items for the `v1.x` line.
+
+## Maintain In `v1.x`
+
+- [ ] Continue tightening docstring-style enforcement pragmatically.
+  - Keep the current ignore set intentional and reduce it only when the backlog is small enough to
+    avoid noisy churn.
+  - Prefer targeted cleanup in touched modules over repo-wide style-only sweeps.
+- [ ] Reassess dependency grouping against real stable-line usage.
+  - Confirm whether the current broad default install still matches user expectations on the `v1.x`
+    line.
+  - Move more dependencies into extras only if that does not break the documented stable surface.
+- [ ] Expand performance-smoke and cross-platform confidence based on real `v1.x` usage.
+  - Add coverage where support load or issue history shows weak spots.
+  - Keep the release path proportionate rather than turning CI into a bottleneck.
+- [ ] Decide when the local run-history work becomes part of the documented stable CLI surface.
+  - If `history`, `status`, or `report` commands are promoted, document their support level and add
+    contract coverage.
+  - If they remain internal or experimental, keep that explicit.
+- [ ] Review the stable event-schema contract before the next minor release.
+  - Confirm whether `etlplus.event.v1` remains sufficient for the supported execution commands.
+  - Add explicit compatibility guidance before introducing schema-affecting changes.
+
+## Archived `v1.0.0` Readiness Closeout
 
 - [x] Finalize the canonical release-history policy and make docs agree.
   - Decide whether GitHub Releases is the canonical changelog or whether a root-level changelog will
@@ -107,7 +151,7 @@ additional polish still recommended before the first stable `v1.0.0` tag.
   - Define the expected role of patch releases versus minor releases.
   - Clarify what kinds of fixes are expected to be backported, if any.
 
-## Safe To Defer Until `v1.0.1`
+## Archived Post-`v1.0.0` Follow-Up Items
 
 - [ ] Ratchet docstring-style enforcement beyond the current pragmatic ignore set.
   - `D200` is intentionally tolerated for wrapped one-sentence docstrings; keep tightening the
@@ -115,47 +159,27 @@ additional polish still recommended before the first stable `v1.0.0` tag.
 - [ ] Further trim or rationalize dependency groups after observing real user install patterns.
 - [ ] Expand performance-smoke and cross-platform coverage once `v1.0.0` usage patterns are clearer.
 
-## Prioritized Implementation Plan
+## Stable-Line Priorities
 
-### Before The Next Pre-1.0 Branch Cut
+### Next Patch Releases
 
-- [x] Finalize the canonical release-history policy and make docs agree.
-  - Choose the canonical release-notes surface now so the next pre-1.0 release already models the intended
-    maintainer workflow.
-  - Align `README.md`, `docs/source/changelog.rst`, and maintainer release instructions to that
-    single policy.
-- [x] Tighten release workflow and release-doc wording drift.
-  - Clean up comments and release instructions so the `ci.yml` / `release.yml` split is described
-    consistently everywhere.
-  - Keep this phase low-risk and documentation-heavy so it does not destabilize the next pre-1.0
-    release branch.
+- Keep release docs, release automation, and the published version snippets aligned.
+- Preserve the current supported CLI/runtime contract while tightening quality incrementally.
+- Prefer low-risk follow-up that reduces support load without narrowing the stable surface by
+  accident.
 
-### Before `v1.0.0-rc1`
+### Next Minor Release
 
-- [x] Simplify or explicitly justify the contributor tooling stack.
-  - Decide whether Ruff is the primary lint/format path and demote or remove overlapping tooling as
-    appropriate.
-  - Ensure the documented maintainer workflow matches the actual supported toolchain.
-- [x] Revisit the default dependency surface with `v1.0.0` expectations in mind.
-  - Either commit to the current batteries-included install or move more heavyweight dependencies
-    into extras before the stable support promise is locked.
-  - Document the rationale in packaging and install docs.
-- [x] Add or tighten public-surface contract tests.
-  - Cover documented CLI commands, supported import surfaces, and other promised stable entrypoints.
-  - Treat these as release-gating tests for the first stable line.
-- [x] Clarify the `v1.x` maintenance promise beyond the initial support baseline.
-  - Define patch-vs-minor expectations and any backport posture before calling the line stable.
-
-### Safe After Stable Release
-
-- Ratchet docstring-style enforcement incrementally once the stable line is out.
-- Continue trimming dependency groups after observing actual install and support patterns.
-- Expand performance-smoke and cross-platform coverage in response to real `v1.x` usage.
+- Decide which observability and run-history capabilities graduate from implementation work to
+  documented stable surface.
+- Review dependency-group ergonomics and installation footprint with actual user feedback.
+- Expand confidence coverage where the stable line has shown friction on platforms, large-file
+  workflows, or optional backends.
 
 ## Current Focus
 
-The current release-prep posture is:
+The current stable-line posture is:
 
-- Next pre-1.0 release: ship the already-completed polish and workflow improvements
-- Pre-`v1.0.0`: preserve that aligned release surface, keep the tracked release docs/workflows in
-  sync, and focus remaining effort on final execution hygiene rather than new policy churn
+- Keep the release surface coherent and predictable across `v1.0.x`.
+- Continue execution-hygiene work that supports the documented CLI/runtime contract.
+- Treat the archived pre-1.0 sections above as audit history, not as the active roadmap.

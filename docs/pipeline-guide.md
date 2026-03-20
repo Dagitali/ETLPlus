@@ -29,8 +29,8 @@ a reference.
 ## Overview
 
 ETLPlus focuses on simple, JSON-first ETL. The pipeline file is a declarative description that your
-runner (a script, Makefile, CI job) can parse and execute using ETLPlus primitives: `extract`,
-`validate`, `transform`, and `load`.
+built-in CLI runner can execute directly, or that your own runner (a script, Makefile, or CI job)
+can parse and execute using ETLPlus primitives: `extract`, `validate`, `transform`, and `load`.
 
 CLI note: ETLPlus uses Typer for command parsing. The legacy argparse parser has been removed. Use
 the documented `etlplus` commands and flags (check `etlplus --help`) when wiring your runner.

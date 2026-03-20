@@ -36,8 +36,8 @@ etlplus transform \
 
 ## Pipelines
 
-For larger workflows, author a pipeline YAML and run it with your own orchestration or helper
-script.
+For larger workflows, author a pipeline YAML and run it with the built-in `etlplus run` command, or
+integrate the same config into your own orchestration or helper script.
 
 - Authoring: see the Pipeline Authoring Guide at `docs/pipeline-guide.md` and the example
   `examples/configs/pipeline.yml`.

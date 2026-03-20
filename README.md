@@ -112,7 +112,7 @@ ETLPlus treats the `v1.x` line as its stable public release line. The repository
 placeholders, stubs, and migration-reference modules for historical or implementation reasons, but
 they are not part of the supported public contract unless they are explicitly documented as such.
 
-The stable surface for `v1.0.0` and later `v1.x` releases is:
+The stable surface for the current `v1.x` releases is:
 
 - The documented CLI commands: `check`, `extract`, `validate`, `transform`, `load`, `render`, and `run`
 - The documented Python ETL primitives in `etlplus.ops`
@@ -132,6 +132,7 @@ Maintainers handling packaging, CI, versioned docs, or release gating should con
 
 - **Check** data pipeline definitions before running them:
   - Summarize jobs, sources, targets, and transforms
+  - Run lightweight runtime and config readiness checks with `--readiness`
   - Confirm configuration changes by printing focused sections on demand
 
 - **Render** SQL DDL from shared table specs:
@@ -547,9 +548,10 @@ usual inference rules when a filename, URI, or stream does not provide enough co
 #### Check Pipelines
 
 Use `etlplus check` to explore pipeline YAML definitions without running them. The command can print
-job names, summarize configured sources and targets, or drill into specific sections.
+job names, summarize configured sources and targets, drill into specific sections, or run readiness
+checks.
 
-List jobs and show a pipeline summary:
+Inspect config contents:
 ```bash
 etlplus check --config examples/configs/pipeline.yml --jobs
 etlplus check --config examples/configs/pipeline.yml --summary
@@ -559,6 +561,12 @@ Show sources or transforms for troubleshooting:
 ```bash
 etlplus check --config examples/configs/pipeline.yml --sources
 etlplus check --config examples/configs/pipeline.yml --transforms
+```
+
+Run runtime and config readiness checks:
+```bash
+etlplus check --readiness
+etlplus check --readiness --config examples/configs/pipeline.yml
 ```
 
 #### Render SQL DDL
@@ -736,6 +744,9 @@ etlplus check --config examples/configs/pipeline.yml --summary
 
 # Run a job
 etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
+
+# Run a job and emit structured events to STDERR
+etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers --event-format jsonl
 ```
 
 ### Complete ETL Pipeline Example

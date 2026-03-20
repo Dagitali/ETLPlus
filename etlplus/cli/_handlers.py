@@ -10,21 +10,30 @@ import os
 import sys
 from collections.abc import Mapping
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 from typing import Literal
 from typing import cast
 
 from .. import Config
+from .. import __version__
 from ..database import load_table_spec
 from ..database import render_tables
 from ..file import File
 from ..file import FileFormat
+from ..history import build_run_record
+from ..history import open_history_store
 from ..ops import extract
 from ..ops import load
 from ..ops import run
 from ..ops import transform
 from ..ops import validate
 from ..ops.validate import FieldRulesDict
+from ..runtime import build_readiness_report
+from ..runtime.events import build_structured_event
+from ..runtime.events import create_run_id
+from ..runtime.events import emit_structured_event
+from ..runtime.events import utc_now_iso
 from ..utils.types import JSONData
 from ..utils.types import TemplateKey
 from . import _io
@@ -131,6 +140,49 @@ def _check_sections(
     return sections
 
 
+def _emit_failure_event(
+    *,
+    command: str,
+    run_id: str,
+    started_perf: float,
+    event_format: str | None,
+    exc: Exception,
+    **fields: Any,
+) -> None:
+    """Emit a failure event with the shared stable schema."""
+    _emit_lifecycle_event(
+        command=command,
+        lifecycle='failed',
+        run_id=run_id,
+        event_format=event_format,
+        duration_ms=int((perf_counter() - started_perf) * 1000),
+        error_message=str(exc),
+        error_type=type(exc).__name__,
+        status='error',
+        **fields,
+    )
+
+
+def _emit_lifecycle_event(
+    *,
+    command: str,
+    lifecycle: str,
+    run_id: str,
+    event_format: str | None,
+    **fields: Any,
+) -> None:
+    """Emit one structured command lifecycle event."""
+    emit_structured_event(
+        build_structured_event(
+            command=command,
+            lifecycle=lifecycle,
+            run_id=run_id,
+            **fields,
+        ),
+        event_format=event_format,
+    )
+
+
 def _pipeline_summary(
     cfg: Config,
 ) -> dict[str, Any]:
@@ -186,9 +238,10 @@ def _write_file_payload(
 
 def check_handler(
     *,
-    config: str,
+    config: str | None = None,
     jobs: bool = False,
     pipelines: bool = False,
+    readiness: bool = False,
     sources: bool = False,
     summary: bool = False,
     targets: bool = False,
@@ -201,12 +254,15 @@ def check_handler(
 
     Parameters
     ----------
-    config : str
+    config : str | None, optional
         Path to the pipeline YAML configuration.
     jobs : bool, optional
         Whether to include job metadata. Default is ``False``.
     pipelines : bool, optional
         Whether to include pipeline metadata. Default is ``False``.
+    readiness : bool, optional
+        Whether to run runtime and config readiness checks. Default is
+        ``False``.
     sources : bool, optional
         Whether to include source metadata. Default is ``False``.
     summary : bool, optional
@@ -226,7 +282,20 @@ def check_handler(
     int
         Zero on success.
 
+    Raises
+    ------
+    ValueError
+        If config inspection is requested without a configuration path.
+
     """
+    if readiness:
+        report = build_readiness_report(config_path=config)
+        _io.emit_json(report, pretty=pretty)
+        return 0 if report.get('status') == 'ok' else 1
+
+    if config is None:
+        raise ValueError('config is required unless readiness-only mode is used')
+
     cfg = Config.from_yaml(config, substitute=substitute)
     if summary:
         _io.emit_json(_pipeline_summary(cfg), pretty=True)
@@ -250,6 +319,7 @@ def extract_handler(
     *,
     source_type: str,
     source: str,
+    event_format: str | None = None,
     format_hint: str | None = None,
     format_explicit: bool = False,
     target: str | None = None,
@@ -265,6 +335,9 @@ def extract_handler(
         The type of the source (e.g., 'file', 'api', 'database').
     source : str
         The source identifier (e.g., path, URL, DSN).
+    event_format : str | None, optional
+        Optional structured event format emitted to STDERR. Default is
+        ``None``.
     format_hint : str | None, optional
         An optional format hint (e.g., 'json', 'csv'). Default is ``None``.
     format_explicit : bool, optional
@@ -281,32 +354,84 @@ def extract_handler(
     int
         Zero on success.
 
+    Raises
+    ------
+    Exception
+        Re-raises extraction failures after emitting a structured failure event
+        when requested.
+
     """
     explicit_format = format_hint if format_explicit else None
+    run_id = create_run_id()
+    started_perf = perf_counter()
+    _emit_lifecycle_event(
+        command='extract',
+        lifecycle='started',
+        run_id=run_id,
+        event_format=event_format,
+        source=source,
+        source_type=source_type,
+    )
 
-    if source == '-':
-        text = _io.read_stdin_text()
-        payload = _io.parse_text_payload(
-            text,
-            format_hint,
+    try:
+        if source == '-':
+            text = _io.read_stdin_text()
+            payload = _io.parse_text_payload(
+                text,
+                format_hint,
+            )
+            _emit_lifecycle_event(
+                command='extract',
+                lifecycle='completed',
+                run_id=run_id,
+                event_format=event_format,
+                duration_ms=int((perf_counter() - started_perf) * 1000),
+                result_status='ok',
+                status='ok',
+                source=source,
+                source_type=source_type,
+            )
+            _io.emit_json(payload, pretty=pretty)
+
+            return 0
+
+        result = extract(
+            source_type,
+            source,
+            file_format=explicit_format,
         )
-        _io.emit_json(payload, pretty=pretty)
+        output_path = target or output
 
-        return 0
+        _emit_lifecycle_event(
+            command='extract',
+            lifecycle='completed',
+            run_id=run_id,
+            event_format=event_format,
+            destination=output_path or 'stdout',
+            duration_ms=int((perf_counter() - started_perf) * 1000),
+            result_status='ok',
+            source=source,
+            source_type=source_type,
+            status='ok',
+        )
 
-    result = extract(
-        source_type,
-        source,
-        file_format=explicit_format,
-    )
-    output_path = target or output
-
-    _io.emit_or_write(
-        result,
-        output_path,
-        pretty=pretty,
-        success_message='Data extracted and saved to',
-    )
+        _io.emit_or_write(
+            result,
+            output_path,
+            pretty=pretty,
+            success_message='Data extracted and saved to',
+        )
+    except Exception as exc:
+        _emit_failure_event(
+            command='extract',
+            run_id=run_id,
+            started_perf=started_perf,
+            event_format=event_format,
+            exc=exc,
+            source=source,
+            source_type=source_type,
+        )
+        raise
 
     return 0
 
@@ -316,6 +441,7 @@ def load_handler(
     source: str,
     target_type: str,
     target: str,
+    event_format: str | None = None,
     source_format: str | None = None,
     target_format: str | None = None,
     format_explicit: bool = False,
@@ -333,6 +459,9 @@ def load_handler(
         The type of the target (e.g., 'file', 'database').
     target : str
         The target destination (e.g., path, DSN).
+    event_format : str | None, optional
+        Optional structured event format emitted to STDERR. Default is
+        ``None``.
     source_format : str | None, optional
         An optional source format hint (e.g., 'json', 'csv'). Default is
         ``None``.
@@ -350,44 +479,99 @@ def load_handler(
     -------
     int
         Zero on success.
+
+    Raises
+    ------
+    Exception
+        Re-raises load failures after emitting a structured failure event when
+        requested.
     """
     explicit_format = target_format if format_explicit else None
-
-    # Allow piping into load.
-    source_value = cast(
-        str | Path | os.PathLike[str] | dict[str, Any] | list[dict[str, Any]],
-        _io.resolve_cli_payload(
-            source,
-            format_hint=source_format,
-            format_explicit=source_format is not None,
-            hydrate_files=False,
-        ),
+    run_id = create_run_id()
+    started_perf = perf_counter()
+    _emit_lifecycle_event(
+        command='load',
+        lifecycle='started',
+        run_id=run_id,
+        event_format=event_format,
+        source=source,
+        target=target,
+        target_type=target_type,
     )
 
-    # Allow piping out of load for file targets.
-    if target_type == 'file' and target == '-':
-        payload = _io.materialize_file_payload(
-            source_value,
-            format_hint=source_format,
-            format_explicit=source_format is not None,
+    try:
+        # Allow piping into load.
+        source_value = cast(
+            str | Path | os.PathLike[str] | dict[str, Any] | list[dict[str, Any]],
+            _io.resolve_cli_payload(
+                source,
+                format_hint=source_format,
+                format_explicit=source_format is not None,
+                hydrate_files=False,
+            ),
         )
-        _io.emit_json(payload, pretty=pretty)
-        return 0
 
-    result = load(
-        source_value,
-        target_type,
-        target,
-        file_format=explicit_format,
-    )
+        # Allow piping out of load for file targets.
+        if target_type == 'file' and target == '-':
+            payload = _io.materialize_file_payload(
+                source_value,
+                format_hint=source_format,
+                format_explicit=source_format is not None,
+            )
+            _emit_lifecycle_event(
+                command='load',
+                lifecycle='completed',
+                run_id=run_id,
+                event_format=event_format,
+                duration_ms=int((perf_counter() - started_perf) * 1000),
+                result_status='ok',
+                source=source,
+                status='ok',
+                target=target,
+                target_type=target_type,
+            )
+            _io.emit_json(payload, pretty=pretty)
+            return 0
 
-    output_path = output
-    _io.emit_or_write(
-        result,
-        output_path,
-        pretty=pretty,
-        success_message='Load result saved to',
-    )
+        result = load(
+            source_value,
+            target_type,
+            target,
+            file_format=explicit_format,
+        )
+
+        output_path = output
+        _emit_lifecycle_event(
+            command='load',
+            lifecycle='completed',
+            run_id=run_id,
+            event_format=event_format,
+            destination=output_path or 'stdout',
+            duration_ms=int((perf_counter() - started_perf) * 1000),
+            result_status=result.get('status') if isinstance(result, dict) else 'ok',
+            source=source,
+            status='ok',
+            target=target,
+            target_type=target_type,
+        )
+        _io.emit_or_write(
+            result,
+            output_path,
+            pretty=pretty,
+            success_message='Load result saved to',
+        )
+    except Exception as exc:
+        _emit_failure_event(
+            command='load',
+            run_id=run_id,
+            started_perf=started_perf,
+            event_format=event_format,
+            exc=exc,
+            source=source,
+            target=target,
+            target_type=target_type,
+        )
+        raise
 
     return 0
 
@@ -488,6 +672,7 @@ def run_handler(
     config: str,
     job: str | None = None,
     pipeline: str | None = None,
+    event_format: str | None = None,
     pretty: bool = True,
 ) -> int:
     """
@@ -502,6 +687,9 @@ def run_handler(
         Default is ``None``.
     pipeline : str | None, optional
         Alias for *job*. Default is ``None``.
+    event_format : str | None, optional
+        Optional structured event format emitted to STDERR. Default is
+        ``None``.
     pretty : bool, optional
         Whether to pretty-print output. Default is ``True``.
 
@@ -509,13 +697,90 @@ def run_handler(
     -------
     int
         Zero on success.
+
+    Raises
+    ------
+    Exception
+        Re-raises the underlying execution error after emitting a failure
+        event when structured event output is enabled.
     """
     cfg = Config.from_yaml(config, substitute=True)
 
     job_name = job or pipeline
     if job_name:
-        result = run(job=job_name, config_path=config)
-        _io.emit_json({'status': 'ok', 'result': result}, pretty=pretty)
+        run_id = create_run_id()
+        started_at = utc_now_iso()
+        started_perf = perf_counter()
+        history_store = open_history_store()
+        history_store.record_run_started(
+            build_run_record(
+                run_id=run_id,
+                config_path=config,
+                started_at=started_at,
+                pipeline_name=cfg.name,
+                job_name=job_name,
+            ),
+        )
+        _emit_lifecycle_event(
+            command='run',
+            lifecycle='started',
+            run_id=run_id,
+            event_format=event_format,
+            config_path=config,
+            etlplus_version=__version__,
+            job=job_name,
+            pipeline_name=cfg.name,
+            status='running',
+            timestamp=started_at,
+        )
+        try:
+            result = run(job=job_name, config_path=config)
+        except Exception as exc:
+            duration_ms = int((perf_counter() - started_perf) * 1000)
+            history_store.record_run_finished(
+                run_id,
+                status='failed',
+                finished_at=utc_now_iso(),
+                duration_ms=duration_ms,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
+            _emit_failure_event(
+                command='run',
+                run_id=run_id,
+                started_perf=started_perf,
+                event_format=event_format,
+                exc=exc,
+                config_path=config,
+                job=job_name,
+                pipeline_name=cfg.name,
+            )
+            raise
+
+        duration_ms = int((perf_counter() - started_perf) * 1000)
+        history_store.record_run_finished(
+            run_id,
+            status='succeeded',
+            finished_at=utc_now_iso(),
+            duration_ms=duration_ms,
+            result_summary=cast(JSONData | None, result),
+        )
+        _emit_lifecycle_event(
+            command='run',
+            lifecycle='completed',
+            run_id=run_id,
+            event_format=event_format,
+            config_path=config,
+            duration_ms=duration_ms,
+            job=job_name,
+            pipeline_name=cfg.name,
+            result_status=result.get('status'),
+            status='ok',
+        )
+        _io.emit_json(
+            {'run_id': run_id, 'status': 'ok', 'result': result},
+            pretty=pretty,
+        )
         return 0
 
     _io.emit_json(_pipeline_summary(cfg), pretty=pretty)
@@ -533,6 +798,7 @@ def transform_handler(
     source: str,
     operations: JSONData | str,
     target: str | None = None,
+    event_format: str | None = None,
     source_format: str | None = None,
     target_format: str | None = None,
     pretty: bool = True,
@@ -549,6 +815,9 @@ def transform_handler(
         The transformation operations (inline JSON or path).
     target : str | None, optional
         The target destination (e.g., path). Default is ``None``.
+    event_format : str | None, optional
+        Optional structured event format emitted to STDERR. Default is
+        ``None``.
     source_format : str | None, optional
         An optional source format hint (e.g., 'json', 'csv'). Default is
         ``None``.
@@ -569,36 +838,84 @@ def transform_handler(
     ------
     ValueError
         If the operations payload is not a mapping.
+    Exception
+        Re-raises transform failures after emitting a structured failure event
+        when requested.
     """
     format_hint: str | None = source_format
     format_explicit = format_hint is not None or format_explicit
+    run_id = create_run_id()
+    started_perf = perf_counter()
+    _emit_lifecycle_event(
+        command='transform',
+        lifecycle='started',
+        run_id=run_id,
+        event_format=event_format,
+        source=source,
+        target=target or 'stdout',
+    )
 
-    payload = cast(
-        JSONData | str,
-        _io.resolve_cli_payload(
-            source,
-            format_hint=format_hint,
+    try:
+        payload = cast(
+            JSONData | str,
+            _io.resolve_cli_payload(
+                source,
+                format_hint=format_hint,
+                format_explicit=format_explicit,
+            ),
+        )
+
+        operations_payload = _io.resolve_cli_payload(
+            operations,
+            format_hint=None,
             format_explicit=format_explicit,
-        ),
-    )
+        )
+        if not isinstance(operations_payload, dict):
+            raise ValueError('operations must resolve to a mapping of transforms')
 
-    operations_payload = _io.resolve_cli_payload(
-        operations,
-        format_hint=None,
-        format_explicit=format_explicit,
-    )
-    if not isinstance(operations_payload, dict):
-        raise ValueError('operations must resolve to a mapping of transforms')
+        data = transform(payload, cast(TransformOperations, operations_payload))
 
-    data = transform(payload, cast(TransformOperations, operations_payload))
+        # TODO: Generalize to handle non-file targets.
+        if target and target != '-':
+            _emit_lifecycle_event(
+                command='transform',
+                lifecycle='completed',
+                run_id=run_id,
+                event_format=event_format,
+                duration_ms=int((perf_counter() - started_perf) * 1000),
+                result_status='ok',
+                source=source,
+                status='ok',
+                target=target,
+            )
+            _write_file_payload(data, target, format_hint=target_format)
+            print(f'Data transformed and saved to {target}')
+            return 0
 
-    # TODO: Generalize to handle non-file targets.
-    if target and target != '-':
-        _write_file_payload(data, target, format_hint=target_format)
-        print(f'Data transformed and saved to {target}')
-        return 0
+        _emit_lifecycle_event(
+            command='transform',
+            lifecycle='completed',
+            run_id=run_id,
+            event_format=event_format,
+            duration_ms=int((perf_counter() - started_perf) * 1000),
+            result_status='ok',
+            source=source,
+            status='ok',
+            target=target or 'stdout',
+        )
+        _io.emit_json(data, pretty=pretty)
+    except Exception as exc:
+        _emit_failure_event(
+            command='transform',
+            run_id=run_id,
+            started_perf=started_perf,
+            event_format=event_format,
+            exc=exc,
+            source=source,
+            target=target or 'stdout',
+        )
+        raise
 
-    _io.emit_json(data, pretty=pretty)
     return 0
 
 
@@ -606,6 +923,7 @@ def validate_handler(
     *,
     source: str,
     rules: JSONData | str,
+    event_format: str | None = None,
     source_format: str | None = None,
     target: str | None = None,
     format_explicit: bool = False,
@@ -620,6 +938,9 @@ def validate_handler(
         The source payload (e.g., path, inline data).
     rules : JSONData | str
         The validation rules (inline JSON or path).
+    event_format : str | None, optional
+        Optional structured event format emitted to STDERR. Default is
+        ``None``.
     source_format : str | None, optional
         An optional source format hint (e.g., 'json', 'csv'). Default is
         ``None``.
@@ -639,42 +960,92 @@ def validate_handler(
     ------
     ValueError
         If the rules payload is not a mapping.
+    Exception
+        Re-raises validation failures after emitting a structured failure event
+        when requested.
     """
     format_hint: str | None = source_format
-    payload = cast(
-        JSONData | str,
-        _io.resolve_cli_payload(
-            source,
-            format_hint=format_hint,
+    run_id = create_run_id()
+    started_perf = perf_counter()
+    _emit_lifecycle_event(
+        command='validate',
+        lifecycle='started',
+        run_id=run_id,
+        event_format=event_format,
+        source=source,
+        target=target or 'stdout',
+    )
+
+    try:
+        payload = cast(
+            JSONData | str,
+            _io.resolve_cli_payload(
+                source,
+                format_hint=format_hint,
+                format_explicit=format_explicit,
+            ),
+        )
+
+        rules_payload = _io.resolve_cli_payload(
+            rules,
+            format_hint=None,
             format_explicit=format_explicit,
-        ),
-    )
+        )
+        if not isinstance(rules_payload, dict):
+            raise ValueError('rules must resolve to a mapping of field rules')
 
-    rules_payload = _io.resolve_cli_payload(
-        rules,
-        format_hint=None,
-        format_explicit=format_explicit,
-    )
-    if not isinstance(rules_payload, dict):
-        raise ValueError('rules must resolve to a mapping of field rules')
+        field_rules = cast(Mapping[str, FieldRulesDict], rules_payload)
+        result = validate(payload, field_rules)
 
-    field_rules = cast(Mapping[str, FieldRulesDict], rules_payload)
-    result = validate(payload, field_rules)
-
-    if target and target != '-':
-        validated_data = result.get('data')
-        if validated_data is not None:
-            _io.write_json_output(
-                validated_data,
-                target,
-                success_message='ValidationDict result saved to',
-            )
+        if target and target != '-':
+            validated_data = result.get('data')
+            if validated_data is not None:
+                _emit_lifecycle_event(
+                    command='validate',
+                    lifecycle='completed',
+                    run_id=run_id,
+                    event_format=event_format,
+                    duration_ms=int((perf_counter() - started_perf) * 1000),
+                    result_status='ok',
+                    source=source,
+                    status='ok',
+                    target=target,
+                    valid=result.get('valid'),
+                )
+                _io.write_json_output(
+                    validated_data,
+                    target,
+                    success_message='ValidationDict result saved to',
+                )
+            else:
+                print(
+                    f'ValidationDict failed, no data to save for {target}',
+                    file=sys.stderr,
+                )
         else:
-            print(
-                f'ValidationDict failed, no data to save for {target}',
-                file=sys.stderr,
+            _emit_lifecycle_event(
+                command='validate',
+                lifecycle='completed',
+                run_id=run_id,
+                event_format=event_format,
+                duration_ms=int((perf_counter() - started_perf) * 1000),
+                result_status='ok',
+                source=source,
+                status='ok',
+                target=target or 'stdout',
+                valid=result.get('valid'),
             )
-    else:
-        _io.emit_json(result, pretty=pretty)
+            _io.emit_json(result, pretty=pretty)
+    except Exception as exc:
+        _emit_failure_event(
+            command='validate',
+            run_id=run_id,
+            started_perf=started_perf,
+            event_format=event_format,
+            exc=exc,
+            source=source,
+            target=target or 'stdout',
+        )
+        raise
 
     return 0
