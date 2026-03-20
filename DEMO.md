@@ -26,7 +26,7 @@ This document demonstrates the ETLPlus package in action.
 <!-- snippet:start installation_version -->
 ```bash
 $ etlplus --version
-etlplus 0.26.8
+etlplus 1.0.3
 ```
 <!-- snippet:end installation_version -->
 
