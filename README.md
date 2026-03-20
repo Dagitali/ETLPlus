@@ -744,6 +744,9 @@ etlplus check --config examples/configs/pipeline.yml --summary
 
 # Run a job
 etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
+
+# Run a job and emit structured events to STDERR
+etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers --event-format jsonl
 ```
 
 ### Complete ETL Pipeline Example
