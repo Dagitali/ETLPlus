@@ -112,7 +112,7 @@ ETLPlus treats the `v1.x` line as its stable public release line. The repository
 placeholders, stubs, and migration-reference modules for historical or implementation reasons, but
 they are not part of the supported public contract unless they are explicitly documented as such.
 
-The stable surface for `v1.0.0` and later `v1.x` releases is:
+The stable surface for the current `v1.x` releases is:
 
 - The documented CLI commands: `check`, `extract`, `validate`, `transform`, `load`, `render`, and `run`
 - The documented Python ETL primitives in `etlplus.ops`
