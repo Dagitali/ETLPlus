@@ -25,6 +25,7 @@ from ..ops import run
 from ..ops import transform
 from ..ops import validate
 from ..ops.validate import FieldRulesDict
+from ..runtime import build_readiness_report
 from ..utils.types import JSONData
 from ..utils.types import TemplateKey
 from . import _io
@@ -186,9 +187,10 @@ def _write_file_payload(
 
 def check_handler(
     *,
-    config: str,
+    config: str | None = None,
     jobs: bool = False,
     pipelines: bool = False,
+    readiness: bool = False,
     sources: bool = False,
     summary: bool = False,
     targets: bool = False,
@@ -201,12 +203,15 @@ def check_handler(
 
     Parameters
     ----------
-    config : str
+    config : str | None, optional
         Path to the pipeline YAML configuration.
     jobs : bool, optional
         Whether to include job metadata. Default is ``False``.
     pipelines : bool, optional
         Whether to include pipeline metadata. Default is ``False``.
+    readiness : bool, optional
+        Whether to run runtime and config readiness checks. Default is
+        ``False``.
     sources : bool, optional
         Whether to include source metadata. Default is ``False``.
     summary : bool, optional
@@ -226,7 +231,20 @@ def check_handler(
     int
         Zero on success.
 
+    Raises
+    ------
+    ValueError
+        If config inspection is requested without a configuration path.
+
     """
+    if readiness:
+        report = build_readiness_report(config_path=config)
+        _io.emit_json(report, pretty=pretty)
+        return 0 if report.get('status') == 'ok' else 1
+
+    if config is None:
+        raise ValueError('config is required unless readiness-only mode is used')
+
     cfg = Config.from_yaml(config, substitute=substitute)
     if summary:
         _io.emit_json(_pipeline_summary(cfg), pretty=True)
