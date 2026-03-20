@@ -13,6 +13,7 @@ Notes
 from __future__ import annotations
 
 import csv
+import json
 from io import StringIO
 from pathlib import Path
 from textwrap import dedent
@@ -73,6 +74,7 @@ class TestRun:
 
         # CLI should have printed a JSON object with status ok.
         assert payload.get('status') == 'ok'
+        assert isinstance(payload.get('run_id'), str)
         assert isinstance(payload.get('result'), dict)
         assert payload['result'].get('status') == 'success'
 
@@ -140,6 +142,7 @@ class TestRun:
         assert code == 0
         payload = parse_json_output(out)
         assert payload.get('status') == 'ok'
+        assert isinstance(payload.get('run_id'), str)
         assert isinstance(payload.get('result'), dict)
         assert payload['result'].get('status') == 'success'
         assert payload['result'].get('message') == f'Data loaded to {target_uri}'
@@ -215,7 +218,40 @@ class TestRun:
         assert code == 0
         payload = parse_json_output(out)
         assert payload.get('status') == 'ok'
+        assert isinstance(payload.get('run_id'), str)
         assert isinstance(payload.get('result'), dict)
         assert payload['result'].get('status') == 'success'
         assert payload['result'].get('message') == f'Data loaded to {target.uri}'
-        assert File(target.uri, FileFormat.JSON).read() == sample_records
+
+    def test_run_emits_jsonl_events_to_stderr(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        pipeline_config_factory: PipelineConfigFactory,
+        sample_records: list[dict[str, object]],
+    ) -> None:
+        """Test that ``run --event-format jsonl`` emits structured events."""
+        cfg = pipeline_config_factory(sample_records)
+
+        code, out, err = cli_invoke(
+            (
+                'run',
+                '--config',
+                str(cfg.config_path),
+                '--job',
+                cfg.job_name,
+                '--event-format',
+                'jsonl',
+            ),
+        )
+
+        assert code == 0
+        payload = parse_json_output(out)
+        assert payload.get('status') == 'ok'
+        assert isinstance(payload.get('run_id'), str)
+
+        lines = [json.loads(line) for line in err.splitlines() if line.strip()]
+        assert [line['event'] for line in lines] == ['run.started', 'run.completed']
+        assert all(line['run_id'] == payload['run_id'] for line in lines)
+        assert all(line['job'] == cfg.job_name for line in lines)
+        assert File(cfg.output_path, FileFormat.JSON).read() == sample_records
