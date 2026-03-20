@@ -67,6 +67,10 @@ additional polish still recommended before the first stable `v1.0.0` tag.
 
 ## Status Notes
 
+- Checked pre-`v1.0.0` items in this file are retained as release-audit history, not as active
+  tracking work.
+- Active tracking in this file should focus on unchecked items, post-stable follow-up, and
+  execution-hygiene notes that affect the supported CLI/runtime surface.
 - The CI quality-bar item is now closed: lint, docstring lint, type-checking, tests, docs builds,
   distribution validation, artifact audits, and clean-environment wheel smoke checks are enforced
   or verified in the release path.
@@ -83,6 +87,11 @@ additional polish still recommended before the first stable `v1.0.0` tag.
   registry/base plumbing, connector support modules, the file-handler registry, database typing
   helpers, and API request manager plumbing as protected underscore-prefixed implementation modules.
 - The documented stable CLI surface keeps readiness under `check --readiness`.
+- Runtime execution hygiene progress on the current branch includes:
+  - Shared runtime logging policy and config precedence documentation
+  - `check --readiness` runtime/config checks with optional dependency and connector-gap detection
+  - `run --event-format jsonl` structured execution events on STDERR for the supported `run` CLI
+    surface
 
 ## Strongly Recommended Before `v1.0.0`
 
