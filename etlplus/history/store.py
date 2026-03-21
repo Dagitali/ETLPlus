@@ -79,14 +79,20 @@ class RunRecord:
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _coerce_state_dir(state_dir: str | os.PathLike[str] | None = None) -> Path:
+def _coerce_state_dir(
+    state_dir: str | os.PathLike[str] | None = None,
+) -> Path:
+    """Coerce a state directory path from the given value or environment variable."""
     raw = state_dir or os.getenv('ETLPLUS_STATE_DIR')
     if not raw:
         return _DEFAULT_STATE_DIR
     return Path(raw).expanduser()
 
 
-def _config_sha256(config_path: str) -> str | None:
+def _config_sha256(
+    config_path: str,
+) -> str | None:
+    """Compute the SHA-256 hash of the config file at *config_path*."""
     path = Path(config_path)
     if not path.exists():
         return None
@@ -181,8 +187,25 @@ def open_history_store() -> HistoryStore:
 class HistoryStore:
     """Minimal local history-store interface."""
 
-    def record_run_started(self, record: RunRecord) -> None:
-        """Persist the start of a run."""
+    # -- Instance Methods -- #
+
+    def record_run_started(
+        self,
+        record: RunRecord,
+    ) -> None:
+        """
+        Persist the start of a run.
+
+        Parameters
+        ----------
+        record : RunRecord
+            Initial run record to persist.
+
+        Raises
+        ------
+        NotImplementedError
+            If the method is not implemented by a subclass.
+        """
         raise NotImplementedError
 
     def record_run_finished(
@@ -197,23 +220,74 @@ class HistoryStore:
         error_message: str | None = None,
         error_traceback: str | None = None,
     ) -> None:
-        """Persist completion or failure details for a run."""
+        """
+        Persist completion or failure details for a run.
+
+        Parameters
+        ----------
+        run_id : str
+            Stable run identifier.
+        status : str
+            Final run status, e.g. ``success`` or ``failure``.
+        finished_at : str
+            Run finish timestamp in UTC ISO-8601 form.
+        duration_ms : int
+            Run duration in milliseconds.
+        result_summary : JSONData | None, optional
+            Optional JSON-serializable summary of the run result, e.g. record
+            counts or sample output.
+        error_type : str | None, optional
+            Optional error type name if the run failed.
+        error_message : str | None, optional
+            Optional error message if the run failed.
+        error_traceback : str | None, optional
+            Optional error traceback if the run failed.
+
+        Raises
+        ------
+        NotImplementedError
+            If the method is not implemented by a subclass.
+        """
         raise NotImplementedError
 
 
 class JsonlHistoryStore(HistoryStore):
     """JSONL-backed local run history."""
 
-    def __init__(self, log_path: Path) -> None:
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __init__(
+        self,
+        log_path: Path,
+    ) -> None:
         self.log_path = log_path
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    def _append_record(self, payload: dict[str, Any]) -> None:
+    # -- Internal Instance Methods -- #
+
+    def _append_record(
+        self,
+        payload: dict[str, Any],
+    ) -> None:
+        """Append a record to the JSONL log file."""
         with self.log_path.open('a', encoding='utf-8') as handle:
             handle.write(json.dumps(payload, ensure_ascii=False))
             handle.write('\n')
 
-    def record_run_started(self, record: RunRecord) -> None:
+    # -- Instance Methods -- #
+
+    def record_run_started(
+        self,
+        record: RunRecord,
+    ) -> None:
+        """
+        Persist the start of a run by appending a record to the log.
+
+        Parameters
+        ----------
+        record : RunRecord
+            Initial run record to persist.
+        """
         self._append_record(asdict(record))
 
     def record_run_finished(
@@ -228,6 +302,30 @@ class JsonlHistoryStore(HistoryStore):
         error_message: str | None = None,
         error_traceback: str | None = None,
     ) -> None:
+        """
+        Persist completion or failure details for a run by appending a record
+        to the log.
+
+        Parameters
+        ----------
+        run_id : str
+            Stable run identifier.
+        status : str
+            Final run status, e.g. ``success`` or ``failure``.
+        finished_at : str
+            Run finish timestamp in UTC ISO-8601 form.
+        duration_ms : int
+            Run duration in milliseconds.
+        result_summary : JSONData | None, optional
+            Optional JSON-serializable summary of the run result, e.g. record
+            counts or sample output.
+        error_type : str | None, optional
+            Optional error type name if the run failed.
+        error_message : str | None, optional
+            Optional error message if the run failed.
+        error_traceback : str | None, optional
+            Optional error traceback if the run failed.
+        """
         self._append_record(
             {
                 'duration_ms': duration_ms,
@@ -246,15 +344,24 @@ class JsonlHistoryStore(HistoryStore):
 class SQLiteHistoryStore(HistoryStore):
     """SQLite-backed local run history."""
 
-    def __init__(self, db_path: Path) -> None:
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __init__(
+        self,
+        db_path: Path,
+    ) -> None:
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._ensure_schema()
 
+    # -- Internal Instance Methods -- #
+
     def _connect(self) -> sqlite3.Connection:
+        """Create a new SQLite connection."""
         return sqlite3.connect(self.db_path)
 
     def _ensure_schema(self) -> None:
+        """Ensure the database schema is created and up-to-date."""
         with self._connect() as conn:
             conn.execute(
                 """
@@ -297,7 +404,80 @@ class SQLiteHistoryStore(HistoryStore):
                 (str(HISTORY_SCHEMA_VERSION),),
             )
 
-    def record_run_started(self, record: RunRecord) -> None:
+    # -- Instance Methods -- #
+
+    def record_run_finished(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        finished_at: str,
+        duration_ms: int,
+        result_summary: JSONData | None = None,
+        error_type: str | None = None,
+        error_message: str | None = None,
+        error_traceback: str | None = None,
+    ) -> None:
+        """
+        Record completion or failure details for a run.
+
+        Parameters
+        ----------
+        run_id : str
+            Unique identifier for the run.
+        status : str
+            Final status of the run.
+        finished_at : str
+            Timestamp when the run finished.
+        duration_ms : int
+            Duration of the run in milliseconds.
+        result_summary : JSONData | None, optional
+            Summary of the run results, if available.
+        error_type : str | None, optional
+            Type of error encountered, if any.
+        error_message : str | None, optional
+            Error message, if any.
+        error_traceback : str | None, optional
+            Error traceback, if any.
+        """
+        with self._connect() as conn:
+            conn.execute(
+                """
+                UPDATE runs
+                SET
+                    status = ?,
+                    finished_at = ?,
+                    duration_ms = ?,
+                    result_summary = ?,
+                    error_type = ?,
+                    error_message = ?,
+                    error_traceback = ?
+                WHERE run_id = ?
+                """,
+                (
+                    status,
+                    finished_at,
+                    duration_ms,
+                    json.dumps(result_summary) if result_summary is not None else None,
+                    error_type,
+                    error_message,
+                    error_traceback,
+                    run_id,
+                ),
+            )
+
+    def record_run_started(
+        self,
+        record: RunRecord,
+    ) -> None:
+        """
+        Record the start of a run.
+
+        Parameters
+        ----------
+        record : RunRecord
+            Initial run record to persist.
+        """
         with self._connect() as conn:
             conn.execute(
                 """
@@ -343,45 +523,5 @@ class SQLiteHistoryStore(HistoryStore):
                     record.host,
                     record.pid,
                     record.etlplus_version,
-                ),
-            )
-
-    def record_run_finished(
-        self,
-        run_id: str,
-        *,
-        status: str,
-        finished_at: str,
-        duration_ms: int,
-        result_summary: JSONData | None = None,
-        error_type: str | None = None,
-        error_message: str | None = None,
-        error_traceback: str | None = None,
-    ) -> None:
-        with self._connect() as conn:
-            conn.execute(
-                """
-                UPDATE runs
-                SET
-                    status = ?,
-                    finished_at = ?,
-                    duration_ms = ?,
-                    result_summary = ?,
-                    error_type = ?,
-                    error_message = ?,
-                    error_traceback = ?
-                WHERE run_id = ?
-                """,
-                (
-                    status,
-                    finished_at,
-                    duration_ms,
-                    json.dumps(result_summary)
-                    if result_summary is not None
-                    else None,
-                    error_type,
-                    error_message,
-                    error_traceback,
-                    run_id,
                 ),
             )
