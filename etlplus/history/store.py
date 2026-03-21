@@ -406,66 +406,6 @@ class SQLiteHistoryStore(HistoryStore):
 
     # -- Instance Methods -- #
 
-    def record_run_started(
-        self,
-        record: RunRecord,
-    ) -> None:
-        """
-        Record the start of a run.
-
-        Parameters
-        ----------
-        record : RunRecord
-            Initial run record to persist.
-        """
-        with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO runs (
-                    run_id,
-                    pipeline_name,
-                    job_name,
-                    config_path,
-                    config_sha256,
-                    status,
-                    started_at,
-                    finished_at,
-                    duration_ms,
-                    records_in,
-                    records_out,
-                    error_type,
-                    error_message,
-                    error_traceback,
-                    result_summary,
-                    host,
-                    pid,
-                    etlplus_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    record.run_id,
-                    record.pipeline_name,
-                    record.job_name,
-                    record.config_path,
-                    record.config_sha256,
-                    record.status,
-                    record.started_at,
-                    record.finished_at,
-                    record.duration_ms,
-                    record.records_in,
-                    record.records_out,
-                    record.error_type,
-                    record.error_message,
-                    record.error_traceback,
-                    json.dumps(record.result_summary)
-                    if record.result_summary is not None
-                    else None,
-                    record.host,
-                    record.pid,
-                    record.etlplus_version,
-                ),
-            )
-
     def record_run_finished(
         self,
         run_id: str,
@@ -525,5 +465,65 @@ class SQLiteHistoryStore(HistoryStore):
                     error_message,
                     error_traceback,
                     run_id,
+                ),
+            )
+
+    def record_run_started(
+        self,
+        record: RunRecord,
+    ) -> None:
+        """
+        Record the start of a run.
+
+        Parameters
+        ----------
+        record : RunRecord
+            Initial run record to persist.
+        """
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO runs (
+                    run_id,
+                    pipeline_name,
+                    job_name,
+                    config_path,
+                    config_sha256,
+                    status,
+                    started_at,
+                    finished_at,
+                    duration_ms,
+                    records_in,
+                    records_out,
+                    error_type,
+                    error_message,
+                    error_traceback,
+                    result_summary,
+                    host,
+                    pid,
+                    etlplus_version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    record.run_id,
+                    record.pipeline_name,
+                    record.job_name,
+                    record.config_path,
+                    record.config_sha256,
+                    record.status,
+                    record.started_at,
+                    record.finished_at,
+                    record.duration_ms,
+                    record.records_in,
+                    record.records_out,
+                    record.error_type,
+                    record.error_message,
+                    record.error_traceback,
+                    json.dumps(record.result_summary)
+                    if record.result_summary is not None
+                    else None,
+                    record.host,
+                    record.pid,
+                    record.etlplus_version,
                 ),
             )
