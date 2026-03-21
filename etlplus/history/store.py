@@ -458,9 +458,7 @@ class SQLiteHistoryStore(HistoryStore):
                     status,
                     finished_at,
                     duration_ms,
-                    json.dumps(result_summary)
-                    if result_summary is not None
-                    else None,
+                    json.dumps(result_summary) if result_summary is not None else None,
                     error_type,
                     error_message,
                     error_traceback,
