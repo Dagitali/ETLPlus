@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from ..__version__ import __version__
+from ..file.sqlite import SqliteFile
 from ..utils.types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
@@ -350,6 +351,7 @@ class SQLiteHistoryStore(HistoryStore):
         self,
         db_path: Path,
     ) -> None:
+        self._sqlite_file = SqliteFile()
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._ensure_schema()
@@ -358,7 +360,7 @@ class SQLiteHistoryStore(HistoryStore):
 
     def _connect(self) -> sqlite3.Connection:
         """Create a new SQLite connection."""
-        return sqlite3.connect(self.db_path)
+        return self._sqlite_file.connect(self.db_path)
 
     def _ensure_schema(self) -> None:
         """Ensure the database schema is created and up-to-date."""
