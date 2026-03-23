@@ -184,6 +184,46 @@ class TestCommandsMissingInputs:
         assert_stderr_contains(expected_message)
 
 
+class TestHistoryCommand:
+    """Unit tests for :func:`etlplus.cli._commands.history_cmd`."""
+
+    def test_delegates_to_handler(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+        stub_handler: StubHandler,
+    ) -> None:
+        """Test that history inputs dispatch to ``history_handler``."""
+        monkeypatch.setattr(
+            commands_mod,
+            'ensure_state',
+            lambda _ctx: CliState(pretty=False),
+        )
+        captured = stub_handler(
+            commands_mod.handlers,
+            'history_handler',
+            result=0,
+        )
+        monkeypatch.setattr(
+            commands_mod,
+            'handle_history',
+            commands_mod.handlers.history_handler,
+        )
+
+        result = commands_mod.history_cmd(
+            typer_ctx_factory(),
+            limit=5,
+            raw=True,
+        )
+
+        assert result == 0
+        assert captured == {
+            'limit': 5,
+            'pretty': False,
+            'raw': True,
+        }
+
+
 class TestTransformCommand:
     """Unit tests for :func:`etlplus.cli._commands.transform_cmd`."""
 
