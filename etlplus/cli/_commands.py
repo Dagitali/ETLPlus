@@ -12,6 +12,7 @@ Subcommands
 -----------
 - ``check``: inspect a pipeline configuration
 - ``extract``: extract data from files, databases, or REST APIs
+- ``history``: inspect persisted local run history
 - ``load``: load data to files, databases, or REST APIs
 - ``render``: render SQL DDL from table schema specs
 - ``transform``: transform records
@@ -45,6 +46,7 @@ from ._constants import CLI_DESCRIPTION
 from ._constants import CLI_EPILOG
 from ._constants import DATA_CONNECTORS
 from ._constants import FILE_FORMATS
+from ._handlers import history_handler as handle_history
 from ._io import parse_json_payload
 from ._options import typer_format_option_kwargs
 from ._state import CliState
@@ -82,6 +84,24 @@ ConfigOption = Annotated[
         '--config',
         metavar='PATH',
         help='Path to YAML-formatted configuration file.',
+    ),
+]
+
+HistoryLimitOption = Annotated[
+    int | None,
+    typer.Option(
+        '--limit',
+        min=1,
+        help='Maximum number of history records to emit.',
+        show_default=False,
+    ),
+]
+
+HistoryRawOption = Annotated[
+    bool,
+    typer.Option(
+        '--raw',
+        help='Emit raw append events instead of normalized runs.',
     ),
 ]
 
@@ -588,6 +608,40 @@ def extract_cmd(
             event_format=event_format,
             format_hint=source_format,
             format_explicit=source_format is not None,
+            pretty=state.pretty,
+        ),
+    )
+
+
+@app.command('history')
+def history_cmd(
+    ctx: typer.Context,
+    limit: HistoryLimitOption = None,
+    raw: HistoryRawOption = False,
+) -> int:
+    """
+    Inspect persisted local run history.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    limit : HistoryLimitOption, optional
+        Maximum number of history records to emit. Default is ``None``.
+    raw : HistoryRawOption, optional
+        Whether to emit raw append events instead of normalized runs.
+        Default is ``False``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
+    state = ensure_state(ctx)
+    return int(
+        handle_history(
+            limit=limit,
+            raw=raw,
             pretty=state.pretty,
         ),
     )
