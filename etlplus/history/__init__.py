@@ -10,6 +10,7 @@ from .store import HistoryStore
 from .store import JsonlHistoryStore
 from .store import SQLiteHistoryStore
 from .store import build_run_record
+from .store import iter_history_runs
 from .store import open_history_store
 
 # SECTION: EXPORTS ========================================================== #
@@ -22,5 +23,6 @@ __all__ = [
     'SQLiteHistoryStore',
     # Functions
     'build_run_record',
+    'iter_history_runs',
     'open_history_store',
 ]
