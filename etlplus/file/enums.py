@@ -194,10 +194,6 @@ class FileFormat(CoercibleStrEnum):
             A mapping of alias names to their corresponding enum member names.
         """
         return {
-            # TODO: Absorb these into next section.
-            # Common shorthand
-            'parq': 'parquet',
-            'yml': 'yaml',
             # File extensions
             '.avro': 'avro',
             '.arrow': 'arrow',
