@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from ..__version__ import __version__
+from ..file.ndjson import NdjsonFile
 from ..file.sqlite import SqliteFile
 from ..utils.types import JSONData
 
@@ -261,6 +262,7 @@ class JsonlHistoryStore(HistoryStore):
         self,
         log_path: Path,
     ) -> None:
+        self._ndjson_file = NdjsonFile()
         self.log_path = log_path
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -272,8 +274,14 @@ class JsonlHistoryStore(HistoryStore):
     ) -> None:
         """Append a record to the JSONL log file."""
         with self.log_path.open('a', encoding='utf-8') as handle:
-            handle.write(json.dumps(payload, ensure_ascii=False))
-            handle.write('\n')
+            handle.write(self._serialize_record(payload))
+
+    def _serialize_record(
+        self,
+        payload: dict[str, Any],
+    ) -> str:
+        """Serialize one history record as a single NDJSON line."""
+        return self._ndjson_file.dump_line(payload)
 
     # -- Instance Methods -- #
 
