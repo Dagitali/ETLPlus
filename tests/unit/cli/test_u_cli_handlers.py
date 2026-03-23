@@ -409,6 +409,117 @@ class TestExtractHandler:
         assert isinstance(kwargs['success_message'], str)
 
 
+class TestHistoryHandler:
+    """Unit tests for :func:`history_handler`."""
+
+    def test_emits_normalized_runs_by_default(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that history emits merged runs by default."""
+
+        class _FakeHistoryStore:
+            def iter_records(self) -> Any:
+                return iter(
+                    [
+                        {
+                            'config_path': 'pipeline.yml',
+                            'job_name': 'job-a',
+                            'run_id': 'run-123',
+                            'started_at': '2026-03-23T00:00:00Z',
+                            'status': 'running',
+                        },
+                        {
+                            'duration_ms': 5000,
+                            'finished_at': '2026-03-23T00:00:05Z',
+                            'result_summary': {'rows': 10},
+                            'run_id': 'run-123',
+                            'status': 'succeeded',
+                        },
+                    ],
+                )
+
+        monkeypatch.setattr(
+            handlers,
+            'open_history_store',
+            _FakeHistoryStore,
+        )
+
+        assert handlers.history_handler(pretty=True) == 0
+
+        assert_emit_json(
+            capture_io,
+            [
+                {
+                    'config_path': 'pipeline.yml',
+                    'config_sha256': None,
+                    'duration_ms': 5000,
+                    'error_message': None,
+                    'error_traceback': None,
+                    'error_type': None,
+                    'etlplus_version': None,
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'host': None,
+                    'job_name': 'job-a',
+                    'pid': None,
+                    'pipeline_name': None,
+                    'records_in': None,
+                    'records_out': None,
+                    'result_summary': {'rows': 10},
+                    'run_id': 'run-123',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ],
+            pretty=True,
+        )
+
+    def test_emits_raw_records_with_limit(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that raw history mode returns append events and applies limit."""
+
+        class _FakeHistoryStore:
+            def iter_records(self) -> Any:
+                return iter(
+                    [
+                        {
+                            'run_id': 'run-1',
+                            'started_at': '2026-03-23T00:00:00Z',
+                            'status': 'running',
+                        },
+                        {
+                            'finished_at': '2026-03-23T00:00:05Z',
+                            'run_id': 'run-2',
+                            'status': 'succeeded',
+                        },
+                    ],
+                )
+
+        monkeypatch.setattr(
+            handlers,
+            'open_history_store',
+            _FakeHistoryStore,
+        )
+
+        assert handlers.history_handler(raw=True, limit=1, pretty=False) == 0
+
+        assert_emit_json(
+            capture_io,
+            [
+                {
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'run_id': 'run-2',
+                    'status': 'succeeded',
+                },
+            ],
+            pretty=False,
+        )
+
+
 class TestLoadHandler:
     """Unit tests for :func:`load_handler`."""
 
@@ -817,7 +928,7 @@ class TestRunHandler:
         monkeypatch.setattr(
             handlers,
             'open_history_store',
-            lambda: _FakeHistoryStore(),
+            _FakeHistoryStore,
         )
         run_calls: dict[str, object] = {}
 
