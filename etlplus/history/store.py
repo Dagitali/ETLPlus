@@ -11,6 +11,7 @@ import json
 import os
 import socket
 import sqlite3
+from collections.abc import Iterator
 from dataclasses import asdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -191,6 +192,22 @@ class HistoryStore:
 
     # -- Instance Methods -- #
 
+    def iter_records(self) -> Iterator[dict[str, Any]]:
+        """
+        Yield persisted history records in backend-native form.
+
+        Returns
+        -------
+        Iterator[dict[str, Any]]
+            Stream of persisted history records.
+
+        Raises
+        ------
+        NotImplementedError
+            If the method is not implemented by a subclass.
+        """
+        raise NotImplementedError
+
     def record_run_started(
         self,
         record: RunRecord,
@@ -284,6 +301,17 @@ class JsonlHistoryStore(HistoryStore):
         return self._ndjson_file.dump_line(payload)
 
     # -- Instance Methods -- #
+
+    def iter_records(self) -> Iterator[dict[str, Any]]:
+        """Yield JSONL history records by streaming the log file line by line."""
+        if not self.log_path.exists():
+            return
+        with self.log_path.open('r', encoding='utf-8') as handle:
+            for idx, line in enumerate(handle, start=1):
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                yield self._ndjson_file.load_line(stripped, line_number=idx)
 
     def record_run_started(
         self,
@@ -415,6 +443,41 @@ class SQLiteHistoryStore(HistoryStore):
             )
 
     # -- Instance Methods -- #
+
+    def iter_records(self) -> Iterator[dict[str, Any]]:
+        """Yield persisted SQLite run rows as dictionaries."""
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT
+                    run_id,
+                    pipeline_name,
+                    job_name,
+                    config_path,
+                    config_sha256,
+                    status,
+                    started_at,
+                    finished_at,
+                    duration_ms,
+                    records_in,
+                    records_out,
+                    error_type,
+                    error_message,
+                    error_traceback,
+                    result_summary,
+                    host,
+                    pid,
+                    etlplus_version
+                FROM runs
+                ORDER BY started_at ASC, run_id ASC
+                """,
+            )
+            for row in rows:
+                payload = dict(row)
+                if payload['result_summary'] is not None:
+                    payload['result_summary'] = json.loads(payload['result_summary'])
+                yield payload
 
     def record_run_finished(
         self,
