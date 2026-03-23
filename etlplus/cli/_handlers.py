@@ -22,6 +22,7 @@ from ..database import render_tables
 from ..file import File
 from ..file import FileFormat
 from ..history import build_run_record
+from ..history import iter_history_runs
 from ..history import open_history_store
 from ..ops import extract
 from ..ops import load
@@ -43,13 +44,23 @@ from . import _io
 
 __all__ = [
     # Functions
-    'extract_handler',
     'check_handler',
+    'extract_handler',
+    'history_handler',
     'load_handler',
     'render_handler',
     'run_handler',
     'transform_handler',
     'validate_handler',
+]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+TransformOperations = Mapping[
+    Literal['filter', 'map', 'select', 'sort', 'aggregate'],
+    Any,
 ]
 
 
@@ -183,6 +194,18 @@ def _emit_lifecycle_event(
     )
 
 
+def _history_sort_key(
+    record: Mapping[str, Any],
+) -> tuple[str, str]:
+    """Return a reverse-sortable key for history records."""
+    timestamp = cast(
+        str,
+        record.get('started_at') or record.get('finished_at') or '',
+    )
+    run_id = cast(str, record.get('run_id') or '')
+    return (timestamp, run_id)
+
+
 def _pipeline_summary(
     cfg: Config,
 ) -> dict[str, Any]:
@@ -312,6 +335,43 @@ def check_handler(
         ),
         pretty=pretty,
     )
+    return 0
+
+
+def history_handler(
+    *,
+    limit: int | None = None,
+    raw: bool = False,
+    pretty: bool = True,
+) -> int:
+    """
+    Emit persisted local run history.
+
+    Parameters
+    ----------
+    limit : int | None, optional
+        Maximum number of records to emit. Default is ``None``.
+    raw : bool, optional
+        Whether to emit raw append events instead of normalized runs.
+        Default is ``False``.
+    pretty : bool, optional
+        Whether to pretty-print output. Default is ``True``.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+    history_store = open_history_store()
+    records_iter = (
+        history_store.iter_records()
+        if raw
+        else iter_history_runs(history_store)
+    )
+    records = sorted(records_iter, key=_history_sort_key, reverse=True)
+    if limit is not None:
+        records = records[:limit]
+    _io.emit_json(records, pretty=pretty)
     return 0
 
 
@@ -785,12 +845,6 @@ def run_handler(
 
     _io.emit_json(_pipeline_summary(cfg), pretty=pretty)
     return 0
-
-
-TransformOperations = Mapping[
-    Literal['filter', 'map', 'select', 'sort', 'aggregate'],
-    Any,
-]
 
 
 def transform_handler(
