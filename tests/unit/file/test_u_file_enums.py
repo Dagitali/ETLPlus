@@ -26,12 +26,58 @@ type InferCase = tuple[
     CompressionFormat | None,
 ]
 
-INFER_CASES: list[InferCase] = [
-    ('data.csv.gz', None, FileFormat.CSV, CompressionFormat.GZ),
-    ('data.jsonl.gz', None, FileFormat.NDJSON, CompressionFormat.GZ),
-    ('data.zip', None, None, CompressionFormat.ZIP),
+
+def build_format_infer_result(
+    fmt: FileFormat,
+) -> tuple[FileFormat | None, CompressionFormat | None]:
+    """Build the expected inference result for a file format input."""
+    if fmt in {FileFormat.GZ, FileFormat.ZIP}:
+        return None, CompressionFormat.coerce(fmt.value)
+    return fmt, None
+
+
+def build_enum_infer_case(
+    value: FileFormat | CompressionFormat,
+) -> InferCase:
+    """Build the expected inference result for an enum input."""
+    if isinstance(value, FileFormat):
+        expected_format, expected_compression = build_format_infer_result(value)
+        return value, None, expected_format, expected_compression
+    return value, None, None, value
+
+
+def build_file_format_alias_infer_case(
+    alias: str,
+    canonical: str,
+) -> InferCase:
+    """Build the expected inference result for a file-format alias."""
+    fmt = FileFormat(canonical)
+    expected_format, expected_compression = build_format_infer_result(fmt)
+    value: object = (
+        alias
+        if '/' in alias or not alias.startswith('.')
+        else f'payload{alias}'
+    )
+    return value, None, expected_format, expected_compression
+
+
+def build_compression_alias_infer_case(alias: str, canonical: str) -> InferCase:
+    """Build the expected inference result for a compression alias."""
+    return alias, None, None, CompressionFormat(canonical)
+
+
+def assert_infer_case(case: InferCase) -> None:
+    """Assert that an inference case matches the implementation."""
+    value, filename, expected_format, expected_compression = case
+    fmt, compression = infer_file_format_and_compression(value, filename)
+    assert fmt is expected_format
+    assert compression is expected_compression
+
+
+EDGE_CASE_INFER_CASES: tuple[InferCase, ...] = (
+    ('payload.csv.gz', None, FileFormat.CSV, CompressionFormat.GZ),
+    ('payload.zip', None, None, CompressionFormat.ZIP),
     ('application/json; charset=utf-8', None, FileFormat.JSON, None),
-    ('application/gzip', None, None, CompressionFormat.GZ),
     (
         'application/octet-stream',
         'payload.csv.gz',
@@ -40,10 +86,28 @@ INFER_CASES: list[InferCase] = [
     ),
     ('application/octet-stream', None, None, None),
     ('   ', None, None, None),
-    (FileFormat.JSON, None, FileFormat.JSON, None),
-    (FileFormat.GZ, None, None, CompressionFormat.GZ),
-    (CompressionFormat.ZIP, None, None, CompressionFormat.ZIP),
-]
+)
+
+FILE_FORMAT_COERCE_CASES: tuple[tuple[str, FileFormat], ...] = (
+    tuple((fmt.value, fmt) for fmt in FileFormat)
+    + tuple(
+        (alias, FileFormat(canonical))
+        for alias, canonical in FileFormat.aliases().items()
+    )
+)
+
+GENERATED_INFER_CASES: tuple[InferCase, ...] = (
+    tuple(build_enum_infer_case(fmt) for fmt in FileFormat)
+    + tuple(build_enum_infer_case(compression) for compression in CompressionFormat)
+    + tuple(
+        build_file_format_alias_infer_case(alias, canonical)
+        for alias, canonical in FileFormat.aliases().items()
+    )
+    + tuple(
+        build_compression_alias_infer_case(alias, canonical)
+        for alias, canonical in CompressionFormat.aliases().items()
+    )
+)
 
 
 # SECTION: TESTS ============================================================ #
@@ -54,23 +118,15 @@ class TestFileFormat:
 
     @pytest.mark.parametrize(
         ('value', 'expected'),
-        [
-            ('JSON', FileFormat.JSON),
-            ('application/xml', FileFormat.XML),
-            ('yml', FileFormat.YAML),
-        ],
+        FILE_FORMAT_COERCE_CASES,
     )
-    def test_aliases(
+    def test_coerce(
         self,
         value: str,
         expected: FileFormat,
     ) -> None:
-        """Test that :meth:`coerce` coerces alias values correctly."""
+        """Test that :meth:`coerce` resolves canonical values and aliases."""
         assert FileFormat.coerce(value) is expected
-
-    def test_coerce(self) -> None:
-        """Test that :meth:`coerce` resolves supported inputs."""
-        assert FileFormat.coerce('csv') is FileFormat.CSV
 
     def test_invalid_value(self) -> None:
         """
@@ -85,9 +141,9 @@ class TestInferFileFormatAndCompression:
 
     @pytest.mark.parametrize(
         ('value', 'filename', 'expected_format', 'expected_compression'),
-        INFER_CASES,
+        EDGE_CASE_INFER_CASES,
     )
-    def test_infers_format_and_compression(
+    def test_infers_edge_cases(
         self,
         value: object,
         filename: object | None,
@@ -98,6 +154,18 @@ class TestInferFileFormatAndCompression:
         Test that :func:`infer_file_format_and_compression` handles mixed
         inputs correctly.
         """
-        fmt, compression = infer_file_format_and_compression(value, filename)
-        assert fmt is expected_format
-        assert compression is expected_compression
+        assert_infer_case((value, filename, expected_format, expected_compression))
+
+    @pytest.mark.parametrize(
+        ('value', 'filename', 'expected_format', 'expected_compression'),
+        GENERATED_INFER_CASES,
+    )
+    def test_infers_generated_cases(
+        self,
+        value: object,
+        filename: object | None,
+        expected_format: FileFormat | None,
+        expected_compression: CompressionFormat | None,
+    ) -> None:
+        """Test that generated enum and alias cases infer the expected result."""
+        assert_infer_case((value, filename, expected_format, expected_compression))
