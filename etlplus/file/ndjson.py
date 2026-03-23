@@ -138,25 +138,55 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         -------
         JSONData
             Parsed records.
-
-        Raises
-        ------
-        TypeError
-            If any line in the NDJSON text is not a JSON object (dict).
         """
-        _ = options
         rows: JSONList = []
         for idx, line in enumerate(text.splitlines(), start=1):
             stripped = line.strip()
             if not stripped:
                 continue
-            payload = json.loads(stripped)
-            if not isinstance(payload, dict):
-                raise TypeError(
-                    f'NDJSON lines must be objects (dicts) (line {idx})',
-                )
-            rows.append(cast(JSONDict, payload))
+            rows.append(self.load_line(stripped, options=options, line_number=idx))
         return rows
+
+    def load_line(
+        self,
+        text: str,
+        *,
+        options: ReadOptions | None = None,
+        line_number: int | None = None,
+    ) -> JSONDict:
+        """
+        Parse one NDJSON record line into a dictionary.
+
+        Parameters
+        ----------
+        text : str
+            One NDJSON record line.
+        options : ReadOptions | None, optional
+            Optional read parameters.
+        line_number : int | None, optional
+            Optional source line number used for error reporting.
+
+        Returns
+        -------
+        JSONDict
+            Parsed JSON object for the line.
+
+        Raises
+        ------
+        ValueError
+            If the input line is blank.
+        TypeError
+            If the line does not contain a JSON object (dict).
+        """
+        _ = options
+        stripped = text.strip()
+        if not stripped:
+            raise ValueError('NDJSON line cannot be blank')
+        payload = json.loads(stripped)
+        if not isinstance(payload, dict):
+            suffix = f' (line {line_number})' if line_number is not None else ''
+            raise TypeError(f'NDJSON lines must be objects (dicts){suffix}')
+        return cast(JSONDict, payload)
 
     def dumps(
         self,
@@ -179,6 +209,29 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         str
             Serialized NDJSON text.
         """
-        _ = options
         rows = normalize_records(data, 'NDJSON')
-        return ''.join(f'{json.dumps(row, ensure_ascii=False)}\n' for row in rows)
+        return ''.join(self.dump_line(row, options=options) for row in rows)
+
+    def dump_line(
+        self,
+        data: JSONDict,
+        *,
+        options: WriteOptions | None = None,
+    ) -> str:
+        """
+        Serialize one dictionary record as a single NDJSON line.
+
+        Parameters
+        ----------
+        data : JSONDict
+            One JSON object record to serialize.
+        options : WriteOptions | None, optional
+            Optional write parameters.
+
+        Returns
+        -------
+        str
+            Serialized NDJSON line including the trailing newline.
+        """
+        _ = options
+        return f'{json.dumps(data, ensure_ascii=False)}\n'
