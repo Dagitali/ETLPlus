@@ -19,12 +19,6 @@ from etlplus.file import infer_file_format_and_compression
 # SECTION: HELPERS ========================================================== #
 
 
-type AliasInferCase = tuple[
-    str,
-    FileFormat | None,
-    CompressionFormat | None,
-]
-
 type InferCase = tuple[
     object,
     object | None,
@@ -67,6 +61,11 @@ def build_file_format_alias_infer_case(
     return value, None, expected_format, expected_compression
 
 
+def build_compression_alias_infer_case(alias: str, canonical: str) -> InferCase:
+    """Build the expected inference result for a compression alias."""
+    return alias, None, None, CompressionFormat(canonical)
+
+
 def assert_infer_case(case: InferCase) -> None:
     """Assert that an inference case matches the implementation."""
     value, filename, expected_format, expected_compression = case
@@ -74,16 +73,6 @@ def assert_infer_case(case: InferCase) -> None:
     assert fmt is expected_format
     assert compression is expected_compression
 
-
-COMPRESSION_ENUM_INFER_CASES: tuple[InferCase, ...] = tuple(
-    build_enum_infer_case(compression)
-    for compression in CompressionFormat
-)
-
-COMPRESSION_ALIAS_INFER_CASES: tuple[InferCase, ...] = tuple(
-    (alias, None, None, CompressionFormat(canonical))
-    for alias, canonical in CompressionFormat.aliases().items()
-)
 
 EDGE_CASE_INFER_CASES: tuple[InferCase, ...] = (
     ('payload.csv.gz', None, FileFormat.CSV, CompressionFormat.GZ),
@@ -107,14 +96,17 @@ FILE_FORMAT_COERCE_CASES: tuple[tuple[str, FileFormat], ...] = (
     )
 )
 
-FILE_FORMAT_ENUM_INFER_CASES: tuple[InferCase, ...] = tuple(
-    build_enum_infer_case(fmt)
-    for fmt in FileFormat
-)
-
-FILE_FORMAT_ALIAS_INFER_CASES: tuple[InferCase, ...] = tuple(
-    build_file_format_alias_infer_case(alias, canonical)
-    for alias, canonical in FileFormat.aliases().items()
+GENERATED_INFER_CASES: tuple[InferCase, ...] = (
+    tuple(build_enum_infer_case(fmt) for fmt in FileFormat)
+    + tuple(build_enum_infer_case(compression) for compression in CompressionFormat)
+    + tuple(
+        build_file_format_alias_infer_case(alias, canonical)
+        for alias, canonical in FileFormat.aliases().items()
+    )
+    + tuple(
+        build_compression_alias_infer_case(alias, canonical)
+        for alias, canonical in CompressionFormat.aliases().items()
+    )
 )
 
 
@@ -166,56 +158,14 @@ class TestInferFileFormatAndCompression:
 
     @pytest.mark.parametrize(
         ('value', 'filename', 'expected_format', 'expected_compression'),
-        COMPRESSION_ALIAS_INFER_CASES,
+        GENERATED_INFER_CASES,
     )
-    def test_infers_for_each_compression_alias(
+    def test_infers_generated_cases(
         self,
         value: object,
         filename: object | None,
         expected_format: FileFormat | None,
         expected_compression: CompressionFormat | None,
     ) -> None:
-        """Test that every compression alias infers the expected result."""
-        assert_infer_case((value, filename, expected_format, expected_compression))
-
-    @pytest.mark.parametrize(
-        ('value', 'filename', 'expected_format', 'expected_compression'),
-        COMPRESSION_ENUM_INFER_CASES,
-    )
-    def test_infers_for_each_compression_enum(
-        self,
-        value: object,
-        filename: object | None,
-        expected_format: FileFormat | None,
-        expected_compression: CompressionFormat | None,
-    ) -> None:
-        """Test that every compression enum infers the expected result."""
-        assert_infer_case((value, filename, expected_format, expected_compression))
-
-    @pytest.mark.parametrize(
-        ('value', 'filename', 'expected_format', 'expected_compression'),
-        FILE_FORMAT_ALIAS_INFER_CASES,
-    )
-    def test_infers_for_each_file_format_alias(
-        self,
-        value: object,
-        filename: object | None,
-        expected_format: FileFormat | None,
-        expected_compression: CompressionFormat | None,
-    ) -> None:
-        """Test that every file-format alias infers the expected result."""
-        assert_infer_case((value, filename, expected_format, expected_compression))
-
-    @pytest.mark.parametrize(
-        ('value', 'filename', 'expected_format', 'expected_compression'),
-        FILE_FORMAT_ENUM_INFER_CASES,
-    )
-    def test_infers_for_each_file_format_enum(
-        self,
-        value: object,
-        filename: object | None,
-        expected_format: FileFormat | None,
-        expected_compression: CompressionFormat | None,
-    ) -> None:
-        """Test that every file format enum infers the expected result."""
+        """Test that generated enum and alias cases infer the expected result."""
         assert_infer_case((value, filename, expected_format, expected_compression))
