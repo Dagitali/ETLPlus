@@ -48,6 +48,15 @@ class TestNdjson(
         """Assert NDJSON dict payload serialization."""
         assert path.read_text(encoding='utf-8').strip() == '{"id": 1}'
 
+    def test_load_line_parses_one_record(self) -> None:
+        """Test that :func:`load_line` parses one JSON object line."""
+        assert mod.NdjsonFile().load_line('{"id": 1}') == {'id': 1}
+
+    def test_load_line_rejects_blank_input(self) -> None:
+        """Test that :func:`load_line` rejects blank lines."""
+        with pytest.raises(ValueError, match='cannot be blank'):
+            mod.NdjsonFile().load_line('   ')
+
     def test_read_raises_for_invalid_json(
         self,
         tmp_path: Path,
@@ -115,3 +124,7 @@ class TestNdjson(
         assert written == 2
         lines = path.read_text(encoding='utf-8').splitlines()
         assert [json.loads(line) for line in lines] == payload
+
+    def test_dump_line_serializes_one_record_with_newline(self) -> None:
+        """Test that :func:`dump_line` emits one NDJSON line."""
+        assert mod.NdjsonFile().dump_line({'id': 1}) == '{"id": 1}\n'
