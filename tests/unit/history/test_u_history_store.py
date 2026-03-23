@@ -42,6 +42,47 @@ def build_sample_record() -> mod.RunRecord:
 # SECTION: TESTS ============================================================ #
 
 
+def test_iter_history_runs_merges_append_events_into_one_run(
+    tmp_path: Path,
+) -> None:
+    """Normalized history reads should merge JSONL start/finish events."""
+    path = tmp_path / 'history.jsonl'
+    store = mod.JsonlHistoryStore(path)
+    record = build_sample_record()
+
+    store.record_run_started(record)
+    store.record_run_finished(
+        record.run_id,
+        status='succeeded',
+        finished_at='2026-03-23T00:00:05Z',
+        duration_ms=5000,
+        result_summary={'rows': 10},
+    )
+
+    assert list(mod.iter_history_runs(store)) == [
+        {
+            'config_path': 'pipeline.yml',
+            'config_sha256': 'sha256',
+            'duration_ms': 5000,
+            'error_message': None,
+            'error_traceback': None,
+            'error_type': None,
+            'etlplus_version': '1.0.3',
+            'finished_at': '2026-03-23T00:00:05Z',
+            'host': 'host-a',
+            'job_name': 'job-a',
+            'pid': 123,
+            'pipeline_name': 'pipeline-a',
+            'records_in': None,
+            'records_out': None,
+            'result_summary': {'rows': 10},
+            'run_id': 'run-123',
+            'started_at': '2026-03-23T00:00:00Z',
+            'status': 'succeeded',
+        },
+    ]
+
+
 def test_jsonl_history_store_appends_finished_records_as_ndjson(
     tmp_path: Path,
 ) -> None:
