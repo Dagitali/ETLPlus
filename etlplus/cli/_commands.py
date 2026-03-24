@@ -16,6 +16,7 @@ Subcommands
 - ``log``: inspect raw persisted local run events
 - ``load``: load data to files, databases, or REST APIs
 - ``render``: render SQL DDL from table schema specs
+- ``status``: inspect the latest persisted local run
 - ``transform``: transform records
 - ``validate``: validate data against rules
 
@@ -103,6 +104,33 @@ HistoryRawOption = Annotated[
     typer.Option(
         '--raw',
         help='Emit raw append events instead of normalized runs.',
+    ),
+]
+
+HistorySinceOption = Annotated[
+    str | None,
+    typer.Option(
+        '--since',
+        metavar='ISO8601',
+        help='Emit only records at or after the given ISO-8601 timestamp.',
+        show_default=False,
+    ),
+]
+
+HistoryStatusOption = Annotated[
+    str | None,
+    typer.Option(
+        '--status',
+        help='Filter persisted runs by status.',
+        show_default=False,
+    ),
+]
+
+HistoryTableOption = Annotated[
+    bool,
+    typer.Option(
+        '--table',
+        help='Format normalized history output as a Markdown table.',
     ),
 ]
 
@@ -230,6 +258,15 @@ RulesOption = Annotated[
     typer.Option(
         '--rules',
         help='Validation rules as JSON string.',
+    ),
+]
+
+RunIdOption = Annotated[
+    str | None,
+    typer.Option(
+        '--run-id',
+        help='Filter persisted runs by run identifier.',
+        show_default=False,
     ),
 ]
 
@@ -617,8 +654,11 @@ def extract_cmd(
 @app.command('history')
 def history_cmd(
     ctx: typer.Context,
+    job: JobOption = None,
     limit: HistoryLimitOption = None,
     raw: HistoryRawOption = False,
+    status: HistoryStatusOption = None,
+    table: HistoryTableOption = False,
 ) -> int:
     """
     Inspect persisted local run history.
@@ -627,10 +667,17 @@ def history_cmd(
     ----------
     ctx : typer.Context
         The Typer context.
+    job : JobOption, optional
+        Restrict records to the given job name. Default is ``None``.
     limit : HistoryLimitOption, optional
         Maximum number of history records to emit. Default is ``None``.
     raw : HistoryRawOption, optional
         Whether to emit raw append events instead of normalized runs.
+        Default is ``False``.
+    status : HistoryStatusOption, optional
+        Restrict records to the given persisted status. Default is ``None``.
+    table : HistoryTableOption, optional
+        Whether to emit normalized history as a Markdown table.
         Default is ``False``.
 
     Returns
@@ -641,9 +688,12 @@ def history_cmd(
     state = ensure_state(ctx)
     return int(
         handle_history(
+            job=job,
             limit=limit,
             raw=raw,
             pretty=state.pretty,
+            status=status,
+            table=table,
         ),
     )
 
@@ -765,6 +815,8 @@ def load_cmd(
 def log_cmd(
     ctx: typer.Context,
     limit: HistoryLimitOption = None,
+    run_id: RunIdOption = None,
+    since: HistorySinceOption = None,
 ) -> int:
     """
     Inspect raw persisted local run events.
@@ -775,6 +827,11 @@ def log_cmd(
         The Typer context.
     limit : HistoryLimitOption, optional
         Maximum number of raw log events to emit. Default is ``None``.
+    run_id : RunIdOption, optional
+        Restrict events to the given run identifier. Default is ``None``.
+    since : HistorySinceOption, optional
+        Restrict events to those at or after the given timestamp.
+        Default is ``None``.
 
     Returns
     -------
@@ -787,6 +844,41 @@ def log_cmd(
             limit=limit,
             raw=True,
             pretty=state.pretty,
+            run_id=run_id,
+            since=since,
+        ),
+    )
+
+
+@app.command('status')
+def status_cmd(
+    ctx: typer.Context,
+    job: JobOption = None,
+    run_id: RunIdOption = None,
+) -> int:
+    """
+    Inspect the latest normalized persisted run.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    job : JobOption, optional
+        Restrict the lookup to the given job name. Default is ``None``.
+    run_id : RunIdOption, optional
+        Restrict the lookup to the given run identifier. Default is ``None``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
+    state = ensure_state(ctx)
+    return int(
+        handlers.status_handler(
+            job=job,
+            pretty=state.pretty,
+            run_id=run_id,
         ),
     )
 
