@@ -92,7 +92,10 @@ _REPORT_TABLE_COLUMNS = (
     'failed',
     'running',
     'other',
+    'success_rate_pct',
     'avg_duration_ms',
+    'min_duration_ms',
+    'max_duration_ms',
     'last_started_at',
 )
 
@@ -338,7 +341,6 @@ def _emit_follow_history(
     *,
     job: str | None = None,
     limit: int | None = None,
-    pretty: bool,
     run_id: str | None = None,
     since: str | None = None,
     until: str | None = None,
@@ -362,10 +364,19 @@ def _emit_follow_history(
                 if fingerprint in seen:
                     continue
                 seen.add(fingerprint)
-                _io.emit_json(record, pretty=pretty)
+                _io.emit_json(record, pretty=False)
             sleep(1.0)
     except KeyboardInterrupt:
         return 0
+
+
+def _increment_metric(
+    bucket: dict[str, Any],
+    key: str,
+    amount: int = 1,
+) -> None:
+    """Increment an integer metric stored inside a mutable report bucket."""
+    bucket[key] = int(bucket.get(key) or 0) + amount
 
 
 def _report_group_key(
@@ -382,6 +393,33 @@ def _report_group_key(
     return timestamp.split('T', maxsplit=1)[0] if 'T' in timestamp else '(unknown)'
 
 
+def _success_rate_pct(
+    succeeded: int,
+    runs: int,
+) -> float | None:
+    """Return the success-rate percentage for the given counters."""
+    if runs <= 0:
+        return None
+    return round((succeeded / runs) * 100, 2)
+
+
+def _update_duration_metrics(
+    bucket: dict[str, Any],
+    duration_ms: int,
+) -> None:
+    """Update duration-related metrics for one report bucket."""
+    _increment_metric(bucket, 'total_duration_ms', duration_ms)
+    _increment_metric(bucket, 'duration_samples', 1)
+    current_min = bucket.get('min_duration_ms')
+    current_max = bucket.get('max_duration_ms')
+    bucket['min_duration_ms'] = (
+        duration_ms if current_min is None else min(int(current_min), duration_ms)
+    )
+    bucket['max_duration_ms'] = (
+        duration_ms if current_max is None else max(int(current_max), duration_ms)
+    )
+
+
 def _build_history_report(
     records: list[dict[str, Any]],
     *,
@@ -389,47 +427,59 @@ def _build_history_report(
 ) -> dict[str, Any]:
     """Aggregate normalized history records into a grouped report."""
     rows_by_group: dict[str, dict[str, Any]] = {}
-    summary = {
+    summary: dict[str, Any] = {
+        'avg_duration_ms': None,
         'failed': 0,
+        'max_duration_ms': None,
+        'min_duration_ms': None,
         'other': 0,
         'running': 0,
         'runs': len(records),
+        'success_rate_pct': None,
         'succeeded': 0,
+        'total_duration_ms': 0,
+        'duration_samples': 0,
     }
 
     for record in records:
         status = cast(str, record.get('status') or '')
-        if status in summary:
-            summary[status] += 1
+        if status in ('succeeded', 'failed', 'running'):
+            _increment_metric(summary, status)
         else:
-            summary['other'] += 1
+            _increment_metric(summary, 'other')
 
         key = _report_group_key(record, group_by=group_by)
-        row = rows_by_group.setdefault(
-            key,
-            {
-                'avg_duration_ms': None,
-                'duration_samples': 0,
-                'group': key,
-                'last_started_at': None,
-                'runs': 0,
-                'succeeded': 0,
-                'failed': 0,
-                'running': 0,
-                'other': 0,
-                'total_duration_ms': 0,
-            },
+        row = cast(
+            dict[str, Any],
+            rows_by_group.setdefault(
+                key,
+                {
+                    'avg_duration_ms': None,
+                    'duration_samples': 0,
+                    'group': key,
+                    'last_started_at': None,
+                    'max_duration_ms': None,
+                    'min_duration_ms': None,
+                    'runs': 0,
+                    'succeeded': 0,
+                    'failed': 0,
+                    'running': 0,
+                    'other': 0,
+                    'success_rate_pct': None,
+                    'total_duration_ms': 0,
+                },
+            ),
         )
-        row['runs'] += 1
+        _increment_metric(row, 'runs')
         if status in ('succeeded', 'failed', 'running'):
-            row[status] += 1
+            _increment_metric(row, status)
         else:
-            row['other'] += 1
+            _increment_metric(row, 'other')
 
         duration_ms = record.get('duration_ms')
         if isinstance(duration_ms, int):
-            row['total_duration_ms'] += duration_ms
-            row['duration_samples'] += 1
+            _update_duration_metrics(row, duration_ms)
+            _update_duration_metrics(summary, duration_ms)
 
         started_at = record.get('started_at')
         if isinstance(started_at, str) and (
@@ -446,6 +496,22 @@ def _build_history_report(
             if samples > 0
             else None
         )
+        row['success_rate_pct'] = _success_rate_pct(
+            int(row['succeeded']),
+            int(row['runs']),
+        )
+
+    summary_samples = cast(int, summary.pop('duration_samples'))
+    summary_total_duration = cast(int, summary.pop('total_duration_ms'))
+    summary['avg_duration_ms'] = (
+        int(summary_total_duration / summary_samples)
+        if summary_samples > 0
+        else None
+    )
+    summary['success_rate_pct'] = _success_rate_pct(
+        int(summary['succeeded']),
+        int(summary['runs']),
+    )
 
     return {
         'group_by': group_by,
@@ -643,7 +709,6 @@ def history_handler(
         return _emit_follow_history(
             job=job,
             limit=limit,
-            pretty=pretty,
             run_id=run_id,
             since=since,
             status=status,
