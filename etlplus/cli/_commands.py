@@ -13,6 +13,7 @@ Subcommands
 - ``check``: inspect a pipeline configuration
 - ``extract``: extract data from files, databases, or REST APIs
 - ``history``: inspect persisted local run history
+- ``log``: inspect raw persisted local run events
 - ``load``: load data to files, databases, or REST APIs
 - ``render``: render SQL DDL from table schema specs
 - ``transform``: transform records
@@ -755,6 +756,36 @@ def load_cmd(
             target_format=target_format,
             format_explicit=target_format is not None,
             output=None,
+            pretty=state.pretty,
+        ),
+    )
+
+
+@app.command('log')
+def log_cmd(
+    ctx: typer.Context,
+    limit: HistoryLimitOption = None,
+) -> int:
+    """
+    Inspect raw persisted local run events.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    limit : HistoryLimitOption, optional
+        Maximum number of raw log events to emit. Default is ``None``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
+    state = ensure_state(ctx)
+    return int(
+        handle_history(
+            limit=limit,
+            raw=True,
             pretty=state.pretty,
         ),
     )
