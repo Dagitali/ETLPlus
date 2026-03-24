@@ -776,7 +776,7 @@ def load_cmd(
         etc.) based on filename extension. Default is ``None``.
     target_type : TargetTypeOption, optional
         Data target type. Overrides the inferred type (``api``, ``database``,
-        ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+        ``file``) based on URI/URL schema. Default is ``None``.
     event_format : StructuredEventFormatOption, optional
         Structured event format emitted to STDERR. Default is ``None``.
 
@@ -1221,6 +1221,7 @@ def transform_cmd(
             source=resolved_source_value,
             operations=_parse_json_option(operations, '--operations'),
             target=resolved_target_value,
+            target_type=resolved_target_type,
             event_format=event_format,
             source_format=source_format,
             target_format=target_format,
