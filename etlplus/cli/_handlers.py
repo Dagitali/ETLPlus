@@ -1299,7 +1299,8 @@ def transform_handler(
     operations : JSONData | str
         The transformation operations (inline JSON or path).
     target : str | None, optional
-        The target destination (e.g., path). Default is ``None``.
+        The target destination (e.g., file path, URI, or connector target).
+        Default is ``None``.
     target_type : str | None, optional
         The target connector type (e.g., ``'file'``, ``'api'``,
         ``'database'``). Default is ``None``.
@@ -1329,6 +1330,12 @@ def transform_handler(
     Exception
         Re-raises transform failures after emitting a structured failure event
         when requested.
+
+    Notes
+    -----
+    File targets are written directly. Non-file targets such as ``api`` and
+    ``database`` are delegated to :func:`etlplus.ops.load.load` so the
+    transform command and load command share target behavior.
     """
     format_hint: str | None = source_format
     format_explicit = format_hint is not None or format_explicit
