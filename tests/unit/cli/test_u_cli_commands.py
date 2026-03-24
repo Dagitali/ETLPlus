@@ -15,6 +15,7 @@ import etlplus.cli._commands as commands_mod
 from etlplus.cli._state import CliState
 
 from .conftest import AssertCapturedText
+from .conftest import InvokeCli
 from .conftest import StubHandler
 from .conftest import TyperContextFactory
 
@@ -84,6 +85,104 @@ class TestCheckCommand:
         assert captured['config'] == 'pipeline.yml'
         assert captured['jobs'] is True
         assert captured['pretty'] is False
+
+
+class TestCliInvokeParsing:
+    """Typer runner coverage for history/log/report option parsing."""
+
+    def test_history_until_reaches_handler(
+        self,
+        invoke_cli: InvokeCli,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``history --until`` is parsed through the Typer runner."""
+        captured: dict[str, object] = {}
+
+        def _stub(**kwargs: object) -> int:
+            captured.update(kwargs)
+            return 0
+
+        monkeypatch.setattr(commands_mod, 'handle_history', _stub)
+
+        result = invoke_cli(
+            'history',
+            '--until',
+            '2026-03-24T00:00:00Z',
+        )
+
+        assert result.exit_code == 0
+        assert captured['until'] == '2026-03-24T00:00:00Z'
+
+    def test_log_until_reaches_handler(
+        self,
+        invoke_cli: InvokeCli,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``log --until`` is parsed through the Typer runner."""
+        captured: dict[str, object] = {}
+
+        def _stub(**kwargs: object) -> int:
+            captured.update(kwargs)
+            return 0
+
+        monkeypatch.setattr(commands_mod, 'handle_history', _stub)
+
+        result = invoke_cli(
+            'log',
+            '--until',
+            '2026-03-24T00:00:00Z',
+        )
+
+        assert result.exit_code == 0
+        assert captured['until'] == '2026-03-24T00:00:00Z'
+        assert captured['raw'] is True
+
+    def test_report_group_by_reaches_handler(
+        self,
+        invoke_cli: InvokeCli,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``report --group-by`` is parsed through the Typer runner."""
+        captured: dict[str, object] = {}
+
+        def _stub(**kwargs: object) -> int:
+            captured.update(kwargs)
+            return 0
+
+        monkeypatch.setattr(commands_mod.handlers, 'report_handler', _stub)
+
+        result = invoke_cli(
+            'report',
+            '--group-by',
+            'day',
+        )
+
+        assert result.exit_code == 0
+        assert captured['group_by'] == 'day'
+
+    def test_transform_target_type_reaches_handler(
+        self,
+        invoke_cli: InvokeCli,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``transform --target-type`` is parsed through Typer."""
+        captured: dict[str, object] = {}
+
+        def _stub(**kwargs: object) -> int:
+            captured.update(kwargs)
+            return 0
+
+        monkeypatch.setattr(commands_mod.handlers, 'transform_handler', _stub)
+
+        result = invoke_cli(
+            'transform',
+            '--target-type',
+            'api',
+            'https://example.com/items',
+        )
+
+        assert result.exit_code == 0
+        assert captured['target_type'] == 'api'
 
 
 class TestCommandsMissingInputs:
@@ -184,6 +283,183 @@ class TestCommandsMissingInputs:
         assert_stderr_contains(expected_message)
 
 
+class TestHistoryCommand:
+    """Unit tests for :func:`etlplus.cli._commands.history_cmd`."""
+
+    def test_delegates_to_handler(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+        stub_handler: StubHandler,
+    ) -> None:
+        """Test that history inputs dispatch to ``history_handler``."""
+        monkeypatch.setattr(
+            commands_mod,
+            'ensure_state',
+            lambda _ctx: CliState(pretty=False),
+        )
+        captured = stub_handler(
+            commands_mod.handlers,
+            'history_handler',
+            result=0,
+        )
+        monkeypatch.setattr(
+            commands_mod,
+            'handle_history',
+            commands_mod.handlers.history_handler,
+        )
+
+        result = commands_mod.history_cmd(
+            typer_ctx_factory(),
+            job='job-a',
+            limit=5,
+            raw=False,
+            json_output=True,
+            since='2026-03-21T00:00:00Z',
+            status='failed',
+            table=False,
+            until='2026-03-24T00:00:00Z',
+        )
+
+        assert result == 0
+        assert captured == {
+            'job': 'job-a',
+            'json_output': True,
+            'limit': 5,
+            'pretty': False,
+            'raw': False,
+            'since': '2026-03-21T00:00:00Z',
+            'status': 'failed',
+            'table': False,
+            'until': '2026-03-24T00:00:00Z',
+        }
+
+
+class TestLogCommand:
+    """Unit tests for :func:`etlplus.cli._commands.log_cmd`."""
+
+    def test_delegates_to_raw_history_handler(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+        stub_handler: StubHandler,
+    ) -> None:
+        """Test that log inputs dispatch to the raw history handler."""
+        monkeypatch.setattr(
+            commands_mod,
+            'ensure_state',
+            lambda _ctx: CliState(pretty=False),
+        )
+        captured = stub_handler(
+            commands_mod.handlers,
+            'history_handler',
+            result=0,
+        )
+        monkeypatch.setattr(
+            commands_mod,
+            'handle_history',
+            commands_mod.handlers.history_handler,
+        )
+
+        result = commands_mod.log_cmd(
+            typer_ctx_factory(),
+            follow=True,
+            limit=7,
+            run_id='run-7',
+            since='2026-03-23T00:00:00Z',
+            until='2026-03-24T00:00:00Z',
+        )
+
+        assert result == 0
+        assert captured == {
+            'follow': True,
+            'limit': 7,
+            'pretty': False,
+            'raw': True,
+            'run_id': 'run-7',
+            'since': '2026-03-23T00:00:00Z',
+            'until': '2026-03-24T00:00:00Z',
+        }
+
+
+class TestReportCommand:
+    """Unit tests for :func:`etlplus.cli._commands.report_cmd`."""
+
+    def test_delegates_to_report_handler(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+        stub_handler: StubHandler,
+    ) -> None:
+        """Test that report inputs dispatch to ``report_handler``."""
+        monkeypatch.setattr(
+            commands_mod,
+            'ensure_state',
+            lambda _ctx: CliState(pretty=False),
+        )
+        captured = stub_handler(
+            commands_mod.handlers,
+            'report_handler',
+            result=0,
+        )
+
+        result = commands_mod.report_cmd(
+            typer_ctx_factory(),
+            group_by='status',
+            job='job-a',
+            json_output=True,
+            since='2026-03-01T00:00:00Z',
+            table=False,
+            until='2026-03-31T23:59:59Z',
+        )
+
+        assert result == 0
+        assert captured == {
+            'group_by': 'status',
+            'job': 'job-a',
+            'json_output': True,
+            'pretty': False,
+            'since': '2026-03-01T00:00:00Z',
+            'table': False,
+            'until': '2026-03-31T23:59:59Z',
+        }
+
+
+class TestStatusCommand:
+    """Unit tests for :func:`etlplus.cli._commands.status_cmd`."""
+
+    def test_delegates_to_status_handler(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+        stub_handler: StubHandler,
+    ) -> None:
+        """Test that status inputs dispatch to ``status_handler``."""
+        monkeypatch.setattr(
+            commands_mod,
+            'ensure_state',
+            lambda _ctx: CliState(pretty=False),
+        )
+        captured = stub_handler(
+            commands_mod.handlers,
+            'status_handler',
+            result=0,
+        )
+
+        result = commands_mod.status_cmd(
+            typer_ctx_factory(),
+            job='job-a',
+            run_id='run-9',
+        )
+
+        assert result == 0
+        assert captured == {
+            'job': 'job-a',
+            'pretty': False,
+            'run_id': 'run-9',
+        }
+
+
 class TestTransformCommand:
     """Unit tests for :func:`etlplus.cli._commands.transform_cmd`."""
 
@@ -253,3 +529,4 @@ class TestTransformCommand:
         assert result == 0
         assert validate_called['count'] == 0
         assert captured['source'] == 'payload'
+        assert captured['target_type'] == 'file'

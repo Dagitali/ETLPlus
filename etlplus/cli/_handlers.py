@@ -6,11 +6,14 @@ Command handler functions for the ``etlplus`` command-line interface (CLI).
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from collections.abc import Mapping
+from datetime import datetime
 from pathlib import Path
 from time import perf_counter
+from time import sleep
 from typing import Any
 from typing import Literal
 from typing import cast
@@ -22,6 +25,7 @@ from ..database import render_tables
 from ..file import File
 from ..file import FileFormat
 from ..history import build_run_record
+from ..history import iter_history_runs
 from ..history import open_history_store
 from ..ops import extract
 from ..ops import load
@@ -43,14 +47,57 @@ from . import _io
 
 __all__ = [
     # Functions
-    'extract_handler',
     'check_handler',
+    'extract_handler',
+    'history_handler',
     'load_handler',
     'render_handler',
+    'report_handler',
     'run_handler',
+    'status_handler',
     'transform_handler',
     'validate_handler',
 ]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+HistoryRecord = Mapping[str, Any]
+
+
+TransformOperations = Mapping[
+    Literal['filter', 'map', 'select', 'sort', 'aggregate'],
+    Any,
+]
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_HISTORY_TABLE_COLUMNS = (
+    'run_id',
+    'status',
+    'job_name',
+    'pipeline_name',
+    'started_at',
+    'finished_at',
+    'duration_ms',
+)
+
+_REPORT_TABLE_COLUMNS = (
+    'group',
+    'runs',
+    'succeeded',
+    'failed',
+    'running',
+    'other',
+    'success_rate_pct',
+    'avg_duration_ms',
+    'min_duration_ms',
+    'max_duration_ms',
+    'last_started_at',
+)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -183,6 +230,288 @@ def _emit_lifecycle_event(
     )
 
 
+def _history_record_fingerprint(
+    record: Mapping[str, Any],
+) -> str:
+    """Return a stable fingerprint for a persisted history record."""
+    return json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+
+
+def _history_sort_key(
+    record: Mapping[str, Any],
+) -> tuple[str, str]:
+    """Return a reverse-sortable key for history records."""
+    timestamp = cast(
+        str,
+        record.get('started_at') or record.get('finished_at') or '',
+    )
+    run_id = cast(str, record.get('run_id') or '')
+    return (timestamp, run_id)
+
+
+def _parse_history_timestamp(
+    value: object,
+) -> datetime | None:
+    """Parse an ISO-8601 timestamp used in persisted history records."""
+    if not isinstance(value, str) or not value:
+        return None
+    normalized = value.replace('Z', '+00:00')
+    try:
+        return datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+
+
+def _history_record_matches(
+    record: HistoryRecord,
+    *,
+    job: str | None = None,
+    run_id: str | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    status: str | None = None,
+) -> bool:
+    """Return whether a history record matches CLI filter values."""
+    if job is not None and record.get('job_name') != job:
+        return False
+    if run_id is not None and record.get('run_id') != run_id:
+        return False
+    if status is not None and record.get('status') != status:
+        return False
+    record_timestamp = _parse_history_timestamp(
+        record.get('started_at') or record.get('finished_at'),
+    )
+    if since is not None:
+        if record_timestamp is None or record_timestamp < since:
+            return False
+    if until is not None:
+        if record_timestamp is None or record_timestamp > until:
+            return False
+    return True
+
+
+def _load_history_records(
+    *,
+    raw: bool,
+    job: str | None = None,
+    limit: int | None = None,
+    run_id: str | None = None,
+    since: str | None = None,
+    until: str | None = None,
+    status: str | None = None,
+) -> list[dict[str, Any]]:
+    """Load, filter, and sort history records for CLI read commands."""
+    parsed_since = _parse_history_timestamp(since)
+    parsed_until = _parse_history_timestamp(until)
+    history_store = open_history_store()
+    records_iter = (
+        history_store.iter_records() if raw else iter_history_runs(history_store)
+    )
+    records = [
+        dict(record)
+        for record in records_iter
+        if _history_record_matches(
+            record,
+            job=job,
+            run_id=run_id,
+            since=parsed_since,
+            until=parsed_until,
+            status=status,
+        )
+    ]
+    records.sort(key=_history_sort_key, reverse=True)
+    if limit is not None:
+        records = records[:limit]
+    return records
+
+
+def _validate_history_output_mode(
+    *,
+    json_output: bool,
+    table: bool,
+) -> None:
+    """Validate that at most one explicit history output mode was requested."""
+    if json_output and table:
+        raise ValueError('choose either json output or table output, not both')
+
+
+def _emit_follow_history(
+    *,
+    job: str | None = None,
+    limit: int | None = None,
+    run_id: str | None = None,
+    since: str | None = None,
+    until: str | None = None,
+    status: str | None = None,
+) -> int:
+    """Stream newly observed raw history records until interrupted."""
+    seen: set[str] = set()
+    try:
+        while True:
+            records = _load_history_records(
+                job=job,
+                limit=limit,
+                raw=True,
+                run_id=run_id,
+                since=since,
+                until=until,
+                status=status,
+            )
+            for record in reversed(records):
+                fingerprint = _history_record_fingerprint(record)
+                if fingerprint in seen:
+                    continue
+                seen.add(fingerprint)
+                _io.emit_json(record, pretty=False)
+            sleep(1.0)
+    except KeyboardInterrupt:
+        return 0
+
+
+def _increment_metric(
+    bucket: dict[str, Any],
+    key: str,
+    amount: int = 1,
+) -> None:
+    """Increment an integer metric stored inside a mutable report bucket."""
+    bucket[key] = int(bucket.get(key) or 0) + amount
+
+
+def _report_group_key(
+    record: Mapping[str, Any],
+    *,
+    group_by: Literal['day', 'job', 'status'],
+) -> str:
+    """Return the grouping key for one normalized history record."""
+    if group_by == 'job':
+        return cast(str, record.get('job_name') or '(no job)')
+    if group_by == 'status':
+        return cast(str, record.get('status') or '(unknown)')
+    timestamp = cast(str, record.get('started_at') or record.get('finished_at') or '')
+    return timestamp.split('T', maxsplit=1)[0] if 'T' in timestamp else '(unknown)'
+
+
+def _success_rate_pct(
+    succeeded: int,
+    runs: int,
+) -> float | None:
+    """Return the success-rate percentage for the given counters."""
+    if runs <= 0:
+        return None
+    return round((succeeded / runs) * 100, 2)
+
+
+def _update_duration_metrics(
+    bucket: dict[str, Any],
+    duration_ms: int,
+) -> None:
+    """Update duration-related metrics for one report bucket."""
+    _increment_metric(bucket, 'total_duration_ms', duration_ms)
+    _increment_metric(bucket, 'duration_samples', 1)
+    current_min = bucket.get('min_duration_ms')
+    current_max = bucket.get('max_duration_ms')
+    bucket['min_duration_ms'] = (
+        duration_ms if current_min is None else min(int(current_min), duration_ms)
+    )
+    bucket['max_duration_ms'] = (
+        duration_ms if current_max is None else max(int(current_max), duration_ms)
+    )
+
+
+def _build_history_report(
+    records: list[dict[str, Any]],
+    *,
+    group_by: Literal['day', 'job', 'status'],
+) -> dict[str, Any]:
+    """Aggregate normalized history records into a grouped report."""
+    rows_by_group: dict[str, dict[str, Any]] = {}
+    summary: dict[str, Any] = {
+        'avg_duration_ms': None,
+        'failed': 0,
+        'max_duration_ms': None,
+        'min_duration_ms': None,
+        'other': 0,
+        'running': 0,
+        'runs': len(records),
+        'success_rate_pct': None,
+        'succeeded': 0,
+        'total_duration_ms': 0,
+        'duration_samples': 0,
+    }
+
+    for record in records:
+        status = cast(str, record.get('status') or '')
+        if status in ('succeeded', 'failed', 'running'):
+            _increment_metric(summary, status)
+        else:
+            _increment_metric(summary, 'other')
+
+        key = _report_group_key(record, group_by=group_by)
+        row = cast(
+            dict[str, Any],
+            rows_by_group.setdefault(
+                key,
+                {
+                    'avg_duration_ms': None,
+                    'duration_samples': 0,
+                    'group': key,
+                    'last_started_at': None,
+                    'max_duration_ms': None,
+                    'min_duration_ms': None,
+                    'runs': 0,
+                    'succeeded': 0,
+                    'failed': 0,
+                    'running': 0,
+                    'other': 0,
+                    'success_rate_pct': None,
+                    'total_duration_ms': 0,
+                },
+            ),
+        )
+        _increment_metric(row, 'runs')
+        if status in ('succeeded', 'failed', 'running'):
+            _increment_metric(row, status)
+        else:
+            _increment_metric(row, 'other')
+
+        duration_ms = record.get('duration_ms')
+        if isinstance(duration_ms, int):
+            _update_duration_metrics(row, duration_ms)
+            _update_duration_metrics(summary, duration_ms)
+
+        started_at = record.get('started_at')
+        if isinstance(started_at, str) and (
+            row['last_started_at'] is None or started_at > row['last_started_at']
+        ):
+            row['last_started_at'] = started_at
+
+    rows = sorted(rows_by_group.values(), key=lambda item: cast(str, item['group']))
+    for row in rows:
+        samples = cast(int, row.pop('duration_samples'))
+        total_duration = cast(int, row.pop('total_duration_ms'))
+        row['avg_duration_ms'] = int(total_duration / samples) if samples > 0 else None
+        row['success_rate_pct'] = _success_rate_pct(
+            int(row['succeeded']),
+            int(row['runs']),
+        )
+
+    summary_samples = cast(int, summary.pop('duration_samples'))
+    summary_total_duration = cast(int, summary.pop('total_duration_ms'))
+    summary['avg_duration_ms'] = (
+        int(summary_total_duration / summary_samples) if summary_samples > 0 else None
+    )
+    summary['success_rate_pct'] = _success_rate_pct(
+        int(summary['succeeded']),
+        int(summary['runs']),
+    )
+
+    return {
+        'group_by': group_by,
+        'rows': rows,
+        'summary': summary,
+    }
+
+
 def _pipeline_summary(
     cfg: Config,
 ) -> dict[str, Any]:
@@ -312,6 +641,84 @@ def check_handler(
         ),
         pretty=pretty,
     )
+    return 0
+
+
+def history_handler(
+    *,
+    follow: bool = False,
+    job: str | None = None,
+    json_output: bool = False,
+    limit: int | None = None,
+    raw: bool = False,
+    pretty: bool = True,
+    run_id: str | None = None,
+    since: str | None = None,
+    until: str | None = None,
+    status: str | None = None,
+    table: bool = False,
+) -> int:
+    """
+    Emit persisted local run history.
+
+    Parameters
+    ----------
+    follow : bool, optional
+        Whether to keep polling for new matching raw history records.
+        Default is ``False``.
+    job : str | None, optional
+        Restrict records to the given job name. Default is ``None``.
+    json_output : bool, optional
+        Whether to emit JSON explicitly. Default is ``False``.
+    limit : int | None, optional
+        Maximum number of records to emit. Default is ``None``.
+    raw : bool, optional
+        Whether to emit raw append events instead of normalized runs.
+        Default is ``False``.
+    pretty : bool, optional
+        Whether to pretty-print output. Default is ``True``.
+    run_id : str | None, optional
+        Restrict records to the given run identifier. Default is ``None``.
+    since : str | None, optional
+        Restrict records to runs at or after the given ISO-8601 timestamp.
+        Default is ``None``.
+    until : str | None, optional
+        Restrict records to runs at or before the given ISO-8601 timestamp.
+        Default is ``None``.
+    status : str | None, optional
+        Restrict records to the given persisted status. Default is ``None``.
+    table : bool, optional
+        Whether to emit the filtered result set as a Markdown table instead of
+        JSON. Default is ``False``.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+    _validate_history_output_mode(json_output=json_output, table=table)
+    if follow:
+        return _emit_follow_history(
+            job=job,
+            limit=limit,
+            run_id=run_id,
+            since=since,
+            status=status,
+            until=until,
+        )
+    records = _load_history_records(
+        job=job,
+        limit=limit,
+        raw=raw,
+        run_id=run_id,
+        since=since,
+        until=until,
+        status=status,
+    )
+    if table:
+        _io.emit_markdown_table(records, columns=_HISTORY_TABLE_COLUMNS)
+        return 0
+    _io.emit_json(records, pretty=pretty)
     return 0
 
 
@@ -667,6 +1074,58 @@ def render_handler(
     return 0
 
 
+def report_handler(
+    *,
+    group_by: Literal['day', 'job', 'status'] = 'job',
+    job: str | None = None,
+    json_output: bool = False,
+    pretty: bool = True,
+    since: str | None = None,
+    table: bool = False,
+    until: str | None = None,
+) -> int:
+    """
+    Emit a grouped history report derived from normalized persisted runs.
+
+    Parameters
+    ----------
+    group_by : Literal['day', 'job', 'status'], optional
+        Field on which to group the report rows. Default is ``'job'``.
+    job : str | None, optional
+        Restrict source records to the given job name. Default is ``None``.
+    json_output : bool, optional
+        Whether to emit JSON explicitly. Default is ``False``.
+    pretty : bool, optional
+        Whether to pretty-print JSON output. Default is ``True``.
+    since : str | None, optional
+        Restrict records to runs at or after the given timestamp.
+        Default is ``None``.
+    table : bool, optional
+        Whether to emit grouped rows as a Markdown table. Default is ``False``.
+    until : str | None, optional
+        Restrict records to runs at or before the given timestamp.
+        Default is ``None``.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+    _validate_history_output_mode(json_output=json_output, table=table)
+    records = _load_history_records(
+        job=job,
+        raw=False,
+        since=since,
+        until=until,
+    )
+    report = _build_history_report(records, group_by=group_by)
+    if table:
+        _io.emit_markdown_table(report['rows'], columns=_REPORT_TABLE_COLUMNS)
+        return 0
+    _io.emit_json(report, pretty=pretty)
+    return 0
+
+
 def run_handler(
     *,
     config: str,
@@ -787,10 +1246,35 @@ def run_handler(
     return 0
 
 
-TransformOperations = Mapping[
-    Literal['filter', 'map', 'select', 'sort', 'aggregate'],
-    Any,
-]
+def status_handler(
+    *,
+    job: str | None = None,
+    pretty: bool = True,
+    run_id: str | None = None,
+) -> int:
+    """
+    Emit the latest normalized run matching the given status filters.
+
+    Parameters
+    ----------
+    job : str | None, optional
+        Restrict the lookup to the given job name. Default is ``None``.
+    pretty : bool, optional
+        Whether to pretty-print output. Default is ``True``.
+    run_id : str | None, optional
+        Restrict the lookup to the given run identifier. Default is ``None``.
+
+    Returns
+    -------
+    int
+        Zero when a matching run exists, otherwise ``1``.
+    """
+    records = _load_history_records(job=job, limit=1, raw=False, run_id=run_id)
+    if not records:
+        _io.emit_json({}, pretty=pretty)
+        return 1
+    _io.emit_json(records[0], pretty=pretty)
+    return 0
 
 
 def transform_handler(
@@ -798,6 +1282,7 @@ def transform_handler(
     source: str,
     operations: JSONData | str,
     target: str | None = None,
+    target_type: str | None = None,
     event_format: str | None = None,
     source_format: str | None = None,
     target_format: str | None = None,
@@ -814,7 +1299,11 @@ def transform_handler(
     operations : JSONData | str
         The transformation operations (inline JSON or path).
     target : str | None, optional
-        The target destination (e.g., path). Default is ``None``.
+        The target destination (e.g., file path, URI, or connector target).
+        Default is ``None``.
+    target_type : str | None, optional
+        The target connector type (e.g., ``'file'``, ``'api'``,
+        ``'database'``). Default is ``None``.
     event_format : str | None, optional
         Optional structured event format emitted to STDERR. Default is
         ``None``.
@@ -841,6 +1330,12 @@ def transform_handler(
     Exception
         Re-raises transform failures after emitting a structured failure event
         when requested.
+
+    Notes
+    -----
+    File targets are written directly. Non-file targets such as ``api`` and
+    ``database`` are delegated to :func:`etlplus.ops.load.load` so the
+    transform command and load command share target behavior.
     """
     format_hint: str | None = source_format
     format_explicit = format_hint is not None or format_explicit
@@ -853,6 +1348,7 @@ def transform_handler(
         event_format=event_format,
         source=source,
         target=target or 'stdout',
+        target_type=target_type,
     )
 
     try:
@@ -875,8 +1371,30 @@ def transform_handler(
 
         data = transform(payload, cast(TransformOperations, operations_payload))
 
-        # TODO: Generalize to handle non-file targets.
         if target and target != '-':
+            if target_type not in (None, 'file'):
+                resolved_target_type = cast(str, target_type)
+                result = load(
+                    data,
+                    resolved_target_type,
+                    target,
+                    file_format=target_format if format_explicit else None,
+                )
+                _emit_lifecycle_event(
+                    command='transform',
+                    lifecycle='completed',
+                    run_id=run_id,
+                    event_format=event_format,
+                    duration_ms=int((perf_counter() - started_perf) * 1000),
+                    result_status='ok',
+                    source=source,
+                    status='ok',
+                    target=target,
+                    target_type=resolved_target_type,
+                )
+                _io.emit_json(result, pretty=pretty)
+                return 0
+
             _emit_lifecycle_event(
                 command='transform',
                 lifecycle='completed',
@@ -887,6 +1405,7 @@ def transform_handler(
                 source=source,
                 status='ok',
                 target=target,
+                target_type=target_type or 'file',
             )
             _write_file_payload(data, target, format_hint=target_format)
             print(f'Data transformed and saved to {target}')
@@ -902,6 +1421,7 @@ def transform_handler(
             source=source,
             status='ok',
             target=target or 'stdout',
+            target_type=target_type,
         )
         _io.emit_json(data, pretty=pretty)
     except Exception as exc:
@@ -913,6 +1433,7 @@ def transform_handler(
             exc=exc,
             source=source,
             target=target or 'stdout',
+            target_type=target_type,
         )
         raise
 

@@ -11,12 +11,16 @@ import json
 import os
 import socket
 import sqlite3
+from collections.abc import Iterator
+from collections.abc import Mapping
 from dataclasses import asdict
 from dataclasses import dataclass
+from dataclasses import fields
 from pathlib import Path
 from typing import Any
 
 from ..__version__ import __version__
+from ..file.ndjson import NdjsonFile
 from ..file.sqlite import SqliteFile
 from ..utils.types import JSONData
 
@@ -33,6 +37,7 @@ __all__ = [
     'SQLiteHistoryStore',
     # Functions
     'build_run_record',
+    'iter_history_runs',
     'open_history_store',
 ]
 
@@ -77,6 +82,12 @@ class RunRecord:
     etlplus_version: str | None
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_RUN_RECORD_FIELDS = tuple(field.name for field in fields(RunRecord))
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
@@ -98,6 +109,19 @@ def _config_sha256(
     if not path.exists():
         return None
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _merge_run_record(
+    record: dict[str, Any],
+    update: Mapping[str, Any],
+) -> None:
+    """Merge a partial history update into an accumulated run record."""
+    for key, value in update.items():
+        if value is not None or key not in record:
+            record[key] = value
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -157,6 +181,39 @@ def build_run_record(
     )
 
 
+def iter_history_runs(
+    store: HistoryStore,
+) -> Iterator[dict[str, Any]]:
+    """
+    Yield one normalized run record per ``run_id`` from a history backend.
+
+    Parameters
+    ----------
+    store : HistoryStore
+        History backend to read from.
+
+    Yields
+    ------
+    dict[str, Any]
+        One normalized run record for each distinct ``run_id``.
+    """
+    merged_by_run_id: dict[str, dict[str, Any]] = {}
+    run_order: list[str] = []
+
+    for record in store.iter_records():
+        run_id = record.get('run_id')
+        if not isinstance(run_id, str) or not run_id:
+            continue
+        if run_id not in merged_by_run_id:
+            merged_by_run_id[run_id] = {}
+            run_order.append(run_id)
+        _merge_run_record(merged_by_run_id[run_id], record)
+
+    for run_id in run_order:
+        merged = merged_by_run_id[run_id]
+        yield {field: merged.get(field) for field in _RUN_RECORD_FIELDS}
+
+
 def open_history_store() -> HistoryStore:
     """
     Open the configured local history backend.
@@ -189,6 +246,22 @@ class HistoryStore:
     """Minimal local history-store interface."""
 
     # -- Instance Methods -- #
+
+    def iter_records(self) -> Iterator[dict[str, Any]]:
+        """
+        Yield persisted history records in backend-native form.
+
+        Returns
+        -------
+        Iterator[dict[str, Any]]
+            Stream of persisted history records.
+
+        Raises
+        ------
+        NotImplementedError
+            If the method is not implemented by a subclass.
+        """
+        raise NotImplementedError
 
     def record_run_started(
         self,
@@ -261,6 +334,7 @@ class JsonlHistoryStore(HistoryStore):
         self,
         log_path: Path,
     ) -> None:
+        self._ndjson_file = NdjsonFile()
         self.log_path = log_path
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -272,10 +346,27 @@ class JsonlHistoryStore(HistoryStore):
     ) -> None:
         """Append a record to the JSONL log file."""
         with self.log_path.open('a', encoding='utf-8') as handle:
-            handle.write(json.dumps(payload, ensure_ascii=False))
-            handle.write('\n')
+            handle.write(self._serialize_record(payload))
+
+    def _serialize_record(
+        self,
+        payload: dict[str, Any],
+    ) -> str:
+        """Serialize one history record as a single NDJSON line."""
+        return self._ndjson_file.dump_line(payload)
 
     # -- Instance Methods -- #
+
+    def iter_records(self) -> Iterator[dict[str, Any]]:
+        """Yield JSONL history records by streaming the log file line by line."""
+        if not self.log_path.exists():
+            return
+        with self.log_path.open('r', encoding='utf-8') as handle:
+            for idx, line in enumerate(handle, start=1):
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                yield self._ndjson_file.load_line(stripped, line_number=idx)
 
     def record_run_started(
         self,
@@ -407,6 +498,41 @@ class SQLiteHistoryStore(HistoryStore):
             )
 
     # -- Instance Methods -- #
+
+    def iter_records(self) -> Iterator[dict[str, Any]]:
+        """Yield persisted SQLite run rows as dictionaries."""
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT
+                    run_id,
+                    pipeline_name,
+                    job_name,
+                    config_path,
+                    config_sha256,
+                    status,
+                    started_at,
+                    finished_at,
+                    duration_ms,
+                    records_in,
+                    records_out,
+                    error_type,
+                    error_message,
+                    error_traceback,
+                    result_summary,
+                    host,
+                    pid,
+                    etlplus_version
+                FROM runs
+                ORDER BY started_at ASC, run_id ASC
+                """,
+            )
+            for row in rows:
+                payload = dict(row)
+                if payload['result_summary'] is not None:
+                    payload['result_summary'] = json.loads(payload['result_summary'])
+                yield payload
 
     def record_run_finished(
         self,

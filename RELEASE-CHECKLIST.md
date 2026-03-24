@@ -119,10 +119,9 @@ These are the active follow-up items for the `v1.x` line.
 - [ ] Expand performance-smoke and cross-platform confidence based on real `v1.x` usage.
   - Add coverage where support load or issue history shows weak spots.
   - Keep the release path proportionate rather than turning CI into a bottleneck.
-- [ ] Decide when the local run-history work becomes part of the documented stable CLI surface.
-  - If `history`, `status`, or `report` commands are promoted, document their support level and add
-    contract coverage.
-  - If they remain internal or experimental, keep that explicit.
+- [x] Decide when the local run-history work becomes part of the documented stable CLI surface.
+  - `history`, `log`, `status`, and `report` are now documented as stable `v1.x` CLI commands.
+  - Contract coverage exists in the public-surface meta tests.
 - [ ] Review the stable event-schema contract before the next minor release.
   - Confirm whether `etlplus.event.v1` remains sufficient for the supported execution commands.
   - Add explicit compatibility guidance before introducing schema-affecting changes.

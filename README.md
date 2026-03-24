@@ -47,6 +47,7 @@ package and command-line interface for data extraction, validation, transformati
       - [Extract Data](#extract-data)
       - [Validate Data](#validate-data)
       - [Transform Data](#transform-data)
+      - [Inspect Run History](#inspect-run-history)
       - [Load Data](#load-data)
     - [Python API](#python-api-1)
     - [Complete ETL Pipeline Example](#complete-etl-pipeline-example)
@@ -114,7 +115,8 @@ they are not part of the supported public contract unless they are explicitly do
 
 The stable surface for the current `v1.x` releases is:
 
-- The documented CLI commands: `check`, `extract`, `validate`, `transform`, `load`, `render`, and `run`
+- The documented CLI commands: `check`, `extract`, `history`, `load`, `log`, `render`, `report`,
+  `run`, `status`, `transform`, and `validate`
 - The documented Python ETL primitives in `etlplus.ops`
 - The implemented file handlers listed as `implemented` in the handler matrix
 - The documented API client and pagination helpers under `etlplus.api`
@@ -163,6 +165,11 @@ Maintainers handling packaging, CI, versioned docs, or release gating should con
   - Files (CSV, JSON, XML, YAML)
   - Databases (connection string support; load is a placeholder today)
   - REST APIs (PATCH, POST, PUT)
+
+- **Inspect** local run history and reports:
+  - List normalized runs with filters and table output
+  - Stream raw append events for backend-level troubleshooting
+  - Inspect the latest run or aggregate success and duration metrics by job, status, or day
 
 ## Installation
 
@@ -636,11 +643,14 @@ etlplus validate examples/data/sample.json --rules '{"email": {"type": "string",
 #### Transform Data
 
 When piping data through `etlplus transform`, use `--source-format` whenever the SOURCE argument is
-`-` or a literal payload, mirroring the `etlplus extract` semantics. Use `--target-format` to
-control the emitted format for STDOUT or other non-file outputs, just like `etlplus load`. File
-paths continue to infer formats from their extensions. Use `--source-type` to override the inferred
-source connector type and `--target-type` to override the inferred target connector type, matching
-the `etlplus extract`/`etlplus load` behavior.
+`-` or a literal payload, mirroring the `etlplus extract` semantics. When TARGET is omitted or set
+to `-`, `etlplus transform` emits JSON to STDOUT. When TARGET is a file path or file URI, the
+transformed payload is written directly. When TARGET is an API or database target and you provide
+`--target-type`, the command delegates the transformed payload to `etlplus load` and prints the
+downstream load result envelope. `--target-format` affects file targets and delegated load targets
+that honor a format hint. Use `--source-type` to override the inferred source connector type and
+`--target-type` to override the inferred target connector type, matching the `etlplus extract`/
+`etlplus load` behavior.
 
 Transform file inputs while overriding connector types:
 ```bash
@@ -676,6 +686,42 @@ Map/rename fields:
 etlplus transform \
   --operations '{"map": {"name": "new_name"}}' \
   examples/data/sample.json
+```
+
+Send transformed data to a REST API through the load path:
+```bash
+etlplus transform \
+  --operations '{"select": ["name", "email"]}' \
+  examples/data/sample.json \
+  https://api.example.com/customers --target-type api
+```
+
+Database targets use the same delegated load path, but the current database load implementation is
+still a documented placeholder.
+
+#### Inspect Run History
+
+`etlplus run` persists local run history keyed by `run_id`. Use the read/query commands to inspect
+that history without opening the backend directly.
+
+List recent normalized runs:
+```bash
+etlplus history --job file_to_file_customers --status succeeded --limit 10 --table
+```
+
+Show the latest matching run:
+```bash
+etlplus status --job file_to_file_customers
+```
+
+Stream raw history events:
+```bash
+etlplus log --run-id 8e4a33d7 --follow
+```
+
+Aggregate grouped history metrics:
+```bash
+etlplus report --group-by day --since 2026-03-01T00:00:00Z --table
 ```
 
 #### Load Data

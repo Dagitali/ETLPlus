@@ -46,9 +46,13 @@ pytestmark = [pytest.mark.meta, pytest.mark.contract]
 EXPECTED_CLI_COMMANDS = {
     'check',
     'extract',
+    'history',
     'load',
+    'log',
     'render',
+    'report',
     'run',
+    'status',
     'transform',
     'validate',
 }
