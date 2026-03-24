@@ -305,9 +305,7 @@ def _load_history_records(
     parsed_until = _parse_history_timestamp(until)
     history_store = open_history_store()
     records_iter = (
-        history_store.iter_records()
-        if raw
-        else iter_history_runs(history_store)
+        history_store.iter_records() if raw else iter_history_runs(history_store)
     )
     records = [
         dict(record)
@@ -491,11 +489,7 @@ def _build_history_report(
     for row in rows:
         samples = cast(int, row.pop('duration_samples'))
         total_duration = cast(int, row.pop('total_duration_ms'))
-        row['avg_duration_ms'] = (
-            int(total_duration / samples)
-            if samples > 0
-            else None
-        )
+        row['avg_duration_ms'] = int(total_duration / samples) if samples > 0 else None
         row['success_rate_pct'] = _success_rate_pct(
             int(row['succeeded']),
             int(row['runs']),
@@ -504,9 +498,7 @@ def _build_history_report(
     summary_samples = cast(int, summary.pop('duration_samples'))
     summary_total_duration = cast(int, summary.pop('total_duration_ms'))
     summary['avg_duration_ms'] = (
-        int(summary_total_duration / summary_samples)
-        if summary_samples > 0
-        else None
+        int(summary_total_duration / summary_samples) if summary_samples > 0 else None
     )
     summary['success_rate_pct'] = _success_rate_pct(
         int(summary['succeeded']),
@@ -1290,6 +1282,7 @@ def transform_handler(
     source: str,
     operations: JSONData | str,
     target: str | None = None,
+    target_type: str | None = None,
     event_format: str | None = None,
     source_format: str | None = None,
     target_format: str | None = None,
@@ -1307,6 +1300,9 @@ def transform_handler(
         The transformation operations (inline JSON or path).
     target : str | None, optional
         The target destination (e.g., path). Default is ``None``.
+    target_type : str | None, optional
+        The target connector type (e.g., ``'file'``, ``'api'``,
+        ``'database'``). Default is ``None``.
     event_format : str | None, optional
         Optional structured event format emitted to STDERR. Default is
         ``None``.
@@ -1345,6 +1341,7 @@ def transform_handler(
         event_format=event_format,
         source=source,
         target=target or 'stdout',
+        target_type=target_type,
     )
 
     try:
@@ -1367,8 +1364,30 @@ def transform_handler(
 
         data = transform(payload, cast(TransformOperations, operations_payload))
 
-        # TODO: Generalize to handle non-file targets.
         if target and target != '-':
+            if target_type not in (None, 'file'):
+                resolved_target_type = cast(str, target_type)
+                result = load(
+                    data,
+                    resolved_target_type,
+                    target,
+                    file_format=target_format if format_explicit else None,
+                )
+                _emit_lifecycle_event(
+                    command='transform',
+                    lifecycle='completed',
+                    run_id=run_id,
+                    event_format=event_format,
+                    duration_ms=int((perf_counter() - started_perf) * 1000),
+                    result_status='ok',
+                    source=source,
+                    status='ok',
+                    target=target,
+                    target_type=resolved_target_type,
+                )
+                _io.emit_json(result, pretty=pretty)
+                return 0
+
             _emit_lifecycle_event(
                 command='transform',
                 lifecycle='completed',
@@ -1379,6 +1398,7 @@ def transform_handler(
                 source=source,
                 status='ok',
                 target=target,
+                target_type=target_type or 'file',
             )
             _write_file_payload(data, target, format_hint=target_format)
             print(f'Data transformed and saved to {target}')
@@ -1394,6 +1414,7 @@ def transform_handler(
             source=source,
             status='ok',
             target=target or 'stdout',
+            target_type=target_type,
         )
         _io.emit_json(data, pretty=pretty)
     except Exception as exc:
@@ -1405,6 +1426,7 @@ def transform_handler(
             exc=exc,
             source=source,
             target=target or 'stdout',
+            target_type=target_type,
         )
         raise
 
