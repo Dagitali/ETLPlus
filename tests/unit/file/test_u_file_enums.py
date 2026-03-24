@@ -54,9 +54,7 @@ def build_file_format_alias_infer_case(
     fmt = FileFormat(canonical)
     expected_format, expected_compression = build_format_infer_result(fmt)
     value: object = (
-        alias
-        if '/' in alias or not alias.startswith('.')
-        else f'payload{alias}'
+        alias if '/' in alias or not alias.startswith('.') else f'payload{alias}'
     )
     return value, None, expected_format, expected_compression
 
@@ -88,12 +86,10 @@ EDGE_CASE_INFER_CASES: tuple[InferCase, ...] = (
     ('   ', None, None, None),
 )
 
-FILE_FORMAT_COERCE_CASES: tuple[tuple[str, FileFormat], ...] = (
-    tuple((fmt.value, fmt) for fmt in FileFormat)
-    + tuple(
-        (alias, FileFormat(canonical))
-        for alias, canonical in FileFormat.aliases().items()
-    )
+FILE_FORMAT_COERCE_CASES: tuple[tuple[str, FileFormat], ...] = tuple(
+    (fmt.value, fmt) for fmt in FileFormat
+) + tuple(
+    (alias, FileFormat(canonical)) for alias, canonical in FileFormat.aliases().items()
 )
 
 GENERATED_INFER_CASES: tuple[InferCase, ...] = (

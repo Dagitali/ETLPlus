@@ -12,8 +12,12 @@ Subcommands
 -----------
 - ``check``: inspect a pipeline configuration
 - ``extract``: extract data from files, databases, or REST APIs
+- ``history``: inspect persisted local run history
+- ``log``: inspect raw persisted local run events
 - ``load``: load data to files, databases, or REST APIs
 - ``render``: render SQL DDL from table schema specs
+- ``report``: aggregate persisted local run history
+- ``status``: inspect the latest persisted local run
 - ``transform``: transform records
 - ``validate``: validate data against rules
 
@@ -45,6 +49,7 @@ from ._constants import CLI_DESCRIPTION
 from ._constants import CLI_EPILOG
 from ._constants import DATA_CONNECTORS
 from ._constants import FILE_FORMATS
+from ._handlers import history_handler as handle_history
 from ._io import parse_json_payload
 from ._options import typer_format_option_kwargs
 from ._state import CliState
@@ -82,6 +87,77 @@ ConfigOption = Annotated[
         '--config',
         metavar='PATH',
         help='Path to YAML-formatted configuration file.',
+    ),
+]
+
+HistoryFollowOption = Annotated[
+    bool,
+    typer.Option(
+        '--follow',
+        help='Keep polling for newly persisted matching raw history events.',
+    ),
+]
+
+HistoryJsonOption = Annotated[
+    bool,
+    typer.Option(
+        '--json',
+        help='Format output as JSON explicitly.',
+    ),
+]
+
+HistoryLimitOption = Annotated[
+    int | None,
+    typer.Option(
+        '--limit',
+        min=1,
+        help='Maximum number of history records to emit.',
+        show_default=False,
+    ),
+]
+
+HistoryRawOption = Annotated[
+    bool,
+    typer.Option(
+        '--raw',
+        help='Emit raw append events instead of normalized runs.',
+    ),
+]
+
+HistorySinceOption = Annotated[
+    str | None,
+    typer.Option(
+        '--since',
+        metavar='ISO8601',
+        help='Emit only records at or after the given ISO-8601 timestamp.',
+        show_default=False,
+    ),
+]
+
+HistoryStatusOption = Annotated[
+    str | None,
+    typer.Option(
+        '--status',
+        help='Filter persisted runs by status.',
+        show_default=False,
+    ),
+]
+
+HistoryTableOption = Annotated[
+    bool,
+    typer.Option(
+        '--table',
+        help='Format normalized history output as a Markdown table.',
+    ),
+]
+
+HistoryUntilOption = Annotated[
+    str | None,
+    typer.Option(
+        '--until',
+        metavar='ISO8601',
+        help='Emit only records at or before the given ISO-8601 timestamp.',
+        show_default=False,
     ),
 ]
 
@@ -204,11 +280,29 @@ RenderTemplatePathOption = Annotated[
     ),
 ]
 
+ReportGroupByOption = Annotated[
+    Literal['day', 'job', 'status'],
+    typer.Option(
+        '--group-by',
+        help='Grouping dimension for aggregated history reports.',
+        show_default=True,
+    ),
+]
+
 RulesOption = Annotated[
     str,
     typer.Option(
         '--rules',
         help='Validation rules as JSON string.',
+    ),
+]
+
+RunIdOption = Annotated[
+    str | None,
+    typer.Option(
+        '--run-id',
+        help='Filter persisted runs by run identifier.',
+        show_default=False,
     ),
 ]
 
@@ -228,7 +322,7 @@ SourceArg = Annotated[
         ...,
         metavar='SOURCE',
         help=(
-            'Extract data from SOURCE (JSON payload, file/folder path, '
+            'Extract data from SOURCE (JSON payload, file path, '
             'URI/URL, or - for STDIN). Use --source-format to override the '
             'inferred data format and --source-type to override the inferred '
             'data connector.'
@@ -251,7 +345,7 @@ SourceTypeOption = Annotated[
         metavar='CONNECTOR',
         show_default=False,
         rich_help_panel='I/O overrides',
-        help='Override the inferred source type (api, database, file, folder).',
+        help='Override the inferred source type (api, database, file).',
     ),
 ]
 
@@ -277,7 +371,7 @@ TargetArg = Annotated[
         ...,
         metavar='TARGET',
         help=(
-            'Load data into TARGET (file/folder path, URI/URL, or - for '
+            'Load data into TARGET (file path, URI/URL, or - for '
             'STDOUT). Use --target-format to override the inferred data '
             'format and --target-type to override the inferred data connector.'
         ),
@@ -299,7 +393,7 @@ TargetTypeOption = Annotated[
         metavar='CONNECTOR',
         show_default=False,
         rich_help_panel='I/O overrides',
-        help='Override the inferred target type (api, database, file, folder).',
+        help='Override the inferred target type (api, database, file).',
     ),
 ]
 
@@ -523,7 +617,7 @@ def extract_cmd(
     ctx : typer.Context
         The Typer context.
     source : SourceArg, optional
-        Source (JSON payload, file/folder path, URL/URI, or - for STDIN)
+        Source (JSON payload, file path, URL/URI, or - for STDIN)
         from which to extract data. Default is ``-``.
     source_format : SourceFormatOption, optional
         Data source format. Overrides the inferred format (``csv``, ``json``,
@@ -531,7 +625,7 @@ def extract_cmd(
         ``None``.
     source_type : SourceTypeOption, optional
         Data source type. Overrides the inferred type (``api``, ``database``,
-        ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+        ``file``) based on URI/URL schema. Default is ``None``.
     event_format : StructuredEventFormatOption, optional
         Structured event format emitted to STDERR. Default is ``None``.
 
@@ -593,6 +687,67 @@ def extract_cmd(
     )
 
 
+@app.command('history')
+def history_cmd(
+    ctx: typer.Context,
+    job: JobOption = None,
+    limit: HistoryLimitOption = None,
+    raw: HistoryRawOption = False,
+    since: HistorySinceOption = None,
+    status: HistoryStatusOption = None,
+    json_output: HistoryJsonOption = False,
+    table: HistoryTableOption = False,
+    until: HistoryUntilOption = None,
+) -> int:
+    """
+    Inspect persisted local run history.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    job : JobOption, optional
+        Restrict records to the given job name. Default is ``None``.
+    limit : HistoryLimitOption, optional
+        Maximum number of history records to emit. Default is ``None``.
+    raw : HistoryRawOption, optional
+        Whether to emit raw append events instead of normalized runs.
+        Default is ``False``.
+    since : HistorySinceOption, optional
+        Restrict records to those at or after the given timestamp.
+        Default is ``None``.
+    status : HistoryStatusOption, optional
+        Restrict records to the given persisted status. Default is ``None``.
+    json_output : HistoryJsonOption, optional
+        Whether to emit JSON explicitly. Default is ``False``.
+    table : HistoryTableOption, optional
+        Whether to emit normalized history as a Markdown table.
+        Default is ``False``.
+    until : HistoryUntilOption, optional
+        Restrict records to those at or before the given timestamp.
+        Default is ``None``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
+    state = ensure_state(ctx)
+    return int(
+        handle_history(
+            job=job,
+            json_output=json_output,
+            limit=limit,
+            raw=raw,
+            pretty=state.pretty,
+            since=since,
+            status=status,
+            table=table,
+            until=until,
+        ),
+    )
+
+
 @app.command('load')
 def load_cmd(
     ctx: typer.Context,
@@ -614,14 +769,14 @@ def load_cmd(
         etc.) based on filename extension or STDIN content. Default is
         ``None``.
     target : TargetArg, optional
-        Target (file/folder path, URL/URI, or - for STDOUT) into which to load
+        Target (file path, URL/URI, or - for STDOUT) into which to load
         data. Default is ``-``.
     target_format : TargetFormatOption, optional
         Target data format. Overrides the inferred format (``csv``, ``json``,
         etc.) based on filename extension. Default is ``None``.
     target_type : TargetTypeOption, optional
         Data target type. Overrides the inferred type (``api``, ``database``,
-        ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+        ``file``) based on URI/URL schema. Default is ``None``.
     event_format : StructuredEventFormatOption, optional
         Structured event format emitted to STDERR. Default is ``None``.
 
@@ -702,6 +857,139 @@ def load_cmd(
             format_explicit=target_format is not None,
             output=None,
             pretty=state.pretty,
+        ),
+    )
+
+
+@app.command('log')
+def log_cmd(
+    ctx: typer.Context,
+    follow: HistoryFollowOption = False,
+    limit: HistoryLimitOption = None,
+    run_id: RunIdOption = None,
+    since: HistorySinceOption = None,
+    until: HistoryUntilOption = None,
+) -> int:
+    """
+    Inspect raw persisted local run events.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    follow : HistoryFollowOption, optional
+        Whether to keep polling for new matching raw events. Default is
+        ``False``.
+    limit : HistoryLimitOption, optional
+        Maximum number of raw log events to emit. Default is ``None``.
+    run_id : RunIdOption, optional
+        Restrict events to the given run identifier. Default is ``None``.
+    since : HistorySinceOption, optional
+        Restrict events to those at or after the given timestamp.
+        Default is ``None``.
+    until : HistoryUntilOption, optional
+        Restrict events to those at or before the given timestamp.
+        Default is ``None``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
+    state = ensure_state(ctx)
+    return int(
+        handle_history(
+            follow=follow,
+            limit=limit,
+            raw=True,
+            pretty=state.pretty,
+            run_id=run_id,
+            since=since,
+            until=until,
+        ),
+    )
+
+
+@app.command('report')
+def report_cmd(
+    ctx: typer.Context,
+    group_by: ReportGroupByOption = 'job',
+    job: JobOption = None,
+    json_output: HistoryJsonOption = False,
+    since: HistorySinceOption = None,
+    table: HistoryTableOption = False,
+    until: HistoryUntilOption = None,
+) -> int:
+    """
+    Aggregate normalized persisted run history.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    group_by : ReportGroupByOption, optional
+        Grouping dimension for report rows. Default is ``'job'``.
+    job : JobOption, optional
+        Restrict source records to the given job name. Default is ``None``.
+    json_output : HistoryJsonOption, optional
+        Whether to emit JSON explicitly. Default is ``False``.
+    since : HistorySinceOption, optional
+        Restrict source records to those at or after the given timestamp.
+        Default is ``None``.
+    table : HistoryTableOption, optional
+        Whether to emit grouped rows as a Markdown table. Default is ``False``.
+    until : HistoryUntilOption, optional
+        Restrict source records to those at or before the given timestamp.
+        Default is ``None``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
+    state = ensure_state(ctx)
+    return int(
+        handlers.report_handler(
+            group_by=group_by,
+            job=job,
+            json_output=json_output,
+            pretty=state.pretty,
+            since=since,
+            table=table,
+            until=until,
+        ),
+    )
+
+
+@app.command('status')
+def status_cmd(
+    ctx: typer.Context,
+    job: JobOption = None,
+    run_id: RunIdOption = None,
+) -> int:
+    """
+    Inspect the latest normalized persisted run.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    job : JobOption, optional
+        Restrict the lookup to the given job name. Default is ``None``.
+    run_id : RunIdOption, optional
+        Restrict the lookup to the given run identifier. Default is ``None``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
+    state = ensure_state(ctx)
+    return int(
+        handlers.status_handler(
+            job=job,
+            pretty=state.pretty,
+            run_id=run_id,
         ),
     )
 
@@ -842,7 +1130,7 @@ def transform_cmd(
     operations : OperationsOption, optional
         Transformation operations as JSON string. Default is ``{}``.
     source : SourceArg, optional
-        Source (JSON payload, file/folder path, URL/URI, or - for STDIN) from
+        Source (JSON payload, file path, URL/URI, or - for STDIN) from
         which to extract data. Default is ``-``.
     source_format : SourceFormatOption, optional
         Data source format. Overrides the inferred format (``csv``, ``json``,
@@ -850,18 +1138,25 @@ def transform_cmd(
         ``None``.
     source_type : SourceTypeOption, optional
         Data source type. Overrides the inferred type (``api``, ``database``,
-        ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+        ``file``) based on URI/URL schema. Default is ``None``.
     target : TargetArg, optional
-        Target (file/folder path, URL/URI, or - for STDOUT) into which to load
+        Target (file path, URL/URI, or - for STDOUT) into which to load
         data. Default is ``-``.
     target_format : TargetFormatOption, optional
         Target data format. Overrides the inferred format (``csv``, ``json``,
         etc.) based on filename extension. Default is ``None``.
     target_type : TargetTypeOption, optional
         Data target type. Overrides the inferred type (``api``, ``database``,
-        ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+        ``file``) based on URI/URL schema. Default is ``None``.
     event_format : StructuredEventFormatOption, optional
         Structured event format emitted to STDERR. Default is ``None``.
+
+    Notes
+    -----
+    When TARGET is a file path or file URI, the transformed payload is written
+    directly. When TARGET is an API or database target, the transformed
+    payload is delegated to :func:`etlplus.ops.load.load` and the command emits
+    the resulting load-status payload.
 
     Returns
     -------
@@ -933,6 +1228,7 @@ def transform_cmd(
             source=resolved_source_value,
             operations=_parse_json_option(operations, '--operations'),
             target=resolved_target_value,
+            target_type=resolved_target_type,
             event_format=event_format,
             source_format=source_format,
             target_format=target_format,
