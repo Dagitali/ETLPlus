@@ -212,15 +212,21 @@ class TestHistoryCommand:
 
         result = commands_mod.history_cmd(
             typer_ctx_factory(),
+            job='job-a',
             limit=5,
             raw=True,
+            status='failed',
+            table=True,
         )
 
         assert result == 0
         assert captured == {
+            'job': 'job-a',
             'limit': 5,
             'pretty': False,
             'raw': True,
+            'status': 'failed',
+            'table': True,
         }
 
 
@@ -253,6 +259,8 @@ class TestLogCommand:
         result = commands_mod.log_cmd(
             typer_ctx_factory(),
             limit=7,
+            run_id='run-7',
+            since='2026-03-23T00:00:00Z',
         )
 
         assert result == 0
@@ -260,6 +268,43 @@ class TestLogCommand:
             'limit': 7,
             'pretty': False,
             'raw': True,
+            'run_id': 'run-7',
+            'since': '2026-03-23T00:00:00Z',
+        }
+
+
+class TestStatusCommand:
+    """Unit tests for :func:`etlplus.cli._commands.status_cmd`."""
+
+    def test_delegates_to_status_handler(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+        stub_handler: StubHandler,
+    ) -> None:
+        """Test that status inputs dispatch to ``status_handler``."""
+        monkeypatch.setattr(
+            commands_mod,
+            'ensure_state',
+            lambda _ctx: CliState(pretty=False),
+        )
+        captured = stub_handler(
+            commands_mod.handlers,
+            'status_handler',
+            result=0,
+        )
+
+        result = commands_mod.status_cmd(
+            typer_ctx_factory(),
+            job='job-a',
+            run_id='run-9',
+        )
+
+        assert result == 0
+        assert captured == {
+            'job': 'job-a',
+            'pretty': False,
+            'run_id': 'run-9',
         }
 
 
