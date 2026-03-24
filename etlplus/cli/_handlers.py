@@ -6,12 +6,14 @@ Command handler functions for the ``etlplus`` command-line interface (CLI).
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 from time import perf_counter
+from time import sleep
 from typing import Any
 from typing import Literal
 from typing import cast
@@ -50,6 +52,7 @@ __all__ = [
     'history_handler',
     'load_handler',
     'render_handler',
+    'report_handler',
     'run_handler',
     'status_handler',
     'transform_handler',
@@ -80,6 +83,17 @@ _HISTORY_TABLE_COLUMNS = (
     'started_at',
     'finished_at',
     'duration_ms',
+)
+
+_REPORT_TABLE_COLUMNS = (
+    'group',
+    'runs',
+    'succeeded',
+    'failed',
+    'running',
+    'other',
+    'avg_duration_ms',
+    'last_started_at',
 )
 
 
@@ -213,6 +227,13 @@ def _emit_lifecycle_event(
     )
 
 
+def _history_record_fingerprint(
+    record: Mapping[str, Any],
+) -> str:
+    """Return a stable fingerprint for a persisted history record."""
+    return json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+
+
 def _history_sort_key(
     record: Mapping[str, Any],
 ) -> tuple[str, str]:
@@ -244,6 +265,7 @@ def _history_record_matches(
     job: str | None = None,
     run_id: str | None = None,
     since: datetime | None = None,
+    until: datetime | None = None,
     status: str | None = None,
 ) -> bool:
     """Return whether a history record matches CLI filter values."""
@@ -253,12 +275,16 @@ def _history_record_matches(
         return False
     if status is not None and record.get('status') != status:
         return False
-    if since is None:
-        return True
     record_timestamp = _parse_history_timestamp(
         record.get('started_at') or record.get('finished_at'),
     )
-    return record_timestamp is not None and record_timestamp >= since
+    if since is not None:
+        if record_timestamp is None or record_timestamp < since:
+            return False
+    if until is not None:
+        if record_timestamp is None or record_timestamp > until:
+            return False
+    return True
 
 
 def _load_history_records(
@@ -268,10 +294,12 @@ def _load_history_records(
     limit: int | None = None,
     run_id: str | None = None,
     since: str | None = None,
+    until: str | None = None,
     status: str | None = None,
 ) -> list[dict[str, Any]]:
     """Load, filter, and sort history records for CLI read commands."""
     parsed_since = _parse_history_timestamp(since)
+    parsed_until = _parse_history_timestamp(until)
     history_store = open_history_store()
     records_iter = (
         history_store.iter_records()
@@ -286,6 +314,7 @@ def _load_history_records(
             job=job,
             run_id=run_id,
             since=parsed_since,
+            until=parsed_until,
             status=status,
         )
     ]
@@ -293,6 +322,136 @@ def _load_history_records(
     if limit is not None:
         records = records[:limit]
     return records
+
+
+def _validate_history_output_mode(
+    *,
+    json_output: bool,
+    table: bool,
+) -> None:
+    """Validate that at most one explicit history output mode was requested."""
+    if json_output and table:
+        raise ValueError('choose either json output or table output, not both')
+
+
+def _emit_follow_history(
+    *,
+    job: str | None = None,
+    limit: int | None = None,
+    pretty: bool,
+    run_id: str | None = None,
+    since: str | None = None,
+    until: str | None = None,
+    status: str | None = None,
+) -> int:
+    """Stream newly observed raw history records until interrupted."""
+    seen: set[str] = set()
+    try:
+        while True:
+            records = _load_history_records(
+                job=job,
+                limit=limit,
+                raw=True,
+                run_id=run_id,
+                since=since,
+                until=until,
+                status=status,
+            )
+            for record in reversed(records):
+                fingerprint = _history_record_fingerprint(record)
+                if fingerprint in seen:
+                    continue
+                seen.add(fingerprint)
+                _io.emit_json(record, pretty=pretty)
+            sleep(1.0)
+    except KeyboardInterrupt:
+        return 0
+
+
+def _report_group_key(
+    record: Mapping[str, Any],
+    *,
+    group_by: Literal['day', 'job', 'status'],
+) -> str:
+    """Return the grouping key for one normalized history record."""
+    if group_by == 'job':
+        return cast(str, record.get('job_name') or '(no job)')
+    if group_by == 'status':
+        return cast(str, record.get('status') or '(unknown)')
+    timestamp = cast(str, record.get('started_at') or record.get('finished_at') or '')
+    return timestamp.split('T', maxsplit=1)[0] if 'T' in timestamp else '(unknown)'
+
+
+def _build_history_report(
+    records: list[dict[str, Any]],
+    *,
+    group_by: Literal['day', 'job', 'status'],
+) -> dict[str, Any]:
+    """Aggregate normalized history records into a grouped report."""
+    rows_by_group: dict[str, dict[str, Any]] = {}
+    summary = {
+        'failed': 0,
+        'other': 0,
+        'running': 0,
+        'runs': len(records),
+        'succeeded': 0,
+    }
+
+    for record in records:
+        status = cast(str, record.get('status') or '')
+        if status in summary:
+            summary[status] += 1
+        else:
+            summary['other'] += 1
+
+        key = _report_group_key(record, group_by=group_by)
+        row = rows_by_group.setdefault(
+            key,
+            {
+                'avg_duration_ms': None,
+                'duration_samples': 0,
+                'group': key,
+                'last_started_at': None,
+                'runs': 0,
+                'succeeded': 0,
+                'failed': 0,
+                'running': 0,
+                'other': 0,
+                'total_duration_ms': 0,
+            },
+        )
+        row['runs'] += 1
+        if status in ('succeeded', 'failed', 'running'):
+            row[status] += 1
+        else:
+            row['other'] += 1
+
+        duration_ms = record.get('duration_ms')
+        if isinstance(duration_ms, int):
+            row['total_duration_ms'] += duration_ms
+            row['duration_samples'] += 1
+
+        started_at = record.get('started_at')
+        if isinstance(started_at, str) and (
+            row['last_started_at'] is None or started_at > row['last_started_at']
+        ):
+            row['last_started_at'] = started_at
+
+    rows = sorted(rows_by_group.values(), key=lambda item: cast(str, item['group']))
+    for row in rows:
+        samples = cast(int, row.pop('duration_samples'))
+        total_duration = cast(int, row.pop('total_duration_ms'))
+        row['avg_duration_ms'] = (
+            int(total_duration / samples)
+            if samples > 0
+            else None
+        )
+
+    return {
+        'group_by': group_by,
+        'rows': rows,
+        'summary': summary,
+    }
 
 
 def _pipeline_summary(
@@ -429,12 +588,15 @@ def check_handler(
 
 def history_handler(
     *,
+    follow: bool = False,
     job: str | None = None,
+    json_output: bool = False,
     limit: int | None = None,
     raw: bool = False,
     pretty: bool = True,
     run_id: str | None = None,
     since: str | None = None,
+    until: str | None = None,
     status: str | None = None,
     table: bool = False,
 ) -> int:
@@ -443,8 +605,13 @@ def history_handler(
 
     Parameters
     ----------
+    follow : bool, optional
+        Whether to keep polling for new matching raw history records.
+        Default is ``False``.
     job : str | None, optional
         Restrict records to the given job name. Default is ``None``.
+    json_output : bool, optional
+        Whether to emit JSON explicitly. Default is ``False``.
     limit : int | None, optional
         Maximum number of records to emit. Default is ``None``.
     raw : bool, optional
@@ -457,6 +624,9 @@ def history_handler(
     since : str | None, optional
         Restrict records to runs at or after the given ISO-8601 timestamp.
         Default is ``None``.
+    until : str | None, optional
+        Restrict records to runs at or before the given ISO-8601 timestamp.
+        Default is ``None``.
     status : str | None, optional
         Restrict records to the given persisted status. Default is ``None``.
     table : bool, optional
@@ -468,12 +638,24 @@ def history_handler(
     int
         Zero on success.
     """
+    _validate_history_output_mode(json_output=json_output, table=table)
+    if follow:
+        return _emit_follow_history(
+            job=job,
+            limit=limit,
+            pretty=pretty,
+            run_id=run_id,
+            since=since,
+            status=status,
+            until=until,
+        )
     records = _load_history_records(
         job=job,
         limit=limit,
         raw=raw,
         run_id=run_id,
         since=since,
+        until=until,
         status=status,
     )
     if table:
@@ -832,6 +1014,58 @@ def render_handler(
         return 0
 
     print(rendered_output)
+    return 0
+
+
+def report_handler(
+    *,
+    group_by: Literal['day', 'job', 'status'] = 'job',
+    job: str | None = None,
+    json_output: bool = False,
+    pretty: bool = True,
+    since: str | None = None,
+    table: bool = False,
+    until: str | None = None,
+) -> int:
+    """
+    Emit a grouped history report derived from normalized persisted runs.
+
+    Parameters
+    ----------
+    group_by : Literal['day', 'job', 'status'], optional
+        Field on which to group the report rows. Default is ``'job'``.
+    job : str | None, optional
+        Restrict source records to the given job name. Default is ``None``.
+    json_output : bool, optional
+        Whether to emit JSON explicitly. Default is ``False``.
+    pretty : bool, optional
+        Whether to pretty-print JSON output. Default is ``True``.
+    since : str | None, optional
+        Restrict records to runs at or after the given timestamp.
+        Default is ``None``.
+    table : bool, optional
+        Whether to emit grouped rows as a Markdown table. Default is ``False``.
+    until : str | None, optional
+        Restrict records to runs at or before the given timestamp.
+        Default is ``None``.
+
+    Returns
+    -------
+    int
+        Zero on success.
+    """
+    _validate_history_output_mode(json_output=json_output, table=table)
+    records = _load_history_records(
+        job=job,
+        raw=False,
+        since=since,
+        until=until,
+    )
+    report = _build_history_report(records, group_by=group_by)
+    if table:
+        _io.emit_markdown_table(report['rows'], columns=_REPORT_TABLE_COLUMNS)
+        return 0
+    _io.emit_json(report, pretty=pretty)
     return 0
 
 
