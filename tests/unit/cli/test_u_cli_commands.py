@@ -160,6 +160,30 @@ class TestCliInvokeParsing:
         assert result.exit_code == 0
         assert captured['group_by'] == 'day'
 
+    def test_transform_target_type_reaches_handler(
+        self,
+        invoke_cli: InvokeCli,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``transform --target-type`` is parsed through Typer."""
+        captured: dict[str, object] = {}
+
+        def _stub(**kwargs: object) -> int:
+            captured.update(kwargs)
+            return 0
+
+        monkeypatch.setattr(commands_mod.handlers, 'transform_handler', _stub)
+
+        result = invoke_cli(
+            'transform',
+            '--target-type',
+            'api',
+            'https://example.com/items',
+        )
+
+        assert result.exit_code == 0
+        assert captured['target_type'] == 'api'
+
 
 class TestCommandsMissingInputs:
     """Unit tests for missing required args/options."""
@@ -505,3 +529,4 @@ class TestTransformCommand:
         assert result == 0
         assert validate_called['count'] == 0
         assert captured['source'] == 'payload'
+        assert captured['target_type'] == 'file'
