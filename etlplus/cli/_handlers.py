@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import sys
 from collections.abc import Mapping
+from datetime import datetime
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -50,6 +51,7 @@ __all__ = [
     'load_handler',
     'render_handler',
     'run_handler',
+    'status_handler',
     'transform_handler',
     'validate_handler',
 ]
@@ -58,10 +60,27 @@ __all__ = [
 # SECTION: TYPE ALIASES ===================================================== #
 
 
+HistoryRecord = Mapping[str, Any]
+
+
 TransformOperations = Mapping[
     Literal['filter', 'map', 'select', 'sort', 'aggregate'],
     Any,
 ]
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_HISTORY_TABLE_COLUMNS = (
+    'run_id',
+    'status',
+    'job_name',
+    'pipeline_name',
+    'started_at',
+    'finished_at',
+    'duration_ms',
+)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -206,6 +225,76 @@ def _history_sort_key(
     return (timestamp, run_id)
 
 
+def _parse_history_timestamp(
+    value: object,
+) -> datetime | None:
+    """Parse an ISO-8601 timestamp used in persisted history records."""
+    if not isinstance(value, str) or not value:
+        return None
+    normalized = value.replace('Z', '+00:00')
+    try:
+        return datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+
+
+def _history_record_matches(
+    record: HistoryRecord,
+    *,
+    job: str | None = None,
+    run_id: str | None = None,
+    since: datetime | None = None,
+    status: str | None = None,
+) -> bool:
+    """Return whether a history record matches CLI filter values."""
+    if job is not None and record.get('job_name') != job:
+        return False
+    if run_id is not None and record.get('run_id') != run_id:
+        return False
+    if status is not None and record.get('status') != status:
+        return False
+    if since is None:
+        return True
+    record_timestamp = _parse_history_timestamp(
+        record.get('started_at') or record.get('finished_at'),
+    )
+    return record_timestamp is not None and record_timestamp >= since
+
+
+def _load_history_records(
+    *,
+    raw: bool,
+    job: str | None = None,
+    limit: int | None = None,
+    run_id: str | None = None,
+    since: str | None = None,
+    status: str | None = None,
+) -> list[dict[str, Any]]:
+    """Load, filter, and sort history records for CLI read commands."""
+    parsed_since = _parse_history_timestamp(since)
+    history_store = open_history_store()
+    records_iter = (
+        history_store.iter_records()
+        if raw
+        else iter_history_runs(history_store)
+    )
+    records = [
+        dict(record)
+        for record in records_iter
+        if _history_record_matches(
+            record,
+            job=job,
+            run_id=run_id,
+            since=parsed_since,
+            status=status,
+        )
+    ]
+    records.sort(key=_history_sort_key, reverse=True)
+    if limit is not None:
+        records = records[:limit]
+    return records
+
+
 def _pipeline_summary(
     cfg: Config,
 ) -> dict[str, Any]:
@@ -340,15 +429,22 @@ def check_handler(
 
 def history_handler(
     *,
+    job: str | None = None,
     limit: int | None = None,
     raw: bool = False,
     pretty: bool = True,
+    run_id: str | None = None,
+    since: str | None = None,
+    status: str | None = None,
+    table: bool = False,
 ) -> int:
     """
     Emit persisted local run history.
 
     Parameters
     ----------
+    job : str | None, optional
+        Restrict records to the given job name. Default is ``None``.
     limit : int | None, optional
         Maximum number of records to emit. Default is ``None``.
     raw : bool, optional
@@ -356,21 +452,33 @@ def history_handler(
         Default is ``False``.
     pretty : bool, optional
         Whether to pretty-print output. Default is ``True``.
+    run_id : str | None, optional
+        Restrict records to the given run identifier. Default is ``None``.
+    since : str | None, optional
+        Restrict records to runs at or after the given ISO-8601 timestamp.
+        Default is ``None``.
+    status : str | None, optional
+        Restrict records to the given persisted status. Default is ``None``.
+    table : bool, optional
+        Whether to emit the filtered result set as a Markdown table instead of
+        JSON. Default is ``False``.
 
     Returns
     -------
     int
         Zero on success.
     """
-    history_store = open_history_store()
-    records_iter = (
-        history_store.iter_records()
-        if raw
-        else iter_history_runs(history_store)
+    records = _load_history_records(
+        job=job,
+        limit=limit,
+        raw=raw,
+        run_id=run_id,
+        since=since,
+        status=status,
     )
-    records = sorted(records_iter, key=_history_sort_key, reverse=True)
-    if limit is not None:
-        records = records[:limit]
+    if table:
+        _io.emit_markdown_table(records, columns=_HISTORY_TABLE_COLUMNS)
+        return 0
     _io.emit_json(records, pretty=pretty)
     return 0
 
@@ -844,6 +952,37 @@ def run_handler(
         return 0
 
     _io.emit_json(_pipeline_summary(cfg), pretty=pretty)
+    return 0
+
+
+def status_handler(
+    *,
+    job: str | None = None,
+    pretty: bool = True,
+    run_id: str | None = None,
+) -> int:
+    """
+    Emit the latest normalized run matching the given status filters.
+
+    Parameters
+    ----------
+    job : str | None, optional
+        Restrict the lookup to the given job name. Default is ``None``.
+    pretty : bool, optional
+        Whether to pretty-print output. Default is ``True``.
+    run_id : str | None, optional
+        Restrict the lookup to the given run identifier. Default is ``None``.
+
+    Returns
+    -------
+    int
+        Zero when a matching run exists, otherwise ``1``.
+    """
+    records = _load_history_records(job=job, limit=1, raw=False, run_id=run_id)
+    if not records:
+        _io.emit_json({}, pretty=pretty)
+        return 1
+    _io.emit_json(records[0], pretty=pretty)
     return 0
 
 
