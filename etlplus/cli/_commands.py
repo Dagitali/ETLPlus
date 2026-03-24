@@ -322,7 +322,7 @@ SourceArg = Annotated[
         ...,
         metavar='SOURCE',
         help=(
-            'Extract data from SOURCE (JSON payload, file/folder path, '
+            'Extract data from SOURCE (JSON payload, file path, '
             'URI/URL, or - for STDIN). Use --source-format to override the '
             'inferred data format and --source-type to override the inferred '
             'data connector.'
@@ -345,7 +345,7 @@ SourceTypeOption = Annotated[
         metavar='CONNECTOR',
         show_default=False,
         rich_help_panel='I/O overrides',
-        help='Override the inferred source type (api, database, file, folder).',
+        help='Override the inferred source type (api, database, file).',
     ),
 ]
 
@@ -371,7 +371,7 @@ TargetArg = Annotated[
         ...,
         metavar='TARGET',
         help=(
-            'Load data into TARGET (file/folder path, URI/URL, or - for '
+            'Load data into TARGET (file path, URI/URL, or - for '
             'STDOUT). Use --target-format to override the inferred data '
             'format and --target-type to override the inferred data connector.'
         ),
@@ -393,7 +393,7 @@ TargetTypeOption = Annotated[
         metavar='CONNECTOR',
         show_default=False,
         rich_help_panel='I/O overrides',
-        help='Override the inferred target type (api, database, file, folder).',
+        help='Override the inferred target type (api, database, file).',
     ),
 ]
 
@@ -617,7 +617,7 @@ def extract_cmd(
     ctx : typer.Context
         The Typer context.
     source : SourceArg, optional
-        Source (JSON payload, file/folder path, URL/URI, or - for STDIN)
+        Source (JSON payload, file path, URL/URI, or - for STDIN)
         from which to extract data. Default is ``-``.
     source_format : SourceFormatOption, optional
         Data source format. Overrides the inferred format (``csv``, ``json``,
@@ -625,7 +625,7 @@ def extract_cmd(
         ``None``.
     source_type : SourceTypeOption, optional
         Data source type. Overrides the inferred type (``api``, ``database``,
-        ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+        ``file``) based on URI/URL schema. Default is ``None``.
     event_format : StructuredEventFormatOption, optional
         Structured event format emitted to STDERR. Default is ``None``.
 
@@ -769,7 +769,7 @@ def load_cmd(
         etc.) based on filename extension or STDIN content. Default is
         ``None``.
     target : TargetArg, optional
-        Target (file/folder path, URL/URI, or - for STDOUT) into which to load
+        Target (file path, URL/URI, or - for STDOUT) into which to load
         data. Default is ``-``.
     target_format : TargetFormatOption, optional
         Target data format. Overrides the inferred format (``csv``, ``json``,
@@ -1130,7 +1130,7 @@ def transform_cmd(
     operations : OperationsOption, optional
         Transformation operations as JSON string. Default is ``{}``.
     source : SourceArg, optional
-        Source (JSON payload, file/folder path, URL/URI, or - for STDIN) from
+        Source (JSON payload, file path, URL/URI, or - for STDIN) from
         which to extract data. Default is ``-``.
     source_format : SourceFormatOption, optional
         Data source format. Overrides the inferred format (``csv``, ``json``,
@@ -1138,18 +1138,25 @@ def transform_cmd(
         ``None``.
     source_type : SourceTypeOption, optional
         Data source type. Overrides the inferred type (``api``, ``database``,
-        ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+        ``file``) based on URI/URL schema. Default is ``None``.
     target : TargetArg, optional
-        Target (file/folder path, URL/URI, or - for STDOUT) into which to load
+        Target (file path, URL/URI, or - for STDOUT) into which to load
         data. Default is ``-``.
     target_format : TargetFormatOption, optional
         Target data format. Overrides the inferred format (``csv``, ``json``,
         etc.) based on filename extension. Default is ``None``.
     target_type : TargetTypeOption, optional
         Data target type. Overrides the inferred type (``api``, ``database``,
-        ``file``, ``folder``) based on URI/URL schema. Default is ``None``.
+        ``file``) based on URI/URL schema. Default is ``None``.
     event_format : StructuredEventFormatOption, optional
         Structured event format emitted to STDERR. Default is ``None``.
+
+    Notes
+    -----
+    When TARGET is a file path or file URI, the transformed payload is written
+    directly. When TARGET is an API or database target, the transformed
+    payload is delegated to :func:`etlplus.ops.load.load` and the command emits
+    the resulting load-status payload.
 
     Returns
     -------
