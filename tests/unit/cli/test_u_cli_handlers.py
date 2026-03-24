@@ -519,6 +519,145 @@ class TestHistoryHandler:
             pretty=False,
         )
 
+    def test_filters_normalized_runs_and_emits_markdown_table(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that history filters normalized runs and can emit tables."""
+
+        class _FakeHistoryStore:
+            def iter_records(self) -> Any:
+                return iter(
+                    [
+                        {
+                            'job_name': 'job-a',
+                            'run_id': 'run-1',
+                            'started_at': '2026-03-22T00:00:00Z',
+                            'status': 'running',
+                        },
+                        {
+                            'finished_at': '2026-03-22T00:00:10Z',
+                            'job_name': 'job-a',
+                            'run_id': 'run-1',
+                            'status': 'failed',
+                        },
+                        {
+                            'finished_at': '2026-03-23T00:00:05Z',
+                            'job_name': 'job-b',
+                            'run_id': 'run-2',
+                            'started_at': '2026-03-23T00:00:00Z',
+                            'status': 'succeeded',
+                        },
+                    ],
+                )
+
+        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+
+        assert (
+            handlers.history_handler(
+                job='job-a',
+                status='failed',
+                table=True,
+                pretty=False,
+            )
+            == 0
+        )
+
+        assert capture_io['emit_json'] == []
+        assert capture_io['emit_markdown_table'] == [
+            (
+                (
+                    [
+                        {
+                            'config_path': None,
+                            'config_sha256': None,
+                            'duration_ms': None,
+                            'error_message': None,
+                            'error_traceback': None,
+                            'error_type': None,
+                            'etlplus_version': None,
+                            'finished_at': '2026-03-22T00:00:10Z',
+                            'host': None,
+                            'job_name': 'job-a',
+                            'pid': None,
+                            'pipeline_name': None,
+                            'records_in': None,
+                            'records_out': None,
+                            'result_summary': None,
+                            'run_id': 'run-1',
+                            'started_at': '2026-03-22T00:00:00Z',
+                            'status': 'failed',
+                        },
+                    ],
+                ),
+                {
+                    'columns': (
+                        'run_id',
+                        'status',
+                        'job_name',
+                        'pipeline_name',
+                        'started_at',
+                        'finished_at',
+                        'duration_ms',
+                    ),
+                },
+            ),
+        ]
+
+    def test_filters_raw_records_by_run_id_and_since(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that raw history mode can filter by run identifier and time."""
+
+        class _FakeHistoryStore:
+            def iter_records(self) -> Any:
+                return iter(
+                    [
+                        {
+                            'run_id': 'run-1',
+                            'started_at': '2026-03-22T00:00:00Z',
+                            'status': 'running',
+                        },
+                        {
+                            'finished_at': '2026-03-23T00:00:05Z',
+                            'run_id': 'run-2',
+                            'status': 'succeeded',
+                        },
+                        {
+                            'finished_at': '2026-03-24T00:00:05Z',
+                            'run_id': 'run-2',
+                            'status': 'failed',
+                        },
+                    ],
+                )
+
+        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+
+        assert (
+            handlers.history_handler(
+                raw=True,
+                run_id='run-2',
+                since='2026-03-24T00:00:00Z',
+                pretty=False,
+            )
+            == 0
+        )
+
+        assert_emit_json(
+            capture_io,
+            [
+                {
+                    'finished_at': '2026-03-24T00:00:05Z',
+                    'run_id': 'run-2',
+                    'status': 'failed',
+                },
+            ],
+            pretty=False,
+        )
+
 
 class TestLoadHandler:
     """Unit tests for :func:`load_handler`."""
@@ -967,6 +1106,84 @@ class TestRunHandler:
             },
             pretty=False,
         )
+
+
+class TestStatusHandler:
+    """Unit tests for :func:`status_handler`."""
+
+    def test_emits_latest_matching_normalized_run(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that status emits the newest normalized run."""
+
+        class _FakeHistoryStore:
+            def iter_records(self) -> Any:
+                return iter(
+                    [
+                        {
+                            'finished_at': '2026-03-22T00:00:05Z',
+                            'job_name': 'job-a',
+                            'run_id': 'run-1',
+                            'started_at': '2026-03-22T00:00:00Z',
+                            'status': 'failed',
+                        },
+                        {
+                            'finished_at': '2026-03-23T00:00:05Z',
+                            'job_name': 'job-a',
+                            'run_id': 'run-2',
+                            'started_at': '2026-03-23T00:00:00Z',
+                            'status': 'succeeded',
+                        },
+                    ],
+                )
+
+        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+
+        assert handlers.status_handler(job='job-a', pretty=True) == 0
+
+        assert_emit_json(
+            capture_io,
+            {
+                'config_path': None,
+                'config_sha256': None,
+                'duration_ms': None,
+                'error_message': None,
+                'error_traceback': None,
+                'error_type': None,
+                'etlplus_version': None,
+                'finished_at': '2026-03-23T00:00:05Z',
+                'host': None,
+                'job_name': 'job-a',
+                'pid': None,
+                'pipeline_name': None,
+                'records_in': None,
+                'records_out': None,
+                'result_summary': None,
+                'run_id': 'run-2',
+                'started_at': '2026-03-23T00:00:00Z',
+                'status': 'succeeded',
+            },
+            pretty=True,
+        )
+
+    def test_returns_one_when_no_matching_run_exists(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that status returns 1 and emits an empty object on misses."""
+
+        class _FakeHistoryStore:
+            def iter_records(self) -> Any:
+                return iter([])
+
+        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+
+        assert handlers.status_handler(run_id='missing', pretty=False) == 1
+
+        assert_emit_json(capture_io, {}, pretty=False)
 
 
 class TestTransformHandler:
