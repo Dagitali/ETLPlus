@@ -519,6 +519,58 @@ class TestHistoryHandler:
             pretty=False,
         )
 
+    def test_explicit_json_output_uses_json_emitter(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that the explicit JSON flag still routes through JSON output."""
+
+        class _FakeHistoryStore:
+            def iter_records(self) -> Any:
+                return iter(
+                    [
+                        {
+                            'finished_at': '2026-03-23T00:00:05Z',
+                            'job_name': 'job-a',
+                            'run_id': 'run-2',
+                            'started_at': '2026-03-23T00:00:00Z',
+                            'status': 'succeeded',
+                        },
+                    ],
+                )
+
+        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+
+        assert handlers.history_handler(json_output=True, pretty=False) == 0
+
+        assert_emit_json(
+            capture_io,
+            [
+                {
+                    'config_path': None,
+                    'config_sha256': None,
+                    'duration_ms': None,
+                    'error_message': None,
+                    'error_traceback': None,
+                    'error_type': None,
+                    'etlplus_version': None,
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'host': None,
+                    'job_name': 'job-a',
+                    'pid': None,
+                    'pipeline_name': None,
+                    'records_in': None,
+                    'records_out': None,
+                    'result_summary': None,
+                    'run_id': 'run-2',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ],
+            pretty=False,
+        )
+
     def test_filters_normalized_runs_and_emits_markdown_table(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -641,6 +693,7 @@ class TestHistoryHandler:
                 raw=True,
                 run_id='run-2',
                 since='2026-03-24T00:00:00Z',
+                until='2026-03-24T23:59:59Z',
                 pretty=False,
             )
             == 0
@@ -657,6 +710,221 @@ class TestHistoryHandler:
             ],
             pretty=False,
         )
+
+    def test_follow_emits_new_raw_records_until_interrupted(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that follow mode streams newly observed raw history records."""
+        call_count = {'value': 0}
+
+        def fake_load_history_records(**kwargs: object) -> list[dict[str, object]]:
+            call_count['value'] += 1
+            assert kwargs['raw'] is True
+            if call_count['value'] == 1:
+                return [
+                    {
+                        'run_id': 'run-1',
+                        'started_at': '2026-03-23T00:00:00Z',
+                        'status': 'running',
+                    },
+                ]
+            return [
+                {
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'running',
+                },
+                {
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'run_id': 'run-1',
+                    'status': 'succeeded',
+                },
+            ]
+
+        def fake_sleep(_seconds: float) -> None:
+            if call_count['value'] >= 2:
+                raise KeyboardInterrupt
+
+        monkeypatch.setattr(
+            handlers,
+            '_load_history_records',
+            fake_load_history_records,
+        )
+        monkeypatch.setattr(handlers, 'sleep', fake_sleep)
+
+        assert handlers.history_handler(follow=True, raw=True, pretty=False) == 0
+
+        assert capture_io['emit_json'] == [
+            (
+                (
+                    {
+                        'run_id': 'run-1',
+                        'started_at': '2026-03-23T00:00:00Z',
+                        'status': 'running',
+                    },
+                ),
+                {'pretty': False},
+            ),
+            (
+                (
+                    {
+                        'finished_at': '2026-03-23T00:00:05Z',
+                        'run_id': 'run-1',
+                        'status': 'succeeded',
+                    },
+                ),
+                {'pretty': False},
+            ),
+        ]
+
+    def test_rejects_conflicting_output_modes(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that JSON and table modes cannot be requested together."""
+
+        class _FakeHistoryStore:
+            def iter_records(self) -> Any:
+                return iter([])
+
+        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+
+        with pytest.raises(ValueError, match='choose either json output'):
+            handlers.history_handler(json_output=True, table=True)
+
+
+class TestReportHandler:
+    """Unit tests for :func:`report_handler`."""
+
+    def test_emits_grouped_report_as_json(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that report aggregates normalized runs into JSON output."""
+
+        class _FakeHistoryStore:
+            def iter_records(self) -> Any:
+                return iter(
+                    [
+                        {
+                            'duration_ms': 3000,
+                            'finished_at': '2026-03-23T00:00:05Z',
+                            'job_name': 'job-a',
+                            'run_id': 'run-1',
+                            'started_at': '2026-03-23T00:00:00Z',
+                            'status': 'succeeded',
+                        },
+                        {
+                            'duration_ms': 1000,
+                            'finished_at': '2026-03-24T00:00:05Z',
+                            'job_name': 'job-a',
+                            'run_id': 'run-2',
+                            'started_at': '2026-03-24T00:00:00Z',
+                            'status': 'failed',
+                        },
+                    ],
+                )
+
+        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+
+        assert (
+            handlers.report_handler(
+                group_by='job',
+                job='job-a',
+                pretty=False,
+                since='2026-03-23T00:00:00Z',
+                until='2026-03-24T23:59:59Z',
+            )
+            == 0
+        )
+
+        assert_emit_json(
+            capture_io,
+            {
+                'group_by': 'job',
+                'rows': [
+                    {
+                        'avg_duration_ms': 2000,
+                        'failed': 1,
+                        'group': 'job-a',
+                        'last_started_at': '2026-03-24T00:00:00Z',
+                        'other': 0,
+                        'running': 0,
+                        'runs': 2,
+                        'succeeded': 1,
+                    },
+                ],
+                'summary': {
+                    'failed': 1,
+                    'other': 0,
+                    'running': 0,
+                    'runs': 2,
+                    'succeeded': 1,
+                },
+            },
+            pretty=False,
+        )
+
+    def test_emits_grouped_report_as_markdown_table(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that report can emit grouped rows as a Markdown table."""
+
+        class _FakeHistoryStore:
+            def iter_records(self) -> Any:
+                return iter(
+                    [
+                        {
+                            'duration_ms': 3000,
+                            'finished_at': '2026-03-23T00:00:05Z',
+                            'job_name': 'job-a',
+                            'run_id': 'run-1',
+                            'started_at': '2026-03-23T00:00:00Z',
+                            'status': 'succeeded',
+                        },
+                    ],
+                )
+
+        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+
+        assert handlers.report_handler(group_by='status', table=True) == 0
+
+        assert capture_io['emit_json'] == []
+        assert capture_io['emit_markdown_table'] == [
+            (
+                (
+                    [
+                        {
+                            'avg_duration_ms': 3000,
+                            'failed': 0,
+                            'group': 'succeeded',
+                            'last_started_at': '2026-03-23T00:00:00Z',
+                            'other': 0,
+                            'running': 0,
+                            'runs': 1,
+                            'succeeded': 1,
+                        },
+                    ],
+                ),
+                {
+                    'columns': (
+                        'group',
+                        'runs',
+                        'succeeded',
+                        'failed',
+                        'running',
+                        'other',
+                        'avg_duration_ms',
+                        'last_started_at',
+                    ),
+                },
+            ),
+        ]
 
 
 class TestLoadHandler:
