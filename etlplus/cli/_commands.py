@@ -16,6 +16,7 @@ Subcommands
 - ``log``: inspect raw persisted local run events
 - ``load``: load data to files, databases, or REST APIs
 - ``render``: render SQL DDL from table schema specs
+- ``report``: aggregate persisted local run history
 - ``status``: inspect the latest persisted local run
 - ``transform``: transform records
 - ``validate``: validate data against rules
@@ -89,6 +90,22 @@ ConfigOption = Annotated[
     ),
 ]
 
+HistoryFollowOption = Annotated[
+    bool,
+    typer.Option(
+        '--follow',
+        help='Keep polling for newly persisted matching raw history events.',
+    ),
+]
+
+HistoryJsonOption = Annotated[
+    bool,
+    typer.Option(
+        '--json',
+        help='Format output as JSON explicitly.',
+    ),
+]
+
 HistoryLimitOption = Annotated[
     int | None,
     typer.Option(
@@ -131,6 +148,16 @@ HistoryTableOption = Annotated[
     typer.Option(
         '--table',
         help='Format normalized history output as a Markdown table.',
+    ),
+]
+
+HistoryUntilOption = Annotated[
+    str | None,
+    typer.Option(
+        '--until',
+        metavar='ISO8601',
+        help='Emit only records at or before the given ISO-8601 timestamp.',
+        show_default=False,
     ),
 ]
 
@@ -250,6 +277,15 @@ RenderTemplatePathOption = Annotated[
         '--template-path',
         metavar='PATH',
         help='Explicit path to a Jinja template file (overrides template key).',
+    ),
+]
+
+ReportGroupByOption = Annotated[
+    Literal['day', 'job', 'status'],
+    typer.Option(
+        '--group-by',
+        help='Grouping dimension for aggregated history reports.',
+        show_default=True,
     ),
 ]
 
@@ -657,8 +693,11 @@ def history_cmd(
     job: JobOption = None,
     limit: HistoryLimitOption = None,
     raw: HistoryRawOption = False,
+    since: HistorySinceOption = None,
     status: HistoryStatusOption = None,
+    json_output: HistoryJsonOption = False,
     table: HistoryTableOption = False,
+    until: HistoryUntilOption = None,
 ) -> int:
     """
     Inspect persisted local run history.
@@ -674,11 +713,19 @@ def history_cmd(
     raw : HistoryRawOption, optional
         Whether to emit raw append events instead of normalized runs.
         Default is ``False``.
+    since : HistorySinceOption, optional
+        Restrict records to those at or after the given timestamp.
+        Default is ``None``.
     status : HistoryStatusOption, optional
         Restrict records to the given persisted status. Default is ``None``.
+    json_output : HistoryJsonOption, optional
+        Whether to emit JSON explicitly. Default is ``False``.
     table : HistoryTableOption, optional
         Whether to emit normalized history as a Markdown table.
         Default is ``False``.
+    until : HistoryUntilOption, optional
+        Restrict records to those at or before the given timestamp.
+        Default is ``None``.
 
     Returns
     -------
@@ -689,11 +736,14 @@ def history_cmd(
     return int(
         handle_history(
             job=job,
+            json_output=json_output,
             limit=limit,
             raw=raw,
             pretty=state.pretty,
+            since=since,
             status=status,
             table=table,
+            until=until,
         ),
     )
 
@@ -814,9 +864,11 @@ def load_cmd(
 @app.command('log')
 def log_cmd(
     ctx: typer.Context,
+    follow: HistoryFollowOption = False,
     limit: HistoryLimitOption = None,
     run_id: RunIdOption = None,
     since: HistorySinceOption = None,
+    until: HistoryUntilOption = None,
 ) -> int:
     """
     Inspect raw persisted local run events.
@@ -825,12 +877,18 @@ def log_cmd(
     ----------
     ctx : typer.Context
         The Typer context.
+    follow : HistoryFollowOption, optional
+        Whether to keep polling for new matching raw events. Default is
+        ``False``.
     limit : HistoryLimitOption, optional
         Maximum number of raw log events to emit. Default is ``None``.
     run_id : RunIdOption, optional
         Restrict events to the given run identifier. Default is ``None``.
     since : HistorySinceOption, optional
         Restrict events to those at or after the given timestamp.
+        Default is ``None``.
+    until : HistoryUntilOption, optional
+        Restrict events to those at or before the given timestamp.
         Default is ``None``.
 
     Returns
@@ -841,11 +899,64 @@ def log_cmd(
     state = ensure_state(ctx)
     return int(
         handle_history(
+            follow=follow,
             limit=limit,
             raw=True,
             pretty=state.pretty,
             run_id=run_id,
             since=since,
+            until=until,
+        ),
+    )
+
+
+@app.command('report')
+def report_cmd(
+    ctx: typer.Context,
+    group_by: ReportGroupByOption = 'job',
+    job: JobOption = None,
+    json_output: HistoryJsonOption = False,
+    since: HistorySinceOption = None,
+    table: HistoryTableOption = False,
+    until: HistoryUntilOption = None,
+) -> int:
+    """
+    Aggregate normalized persisted run history.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        The Typer context.
+    group_by : ReportGroupByOption, optional
+        Grouping dimension for report rows. Default is ``'job'``.
+    job : JobOption, optional
+        Restrict source records to the given job name. Default is ``None``.
+    json_output : HistoryJsonOption, optional
+        Whether to emit JSON explicitly. Default is ``False``.
+    since : HistorySinceOption, optional
+        Restrict source records to those at or after the given timestamp.
+        Default is ``None``.
+    table : HistoryTableOption, optional
+        Whether to emit grouped rows as a Markdown table. Default is ``False``.
+    until : HistoryUntilOption, optional
+        Restrict source records to those at or before the given timestamp.
+        Default is ``None``.
+
+    Returns
+    -------
+    int
+        Exit code.
+    """
+    state = ensure_state(ctx)
+    return int(
+        handlers.report_handler(
+            group_by=group_by,
+            job=job,
+            json_output=json_output,
+            pretty=state.pretty,
+            since=since,
+            table=table,
+            until=until,
         ),
     )
 
