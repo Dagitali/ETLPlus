@@ -754,7 +754,7 @@ class TestHistoryHandler:
         )
         monkeypatch.setattr(handlers, 'sleep', fake_sleep)
 
-        assert handlers.history_handler(follow=True, raw=True, pretty=False) == 0
+        assert handlers.history_handler(follow=True, raw=True, pretty=True) == 0
 
         assert capture_io['emit_json'] == [
             (
@@ -851,17 +851,24 @@ class TestReportHandler:
                         'failed': 1,
                         'group': 'job-a',
                         'last_started_at': '2026-03-24T00:00:00Z',
+                        'max_duration_ms': 3000,
+                        'min_duration_ms': 1000,
                         'other': 0,
                         'running': 0,
                         'runs': 2,
+                        'success_rate_pct': 50.0,
                         'succeeded': 1,
                     },
                 ],
                 'summary': {
+                    'avg_duration_ms': 2000,
                     'failed': 1,
+                    'max_duration_ms': 3000,
+                    'min_duration_ms': 1000,
                     'other': 0,
                     'running': 0,
                     'runs': 2,
+                    'success_rate_pct': 50.0,
                     'succeeded': 1,
                 },
             },
@@ -904,9 +911,12 @@ class TestReportHandler:
                             'failed': 0,
                             'group': 'succeeded',
                             'last_started_at': '2026-03-23T00:00:00Z',
+                            'max_duration_ms': 3000,
+                            'min_duration_ms': 3000,
                             'other': 0,
                             'running': 0,
                             'runs': 1,
+                            'success_rate_pct': 100.0,
                             'succeeded': 1,
                         },
                     ],
@@ -919,12 +929,83 @@ class TestReportHandler:
                         'failed',
                         'running',
                         'other',
+                        'success_rate_pct',
                         'avg_duration_ms',
+                        'min_duration_ms',
+                        'max_duration_ms',
                         'last_started_at',
                     ),
                 },
             ),
         ]
+
+    def test_emits_per_day_success_rate_when_grouped_by_day(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that per-day grouping reports a day-level success rate."""
+
+        class _FakeHistoryStore:
+            def iter_records(self) -> Any:
+                return iter(
+                    [
+                        {
+                            'duration_ms': 3000,
+                            'finished_at': '2026-03-23T00:00:05Z',
+                            'job_name': 'job-a',
+                            'run_id': 'run-1',
+                            'started_at': '2026-03-23T00:00:00Z',
+                            'status': 'succeeded',
+                        },
+                        {
+                            'duration_ms': 1000,
+                            'finished_at': '2026-03-23T01:00:05Z',
+                            'job_name': 'job-b',
+                            'run_id': 'run-2',
+                            'started_at': '2026-03-23T01:00:00Z',
+                            'status': 'failed',
+                        },
+                    ],
+                )
+
+        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+
+        assert handlers.report_handler(group_by='day', pretty=False) == 0
+
+        assert_emit_json(
+            capture_io,
+            {
+                'group_by': 'day',
+                'rows': [
+                    {
+                        'avg_duration_ms': 2000,
+                        'failed': 1,
+                        'group': '2026-03-23',
+                        'last_started_at': '2026-03-23T01:00:00Z',
+                        'max_duration_ms': 3000,
+                        'min_duration_ms': 1000,
+                        'other': 0,
+                        'running': 0,
+                        'runs': 2,
+                        'success_rate_pct': 50.0,
+                        'succeeded': 1,
+                    },
+                ],
+                'summary': {
+                    'avg_duration_ms': 2000,
+                    'failed': 1,
+                    'max_duration_ms': 3000,
+                    'min_duration_ms': 1000,
+                    'other': 0,
+                    'running': 0,
+                    'runs': 2,
+                    'success_rate_pct': 50.0,
+                    'succeeded': 1,
+                },
+            },
+            pretty=False,
+        )
 
 
 class TestLoadHandler:
