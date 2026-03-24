@@ -224,6 +224,45 @@ class TestHistoryCommand:
         }
 
 
+class TestLogCommand:
+    """Unit tests for :func:`etlplus.cli._commands.log_cmd`."""
+
+    def test_delegates_to_raw_history_handler(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+        stub_handler: StubHandler,
+    ) -> None:
+        """Test that log inputs dispatch to the raw history handler."""
+        monkeypatch.setattr(
+            commands_mod,
+            'ensure_state',
+            lambda _ctx: CliState(pretty=False),
+        )
+        captured = stub_handler(
+            commands_mod.handlers,
+            'history_handler',
+            result=0,
+        )
+        monkeypatch.setattr(
+            commands_mod,
+            'handle_history',
+            commands_mod.handlers.history_handler,
+        )
+
+        result = commands_mod.log_cmd(
+            typer_ctx_factory(),
+            limit=7,
+        )
+
+        assert result == 0
+        assert captured == {
+            'limit': 7,
+            'pretty': False,
+            'raw': True,
+        }
+
+
 class TestTransformCommand:
     """Unit tests for :func:`etlplus.cli._commands.transform_cmd`."""
 
