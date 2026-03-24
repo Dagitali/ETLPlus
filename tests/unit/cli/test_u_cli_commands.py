@@ -15,6 +15,7 @@ import etlplus.cli._commands as commands_mod
 from etlplus.cli._state import CliState
 
 from .conftest import AssertCapturedText
+from .conftest import InvokeCli
 from .conftest import StubHandler
 from .conftest import TyperContextFactory
 
@@ -84,6 +85,80 @@ class TestCheckCommand:
         assert captured['config'] == 'pipeline.yml'
         assert captured['jobs'] is True
         assert captured['pretty'] is False
+
+
+class TestCliInvokeParsing:
+    """Typer runner coverage for history/log/report option parsing."""
+
+    def test_history_until_reaches_handler(
+        self,
+        invoke_cli: InvokeCli,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``history --until`` is parsed through the Typer runner."""
+        captured: dict[str, object] = {}
+
+        def _stub(**kwargs: object) -> int:
+            captured.update(kwargs)
+            return 0
+
+        monkeypatch.setattr(commands_mod, 'handle_history', _stub)
+
+        result = invoke_cli(
+            'history',
+            '--until',
+            '2026-03-24T00:00:00Z',
+        )
+
+        assert result.exit_code == 0
+        assert captured['until'] == '2026-03-24T00:00:00Z'
+
+    def test_log_until_reaches_handler(
+        self,
+        invoke_cli: InvokeCli,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``log --until`` is parsed through the Typer runner."""
+        captured: dict[str, object] = {}
+
+        def _stub(**kwargs: object) -> int:
+            captured.update(kwargs)
+            return 0
+
+        monkeypatch.setattr(commands_mod, 'handle_history', _stub)
+
+        result = invoke_cli(
+            'log',
+            '--until',
+            '2026-03-24T00:00:00Z',
+        )
+
+        assert result.exit_code == 0
+        assert captured['until'] == '2026-03-24T00:00:00Z'
+        assert captured['raw'] is True
+
+    def test_report_group_by_reaches_handler(
+        self,
+        invoke_cli: InvokeCli,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``report --group-by`` is parsed through the Typer runner."""
+        captured: dict[str, object] = {}
+
+        def _stub(**kwargs: object) -> int:
+            captured.update(kwargs)
+            return 0
+
+        monkeypatch.setattr(commands_mod.handlers, 'report_handler', _stub)
+
+        result = invoke_cli(
+            'report',
+            '--group-by',
+            'day',
+        )
+
+        assert result.exit_code == 0
+        assert captured['group_by'] == 'day'
 
 
 class TestCommandsMissingInputs:
