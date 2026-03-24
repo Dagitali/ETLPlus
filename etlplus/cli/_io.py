@@ -11,6 +11,8 @@ import io as _io
 import json
 import os
 import sys
+from collections.abc import Mapping
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -26,6 +28,7 @@ from ..utils.types import JSONData
 __all__ = [
     # Functions
     'emit_json',
+    'emit_markdown_table',
     'emit_or_write',
     'infer_payload_format',
     'materialize_file_payload',
@@ -61,6 +64,48 @@ def emit_json(
         return
     dumped = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
     print(dumped)
+
+
+def emit_markdown_table(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    columns: Sequence[str],
+) -> None:
+    """
+    Emit rows as a Markdown table.
+
+    Parameters
+    ----------
+    rows : Sequence[Mapping[str, Any]]
+        Table rows to emit.
+    columns : Sequence[str]
+        Ordered column names to include in the table.
+    """
+
+    def _format_cell(value: Any) -> str:
+        if value is None:
+            return ''
+        if isinstance(value, (dict, list)):
+            rendered = json.dumps(
+                value,
+                ensure_ascii=False,
+                separators=(',', ':'),
+                sort_keys=True,
+            )
+        else:
+            rendered = str(value)
+        return rendered.replace('|', '\\|').replace('\n', '<br>')
+
+    header = '| ' + ' | '.join(columns) + ' |'
+    separator = '| ' + ' | '.join('---' for _ in columns) + ' |'
+    print(header)
+    print(separator)
+    for row in rows:
+        print(
+            '| '
+            + ' | '.join(_format_cell(row.get(column)) for column in columns)
+            + ' |',
+        )
 
 
 def emit_or_write(
