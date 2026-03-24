@@ -1588,6 +1588,67 @@ class TestTransformHandler:
             pretty=False,
         )
 
+    def test_loads_non_file_target_via_connector(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that non-file targets delegate through :func:`load`."""
+        monkeypatch.setattr(
+            handlers._io,
+            'resolve_cli_payload',
+            lambda source, **_kwargs: (
+                {'source': source} if source == 'data.json' else {'select': ['id']}
+            ),
+        )
+        monkeypatch.setattr(
+            handlers,
+            'transform',
+            lambda payload, ops: {'payload': payload, 'ops': ops},
+        )
+        captured: dict[str, object] = {}
+
+        def fake_load(
+            source: object,
+            target_type: str,
+            target: str,
+            *,
+            file_format: str | None = None,
+        ) -> dict[str, object]:
+            captured['params'] = (source, target_type, target, file_format)
+            return {'status': 'success', 'target': target, 'target_type': target_type}
+
+        monkeypatch.setattr(handlers, 'load', fake_load)
+
+        assert (
+            handlers.transform_handler(
+                source='data.json',
+                operations='ops.json',
+                target='https://example.com/items',
+                target_type='api',
+                pretty=False,
+            )
+            == 0
+        )
+        assert captured['params'] == (
+            {
+                'payload': {'source': 'data.json'},
+                'ops': {'select': ['id']},
+            },
+            'api',
+            'https://example.com/items',
+            None,
+        )
+        assert_emit_json(
+            capture_io,
+            {
+                'status': 'success',
+                'target': 'https://example.com/items',
+                'target_type': 'api',
+            },
+            pretty=False,
+        )
+
     def test_requires_mapping_operations_payload(
         self,
         monkeypatch: pytest.MonkeyPatch,
