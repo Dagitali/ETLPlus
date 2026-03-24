@@ -214,19 +214,25 @@ class TestHistoryCommand:
             typer_ctx_factory(),
             job='job-a',
             limit=5,
-            raw=True,
+            raw=False,
+            json_output=True,
+            since='2026-03-21T00:00:00Z',
             status='failed',
-            table=True,
+            table=False,
+            until='2026-03-24T00:00:00Z',
         )
 
         assert result == 0
         assert captured == {
             'job': 'job-a',
+            'json_output': True,
             'limit': 5,
             'pretty': False,
-            'raw': True,
+            'raw': False,
+            'since': '2026-03-21T00:00:00Z',
             'status': 'failed',
-            'table': True,
+            'table': False,
+            'until': '2026-03-24T00:00:00Z',
         }
 
 
@@ -258,18 +264,65 @@ class TestLogCommand:
 
         result = commands_mod.log_cmd(
             typer_ctx_factory(),
+            follow=True,
             limit=7,
             run_id='run-7',
             since='2026-03-23T00:00:00Z',
+            until='2026-03-24T00:00:00Z',
         )
 
         assert result == 0
         assert captured == {
+            'follow': True,
             'limit': 7,
             'pretty': False,
             'raw': True,
             'run_id': 'run-7',
             'since': '2026-03-23T00:00:00Z',
+            'until': '2026-03-24T00:00:00Z',
+        }
+
+
+class TestReportCommand:
+    """Unit tests for :func:`etlplus.cli._commands.report_cmd`."""
+
+    def test_delegates_to_report_handler(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+        stub_handler: StubHandler,
+    ) -> None:
+        """Test that report inputs dispatch to ``report_handler``."""
+        monkeypatch.setattr(
+            commands_mod,
+            'ensure_state',
+            lambda _ctx: CliState(pretty=False),
+        )
+        captured = stub_handler(
+            commands_mod.handlers,
+            'report_handler',
+            result=0,
+        )
+
+        result = commands_mod.report_cmd(
+            typer_ctx_factory(),
+            group_by='status',
+            job='job-a',
+            json_output=True,
+            since='2026-03-01T00:00:00Z',
+            table=False,
+            until='2026-03-31T23:59:59Z',
+        )
+
+        assert result == 0
+        assert captured == {
+            'group_by': 'status',
+            'job': 'job-a',
+            'json_output': True,
+            'pretty': False,
+            'since': '2026-03-01T00:00:00Z',
+            'table': False,
+            'until': '2026-03-31T23:59:59Z',
         }
 
 
