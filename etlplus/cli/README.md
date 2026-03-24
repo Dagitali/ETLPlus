@@ -3,7 +3,8 @@
 Documentation for the `etlplus.cli` subpackage: command-line interface for ETLPlus workflows.
 
 - Provides a CLI for running ETL pipelines, jobs, and utilities
-- Supports commands for extracting, transforming, validating data, and running pipelines
+- Supports commands for extracting, transforming, validating, loading, rendering, running pipelines,
+  and inspecting local run history
 - Includes options for configuration, state, and output control
 - Exposes handlers for custom command integration
 
@@ -19,11 +20,15 @@ Back to project overview: see the top-level [README](../../README.md).
 
 - **check**: Inspect pipeline configuration (jobs, sources, targets)
 - **extract**: Extract data from files/APIs/databases
+- **history**: Inspect normalized persisted local runs
 - **transform**: Transform records
 - **load**: Load data to files/APIs/databases
+- **log**: Inspect raw persisted local run events
 - **render**: Render SQL DDL from table specs
+- **report**: Aggregate persisted local run history
 - **validate**: Validate data against rules
 - **run**: Execute a pipeline or job
+- **status**: Show the latest persisted local run
 
 ## Command Options
 
