@@ -6,20 +6,24 @@ Structured runtime event helpers for CLI execution paths.
 
 from __future__ import annotations
 
-import json
 import sys
 from datetime import UTC
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
+from ..utils.data import serialize_json
+
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
-    # COnstants
+    # Classes
+    'RuntimeEvents',
+    # Constants
     'EVENT_SCHEMA',
     'EVENT_SCHEMA_VERSION',
+    'RuntimeEvents',
     'build_structured_event',
     # Functions
     'create_run_id',
@@ -38,6 +42,88 @@ EVENT_SCHEMA_VERSION = 1
 # SECTION: FUNCTIONS ======================================================== #
 
 
+class RuntimeEvents:
+    """Shared factory and emitter helpers for structured runtime events."""
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def build(
+        cls,
+        *,
+        command: str,
+        lifecycle: str,
+        run_id: str,
+        timestamp: str | None = None,
+        **fields: Any,
+    ) -> dict[str, Any]:
+        """
+        Build a stable structured runtime event envelope.
+
+        Parameters
+        ----------
+        command : str
+            CLI command that emitted the event.
+        lifecycle : str
+            Lifecycle stage such as ``started``, ``completed``, or ``failed``.
+        run_id : str
+            Stable invocation identifier for the command run.
+        timestamp : str | None, optional
+            Explicit timestamp override. Defaults to the current UTC time.
+        **fields : Any
+            Additional command-specific event fields.
+
+        Returns
+        -------
+        dict[str, Any]
+            Structured event payload.
+        """
+        event = {
+            'command': command,
+            'event': f'{command}.{lifecycle}',
+            'lifecycle': lifecycle,
+            'run_id': run_id,
+            'schema': EVENT_SCHEMA,
+            'schema_version': EVENT_SCHEMA_VERSION,
+            'timestamp': timestamp or cls.utc_now_iso(),
+        }
+        event.update(fields)
+        return event
+
+    @classmethod
+    def create_run_id(cls) -> str:
+        """Return a new stable invocation identifier."""
+        return str(uuid4())
+
+    @classmethod
+    def emit(
+        cls,
+        event: dict[str, Any],
+        *,
+        event_format: str | None,
+    ) -> None:
+        """
+        Emit one structured runtime event to STDERR.
+
+        Parameters
+        ----------
+        event : dict[str, Any]
+            Event payload to serialize.
+        event_format : str | None
+            Structured event format selector. Only ``jsonl`` is currently
+            supported; falsy values disable emission.
+        """
+        if event_format != 'jsonl':
+            return
+        print(serialize_json(event), file=sys.stderr)
+
+    @classmethod
+    def utc_now_iso(cls) -> str:
+        """Return the current UTC timestamp as ISO-8601 text."""
+        return datetime.now(UTC).isoformat()
+
+
+# TODO: Replace with RuntimeEvents.build.
 def build_structured_event(
     *,
     command: str,
@@ -67,24 +153,22 @@ def build_structured_event(
     dict[str, Any]
         Structured event payload.
     """
-    event = {
-        'command': command,
-        'event': f'{command}.{lifecycle}',
-        'lifecycle': lifecycle,
-        'run_id': run_id,
-        'schema': EVENT_SCHEMA,
-        'schema_version': EVENT_SCHEMA_VERSION,
-        'timestamp': timestamp or utc_now_iso(),
-    }
-    event.update(fields)
-    return event
+    return RuntimeEvents.build(
+        command=command,
+        lifecycle=lifecycle,
+        run_id=run_id,
+        timestamp=timestamp,
+        **fields,
+    )
 
 
+# TODO: Replace with RuntimeEvents.create_run_id.
 def create_run_id() -> str:
     """Return a new stable invocation identifier."""
-    return str(uuid4())
+    return RuntimeEvents.create_run_id()
 
 
+# TODO: Replace with RuntimeEvents.emit.
 def emit_structured_event(
     event: dict[str, Any],
     *,
@@ -101,14 +185,10 @@ def emit_structured_event(
         Structured event format selector. Only ``jsonl`` is currently
         supported; falsy values disable emission.
     """
-    if event_format != 'jsonl':
-        return
-    print(
-        json.dumps(event, ensure_ascii=False, separators=(',', ':')),
-        file=sys.stderr,
-    )
+    RuntimeEvents.emit(event, event_format=event_format)
 
 
+# TODO: Replace with RuntimeEvents.utc_now_iso.
 def utc_now_iso() -> str:
     """Return the current UTC timestamp as ISO-8601 text."""
-    return datetime.now(UTC).isoformat()
+    return RuntimeEvents.utc_now_iso()
