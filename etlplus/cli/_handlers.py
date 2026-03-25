@@ -23,9 +23,9 @@ from ..database import load_table_spec
 from ..database import render_tables
 from ..file import File
 from ..file import FileFormat
+from ..history import HistoryStore
 from ..history import build_run_record
 from ..history import iter_history_runs
-from ..history import open_history_store
 from ..ops import extract
 from ..ops import load
 from ..ops import run
@@ -193,7 +193,7 @@ class HistoryView:
         """Load, filter, and sort history records for CLI read commands."""
         parsed_since = cls.parse_timestamp(since)
         parsed_until = cls.parse_timestamp(until)
-        history_store = open_history_store()
+        history_store = HistoryStore.from_environment()
         records_iter = (
             history_store.iter_records() if raw else iter_history_runs(history_store)
         )
@@ -1333,7 +1333,7 @@ def run_handler(
         run_id = RuntimeEvents.create_run_id()
         started_at = RuntimeEvents.utc_now_iso()
         started_perf = perf_counter()
-        history_store = open_history_store()
+        history_store = HistoryStore.from_environment()
         history_store.record_run_started(
             build_run_record(
                 run_id=run_id,
