@@ -39,7 +39,6 @@ __all__ = [
     # Functions
     'build_run_record',
     'iter_history_runs',
-    'open_history_store',
 ]
 
 
@@ -194,18 +193,6 @@ def iter_history_runs(
         One normalized run record for each distinct ``run_id``.
     """
     yield from HistoryStore.iter_runs(store)
-
-
-def open_history_store() -> HistoryStore:
-    """
-    Open the configured local history backend.
-
-    Returns
-    -------
-    HistoryStore
-        Ready-to-use local history backend.
-    """
-    return HistoryStore.from_environment()
 
 
 # SECTION: CLASSES ========================================================== #
