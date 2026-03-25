@@ -35,17 +35,18 @@ __all__ = [
     'JsonlHistoryStore',
     'RunCompletion',
     'RunRecord',
+    'RunState',
     'SQLiteHistoryStore',
     # Functions
     'build_run_record',
 ]
 
 
-# SECTION: INTERNAL DATA CLASSES ===================================================== #
+# SECTION: DATA CLASSES ===================================================== #
 
 
-@dataclass(slots=True)
-class _RunOutcome:
+@dataclass(slots=True, frozen=True)
+class RunState:
     """
     Shared terminal state for persisted run metadata.
 
@@ -53,10 +54,10 @@ class _RunOutcome:
     ----------
     status : str
         Final run status, e.g. ``success`` or ``failure``.
-    finished_at : str
-        Run finish timestamp in UTC ISO-8601 form.
-    duration_ms : int
-        Run duration in milliseconds.
+    finished_at : str | None
+        Optional run finish timestamp in UTC ISO-8601 form.
+    duration_ms : int | None
+        Optional run duration in milliseconds.
     result_summary : JSONData | None
         Optional JSON-serializable summary of the run result.
     error_type : str | None
@@ -92,10 +93,7 @@ class _RunOutcome:
         }
 
 
-# SECTION: DATA CLASSES ===================================================== #
-
-
-@dataclass(slots=True, init=False)
+@dataclass(slots=True)
 class RunCompletion:
     """
     Persisted completion details for one CLI run invocation.
@@ -104,84 +102,25 @@ class RunCompletion:
     ----------
     run_id : str
         Stable run identifier.
+    state : RunState
+        Shared run state including status, timing, result summary, and errors.
     """
 
     # -- Instance Attributes -- #
 
     run_id: str
-    _outcome: _RunOutcome
-
-    # -- Magic Methods (Object Lifecycle) -- #
-
-    def __init__(
-        self,
-        run_id: str,
-        status: str,
-        finished_at: str,
-        duration_ms: int,
-        result_summary: JSONData | None = None,
-        error_type: str | None = None,
-        error_message: str | None = None,
-        error_traceback: str | None = None,
-    ) -> None:
-        self.run_id = run_id
-        self._outcome = _RunOutcome(
-            status=status,
-            finished_at=finished_at,
-            duration_ms=duration_ms,
-            result_summary=result_summary,
-            error_type=error_type,
-            error_message=error_message,
-            error_traceback=error_traceback,
-        )
-
-    # -- Getters -- #
-
-    @property
-    def status(self) -> str:
-        """Return the final run status."""
-        return self._outcome.status
-
-    @property
-    def finished_at(self) -> str:
-        """Return the completion timestamp in UTC ISO-8601 form."""
-        return self._outcome.finished_at or ''
-
-    @property
-    def duration_ms(self) -> int:
-        """Return the run duration in milliseconds."""
-        return self._outcome.duration_ms or 0
-
-    @property
-    def result_summary(self) -> JSONData | None:
-        """Return the JSON-serializable run summary, if any."""
-        return self._outcome.result_summary
-
-    @property
-    def error_type(self) -> str | None:
-        """Return the error type for a failed run, if any."""
-        return self._outcome.error_type
-
-    @property
-    def error_message(self) -> str | None:
-        """Return the error message for a failed run, if any."""
-        return self._outcome.error_message
-
-    @property
-    def error_traceback(self) -> str | None:
-        """Return the error traceback for a failed run, if any."""
-        return self._outcome.error_traceback
+    state: RunState
 
     # -- Instance Methods -- #
 
     def to_payload(self) -> dict[str, Any]:
         """Return the flat persisted representation of the completion."""
         payload = {'run_id': self.run_id}
-        payload.update(self._outcome.to_payload())
+        payload.update(self.state.to_payload())
         return payload
 
 
-@dataclass(slots=True, init=False)
+@dataclass(slots=True)
 class RunRecord:
     """
     Persisted metadata for one CLI run invocation.
@@ -198,14 +137,14 @@ class RunRecord:
         Config path used for the run.
     config_sha256 : str | None
         Optional SHA-256 hash of the config file.
-    status : str
-        Run status, e.g. ``running``, ``succeeded``, or ``failed``.
     started_at : str
         Run start timestamp in UTC ISO-8601 form.
     records_in : int | None
         Optional number of records read by the run.
     records_out : int | None
         Optional number of records written by the run.
+    state : RunState
+        Shared run state including status, timing, result summary, and errors.
     host : str | None
         Optional hostname where the run was executed.
     pid : int | None
@@ -224,91 +163,10 @@ class RunRecord:
     started_at: str
     records_in: int | None
     records_out: int | None
+    state: RunState
     host: str | None
     pid: int | None
     etlplus_version: str | None
-    _outcome: _RunOutcome
-
-    # -- Magic Methods (Object Lifecycle) -- #
-
-    def __init__(
-        self,
-        run_id: str,
-        pipeline_name: str | None,
-        job_name: str | None,
-        config_path: str,
-        config_sha256: str | None,
-        status: str,
-        started_at: str,
-        finished_at: str | None,
-        duration_ms: int | None,
-        records_in: int | None,
-        records_out: int | None,
-        error_type: str | None,
-        error_message: str | None,
-        error_traceback: str | None,
-        result_summary: JSONData | None,
-        host: str | None,
-        pid: int | None,
-        etlplus_version: str | None,
-    ) -> None:
-        self.run_id = run_id
-        self.pipeline_name = pipeline_name
-        self.job_name = job_name
-        self.config_path = config_path
-        self.config_sha256 = config_sha256
-        self.started_at = started_at
-        self.records_in = records_in
-        self.records_out = records_out
-        self.host = host
-        self.pid = pid
-        self.etlplus_version = etlplus_version
-        self._outcome = _RunOutcome(
-            status=status,
-            finished_at=finished_at,
-            duration_ms=duration_ms,
-            result_summary=result_summary,
-            error_type=error_type,
-            error_message=error_message,
-            error_traceback=error_traceback,
-        )
-
-    # -- Getters -- #
-
-    @property
-    def status(self) -> str:
-        """Return the current run status."""
-        return self._outcome.status
-
-    @property
-    def finished_at(self) -> str | None:
-        """Return the run completion timestamp, if any."""
-        return self._outcome.finished_at
-
-    @property
-    def duration_ms(self) -> int | None:
-        """Return the run duration in milliseconds, if available."""
-        return self._outcome.duration_ms
-
-    @property
-    def result_summary(self) -> JSONData | None:
-        """Return the JSON-serializable run summary, if any."""
-        return self._outcome.result_summary
-
-    @property
-    def error_type(self) -> str | None:
-        """Return the error type for a failed run, if any."""
-        return self._outcome.error_type
-
-    @property
-    def error_message(self) -> str | None:
-        """Return the error message for a failed run, if any."""
-        return self._outcome.error_message
-
-    @property
-    def error_traceback(self) -> str | None:
-        """Return the error traceback for a failed run, if any."""
-        return self._outcome.error_traceback
 
     # -- Instance Methods -- #
 
@@ -327,7 +185,7 @@ class RunRecord:
             'pid': self.pid,
             'etlplus_version': self.etlplus_version,
         }
-        payload.update(self._outcome.to_payload())
+        payload.update(self.state.to_payload())
         return payload
 
     # -- Class Methods -- #
@@ -350,16 +208,14 @@ class RunRecord:
             job_name=job_name,
             config_path=config_path,
             config_sha256=cls._config_sha256(config_path),
-            status=status,
             started_at=started_at,
-            finished_at=None,
-            duration_ms=None,
             records_in=None,
             records_out=None,
-            error_type=None,
-            error_message=None,
-            error_traceback=None,
-            result_summary=None,
+            state=RunState(
+                status=status,
+                finished_at=None,
+                duration_ms=None,
+            ),
             host=socket.gethostname(),
             pid=os.getpid(),
             etlplus_version=__version__,
@@ -384,10 +240,10 @@ class RunRecord:
 _DEFAULT_HISTORY_BACKEND = 'sqlite'
 _DEFAULT_STATE_DIR = Path('~/.etlplus').expanduser()
 
-_RUN_OUTCOME_FIELDS = tuple(field.name for field in fields(_RunOutcome))
+_RUN_STATE_FIELDS = tuple(field.name for field in fields(RunState))
 _RUN_RECORD_FIELDS = (
-    *(field.name for field in fields(RunRecord) if field.name != '_outcome'),
-    *_RUN_OUTCOME_FIELDS,
+    *(field.name for field in fields(RunRecord) if field.name != 'state'),
+    *_RUN_STATE_FIELDS,
 )
 
 
@@ -763,17 +619,17 @@ class SQLiteHistoryStore(HistoryStore):
                 WHERE run_id = ?
                 """,
                 (
-                    completion.status,
-                    completion.finished_at,
-                    completion.duration_ms,
+                    completion.state.status,
+                    completion.state.finished_at,
+                    completion.state.duration_ms,
                     (
-                        serialize_json(completion.result_summary)
-                        if completion.result_summary is not None
+                        serialize_json(completion.state.result_summary)
+                        if completion.state.result_summary is not None
                         else None
                     ),
-                    completion.error_type,
-                    completion.error_message,
-                    completion.error_traceback,
+                    completion.state.error_type,
+                    completion.state.error_message,
+                    completion.state.error_traceback,
                     completion.run_id,
                 ),
             )
@@ -820,17 +676,17 @@ class SQLiteHistoryStore(HistoryStore):
                     record.job_name,
                     record.config_path,
                     record.config_sha256,
-                    record.status,
+                    record.state.status,
                     record.started_at,
-                    record.finished_at,
-                    record.duration_ms,
+                    record.state.finished_at,
+                    record.state.duration_ms,
                     record.records_in,
                     record.records_out,
-                    record.error_type,
-                    record.error_message,
-                    record.error_traceback,
-                    serialize_json(record.result_summary)
-                    if record.result_summary is not None
+                    record.state.error_type,
+                    record.state.error_message,
+                    record.state.error_traceback,
+                    serialize_json(record.state.result_summary)
+                    if record.state.result_summary is not None
                     else None,
                     record.host,
                     record.pid,
