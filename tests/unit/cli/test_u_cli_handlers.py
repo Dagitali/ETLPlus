@@ -26,6 +26,42 @@ from .conftest import assert_emit_or_write
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: HELPERS ========================================================== #
+
+
+class _ReadOnlyFakeHistoryStore(handlers.HistoryStore):
+    """Test double for read-only history queries."""
+
+    def iter_records(self) -> Any:
+        raise NotImplementedError
+
+    def record_run_started(self, record: object) -> None:
+        _ = record
+
+    def record_run_finished(
+        self,
+        run_id: str,
+        *,
+        status: str,
+        finished_at: str,
+        duration_ms: int,
+        result_summary: object | None = None,
+        error_type: str | None = None,
+        error_message: str | None = None,
+        error_traceback: str | None = None,
+    ) -> None:
+        _ = (
+            run_id,
+            status,
+            finished_at,
+            duration_ms,
+            result_summary,
+            error_type,
+            error_message,
+            error_traceback,
+        )
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -419,7 +455,7 @@ class TestHistoryHandler:
     ) -> None:
         """Test that history emits merged runs by default."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -482,7 +518,7 @@ class TestHistoryHandler:
     ) -> None:
         """Test that raw history mode returns append events and applies limit."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -526,7 +562,7 @@ class TestHistoryHandler:
     ) -> None:
         """Test that the explicit JSON flag still routes through JSON output."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -582,7 +618,7 @@ class TestHistoryHandler:
     ) -> None:
         """Test that history filters normalized runs and can emit tables."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -797,7 +833,7 @@ class TestHistoryHandler:
     ) -> None:
         """Test that JSON and table modes cannot be requested together."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter([])
 
@@ -821,7 +857,7 @@ class TestReportHandler:
     ) -> None:
         """Test that report aggregates normalized runs into JSON output."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -902,7 +938,7 @@ class TestReportHandler:
     ) -> None:
         """Test that report can emit grouped rows as a Markdown table."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -970,7 +1006,7 @@ class TestReportHandler:
     ) -> None:
         """Test that per-day grouping reports a day-level success rate."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -1640,7 +1676,7 @@ class TestStatusHandler:
     ) -> None:
         """Test that status emits the newest normalized run."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -1701,7 +1737,7 @@ class TestStatusHandler:
     ) -> None:
         """Test that status returns 1 and emits an empty object on misses."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter([])
 
