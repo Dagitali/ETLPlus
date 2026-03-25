@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import sys
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from time import perf_counter
@@ -96,6 +97,22 @@ _REPORT_TABLE_COLUMNS = (
     'max_duration_ms',
     'last_started_at',
 )
+
+
+# SECTION: INTERNAL DATA CLASSES ============================================ #
+
+
+@dataclass(frozen=True, slots=True)
+class _CommandContext:
+    """Shared runtime context for one CLI command invocation."""
+
+    # -- Instance Attributes -- #
+
+    command: str
+    event_format: str | None
+    run_id: str
+    started_at: str
+    started_perf: float
 
 
 # SECTION: CLASSES ========================================================== #
@@ -498,6 +515,13 @@ def _check_sections(
     return sections
 
 
+def _elapsed_ms(
+    started_perf: float,
+) -> int:
+    """Return elapsed milliseconds since *started_perf*."""
+    return int((perf_counter() - started_perf) * 1000)
+
+
 def _emit_failure_event(
     *,
     command: str,
@@ -538,6 +562,37 @@ def _emit_lifecycle_event(
             **fields,
         ),
         event_format=event_format,
+    )
+
+
+def _complete_command(
+    context: _CommandContext,
+    **fields: Any,
+) -> None:
+    """Emit a completed lifecycle event for one command context."""
+    _emit_lifecycle_event(
+        command=context.command,
+        lifecycle='completed',
+        run_id=context.run_id,
+        event_format=context.event_format,
+        duration_ms=_elapsed_ms(context.started_perf),
+        **fields,
+    )
+
+
+def _fail_command(
+    context: _CommandContext,
+    exc: Exception,
+    **fields: Any,
+) -> None:
+    """Emit a failed lifecycle event for one command context."""
+    _emit_failure_event(
+        command=context.command,
+        run_id=context.run_id,
+        started_perf=context.started_perf,
+        event_format=context.event_format,
+        exc=exc,
+        **fields,
     )
 
 
@@ -602,6 +657,31 @@ def _load_history_records(
         until=until,
         status=status,
     )
+
+
+def _start_command(
+    *,
+    command: str,
+    event_format: str | None,
+    **fields: Any,
+) -> _CommandContext:
+    """Create one command context and emit its started lifecycle event."""
+    context = _CommandContext(
+        command=command,
+        event_format=event_format,
+        run_id=RuntimeEvents.create_run_id(),
+        started_at=RuntimeEvents.utc_now_iso(),
+        started_perf=perf_counter(),
+    )
+    _emit_lifecycle_event(
+        command=context.command,
+        lifecycle='started',
+        run_id=context.run_id,
+        event_format=context.event_format,
+        timestamp=context.started_at,
+        **fields,
+    )
+    return context
 
 
 def _validate_history_output_mode(
@@ -950,12 +1030,8 @@ def extract_handler(
 
     """
     explicit_format = format_hint if format_explicit else None
-    run_id = RuntimeEvents.create_run_id()
-    started_perf = perf_counter()
-    _emit_lifecycle_event(
+    context = _start_command(
         command='extract',
-        lifecycle='started',
-        run_id=run_id,
         event_format=event_format,
         source=source,
         source_type=source_type,
@@ -968,12 +1044,8 @@ def extract_handler(
                 text,
                 format_hint,
             )
-            _emit_lifecycle_event(
-                command='extract',
-                lifecycle='completed',
-                run_id=run_id,
-                event_format=event_format,
-                duration_ms=int((perf_counter() - started_perf) * 1000),
+            _complete_command(
+                context,
                 result_status='ok',
                 status='ok',
                 source=source,
@@ -990,13 +1062,9 @@ def extract_handler(
         )
         output_path = target or output
 
-        _emit_lifecycle_event(
-            command='extract',
-            lifecycle='completed',
-            run_id=run_id,
-            event_format=event_format,
+        _complete_command(
+            context,
             destination=output_path or 'stdout',
-            duration_ms=int((perf_counter() - started_perf) * 1000),
             result_status='ok',
             source=source,
             source_type=source_type,
@@ -1010,12 +1078,9 @@ def extract_handler(
             success_message='Data extracted and saved to',
         )
     except Exception as exc:
-        _emit_failure_event(
-            command='extract',
-            run_id=run_id,
-            started_perf=started_perf,
-            event_format=event_format,
-            exc=exc,
+        _fail_command(
+            context,
+            exc,
             source=source,
             source_type=source_type,
         )
@@ -1075,12 +1140,8 @@ def load_handler(
         requested.
     """
     explicit_format = target_format if format_explicit else None
-    run_id = RuntimeEvents.create_run_id()
-    started_perf = perf_counter()
-    _emit_lifecycle_event(
+    context = _start_command(
         command='load',
-        lifecycle='started',
-        run_id=run_id,
         event_format=event_format,
         source=source,
         target=target,
@@ -1106,12 +1167,8 @@ def load_handler(
                 format_hint=source_format,
                 format_explicit=source_format is not None,
             )
-            _emit_lifecycle_event(
-                command='load',
-                lifecycle='completed',
-                run_id=run_id,
-                event_format=event_format,
-                duration_ms=int((perf_counter() - started_perf) * 1000),
+            _complete_command(
+                context,
                 result_status='ok',
                 source=source,
                 status='ok',
@@ -1129,13 +1186,9 @@ def load_handler(
         )
 
         output_path = output
-        _emit_lifecycle_event(
-            command='load',
-            lifecycle='completed',
-            run_id=run_id,
-            event_format=event_format,
+        _complete_command(
+            context,
             destination=output_path or 'stdout',
-            duration_ms=int((perf_counter() - started_perf) * 1000),
             result_status=result.get('status') if isinstance(result, dict) else 'ok',
             source=source,
             status='ok',
@@ -1149,12 +1202,9 @@ def load_handler(
             success_message='Load result saved to',
         )
     except Exception as exc:
-        _emit_failure_event(
-            command='load',
-            run_id=run_id,
-            started_perf=started_perf,
-            event_format=event_format,
-            exc=exc,
+        _fail_command(
+            context,
+            exc,
             source=source,
             target=target,
             target_type=target_type,
@@ -1348,38 +1398,32 @@ def run_handler(
 
     job_name = job or pipeline
     if job_name:
-        run_id = RuntimeEvents.create_run_id()
-        started_at = RuntimeEvents.utc_now_iso()
-        started_perf = perf_counter()
-        history_store = HistoryStore.from_environment()
-        history_store.record_run_started(
-            build_run_record(
-                run_id=run_id,
-                config_path=config,
-                started_at=started_at,
-                pipeline_name=cfg.name,
-                job_name=job_name,
-            ),
-        )
-        _emit_lifecycle_event(
+        context = _start_command(
             command='run',
-            lifecycle='started',
-            run_id=run_id,
             event_format=event_format,
             config_path=config,
             etlplus_version=__version__,
             job=job_name,
             pipeline_name=cfg.name,
             status='running',
-            timestamp=started_at,
+        )
+        history_store = HistoryStore.from_environment()
+        history_store.record_run_started(
+            build_run_record(
+                run_id=context.run_id,
+                config_path=config,
+                started_at=context.started_at,
+                pipeline_name=cfg.name,
+                job_name=job_name,
+            ),
         )
         try:
             result = run(job=job_name, config_path=config)
         except Exception as exc:
-            duration_ms = int((perf_counter() - started_perf) * 1000)
+            duration_ms = _elapsed_ms(context.started_perf)
             history_store.record_run_finished(
                 RunCompletion(
-                    run_id=run_id,
+                    run_id=context.run_id,
                     state=RunState(
                         status='failed',
                         finished_at=RuntimeEvents.utc_now_iso(),
@@ -1389,22 +1433,19 @@ def run_handler(
                     ),
                 ),
             )
-            _emit_failure_event(
-                command='run',
-                run_id=run_id,
-                started_perf=started_perf,
-                event_format=event_format,
-                exc=exc,
+            _fail_command(
+                context,
+                exc,
                 config_path=config,
                 job=job_name,
                 pipeline_name=cfg.name,
             )
             raise
 
-        duration_ms = int((perf_counter() - started_perf) * 1000)
+        duration_ms = _elapsed_ms(context.started_perf)
         history_store.record_run_finished(
             RunCompletion(
-                run_id=run_id,
+                run_id=context.run_id,
                 state=RunState(
                     status='succeeded',
                     finished_at=RuntimeEvents.utc_now_iso(),
@@ -1413,20 +1454,16 @@ def run_handler(
                 ),
             ),
         )
-        _emit_lifecycle_event(
-            command='run',
-            lifecycle='completed',
-            run_id=run_id,
-            event_format=event_format,
+        _complete_command(
+            context,
             config_path=config,
-            duration_ms=duration_ms,
             job=job_name,
             pipeline_name=cfg.name,
             result_status=result.get('status'),
             status='ok',
         )
         _io.emit_json(
-            {'run_id': run_id, 'status': 'ok', 'result': result},
+            {'run_id': context.run_id, 'status': 'ok', 'result': result},
             pretty=pretty,
         )
         return 0
@@ -1533,12 +1570,8 @@ def transform_handler(
     """
     format_hint: str | None = source_format
     format_explicit = format_hint is not None or format_explicit
-    run_id = RuntimeEvents.create_run_id()
-    started_perf = perf_counter()
-    _emit_lifecycle_event(
+    context = _start_command(
         command='transform',
-        lifecycle='started',
-        run_id=run_id,
         event_format=event_format,
         source=source,
         target=target or 'stdout',
@@ -1574,12 +1607,8 @@ def transform_handler(
                     target,
                     file_format=target_format if format_explicit else None,
                 )
-                _emit_lifecycle_event(
-                    command='transform',
-                    lifecycle='completed',
-                    run_id=run_id,
-                    event_format=event_format,
-                    duration_ms=int((perf_counter() - started_perf) * 1000),
+                _complete_command(
+                    context,
                     result_status='ok',
                     source=source,
                     status='ok',
@@ -1589,12 +1618,8 @@ def transform_handler(
                 _io.emit_json(result, pretty=pretty)
                 return 0
 
-            _emit_lifecycle_event(
-                command='transform',
-                lifecycle='completed',
-                run_id=run_id,
-                event_format=event_format,
-                duration_ms=int((perf_counter() - started_perf) * 1000),
+            _complete_command(
+                context,
                 result_status='ok',
                 source=source,
                 status='ok',
@@ -1605,12 +1630,8 @@ def transform_handler(
             print(f'Data transformed and saved to {target}')
             return 0
 
-        _emit_lifecycle_event(
-            command='transform',
-            lifecycle='completed',
-            run_id=run_id,
-            event_format=event_format,
-            duration_ms=int((perf_counter() - started_perf) * 1000),
+        _complete_command(
+            context,
             result_status='ok',
             source=source,
             status='ok',
@@ -1619,12 +1640,9 @@ def transform_handler(
         )
         _io.emit_json(data, pretty=pretty)
     except Exception as exc:
-        _emit_failure_event(
-            command='transform',
-            run_id=run_id,
-            started_perf=started_perf,
-            event_format=event_format,
-            exc=exc,
+        _fail_command(
+            context,
+            exc,
             source=source,
             target=target or 'stdout',
             target_type=target_type,
@@ -1680,12 +1698,8 @@ def validate_handler(
         when requested.
     """
     format_hint: str | None = source_format
-    run_id = RuntimeEvents.create_run_id()
-    started_perf = perf_counter()
-    _emit_lifecycle_event(
+    context = _start_command(
         command='validate',
-        lifecycle='started',
-        run_id=run_id,
         event_format=event_format,
         source=source,
         target=target or 'stdout',
@@ -1715,12 +1729,8 @@ def validate_handler(
         if target and target != '-':
             validated_data = result.get('data')
             if validated_data is not None:
-                _emit_lifecycle_event(
-                    command='validate',
-                    lifecycle='completed',
-                    run_id=run_id,
-                    event_format=event_format,
-                    duration_ms=int((perf_counter() - started_perf) * 1000),
+                _complete_command(
+                    context,
                     result_status='ok',
                     source=source,
                     status='ok',
@@ -1738,12 +1748,8 @@ def validate_handler(
                     file=sys.stderr,
                 )
         else:
-            _emit_lifecycle_event(
-                command='validate',
-                lifecycle='completed',
-                run_id=run_id,
-                event_format=event_format,
-                duration_ms=int((perf_counter() - started_perf) * 1000),
+            _complete_command(
+                context,
                 result_status='ok',
                 source=source,
                 status='ok',
@@ -1752,12 +1758,9 @@ def validate_handler(
             )
             _io.emit_json(result, pretty=pretty)
     except Exception as exc:
-        _emit_failure_event(
-            command='validate',
-            run_id=run_id,
-            started_perf=started_perf,
-            event_format=event_format,
-            exc=exc,
+        _fail_command(
+            context,
+            exc,
             source=source,
             target=target or 'stdout',
         )
