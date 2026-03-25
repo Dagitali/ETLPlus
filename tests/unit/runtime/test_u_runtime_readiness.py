@@ -144,6 +144,40 @@ class TestReadinessReportBuilder:
             },
         ]
 
+    def test_connector_gap_rows_report_actionable_unsupported_type_details(
+        self,
+    ) -> None:
+        """Test that unsupported connector types include actionable guidance."""
+        cfg = SimpleNamespace(
+            sources=[
+                SimpleNamespace(
+                    name='remote-source',
+                    type='s3',
+                ),
+            ],
+            targets=[],
+            apis={},
+        )
+
+        rows = readiness_module.ReadinessReportBuilder.connector_gap_rows(
+            cast(Any, cfg),
+        )
+
+        assert rows == [
+            {
+                'connector': 'remote-source',
+                'guidance': (
+                    '"s3" is a storage scheme, not a connector type. '
+                    'Use connector type "file" and keep the provider in '
+                    'the path or URI scheme.'
+                ),
+                'issue': 'unsupported type',
+                'role': 'source',
+                'supported_types': ['api', 'database', 'file'],
+                'type': 's3',
+            },
+        ]
+
     def test_missing_requirement_rows_respects_package_available_seam(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -178,5 +212,122 @@ class TestReadinessReportBuilder:
                 'missing_package': 'boto3',
                 'reason': 's3 storage path requires boto3',
                 'role': 'source',
+            },
+        ]
+
+    def test_provider_environment_checks_report_azure_bootstrap_gaps(
+        self,
+    ) -> None:
+        """Test that Azure storage paths report missing bootstrap env details."""
+        cfg = SimpleNamespace(
+            sources=[
+                SimpleNamespace(
+                    name='blob-source',
+                    format='csv',
+                    path='azure-blob://container/input.csv',
+                    type='file',
+                ),
+            ],
+            targets=[],
+            apis={},
+        )
+
+        checks = readiness_module.ReadinessReportBuilder.provider_environment_checks(
+            cfg=cast(Any, cfg),
+            env={},
+        )
+
+        assert checks == [
+            {
+                'environment_gaps': [
+                    {
+                        'connector': 'blob-source',
+                        'guidance': (
+                            'Set AZURE_STORAGE_CONNECTION_STRING, set '
+                            'AZURE_STORAGE_ACCOUNT_URL, or include the '
+                            'account host in the path authority.'
+                        ),
+                        'missing_env': [
+                            'AZURE_STORAGE_CONNECTION_STRING',
+                            'AZURE_STORAGE_ACCOUNT_URL',
+                        ],
+                        'provider': 'azure-storage',
+                        'reason': (
+                            'azure-blob path does not provide an account host '
+                            'and no Azure storage bootstrap settings were '
+                            'found.'
+                        ),
+                        'role': 'source',
+                        'severity': 'error',
+                    },
+                ],
+                'message': (
+                    'Configured connectors have provider-specific environment '
+                    'gaps that should be resolved before execution.'
+                ),
+                'name': 'provider-environment',
+                'status': 'error',
+            },
+        ]
+
+    def test_provider_environment_checks_warn_for_implicit_s3_credentials(
+        self,
+    ) -> None:
+        """Test that S3 paths warn when no common credential hints are present."""
+        cfg = SimpleNamespace(
+            sources=[
+                SimpleNamespace(
+                    name='s3-source',
+                    format='csv',
+                    path='s3://bucket/input.csv',
+                    type='file',
+                ),
+            ],
+            targets=[],
+            apis={},
+        )
+
+        checks = readiness_module.ReadinessReportBuilder.provider_environment_checks(
+            cfg=cast(Any, cfg),
+            env={},
+        )
+
+        assert checks == [
+            {
+                'environment_gaps': [
+                    {
+                        'connector': 's3-source',
+                        'guidance': (
+                            'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/'
+                            'AWS_SECRET_ACCESS_KEY, or rely on shared config '
+                            'files, container credentials, or instance '
+                            'metadata.'
+                        ),
+                        'missing_env': [
+                            'AWS_ACCESS_KEY_ID',
+                            'AWS_PROFILE',
+                            'AWS_DEFAULT_PROFILE',
+                            'AWS_ROLE_ARN',
+                            'AWS_WEB_IDENTITY_TOKEN_FILE',
+                            'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI',
+                            'AWS_CONTAINER_CREDENTIALS_FULL_URI',
+                            'AWS_SHARED_CREDENTIALS_FILE',
+                            'AWS_CONFIG_FILE',
+                        ],
+                        'provider': 'aws-s3',
+                        'reason': (
+                            'No common AWS credential-chain environment hints '
+                            'were detected for this S3 path.'
+                        ),
+                        'role': 'source',
+                        'severity': 'warn',
+                    },
+                ],
+                'message': (
+                    'Configured connectors rely on provider credential '
+                    'resolution with no explicit environment hints.'
+                ),
+                'name': 'provider-environment',
+                'status': 'warn',
             },
         ]
