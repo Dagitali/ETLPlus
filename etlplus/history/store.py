@@ -34,11 +34,11 @@ __all__ = [
     # Classes
     'HistoryStore',
     'JsonlHistoryStore',
+    'RunCompletion',
     'RunRecord',
     'SQLiteHistoryStore',
     # Functions
     'build_run_record',
-    'iter_history_runs',
 ]
 
 
@@ -46,8 +46,84 @@ __all__ = [
 
 
 @dataclass(slots=True)
+class RunCompletion:
+    """
+    Persisted completion details for one CLI run invocation.
+
+    Attributes
+    ----------
+    run_id : str
+        Stable run identifier.
+    status : str
+        Final run status, e.g. ``success`` or ``failure``.
+    finished_at : str
+        Run finish timestamp in UTC ISO-8601 form.
+    duration_ms : int
+        Run duration in milliseconds.
+    result_summary : JSONData | None
+        Optional JSON-serializable summary of the run result.
+    error_type : str | None
+        Optional error type if the run failed.
+    error_message : str | None
+        Optional error message if the run failed.
+    error_traceback : str | None
+        Optional error traceback if the run failed.
+    """
+
+    run_id: str
+    status: str
+    finished_at: str
+    duration_ms: int
+    result_summary: JSONData | None = None
+    error_type: str | None = None
+    error_message: str | None = None
+    error_traceback: str | None = None
+
+
+@dataclass(slots=True)
 class RunRecord:
-    """Persisted metadata for one CLI run invocation."""
+    """
+    Persisted metadata for one CLI run invocation.
+
+    Attributes
+    ----------
+    run_id : str
+        Stable run identifier.
+    pipeline_name : str | None
+        Optional pipeline name from the config.
+    job_name : str | None
+        Optional job name for the invocation.
+    config_path : str
+        Config path used for the run.
+    config_sha256 : str | None
+        Optional SHA-256 hash of the config file.
+    status : str
+        Run status, e.g. ``running``, ``succeeded``, or ``failed``.
+    started_at : str
+        Run start timestamp in UTC ISO-8601 form.
+    finished_at : str | None
+        Optional run finish timestamp in UTC ISO-8601 form.
+    duration_ms : int | None
+        Optional run duration in milliseconds.
+    records_in : int | None
+        Optional number of records read by the run.
+    records_out : int | None
+        Optional number of records written by the run.
+    error_type : str | None
+        Optional error type if the run failed.
+    error_message : str | None
+        Optional error message if the run failed.
+    error_traceback : str | None
+        Optional error traceback if the run failed.
+    result_summary : JSONData | None
+        Optional JSON-serializable summary of the run result.
+    host : str | None
+        Optional hostname where the run was executed.
+    pid : int | None
+        Optional process ID of the run.
+    etlplus_version : str | None
+        Optional ETLPlus version used for the run.
+    """
 
     run_id: str
     pipeline_name: str | None
@@ -174,27 +250,6 @@ def build_run_record(
         job_name=job_name,
         status=status,
     )
-
-
-def iter_history_runs(
-    store: HistoryStore,
-) -> Iterator[dict[str, Any]]:
-    """
-    Yield one normalized run record per ``run_id`` from a history backend.
-
-    Parameters
-    ----------
-    store : HistoryStore
-        History backend to read from.
-
-    Yields
-    ------
-    dict[str, Any]
-        One normalized run record for each distinct ``run_id``.
-    """
-    yield from store.iter_runs()
-
-
 # SECTION: CLASSES ========================================================== #
 
 
@@ -297,38 +352,15 @@ class HistoryStore:
 
     def record_run_finished(
         self,
-        run_id: str,
-        *,
-        status: str,
-        finished_at: str,
-        duration_ms: int,
-        result_summary: JSONData | None = None,
-        error_type: str | None = None,
-        error_message: str | None = None,
-        error_traceback: str | None = None,
+        completion: RunCompletion,
     ) -> None:
         """
         Persist completion or failure details for a run.
 
         Parameters
         ----------
-        run_id : str
-            Stable run identifier.
-        status : str
-            Final run status, e.g. ``success`` or ``failure``.
-        finished_at : str
-            Run finish timestamp in UTC ISO-8601 form.
-        duration_ms : int
-            Run duration in milliseconds.
-        result_summary : JSONData | None, optional
-            Optional JSON-serializable summary of the run result, e.g. record
-            counts or sample output.
-        error_type : str | None, optional
-            Optional error type name if the run failed.
-        error_message : str | None, optional
-            Optional error message if the run failed.
-        error_traceback : str | None, optional
-            Optional error traceback if the run failed.
+        completion : RunCompletion
+            Stable completion details for the run.
 
         Raises
         ------
@@ -397,15 +429,7 @@ class JsonlHistoryStore(HistoryStore):
 
     def record_run_finished(
         self,
-        run_id: str,
-        *,
-        status: str,
-        finished_at: str,
-        duration_ms: int,
-        result_summary: JSONData | None = None,
-        error_type: str | None = None,
-        error_message: str | None = None,
-        error_traceback: str | None = None,
+        completion: RunCompletion,
     ) -> None:
         """
         Persist completion or failure details for a run by appending a record
@@ -413,37 +437,12 @@ class JsonlHistoryStore(HistoryStore):
 
         Parameters
         ----------
-        run_id : str
-            Stable run identifier.
-        status : str
-            Final run status, e.g. ``success`` or ``failure``.
-        finished_at : str
-            Run finish timestamp in UTC ISO-8601 form.
-        duration_ms : int
-            Run duration in milliseconds.
-        result_summary : JSONData | None, optional
-            Optional JSON-serializable summary of the run result, e.g. record
-            counts or sample output.
-        error_type : str | None, optional
-            Optional error type name if the run failed.
-        error_message : str | None, optional
-            Optional error message if the run failed.
-        error_traceback : str | None, optional
-            Optional error traceback if the run failed.
+        completion : RunCompletion
+            Stable completion details for the run.
         """
-        self._append_record(
-            {
-                'duration_ms': duration_ms,
-                'error_message': error_message,
-                'error_traceback': error_traceback,
-                'error_type': error_type,
-                'finished_at': finished_at,
-                'result_summary': result_summary,
-                'run_id': run_id,
-                'schema_version': HISTORY_SCHEMA_VERSION,
-                'status': status,
-            },
-        )
+        payload = asdict(completion)
+        payload['schema_version'] = HISTORY_SCHEMA_VERSION
+        self._append_record(payload)
 
 
 class SQLiteHistoryStore(HistoryStore):
@@ -549,37 +548,15 @@ class SQLiteHistoryStore(HistoryStore):
 
     def record_run_finished(
         self,
-        run_id: str,
-        *,
-        status: str,
-        finished_at: str,
-        duration_ms: int,
-        result_summary: JSONData | None = None,
-        error_type: str | None = None,
-        error_message: str | None = None,
-        error_traceback: str | None = None,
+        completion: RunCompletion,
     ) -> None:
         """
         Record completion or failure details for a run.
 
         Parameters
         ----------
-        run_id : str
-            Unique identifier for the run.
-        status : str
-            Final status of the run.
-        finished_at : str
-            Timestamp when the run finished.
-        duration_ms : int
-            Duration of the run in milliseconds.
-        result_summary : JSONData | None, optional
-            Summary of the run results, if available.
-        error_type : str | None, optional
-            Type of error encountered, if any.
-        error_message : str | None, optional
-            Error message, if any.
-        error_traceback : str | None, optional
-            Error traceback, if any.
+        completion : RunCompletion
+            Stable completion details for the run.
         """
         with self._connect() as conn:
             conn.execute(
@@ -596,18 +573,18 @@ class SQLiteHistoryStore(HistoryStore):
                 WHERE run_id = ?
                 """,
                 (
-                    status,
-                    finished_at,
-                    duration_ms,
+                    completion.status,
+                    completion.finished_at,
+                    completion.duration_ms,
                     (
-                        serialize_json(result_summary)
-                        if result_summary is not None
+                        serialize_json(completion.result_summary)
+                        if completion.result_summary is not None
                         else None
                     ),
-                    error_type,
-                    error_message,
-                    error_traceback,
-                    run_id,
+                    completion.error_type,
+                    completion.error_message,
+                    completion.error_traceback,
+                    completion.run_id,
                 ),
             )
 
