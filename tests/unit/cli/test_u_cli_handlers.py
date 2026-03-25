@@ -1382,7 +1382,11 @@ class TestRunHandler:
             'from_yaml',
             lambda path, substitute: dummy_cfg,
         )
-        monkeypatch.setattr(handlers, 'create_run_id', lambda: 'run-123')
+        monkeypatch.setattr(
+            handlers.RuntimeEvents,
+            'create_run_id',
+            lambda: 'run-123',
+        )
 
         history_calls: dict[str, object] = {}
 
