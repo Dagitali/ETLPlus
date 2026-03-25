@@ -10,7 +10,6 @@ import os
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from time import perf_counter
 from time import sleep
@@ -41,7 +40,6 @@ from ..utils.types import TemplateKey
 from . import _io
 from ._history import HISTORY_TABLE_COLUMNS as _HISTORY_TABLE_COLUMNS
 from ._history import REPORT_TABLE_COLUMNS as _REPORT_TABLE_COLUMNS
-from ._history import HistoryRecord
 from ._history import HistoryReportBuilder
 from ._history import HistoryView
 
@@ -295,47 +293,6 @@ def _fail_command(
     )
 
 
-def _history_record_fingerprint(
-    record: Mapping[str, Any],
-) -> str:
-    """Return a stable fingerprint for a persisted history record."""
-    return HistoryView.fingerprint(record)
-
-
-def _history_sort_key(
-    record: Mapping[str, Any],
-) -> tuple[str, str]:
-    """Return a reverse-sortable key for history records."""
-    return HistoryView.sort_key(record)
-
-
-def _parse_history_timestamp(
-    value: object,
-) -> datetime | None:
-    """Parse an ISO-8601 timestamp used in persisted history records."""
-    return HistoryView.parse_timestamp(value)
-
-
-def _history_record_matches(
-    record: HistoryRecord,
-    *,
-    job: str | None = None,
-    run_id: str | None = None,
-    since: datetime | None = None,
-    until: datetime | None = None,
-    status: str | None = None,
-) -> bool:
-    """Return whether a history record matches CLI filter values."""
-    return HistoryView.matches(
-        record,
-        job=job,
-        run_id=run_id,
-        since=since,
-        until=until,
-        status=status,
-    )
-
-
 def _load_history_records(
     *,
     raw: bool,
@@ -381,15 +338,6 @@ def _start_command(
         **fields,
     )
     return context
-
-
-def _validate_history_output_mode(
-    *,
-    json_output: bool,
-    table: bool,
-) -> None:
-    """Validate that at most one explicit history output mode was requested."""
-    HistoryView.validate_output_mode(json_output=json_output, table=table)
 
 
 def _complete_and_emit_json(
@@ -480,7 +428,7 @@ def _emit_follow_history(
                 status=status,
             )
             for record in reversed(records):
-                fingerprint = _history_record_fingerprint(record)
+                fingerprint = HistoryView.fingerprint(record)
                 if fingerprint in seen:
                     continue
                 seen.add(fingerprint)
@@ -523,49 +471,6 @@ def _emit_json_or_table(
             exit_code=exit_code,
         )
     return _emit_json_payload(payload, pretty=pretty, exit_code=exit_code)
-
-
-def _increment_metric(
-    bucket: dict[str, Any],
-    key: str,
-    amount: int = 1,
-) -> None:
-    """Increment an integer metric stored inside a mutable report bucket."""
-    HistoryReportBuilder.increment_metric(bucket, key, amount)
-
-
-def _report_group_key(
-    record: Mapping[str, Any],
-    *,
-    group_by: Literal['day', 'job', 'status'],
-) -> str:
-    """Return the grouping key for one normalized history record."""
-    return HistoryReportBuilder.report_group_key(record, group_by=group_by)
-
-
-def _success_rate_pct(
-    succeeded: int,
-    runs: int,
-) -> float | None:
-    """Return the success-rate percentage for the given counters."""
-    return HistoryReportBuilder.success_rate_pct(succeeded, runs)
-
-
-def _update_duration_metrics(
-    bucket: dict[str, Any],
-    duration_ms: int,
-) -> None:
-    """Update duration-related metrics for one report bucket."""
-    HistoryReportBuilder.update_duration_metrics(bucket, duration_ms)
-
-
-def _build_history_report(
-    records: list[dict[str, Any]],
-    *,
-    group_by: Literal['day', 'job', 'status'],
-) -> dict[str, Any]:
-    """Aggregate normalized history records into a grouped report."""
-    return HistoryReportBuilder.build(records, group_by=group_by)
 
 
 def _pipeline_summary(
@@ -748,7 +653,7 @@ def history_handler(
     int
         Zero on success.
     """
-    _validate_history_output_mode(json_output=json_output, table=table)
+    HistoryView.validate_output_mode(json_output=json_output, table=table)
     if follow:
         return _emit_follow_history(
             job=job,
