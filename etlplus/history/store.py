@@ -192,7 +192,7 @@ def iter_history_runs(
     dict[str, Any]
         One normalized run record for each distinct ``run_id``.
     """
-    yield from HistoryStore.iter_runs(store)
+    yield from store.iter_runs()
 
 
 # SECTION: CLASSES ========================================================== #
@@ -216,23 +216,21 @@ class HistoryStore:
             'ETLPLUS_HISTORY_BACKEND must be one of: sqlite, jsonl',
         )
 
-    @classmethod
-    def iter_runs(
-        cls,
-        store: HistoryStore,
-    ) -> Iterator[dict[str, Any]]:
+    # -- Instance Methods -- #
+
+    def iter_runs(self) -> Iterator[dict[str, Any]]:
         """Yield one normalized run record per ``run_id`` from a history backend."""
         merged_by_run_id: dict[str, dict[str, Any]] = {}
         run_order: list[str] = []
 
-        for record in store.iter_records():
+        for record in self.iter_records():
             run_id = record.get('run_id')
             if not isinstance(run_id, str) or not run_id:
                 continue
             if run_id not in merged_by_run_id:
                 merged_by_run_id[run_id] = {}
                 run_order.append(run_id)
-            cls._merge_record(merged_by_run_id[run_id], record)
+            self._merge_record(merged_by_run_id[run_id], record)
 
         for run_id in run_order:
             merged = merged_by_run_id[run_id]
