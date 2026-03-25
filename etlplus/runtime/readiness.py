@@ -60,6 +60,16 @@ class _RequirementSpec:
     extra: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class _ResolvedConfigContext:
+    """Resolved config state reused across config readiness checks."""
+
+    raw: StrAnyMap
+    effective_env: dict[str, str]
+    unresolved_tokens: list[str]
+    resolved_cfg: Config | None
+
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 _AWS_ENV_HINTS: Final[tuple[str, ...]] = (
@@ -362,23 +372,18 @@ class ReadinessReportBuilder:
             ),
         )
 
-        cfg = Config.from_dict(raw)
-        effective_env = cls.effective_environment(cfg, env)
-        resolved = deep_substitute(raw, cfg.vars, effective_env)
-        unresolved = sorted(cls.collect_substitution_tokens(resolved))
-
-        if unresolved:
+        context = cls.resolve_config_context(raw, env=env)
+        if context.unresolved_tokens:
             checks.append(
                 cls.make_check(
                     'config-substitution',
                     'error',
                     'Configuration still contains unresolved substitution tokens.',
-                    unresolved_tokens=unresolved,
+                    unresolved_tokens=context.unresolved_tokens,
                 ),
             )
             return checks
 
-        resolved_cfg = Config.from_dict(cast(StrAnyMap, resolved))
         checks.append(
             cls.make_check(
                 'config-substitution',
@@ -386,11 +391,12 @@ class ReadinessReportBuilder:
                 'Configuration substitutions resolved successfully.',
             ),
         )
+        resolved_cfg = cast(Config, context.resolved_cfg)
         checks.extend(cls.connector_readiness_checks(resolved_cfg))
         checks.extend(
             cls.provider_environment_checks(
                 cfg=resolved_cfg,
-                env=effective_env,
+                env=context.effective_env,
             ),
         )
         return checks
@@ -816,6 +822,27 @@ class ReadinessReportBuilder:
             'reason': reason,
             'role': role,
         }
+
+    @classmethod
+    def resolve_config_context(
+        cls,
+        raw: StrAnyMap,
+        *,
+        env: Mapping[str, str] | None,
+    ) -> _ResolvedConfigContext:
+        """Return resolved config state shared by config readiness checks."""
+        cfg = Config.from_dict(raw)
+        effective_env = cls.effective_environment(cfg, env)
+        resolved = cast(StrAnyMap, deep_substitute(raw, cfg.vars, effective_env))
+        unresolved_tokens = sorted(cls.collect_substitution_tokens(resolved))
+        return _ResolvedConfigContext(
+            raw=raw,
+            effective_env=effective_env,
+            unresolved_tokens=unresolved_tokens,
+            resolved_cfg=(
+                None if unresolved_tokens else Config.from_dict(resolved)
+            ),
+        )
 
     @classmethod
     def supported_python_check(
