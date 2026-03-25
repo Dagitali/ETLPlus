@@ -401,6 +401,19 @@ class TestCliStateHelpers:
         )
         assert resolved == 'api'
 
+    def test_resource_type_resolver_infer_soft_uses_function_seam(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that class-based soft inference still respects wrapper patches."""
+        monkeypatch.setattr(
+            cli_state_module,
+            'infer_resource_type',
+            lambda _value: (_ for _ in ()).throw(ValueError('bad')),
+        )
+
+        assert cli_state_module.ResourceTypeResolver.infer_soft('invalid') is None
+
 
 class TestOptionalChoice:
     """Unit tests for :func:`optional_choice`."""
@@ -432,3 +445,14 @@ class TestOptionalChoice:
         """Test that invalid choices raise :class:`typer.BadParameter`."""
         with pytest.raises(typer.BadParameter):
             cli_state_module.optional_choice(invalid, {'json'}, label='format')
+
+    def test_resource_type_resolver_optional_choice_preserves_none(self) -> None:
+        """Test that class-based optional choice preserves missing values."""
+        assert (
+            cli_state_module.ResourceTypeResolver.optional_choice(
+                None,
+                {'json', 'csv'},
+                label='format',
+            )
+            is None
+        )
