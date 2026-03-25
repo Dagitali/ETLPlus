@@ -25,6 +25,7 @@ from ..file import File
 from ..file import FileFormat
 from ..history import HistoryStore
 from ..history import RunCompletion
+from ..history import RunState
 from ..history import build_run_record
 from ..ops import extract
 from ..ops import load
@@ -1362,11 +1363,13 @@ def run_handler(
             history_store.record_run_finished(
                 RunCompletion(
                     run_id=run_id,
-                    status='failed',
-                    finished_at=RuntimeEvents.utc_now_iso(),
-                    duration_ms=duration_ms,
-                    error_type=type(exc).__name__,
-                    error_message=str(exc),
+                    state=RunState(
+                        status='failed',
+                        finished_at=RuntimeEvents.utc_now_iso(),
+                        duration_ms=duration_ms,
+                        error_type=type(exc).__name__,
+                        error_message=str(exc),
+                    ),
                 ),
             )
             _emit_failure_event(
@@ -1385,10 +1388,12 @@ def run_handler(
         history_store.record_run_finished(
             RunCompletion(
                 run_id=run_id,
-                status='succeeded',
-                finished_at=RuntimeEvents.utc_now_iso(),
-                duration_ms=duration_ms,
-                result_summary=cast(JSONData | None, result),
+                state=RunState(
+                    status='succeeded',
+                    finished_at=RuntimeEvents.utc_now_iso(),
+                    duration_ms=duration_ms,
+                    result_summary=cast(JSONData | None, result),
+                ),
             ),
         )
         _emit_lifecycle_event(
