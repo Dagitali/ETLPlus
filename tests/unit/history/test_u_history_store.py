@@ -24,16 +24,14 @@ def build_sample_record() -> mod.RunRecord:
         job_name='job-a',
         config_path='pipeline.yml',
         config_sha256='sha256',
-        status='running',
         started_at='2026-03-23T00:00:00Z',
-        finished_at=None,
-        duration_ms=None,
         records_in=None,
         records_out=None,
-        error_type=None,
-        error_message=None,
-        error_traceback=None,
-        result_summary=None,
+        state=mod.RunState(
+            status='running',
+            finished_at=None,
+            duration_ms=None,
+        ),
         host='host-a',
         pid=123,
         etlplus_version='1.0.3',
@@ -69,10 +67,12 @@ def test_iter_runs_merges_append_events_into_one_run(
     store.record_run_finished(
         mod.RunCompletion(
             run_id=record.run_id,
-            status='succeeded',
-            finished_at='2026-03-23T00:00:05Z',
-            duration_ms=5000,
-            result_summary={'rows': 10},
+            state=mod.RunState(
+                status='succeeded',
+                finished_at='2026-03-23T00:00:05Z',
+                duration_ms=5000,
+                result_summary={'rows': 10},
+            ),
         ),
     )
 
@@ -110,10 +110,12 @@ def test_jsonl_history_store_appends_finished_records_as_ndjson(
     store.record_run_finished(
         mod.RunCompletion(
             run_id='run-123',
-            status='success',
-            finished_at='2026-03-23T00:00:05Z',
-            duration_ms=5000,
-            result_summary={'rows': 10},
+            state=mod.RunState(
+                status='success',
+                finished_at='2026-03-23T00:00:05Z',
+                duration_ms=5000,
+                result_summary={'rows': 10},
+            ),
         ),
     )
 
@@ -240,7 +242,7 @@ def test_run_record_build_populates_runtime_metadata(
     assert record.run_id == 'run-123'
     assert record.pipeline_name == 'pipeline-a'
     assert record.job_name == 'job-a'
-    assert record.status == 'running'
+    assert record.state.status == 'running'
     assert record.config_sha256 == hashlib.sha256(config_path.read_bytes()).hexdigest()
     assert record.host is not None
     assert record.pid is not None
