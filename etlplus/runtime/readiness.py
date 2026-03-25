@@ -211,7 +211,7 @@ class ReadinessReportBuilder:
     ) -> list[dict[str, str]]:
         """Return connector configuration gaps that will block execution."""
         gaps: list[dict[str, str]] = []
-        for role, connector in _iter_connectors(cfg):
+        for role, connector in cls.iter_connectors(cfg):
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
             connector_type = str(getattr(connector, 'type', ''))
 
@@ -270,19 +270,20 @@ class ReadinessReportBuilder:
         """Return missing optional dependency rows for configured connectors."""
         rows: list[dict[str, str]] = []
 
-        for role, connector in _iter_connectors(cfg):
+        for role, connector in cls.iter_connectors(cfg):
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
             path = getattr(connector, 'path', None)
             format_name = str(getattr(connector, 'format', '') or '').lower()
 
             if path:
-                scheme = _coerce_storage_scheme(path)
+                scheme = cls.coerce_storage_scheme(path)
                 if scheme in _SCHEME_EXTRA_REQUIREMENTS:
                     module_names, pip_name, extra_name = _SCHEME_EXTRA_REQUIREMENTS[
                         scheme
                     ]
                     if not any(
-                        _package_available(module_name) for module_name in module_names
+                        cls.package_available(module_name)
+                        for module_name in module_names
                     ):
                         rows.append(
                             {
@@ -295,8 +296,8 @@ class ReadinessReportBuilder:
                         )
 
             if format_name == 'nc':
-                has_xarray = _package_available('xarray')
-                has_engine = _package_available('netCDF4') or _package_available(
+                has_xarray = cls.package_available('xarray')
+                has_engine = cls.package_available('netCDF4') or cls.package_available(
                     'h5netcdf',
                 )
                 if not (has_xarray and has_engine):
@@ -318,7 +319,7 @@ class ReadinessReportBuilder:
                     format_name
                 ]
                 if not any(
-                    _package_available(module_name) for module_name in module_names
+                    cls.package_available(module_name) for module_name in module_names
                 ):
                     rows.append(
                         {
@@ -354,10 +355,10 @@ class ReadinessReportBuilder:
         """Return connector configuration and dependency readiness checks."""
         checks: list[dict[str, Any]] = []
 
-        gaps = _connector_gap_rows(cfg)
+        gaps = cls.connector_gap_rows(cfg)
         if gaps:
             checks.append(
-                _make_check(
+                cls.make_check(
                     'connector-readiness',
                     'error',
                     (
@@ -369,17 +370,17 @@ class ReadinessReportBuilder:
             )
         else:
             checks.append(
-                _make_check(
+                cls.make_check(
                     'connector-readiness',
                     'ok',
                     'Configured connectors include the required runtime fields.',
                 ),
             )
 
-        missing_requirements = _missing_requirement_rows(cfg=cfg)
+        missing_requirements = cls.missing_requirement_rows(cfg=cfg)
         if missing_requirements:
             checks.append(
-                _make_check(
+                cls.make_check(
                     'optional-dependencies',
                     'error',
                     (
@@ -391,7 +392,7 @@ class ReadinessReportBuilder:
             )
         else:
             checks.append(
-                _make_check(
+                cls.make_check(
                     'optional-dependencies',
                     'ok',
                     (
@@ -415,7 +416,7 @@ class ReadinessReportBuilder:
         path = Path(config_path)
         if not path.exists():
             return [
-                _make_check(
+                cls.make_check(
                     'config-file',
                     'error',
                     f'Configuration file does not exist: {path}',
@@ -424,7 +425,7 @@ class ReadinessReportBuilder:
             ]
 
         checks.append(
-            _make_check(
+            cls.make_check(
                 'config-file',
                 'ok',
                 f'Configuration file exists: {path}',
@@ -432,9 +433,9 @@ class ReadinessReportBuilder:
             ),
         )
 
-        raw = _load_raw_config(str(path))
+        raw = cls.load_raw_config(str(path))
         checks.append(
-            _make_check(
+            cls.make_check(
                 'config-parse',
                 'ok',
                 'Configuration YAML parsed successfully.',
@@ -446,11 +447,11 @@ class ReadinessReportBuilder:
         external_env = dict(env) if env is not None else dict(os.environ)
         effective_env = base_env | external_env
         resolved = deep_substitute(raw, cfg.vars, effective_env)
-        unresolved = sorted(_collect_substitution_tokens(resolved))
+        unresolved = sorted(cls.collect_substitution_tokens(resolved))
 
         if unresolved:
             checks.append(
-                _make_check(
+                cls.make_check(
                     'config-substitution',
                     'error',
                     'Configuration still contains unresolved substitution tokens.',
@@ -461,13 +462,13 @@ class ReadinessReportBuilder:
 
         resolved_cfg = Config.from_dict(cast(StrAnyMap, resolved))
         checks.append(
-            _make_check(
+            cls.make_check(
                 'config-substitution',
                 'ok',
                 'Configuration substitutions resolved successfully.',
             ),
         )
-        checks.extend(_connector_readiness_checks(resolved_cfg))
+        checks.extend(cls.connector_readiness_checks(resolved_cfg))
         return checks
 
     @classmethod
@@ -492,14 +493,14 @@ class ReadinessReportBuilder:
         dict[str, Any]
             JSON-serializable readiness report.
         """
-        checks: list[dict[str, Any]] = [_supported_python_check()]
+        checks: list[dict[str, Any]] = [cls.supported_python_check()]
 
         if config_path:
             try:
-                checks.extend(_config_checks(config_path, env=env))
+                checks.extend(cls.config_checks(config_path, env=env))
             except (OSError, TypeError, ValueError) as exc:
                 checks.append(
-                    _make_check(
+                    cls.make_check(
                         'config-parse',
                         'error',
                         str(exc),
@@ -508,7 +509,7 @@ class ReadinessReportBuilder:
                 )
         else:
             checks.append(
-                _make_check(
+                cls.make_check(
                     'config-file',
                     'skipped',
                     (
@@ -519,7 +520,7 @@ class ReadinessReportBuilder:
             )
 
         return {
-            'status': _overall_status(checks),
+            'status': cls.overall_status(checks),
             'etlplus_version': __version__,
             'python_version': (
                 f'{sys.version_info.major}.'
@@ -528,94 +529,3 @@ class ReadinessReportBuilder:
             ),
             'checks': checks,
         }
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _coerce_storage_scheme(
-    path: str,
-) -> str | None:
-    """Return one normalized storage scheme for *path* when present."""
-    return ReadinessReportBuilder.coerce_storage_scheme(path)
-
-
-def _collect_substitution_tokens(
-    value: Any,
-) -> set[str]:
-    """Return unresolved ``${VAR}`` token names found in nested values."""
-    return ReadinessReportBuilder.collect_substitution_tokens(value)
-
-
-def _iter_connectors(
-    cfg: Config,
-) -> list[tuple[str, Connector]]:
-    """Return source/target connectors tagged with their role."""
-    return ReadinessReportBuilder.iter_connectors(cfg)
-
-
-def _load_raw_config(
-    config_path: str,
-) -> StrAnyMap:
-    """Load raw YAML config and require a mapping root."""
-    return ReadinessReportBuilder.load_raw_config(config_path)
-
-
-def _make_check(
-    name: str,
-    status: CheckStatus,
-    message: str,
-    **details: Any,
-) -> dict[str, Any]:
-    """Return one readiness check row."""
-    return ReadinessReportBuilder.make_check(name, status, message, **details)
-
-
-def _overall_status(
-    checks: list[dict[str, Any]],
-) -> Literal['ok', 'warn', 'error']:
-    """Return aggregate status from individual check rows."""
-    return ReadinessReportBuilder.overall_status(checks)
-
-
-def _package_available(
-    module_name: str,
-) -> bool:
-    """Return whether *module_name* is importable without importing it."""
-    return ReadinessReportBuilder.package_available(module_name)
-
-
-def _supported_python_check() -> dict[str, Any]:
-    """Return runtime Python compatibility check."""
-    return ReadinessReportBuilder.supported_python_check()
-
-
-def _connector_gap_rows(
-    cfg: Config,
-) -> list[dict[str, str]]:
-    """Return connector configuration gaps that will block execution."""
-    return ReadinessReportBuilder.connector_gap_rows(cfg)
-
-
-def _missing_requirement_rows(
-    *,
-    cfg: Config,
-) -> list[dict[str, str]]:
-    """Return missing optional dependency rows for configured connectors."""
-    return ReadinessReportBuilder.missing_requirement_rows(cfg=cfg)
-
-
-def _connector_readiness_checks(
-    cfg: Config,
-) -> list[dict[str, Any]]:
-    """Return connector configuration and dependency readiness checks."""
-    return ReadinessReportBuilder.connector_readiness_checks(cfg)
-
-
-def _config_checks(
-    config_path: str,
-    *,
-    env: Mapping[str, str] | None,
-) -> list[dict[str, Any]]:
-    """Return readiness checks for one pipeline config path."""
-    return ReadinessReportBuilder.config_checks(config_path, env=env)
