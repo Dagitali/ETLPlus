@@ -32,7 +32,7 @@ from ..ops import run
 from ..ops import transform
 from ..ops import validate
 from ..ops.validate import FieldRulesDict
-from ..runtime import build_readiness_report
+from ..runtime import ReadinessReportBuilder
 from ..runtime.events import RuntimeEvents
 from ..utils.data import serialize_json
 from ..utils.types import JSONData
@@ -781,7 +781,7 @@ def check_handler(
 
     """
     if readiness:
-        report = build_readiness_report(config_path=config)
+        report = ReadinessReportBuilder.build(config_path=config)
         _io.emit_json(report, pretty=pretty)
         return 0 if report.get('status') == 'ok' else 1
 
@@ -1274,14 +1274,14 @@ def report_handler(
     int
         Zero on success.
     """
-    _validate_history_output_mode(json_output=json_output, table=table)
-    records = _load_history_records(
+    HistoryView.validate_output_mode(json_output=json_output, table=table)
+    records = HistoryView.load_records(
         job=job,
         raw=False,
         since=since,
         until=until,
     )
-    report = _build_history_report(records, group_by=group_by)
+    report = HistoryReportBuilder.build(records, group_by=group_by)
     if table:
         _io.emit_markdown_table(report['rows'], columns=_REPORT_TABLE_COLUMNS)
         return 0
@@ -1432,7 +1432,12 @@ def status_handler(
     int
         Zero when a matching run exists, otherwise ``1``.
     """
-    records = _load_history_records(job=job, limit=1, raw=False, run_id=run_id)
+    records = HistoryView.load_records(
+        job=job,
+        limit=1,
+        raw=False,
+        run_id=run_id,
+    )
     if not records:
         _io.emit_json({}, pretty=pretty)
         return 1
