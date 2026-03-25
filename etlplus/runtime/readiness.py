@@ -35,8 +35,6 @@ from ..utils.types import StrAnyMap
 __all__ = [
     # Classes
     'ReadinessReportBuilder',
-    # Functions
-    'build_readiness_report',
 ]
 
 
@@ -479,7 +477,21 @@ class ReadinessReportBuilder:
         config_path: str | None = None,
         env: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
-        """Build a runtime readiness report for the current ETLPlus environment."""
+        """
+        Build a runtime readiness report for the current ETLPlus environment.
+
+        Parameters
+        ----------
+        config_path : str | None, optional
+            Optional pipeline configuration file to validate. Default is ``None``.
+        env : Mapping[str, str] | None, optional
+            Optional environment mapping used instead of :data:`os.environ`.
+
+        Returns
+        -------
+        dict[str, Any]
+            JSON-serializable readiness report.
+        """
         checks: list[dict[str, Any]] = [_supported_python_check()]
 
         if config_path:
@@ -607,29 +619,3 @@ def _config_checks(
 ) -> list[dict[str, Any]]:
     """Return readiness checks for one pipeline config path."""
     return ReadinessReportBuilder.config_checks(config_path, env=env)
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-def build_readiness_report(
-    *,
-    config_path: str | None = None,
-    env: Mapping[str, str] | None = None,
-) -> dict[str, Any]:
-    """
-    Build a runtime readiness report for the current ETLPlus environment.
-
-    Parameters
-    ----------
-    config_path : str | None, optional
-        Optional pipeline configuration file to validate. Default is ``None``.
-    env : Mapping[str, str] | None, optional
-        Optional environment mapping used instead of :data:`os.environ`.
-
-    Returns
-    -------
-    dict[str, Any]
-        JSON-serializable readiness report.
-    """
-    return ReadinessReportBuilder.build(config_path=config_path, env=env)
