@@ -53,6 +53,7 @@ from ._handlers import history_handler as handle_history
 from ._io import parse_json_payload
 from ._options import typer_format_option_kwargs
 from ._state import CliState
+from ._state import ResourceTypeResolver
 from ._state import ensure_state
 from ._state import infer_resource_type_or_exit
 from ._state import infer_resource_type_soft
@@ -805,20 +806,20 @@ def load_cmd(
 
     source_format = cast(
         SourceFormatOption,
-        optional_choice(
+        ResourceTypeResolver.optional_choice(
             source_format,
             FILE_FORMATS,
             label='source_format',
         ),
     )
-    target_type = optional_choice(
+    target_type = ResourceTypeResolver.optional_choice(
         target_type,
         DATA_CONNECTORS,
         label='target_type',
     )
     target_format = cast(
         TargetFormatOption,
-        optional_choice(
+        ResourceTypeResolver.optional_choice(
             target_format,
             FILE_FORMATS,
             label='target_format',
@@ -826,12 +827,12 @@ def load_cmd(
     )
 
     resolved_target = target
-    resolved_target_type = target_type or infer_resource_type_or_exit(
+    resolved_target_type = target_type or ResourceTypeResolver.infer_or_exit(
         resolved_target,
     )
 
     resolved_source_value = '-'
-    resolved_source_type = infer_resource_type_soft(resolved_source_value)
+    resolved_source_type = ResourceTypeResolver.infer_soft(resolved_source_value)
 
     log_inferred_resource(
         state,
@@ -1278,19 +1279,19 @@ def validate_cmd(
     """
     source_format = cast(
         SourceFormatOption,
-        optional_choice(
+        ResourceTypeResolver.optional_choice(
             source_format,
             FILE_FORMATS,
             label='source_format',
         ),
     )
-    source_type = optional_choice(
+    source_type = ResourceTypeResolver.optional_choice(
         source_type,
         DATA_CONNECTORS,
         label='source_type',
     )
     state = ensure_state(ctx)
-    resolved_source_type = source_type or infer_resource_type_soft(source)
+    resolved_source_type = source_type or ResourceTypeResolver.infer_soft(source)
 
     log_inferred_resource(
         state,
