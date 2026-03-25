@@ -11,12 +11,15 @@ import json
 import os
 import socket
 import sqlite3
+from abc import ABC
+from abc import abstractmethod
 from collections.abc import Iterator
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import fields
 from pathlib import Path
 from typing import Any
+from typing import Self
 
 from ..__version__ import __version__
 from ..file.ndjson import NdjsonFile
@@ -40,6 +43,37 @@ __all__ = [
     # Functions
     'build_run_record',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _deserialize_result_summary(
+    result_summary: str | None,
+) -> JSONData | None:
+    """Deserialize one optional persisted JSON result summary."""
+    if result_summary is None:
+        return None
+    return json.loads(result_summary)
+
+
+def _file_sha256(
+    file_path: str,
+) -> str | None:
+    """Return the SHA-256 digest for *file_path* when the file exists."""
+    path = Path(file_path)
+    if not path.exists():
+        return None
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _serialize_result_summary(
+    result_summary: JSONData | None,
+) -> str | None:
+    """Serialize one optional JSON result summary for persistence."""
+    if result_summary is None:
+        return None
+    return serialize_json(result_summary)
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -78,6 +112,21 @@ class RunState:
     error_message: str | None = None
     error_traceback: str | None = None
 
+    # -- Class Methods -- #
+
+    @classmethod
+    def running(
+        cls,
+        *,
+        status: str = 'running',
+    ) -> Self:
+        """Return the default in-flight state for a run."""
+        return cls(
+            status=status,
+            finished_at=None,
+            duration_ms=None,
+        )
+
     # -- Instance Methods -- #
 
     def to_payload(self) -> dict[str, Any]:
@@ -115,9 +164,7 @@ class RunCompletion:
 
     def to_payload(self) -> dict[str, Any]:
         """Return the flat persisted representation of the completion."""
-        payload = {'run_id': self.run_id}
-        payload.update(self.state.to_payload())
-        return payload
+        return {'run_id': self.run_id} | self.state.to_payload()
 
 
 @dataclass(slots=True)
@@ -172,7 +219,7 @@ class RunRecord:
 
     def to_payload(self) -> dict[str, Any]:
         """Return the flat persisted representation of the run record."""
-        payload = {
+        return {
             'run_id': self.run_id,
             'pipeline_name': self.pipeline_name,
             'job_name': self.job_name,
@@ -184,9 +231,7 @@ class RunRecord:
             'host': self.host,
             'pid': self.pid,
             'etlplus_version': self.etlplus_version,
-        }
-        payload.update(self.state.to_payload())
-        return payload
+        } | self.state.to_payload()
 
     # -- Class Methods -- #
 
@@ -207,31 +252,15 @@ class RunRecord:
             pipeline_name=pipeline_name,
             job_name=job_name,
             config_path=config_path,
-            config_sha256=cls._config_sha256(config_path),
+            config_sha256=_file_sha256(config_path),
             started_at=started_at,
             records_in=None,
             records_out=None,
-            state=RunState(
-                status=status,
-                finished_at=None,
-                duration_ms=None,
-            ),
+            state=RunState.running(status=status),
             host=socket.gethostname(),
             pid=os.getpid(),
             etlplus_version=__version__,
         )
-
-    # -- Static Methods -- #
-
-    @staticmethod
-    def _config_sha256(
-        config_path: str,
-    ) -> str | None:
-        """Compute the SHA-256 hash of the config file at *config_path*."""
-        path = Path(config_path)
-        if not path.exists():
-            return None
-        return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -245,6 +274,28 @@ _RUN_RECORD_FIELDS = (
     *(field.name for field in fields(RunRecord) if field.name != 'state'),
     *_RUN_STATE_FIELDS,
 )
+_RUN_DB_COLUMNS = (
+    'run_id',
+    'pipeline_name',
+    'job_name',
+    'config_path',
+    'config_sha256',
+    'status',
+    'started_at',
+    'finished_at',
+    'duration_ms',
+    'records_in',
+    'records_out',
+    'error_type',
+    'error_message',
+    'error_traceback',
+    'result_summary',
+    'host',
+    'pid',
+    'etlplus_version',
+)
+_RUN_DB_COLUMNS_SQL = ',\n                    '.join(_RUN_DB_COLUMNS)
+_RUN_DB_PLACEHOLDERS = ', '.join('?' for _ in _RUN_DB_COLUMNS)
 
 
 # SECTION: CONSTANTS ======================================================== #
@@ -296,10 +347,12 @@ def build_run_record(
         job_name=job_name,
         status=status,
     )
-# SECTION: CLASSES ========================================================== #
 
 
-class HistoryStore:
+# SECTION: ABSTRACT BASE CLASSES ============================================ #
+
+
+class HistoryStore(ABC):
     """Minimal local history-store interface."""
 
     # -- Class Methods -- #
@@ -309,13 +362,15 @@ class HistoryStore:
         """Open the configured local history backend from environment values."""
         backend = os.getenv('ETLPLUS_HISTORY_BACKEND', _DEFAULT_HISTORY_BACKEND)
         state_dir = cls._coerce_state_dir()
-        if backend == 'sqlite':
-            return SQLiteHistoryStore(state_dir / 'history.sqlite')
-        if backend == 'jsonl':
-            return JsonlHistoryStore(state_dir / 'history.jsonl')
-        raise ValueError(
-            'ETLPLUS_HISTORY_BACKEND must be one of: sqlite, jsonl',
-        )
+        match backend:
+            case 'sqlite':
+                return SQLiteHistoryStore(state_dir / 'history.sqlite')
+            case 'jsonl':
+                return JsonlHistoryStore(state_dir / 'history.jsonl')
+            case _:
+                raise ValueError(
+                    'ETLPLUS_HISTORY_BACKEND must be one of: sqlite, jsonl',
+                )
 
     # -- Instance Methods -- #
 
@@ -359,8 +414,9 @@ class HistoryStore:
             if value is not None or key not in record:
                 record[key] = value
 
-    # -- Instance Methods -- #
+    # -- Abstract Instance Methods -- #
 
+    @abstractmethod
     def iter_records(self) -> Iterator[dict[str, Any]]:
         """
         Yield persisted history records in backend-native form.
@@ -377,6 +433,7 @@ class HistoryStore:
         """
         raise NotImplementedError
 
+    @abstractmethod
     def record_run_started(
         self,
         record: RunRecord,
@@ -396,6 +453,7 @@ class HistoryStore:
         """
         raise NotImplementedError
 
+    @abstractmethod
     def record_run_finished(
         self,
         completion: RunCompletion,
@@ -415,6 +473,8 @@ class HistoryStore:
         """
         raise NotImplementedError
 
+
+# SECTION: CLASSES ========================================================== #
 
 class JsonlHistoryStore(HistoryStore):
     """JSONL-backed local run history."""
@@ -562,34 +622,18 @@ class SQLiteHistoryStore(HistoryStore):
         with self._connect() as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
-                """
+                f"""
                 SELECT
-                    run_id,
-                    pipeline_name,
-                    job_name,
-                    config_path,
-                    config_sha256,
-                    status,
-                    started_at,
-                    finished_at,
-                    duration_ms,
-                    records_in,
-                    records_out,
-                    error_type,
-                    error_message,
-                    error_traceback,
-                    result_summary,
-                    host,
-                    pid,
-                    etlplus_version
+                    {_RUN_DB_COLUMNS_SQL}
                 FROM runs
                 ORDER BY started_at ASC, run_id ASC
                 """,
             )
             for row in rows:
                 payload = dict(row)
-                if payload['result_summary'] is not None:
-                    payload['result_summary'] = json.loads(payload['result_summary'])
+                payload['result_summary'] = _deserialize_result_summary(
+                    payload['result_summary'],
+                )
                 yield payload
 
     def record_run_finished(
@@ -604,6 +648,7 @@ class SQLiteHistoryStore(HistoryStore):
         completion : RunCompletion
             Stable completion details for the run.
         """
+        state = completion.state
         with self._connect() as conn:
             conn.execute(
                 """
@@ -619,17 +664,13 @@ class SQLiteHistoryStore(HistoryStore):
                 WHERE run_id = ?
                 """,
                 (
-                    completion.state.status,
-                    completion.state.finished_at,
-                    completion.state.duration_ms,
-                    (
-                        serialize_json(completion.state.result_summary)
-                        if completion.state.result_summary is not None
-                        else None
-                    ),
-                    completion.state.error_type,
-                    completion.state.error_message,
-                    completion.state.error_traceback,
+                    state.status,
+                    state.finished_at,
+                    state.duration_ms,
+                    _serialize_result_summary(state.result_summary),
+                    state.error_type,
+                    state.error_message,
+                    state.error_traceback,
                     completion.run_id,
                 ),
             )
@@ -646,50 +687,16 @@ class SQLiteHistoryStore(HistoryStore):
         record : RunRecord
             Initial run record to persist.
         """
+        payload = record.to_payload()
+        payload['result_summary'] = _serialize_result_summary(
+            record.state.result_summary,
+        )
         with self._connect() as conn:
             conn.execute(
-                """
+                f"""
                 INSERT OR REPLACE INTO runs (
-                    run_id,
-                    pipeline_name,
-                    job_name,
-                    config_path,
-                    config_sha256,
-                    status,
-                    started_at,
-                    finished_at,
-                    duration_ms,
-                    records_in,
-                    records_out,
-                    error_type,
-                    error_message,
-                    error_traceback,
-                    result_summary,
-                    host,
-                    pid,
-                    etlplus_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    {_RUN_DB_COLUMNS_SQL}
+                ) VALUES ({_RUN_DB_PLACEHOLDERS})
                 """,
-                (
-                    record.run_id,
-                    record.pipeline_name,
-                    record.job_name,
-                    record.config_path,
-                    record.config_sha256,
-                    record.state.status,
-                    record.started_at,
-                    record.state.finished_at,
-                    record.state.duration_ms,
-                    record.records_in,
-                    record.records_out,
-                    record.state.error_type,
-                    record.state.error_message,
-                    record.state.error_traceback,
-                    serialize_json(record.state.result_summary)
-                    if record.state.result_summary is not None
-                    else None,
-                    record.host,
-                    record.pid,
-                    record.etlplus_version,
-                ),
+                tuple(payload[column] for column in _RUN_DB_COLUMNS),
             )
