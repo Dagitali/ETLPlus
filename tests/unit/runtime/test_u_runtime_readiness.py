@@ -23,7 +23,7 @@ class TestReadinessReportBuilder:
 
     def test_build_matches_wrapper_runtime_only(self) -> None:
         """Test that the class builder matches the function wrapper."""
-        expected = readiness_module.build_readiness_report(env={})
+        expected = readiness_module.ReadinessReportBuilder.build(env={})
         actual = readiness_module.ReadinessReportBuilder.build(env={})
 
         assert actual == expected
