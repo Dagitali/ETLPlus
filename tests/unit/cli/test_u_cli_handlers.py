@@ -205,6 +205,28 @@ class TestCheckHandler:
         assert handlers.check_handler(config='cfg.yml') == 0
         assert_emit_json(capture_io, {'targets': ['t1']}, pretty=True)
 
+    def test_readiness_branch_emits_report_and_returns_nonzero_on_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that readiness mode emits the runtime report and exit code."""
+        monkeypatch.setattr(
+            handlers.ReadinessReportBuilder,
+            'build',
+            lambda config_path: {
+                'checks': [],
+                'status': 'error',
+            },
+        )
+
+        assert handlers.check_handler(config='cfg.yml', readiness=True) == 1
+        assert_emit_json(
+            capture_io,
+            {'checks': [], 'status': 'error'},
+            pretty=True,
+        )
+
     def test_summary_branch_uses_pipeline_summary(
         self,
         monkeypatch: pytest.MonkeyPatch,
