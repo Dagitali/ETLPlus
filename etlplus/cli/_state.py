@@ -23,6 +23,7 @@ from ._constants import DATA_CONNECTORS
 __all__ = [
     # Classes
     'CliState',
+    'ResourceTypeResolver',
     # Functions
     'ensure_state',
     'infer_resource_type',
@@ -68,6 +69,119 @@ class CliState:
     verbose: bool = False
 
 
+# SECTION: CLASSES ========================================================== #
+
+
+class ResourceTypeResolver:
+    """Shared normalization and inference helpers for CLI resource types."""
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def infer(
+        value: str,
+    ) -> str:
+        """Infer the resource type from a path, URL, or DSN string."""
+        val = (value or '').strip()
+        low = val.lower()
+
+        match (val, low):
+            case ('-', _):
+                return 'file'
+            case (_, inferred) if inferred.startswith(('http://', 'https://')):
+                return 'api'
+            case (_, inferred) if inferred.startswith(_DB_SCHEMES):
+                return 'database'
+
+        path = Path(val)
+        if path.exists() or path.suffix:
+            return 'file'
+
+        raise ValueError(
+            (
+                'Could not infer resource type. '
+                'Use --source-type/--target-type to specify it.'
+            ),
+        )
+
+    @staticmethod
+    def infer_or_exit(
+        value: str,
+    ) -> str:
+        """Infer a resource type and map ``ValueError`` to ``BadParameter``."""
+        try:
+            return ResourceTypeResolver.infer(value)
+        except ValueError as exc:  # pragma: no cover - exercised indirectly
+            raise typer.BadParameter(str(exc)) from exc
+
+    @staticmethod
+    def validate(
+        value: str | object,
+        choices: Collection[str],
+        *,
+        label: str,
+    ) -> str:
+        """Validate CLI input against a whitelist of choices."""
+        normalized_value = normalize_str(str(value or ''))
+        normalized_choices = {normalize_str(choice): choice for choice in choices}
+        if normalized_value in normalized_choices:
+            return normalized_choices[normalized_value]
+        allowed = ', '.join(sorted(choices))
+        raise typer.BadParameter(
+            f"Invalid {label} '{value}'. Choose from: {allowed}",
+        )
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def infer_soft(
+        cls,
+        value: str | None,
+    ) -> str | None:
+        """Make a best-effort inference that tolerates inline payloads."""
+        if value is None:
+            return None
+        try:
+            return infer_resource_type(value)
+        except ValueError:
+            return None
+
+    @classmethod
+    def optional_choice(
+        cls,
+        value: str | None,
+        choices: Collection[str],
+        *,
+        label: str,
+    ) -> str | None:
+        """Validate optional CLI choice inputs while preserving ``None``."""
+        if value is None:
+            return None
+        return validate_choice(value, choices, label=label)
+
+    @classmethod
+    def resolve(
+        cls,
+        *,
+        explicit_type: str | None,
+        override_type: str | None,
+        value: str,
+        label: str,
+        conflict_error: str | None = None,
+        legacy_file_error: str | None = None,
+    ) -> str:
+        """Resolve resource type preference order and validate it."""
+        if explicit_type is not None:
+            if override_type is not None and conflict_error:
+                raise typer.BadParameter(conflict_error)
+            if legacy_file_error and explicit_type.strip().lower() == 'file':
+                raise typer.BadParameter(legacy_file_error)
+            candidate = explicit_type
+        else:
+            candidate = override_type or infer_resource_type_or_exit(value)
+        return validate_choice(candidate, DATA_CONNECTORS, label=label)
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -110,29 +224,8 @@ def infer_resource_type(
     str
         The inferred resource type: ``file``, ``api``, or ``database``.
 
-    Raises
-    ------
-    ValueError
-        If inference fails.
     """
-    val = (value or '').strip()
-    low = val.lower()
-
-    match (val, low):
-        case ('-', _):
-            return 'file'
-        case (_, inferred) if inferred.startswith(('http://', 'https://')):
-            return 'api'
-        case (_, inferred) if inferred.startswith(_DB_SCHEMES):
-            return 'database'
-
-    path = Path(val)
-    if path.exists() or path.suffix:
-        return 'file'
-
-    raise ValueError(
-        'Could not infer resource type. Use --source-type/--target-type to specify it.',
-    )
+    return ResourceTypeResolver.infer(value)
 
 
 def infer_resource_type_or_exit(
@@ -151,15 +244,8 @@ def infer_resource_type_or_exit(
     str
         The inferred resource type: ``file``, ``api``, or ``database``.
 
-    Raises
-    ------
-    typer.BadParameter
-        If inference fails.
     """
-    try:
-        return infer_resource_type(value)
-    except ValueError as exc:  # pragma: no cover - exercised indirectly
-        raise typer.BadParameter(str(exc)) from exc
+    return ResourceTypeResolver.infer_or_exit(value)
 
 
 def infer_resource_type_soft(
@@ -178,12 +264,7 @@ def infer_resource_type_soft(
     str | None
         The inferred resource type, or ``None`` if inference failed.
     """
-    if value is None:
-        return None
-    try:
-        return infer_resource_type(value)
-    except ValueError:
-        return None
+    return ResourceTypeResolver.infer_soft(value)
 
 
 def log_inferred_resource(
@@ -238,9 +319,7 @@ def optional_choice(
     str | None
         The validated choice, or ``None`` if input was ``None``.
     """
-    if value is None:
-        return None
-    return validate_choice(value, choices, label=label)
+    return ResourceTypeResolver.optional_choice(value, choices, label=label)
 
 
 def resolve_resource_type(
@@ -277,21 +356,15 @@ def resolve_resource_type(
     str
         The resolved and validated resource type.
 
-    Raises
-    ------
-    typer.BadParameter
-        If there is a conflict between explicit and override types, or if the
-        explicit type is ``file`` when disallowed.
     """
-    if explicit_type is not None:
-        if override_type is not None and conflict_error:
-            raise typer.BadParameter(conflict_error)
-        if legacy_file_error and explicit_type.strip().lower() == 'file':
-            raise typer.BadParameter(legacy_file_error)
-        candidate = explicit_type
-    else:
-        candidate = override_type or infer_resource_type_or_exit(value)
-    return validate_choice(candidate, DATA_CONNECTORS, label=label)
+    return ResourceTypeResolver.resolve(
+        explicit_type=explicit_type,
+        override_type=override_type,
+        value=value,
+        label=label,
+        conflict_error=conflict_error,
+        legacy_file_error=legacy_file_error,
+    )
 
 
 def validate_choice(
@@ -317,16 +390,5 @@ def validate_choice(
     str
         The validated choice.
 
-    Raises
-    ------
-    typer.BadParameter
-        If the input value is not in the set of valid choices.
     """
-    v = normalize_str(str(value or ''))
-    normalized_choices = {normalize_str(c): c for c in choices}
-    if v in normalized_choices:
-        return normalized_choices[v]
-    allowed = ', '.join(sorted(choices))
-    raise typer.BadParameter(
-        f"Invalid {label} '{value}'. Choose from: {allowed}",
-    )
+    return ResourceTypeResolver.validate(value, choices, label=label)
