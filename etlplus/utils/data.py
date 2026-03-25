@@ -18,6 +18,7 @@ __all__ = [
     # Functions (data utilities)
     'count_records',
     'print_json',
+    'serialize_json',
 ]
 
 
@@ -45,6 +46,40 @@ def count_records(
     return len(data) if isinstance(data, list) else 1
 
 
+def serialize_json(
+    obj: Any,
+    *,
+    pretty: bool = False,
+    sort_keys: bool = False,
+) -> str:
+    """
+    Serialize *obj* as UTF-8 JSON without ASCII escaping.
+
+    Parameters
+    ----------
+    obj : Any
+        Object to serialize as JSON.
+    pretty : bool, optional
+        Whether to format output with indentation. Default is ``False``.
+    sort_keys : bool, optional
+        Whether to sort mapping keys for stable output. Default is ``False``.
+
+    Returns
+    -------
+    str
+        Serialized JSON text.
+    """
+    kwargs: dict[str, Any] = {
+        'ensure_ascii': False,
+        'sort_keys': sort_keys,
+    }
+    if pretty:
+        kwargs['indent'] = 2
+    else:
+        kwargs['separators'] = (',', ':')
+    return json.dumps(obj, **kwargs)
+
+
 def print_json(
     obj: Any,
 ) -> None:
@@ -61,4 +96,4 @@ def print_json(
     None
         This helper writes directly to STDOUT.
     """
-    print(json.dumps(obj, indent=2, ensure_ascii=False))
+    print(serialize_json(obj, pretty=True))
