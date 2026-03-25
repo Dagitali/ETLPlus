@@ -168,6 +168,40 @@ class HistoryView:
     # -- Class Methods -- #
 
     @classmethod
+    def emit_follow(
+        cls,
+        *,
+        job: str | None = None,
+        limit: int | None = None,
+        run_id: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+        status: str | None = None,
+    ) -> int:
+        """Stream newly observed raw history records until interrupted."""
+        seen: set[str] = set()
+        try:
+            while True:
+                records = _load_history_records(
+                    job=job,
+                    limit=limit,
+                    raw=True,
+                    run_id=run_id,
+                    since=since,
+                    until=until,
+                    status=status,
+                )
+                for record in reversed(records):
+                    fingerprint = cls.fingerprint(record)
+                    if fingerprint in seen:
+                        continue
+                    seen.add(fingerprint)
+                    _io.emit_json(record, pretty=False)
+                sleep(1.0)
+        except KeyboardInterrupt:
+            return 0
+
+    @classmethod
     def matches(
         cls,
         record: HistoryRecord,
@@ -232,40 +266,6 @@ class HistoryView:
             records = records[:limit]
         return records
 
-    @classmethod
-    def emit_follow(
-        cls,
-        *,
-        job: str | None = None,
-        limit: int | None = None,
-        run_id: str | None = None,
-        since: str | None = None,
-        until: str | None = None,
-        status: str | None = None,
-    ) -> int:
-        """Stream newly observed raw history records until interrupted."""
-        seen: set[str] = set()
-        try:
-            while True:
-                records = _load_history_records(
-                    job=job,
-                    limit=limit,
-                    raw=True,
-                    run_id=run_id,
-                    since=since,
-                    until=until,
-                    status=status,
-                )
-                for record in reversed(records):
-                    fingerprint = cls.fingerprint(record)
-                    if fingerprint in seen:
-                        continue
-                    seen.add(fingerprint)
-                    _io.emit_json(record, pretty=False)
-                sleep(1.0)
-        except KeyboardInterrupt:
-            return 0
-
 
 class HistoryReportBuilder:
     """Aggregation helpers for grouped history-report output."""
@@ -309,24 +309,6 @@ class HistoryReportBuilder:
         return round((succeeded / runs) * 100, 2)
 
     # -- Class Methods -- #
-
-    @classmethod
-    def update_duration_metrics(
-        cls,
-        bucket: dict[str, Any],
-        duration_ms: int,
-    ) -> None:
-        """Update duration-related metrics for one report bucket."""
-        cls.increment_metric(bucket, 'total_duration_ms', duration_ms)
-        cls.increment_metric(bucket, 'duration_samples', 1)
-        current_min = bucket.get('min_duration_ms')
-        current_max = bucket.get('max_duration_ms')
-        bucket['min_duration_ms'] = (
-            duration_ms if current_min is None else min(int(current_min), duration_ms)
-        )
-        bucket['max_duration_ms'] = (
-            duration_ms if current_max is None else max(int(current_max), duration_ms)
-        )
 
     @classmethod
     def build(
@@ -426,6 +408,24 @@ class HistoryReportBuilder:
             'rows': rows,
             'summary': summary,
         }
+
+    @classmethod
+    def update_duration_metrics(
+        cls,
+        bucket: dict[str, Any],
+        duration_ms: int,
+    ) -> None:
+        """Update duration-related metrics for one report bucket."""
+        cls.increment_metric(bucket, 'total_duration_ms', duration_ms)
+        cls.increment_metric(bucket, 'duration_samples', 1)
+        current_min = bucket.get('min_duration_ms')
+        current_max = bucket.get('max_duration_ms')
+        bucket['min_duration_ms'] = (
+            duration_ms if current_min is None else min(int(current_min), duration_ms)
+        )
+        bucket['max_duration_ms'] = (
+            duration_ms if current_max is None else max(int(current_max), duration_ms)
+        )
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
