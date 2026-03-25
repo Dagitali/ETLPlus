@@ -9,6 +9,7 @@ from __future__ import annotations
 from etlplus import utils as mod
 from etlplus.utils.data import count_records
 from etlplus.utils.data import print_json
+from etlplus.utils.data import serialize_json
 from etlplus.utils.mapping import cast_str_dict
 from etlplus.utils.mapping import coerce_dict
 from etlplus.utils.mapping import maybe_mapping
@@ -40,6 +41,7 @@ class TestUtilsPackageExports:
         assert mod.__all__ == [
             'count_records',
             'print_json',
+            'serialize_json',
             'cast_str_dict',
             'coerce_dict',
             'deep_substitute',
@@ -58,6 +60,7 @@ class TestUtilsPackageExports:
         ]
         assert mod.count_records is count_records
         assert mod.print_json is print_json
+        assert mod.serialize_json is serialize_json
         assert mod.cast_str_dict is cast_str_dict
         assert mod.coerce_dict is coerce_dict
         assert mod.deep_substitute is deep_substitute
