@@ -39,11 +39,10 @@ EVENT_SCHEMA_VERSION = 1
 class RuntimeEvents:
     """Shared factory and emitter helpers for structured runtime events."""
 
-    # -- Class Methods -- #
+    # -- Static Methods -- #
 
-    @classmethod
+    @staticmethod
     def build(
-        cls,
         *,
         command: str,
         lifecycle: str,
@@ -72,26 +71,23 @@ class RuntimeEvents:
         dict[str, Any]
             Structured event payload.
         """
-        event = {
+        return {
             'command': command,
             'event': f'{command}.{lifecycle}',
             'lifecycle': lifecycle,
             'run_id': run_id,
             'schema': EVENT_SCHEMA,
             'schema_version': EVENT_SCHEMA_VERSION,
-            'timestamp': timestamp or cls.utc_now_iso(),
-        }
-        event.update(fields)
-        return event
+            'timestamp': timestamp or RuntimeEvents.utc_now_iso(),
+        } | fields
 
-    @classmethod
-    def create_run_id(cls) -> str:
+    @staticmethod
+    def create_run_id() -> str:
         """Return a new stable invocation identifier."""
         return str(uuid4())
 
-    @classmethod
+    @staticmethod
     def emit(
-        cls,
         event: dict[str, Any],
         *,
         event_format: str | None,
@@ -111,7 +107,7 @@ class RuntimeEvents:
             return
         print(serialize_json(event), file=sys.stderr)
 
-    @classmethod
-    def utc_now_iso(cls) -> str:
+    @staticmethod
+    def utc_now_iso() -> str:
         """Return the current UTC timestamp as ISO-8601 text."""
         return datetime.now(UTC).isoformat()
