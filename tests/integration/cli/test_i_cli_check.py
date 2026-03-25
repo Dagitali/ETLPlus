@@ -147,10 +147,12 @@ class TestCliCheck:
         """Test that readiness flags missing optional storage dependencies."""
         from etlplus.runtime import readiness as readiness_module
 
-        original_package_available = readiness_module._package_available
+        original_package_available = (
+            readiness_module.ReadinessReportBuilder.package_available
+        )
         monkeypatch.setattr(
-            readiness_module,
-            '_package_available',
+            readiness_module.ReadinessReportBuilder,
+            'package_available',
             lambda module_name: (
                 False
                 if module_name == 'boto3'
