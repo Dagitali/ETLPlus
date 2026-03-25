@@ -522,6 +522,16 @@ def _elapsed_ms(
     return int((perf_counter() - started_perf) * 1000)
 
 
+def _emit_check_payload(
+    payload: Any,
+    *,
+    pretty: bool,
+) -> int:
+    """Emit one JSON payload for the check command and return success."""
+    _io.emit_json(payload, pretty=pretty)
+    return 0
+
+
 def _emit_failure_event(
     *,
     command: str,
@@ -545,6 +555,16 @@ def _emit_failure_event(
     )
 
 
+def _emit_json_payload(
+    payload: Any,
+    *,
+    pretty: bool,
+) -> int:
+    """Emit one JSON payload and return success."""
+    _io.emit_json(payload, pretty=pretty)
+    return 0
+
+
 def _emit_lifecycle_event(
     *,
     command: str,
@@ -563,6 +583,23 @@ def _emit_lifecycle_event(
         ),
         event_format=event_format,
     )
+
+
+def _emit_or_write_payload(
+    payload: Any,
+    output_path: str | None,
+    *,
+    pretty: bool,
+    success_message: str,
+) -> int:
+    """Emit one payload to stdout or write it to the requested output path."""
+    _io.emit_or_write(
+        payload,
+        output_path,
+        pretty=pretty,
+        success_message=success_message,
+    )
+    return 0
 
 
 def _complete_command(
@@ -693,13 +730,68 @@ def _validate_history_output_mode(
     HistoryView.validate_output_mode(json_output=json_output, table=table)
 
 
-def _emit_check_payload(
+def _complete_and_emit_json(
+    context: _CommandContext,
     payload: Any,
     *,
     pretty: bool,
+    **fields: Any,
 ) -> int:
-    """Emit one JSON payload for the check command and return success."""
-    _io.emit_json(payload, pretty=pretty)
+    """Emit the completion event for *context* and then emit one JSON payload."""
+    _complete_command(context, **fields)
+    return _emit_json_payload(payload, pretty=pretty)
+
+
+def _complete_and_emit_or_write(
+    context: _CommandContext,
+    payload: Any,
+    output_path: str | None,
+    *,
+    pretty: bool,
+    success_message: str,
+    **fields: Any,
+) -> int:
+    """Emit completion for *context* and route payload to stdout or file."""
+    _complete_command(context, **fields)
+    return _emit_or_write_payload(
+        payload,
+        output_path,
+        pretty=pretty,
+        success_message=success_message,
+    )
+
+
+def _complete_and_write_file_payload(
+    context: _CommandContext,
+    payload: JSONData,
+    output_target: str,
+    *,
+    format_hint: str | None,
+    success_message: str,
+    **fields: Any,
+) -> int:
+    """Emit completion for *context*, write one file payload, and confirm it."""
+    _complete_command(context, **fields)
+    _write_file_payload(payload, output_target, format_hint=format_hint)
+    print(f'{success_message} {output_target}')
+    return 0
+
+
+def _complete_and_write_json_output(
+    context: _CommandContext,
+    payload: Any,
+    output_target: str,
+    *,
+    success_message: str,
+    **fields: Any,
+) -> int:
+    """Emit completion for *context* and write one JSON payload to *target*."""
+    _complete_command(context, **fields)
+    _io.write_json_output(
+        payload,
+        output_target,
+        success_message=success_message,
+    )
     return 0
 
 
@@ -1044,16 +1136,15 @@ def extract_handler(
                 text,
                 format_hint,
             )
-            _complete_command(
+            return _complete_and_emit_json(
                 context,
+                payload,
+                pretty=pretty,
                 result_status='ok',
                 status='ok',
                 source=source,
                 source_type=source_type,
             )
-            _io.emit_json(payload, pretty=pretty)
-
-            return 0
 
         result = extract(
             source_type,
@@ -1062,20 +1153,17 @@ def extract_handler(
         )
         output_path = target or output
 
-        _complete_command(
+        return _complete_and_emit_or_write(
             context,
+            result,
+            output_path,
+            pretty=pretty,
+            success_message='Data extracted and saved to',
             destination=output_path or 'stdout',
             result_status='ok',
             source=source,
             source_type=source_type,
             status='ok',
-        )
-
-        _io.emit_or_write(
-            result,
-            output_path,
-            pretty=pretty,
-            success_message='Data extracted and saved to',
         )
     except Exception as exc:
         _fail_command(
@@ -1085,8 +1173,6 @@ def extract_handler(
             source_type=source_type,
         )
         raise
-
-    return 0
 
 
 def load_handler(
@@ -1167,16 +1253,16 @@ def load_handler(
                 format_hint=source_format,
                 format_explicit=source_format is not None,
             )
-            _complete_command(
+            return _complete_and_emit_json(
                 context,
+                payload,
+                pretty=pretty,
                 result_status='ok',
                 source=source,
                 status='ok',
                 target=target,
                 target_type=target_type,
             )
-            _io.emit_json(payload, pretty=pretty)
-            return 0
 
         result = load(
             source_value,
@@ -1186,20 +1272,18 @@ def load_handler(
         )
 
         output_path = output
-        _complete_command(
+        return _complete_and_emit_or_write(
             context,
+            result,
+            output_path,
+            pretty=pretty,
+            success_message='Load result saved to',
             destination=output_path or 'stdout',
             result_status=result.get('status') if isinstance(result, dict) else 'ok',
             source=source,
             status='ok',
             target=target,
             target_type=target_type,
-        )
-        _io.emit_or_write(
-            result,
-            output_path,
-            pretty=pretty,
-            success_message='Load result saved to',
         )
     except Exception as exc:
         _fail_command(
@@ -1210,8 +1294,6 @@ def load_handler(
             target_type=target_type,
         )
         raise
-
-    return 0
 
 
 def render_handler(
@@ -1462,11 +1544,10 @@ def run_handler(
             result_status=result.get('status'),
             status='ok',
         )
-        _io.emit_json(
+        return _emit_json_payload(
             {'run_id': context.run_id, 'status': 'ok', 'result': result},
             pretty=pretty,
         )
-        return 0
 
     _io.emit_json(_pipeline_summary(cfg), pretty=pretty)
     return 0
@@ -1607,38 +1688,40 @@ def transform_handler(
                     target,
                     file_format=target_format if format_explicit else None,
                 )
-                _complete_command(
+                return _complete_and_emit_json(
                     context,
+                    result,
+                    pretty=pretty,
                     result_status='ok',
                     source=source,
                     status='ok',
                     target=target,
                     target_type=resolved_target_type,
                 )
-                _io.emit_json(result, pretty=pretty)
-                return 0
 
-            _complete_command(
+            return _complete_and_write_file_payload(
                 context,
+                data,
+                target,
+                format_hint=target_format,
+                success_message='Data transformed and saved to',
                 result_status='ok',
                 source=source,
                 status='ok',
                 target=target,
                 target_type=target_type or 'file',
             )
-            _write_file_payload(data, target, format_hint=target_format)
-            print(f'Data transformed and saved to {target}')
-            return 0
 
-        _complete_command(
+        return _complete_and_emit_json(
             context,
+            data,
+            pretty=pretty,
             result_status='ok',
             source=source,
             status='ok',
             target=target or 'stdout',
             target_type=target_type,
         )
-        _io.emit_json(data, pretty=pretty)
     except Exception as exc:
         _fail_command(
             context,
@@ -1648,8 +1731,6 @@ def transform_handler(
             target_type=target_type,
         )
         raise
-
-    return 0
 
 
 def validate_handler(
@@ -1729,34 +1810,33 @@ def validate_handler(
         if target and target != '-':
             validated_data = result.get('data')
             if validated_data is not None:
-                _complete_command(
+                return _complete_and_write_json_output(
                     context,
+                    validated_data,
+                    target,
+                    success_message='ValidationDict result saved to',
                     result_status='ok',
                     source=source,
                     status='ok',
                     target=target,
                     valid=result.get('valid'),
                 )
-                _io.write_json_output(
-                    validated_data,
-                    target,
-                    success_message='ValidationDict result saved to',
-                )
-            else:
-                print(
-                    f'ValidationDict failed, no data to save for {target}',
-                    file=sys.stderr,
-                )
-        else:
-            _complete_command(
-                context,
-                result_status='ok',
-                source=source,
-                status='ok',
-                target=target or 'stdout',
-                valid=result.get('valid'),
+            print(
+                f'ValidationDict failed, no data to save for {target}',
+                file=sys.stderr,
             )
-            _io.emit_json(result, pretty=pretty)
+            return 0
+
+        return _complete_and_emit_json(
+            context,
+            result,
+            pretty=pretty,
+            result_status='ok',
+            source=source,
+            status='ok',
+            target=target or 'stdout',
+            valid=result.get('valid'),
+        )
     except Exception as exc:
         _fail_command(
             context,
@@ -1765,5 +1845,3 @@ def validate_handler(
             target=target or 'stdout',
         )
         raise
-
-    return 0
