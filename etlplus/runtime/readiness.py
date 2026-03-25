@@ -314,16 +314,17 @@ class ReadinessReportBuilder:
             ]
 
         has_error = any(row['severity'] == 'error' for row in rows)
+        errors = sum(1 for row in rows if row['severity'] == 'error')
+        warnings = sum(1 for row in rows if row['severity'] == 'warn')
         return [
             cls.make_check(
                 'provider-environment',
                 'error' if has_error else 'warn',
                 (
-                    'Configured connectors have provider-specific environment '
-                    'gaps that should be resolved before execution.'
+                    f'Provider environment gaps: {errors} error(s), '
+                    f'{warnings} warning(s).'
                     if has_error
-                    else 'Configured connectors rely on provider credential '
-                    'resolution with no explicit environment hints.'
+                    else f'Provider environment warnings: {warnings}.'
                 ),
                 environment_gaps=rows,
             ),
