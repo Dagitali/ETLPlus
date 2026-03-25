@@ -23,12 +23,6 @@ __all__ = [
     # Constants
     'EVENT_SCHEMA',
     'EVENT_SCHEMA_VERSION',
-    'RuntimeEvents',
-    'build_structured_event',
-    # Functions
-    'create_run_id',
-    'emit_structured_event',
-    'utc_now_iso',
 ]
 
 
@@ -121,74 +115,3 @@ class RuntimeEvents:
     def utc_now_iso(cls) -> str:
         """Return the current UTC timestamp as ISO-8601 text."""
         return datetime.now(UTC).isoformat()
-
-
-# TODO: Replace with RuntimeEvents.build.
-def build_structured_event(
-    *,
-    command: str,
-    lifecycle: str,
-    run_id: str,
-    timestamp: str | None = None,
-    **fields: Any,
-) -> dict[str, Any]:
-    """
-    Build a stable structured runtime event envelope.
-
-    Parameters
-    ----------
-    command : str
-        CLI command that emitted the event.
-    lifecycle : str
-        Lifecycle stage such as ``started``, ``completed``, or ``failed``.
-    run_id : str
-        Stable invocation identifier for the command run.
-    timestamp : str | None, optional
-        Explicit timestamp override. Defaults to the current UTC time.
-    **fields : Any
-        Additional command-specific event fields.
-
-    Returns
-    -------
-    dict[str, Any]
-        Structured event payload.
-    """
-    return RuntimeEvents.build(
-        command=command,
-        lifecycle=lifecycle,
-        run_id=run_id,
-        timestamp=timestamp,
-        **fields,
-    )
-
-
-# TODO: Replace with RuntimeEvents.create_run_id.
-def create_run_id() -> str:
-    """Return a new stable invocation identifier."""
-    return RuntimeEvents.create_run_id()
-
-
-# TODO: Replace with RuntimeEvents.emit.
-def emit_structured_event(
-    event: dict[str, Any],
-    *,
-    event_format: str | None,
-) -> None:
-    """
-    Emit one structured runtime event to STDERR.
-
-    Parameters
-    ----------
-    event : dict[str, Any]
-        Event payload to serialize.
-    event_format : str | None
-        Structured event format selector. Only ``jsonl`` is currently
-        supported; falsy values disable emission.
-    """
-    RuntimeEvents.emit(event, event_format=event_format)
-
-
-# TODO: Replace with RuntimeEvents.utc_now_iso.
-def utc_now_iso() -> str:
-    """Return the current UTC timestamp as ISO-8601 text."""
-    return RuntimeEvents.utc_now_iso()
