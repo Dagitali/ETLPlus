@@ -25,7 +25,6 @@ from ..file import File
 from ..file import FileFormat
 from ..history import HistoryStore
 from ..history import build_run_record
-from ..history import iter_history_runs
 from ..ops import extract
 from ..ops import load
 from ..ops import run
@@ -195,7 +194,7 @@ class HistoryView:
         parsed_until = cls.parse_timestamp(until)
         history_store = HistoryStore.from_environment()
         records_iter = (
-            history_store.iter_records() if raw else iter_history_runs(history_store)
+            history_store.iter_records() if raw else history_store.iter_runs()
         )
         records = [
             dict(record)
