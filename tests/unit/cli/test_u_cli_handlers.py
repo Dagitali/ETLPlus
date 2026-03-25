@@ -441,9 +441,9 @@ class TestHistoryHandler:
                 )
 
         monkeypatch.setattr(
-            handlers,
-            'open_history_store',
-            _FakeHistoryStore,
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
         )
 
         assert handlers.history_handler(pretty=True) == 0
@@ -500,9 +500,9 @@ class TestHistoryHandler:
                 )
 
         monkeypatch.setattr(
-            handlers,
-            'open_history_store',
-            _FakeHistoryStore,
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
         )
 
         assert handlers.history_handler(raw=True, limit=1, pretty=False) == 0
@@ -540,7 +540,11 @@ class TestHistoryHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert handlers.history_handler(json_output=True, pretty=False) == 0
 
@@ -604,7 +608,11 @@ class TestHistoryHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert (
             handlers.history_handler(
@@ -686,7 +694,11 @@ class TestHistoryHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert (
             handlers.history_handler(
@@ -789,7 +801,11 @@ class TestHistoryHandler:
             def iter_records(self) -> Any:
                 return iter([])
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         with pytest.raises(ValueError, match='choose either json output'):
             handlers.history_handler(json_output=True, table=True)
@@ -828,7 +844,11 @@ class TestReportHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert (
             handlers.report_handler(
@@ -897,7 +917,11 @@ class TestReportHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert handlers.report_handler(group_by='status', table=True) == 0
 
@@ -969,7 +993,11 @@ class TestReportHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert handlers.report_handler(group_by='day', pretty=False) == 0
 
@@ -1418,9 +1446,9 @@ class TestRunHandler:
                 }
 
         monkeypatch.setattr(
-            handlers,
-            'open_history_store',
-            _FakeHistoryStore,
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
         )
         run_calls: dict[str, object] = {}
 
@@ -1492,7 +1520,11 @@ class TestStatusHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert handlers.status_handler(job='job-a', pretty=True) == 0
 
@@ -1532,7 +1564,11 @@ class TestStatusHandler:
             def iter_records(self) -> Any:
                 return iter([])
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert handlers.status_handler(run_id='missing', pretty=False) == 1
 
