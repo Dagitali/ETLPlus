@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+from collections.abc import Mapping
 from typing import IO
 from typing import Final
 
@@ -53,7 +54,7 @@ def resolve_log_level(
     *,
     quiet: bool = False,
     verbose: bool = False,
-    env: dict[str, str] | None = None,
+    env: Mapping[str, str] | None = None,
 ) -> int:
     """
     Resolve the effective log level for the current runtime.
@@ -65,7 +66,7 @@ def resolve_log_level(
         verbose mode. Default is ``False``.
     verbose : bool, optional
         Whether verbose mode is enabled. Default is ``False``.
-    env : dict[str, str] | None, optional
+    env : Mapping[str, str] | None, optional
         Optional environment mapping used instead of :data:`os.environ`.
 
     Returns
@@ -73,7 +74,7 @@ def resolve_log_level(
     int
         A :mod:`logging` level constant.
     """
-    env_map = env or dict(os.environ)
+    env_map = os.environ if env is None else env
     explicit = (env_map.get('ETLPLUS_LOG_LEVEL') or '').strip().upper()
     if explicit in _LOG_LEVELS:
         return _LOG_LEVELS[explicit]
@@ -90,7 +91,7 @@ def configure_logging(
     verbose: bool = False,
     stream: IO[str] | None = None,
     force: bool = False,
-    env: dict[str, str] | None = None,
+    env: Mapping[str, str] | None = None,
 ) -> int:
     """
     Configure the process-wide logging baseline for ETLPlus runtime code.
@@ -106,7 +107,7 @@ def configure_logging(
     force : bool, optional
         Whether to override any existing root logging handlers. Default is
         ``False``.
-    env : dict[str, str] | None, optional
+    env : Mapping[str, str] | None, optional
         Optional environment mapping used instead of :data:`os.environ`.
 
     Returns
