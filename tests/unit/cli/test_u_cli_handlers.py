@@ -40,26 +40,9 @@ class _ReadOnlyFakeHistoryStore(handlers.HistoryStore):
 
     def record_run_finished(
         self,
-        run_id: str,
-        *,
-        status: str,
-        finished_at: str,
-        duration_ms: int,
-        result_summary: object | None = None,
-        error_type: str | None = None,
-        error_message: str | None = None,
-        error_traceback: str | None = None,
+        completion: object,
     ) -> None:
-        _ = (
-            run_id,
-            status,
-            finished_at,
-            duration_ms,
-            result_summary,
-            error_type,
-            error_message,
-            error_traceback,
-        )
+        _ = completion
 
 
 # SECTION: TESTS ============================================================ #
@@ -1556,25 +1539,18 @@ class TestRunHandler:
 
             def record_run_finished(
                 self,
-                run_id: str,
-                *,
-                status: str,
-                finished_at: str,
-                duration_ms: int,
-                result_summary: object | None = None,
-                error_type: str | None = None,
-                error_message: str | None = None,
-                error_traceback: str | None = None,
+                completion: object,
             ) -> None:
+                completion_obj = cast(handlers.RunCompletion, completion)
                 history_calls['finished'] = {
-                    'duration_ms': duration_ms,
-                    'error_message': error_message,
-                    'error_traceback': error_traceback,
-                    'error_type': error_type,
-                    'finished_at': finished_at,
-                    'result_summary': result_summary,
-                    'run_id': run_id,
-                    'status': status,
+                    'duration_ms': completion_obj.duration_ms,
+                    'error_message': completion_obj.error_message,
+                    'error_traceback': completion_obj.error_traceback,
+                    'error_type': completion_obj.error_type,
+                    'finished_at': completion_obj.finished_at,
+                    'result_summary': completion_obj.result_summary,
+                    'run_id': completion_obj.run_id,
+                    'status': completion_obj.status,
                 }
 
         monkeypatch.setattr(
