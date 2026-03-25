@@ -24,6 +24,7 @@ from ..database import render_tables
 from ..file import File
 from ..file import FileFormat
 from ..history import HistoryStore
+from ..history import RunCompletion
 from ..history import build_run_record
 from ..ops import extract
 from ..ops import load
@@ -1359,12 +1360,14 @@ def run_handler(
         except Exception as exc:
             duration_ms = int((perf_counter() - started_perf) * 1000)
             history_store.record_run_finished(
-                run_id,
-                status='failed',
-                finished_at=RuntimeEvents.utc_now_iso(),
-                duration_ms=duration_ms,
-                error_type=type(exc).__name__,
-                error_message=str(exc),
+                RunCompletion(
+                    run_id=run_id,
+                    status='failed',
+                    finished_at=RuntimeEvents.utc_now_iso(),
+                    duration_ms=duration_ms,
+                    error_type=type(exc).__name__,
+                    error_message=str(exc),
+                ),
             )
             _emit_failure_event(
                 command='run',
@@ -1380,11 +1383,13 @@ def run_handler(
 
         duration_ms = int((perf_counter() - started_perf) * 1000)
         history_store.record_run_finished(
-            run_id,
-            status='succeeded',
-            finished_at=RuntimeEvents.utc_now_iso(),
-            duration_ms=duration_ms,
-            result_summary=cast(JSONData | None, result),
+            RunCompletion(
+                run_id=run_id,
+                status='succeeded',
+                finished_at=RuntimeEvents.utc_now_iso(),
+                duration_ms=duration_ms,
+                result_summary=cast(JSONData | None, result),
+            ),
         )
         _emit_lifecycle_event(
             command='run',
