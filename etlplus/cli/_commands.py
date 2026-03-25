@@ -55,7 +55,6 @@ from ._options import typer_format_option_kwargs
 from ._state import CliState
 from ._state import ResourceTypeResolver
 from ._state import ensure_state
-from ._state import infer_resource_type_or_exit
 from ._state import infer_resource_type_soft
 from ._state import log_inferred_resource
 from ._state import optional_choice
@@ -653,21 +652,21 @@ def extract_cmd(
         typer.echo("Error: Missing required argument 'SOURCE'.", err=True)
         raise typer.Exit(2)
 
-    source_type = optional_choice(
+    source_type = ResourceTypeResolver.optional_choice(
         source_type,
         DATA_CONNECTORS,
         label='source_type',
     )
     source_format = cast(
         SourceFormatOption,
-        optional_choice(
+        ResourceTypeResolver.optional_choice(
             source_format,
             FILE_FORMATS,
             label='source_format',
         ),
     )
 
-    resolved_source_type = source_type or infer_resource_type_or_exit(source)
+    resolved_source_type = source_type or ResourceTypeResolver.infer_or_exit(source)
 
     log_inferred_resource(
         state,
