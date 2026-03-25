@@ -280,12 +280,11 @@ class ReadinessReportBuilder:
             if path:
                 scheme = _coerce_storage_scheme(path)
                 if scheme in _SCHEME_EXTRA_REQUIREMENTS:
-                    module_names, pip_name, extra_name = (
-                        _SCHEME_EXTRA_REQUIREMENTS[scheme]
-                    )
+                    module_names, pip_name, extra_name = _SCHEME_EXTRA_REQUIREMENTS[
+                        scheme
+                    ]
                     if not any(
-                        _package_available(module_name)
-                        for module_name in module_names
+                        _package_available(module_name) for module_name in module_names
                     ):
                         rows.append(
                             {
@@ -299,9 +298,8 @@ class ReadinessReportBuilder:
 
             if format_name == 'nc':
                 has_xarray = _package_available('xarray')
-                has_engine = (
-                    _package_available('netCDF4')
-                    or _package_available('h5netcdf')
+                has_engine = _package_available('netCDF4') or _package_available(
+                    'h5netcdf',
                 )
                 if not (has_xarray and has_engine):
                     rows.append(
@@ -310,8 +308,7 @@ class ReadinessReportBuilder:
                             'extra': 'file',
                             'missing_package': 'xarray/netCDF4',
                             'reason': (
-                                'nc format requires xarray and '
-                                'netCDF4 or h5netcdf'
+                                'nc format requires xarray and netCDF4 or h5netcdf'
                             ),
                             'role': role,
                         },
@@ -319,12 +316,11 @@ class ReadinessReportBuilder:
                 continue
 
             if format_name in _FORMAT_EXTRA_REQUIREMENTS:
-                module_names, pip_name, extra_name = (
-                    _FORMAT_EXTRA_REQUIREMENTS[format_name]
-                )
+                module_names, pip_name, extra_name = _FORMAT_EXTRA_REQUIREMENTS[
+                    format_name
+                ]
                 if not any(
-                    _package_available(module_name)
-                    for module_name in module_names
+                    _package_available(module_name) for module_name in module_names
                 ):
                     rows.append(
                         {
