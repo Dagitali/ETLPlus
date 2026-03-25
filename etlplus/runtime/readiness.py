@@ -270,6 +270,271 @@ class ReadinessReportBuilder:
         return bool(separator and account_host)
 
     @classmethod
+    def build(
+        cls,
+        *,
+        config_path: str | None = None,
+        env: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Build a runtime readiness report for the current ETLPlus environment.
+
+        Parameters
+        ----------
+        config_path : str | None, optional
+            Optional pipeline configuration file to validate. Default is ``None``.
+        env : Mapping[str, str] | None, optional
+            Optional environment mapping used instead of :data:`os.environ`.
+
+        Returns
+        -------
+        dict[str, Any]
+            JSON-serializable readiness report.
+        """
+        checks: list[dict[str, Any]] = [cls.supported_python_check()]
+
+        if config_path:
+            try:
+                checks.extend(cls.config_checks(config_path, env=env))
+            except (OSError, TypeError, ValueError) as exc:
+                checks.append(
+                    cls.make_check(
+                        'config-parse',
+                        'error',
+                        str(exc),
+                        path=config_path,
+                    ),
+                )
+        else:
+            checks.append(
+                cls.make_check(
+                    'config-file',
+                    'skipped',
+                    (
+                        'No configuration file provided; only runtime '
+                        'checks were performed.'
+                    ),
+                ),
+            )
+
+        return {
+            'status': cls.overall_status(checks),
+            'etlplus_version': __version__,
+            'python_version': cls.python_version(),
+            'checks': checks,
+        }
+
+    @classmethod
+    def config_checks(
+        cls,
+        config_path: str,
+        *,
+        env: Mapping[str, str] | None,
+    ) -> list[dict[str, Any]]:
+        """Return readiness checks for one pipeline config path."""
+        checks: list[dict[str, Any]] = []
+        path = Path(config_path)
+        if not path.exists():
+            return [
+                cls.make_check(
+                    'config-file',
+                    'error',
+                    f'Configuration file does not exist: {path}',
+                    path=str(path),
+                ),
+            ]
+
+        checks.append(
+            cls.make_check(
+                'config-file',
+                'ok',
+                f'Configuration file exists: {path}',
+                path=str(path),
+            ),
+        )
+
+        raw = cls.load_raw_config(str(path))
+        checks.append(
+            cls.make_check(
+                'config-parse',
+                'ok',
+                'Configuration YAML parsed successfully.',
+            ),
+        )
+
+        cfg = Config.from_dict(raw)
+        effective_env = cls.effective_environment(cfg, env)
+        resolved = deep_substitute(raw, cfg.vars, effective_env)
+        unresolved = sorted(cls.collect_substitution_tokens(resolved))
+
+        if unresolved:
+            checks.append(
+                cls.make_check(
+                    'config-substitution',
+                    'error',
+                    'Configuration still contains unresolved substitution tokens.',
+                    unresolved_tokens=unresolved,
+                ),
+            )
+            return checks
+
+        resolved_cfg = Config.from_dict(cast(StrAnyMap, resolved))
+        checks.append(
+            cls.make_check(
+                'config-substitution',
+                'ok',
+                'Configuration substitutions resolved successfully.',
+            ),
+        )
+        checks.extend(cls.connector_readiness_checks(resolved_cfg))
+        checks.extend(
+            cls.provider_environment_checks(
+                cfg=resolved_cfg,
+                env=effective_env,
+            ),
+        )
+        return checks
+
+    @classmethod
+    def connector_gap_rows(
+        cls,
+        cfg: Config,
+    ) -> list[dict[str, Any]]:
+        """Return connector configuration gaps that will block execution."""
+        gaps: list[dict[str, Any]] = []
+        for role, connector in cls.iter_connectors(cfg):
+            connector_name = str(getattr(connector, 'name', '<unnamed>'))
+            connector_type = str(getattr(connector, 'type', ''))
+            coerced_type = cls.connector_type(connector_type)
+
+            if coerced_type is None:
+                gaps.append(
+                    {
+                        'connector': connector_name,
+                        'guidance': cls.connector_type_guidance(connector_type),
+                        'issue': 'unsupported type',
+                        'role': role,
+                        'supported_types': list(cls.connector_type_choices()),
+                        'type': connector_type,
+                    },
+                )
+                continue
+
+            if coerced_type == DataConnectorType.FILE:
+                path = getattr(connector, 'path', None)
+                if not path:
+                    gaps.append(
+                        {
+                            'connector': connector_name,
+                            'issue': 'missing path',
+                            'role': role,
+                            'type': connector_type,
+                        },
+                    )
+            elif coerced_type == DataConnectorType.API:
+                url = getattr(connector, 'url', None)
+                api_ref = getattr(connector, 'api', None)
+                if not url and not api_ref:
+                    gaps.append(
+                        {
+                            'connector': connector_name,
+                            'issue': 'missing url or api reference',
+                            'role': role,
+                            'type': connector_type,
+                        },
+                    )
+                elif api_ref and api_ref not in cfg.apis:
+                    gaps.append(
+                        {
+                            'connector': connector_name,
+                            'issue': f'unknown api reference: {api_ref}',
+                            'role': role,
+                            'type': connector_type,
+                        },
+                    )
+            elif coerced_type == DataConnectorType.DATABASE:
+                connection_string = getattr(connector, 'connection_string', None)
+                if not connection_string:
+                    gaps.append(
+                        {
+                            'connector': connector_name,
+                            'issue': 'missing connection_string',
+                            'role': role,
+                            'type': connector_type,
+                        },
+                    )
+
+        return gaps
+
+    @classmethod
+    def connector_readiness_checks(
+        cls,
+        cfg: Config,
+    ) -> list[dict[str, Any]]:
+        """Return connector configuration and dependency readiness checks."""
+        checks: list[dict[str, Any]] = []
+
+        gaps = cls.connector_gap_rows(cfg)
+        if gaps:
+            checks.append(
+                cls.make_check(
+                    'connector-readiness',
+                    'error',
+                    (
+                        'One or more configured connectors are missing required '
+                        'runtime fields or use unsupported connector types.'
+                    ),
+                    gaps=gaps,
+                ),
+            )
+        else:
+            checks.append(
+                cls.make_check(
+                    'connector-readiness',
+                    'ok',
+                    'Configured connectors include the required runtime fields.',
+                ),
+            )
+
+        missing_requirements = cls.missing_requirement_rows(cfg=cfg)
+        if missing_requirements:
+            checks.append(
+                cls.make_check(
+                    'optional-dependencies',
+                    'error',
+                    (
+                        'Configured connectors require optional dependencies that '
+                        'are not installed.'
+                    ),
+                    missing_requirements=missing_requirements,
+                ),
+            )
+        else:
+            checks.append(
+                cls.make_check(
+                    'optional-dependencies',
+                    'ok',
+                    (
+                        'No missing optional dependencies were detected for '
+                        'configured connectors.'
+                    ),
+                ),
+            )
+
+        return checks
+
+    @classmethod
+    def connector_type(
+        cls,
+        connector_type: str,
+    ) -> DataConnectorType | None:
+        """Return one coerced connector type or ``None`` when unsupported."""
+        try:
+            return DataConnectorType.coerce(connector_type)
+        except ValueError:
+            return None
+
+    @classmethod
     def connector_type_choices(cls) -> tuple[str, ...]:
         """Return the supported connector type names."""
         return tuple(str(member.value) for member in DataConnectorType)
@@ -294,6 +559,67 @@ class ReadinessReportBuilder:
             )
 
         return f'Use one of the supported connector types: {supported}.'
+
+    @classmethod
+    def missing_requirement_rows(
+        cls,
+        *,
+        cfg: Config,
+    ) -> list[dict[str, str]]:
+        """Return missing optional dependency rows for configured connectors."""
+        rows: list[dict[str, str]] = []
+
+        for role, connector in cls.iter_connectors(cfg):
+            connector_name = str(getattr(connector, 'name', '<unnamed>'))
+            path = getattr(connector, 'path', None)
+            format_name = str(getattr(connector, 'format', '') or '').lower()
+
+            if path:
+                scheme = cls.coerce_storage_scheme(path)
+                if scheme and (requirement := _SCHEME_EXTRA_REQUIREMENTS.get(scheme)):
+                    if not cls.requirement_available(requirement):
+                        rows.append(
+                            cls.requirement_row(
+                                connector=connector_name,
+                                reason=(
+                                    f'{scheme} storage path requires '
+                                    f'{requirement.package}'
+                                ),
+                                requirement=requirement,
+                                role=role,
+                            ),
+                        )
+
+            if format_name == 'nc':
+                if not cls.netcdf_available():
+                    rows.append(
+                        {
+                            'connector': connector_name,
+                            'extra': 'file',
+                            'missing_package': 'xarray/netCDF4',
+                            'reason': (
+                                'nc format requires xarray and netCDF4 or h5netcdf'
+                            ),
+                            'role': role,
+                        },
+                    )
+                continue
+
+            if requirement := _FORMAT_EXTRA_REQUIREMENTS.get(format_name):
+                if not cls.requirement_available(requirement):
+                    rows.append(
+                        cls.requirement_row(
+                            connector=connector_name,
+                            reason=(
+                                f'{format_name} format requires '
+                                f'{requirement.package}'
+                            ),
+                            requirement=requirement,
+                            role=role,
+                        ),
+                    )
+
+        return cls.dedupe_rows(rows)
 
     @classmethod
     def provider_environment_checks(
@@ -433,23 +759,25 @@ class ReadinessReportBuilder:
         return rows
 
     @classmethod
-    def connector_type(
-        cls,
-        connector_type: str,
-    ) -> DataConnectorType | None:
-        """Return one coerced connector type or ``None`` when unsupported."""
-        try:
-            return DataConnectorType.coerce(connector_type)
-        except ValueError:
-            return None
-
-    @classmethod
     def netcdf_available(cls) -> bool:
         """Return whether netCDF support dependencies are installed."""
         return cls.package_available('xarray') and (
             cls.package_available('netCDF4')
             or cls.package_available('h5netcdf')
         )
+
+    @classmethod
+    def overall_status(
+        cls,
+        checks: list[dict[str, Any]],
+    ) -> Literal['ok', 'warn', 'error']:
+        """Return aggregate status from individual check rows."""
+        statuses = {cast(CheckStatus, check['status']) for check in checks}
+        if 'error' in statuses:
+            return 'error'
+        if 'warn' in statuses:
+            return 'warn'
+        return 'ok'
 
     @classmethod
     def python_version(cls) -> str:
@@ -490,19 +818,6 @@ class ReadinessReportBuilder:
         }
 
     @classmethod
-    def overall_status(
-        cls,
-        checks: list[dict[str, Any]],
-    ) -> Literal['ok', 'warn', 'error']:
-        """Return aggregate status from individual check rows."""
-        statuses = {cast(CheckStatus, check['status']) for check in checks}
-        if 'error' in statuses:
-            return 'error'
-        if 'warn' in statuses:
-            return 'warn'
-        return 'ok'
-
-    @classmethod
     def supported_python_check(
         cls,
     ) -> dict[str, Any]:
@@ -527,318 +842,3 @@ class ReadinessReportBuilder:
             ),
             version=version,
         )
-
-    @classmethod
-    def connector_gap_rows(
-        cls,
-        cfg: Config,
-    ) -> list[dict[str, Any]]:
-        """Return connector configuration gaps that will block execution."""
-        gaps: list[dict[str, Any]] = []
-        for role, connector in cls.iter_connectors(cfg):
-            connector_name = str(getattr(connector, 'name', '<unnamed>'))
-            connector_type = str(getattr(connector, 'type', ''))
-            coerced_type = cls.connector_type(connector_type)
-
-            if coerced_type is None:
-                gaps.append(
-                    {
-                        'connector': connector_name,
-                        'guidance': cls.connector_type_guidance(connector_type),
-                        'issue': 'unsupported type',
-                        'role': role,
-                        'supported_types': list(cls.connector_type_choices()),
-                        'type': connector_type,
-                    },
-                )
-                continue
-
-            if coerced_type == DataConnectorType.FILE:
-                path = getattr(connector, 'path', None)
-                if not path:
-                    gaps.append(
-                        {
-                            'connector': connector_name,
-                            'issue': 'missing path',
-                            'role': role,
-                            'type': connector_type,
-                        },
-                    )
-            elif coerced_type == DataConnectorType.API:
-                url = getattr(connector, 'url', None)
-                api_ref = getattr(connector, 'api', None)
-                if not url and not api_ref:
-                    gaps.append(
-                        {
-                            'connector': connector_name,
-                            'issue': 'missing url or api reference',
-                            'role': role,
-                            'type': connector_type,
-                        },
-                    )
-                elif api_ref and api_ref not in cfg.apis:
-                    gaps.append(
-                        {
-                            'connector': connector_name,
-                            'issue': f'unknown api reference: {api_ref}',
-                            'role': role,
-                            'type': connector_type,
-                        },
-                    )
-            elif coerced_type == DataConnectorType.DATABASE:
-                connection_string = getattr(connector, 'connection_string', None)
-                if not connection_string:
-                    gaps.append(
-                        {
-                            'connector': connector_name,
-                            'issue': 'missing connection_string',
-                            'role': role,
-                            'type': connector_type,
-                        },
-                    )
-
-        return gaps
-
-    @classmethod
-    def missing_requirement_rows(
-        cls,
-        *,
-        cfg: Config,
-    ) -> list[dict[str, str]]:
-        """Return missing optional dependency rows for configured connectors."""
-        rows: list[dict[str, str]] = []
-
-        for role, connector in cls.iter_connectors(cfg):
-            connector_name = str(getattr(connector, 'name', '<unnamed>'))
-            path = getattr(connector, 'path', None)
-            format_name = str(getattr(connector, 'format', '') or '').lower()
-
-            if path:
-                scheme = cls.coerce_storage_scheme(path)
-                if scheme and (requirement := _SCHEME_EXTRA_REQUIREMENTS.get(scheme)):
-                    if not cls.requirement_available(requirement):
-                        rows.append(
-                            cls.requirement_row(
-                                connector=connector_name,
-                                reason=(
-                                    f'{scheme} storage path requires '
-                                    f'{requirement.package}'
-                                ),
-                                requirement=requirement,
-                                role=role,
-                            ),
-                        )
-
-            if format_name == 'nc':
-                if not cls.netcdf_available():
-                    rows.append(
-                        {
-                            'connector': connector_name,
-                            'extra': 'file',
-                            'missing_package': 'xarray/netCDF4',
-                            'reason': (
-                                'nc format requires xarray and netCDF4 or h5netcdf'
-                            ),
-                            'role': role,
-                        },
-                    )
-                continue
-
-            if requirement := _FORMAT_EXTRA_REQUIREMENTS.get(format_name):
-                if not cls.requirement_available(requirement):
-                    rows.append(
-                        cls.requirement_row(
-                            connector=connector_name,
-                            reason=(
-                                f'{format_name} format requires '
-                                f'{requirement.package}'
-                            ),
-                            requirement=requirement,
-                            role=role,
-                        ),
-                    )
-
-        return cls.dedupe_rows(rows)
-
-    @classmethod
-    def connector_readiness_checks(
-        cls,
-        cfg: Config,
-    ) -> list[dict[str, Any]]:
-        """Return connector configuration and dependency readiness checks."""
-        checks: list[dict[str, Any]] = []
-
-        gaps = cls.connector_gap_rows(cfg)
-        if gaps:
-            checks.append(
-                cls.make_check(
-                    'connector-readiness',
-                    'error',
-                    (
-                        'One or more configured connectors are missing required '
-                        'runtime fields or use unsupported connector types.'
-                    ),
-                    gaps=gaps,
-                ),
-            )
-        else:
-            checks.append(
-                cls.make_check(
-                    'connector-readiness',
-                    'ok',
-                    'Configured connectors include the required runtime fields.',
-                ),
-            )
-
-        missing_requirements = cls.missing_requirement_rows(cfg=cfg)
-        if missing_requirements:
-            checks.append(
-                cls.make_check(
-                    'optional-dependencies',
-                    'error',
-                    (
-                        'Configured connectors require optional dependencies that '
-                        'are not installed.'
-                    ),
-                    missing_requirements=missing_requirements,
-                ),
-            )
-        else:
-            checks.append(
-                cls.make_check(
-                    'optional-dependencies',
-                    'ok',
-                    (
-                        'No missing optional dependencies were detected for '
-                        'configured connectors.'
-                    ),
-                ),
-            )
-
-        return checks
-
-    @classmethod
-    def config_checks(
-        cls,
-        config_path: str,
-        *,
-        env: Mapping[str, str] | None,
-    ) -> list[dict[str, Any]]:
-        """Return readiness checks for one pipeline config path."""
-        checks: list[dict[str, Any]] = []
-        path = Path(config_path)
-        if not path.exists():
-            return [
-                cls.make_check(
-                    'config-file',
-                    'error',
-                    f'Configuration file does not exist: {path}',
-                    path=str(path),
-                ),
-            ]
-
-        checks.append(
-            cls.make_check(
-                'config-file',
-                'ok',
-                f'Configuration file exists: {path}',
-                path=str(path),
-            ),
-        )
-
-        raw = cls.load_raw_config(str(path))
-        checks.append(
-            cls.make_check(
-                'config-parse',
-                'ok',
-                'Configuration YAML parsed successfully.',
-            ),
-        )
-
-        cfg = Config.from_dict(raw)
-        effective_env = cls.effective_environment(cfg, env)
-        resolved = deep_substitute(raw, cfg.vars, effective_env)
-        unresolved = sorted(cls.collect_substitution_tokens(resolved))
-
-        if unresolved:
-            checks.append(
-                cls.make_check(
-                    'config-substitution',
-                    'error',
-                    'Configuration still contains unresolved substitution tokens.',
-                    unresolved_tokens=unresolved,
-                ),
-            )
-            return checks
-
-        resolved_cfg = Config.from_dict(cast(StrAnyMap, resolved))
-        checks.append(
-            cls.make_check(
-                'config-substitution',
-                'ok',
-                'Configuration substitutions resolved successfully.',
-            ),
-        )
-        checks.extend(cls.connector_readiness_checks(resolved_cfg))
-        checks.extend(
-            cls.provider_environment_checks(
-                cfg=resolved_cfg,
-                env=effective_env,
-            ),
-        )
-        return checks
-
-    @classmethod
-    def build(
-        cls,
-        *,
-        config_path: str | None = None,
-        env: Mapping[str, str] | None = None,
-    ) -> dict[str, Any]:
-        """
-        Build a runtime readiness report for the current ETLPlus environment.
-
-        Parameters
-        ----------
-        config_path : str | None, optional
-            Optional pipeline configuration file to validate. Default is ``None``.
-        env : Mapping[str, str] | None, optional
-            Optional environment mapping used instead of :data:`os.environ`.
-
-        Returns
-        -------
-        dict[str, Any]
-            JSON-serializable readiness report.
-        """
-        checks: list[dict[str, Any]] = [cls.supported_python_check()]
-
-        if config_path:
-            try:
-                checks.extend(cls.config_checks(config_path, env=env))
-            except (OSError, TypeError, ValueError) as exc:
-                checks.append(
-                    cls.make_check(
-                        'config-parse',
-                        'error',
-                        str(exc),
-                        path=config_path,
-                    ),
-                )
-        else:
-            checks.append(
-                cls.make_check(
-                    'config-file',
-                    'skipped',
-                    (
-                        'No configuration file provided; only runtime '
-                        'checks were performed.'
-                    ),
-                ),
-            )
-
-        return {
-            'status': cls.overall_status(checks),
-            'etlplus_version': __version__,
-            'python_version': cls.python_version(),
-            'checks': checks,
-        }
