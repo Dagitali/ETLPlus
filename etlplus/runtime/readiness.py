@@ -9,7 +9,9 @@ from __future__ import annotations
 import os
 import re
 import sys
+from collections.abc import Iterator
 from collections.abc import Mapping
+from dataclasses import dataclass
 from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
@@ -44,26 +46,54 @@ __all__ = [
 type CheckStatus = Literal['ok', 'warn', 'error', 'skipped']
 
 
-# SECTION: CONSTANTS ======================================================== #
+# SECTION: INTERNAL DATA CLASSES ============================================== #
 
 
+@dataclass(frozen=True, slots=True)
+class _RequirementSpec:
+    """One optional runtime dependency requirement."""
+
+    # -- Instance Attributes -- #
+
+    modules: tuple[str, ...]
+    package: str
+    extra: str | None = None
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_SUPPORTED_PYTHON_RANGE: Final[tuple[tuple[int, int], tuple[int, int]]] = (
+    (3, 13),
+    (3, 15),
+)
 _TOKEN_PATTERN: Final[re.Pattern[str]] = re.compile(r'\$\{([^}]+)\}')
+
+
 _FORMAT_EXTRA_REQUIREMENTS: Final[
-    dict[str, tuple[tuple[str, ...], str, str | None]]
+    dict[str, _RequirementSpec]
 ] = {
-    'dta': (('pyreadstat',), 'pyreadstat', 'file'),
-    'hdf5': (('tables',), 'tables', None),
-    'rda': (('pyreadr',), 'pyreadr', 'file'),
-    'rds': (('pyreadr',), 'pyreadr', 'file'),
-    'sav': (('pyreadstat',), 'pyreadstat', 'file'),
-    'zsav': (('pyreadstat',), 'pyreadstat', 'file'),
+    'dta': _RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
+    'hdf5': _RequirementSpec(('tables',), 'tables'),
+    'rda': _RequirementSpec(('pyreadr',), 'pyreadr', 'file'),
+    'rds': _RequirementSpec(('pyreadr',), 'pyreadr', 'file'),
+    'sav': _RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
+    'zsav': _RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
 }
 _SCHEME_EXTRA_REQUIREMENTS: Final[
-    dict[str, tuple[tuple[str, ...], str, str | None]]
+    dict[str, _RequirementSpec]
 ] = {
-    'abfs': (('azure.storage.filedatalake',), 'azure-storage-file-datalake', 'storage'),
-    'azure-blob': (('azure.storage.blob',), 'azure-storage-blob', 'storage'),
-    's3': (('boto3',), 'boto3', 'storage'),
+    'abfs': _RequirementSpec(
+        ('azure.storage.filedatalake',),
+        'azure-storage-file-datalake',
+        'storage',
+    ),
+    'azure-blob': _RequirementSpec(
+        ('azure.storage.blob',),
+        'azure-storage-blob',
+        'storage',
+    ),
+    's3': _RequirementSpec(('boto3',), 'boto3', 'storage'),
 }
 
 
@@ -115,14 +145,33 @@ class ReadinessReportBuilder:
         return tokens
 
     @staticmethod
+    def dedupe_rows(
+        rows: list[dict[str, str]],
+    ) -> list[dict[str, str]]:
+        """Return rows with duplicates removed while preserving order."""
+        unique_rows: list[dict[str, str]] = []
+        seen: set[tuple[str, str, str, str, str]] = set()
+        for row in rows:
+            key = (
+                row['connector'],
+                row['role'],
+                row['missing_package'],
+                row['reason'],
+                row['extra'],
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            unique_rows.append(row)
+        return unique_rows
+
+    @staticmethod
     def iter_connectors(
         cfg: Config,
-    ) -> list[tuple[str, Connector]]:
-        """Return source/target connectors tagged with their role."""
-        connectors: list[tuple[str, Connector]] = []
-        connectors.extend(('source', connector) for connector in cfg.sources)
-        connectors.extend(('target', connector) for connector in cfg.targets)
-        return connectors
+    ) -> Iterator[tuple[str, Connector]]:
+        """Yield source/target connectors tagged with their role."""
+        yield from (('source', connector) for connector in cfg.sources)
+        yield from (('target', connector) for connector in cfg.targets)
 
     @staticmethod
     def load_raw_config(
@@ -164,6 +213,63 @@ class ReadinessReportBuilder:
     # -- Class Methods -- #
 
     @classmethod
+    def connector_type(
+        cls,
+        connector_type: str,
+    ) -> DataConnectorType | None:
+        """Return one coerced connector type or ``None`` when unsupported."""
+        try:
+            return DataConnectorType.coerce(connector_type)
+        except ValueError:
+            return None
+
+    @classmethod
+    def netcdf_available(cls) -> bool:
+        """Return whether netCDF support dependencies are installed."""
+        return cls.package_available('xarray') and (
+            cls.package_available('netCDF4')
+            or cls.package_available('h5netcdf')
+        )
+
+    @classmethod
+    def python_version(cls) -> str:
+        """Return the current interpreter version as dotted text."""
+        return (
+            f'{sys.version_info.major}.'
+            f'{sys.version_info.minor}.'
+            f'{sys.version_info.micro}'
+        )
+
+    @classmethod
+    def requirement_available(
+        cls,
+        requirement: _RequirementSpec,
+    ) -> bool:
+        """Return whether any module for one requirement is importable."""
+        return any(
+            cls.package_available(module_name)
+            for module_name in requirement.modules
+        )
+
+    @classmethod
+    def requirement_row(
+        cls,
+        *,
+        connector: str,
+        reason: str,
+        requirement: _RequirementSpec,
+        role: str,
+    ) -> dict[str, str]:
+        """Return one missing-requirement row."""
+        return {
+            'connector': connector,
+            'extra': requirement.extra or '',
+            'missing_package': requirement.package,
+            'reason': reason,
+            'role': role,
+        }
+
+    @classmethod
     def overall_status(
         cls,
         checks: list[dict[str, Any]],
@@ -181,12 +287,9 @@ class ReadinessReportBuilder:
         cls,
     ) -> dict[str, Any]:
         """Return runtime Python compatibility check."""
-        version = (
-            f'{sys.version_info.major}.'
-            f'{sys.version_info.minor}.'
-            f'{sys.version_info.micro}'
-        )
-        supported = (3, 13) <= sys.version_info[:2] < (3, 15)
+        version = cls.python_version()
+        minimum, maximum = _SUPPORTED_PYTHON_RANGE
+        supported = minimum <= sys.version_info[:2] < maximum
         if supported:
             return cls.make_check(
                 'python-version',
@@ -199,7 +302,8 @@ class ReadinessReportBuilder:
             'error',
             (
                 f'Python {version} is outside the supported ETLPlus runtime '
-                'range (>=3.13,<3.15).'
+                f'range (>={minimum[0]}.{minimum[1]},'
+                f'<{maximum[0]}.{maximum[1]}).'
             ),
             version=version,
         )
@@ -214,8 +318,20 @@ class ReadinessReportBuilder:
         for role, connector in cls.iter_connectors(cfg):
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
             connector_type = str(getattr(connector, 'type', ''))
+            coerced_type = cls.connector_type(connector_type)
 
-            if DataConnectorType.coerce(connector_type) == DataConnectorType.FILE:
+            if coerced_type is None:
+                gaps.append(
+                    {
+                        'connector': connector_name,
+                        'issue': f'unsupported type: {connector_type or "<empty>"}',
+                        'role': role,
+                        'type': connector_type,
+                    },
+                )
+                continue
+
+            if coerced_type == DataConnectorType.FILE:
                 path = getattr(connector, 'path', None)
                 if not path:
                     gaps.append(
@@ -226,7 +342,7 @@ class ReadinessReportBuilder:
                             'type': connector_type,
                         },
                     )
-            elif DataConnectorType.coerce(connector_type) == DataConnectorType.API:
+            elif coerced_type == DataConnectorType.API:
                 url = getattr(connector, 'url', None)
                 api_ref = getattr(connector, 'api', None)
                 if not url and not api_ref:
@@ -247,7 +363,7 @@ class ReadinessReportBuilder:
                             'type': connector_type,
                         },
                     )
-            elif DataConnectorType.coerce(connector_type) == DataConnectorType.DATABASE:
+            elif coerced_type == DataConnectorType.DATABASE:
                 connection_string = getattr(connector, 'connection_string', None)
                 if not connection_string:
                     gaps.append(
@@ -277,30 +393,22 @@ class ReadinessReportBuilder:
 
             if path:
                 scheme = cls.coerce_storage_scheme(path)
-                if scheme in _SCHEME_EXTRA_REQUIREMENTS:
-                    module_names, pip_name, extra_name = _SCHEME_EXTRA_REQUIREMENTS[
-                        scheme
-                    ]
-                    if not any(
-                        cls.package_available(module_name)
-                        for module_name in module_names
-                    ):
+                if scheme and (requirement := _SCHEME_EXTRA_REQUIREMENTS.get(scheme)):
+                    if not cls.requirement_available(requirement):
                         rows.append(
-                            {
-                                'connector': connector_name,
-                                'extra': extra_name or '',
-                                'missing_package': pip_name,
-                                'reason': f'{scheme} storage path requires {pip_name}',
-                                'role': role,
-                            },
+                            cls.requirement_row(
+                                connector=connector_name,
+                                reason=(
+                                    f'{scheme} storage path requires '
+                                    f'{requirement.package}'
+                                ),
+                                requirement=requirement,
+                                role=role,
+                            ),
                         )
 
             if format_name == 'nc':
-                has_xarray = cls.package_available('xarray')
-                has_engine = cls.package_available('netCDF4') or cls.package_available(
-                    'h5netcdf',
-                )
-                if not (has_xarray and has_engine):
+                if not cls.netcdf_available():
                     rows.append(
                         {
                             'connector': connector_name,
@@ -314,38 +422,21 @@ class ReadinessReportBuilder:
                     )
                 continue
 
-            if format_name in _FORMAT_EXTRA_REQUIREMENTS:
-                module_names, pip_name, extra_name = _FORMAT_EXTRA_REQUIREMENTS[
-                    format_name
-                ]
-                if not any(
-                    cls.package_available(module_name) for module_name in module_names
-                ):
+            if requirement := _FORMAT_EXTRA_REQUIREMENTS.get(format_name):
+                if not cls.requirement_available(requirement):
                     rows.append(
-                        {
-                            'connector': connector_name,
-                            'extra': extra_name or '',
-                            'missing_package': pip_name,
-                            'reason': f'{format_name} format requires {pip_name}',
-                            'role': role,
-                        },
+                        cls.requirement_row(
+                            connector=connector_name,
+                            reason=(
+                                f'{format_name} format requires '
+                                f'{requirement.package}'
+                            ),
+                            requirement=requirement,
+                            role=role,
+                        ),
                     )
 
-        unique_rows: list[dict[str, str]] = []
-        seen: set[tuple[str, str, str, str, str]] = set()
-        for row in rows:
-            key = (
-                row['connector'],
-                row['role'],
-                row['missing_package'],
-                row['reason'],
-                row['extra'],
-            )
-            if key in seen:
-                continue
-            seen.add(key)
-            unique_rows.append(row)
-        return unique_rows
+        return cls.dedupe_rows(rows)
 
     @classmethod
     def connector_readiness_checks(
@@ -522,10 +613,6 @@ class ReadinessReportBuilder:
         return {
             'status': cls.overall_status(checks),
             'etlplus_version': __version__,
-            'python_version': (
-                f'{sys.version_info.major}.'
-                f'{sys.version_info.minor}.'
-                f'{sys.version_info.micro}'
-            ),
+            'python_version': cls.python_version(),
             'checks': checks,
         }
