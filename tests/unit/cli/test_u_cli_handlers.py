@@ -1035,6 +1035,102 @@ class TestReportHandler:
             pretty=False,
         )
 
+    def test_uses_history_view_and_report_builder_directly(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that report delegates through the direct class-based helpers."""
+        recorded: dict[str, object] = {}
+
+        def fake_validate_output_mode(*, json_output: bool, table: bool) -> None:
+            recorded['validate'] = (json_output, table)
+
+        def fake_load_records(
+            cls: type[handlers.HistoryView],
+            **kwargs: object,
+        ) -> list[dict[str, object]]:
+            recorded['load'] = kwargs
+            return [
+                {
+                    'duration_ms': 1000,
+                    'job_name': 'job-a',
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ]
+
+        def fake_build(
+            cls: type[handlers.HistoryReportBuilder],
+            records: list[dict[str, object]],
+            *,
+            group_by: str,
+        ) -> dict[str, object]:
+            recorded['build'] = (records, group_by)
+            return {
+                'group_by': group_by,
+                'rows': [{'group': 'job-a', 'runs': 1}],
+                'summary': {'runs': 1},
+            }
+
+        monkeypatch.setattr(
+            handlers.HistoryView,
+            'validate_output_mode',
+            staticmethod(fake_validate_output_mode),
+        )
+        monkeypatch.setattr(
+            handlers.HistoryView,
+            'load_records',
+            classmethod(fake_load_records),
+        )
+        monkeypatch.setattr(
+            handlers.HistoryReportBuilder,
+            'build',
+            classmethod(fake_build),
+        )
+
+        assert (
+            handlers.report_handler(
+                group_by='job',
+                job='job-a',
+                json_output=True,
+                pretty=False,
+                since='2026-03-23T00:00:00Z',
+                until='2026-03-24T00:00:00Z',
+            )
+            == 0
+        )
+
+        assert recorded['validate'] == (True, False)
+        assert recorded['load'] == {
+            'job': 'job-a',
+            'raw': False,
+            'since': '2026-03-23T00:00:00Z',
+            'until': '2026-03-24T00:00:00Z',
+        }
+        assert recorded['build'] == (
+            [
+                {
+                    'duration_ms': 1000,
+                    'job_name': 'job-a',
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ],
+            'job',
+        )
+        assert_emit_json(
+            capture_io,
+            {
+                'group_by': 'job',
+                'rows': [{'group': 'job-a', 'runs': 1}],
+                'summary': {'runs': 1},
+            },
+            pretty=False,
+        )
+
 
 class TestLoadHandler:
     """Unit tests for :func:`load_handler`."""
@@ -1491,6 +1587,51 @@ class TestRunHandler:
 
 class TestStatusHandler:
     """Unit tests for :func:`status_handler`."""
+
+    def test_uses_history_view_load_records_directly(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that status delegates through the direct class-based loader."""
+        recorded: dict[str, object] = {}
+
+        def fake_load_records(
+            cls: type[handlers.HistoryView],
+            **kwargs: object,
+        ) -> list[dict[str, object]]:
+            recorded['load'] = kwargs
+            return [
+                {
+                    'run_id': 'run-9',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ]
+
+        monkeypatch.setattr(
+            handlers.HistoryView,
+            'load_records',
+            classmethod(fake_load_records),
+        )
+
+        assert handlers.status_handler(job='job-a', pretty=False, run_id='run-9') == 0
+
+        assert recorded['load'] == {
+            'job': 'job-a',
+            'limit': 1,
+            'raw': False,
+            'run_id': 'run-9',
+        }
+        assert_emit_json(
+            capture_io,
+            {
+                'run_id': 'run-9',
+                'started_at': '2026-03-23T00:00:00Z',
+                'status': 'succeeded',
+            },
+            pretty=False,
+        )
 
     def test_emits_latest_matching_normalized_run(
         self,
