@@ -261,10 +261,7 @@ class TestReadinessReportBuilder:
                         'severity': 'error',
                     },
                 ],
-                'message': (
-                    'Configured connectors have provider-specific environment '
-                    'gaps that should be resolved before execution.'
-                ),
+                'message': 'Provider environment gaps: 1 error(s), 0 warning(s).',
                 'name': 'provider-environment',
                 'status': 'error',
             },
@@ -323,10 +320,7 @@ class TestReadinessReportBuilder:
                         'severity': 'warn',
                     },
                 ],
-                'message': (
-                    'Configured connectors rely on provider credential '
-                    'resolution with no explicit environment hints.'
-                ),
+                'message': 'Provider environment warnings: 1.',
                 'name': 'provider-environment',
                 'status': 'warn',
             },
