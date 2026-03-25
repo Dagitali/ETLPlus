@@ -522,16 +522,6 @@ def _elapsed_ms(
     return int((perf_counter() - started_perf) * 1000)
 
 
-def _emit_check_payload(
-    payload: Any,
-    *,
-    pretty: bool,
-) -> int:
-    """Emit one JSON payload for the check command and return success."""
-    _io.emit_json(payload, pretty=pretty)
-    return 0
-
-
 def _emit_failure_event(
     *,
     command: str,
@@ -559,10 +549,11 @@ def _emit_json_payload(
     payload: Any,
     *,
     pretty: bool,
+    exit_code: int = 0,
 ) -> int:
-    """Emit one JSON payload and return success."""
+    """Emit one JSON payload and return the requested exit code."""
     _io.emit_json(payload, pretty=pretty)
-    return 0
+    return exit_code
 
 
 def _emit_lifecycle_event(
@@ -600,6 +591,17 @@ def _emit_or_write_payload(
         success_message=success_message,
     )
     return 0
+
+
+def _emit_table_payload(
+    rows: list[dict[str, Any]],
+    *,
+    columns: tuple[str, ...],
+    exit_code: int = 0,
+) -> int:
+    """Emit one Markdown table payload and return the requested exit code."""
+    _io.emit_markdown_table(rows, columns=columns)
+    return exit_code
 
 
 def _complete_command(
@@ -822,8 +824,32 @@ def _emit_readiness_report(
 ) -> int:
     """Build and emit one readiness report, returning its CLI exit code."""
     report = ReadinessReportBuilder.build(config_path=config)
-    _io.emit_json(report, pretty=pretty)
-    return 0 if report.get('status') == 'ok' else 1
+    return _emit_json_payload(
+        report,
+        pretty=pretty,
+        exit_code=0 if report.get('status') == 'ok' else 1,
+    )
+
+
+def _emit_json_or_table(
+    payload: Any,
+    *,
+    columns: tuple[str, ...],
+    pretty: bool,
+    table: bool,
+    table_rows: list[dict[str, Any]] | None = None,
+    exit_code: int = 0,
+) -> int:
+    """Emit one payload as JSON or as a Markdown table and return an exit code."""
+    if table:
+        return _emit_table_payload(
+            table_rows
+            if table_rows is not None
+            else cast(list[dict[str, Any]], payload),
+            columns=columns,
+            exit_code=exit_code,
+        )
+    return _emit_json_payload(payload, pretty=pretty, exit_code=exit_code)
 
 
 def _increment_metric(
@@ -982,9 +1008,9 @@ def check_handler(
 
     cfg = Config.from_yaml(config, substitute=substitute)
     if summary:
-        return _emit_check_payload(_pipeline_summary(cfg), pretty=True)
+        return _emit_json_payload(_pipeline_summary(cfg), pretty=True)
 
-    return _emit_check_payload(
+    return _emit_json_payload(
         _check_sections(
             cfg,
             jobs=jobs,
@@ -1068,11 +1094,12 @@ def history_handler(
         until=until,
         status=status,
     )
-    if table:
-        _io.emit_markdown_table(records, columns=_HISTORY_TABLE_COLUMNS)
-        return 0
-    _io.emit_json(records, pretty=pretty)
-    return 0
+    return _emit_json_or_table(
+        records,
+        columns=_HISTORY_TABLE_COLUMNS,
+        pretty=pretty,
+        table=table,
+    )
 
 
 def extract_handler(
@@ -1432,11 +1459,13 @@ def report_handler(
         until=until,
     )
     report = HistoryReportBuilder.build(records, group_by=group_by)
-    if table:
-        _io.emit_markdown_table(report['rows'], columns=_REPORT_TABLE_COLUMNS)
-        return 0
-    _io.emit_json(report, pretty=pretty)
-    return 0
+    return _emit_json_or_table(
+        report,
+        columns=_REPORT_TABLE_COLUMNS,
+        pretty=pretty,
+        table=table,
+        table_rows=cast(list[dict[str, Any]], report['rows']),
+    )
 
 
 def run_handler(
@@ -1549,8 +1578,7 @@ def run_handler(
             pretty=pretty,
         )
 
-    _io.emit_json(_pipeline_summary(cfg), pretty=pretty)
-    return 0
+    return _emit_json_payload(_pipeline_summary(cfg), pretty=pretty)
 
 
 def status_handler(
@@ -1583,10 +1611,8 @@ def status_handler(
         run_id=run_id,
     )
     if not records:
-        _io.emit_json({}, pretty=pretty)
-        return 1
-    _io.emit_json(records[0], pretty=pretty)
-    return 0
+        return _emit_json_payload({}, pretty=pretty, exit_code=1)
+    return _emit_json_payload(records[0], pretty=pretty)
 
 
 def transform_handler(
