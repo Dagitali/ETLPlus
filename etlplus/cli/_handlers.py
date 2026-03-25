@@ -613,6 +613,16 @@ def _validate_history_output_mode(
     HistoryView.validate_output_mode(json_output=json_output, table=table)
 
 
+def _emit_check_payload(
+    payload: Any,
+    *,
+    pretty: bool,
+) -> int:
+    """Emit one JSON payload for the check command and return success."""
+    _io.emit_json(payload, pretty=pretty)
+    return 0
+
+
 def _emit_follow_history(
     *,
     job: str | None = None,
@@ -631,6 +641,17 @@ def _emit_follow_history(
         until=until,
         status=status,
     )
+
+
+def _emit_readiness_report(
+    *,
+    config: str | None,
+    pretty: bool,
+) -> int:
+    """Build and emit one readiness report, returning its CLI exit code."""
+    report = ReadinessReportBuilder.build(config_path=config)
+    _io.emit_json(report, pretty=pretty)
+    return 0 if report.get('status') == 'ok' else 1
 
 
 def _increment_metric(
@@ -782,19 +803,16 @@ def check_handler(
 
     """
     if readiness:
-        report = ReadinessReportBuilder.build(config_path=config)
-        _io.emit_json(report, pretty=pretty)
-        return 0 if report.get('status') == 'ok' else 1
+        return _emit_readiness_report(config=config, pretty=pretty)
 
     if config is None:
         raise ValueError('config is required unless readiness-only mode is used')
 
     cfg = Config.from_yaml(config, substitute=substitute)
     if summary:
-        _io.emit_json(_pipeline_summary(cfg), pretty=True)
-        return 0
+        return _emit_check_payload(_pipeline_summary(cfg), pretty=True)
 
-    _io.emit_json(
+    return _emit_check_payload(
         _check_sections(
             cfg,
             jobs=jobs,
@@ -805,7 +823,6 @@ def check_handler(
         ),
         pretty=pretty,
     )
-    return 0
 
 
 def history_handler(
