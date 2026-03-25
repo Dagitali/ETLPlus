@@ -34,8 +34,8 @@ class TestReadinessReportBuilder:
     ) -> None:
         """Test that build converts config-check exceptions into error rows."""
         monkeypatch.setattr(
-            readiness_module,
-            '_config_checks',
+            readiness_module.ReadinessReportBuilder,
+            'config_checks',
             lambda _config_path, env=None: (_ for _ in ()).throw(TypeError('boom')),
         )
 
@@ -84,8 +84,8 @@ class TestReadinessReportBuilder:
         config_path.write_text('name: pipeline\n', encoding='utf-8')
 
         monkeypatch.setattr(
-            readiness_module,
-            '_load_raw_config',
+            readiness_module.ReadinessReportBuilder,
+            'load_raw_config',
             lambda _path: {'profile': {'env': {}}, 'vars': {'token': 'value'}},
         )
 
@@ -111,8 +111,8 @@ class TestReadinessReportBuilder:
             return [{'name': 'connector-readiness', 'status': 'ok'}]
 
         monkeypatch.setattr(
-            readiness_module,
-            '_connector_readiness_checks',
+            readiness_module.ReadinessReportBuilder,
+            'connector_readiness_checks',
             _connector_readiness_checks,
         )
 
@@ -150,8 +150,8 @@ class TestReadinessReportBuilder:
     ) -> None:
         """Test that class-based dependency checks still honor wrapper patches."""
         monkeypatch.setattr(
-            readiness_module,
-            '_package_available',
+            readiness_module.ReadinessReportBuilder,
+            'package_available',
             lambda module_name: False if module_name == 'boto3' else True,
         )
         cfg = SimpleNamespace(
