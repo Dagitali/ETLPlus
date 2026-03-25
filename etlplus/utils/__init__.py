@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from .data import count_records
 from .data import print_json
+from .data import serialize_json
 from .mapping import cast_str_dict
 from .mapping import coerce_dict
 from .mapping import maybe_mapping
@@ -31,6 +32,7 @@ __all__ = [
     # Functions (data utilities)
     'count_records',
     'print_json',
+    'serialize_json',
     # Functions (mapping utilities)
     'cast_str_dict',
     'coerce_dict',
