@@ -6,7 +6,6 @@ Command handler functions for the ``etlplus`` command-line interface (CLI).
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 from collections.abc import Mapping
@@ -34,10 +33,8 @@ from ..ops import transform
 from ..ops import validate
 from ..ops.validate import FieldRulesDict
 from ..runtime import build_readiness_report
-from ..runtime.events import build_structured_event
-from ..runtime.events import create_run_id
-from ..runtime.events import emit_structured_event
-from ..runtime.events import utc_now_iso
+from ..runtime.events import RuntimeEvents
+from ..utils.data import serialize_json
 from ..utils.types import JSONData
 from ..utils.types import TemplateKey
 from . import _io
@@ -98,6 +95,319 @@ _REPORT_TABLE_COLUMNS = (
     'max_duration_ms',
     'last_started_at',
 )
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class HistoryView:
+    """Shared query and streaming helpers for persisted history records."""
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def fingerprint(
+        record: Mapping[str, Any],
+    ) -> str:
+        """Return a stable fingerprint for a persisted history record."""
+        return serialize_json(record, sort_keys=True)
+
+    @staticmethod
+    def parse_timestamp(
+        value: object,
+    ) -> datetime | None:
+        """Parse an ISO-8601 timestamp used in persisted history records."""
+        if not isinstance(value, str) or not value:
+            return None
+        normalized = value.replace('Z', '+00:00')
+        try:
+            return datetime.fromisoformat(normalized)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def sort_key(
+        record: Mapping[str, Any],
+    ) -> tuple[str, str]:
+        """Return a reverse-sortable key for history records."""
+        timestamp = cast(
+            str,
+            record.get('started_at') or record.get('finished_at') or '',
+        )
+        run_id = cast(str, record.get('run_id') or '')
+        return (timestamp, run_id)
+
+    @staticmethod
+    def validate_output_mode(
+        *,
+        json_output: bool,
+        table: bool,
+    ) -> None:
+        """Validate that at most one explicit history output mode was requested."""
+        if json_output and table:
+            raise ValueError('choose either json output or table output, not both')
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def matches(
+        cls,
+        record: HistoryRecord,
+        *,
+        job: str | None = None,
+        run_id: str | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        status: str | None = None,
+    ) -> bool:
+        """Return whether a history record matches CLI filter values."""
+        if job is not None and record.get('job_name') != job:
+            return False
+        if run_id is not None and record.get('run_id') != run_id:
+            return False
+        if status is not None and record.get('status') != status:
+            return False
+        record_timestamp = cls.parse_timestamp(
+            record.get('started_at') or record.get('finished_at'),
+        )
+        if since is not None:
+            if record_timestamp is None or record_timestamp < since:
+                return False
+        if until is not None:
+            if record_timestamp is None or record_timestamp > until:
+                return False
+        return True
+
+    @classmethod
+    def load_records(
+        cls,
+        *,
+        raw: bool,
+        job: str | None = None,
+        limit: int | None = None,
+        run_id: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Load, filter, and sort history records for CLI read commands."""
+        parsed_since = cls.parse_timestamp(since)
+        parsed_until = cls.parse_timestamp(until)
+        history_store = open_history_store()
+        records_iter = (
+            history_store.iter_records() if raw else iter_history_runs(history_store)
+        )
+        records = [
+            dict(record)
+            for record in records_iter
+            if cls.matches(
+                record,
+                job=job,
+                run_id=run_id,
+                since=parsed_since,
+                until=parsed_until,
+                status=status,
+            )
+        ]
+        records.sort(key=cls.sort_key, reverse=True)
+        if limit is not None:
+            records = records[:limit]
+        return records
+
+    @classmethod
+    def emit_follow(
+        cls,
+        *,
+        job: str | None = None,
+        limit: int | None = None,
+        run_id: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+        status: str | None = None,
+    ) -> int:
+        """Stream newly observed raw history records until interrupted."""
+        seen: set[str] = set()
+        try:
+            while True:
+                records = _load_history_records(
+                    job=job,
+                    limit=limit,
+                    raw=True,
+                    run_id=run_id,
+                    since=since,
+                    until=until,
+                    status=status,
+                )
+                for record in reversed(records):
+                    fingerprint = cls.fingerprint(record)
+                    if fingerprint in seen:
+                        continue
+                    seen.add(fingerprint)
+                    _io.emit_json(record, pretty=False)
+                sleep(1.0)
+        except KeyboardInterrupt:
+            return 0
+
+
+class HistoryReportBuilder:
+    """Aggregation helpers for grouped history-report output."""
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def increment_metric(
+        bucket: dict[str, Any],
+        key: str,
+        amount: int = 1,
+    ) -> None:
+        """Increment an integer metric stored inside a mutable report bucket."""
+        bucket[key] = int(bucket.get(key) or 0) + amount
+
+    @staticmethod
+    def report_group_key(
+        record: Mapping[str, Any],
+        *,
+        group_by: Literal['day', 'job', 'status'],
+    ) -> str:
+        """Return the grouping key for one normalized history record."""
+        if group_by == 'job':
+            return cast(str, record.get('job_name') or '(no job)')
+        if group_by == 'status':
+            return cast(str, record.get('status') or '(unknown)')
+        timestamp = cast(
+            str,
+            record.get('started_at') or record.get('finished_at') or '',
+        )
+        return timestamp.split('T', maxsplit=1)[0] if 'T' in timestamp else '(unknown)'
+
+    @staticmethod
+    def success_rate_pct(
+        succeeded: int,
+        runs: int,
+    ) -> float | None:
+        """Return the success-rate percentage for the given counters."""
+        if runs <= 0:
+            return None
+        return round((succeeded / runs) * 100, 2)
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def update_duration_metrics(
+        cls,
+        bucket: dict[str, Any],
+        duration_ms: int,
+    ) -> None:
+        """Update duration-related metrics for one report bucket."""
+        cls.increment_metric(bucket, 'total_duration_ms', duration_ms)
+        cls.increment_metric(bucket, 'duration_samples', 1)
+        current_min = bucket.get('min_duration_ms')
+        current_max = bucket.get('max_duration_ms')
+        bucket['min_duration_ms'] = (
+            duration_ms if current_min is None else min(int(current_min), duration_ms)
+        )
+        bucket['max_duration_ms'] = (
+            duration_ms if current_max is None else max(int(current_max), duration_ms)
+        )
+
+    @classmethod
+    def build(
+        cls,
+        records: list[dict[str, Any]],
+        *,
+        group_by: Literal['day', 'job', 'status'],
+    ) -> dict[str, Any]:
+        """Aggregate normalized history records into a grouped report."""
+        rows_by_group: dict[str, dict[str, Any]] = {}
+        summary: dict[str, Any] = {
+            'avg_duration_ms': None,
+            'failed': 0,
+            'max_duration_ms': None,
+            'min_duration_ms': None,
+            'other': 0,
+            'running': 0,
+            'runs': len(records),
+            'success_rate_pct': None,
+            'succeeded': 0,
+            'total_duration_ms': 0,
+            'duration_samples': 0,
+        }
+
+        for record in records:
+            status = cast(str, record.get('status') or '')
+            if status in ('succeeded', 'failed', 'running'):
+                cls.increment_metric(summary, status)
+            else:
+                cls.increment_metric(summary, 'other')
+
+            key = cls.report_group_key(record, group_by=group_by)
+            row = cast(
+                dict[str, Any],
+                rows_by_group.setdefault(
+                    key,
+                    {
+                        'avg_duration_ms': None,
+                        'duration_samples': 0,
+                        'group': key,
+                        'last_started_at': None,
+                        'max_duration_ms': None,
+                        'min_duration_ms': None,
+                        'runs': 0,
+                        'succeeded': 0,
+                        'failed': 0,
+                        'running': 0,
+                        'other': 0,
+                        'success_rate_pct': None,
+                        'total_duration_ms': 0,
+                    },
+                ),
+            )
+            cls.increment_metric(row, 'runs')
+            if status in ('succeeded', 'failed', 'running'):
+                cls.increment_metric(row, status)
+            else:
+                cls.increment_metric(row, 'other')
+
+            duration_ms = record.get('duration_ms')
+            if isinstance(duration_ms, int):
+                cls.update_duration_metrics(row, duration_ms)
+                cls.update_duration_metrics(summary, duration_ms)
+
+            started_at = record.get('started_at')
+            if isinstance(started_at, str) and (
+                row['last_started_at'] is None or started_at > row['last_started_at']
+            ):
+                row['last_started_at'] = started_at
+
+        rows = sorted(rows_by_group.values(), key=lambda item: cast(str, item['group']))
+        for row in rows:
+            samples = cast(int, row.pop('duration_samples'))
+            total_duration = cast(int, row.pop('total_duration_ms'))
+            row['avg_duration_ms'] = (
+                int(total_duration / samples) if samples > 0 else None
+            )
+            row['success_rate_pct'] = cls.success_rate_pct(
+                int(row['succeeded']),
+                int(row['runs']),
+            )
+
+        summary_samples = cast(int, summary.pop('duration_samples'))
+        summary_total_duration = cast(int, summary.pop('total_duration_ms'))
+        summary['avg_duration_ms'] = (
+            int(summary_total_duration / summary_samples)
+            if summary_samples > 0
+            else None
+        )
+        summary['success_rate_pct'] = cls.success_rate_pct(
+            int(summary['succeeded']),
+            int(summary['runs']),
+        )
+
+        return {
+            'group_by': group_by,
+            'rows': rows,
+            'summary': summary,
+        }
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -219,8 +529,8 @@ def _emit_lifecycle_event(
     **fields: Any,
 ) -> None:
     """Emit one structured command lifecycle event."""
-    emit_structured_event(
-        build_structured_event(
+    RuntimeEvents.emit(
+        RuntimeEvents.build(
             command=command,
             lifecycle=lifecycle,
             run_id=run_id,
@@ -234,32 +544,21 @@ def _history_record_fingerprint(
     record: Mapping[str, Any],
 ) -> str:
     """Return a stable fingerprint for a persisted history record."""
-    return json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+    return HistoryView.fingerprint(record)
 
 
 def _history_sort_key(
     record: Mapping[str, Any],
 ) -> tuple[str, str]:
     """Return a reverse-sortable key for history records."""
-    timestamp = cast(
-        str,
-        record.get('started_at') or record.get('finished_at') or '',
-    )
-    run_id = cast(str, record.get('run_id') or '')
-    return (timestamp, run_id)
+    return HistoryView.sort_key(record)
 
 
 def _parse_history_timestamp(
     value: object,
 ) -> datetime | None:
     """Parse an ISO-8601 timestamp used in persisted history records."""
-    if not isinstance(value, str) or not value:
-        return None
-    normalized = value.replace('Z', '+00:00')
-    try:
-        return datetime.fromisoformat(normalized)
-    except ValueError:
-        return None
+    return HistoryView.parse_timestamp(value)
 
 
 def _history_record_matches(
@@ -272,22 +571,14 @@ def _history_record_matches(
     status: str | None = None,
 ) -> bool:
     """Return whether a history record matches CLI filter values."""
-    if job is not None and record.get('job_name') != job:
-        return False
-    if run_id is not None and record.get('run_id') != run_id:
-        return False
-    if status is not None and record.get('status') != status:
-        return False
-    record_timestamp = _parse_history_timestamp(
-        record.get('started_at') or record.get('finished_at'),
+    return HistoryView.matches(
+        record,
+        job=job,
+        run_id=run_id,
+        since=since,
+        until=until,
+        status=status,
     )
-    if since is not None:
-        if record_timestamp is None or record_timestamp < since:
-            return False
-    if until is not None:
-        if record_timestamp is None or record_timestamp > until:
-            return False
-    return True
 
 
 def _load_history_records(
@@ -301,28 +592,15 @@ def _load_history_records(
     status: str | None = None,
 ) -> list[dict[str, Any]]:
     """Load, filter, and sort history records for CLI read commands."""
-    parsed_since = _parse_history_timestamp(since)
-    parsed_until = _parse_history_timestamp(until)
-    history_store = open_history_store()
-    records_iter = (
-        history_store.iter_records() if raw else iter_history_runs(history_store)
+    return HistoryView.load_records(
+        raw=raw,
+        job=job,
+        limit=limit,
+        run_id=run_id,
+        since=since,
+        until=until,
+        status=status,
     )
-    records = [
-        dict(record)
-        for record in records_iter
-        if _history_record_matches(
-            record,
-            job=job,
-            run_id=run_id,
-            since=parsed_since,
-            until=parsed_until,
-            status=status,
-        )
-    ]
-    records.sort(key=_history_sort_key, reverse=True)
-    if limit is not None:
-        records = records[:limit]
-    return records
 
 
 def _validate_history_output_mode(
@@ -331,8 +609,7 @@ def _validate_history_output_mode(
     table: bool,
 ) -> None:
     """Validate that at most one explicit history output mode was requested."""
-    if json_output and table:
-        raise ValueError('choose either json output or table output, not both')
+    HistoryView.validate_output_mode(json_output=json_output, table=table)
 
 
 def _emit_follow_history(
@@ -345,27 +622,14 @@ def _emit_follow_history(
     status: str | None = None,
 ) -> int:
     """Stream newly observed raw history records until interrupted."""
-    seen: set[str] = set()
-    try:
-        while True:
-            records = _load_history_records(
-                job=job,
-                limit=limit,
-                raw=True,
-                run_id=run_id,
-                since=since,
-                until=until,
-                status=status,
-            )
-            for record in reversed(records):
-                fingerprint = _history_record_fingerprint(record)
-                if fingerprint in seen:
-                    continue
-                seen.add(fingerprint)
-                _io.emit_json(record, pretty=False)
-            sleep(1.0)
-    except KeyboardInterrupt:
-        return 0
+    return HistoryView.emit_follow(
+        job=job,
+        limit=limit,
+        run_id=run_id,
+        since=since,
+        until=until,
+        status=status,
+    )
 
 
 def _increment_metric(
@@ -374,7 +638,7 @@ def _increment_metric(
     amount: int = 1,
 ) -> None:
     """Increment an integer metric stored inside a mutable report bucket."""
-    bucket[key] = int(bucket.get(key) or 0) + amount
+    HistoryReportBuilder.increment_metric(bucket, key, amount)
 
 
 def _report_group_key(
@@ -383,12 +647,7 @@ def _report_group_key(
     group_by: Literal['day', 'job', 'status'],
 ) -> str:
     """Return the grouping key for one normalized history record."""
-    if group_by == 'job':
-        return cast(str, record.get('job_name') or '(no job)')
-    if group_by == 'status':
-        return cast(str, record.get('status') or '(unknown)')
-    timestamp = cast(str, record.get('started_at') or record.get('finished_at') or '')
-    return timestamp.split('T', maxsplit=1)[0] if 'T' in timestamp else '(unknown)'
+    return HistoryReportBuilder.report_group_key(record, group_by=group_by)
 
 
 def _success_rate_pct(
@@ -396,9 +655,7 @@ def _success_rate_pct(
     runs: int,
 ) -> float | None:
     """Return the success-rate percentage for the given counters."""
-    if runs <= 0:
-        return None
-    return round((succeeded / runs) * 100, 2)
+    return HistoryReportBuilder.success_rate_pct(succeeded, runs)
 
 
 def _update_duration_metrics(
@@ -406,16 +663,7 @@ def _update_duration_metrics(
     duration_ms: int,
 ) -> None:
     """Update duration-related metrics for one report bucket."""
-    _increment_metric(bucket, 'total_duration_ms', duration_ms)
-    _increment_metric(bucket, 'duration_samples', 1)
-    current_min = bucket.get('min_duration_ms')
-    current_max = bucket.get('max_duration_ms')
-    bucket['min_duration_ms'] = (
-        duration_ms if current_min is None else min(int(current_min), duration_ms)
-    )
-    bucket['max_duration_ms'] = (
-        duration_ms if current_max is None else max(int(current_max), duration_ms)
-    )
+    HistoryReportBuilder.update_duration_metrics(bucket, duration_ms)
 
 
 def _build_history_report(
@@ -424,92 +672,7 @@ def _build_history_report(
     group_by: Literal['day', 'job', 'status'],
 ) -> dict[str, Any]:
     """Aggregate normalized history records into a grouped report."""
-    rows_by_group: dict[str, dict[str, Any]] = {}
-    summary: dict[str, Any] = {
-        'avg_duration_ms': None,
-        'failed': 0,
-        'max_duration_ms': None,
-        'min_duration_ms': None,
-        'other': 0,
-        'running': 0,
-        'runs': len(records),
-        'success_rate_pct': None,
-        'succeeded': 0,
-        'total_duration_ms': 0,
-        'duration_samples': 0,
-    }
-
-    for record in records:
-        status = cast(str, record.get('status') or '')
-        if status in ('succeeded', 'failed', 'running'):
-            _increment_metric(summary, status)
-        else:
-            _increment_metric(summary, 'other')
-
-        key = _report_group_key(record, group_by=group_by)
-        row = cast(
-            dict[str, Any],
-            rows_by_group.setdefault(
-                key,
-                {
-                    'avg_duration_ms': None,
-                    'duration_samples': 0,
-                    'group': key,
-                    'last_started_at': None,
-                    'max_duration_ms': None,
-                    'min_duration_ms': None,
-                    'runs': 0,
-                    'succeeded': 0,
-                    'failed': 0,
-                    'running': 0,
-                    'other': 0,
-                    'success_rate_pct': None,
-                    'total_duration_ms': 0,
-                },
-            ),
-        )
-        _increment_metric(row, 'runs')
-        if status in ('succeeded', 'failed', 'running'):
-            _increment_metric(row, status)
-        else:
-            _increment_metric(row, 'other')
-
-        duration_ms = record.get('duration_ms')
-        if isinstance(duration_ms, int):
-            _update_duration_metrics(row, duration_ms)
-            _update_duration_metrics(summary, duration_ms)
-
-        started_at = record.get('started_at')
-        if isinstance(started_at, str) and (
-            row['last_started_at'] is None or started_at > row['last_started_at']
-        ):
-            row['last_started_at'] = started_at
-
-    rows = sorted(rows_by_group.values(), key=lambda item: cast(str, item['group']))
-    for row in rows:
-        samples = cast(int, row.pop('duration_samples'))
-        total_duration = cast(int, row.pop('total_duration_ms'))
-        row['avg_duration_ms'] = int(total_duration / samples) if samples > 0 else None
-        row['success_rate_pct'] = _success_rate_pct(
-            int(row['succeeded']),
-            int(row['runs']),
-        )
-
-    summary_samples = cast(int, summary.pop('duration_samples'))
-    summary_total_duration = cast(int, summary.pop('total_duration_ms'))
-    summary['avg_duration_ms'] = (
-        int(summary_total_duration / summary_samples) if summary_samples > 0 else None
-    )
-    summary['success_rate_pct'] = _success_rate_pct(
-        int(summary['succeeded']),
-        int(summary['runs']),
-    )
-
-    return {
-        'group_by': group_by,
-        'rows': rows,
-        'summary': summary,
-    }
+    return HistoryReportBuilder.build(records, group_by=group_by)
 
 
 def _pipeline_summary(
@@ -769,7 +932,7 @@ def extract_handler(
 
     """
     explicit_format = format_hint if format_explicit else None
-    run_id = create_run_id()
+    run_id = RuntimeEvents.create_run_id()
     started_perf = perf_counter()
     _emit_lifecycle_event(
         command='extract',
@@ -894,7 +1057,7 @@ def load_handler(
         requested.
     """
     explicit_format = target_format if format_explicit else None
-    run_id = create_run_id()
+    run_id = RuntimeEvents.create_run_id()
     started_perf = perf_counter()
     _emit_lifecycle_event(
         command='load',
@@ -1167,8 +1330,8 @@ def run_handler(
 
     job_name = job or pipeline
     if job_name:
-        run_id = create_run_id()
-        started_at = utc_now_iso()
+        run_id = RuntimeEvents.create_run_id()
+        started_at = RuntimeEvents.utc_now_iso()
         started_perf = perf_counter()
         history_store = open_history_store()
         history_store.record_run_started(
@@ -1199,7 +1362,7 @@ def run_handler(
             history_store.record_run_finished(
                 run_id,
                 status='failed',
-                finished_at=utc_now_iso(),
+                finished_at=RuntimeEvents.utc_now_iso(),
                 duration_ms=duration_ms,
                 error_type=type(exc).__name__,
                 error_message=str(exc),
@@ -1220,7 +1383,7 @@ def run_handler(
         history_store.record_run_finished(
             run_id,
             status='succeeded',
-            finished_at=utc_now_iso(),
+            finished_at=RuntimeEvents.utc_now_iso(),
             duration_ms=duration_ms,
             result_summary=cast(JSONData | None, result),
         )
@@ -1339,7 +1502,7 @@ def transform_handler(
     """
     format_hint: str | None = source_format
     format_explicit = format_hint is not None or format_explicit
-    run_id = create_run_id()
+    run_id = RuntimeEvents.create_run_id()
     started_perf = perf_counter()
     _emit_lifecycle_event(
         command='transform',
@@ -1486,7 +1649,7 @@ def validate_handler(
         when requested.
     """
     format_hint: str | None = source_format
-    run_id = create_run_id()
+    run_id = RuntimeEvents.create_run_id()
     started_perf = perf_counter()
     _emit_lifecycle_event(
         command='validate',

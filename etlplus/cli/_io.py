@@ -20,6 +20,7 @@ from typing import cast
 from ..file import File
 from ..file import FileFormat
 from ..utils import print_json
+from ..utils.data import serialize_json
 from ..utils.types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
@@ -62,8 +63,7 @@ def emit_json(
     if pretty:
         print_json(data)
         return
-    dumped = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
-    print(dumped)
+    print(serialize_json(data))
 
 
 def emit_markdown_table(
@@ -86,12 +86,7 @@ def emit_markdown_table(
         if value is None:
             return ''
         if isinstance(value, (dict, list)):
-            rendered = json.dumps(
-                value,
-                ensure_ascii=False,
-                separators=(',', ':'),
-                sort_keys=True,
-            )
+            rendered = serialize_json(value, sort_keys=True)
         else:
             rendered = str(value)
         return rendered.replace('|', '\\|').replace('\n', '<br>')
