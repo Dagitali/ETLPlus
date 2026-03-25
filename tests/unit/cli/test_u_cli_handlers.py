@@ -1543,14 +1543,14 @@ class TestRunHandler:
             ) -> None:
                 completion_obj = cast(handlers.RunCompletion, completion)
                 history_calls['finished'] = {
-                    'duration_ms': completion_obj.duration_ms,
-                    'error_message': completion_obj.error_message,
-                    'error_traceback': completion_obj.error_traceback,
-                    'error_type': completion_obj.error_type,
-                    'finished_at': completion_obj.finished_at,
-                    'result_summary': completion_obj.result_summary,
+                    'duration_ms': completion_obj.state.duration_ms,
+                    'error_message': completion_obj.state.error_message,
+                    'error_traceback': completion_obj.state.error_traceback,
+                    'error_type': completion_obj.state.error_type,
+                    'finished_at': completion_obj.state.finished_at,
+                    'result_summary': completion_obj.state.result_summary,
                     'run_id': completion_obj.run_id,
-                    'status': completion_obj.status,
+                    'status': completion_obj.state.status,
                 }
 
         monkeypatch.setattr(
