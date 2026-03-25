@@ -22,6 +22,7 @@ from typing import Any
 from ..__version__ import __version__
 from ..file.ndjson import NdjsonFile
 from ..file.sqlite import SqliteFile
+from ..utils import serialize_json
 from ..utils.types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
@@ -40,19 +41,6 @@ __all__ = [
     'iter_history_runs',
     'open_history_store',
 ]
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_DEFAULT_HISTORY_BACKEND = 'sqlite'
-_DEFAULT_STATE_DIR = Path('~/.etlplus').expanduser()
-
-
-# SECTION: CONSTANTS ======================================================== #
-
-
-HISTORY_SCHEMA_VERSION = 1
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -81,47 +69,67 @@ class RunRecord:
     pid: int | None
     etlplus_version: str | None
 
+    # -- Class Methods -- #
+
+    @classmethod
+    def build(
+        cls,
+        *,
+        run_id: str,
+        config_path: str,
+        started_at: str,
+        pipeline_name: str | None = None,
+        job_name: str | None = None,
+        status: str = 'running',
+    ) -> RunRecord:
+        """Build the initial persisted record for one CLI run."""
+        return cls(
+            run_id=run_id,
+            pipeline_name=pipeline_name,
+            job_name=job_name,
+            config_path=config_path,
+            config_sha256=cls._config_sha256(config_path),
+            status=status,
+            started_at=started_at,
+            finished_at=None,
+            duration_ms=None,
+            records_in=None,
+            records_out=None,
+            error_type=None,
+            error_message=None,
+            error_traceback=None,
+            result_summary=None,
+            host=socket.gethostname(),
+            pid=os.getpid(),
+            etlplus_version=__version__,
+        )
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def _config_sha256(
+        config_path: str,
+    ) -> str | None:
+        """Compute the SHA-256 hash of the config file at *config_path*."""
+        path = Path(config_path)
+        if not path.exists():
+            return None
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
+_DEFAULT_HISTORY_BACKEND = 'sqlite'
+_DEFAULT_STATE_DIR = Path('~/.etlplus').expanduser()
+
 _RUN_RECORD_FIELDS = tuple(field.name for field in fields(RunRecord))
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
+# SECTION: CONSTANTS ======================================================== #
 
 
-def _coerce_state_dir(
-    state_dir: str | os.PathLike[str] | None = None,
-) -> Path:
-    """Coerce a state directory path from the given value or environment variable."""
-    raw = state_dir or os.getenv('ETLPLUS_STATE_DIR')
-    if not raw:
-        return _DEFAULT_STATE_DIR
-    return Path(raw).expanduser()
-
-
-def _config_sha256(
-    config_path: str,
-) -> str | None:
-    """Compute the SHA-256 hash of the config file at *config_path*."""
-    path = Path(config_path)
-    if not path.exists():
-        return None
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _merge_run_record(
-    record: dict[str, Any],
-    update: Mapping[str, Any],
-) -> None:
-    """Merge a partial history update into an accumulated run record."""
-    for key, value in update.items():
-        if value is not None or key not in record:
-            record[key] = value
+HISTORY_SCHEMA_VERSION = 1
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -159,25 +167,13 @@ def build_run_record(
     RunRecord
         Persistable record for the run.
     """
-    return RunRecord(
+    return RunRecord.build(
         run_id=run_id,
+        config_path=config_path,
+        started_at=started_at,
         pipeline_name=pipeline_name,
         job_name=job_name,
-        config_path=config_path,
-        config_sha256=_config_sha256(config_path),
         status=status,
-        started_at=started_at,
-        finished_at=None,
-        duration_ms=None,
-        records_in=None,
-        records_out=None,
-        error_type=None,
-        error_message=None,
-        error_traceback=None,
-        result_summary=None,
-        host=socket.gethostname(),
-        pid=os.getpid(),
-        etlplus_version=__version__,
     )
 
 
@@ -197,21 +193,7 @@ def iter_history_runs(
     dict[str, Any]
         One normalized run record for each distinct ``run_id``.
     """
-    merged_by_run_id: dict[str, dict[str, Any]] = {}
-    run_order: list[str] = []
-
-    for record in store.iter_records():
-        run_id = record.get('run_id')
-        if not isinstance(run_id, str) or not run_id:
-            continue
-        if run_id not in merged_by_run_id:
-            merged_by_run_id[run_id] = {}
-            run_order.append(run_id)
-        _merge_run_record(merged_by_run_id[run_id], record)
-
-    for run_id in run_order:
-        merged = merged_by_run_id[run_id]
-        yield {field: merged.get(field) for field in _RUN_RECORD_FIELDS}
+    yield from HistoryStore.iter_runs(store)
 
 
 def open_history_store() -> HistoryStore:
@@ -222,21 +204,8 @@ def open_history_store() -> HistoryStore:
     -------
     HistoryStore
         Ready-to-use local history backend.
-
-    Raises
-    ------
-    ValueError
-        If the configured backend name is unsupported.
     """
-    backend = os.getenv('ETLPLUS_HISTORY_BACKEND', _DEFAULT_HISTORY_BACKEND)
-    state_dir = _coerce_state_dir()
-    if backend == 'sqlite':
-        return SQLiteHistoryStore(state_dir / 'history.sqlite')
-    if backend == 'jsonl':
-        return JsonlHistoryStore(state_dir / 'history.jsonl')
-    raise ValueError(
-        'ETLPLUS_HISTORY_BACKEND must be one of: sqlite, jsonl',
-    )
+    return HistoryStore.from_environment()
 
 
 # SECTION: CLASSES ========================================================== #
@@ -244,6 +213,65 @@ def open_history_store() -> HistoryStore:
 
 class HistoryStore:
     """Minimal local history-store interface."""
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_environment(cls) -> HistoryStore:
+        """Open the configured local history backend from environment values."""
+        backend = os.getenv('ETLPLUS_HISTORY_BACKEND', _DEFAULT_HISTORY_BACKEND)
+        state_dir = cls._coerce_state_dir()
+        if backend == 'sqlite':
+            return SQLiteHistoryStore(state_dir / 'history.sqlite')
+        if backend == 'jsonl':
+            return JsonlHistoryStore(state_dir / 'history.jsonl')
+        raise ValueError(
+            'ETLPLUS_HISTORY_BACKEND must be one of: sqlite, jsonl',
+        )
+
+    @classmethod
+    def iter_runs(
+        cls,
+        store: HistoryStore,
+    ) -> Iterator[dict[str, Any]]:
+        """Yield one normalized run record per ``run_id`` from a history backend."""
+        merged_by_run_id: dict[str, dict[str, Any]] = {}
+        run_order: list[str] = []
+
+        for record in store.iter_records():
+            run_id = record.get('run_id')
+            if not isinstance(run_id, str) or not run_id:
+                continue
+            if run_id not in merged_by_run_id:
+                merged_by_run_id[run_id] = {}
+                run_order.append(run_id)
+            cls._merge_record(merged_by_run_id[run_id], record)
+
+        for run_id in run_order:
+            merged = merged_by_run_id[run_id]
+            yield {field: merged.get(field) for field in _RUN_RECORD_FIELDS}
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def _coerce_state_dir(
+        state_dir: str | os.PathLike[str] | None = None,
+    ) -> Path:
+        """Coerce a state directory path from a value or environment variable."""
+        raw = state_dir or os.getenv('ETLPLUS_STATE_DIR')
+        if not raw:
+            return _DEFAULT_STATE_DIR
+        return Path(raw).expanduser()
+
+    @staticmethod
+    def _merge_record(
+        record: dict[str, Any],
+        update: Mapping[str, Any],
+    ) -> None:
+        """Merge a partial history update into an accumulated run record."""
+        for key, value in update.items():
+            if value is not None or key not in record:
+                record[key] = value
 
     # -- Instance Methods -- #
 
@@ -586,7 +614,11 @@ class SQLiteHistoryStore(HistoryStore):
                     status,
                     finished_at,
                     duration_ms,
-                    json.dumps(result_summary) if result_summary is not None else None,
+                    (
+                        serialize_json(result_summary)
+                        if result_summary is not None
+                        else None
+                    ),
                     error_type,
                     error_message,
                     error_traceback,
@@ -645,7 +677,7 @@ class SQLiteHistoryStore(HistoryStore):
                     record.error_type,
                     record.error_message,
                     record.error_traceback,
-                    json.dumps(record.result_summary)
+                    serialize_json(record.result_summary)
                     if record.result_summary is not None
                     else None,
                     record.host,
