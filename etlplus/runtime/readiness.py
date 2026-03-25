@@ -62,6 +62,23 @@ class _RequirementSpec:
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
+_AWS_ENV_HINTS: Final[tuple[str, ...]] = (
+    'AWS_ACCESS_KEY_ID',
+    'AWS_PROFILE',
+    'AWS_DEFAULT_PROFILE',
+    'AWS_ROLE_ARN',
+    'AWS_WEB_IDENTITY_TOKEN_FILE',
+    'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI',
+    'AWS_CONTAINER_CREDENTIALS_FULL_URI',
+    'AWS_SHARED_CREDENTIALS_FILE',
+    'AWS_CONFIG_FILE',
+)
+_AZURE_STORAGE_BOOTSTRAP_ENV: Final[tuple[str, ...]] = (
+    'AZURE_STORAGE_CONNECTION_STRING',
+    'AZURE_STORAGE_ACCOUNT_URL',
+)
+_AZURE_STORAGE_CREDENTIAL_ENV: Final[str] = 'AZURE_STORAGE_CREDENTIAL'
+
 
 _SUPPORTED_PYTHON_RANGE: Final[tuple[tuple[int, int], tuple[int, int]]] = (
     (3, 13),
@@ -104,6 +121,18 @@ class ReadinessReportBuilder:
     """Shared builder for ETLPlus runtime readiness reports."""
 
     # -- Static Methods -- #
+
+    @staticmethod
+    def coerce_connector_storage_scheme(
+        value: str,
+    ) -> str | None:
+        """Return one normalized storage scheme from raw connector-type text."""
+        if not value:
+            return None
+        try:
+            return str(StorageScheme.coerce(value))
+        except ValueError:
+            return None
 
     @staticmethod
     def coerce_storage_scheme(
@@ -166,6 +195,16 @@ class ReadinessReportBuilder:
         return unique_rows
 
     @staticmethod
+    def effective_environment(
+        cfg: Config,
+        env: Mapping[str, str] | None,
+    ) -> dict[str, str]:
+        """Return the merged environment used for config substitution."""
+        base_env = dict(getattr(cfg.profile, 'env', {}) or {})
+        external_env = dict(env) if env is not None else dict(os.environ)
+        return base_env | external_env
+
+    @staticmethod
     def iter_connectors(
         cfg: Config,
     ) -> Iterator[tuple[str, Connector]]:
@@ -211,6 +250,186 @@ class ReadinessReportBuilder:
             return False
 
     # -- Class Methods -- #
+
+    @classmethod
+    def aws_env_hint_present(
+        cls,
+        env: Mapping[str, str],
+    ) -> bool:
+        """Return whether common AWS credential-chain env hints are present."""
+        return any(bool(env.get(name)) for name in _AWS_ENV_HINTS)
+
+    @classmethod
+    def azure_authority_has_account_host(
+        cls,
+        path: str,
+    ) -> bool:
+        """Return whether one Azure storage path authority embeds an account host."""
+        authority = urlsplit(path).netloc
+        _, separator, account_host = authority.partition('@')
+        return bool(separator and account_host)
+
+    @classmethod
+    def connector_type_choices(cls) -> tuple[str, ...]:
+        """Return the supported connector type names."""
+        return tuple(str(member.value) for member in DataConnectorType)
+
+    @classmethod
+    def connector_type_guidance(
+        cls,
+        connector_type: str,
+    ) -> str:
+        """Return actionable guidance for an unsupported connector type."""
+        supported = ', '.join(cls.connector_type_choices())
+        normalized = connector_type.strip().lower()
+        if not normalized:
+            return f'Set type to one of: {supported}.'
+
+        storage_scheme = cls.coerce_connector_storage_scheme(normalized)
+        if storage_scheme is not None:
+            return (
+                f'"{normalized}" is a storage scheme, not a connector type. '
+                'Use connector type "file" and keep the provider in the path '
+                'or URI scheme.'
+            )
+
+        return f'Use one of the supported connector types: {supported}.'
+
+    @classmethod
+    def provider_environment_checks(
+        cls,
+        *,
+        cfg: Config,
+        env: Mapping[str, str],
+    ) -> list[dict[str, Any]]:
+        """Return provider-specific environment readiness checks."""
+        rows = cls.provider_environment_rows(cfg=cfg, env=env)
+        if not rows:
+            return [
+                cls.make_check(
+                    'provider-environment',
+                    'ok',
+                    'No provider-specific environment gaps were detected.',
+                ),
+            ]
+
+        has_error = any(row['severity'] == 'error' for row in rows)
+        return [
+            cls.make_check(
+                'provider-environment',
+                'error' if has_error else 'warn',
+                (
+                    'Configured connectors have provider-specific environment '
+                    'gaps that should be resolved before execution.'
+                    if has_error
+                    else 'Configured connectors rely on provider credential '
+                    'resolution with no explicit environment hints.'
+                ),
+                environment_gaps=rows,
+            ),
+        ]
+
+    @classmethod
+    def provider_environment_rows(
+        cls,
+        *,
+        cfg: Config,
+        env: Mapping[str, str],
+    ) -> list[dict[str, Any]]:
+        """Return provider-specific environment gaps for configured connectors."""
+        rows: list[dict[str, Any]] = []
+
+        azure_connection_string = bool(env.get('AZURE_STORAGE_CONNECTION_STRING'))
+        azure_account_url = bool(env.get('AZURE_STORAGE_ACCOUNT_URL'))
+        azure_credential = bool(env.get(_AZURE_STORAGE_CREDENTIAL_ENV))
+        aws_env_hint_present = cls.aws_env_hint_present(env)
+
+        for role, connector in cls.iter_connectors(cfg):
+            connector_name = str(getattr(connector, 'name', '<unnamed>'))
+            path = getattr(connector, 'path', None)
+            if not isinstance(path, str) or not path:
+                continue
+
+            scheme = cls.coerce_storage_scheme(path)
+            match scheme:
+                case 'azure-blob' | 'abfs':
+                    provider = 'azure-storage'
+                    authority_has_account_host = cls.azure_authority_has_account_host(
+                        path,
+                    )
+                    if not (
+                        azure_connection_string
+                        or azure_account_url
+                        or authority_has_account_host
+                    ):
+                        rows.append(
+                            {
+                                'connector': connector_name,
+                                'guidance': (
+                                    'Set AZURE_STORAGE_CONNECTION_STRING, set '
+                                    'AZURE_STORAGE_ACCOUNT_URL, or include the '
+                                    'account host in the path authority.'
+                                ),
+                                'missing_env': list(_AZURE_STORAGE_BOOTSTRAP_ENV),
+                                'provider': provider,
+                                'reason': (
+                                    f'{scheme} path does not provide an account '
+                                    'host and no Azure storage bootstrap '
+                                    'settings were found.'
+                                ),
+                                'role': role,
+                                'severity': 'error',
+                            },
+                        )
+                        continue
+
+                    if not azure_connection_string and not azure_credential:
+                        rows.append(
+                            {
+                                'connector': connector_name,
+                                'guidance': (
+                                    'Set AZURE_STORAGE_CREDENTIAL when the '
+                                    'target is not public, or use '
+                                    'AZURE_STORAGE_CONNECTION_STRING for a '
+                                    'fully explicit configuration.'
+                                ),
+                                'missing_env': [_AZURE_STORAGE_CREDENTIAL_ENV],
+                                'provider': provider,
+                                'reason': (
+                                    f'{scheme} access has no explicit Azure '
+                                    'credential configured; runtime access will '
+                                    'only work for public resources or other '
+                                    'ambient authentication handled by the SDK '
+                                    'call site.'
+                                ),
+                                'role': role,
+                                'severity': 'warn',
+                            },
+                        )
+                case 's3':
+                    if not aws_env_hint_present:
+                        rows.append(
+                            {
+                                'connector': connector_name,
+                                'guidance': (
+                                    'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/'
+                                    'AWS_SECRET_ACCESS_KEY, or rely on shared '
+                                    'config files, container credentials, or '
+                                    'instance metadata.'
+                                ),
+                                'missing_env': list(_AWS_ENV_HINTS),
+                                'provider': 'aws-s3',
+                                'reason': (
+                                    'No common AWS credential-chain '
+                                    'environment hints were detected for this '
+                                    'S3 path.'
+                                ),
+                                'role': role,
+                                'severity': 'warn',
+                            },
+                        )
+
+        return rows
 
     @classmethod
     def connector_type(
@@ -312,9 +531,9 @@ class ReadinessReportBuilder:
     def connector_gap_rows(
         cls,
         cfg: Config,
-    ) -> list[dict[str, str]]:
+    ) -> list[dict[str, Any]]:
         """Return connector configuration gaps that will block execution."""
-        gaps: list[dict[str, str]] = []
+        gaps: list[dict[str, Any]] = []
         for role, connector in cls.iter_connectors(cfg):
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
             connector_type = str(getattr(connector, 'type', ''))
@@ -324,8 +543,10 @@ class ReadinessReportBuilder:
                 gaps.append(
                     {
                         'connector': connector_name,
-                        'issue': f'unsupported type: {connector_type or "<empty>"}',
+                        'guidance': cls.connector_type_guidance(connector_type),
+                        'issue': 'unsupported type',
                         'role': role,
+                        'supported_types': list(cls.connector_type_choices()),
                         'type': connector_type,
                     },
                 )
@@ -454,7 +675,7 @@ class ReadinessReportBuilder:
                     'error',
                     (
                         'One or more configured connectors are missing required '
-                        'runtime fields.'
+                        'runtime fields or use unsupported connector types.'
                     ),
                     gaps=gaps,
                 ),
@@ -534,9 +755,7 @@ class ReadinessReportBuilder:
         )
 
         cfg = Config.from_dict(raw)
-        base_env = dict(getattr(cfg.profile, 'env', {}) or {})
-        external_env = dict(env) if env is not None else dict(os.environ)
-        effective_env = base_env | external_env
+        effective_env = cls.effective_environment(cfg, env)
         resolved = deep_substitute(raw, cfg.vars, effective_env)
         unresolved = sorted(cls.collect_substitution_tokens(resolved))
 
@@ -560,6 +779,12 @@ class ReadinessReportBuilder:
             ),
         )
         checks.extend(cls.connector_readiness_checks(resolved_cfg))
+        checks.extend(
+            cls.provider_environment_checks(
+                cfg=resolved_cfg,
+                env=effective_env,
+            ),
+        )
         return checks
 
     @classmethod
