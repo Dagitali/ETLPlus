@@ -190,6 +190,11 @@ class HistoryView:
             Whether JSON output mode was requested.
         table : bool
             Whether table output mode was requested.
+
+        Raises
+        ------
+        ValueError
+            If more than one explicit output mode was requested.
         """
         if json_output and table:
             raise ValueError('choose either json output or table output, not both')
