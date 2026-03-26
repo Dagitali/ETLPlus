@@ -1,0 +1,56 @@
+"""
+:mod:`etlplus.cli._commands.status` module.
+
+Typer command for the latest normalized persisted run.
+"""
+
+from __future__ import annotations
+
+import typer
+
+from etlplus.cli import _handlers as handlers
+from etlplus.cli._commands.app import app
+from etlplus.cli._commands.options import JobOption
+from etlplus.cli._commands.options import RunIdOption
+from etlplus.cli._state import ensure_state
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = ['status_cmd']
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+@app.command('status')
+def status_cmd(
+    ctx: typer.Context,
+    job: JobOption = None,
+    run_id: RunIdOption = None,
+) -> int:
+    """
+    Inspect the latest normalized persisted run.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        Typer context.
+    job : JobOption, optional
+        Specific job to inspect (defaults to the latest job).
+    run_id : RunIdOption, optional
+        Specific run ID to inspect (defaults to the latest run).
+
+    Returns
+    -------
+    int
+        Exit code (0 if checks passed, non-zero if any checks failed).
+    """
+    state = ensure_state(ctx)
+    return int(
+        handlers.status_handler(
+            job=job,
+            pretty=state.pretty,
+            run_id=run_id,
+        ),
+    )
