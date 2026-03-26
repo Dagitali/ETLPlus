@@ -12,6 +12,13 @@ import pytest
 import typer
 
 import etlplus.cli._commands as commands_mod
+import etlplus.cli._commands.check as check_mod
+import etlplus.cli._commands.helpers as helpers_mod
+import etlplus.cli._commands.history as history_mod
+import etlplus.cli._commands.log as log_mod
+import etlplus.cli._commands.report as report_mod
+import etlplus.cli._commands.status as status_mod
+import etlplus.cli._commands.transform as transform_mod
 from etlplus.cli._state import CliState
 
 from .conftest import AssertCapturedText
@@ -41,7 +48,7 @@ class TestCommandsInternalHelpers:
             raise ValueError('bad json')
 
         monkeypatch.setattr(
-            commands_mod,
+            helpers_mod,
             'parse_json_payload',
             _parse_json_payload,
         )
@@ -60,7 +67,7 @@ class TestCheckCommand:
     ) -> None:
         """Test that valid inputs dispatch to ``check_handler``."""
         monkeypatch.setattr(
-            commands_mod,
+            check_mod,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
@@ -102,7 +109,7 @@ class TestCliInvokeParsing:
             captured.update(kwargs)
             return 0
 
-        monkeypatch.setattr(commands_mod, 'handle_history', _stub)
+        monkeypatch.setattr(history_mod, 'handle_history', _stub)
 
         result = invoke_cli(
             'history',
@@ -125,7 +132,7 @@ class TestCliInvokeParsing:
             captured.update(kwargs)
             return 0
 
-        monkeypatch.setattr(commands_mod, 'handle_history', _stub)
+        monkeypatch.setattr(log_mod, 'handle_history', _stub)
 
         result = invoke_cli(
             'log',
@@ -294,7 +301,7 @@ class TestHistoryCommand:
     ) -> None:
         """Test that history inputs dispatch to ``history_handler``."""
         monkeypatch.setattr(
-            commands_mod,
+            history_mod,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
@@ -304,7 +311,7 @@ class TestHistoryCommand:
             result=0,
         )
         monkeypatch.setattr(
-            commands_mod,
+            history_mod,
             'handle_history',
             commands_mod.handlers.history_handler,
         )
@@ -346,7 +353,7 @@ class TestLogCommand:
     ) -> None:
         """Test that log inputs dispatch to the raw history handler."""
         monkeypatch.setattr(
-            commands_mod,
+            log_mod,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
@@ -356,7 +363,7 @@ class TestLogCommand:
             result=0,
         )
         monkeypatch.setattr(
-            commands_mod,
+            log_mod,
             'handle_history',
             commands_mod.handlers.history_handler,
         )
@@ -393,7 +400,7 @@ class TestReportCommand:
     ) -> None:
         """Test that report inputs dispatch to ``report_handler``."""
         monkeypatch.setattr(
-            commands_mod,
+            report_mod,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
@@ -436,7 +443,7 @@ class TestStatusCommand:
     ) -> None:
         """Test that status inputs dispatch to ``status_handler``."""
         monkeypatch.setattr(
-            commands_mod,
+            status_mod,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
@@ -473,27 +480,27 @@ class TestTransformCommand:
         Test that, when source type is ``None``, source validation is skipped.
         """
         monkeypatch.setattr(
-            commands_mod,
+            transform_mod,
             'ensure_state',
             lambda _ctx: CliState(),
         )
         monkeypatch.setattr(
-            commands_mod,
+            transform_mod,
             'optional_choice',
             lambda value, choices, label: value,
         )
         monkeypatch.setattr(
-            commands_mod,
+            transform_mod,
             'infer_resource_type_soft',
             lambda _source: None,
         )
         monkeypatch.setattr(
-            commands_mod,
+            transform_mod,
             'resolve_resource_type',
             lambda **kwargs: 'file',
         )
         monkeypatch.setattr(
-            commands_mod,
+            transform_mod,
             '_parse_json_option',
             lambda value, flag: {},
         )
@@ -508,7 +515,7 @@ class TestTransformCommand:
             validate_called['count'] += 1
             return str(value)
 
-        monkeypatch.setattr(commands_mod, 'validate_choice', _validate_choice)
+        monkeypatch.setattr(transform_mod, 'validate_choice', _validate_choice)
         captured = stub_handler(
             commands_mod.handlers,
             'transform_handler',
