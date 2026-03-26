@@ -97,9 +97,7 @@ _SUPPORTED_PYTHON_RANGE: Final[tuple[tuple[int, int], tuple[int, int]]] = (
 _TOKEN_PATTERN: Final[re.Pattern[str]] = re.compile(r'\$\{([^}]+)\}')
 
 
-_FORMAT_EXTRA_REQUIREMENTS: Final[
-    dict[str, _RequirementSpec]
-] = {
+_FORMAT_EXTRA_REQUIREMENTS: Final[dict[str, _RequirementSpec]] = {
     'dta': _RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
     'hdf5': _RequirementSpec(('tables',), 'tables'),
     'rda': _RequirementSpec(('pyreadr',), 'pyreadr', 'file'),
@@ -107,9 +105,7 @@ _FORMAT_EXTRA_REQUIREMENTS: Final[
     'sav': _RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
     'zsav': _RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
 }
-_SCHEME_EXTRA_REQUIREMENTS: Final[
-    dict[str, _RequirementSpec]
-] = {
+_SCHEME_EXTRA_REQUIREMENTS: Final[dict[str, _RequirementSpec]] = {
     'abfs': _RequirementSpec(
         ('azure.storage.filedatalake',),
         'azure-storage-file-datalake',
@@ -617,8 +613,7 @@ class ReadinessReportBuilder:
                         cls.requirement_row(
                             connector=connector_name,
                             reason=(
-                                f'{format_name} format requires '
-                                f'{requirement.package}'
+                                f'{format_name} format requires {requirement.package}'
                             ),
                             requirement=requirement,
                             role=role,
@@ -768,8 +763,7 @@ class ReadinessReportBuilder:
     def netcdf_available(cls) -> bool:
         """Return whether netCDF support dependencies are installed."""
         return cls.package_available('xarray') and (
-            cls.package_available('netCDF4')
-            or cls.package_available('h5netcdf')
+            cls.package_available('netCDF4') or cls.package_available('h5netcdf')
         )
 
     @classmethod
@@ -801,8 +795,7 @@ class ReadinessReportBuilder:
     ) -> bool:
         """Return whether any module for one requirement is importable."""
         return any(
-            cls.package_available(module_name)
-            for module_name in requirement.modules
+            cls.package_available(module_name) for module_name in requirement.modules
         )
 
     @classmethod
@@ -839,9 +832,7 @@ class ReadinessReportBuilder:
             raw=raw,
             effective_env=effective_env,
             unresolved_tokens=unresolved_tokens,
-            resolved_cfg=(
-                None if unresolved_tokens else Config.from_dict(resolved)
-            ),
+            resolved_cfg=(None if unresolved_tokens else Config.from_dict(resolved)),
         )
 
     @classmethod
