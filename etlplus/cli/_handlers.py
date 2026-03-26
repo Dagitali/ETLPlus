@@ -42,6 +42,8 @@ from ._history import HISTORY_TABLE_COLUMNS as _HISTORY_TABLE_COLUMNS
 from ._history import REPORT_TABLE_COLUMNS as _REPORT_TABLE_COLUMNS
 from ._history import HistoryReportBuilder
 from ._history import HistoryView
+from ._summary import check_sections as _check_sections
+from ._summary import pipeline_summary as _pipeline_summary
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -93,21 +95,7 @@ def _collect_table_specs(
     config_path: str | None,
     spec_path: str | None,
 ) -> list[dict[str, Any]]:
-    """
-    Load table schemas from a pipeline config and/or standalone spec.
-
-    Parameters
-    ----------
-    config_path : str | None
-        Path to a pipeline YAML config file.
-    spec_path : str | None
-        Path to a standalone table spec file.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        Collected table specification mappings.
-    """
+    """Load table schemas from a pipeline config and/or standalone spec."""
     specs: list[dict[str, Any]] = []
 
     if spec_path:
@@ -118,59 +106,6 @@ def _collect_table_specs(
         specs.extend(getattr(cfg, 'table_schemas', []))
 
     return specs
-
-
-def _check_sections(
-    cfg: Config,
-    *,
-    jobs: bool,
-    pipelines: bool,
-    sources: bool,
-    targets: bool,
-    transforms: bool,
-) -> dict[str, Any]:
-    """
-    Build sectioned metadata output for the check command.
-
-    Parameters
-    ----------
-    cfg : Config
-        The loaded pipeline configuration.
-    jobs : bool
-        Whether to include job metadata.
-    pipelines : bool
-        Whether to include pipeline metadata.
-    sources : bool
-        Whether to include source metadata.
-    targets : bool
-        Whether to include target metadata.
-    transforms : bool
-        Whether to include transform metadata.
-
-    Returns
-    -------
-    dict[str, Any]
-        Metadata output for the check command.
-    """
-    sections: dict[str, Any] = {}
-    if jobs:
-        sections['jobs'] = _pipeline_summary(cfg)['jobs']
-    if pipelines:
-        sections['pipelines'] = [cfg.name]
-    if sources:
-        sections['sources'] = [src.name for src in cfg.sources]
-    if targets:
-        sections['targets'] = [tgt.name for tgt in cfg.targets]
-    if transforms:
-        if isinstance(cfg.transforms, Mapping):
-            sections['transforms'] = list(cfg.transforms)
-        else:
-            sections['transforms'] = [
-                getattr(trf, 'name', None) for trf in cfg.transforms
-            ]
-    if not sections:
-        sections['jobs'] = _pipeline_summary(cfg)['jobs']
-    return sections
 
 
 def _elapsed_ms(
@@ -471,34 +406,6 @@ def _emit_json_or_table(
             exit_code=exit_code,
         )
     return _emit_json_payload(payload, pretty=pretty, exit_code=exit_code)
-
-
-def _pipeline_summary(
-    cfg: Config,
-) -> dict[str, Any]:
-    """
-    Return a human-friendly snapshot of a pipeline config.
-
-    Parameters
-    ----------
-    cfg : Config
-        The loaded pipeline configuration.
-
-    Returns
-    -------
-    dict[str, Any]
-        A human-friendly snapshot of a pipeline config.
-    """
-    sources = [src.name for src in cfg.sources]
-    targets = [tgt.name for tgt in cfg.targets]
-    jobs = [job.name for job in cfg.jobs]
-    return {
-        'name': cfg.name,
-        'version': cfg.version,
-        'sources': sources,
-        'targets': targets,
-        'jobs': jobs,
-    }
 
 
 def _write_file_payload(
