@@ -20,6 +20,7 @@ from dataclasses import fields
 from pathlib import Path
 from typing import Any
 from typing import Self
+from typing import cast
 
 from ..__version__ import __version__
 from ..file.ndjson import NdjsonFile
@@ -62,9 +63,13 @@ def _file_sha256(
 ) -> str | None:
     """Return the SHA-256 digest for *file_path* when the file exists."""
     path = Path(file_path)
-    if not path.exists():
+    if not path.is_file():
         return None
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    digest = hashlib.sha256()
+    with path.open('rb') as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _serialize_result_summary(
@@ -74,6 +79,24 @@ def _serialize_result_summary(
     if result_summary is None:
         return None
     return serialize_json(result_summary)
+
+
+def _sqlite_record_payload(
+    record: RunRecord,
+) -> dict[str, Any]:
+    """Return one SQLite-ready payload for a started run record."""
+    payload = record.to_payload()
+    payload['result_summary'] = _serialize_result_summary(record.state.result_summary)
+    return payload
+
+
+def _sqlite_row_payload(
+    row: sqlite3.Row,
+) -> dict[str, Any]:
+    """Return one SQLite row decoded into a history payload."""
+    payload = dict(row)
+    payload['result_summary'] = _deserialize_result_summary(payload['result_summary'])
+    return payload
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -476,6 +499,7 @@ class HistoryStore(ABC):
 
 # SECTION: CLASSES ========================================================== #
 
+
 class JsonlHistoryStore(HistoryStore):
     """JSONL-backed local run history."""
 
@@ -630,11 +654,7 @@ class SQLiteHistoryStore(HistoryStore):
                 """,
             )
             for row in rows:
-                payload = dict(row)
-                payload['result_summary'] = _deserialize_result_summary(
-                    payload['result_summary'],
-                )
-                yield payload
+                yield _sqlite_row_payload(cast(sqlite3.Row, row))
 
     def record_run_finished(
         self,
@@ -687,10 +707,7 @@ class SQLiteHistoryStore(HistoryStore):
         record : RunRecord
             Initial run record to persist.
         """
-        payload = record.to_payload()
-        payload['result_summary'] = _serialize_result_summary(
-            record.state.result_summary,
-        )
+        payload = _sqlite_record_payload(record)
         with self._connect() as conn:
             conn.execute(
                 f"""
