@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli.constants` module.
+:mod:`etlplus.cli._commands._constants` module.
 
 Shared constants for :mod:`etlplus.cli`.
 """
@@ -9,8 +9,8 @@ from __future__ import annotations
 from textwrap import dedent
 from typing import Final
 
-from ..connector import DataConnectorType
-from ..file import FileFormat
+from ...connector import DataConnectorType
+from ...file import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
