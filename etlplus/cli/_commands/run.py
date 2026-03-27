@@ -12,7 +12,7 @@ from .. import _handlers as handlers
 from .._state import ensure_state
 from .app import app
 from .helpers import call_handler
-from .helpers import require_option
+from .helpers import require_value
 from .options import ConfigOption
 from .options import JobOption
 from .options import PipelineOption
@@ -56,7 +56,10 @@ def run_cmd(
     int
         Exit code (0 if checks passed, non-zero if any checks failed).
     """
-    config = require_option(config, flag='--config')
+    config = require_value(
+        config,
+        message="Missing required option '--config'.",
+    )
 
     return call_handler(
         handlers.run_handler,

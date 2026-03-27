@@ -13,7 +13,7 @@ from .._state import ensure_state
 from .app import app
 from .helpers import call_handler
 from .helpers import fail_usage
-from .helpers import require_option
+from .helpers import require_value
 from .options import CheckConfigOption
 from .options import JobsOption
 from .options import PipelinesOption
@@ -88,7 +88,10 @@ def check_cmd(
         fail_usage('--readiness cannot be combined with inspection flags.')
 
     if not readiness and not config:
-        require_option(config, flag='--config')
+        require_value(
+            config,
+            message="Missing required option '--config'.",
+        )
 
     return call_handler(
         handlers.check_handler,
