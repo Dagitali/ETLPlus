@@ -70,6 +70,7 @@ type TransformOperations = Mapping[
     Literal['filter', 'map', 'select', 'sort', 'aggregate'],
     Any,
 ]
+type _CompletionMode = Literal['file', 'json', 'json_file', 'or_write']
 
 
 # SECTION: INTERNAL DATA CLASSES ============================================ #
@@ -113,7 +114,7 @@ def _emit_failure_event(
         lifecycle='failed',
         run_id=run_id,
         event_format=event_format,
-        duration_ms=int((perf_counter() - started_perf) * 1000),
+        duration_ms=_elapsed_ms(started_perf),
         error_message=str(exc),
         error_type=type(exc).__name__,
         status='error',
@@ -258,69 +259,45 @@ def _start_command(
     return context
 
 
-def _complete_and_emit_json(
+def _complete_output(
     context: _CommandContext,
     payload: Any,
     *,
-    pretty: bool,
+    mode: _CompletionMode,
+    pretty: bool = True,
+    output_path: str | None = None,
+    format_hint: str | None = None,
+    success_message: str | None = None,
     **fields: Any,
 ) -> int:
-    """Emit the completion event for *context* and then emit one JSON payload."""
+    """Emit completion for *context* and route the payload by output mode."""
     _complete_command(context, **fields)
-    return _emit_json_payload(payload, pretty=pretty)
-
-
-def _complete_and_emit_or_write(
-    context: _CommandContext,
-    payload: Any,
-    output_path: str | None,
-    *,
-    pretty: bool,
-    success_message: str,
-    **fields: Any,
-) -> int:
-    """Emit completion for *context* and route payload to stdout or file."""
-    _complete_command(context, **fields)
-    return _emit_or_write_payload(
-        payload,
-        output_path,
-        pretty=pretty,
-        success_message=success_message,
-    )
-
-
-def _complete_and_write_file_payload(
-    context: _CommandContext,
-    payload: JSONData,
-    output_target: str,
-    *,
-    format_hint: str | None,
-    success_message: str,
-    **fields: Any,
-) -> int:
-    """Emit completion for *context*, write one file payload, and confirm it."""
-    _complete_command(context, **fields)
-    _write_file_payload(payload, output_target, format_hint=format_hint)
-    print(f'{success_message} {output_target}')
-    return 0
-
-
-def _complete_and_write_json_output(
-    context: _CommandContext,
-    payload: Any,
-    output_target: str,
-    *,
-    success_message: str,
-    **fields: Any,
-) -> int:
-    """Emit completion for *context* and write one JSON payload to *target*."""
-    _complete_command(context, **fields)
-    _io.write_json_output(
-        payload,
-        output_target,
-        success_message=success_message,
-    )
-    return 0
+    match mode:
+        case 'json':
+            return _emit_json_payload(payload, pretty=pretty)
+        case 'or_write':
+            return _emit_or_write_payload(
+                payload,
+                output_path,
+                pretty=pretty,
+                success_message=cast(str, success_message),
+            )
+        case 'file':
+            target = cast(str, output_path)
+            _write_file_payload(
+                cast(JSONData, payload),
+                target,
+                format_hint=format_hint,
+            )
+            print(f'{cast(str, success_message)} {target}')
+            return 0
+        case 'json_file':
+            _io.write_json_output(
+                payload,
+                cast(str, output_path),
+                success_message=cast(str, success_message),
+            )
+            return 0
 
 
 def _emit_follow_history(
@@ -631,9 +608,10 @@ def extract_handler(
                 text,
                 format_hint,
             )
-            return _complete_and_emit_json(
+            return _complete_output(
                 context,
                 payload,
+                mode='json',
                 pretty=pretty,
                 result_status='ok',
                 status='ok',
@@ -648,10 +626,11 @@ def extract_handler(
         )
         output_path = target or output
 
-        return _complete_and_emit_or_write(
+        return _complete_output(
             context,
             result,
-            output_path,
+            mode='or_write',
+            output_path=output_path,
             pretty=pretty,
             success_message='Data extracted and saved to',
             destination=output_path or 'stdout',
@@ -748,9 +727,10 @@ def load_handler(
                 format_hint=source_format,
                 format_explicit=source_format is not None,
             )
-            return _complete_and_emit_json(
+            return _complete_output(
                 context,
                 payload,
+                mode='json',
                 pretty=pretty,
                 result_status='ok',
                 source=source,
@@ -767,10 +747,11 @@ def load_handler(
         )
 
         output_path = output
-        return _complete_and_emit_or_write(
+        return _complete_output(
             context,
             result,
-            output_path,
+            mode='or_write',
+            output_path=output_path,
             pretty=pretty,
             success_message='Load result saved to',
             destination=output_path or 'stdout',
@@ -1182,9 +1163,10 @@ def transform_handler(
                     target,
                     file_format=target_format if format_explicit else None,
                 )
-                return _complete_and_emit_json(
+                return _complete_output(
                     context,
                     result,
+                    mode='json',
                     pretty=pretty,
                     result_status='ok',
                     source=source,
@@ -1193,10 +1175,11 @@ def transform_handler(
                     target_type=resolved_target_type,
                 )
 
-            return _complete_and_write_file_payload(
+            return _complete_output(
                 context,
                 data,
-                target,
+                mode='file',
+                output_path=target,
                 format_hint=target_format,
                 success_message='Data transformed and saved to',
                 result_status='ok',
@@ -1206,9 +1189,10 @@ def transform_handler(
                 target_type=target_type or 'file',
             )
 
-        return _complete_and_emit_json(
+        return _complete_output(
             context,
             data,
+            mode='json',
             pretty=pretty,
             result_status='ok',
             source=source,
@@ -1304,10 +1288,11 @@ def validate_handler(
         if target and target != '-':
             validated_data = result.get('data')
             if validated_data is not None:
-                return _complete_and_write_json_output(
+                return _complete_output(
                     context,
                     validated_data,
-                    target,
+                    mode='json_file',
+                    output_path=target,
                     success_message='ValidationDict result saved to',
                     result_status='ok',
                     source=source,
@@ -1321,9 +1306,10 @@ def validate_handler(
             )
             return 0
 
-        return _complete_and_emit_json(
+        return _complete_output(
             context,
             result,
+            mode='json',
             pretty=pretty,
             result_status='ok',
             source=source,
