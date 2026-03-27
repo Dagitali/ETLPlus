@@ -362,6 +362,38 @@ class TestCliStateHelpers:
         )
         assert 'Inferred source_type=file' in capsys.readouterr().err
 
+    def test_resolve_logged_resource_type_uses_soft_inference(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test the shared resolve/validate/log state helper."""
+        logged: dict[str, object] = {}
+        monkeypatch.setattr(
+            cli_state_module,
+            'infer_resource_type_soft',
+            lambda _value: 'file',
+        )
+        monkeypatch.setattr(
+            cli_state_module,
+            'log_inferred_resource',
+            lambda state, **kwargs: logged.update(kwargs),
+        )
+
+        resolved = cli_state_module.resolve_logged_resource_type(
+            cli_state_module.CliState(verbose=True),
+            role='source',
+            value='payload.json',
+            explicit_type=None,
+            soft_inference=True,
+        )
+
+        assert resolved == 'file'
+        assert logged == {
+            'role': 'source',
+            'value': 'payload.json',
+            'resource_type': 'file',
+        }
+
     def test_resolve_resource_type_conflict_raises_bad_parameter(self) -> None:
         """Test that conflicting explicit/override values raise errors."""
         with pytest.raises(typer.BadParameter, match='conflict'):

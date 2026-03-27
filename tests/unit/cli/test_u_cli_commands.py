@@ -19,6 +19,7 @@ import etlplus.cli._commands.log as log_mod
 import etlplus.cli._commands.report as report_mod
 import etlplus.cli._commands.status as status_mod
 import etlplus.cli._commands.transform as transform_mod
+import etlplus.cli._state as state_mod
 from etlplus.cli._state import CliState
 from etlplus.file import FileFormat
 
@@ -62,37 +63,12 @@ class TestCommandsInternalHelpers:
         with pytest.raises(typer.BadParameter, match='Invalid JSON for --ops'):
             commands_mod.parse_json_option('not-json', '--ops')
 
-    def test_resolve_logged_resource_type_uses_soft_inference(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Soft resource inference should tolerate inline payload scenarios."""
-        logged: dict[str, object] = {}
-        monkeypatch.setattr(
-            helpers_mod.ResourceTypeResolver,
-            'infer_soft',
-            lambda _value: 'file',
+    def test_resolve_logged_resource_type_is_reexported_from_state(self) -> None:
+        """Command helpers should reuse the shared state implementation."""
+        assert (
+            helpers_mod.resolve_logged_resource_type
+            is state_mod.resolve_logged_resource_type
         )
-        monkeypatch.setattr(
-            helpers_mod,
-            'log_inferred_resource',
-            lambda state, **kwargs: logged.update(kwargs),
-        )
-
-        resolved = helpers_mod.resolve_logged_resource_type(
-            CliState(verbose=True),
-            role='source',
-            value='payload.json',
-            explicit_type=None,
-            soft_inference=True,
-        )
-
-        assert resolved == 'file'
-        assert logged == {
-            'role': 'source',
-            'value': 'payload.json',
-            'resource_type': 'file',
-        }
 
 
 class TestCheckCommand:
