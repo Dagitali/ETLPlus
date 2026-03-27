@@ -18,8 +18,8 @@ Notes
 
 from __future__ import annotations
 
-from ._imports import get_dependency as _get_dependency
-from ._imports import get_pandas as _get_pandas
+from ._imports import get_dependency  # noqa: F401
+from ._imports import get_pandas  # noqa: F401
 from ._scientific_handlers import SingleDatasetTabularScientificReadWriteMixin
 from ._statistical_handlers import PyreadstatReadSasFallbackFrameMixin
 from ._statistical_handlers import PyreadstatRequiredWriteFrameMixin
@@ -32,15 +32,6 @@ __all__ = [
     # Classes
     'XptFile',
 ]
-
-
-# SECTION: INTERNAL HELPERS ================================================= #
-
-
-# Preserve module-level resolver hooks for contract tests.
-get_dependency = _get_dependency
-get_pandas = _get_pandas
-
 
 # SECTION: CLASSES ========================================================== #
 
