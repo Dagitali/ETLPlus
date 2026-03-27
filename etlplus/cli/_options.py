@@ -37,6 +37,21 @@ def _typer_connector_option_kwargs(
     }
 
 
+def _typer_flag_option_kwargs(
+    help_text: str,
+    *,
+    is_eager: bool = False,
+    show_default: bool | None = None,
+) -> dict[str, object]:
+    """Return common Typer option kwargs for simple boolean flags."""
+    kwargs: dict[str, object] = {'help': help_text}
+    if is_eager:
+        kwargs['is_eager'] = True
+    if show_default is not None:
+        kwargs['show_default'] = show_default
+    return kwargs
+
+
 def _typer_resource_argument_kwargs(
     *,
     context: DataConnectorContext,
@@ -57,6 +72,22 @@ def _typer_resource_argument_kwargs(
             f'--{context}-type to override the inferred data connector.'
         ),
     }
+
+
+def _typer_path_option_kwargs(
+    help_text: str,
+    *,
+    metavar: str = 'PATH',
+    show_default: bool | None = False,
+) -> dict[str, object]:
+    """Return common Typer option kwargs for path-like string inputs."""
+    kwargs: dict[str, object] = {
+        'help': help_text,
+        'metavar': metavar,
+    }
+    if show_default is not None:
+        kwargs['show_default'] = show_default
+    return kwargs
 
 
 def _typer_timestamp_option_kwargs(
