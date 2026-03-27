@@ -400,9 +400,11 @@ def optional_choice(
     str | None
         The validated choice, or ``None`` if input was ``None``.
     """
-    if value is None:
-        return None
-    return _validate_choice_value(value, choices, label=label)
+    return ResourceTypeResolver.optional_choice(
+        value,
+        choices,
+        label=label,
+    )
 
 
 def resolve_resource_type(
@@ -474,4 +476,4 @@ def validate_choice(
         The validated choice.
 
     """
-    return _validate_choice_value(value, choices, label=label)
+    return ResourceTypeResolver.validate(value, choices, label=label)
