@@ -126,7 +126,7 @@ class TestScientificHandlers:
         )
 
         with pytest.raises(ValueError, match='Unsupported pyreadstat mode'):
-            handler._pyreadstat_is_required_for('read')
+            handler._resolve_pyreadstat_for('read')
 
     def test_read_write_dataset_wiring_passes_injected_dependencies(
         self,
