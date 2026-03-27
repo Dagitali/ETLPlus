@@ -12,6 +12,8 @@ import typer
 
 from etlplus.cli import _handlers as handlers
 from etlplus.cli._commands.app import app
+from etlplus.cli._commands.helpers import normalize_choice
+from etlplus.cli._commands.helpers import require_positional_argument
 from etlplus.cli._commands.options import SourceArg
 from etlplus.cli._commands.options import SourceFormatOption
 from etlplus.cli._commands.options import SourceTypeOption
@@ -60,31 +62,18 @@ def extract_cmd(
     int
         Exit code (0 if extraction succeeded, non-zero if any errors occurred).
 
-    Raises
-    ------
-    typer.Exit
-        If the provided options are invalid or if required options are missing.
     """
     state = ensure_state(ctx)
 
-    if source.startswith('--'):
-        typer.echo(
-            f"Error: Option '{source}' must follow the 'SOURCE' argument.",
-            err=True,
-        )
-        raise typer.Exit(2)
-    if not source:
-        typer.echo("Error: Missing required argument 'SOURCE'.", err=True)
-        raise typer.Exit(2)
-
-    source_type = ResourceTypeResolver.optional_choice(
+    source = require_positional_argument(source, name='SOURCE')
+    source_type = normalize_choice(
         source_type,
         DATA_CONNECTORS,
         label='source_type',
     )
     source_format = cast(
         SourceFormatOption,
-        ResourceTypeResolver.optional_choice(
+        normalize_choice(
             source_format,
             FILE_FORMATS,
             label='source_format',
