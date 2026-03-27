@@ -32,7 +32,9 @@ __all__ = [
     # Functions
     'call_handler',
     'fail_usage',
+    'normalize_file_format',
     'parse_json_option',
+    'require_any',
     'require_value',
     'resolve_resource',
 ]
