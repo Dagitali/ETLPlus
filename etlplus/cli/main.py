@@ -184,9 +184,8 @@ def main(
         # Conventional exit code for SIGINT
         return 130
 
-    except SystemExit as exe:
-        print(f'Error: {exe}', file=sys.stderr)
-        raise exe
+    except SystemExit:
+        raise
 
     except (OSError, TypeError, ValueError) as exc:
         typer.echo(f'Error: {exc}', err=True)
