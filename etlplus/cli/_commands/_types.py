@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli.types` module.
+:mod:`etlplus.cli._commands._types` module.
 
 Type aliases for :mod:`etlplus.cli` helpers.
 
@@ -9,7 +9,7 @@ Notes
 
 Examples
 --------
->>> from etlplus.cli._types import DataConnectorContext
+>>> from etlplus.cli._commands._types import DataConnectorContext
 >>> connector: DataConnectorContext = 'source'
 """
 
