@@ -11,10 +11,8 @@ import typer
 from .. import _handlers as handlers
 from .._state import ensure_state
 from .app import app
-from .helpers import normalize_file_format
-from .helpers import normalize_resource_type
-from .helpers import require_positional_argument
-from .helpers import resolve_logged_resource_type
+from .helpers import _call_handler
+from .helpers import _resolve_resource
 from .options import SourceArg
 from .options import SourceFormatOption
 from .options import SourceTypeOption
@@ -60,31 +58,22 @@ def extract_cmd(
 
     """
     state = ensure_state(ctx)
-
-    source = require_positional_argument(source, name='SOURCE')
-    source_type = normalize_resource_type(
-        source_type,
-        label='source_type',
-    )
-    source_format = normalize_file_format(
-        source_format,
-        label='source_format',
-    )
-    resolved_source_type = resolve_logged_resource_type(
+    resolved_source = _resolve_resource(
         state,
         role='source',
         value=source,
-        explicit_type=source_type,
+        connector_type=source_type,
+        format_value=source_format,
+        positional=True,
     )
-    assert resolved_source_type is not None
+    assert resolved_source.resource_type is not None
 
-    return int(
-        handlers.extract_handler(
-            source_type=resolved_source_type,
-            source=source,
-            event_format=event_format,
-            format_hint=source_format,
-            format_explicit=source_format is not None,
-            pretty=state.pretty,
-        ),
+    return _call_handler(
+        handlers.extract_handler,
+        state=state,
+        source_type=resolved_source.resource_type,
+        source=resolved_source.value,
+        event_format=event_format,
+        format_hint=resolved_source.format_hint,
+        format_explicit=resolved_source.format_hint is not None,
     )
