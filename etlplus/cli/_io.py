@@ -197,7 +197,7 @@ def materialize_file_payload(
             file = File(source, FileFormat(normalized_hint))
         except ValueError:
             file = None
-    elif not format_explicit:
+    else:
         file = File(source)
 
     if file is None or file.file_format is None:
