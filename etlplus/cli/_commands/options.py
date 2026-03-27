@@ -13,6 +13,8 @@ import typer
 
 from ...file import FileFormat
 from .._options import _typer_connector_option_kwargs
+from .._options import _typer_flag_option_kwargs
+from .._options import _typer_path_option_kwargs
 from .._options import _typer_resource_argument_kwargs
 from .._options import _typer_timestamp_option_kwargs
 from .._options import typer_format_option_kwargs
@@ -71,9 +73,9 @@ CheckConfigOption = Annotated[
     str | None,
     typer.Option(
         '--config',
-        metavar='PATH',
-        help='Path to YAML-formatted configuration file.',
-        show_default=False,
+        **_typer_path_option_kwargs(
+            'Path to YAML-formatted configuration file.',
+        ),
     ),
 ]
 
@@ -82,8 +84,10 @@ ConfigOption = Annotated[
     typer.Option(
         ...,
         '--config',
-        metavar='PATH',
-        help='Path to YAML-formatted configuration file.',
+        **_typer_path_option_kwargs(
+            'Path to YAML-formatted configuration file.',
+            show_default=None,
+        ),
     ),
 ]
 
@@ -91,7 +95,9 @@ HistoryFollowOption = Annotated[
     bool,
     typer.Option(
         '--follow',
-        help='Keep polling for newly persisted matching raw history events.',
+        **_typer_flag_option_kwargs(
+            'Keep polling for newly persisted matching raw history events.',
+        ),
     ),
 ]
 
@@ -99,7 +105,7 @@ HistoryJsonOption = Annotated[
     bool,
     typer.Option(
         '--json',
-        help='Format output as JSON explicitly.',
+        **_typer_flag_option_kwargs('Format output as JSON explicitly.'),
     ),
 ]
 
@@ -117,7 +123,9 @@ HistoryRawOption = Annotated[
     bool,
     typer.Option(
         '--raw',
-        help='Emit raw append events instead of normalized runs.',
+        **_typer_flag_option_kwargs(
+            'Emit raw append events instead of normalized runs.',
+        ),
     ),
 ]
 
@@ -142,7 +150,9 @@ HistoryTableOption = Annotated[
     bool,
     typer.Option(
         '--table',
-        help='Format normalized history output as a Markdown table.',
+        **_typer_flag_option_kwargs(
+            'Format normalized history output as a Markdown table.',
+        ),
     ),
 ]
 
@@ -167,7 +177,7 @@ JobsOption = Annotated[
     bool,
     typer.Option(
         '--jobs',
-        help='List available job names and exit',
+        **_typer_flag_option_kwargs('List available job names and exit'),
     ),
 ]
 
@@ -184,8 +194,10 @@ OutputOption = Annotated[
     typer.Option(
         '--output',
         '-o',
-        metavar='PATH',
-        help='Write output to file PATH (default: STDOUT).',
+        **_typer_path_option_kwargs(
+            'Write output to file PATH (default: STDOUT).',
+            show_default=None,
+        ),
     ),
 ]
 
@@ -202,7 +214,7 @@ PipelinesOption = Annotated[
     bool,
     typer.Option(
         '--pipelines',
-        help='List ETL pipelines',
+        **_typer_flag_option_kwargs('List ETL pipelines'),
     ),
 ]
 
@@ -227,7 +239,9 @@ ReadinessOption = Annotated[
     bool,
     typer.Option(
         '--readiness',
-        help='Run runtime and optional config readiness checks.',
+        **_typer_flag_option_kwargs(
+            'Run runtime and optional config readiness checks.',
+        ),
     ),
 ]
 
@@ -235,9 +249,9 @@ RenderConfigOption = Annotated[
     str | None,
     typer.Option(
         '--config',
-        metavar='PATH',
-        help='Pipeline YAML that includes table_schemas for rendering.',
-        show_default=False,
+        **_typer_path_option_kwargs(
+            'Pipeline YAML that includes table_schemas for rendering.',
+        ),
     ),
 ]
 
@@ -246,8 +260,10 @@ RenderOutputOption = Annotated[
     typer.Option(
         '--output',
         '-o',
-        metavar='PATH',
-        help='Write rendered SQL to PATH (default: STDOUT).',
+        **_typer_path_option_kwargs(
+            'Write rendered SQL to PATH (default: STDOUT).',
+            show_default=None,
+        ),
     ),
 ]
 
@@ -255,9 +271,9 @@ RenderSpecOption = Annotated[
     str | None,
     typer.Option(
         '--spec',
-        metavar='PATH',
-        help='Standalone table spec file (.yml/.yaml/.json).',
-        show_default=False,
+        **_typer_path_option_kwargs(
+            'Standalone table spec file (.yml/.yaml/.json).',
+        ),
     ),
 ]
 
@@ -285,8 +301,10 @@ RenderTemplatePathOption = Annotated[
     str | None,
     typer.Option(
         '--template-path',
-        metavar='PATH',
-        help='Explicit path to a Jinja template file (overrides template key).',
+        **_typer_path_option_kwargs(
+            'Explicit path to a Jinja template file (overrides template key).',
+            show_default=None,
+        ),
     ),
 ]
 
@@ -354,7 +372,7 @@ SourcesOption = Annotated[
     bool,
     typer.Option(
         '--sources',
-        help='List data sources',
+        **_typer_flag_option_kwargs('List data sources'),
     ),
 ]
 
@@ -362,7 +380,9 @@ SummaryOption = Annotated[
     bool,
     typer.Option(
         '--summary',
-        help='Show pipeline summary (name, version, sources, targets, jobs)',
+        **_typer_flag_option_kwargs(
+            'Show pipeline summary (name, version, sources, targets, jobs)',
+        ),
     ),
 ]
 
@@ -394,7 +414,7 @@ TargetsOption = Annotated[
     bool,
     typer.Option(
         '--targets',
-        help='List data targets',
+        **_typer_flag_option_kwargs('List data targets'),
     ),
 ]
 
@@ -402,7 +422,7 @@ TransformsOption = Annotated[
     bool,
     typer.Option(
         '--transforms',
-        help='List data transforms',
+        **_typer_flag_option_kwargs('List data transforms'),
     ),
 ]
 
@@ -411,7 +431,7 @@ VerboseOption = Annotated[
     typer.Option(
         '--verbose',
         '-v',
-        help='Emit extra diagnostics to STDERR.',
+        **_typer_flag_option_kwargs('Emit extra diagnostics to STDERR.'),
     ),
 ]
 
@@ -420,7 +440,9 @@ VersionOption = Annotated[
     typer.Option(
         '--version',
         '-V',
-        is_eager=True,
-        help='Show the version and exit.',
+        **_typer_flag_option_kwargs(
+            'Show the version and exit.',
+            is_eager=True,
+        ),
     ),
 ]
