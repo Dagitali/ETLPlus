@@ -11,6 +11,7 @@ import typer
 from .._handlers import history_handler as handle_history
 from .._state import ensure_state
 from .app import app
+from .helpers import _call_handler
 from .options import HistoryFollowOption
 from .options import HistoryLimitOption
 from .options import HistorySinceOption
@@ -62,15 +63,13 @@ def log_cmd(
     int
         Exit code (0 if checks passed, non-zero if any checks failed).
     """
-    state = ensure_state(ctx)
-    return int(
-        handle_history(
-            follow=follow,
-            limit=limit,
-            raw=True,
-            pretty=state.pretty,
-            run_id=run_id,
-            since=since,
-            until=until,
-        ),
+    return _call_handler(
+        handle_history,
+        state=ensure_state(ctx),
+        follow=follow,
+        limit=limit,
+        raw=True,
+        run_id=run_id,
+        since=since,
+        until=until,
     )
