@@ -9,7 +9,7 @@ from __future__ import annotations
 import typer
 
 from .._handlers import history_handler as handle_history
-from .._state import ensure_state
+from ._state import ensure_state
 from .app import app
 from .helpers import call_handler
 from .options import HistoryJsonOption

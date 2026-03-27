@@ -9,7 +9,7 @@ from __future__ import annotations
 import typer
 
 from .. import _handlers as handlers
-from .._state import ensure_state
+from ._state import ensure_state
 from .app import app
 from .helpers import call_handler
 from .helpers import resolve_resource
