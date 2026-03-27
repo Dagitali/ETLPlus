@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Iterator
 from collections.abc import Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
@@ -237,6 +239,19 @@ def _fail_command(
         exc=exc,
         **fields,
     )
+
+
+@contextmanager
+def _failure_boundary(
+    context: _CommandContext,
+    **fields: Any,
+) -> Iterator[None]:
+    """Emit a failed lifecycle event for exceptions raised inside the block."""
+    try:
+        yield
+    except Exception as exc:
+        _fail_command(context, exc, **fields)
+        raise
 
 
 def _load_history_records(
@@ -656,7 +671,11 @@ def extract_handler(
         source_type=source_type,
     )
 
-    try:
+    with _failure_boundary(
+        context,
+        source=source,
+        source_type=source_type,
+    ):
         if source == '-':
             text = _io.read_stdin_text()
             payload = _io.parse_text_payload(
@@ -694,14 +713,6 @@ def extract_handler(
             source_type=source_type,
             status='ok',
         )
-    except Exception as exc:
-        _fail_command(
-            context,
-            exc,
-            source=source,
-            source_type=source_type,
-        )
-        raise
 
 
 def load_handler(
@@ -763,7 +774,12 @@ def load_handler(
         target_type=target_type,
     )
 
-    try:
+    with _failure_boundary(
+        context,
+        source=source,
+        target=target,
+        target_type=target_type,
+    ):
         # Allow piping into load.
         source_value = cast(
             str | Path | os.PathLike[str] | dict[str, Any] | list[dict[str, Any]],
@@ -816,15 +832,6 @@ def load_handler(
             target=target,
             target_type=target_type,
         )
-    except Exception as exc:
-        _fail_command(
-            context,
-            exc,
-            source=source,
-            target=target,
-            target_type=target_type,
-        )
-        raise
 
 
 def render_handler(
@@ -1175,7 +1182,12 @@ def transform_handler(
         target_type=target_type,
     )
 
-    try:
+    with _failure_boundary(
+        context,
+        source=source,
+        target=target or 'stdout',
+        target_type=target_type,
+    ):
         payload = cast(
             JSONData | str,
             _io.resolve_cli_payload(
@@ -1241,15 +1253,6 @@ def transform_handler(
             target=target or 'stdout',
             target_type=target_type,
         )
-    except Exception as exc:
-        _fail_command(
-            context,
-            exc,
-            source=source,
-            target=target or 'stdout',
-            target_type=target_type,
-        )
-        raise
 
 
 def validate_handler(
@@ -1305,7 +1308,11 @@ def validate_handler(
         target=target or 'stdout',
     )
 
-    try:
+    with _failure_boundary(
+        context,
+        source=source,
+        target=target or 'stdout',
+    ):
         payload = cast(
             JSONData | str,
             _io.resolve_cli_payload(
@@ -1358,11 +1365,3 @@ def validate_handler(
             target=target or 'stdout',
             valid=result.get('valid'),
         )
-    except Exception as exc:
-        _fail_command(
-            context,
-            exc,
-            source=source,
-            target=target or 'stdout',
-        )
-        raise
