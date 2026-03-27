@@ -11,9 +11,9 @@ import typer
 from .. import _handlers as handlers
 from .._state import ensure_state
 from .app import app
-from .helpers import _call_handler
-from .helpers import _resolve_resource
+from .helpers import call_handler
 from .helpers import normalize_file_format
+from .helpers import resolve_resource
 from .options import SourceFormatOption
 from .options import StructuredEventFormatOption
 from .options import TargetArg
@@ -66,7 +66,7 @@ def load_cmd(
         source_format,
         label='source_format',
     )
-    resolved_target = _resolve_resource(
+    resolved_target = resolve_resource(
         state,
         role='target',
         value=target,
@@ -75,14 +75,14 @@ def load_cmd(
         positional=True,
     )
     assert resolved_target.resource_type is not None
-    resolved_source = _resolve_resource(
+    resolved_source = resolve_resource(
         state,
         role='source',
         value='-',
         soft_inference=True,
     )
 
-    return _call_handler(
+    return call_handler(
         handlers.load_handler,
         state=state,
         source=resolved_source.value,

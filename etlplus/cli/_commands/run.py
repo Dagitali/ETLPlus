@@ -11,7 +11,7 @@ import typer
 from .. import _handlers as handlers
 from .._state import ensure_state
 from .app import app
-from .helpers import _call_handler
+from .helpers import call_handler
 from .helpers import require_option
 from .options import ConfigOption
 from .options import JobOption
@@ -58,7 +58,7 @@ def run_cmd(
     """
     config = require_option(config, flag='--config')
 
-    return _call_handler(
+    return call_handler(
         handlers.run_handler,
         state=ensure_state(ctx),
         config=config,

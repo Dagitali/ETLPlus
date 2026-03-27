@@ -11,9 +11,9 @@ import typer
 from .. import _handlers as handlers
 from .._state import ensure_state
 from .app import app
-from .helpers import _call_handler
-from .helpers import _resolve_resource
+from .helpers import call_handler
 from .helpers import parse_json_option
+from .helpers import resolve_resource
 from .options import OperationsOption
 from .options import SourceArg
 from .options import SourceFormatOption
@@ -74,7 +74,7 @@ def transform_cmd(
         Exit code (0 if checks passed, non-zero if any checks failed).
     """
     state = ensure_state(ctx)
-    resolved_source = _resolve_resource(
+    resolved_source = resolve_resource(
         state,
         role='source',
         value=source,
@@ -82,7 +82,7 @@ def transform_cmd(
         format_value=source_format,
         soft_inference=True,
     )
-    resolved_target = _resolve_resource(
+    resolved_target = resolve_resource(
         state,
         role='target',
         value=target,
@@ -91,7 +91,7 @@ def transform_cmd(
     )
     assert resolved_target.resource_type is not None
 
-    return _call_handler(
+    return call_handler(
         handlers.transform_handler,
         state=state,
         source=resolved_source.value,

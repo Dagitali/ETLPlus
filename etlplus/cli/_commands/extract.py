@@ -11,8 +11,8 @@ import typer
 from .. import _handlers as handlers
 from .._state import ensure_state
 from .app import app
-from .helpers import _call_handler
-from .helpers import _resolve_resource
+from .helpers import call_handler
+from .helpers import resolve_resource
 from .options import SourceArg
 from .options import SourceFormatOption
 from .options import SourceTypeOption
@@ -58,7 +58,7 @@ def extract_cmd(
 
     """
     state = ensure_state(ctx)
-    resolved_source = _resolve_resource(
+    resolved_source = resolve_resource(
         state,
         role='source',
         value=source,
@@ -68,7 +68,7 @@ def extract_cmd(
     )
     assert resolved_source.resource_type is not None
 
-    return _call_handler(
+    return call_handler(
         handlers.extract_handler,
         state=state,
         source_type=resolved_source.resource_type,

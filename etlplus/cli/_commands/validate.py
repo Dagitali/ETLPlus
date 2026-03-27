@@ -11,9 +11,9 @@ import typer
 from .. import _handlers as handlers
 from .._state import ensure_state
 from .app import app
-from .helpers import _call_handler
-from .helpers import _resolve_resource
+from .helpers import call_handler
 from .helpers import parse_json_option
+from .helpers import resolve_resource
 from .options import OutputOption
 from .options import RulesOption
 from .options import SourceArg
@@ -66,7 +66,7 @@ def validate_cmd(
         Exit code (0 if checks passed, non-zero if any checks failed).
     """
     state = ensure_state(ctx)
-    resolved_source = _resolve_resource(
+    resolved_source = resolve_resource(
         state,
         role='source',
         value=source,
@@ -75,7 +75,7 @@ def validate_cmd(
         soft_inference=True,
     )
 
-    return _call_handler(
+    return call_handler(
         handlers.validate_handler,
         state=state,
         source=resolved_source.value,

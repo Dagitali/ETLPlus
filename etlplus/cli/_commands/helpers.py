@@ -29,6 +29,7 @@ from .._types import DataConnectorContext
 
 
 __all__ = [
+    'call_handler',
     'fail_usage',
     'normalize_choice',
     'parse_json_option',
@@ -36,6 +37,7 @@ __all__ = [
     'require_any',
     'require_option',
     'require_positional_argument',
+    'resolve_resource',
 ]
 
 
@@ -58,21 +60,6 @@ class _ResolvedResource:
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
-
-
-def _call_handler(
-    handler: Callable[..., int],
-    /,
-    *,
-    state: CliState,
-    state_fields: tuple[_StateField, ...] = ('pretty',),
-    **kwargs: Any,
-) -> int:
-    """Invoke one handler with selected state-derived keyword arguments."""
-    state_kwargs: dict[str, Any] = {
-        field: getattr(state, field) for field in state_fields
-    }
-    return handler(**kwargs, **state_kwargs)
 
 
 @overload
@@ -112,44 +99,41 @@ def _normalize_optional_choice[T](
     return coerce(normalized)
 
 
-def _resolve_resource(
-    state: CliState,
-    *,
-    role: DataConnectorContext,
-    value: str | None,
-    connector_type: str | None = None,
-    format_value: FileFormat | str | None = None,
-    positional: bool = False,
-    soft_inference: bool = False,
-    default_value: str = '-',
-) -> _ResolvedResource:
-    """Return normalized value, connector type, and format for one resource."""
-    resolved_value = default_value if value is None else value
-    if positional:
-        resolved_value = require_positional_argument(
-            resolved_value,
-            name=role.upper(),
-        )
-    return _ResolvedResource(
-        value=resolved_value,
-        resource_type=resolve_logged_resource_type(
-            state,
-            role=role,
-            value=resolved_value,
-            explicit_type=normalize_resource_type(
-                connector_type,
-                label=f'{role}_type',
-            ),
-            soft_inference=soft_inference,
-        ),
-        format_hint=normalize_file_format(
-            format_value,
-            label=f'{role}_format',
-        ),
-    )
-
-
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def call_handler(
+    handler: Callable[..., int],
+    /,
+    *,
+    state: CliState,
+    state_fields: tuple[_StateField, ...] = ('pretty',),
+    **kwargs: Any,
+) -> int:
+    """
+    Invoke one handler with selected state-derived keyword arguments.
+
+    Parameters
+    ----------
+    handler : Callable[..., int]
+        The handler function to invoke.
+    state : CliState
+        The CLI state to pull keyword arguments from.
+    state_fields : tuple[_StateField, ...], optional
+        The fields of *state* to pass as keyword arguments to *handler*
+        (defaults to ('pretty',)).
+    **kwargs : Any
+        Additional keyword arguments to pass to *handler*.
+
+    Returns
+    -------
+    int
+        The exit code returned by *handler*.
+    """
+    state_kwargs: dict[str, Any] = {
+        field: getattr(state, field) for field in state_fields
+    }
+    return handler(**kwargs, **state_kwargs)
 
 
 def fail_usage(
@@ -354,3 +338,76 @@ def require_positional_argument(
     if not value:
         fail_usage(f"Missing required argument '{name}'.")
     return reject_option_like_argument(value, name=name)
+
+
+def resolve_resource(
+    state: CliState,
+    *,
+    role: DataConnectorContext,
+    value: str | None,
+    connector_type: str | None = None,
+    format_value: FileFormat | str | None = None,
+    positional: bool = False,
+    soft_inference: bool = False,
+    default_value: str = '-',
+) -> _ResolvedResource:
+    """
+    Return normalized value, connector type, and format for one resource.
+
+    Parameters
+    ----------
+    state : CliState
+        The CLI state to pull keyword arguments from for error reporting.
+    role : DataConnectorContext
+        The resource role for error messages ('source' or 'target').
+    value : str | None
+        The raw CLI value to resolve.
+    connector_type : str | None, optional
+        An explicit connector type to validate against known connectors
+        (defaults to ``None``, which means no validation or normalization will
+        be performed).
+    format_value : FileFormat | str | None, optional
+        An explicit file format hint to validate and normalize to
+        :class:`FileFormat` (defaults to ``None``, which means no validation or
+        normalization will be performed).
+    positional : bool, optional
+        Whether the value comes from a positional argument, which requires
+        additional validation to reject option-like values (defaults to
+        ``False``).
+    soft_inference : bool, optional
+        Whether to allow soft inference of the connector type based on the
+        value when an explicit *connector_type* is not provided (defaults to
+        ``False``, which means the type will be ``None`` when not explicitly
+        provided).
+    default_value : str, optional
+        The default value to use when *value* is ``None`` (defaults to '-',
+        which is a common CLI convention for standard input/output).
+
+    Returns
+    -------
+    _ResolvedResource
+        The resolved resource components.
+    """
+    resolved_value = default_value if value is None else value
+    if positional:
+        resolved_value = require_positional_argument(
+            resolved_value,
+            name=role.upper(),
+        )
+    return _ResolvedResource(
+        value=resolved_value,
+        resource_type=resolve_logged_resource_type(
+            state,
+            role=role,
+            value=resolved_value,
+            explicit_type=normalize_resource_type(
+                connector_type,
+                label=f'{role}_type',
+            ),
+            soft_inference=soft_inference,
+        ),
+        format_hint=normalize_file_format(
+            format_value,
+            label=f'{role}_format',
+        ),
+    )
