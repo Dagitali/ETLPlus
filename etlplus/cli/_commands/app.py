@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import typer
 
-from etlplus.cli._constants import CLI_DESCRIPTION
-from etlplus.cli._constants import CLI_EPILOG
+from .._constants import CLI_DESCRIPTION
+from .._constants import CLI_EPILOG
 
 # SECTION: EXPORTS ========================================================== #
 
