@@ -2093,6 +2093,55 @@ class TestValidateHandler:
                 pretty=True,
             )
 
+    def test_rules_payload_resolves_even_when_format_is_explicit_elsewhere(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that rules files still resolve when other format state is explicit."""
+        resolve_calls: list[tuple[object, str | None, bool]] = []
+
+        def fake_resolve(
+            source: object,
+            *,
+            format_hint: str | None,
+            format_explicit: bool,
+        ) -> object:
+            resolve_calls.append((source, format_hint, format_explicit))
+            if source == 'data.json':
+                return {'source': source}
+            return {'id': {'required': True}}
+
+        monkeypatch.setattr(handlers._io, 'resolve_cli_payload', fake_resolve)
+        monkeypatch.setattr(
+            handlers,
+            'validate',
+            lambda payload, rules: {'data': payload, 'rules': rules},
+        )
+
+        assert (
+            handlers.validate_handler(
+                source='data.json',
+                rules='rules.json',
+                source_format='json',
+                format_explicit=True,
+                pretty=False,
+            )
+            == 0
+        )
+        assert resolve_calls == [
+            ('data.json', 'json', True),
+            ('rules.json', None, True),
+        ]
+        assert_emit_json(
+            capture_io,
+            {
+                'data': {'source': 'data.json'},
+                'rules': {'id': {'required': True}},
+            },
+            pretty=False,
+        )
+
     def test_target_stdout_emits_result_json(
         self,
         monkeypatch: pytest.MonkeyPatch,
