@@ -24,12 +24,12 @@ from typing import Any
 from ..utils.types import JSONData
 from ..utils.types import JSONList
 from ._dataframe import dataframe_from_records
+from ._imports import FormatPandasResolverMixin
 from ._imports import get_dependency  # noqa: F401
 from ._imports import get_pandas  # noqa: F401
 from ._imports import raise_engine_import_error
 from ._io import ensure_parent_dir
 from ._io import records_from_table
-from ._scientific_handlers import ScientificPandasResolverMixin
 from ._scientific_handlers import ScientificXarrayResolverMixin
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
@@ -49,7 +49,7 @@ __all__ = [
 
 class NcFile(
     ScientificXarrayResolverMixin,
-    ScientificPandasResolverMixin,
+    FormatPandasResolverMixin,
     SingleDatasetScientificFileHandlerABC,
 ):
     """Handler implementation for NC files."""
