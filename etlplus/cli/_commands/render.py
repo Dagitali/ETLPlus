@@ -10,6 +10,7 @@ import typer
 
 from etlplus.cli import _handlers as handlers
 from etlplus.cli._commands.app import app
+from etlplus.cli._commands.helpers import require_any
 from etlplus.cli._commands.options import OutputOption
 from etlplus.cli._commands.options import RenderConfigOption
 from etlplus.cli._commands.options import RenderSpecOption
@@ -62,18 +63,11 @@ def render_cmd(
     -------
     int
         Exit code (0 if checks passed, non-zero if any checks failed).
-
-    Raises
-    ------
-    typer.Exit
-        If the provided options are invalid or if required options are missing.
     """
-    if not (config or spec):
-        typer.echo(
-            "Error: Missing required option '--config' or '--spec'.",
-            err=True,
-        )
-        raise typer.Exit(2)
+    require_any(
+        (config, spec),
+        message="Missing required option '--config' or '--spec'.",
+    )
 
     state = ensure_state(ctx)
     return int(
