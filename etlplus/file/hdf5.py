@@ -24,11 +24,11 @@ from typing import Any
 
 from ..utils.types import JSONData
 from ..utils.types import JSONList
+from ._imports import FormatPandasResolverMixin
 from ._imports import get_pandas  # noqa: F401
 from ._io import records_from_table
 from ._scientific_dataset import normalize_store_dataset_keys
 from ._scientific_dataset import resolve_store_dataset_key
-from ._scientific_handlers import ScientificPandasResolverMixin
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
 from .base import ScientificDatasetFileHandlerABC
@@ -79,7 +79,7 @@ def _raise_tables_error(
 
 
 class Hdf5File(
-    ScientificPandasResolverMixin,
+    FormatPandasResolverMixin,
     ReadOnlyFileHandlerABC,
     ScientificDatasetFileHandlerABC,
 ):
