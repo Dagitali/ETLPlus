@@ -11,8 +11,8 @@ from typing import Literal
 
 import typer
 
-from etlplus.cli._options import typer_format_option_kwargs
-from etlplus.file import FileFormat
+from ...file import FileFormat
+from .._options import typer_format_option_kwargs
 
 # SECTION: EXPORTS ========================================================== #
 
