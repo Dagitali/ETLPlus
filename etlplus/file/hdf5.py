@@ -24,7 +24,7 @@ from typing import Any
 
 from ..utils.types import JSONData
 from ..utils.types import JSONList
-from ._imports import get_pandas as _get_pandas
+from ._imports import get_pandas  # noqa: F401
 from ._io import records_from_table
 from ._scientific_dataset import normalize_store_dataset_keys
 from ._scientific_dataset import resolve_store_dataset_key
@@ -42,14 +42,6 @@ __all__ = [
     # Classes
     'Hdf5File',
 ]
-
-
-# SECTION: INTERNAL HELPERS ================================================= #
-
-
-# Preserve module-level resolver hooks for contract tests.
-get_pandas = _get_pandas
-
 
 # SECTION: CONSTANTS ======================================================== #
 
