@@ -161,23 +161,6 @@ def _emit_lifecycle_event(
     )
 
 
-def _emit_or_write_payload(
-    payload: Any,
-    output_path: str | None,
-    *,
-    pretty: bool,
-    success_message: str,
-) -> int:
-    """Emit one payload to stdout or write it to the requested output path."""
-    _io.emit_or_write(
-        payload,
-        output_path,
-        pretty=pretty,
-        success_message=success_message,
-    )
-    return 0
-
-
 def _emit_history_payload(
     payload: Any,
     *,
@@ -190,25 +173,15 @@ def _emit_history_payload(
 ) -> int:
     """Validate history output mode and emit one JSON or table payload."""
     HistoryView.validate_output_mode(json_output=json_output, table=table)
-    return _emit_json_or_table(
-        payload,
-        columns=columns,
-        pretty=pretty,
-        table=table,
-        table_rows=table_rows,
-        exit_code=exit_code,
-    )
-
-
-def _emit_table_payload(
-    rows: list[dict[str, Any]],
-    *,
-    columns: tuple[str, ...],
-    exit_code: int = 0,
-) -> int:
-    """Emit one Markdown table payload and return the requested exit code."""
-    _io.emit_markdown_table(rows, columns=columns)
-    return exit_code
+    if table:
+        _io.emit_markdown_table(
+            table_rows
+            if table_rows is not None
+            else cast(list[dict[str, Any]], payload),
+            columns=columns,
+        )
+        return exit_code
+    return _emit_json_payload(payload, pretty=pretty, exit_code=exit_code)
 
 
 def _complete_command(
@@ -328,12 +301,13 @@ def _complete_output(
         case 'json':
             return _emit_json_payload(payload, pretty=pretty)
         case 'or_write':
-            return _emit_or_write_payload(
+            _io.emit_or_write(
                 payload,
                 output_path,
                 pretty=pretty,
                 success_message=cast(str, success_message),
             )
+            return 0
         case 'file':
             target = cast(str, output_path)
             _write_file_payload(
@@ -496,27 +470,6 @@ def _emit_readiness_report(
     )
 
 
-def _emit_json_or_table(
-    payload: Any,
-    *,
-    columns: tuple[str, ...],
-    pretty: bool,
-    table: bool,
-    table_rows: list[dict[str, Any]] | None = None,
-    exit_code: int = 0,
-) -> int:
-    """Emit one payload as JSON or as a Markdown table and return an exit code."""
-    if table:
-        return _emit_table_payload(
-            table_rows
-            if table_rows is not None
-            else cast(list[dict[str, Any]], payload),
-            columns=columns,
-            exit_code=exit_code,
-        )
-    return _emit_json_payload(payload, pretty=pretty, exit_code=exit_code)
-
-
 def _write_file_payload(
     payload: JSONData,
     target: str,
@@ -602,7 +555,7 @@ def check_handler(
 
     cfg = Config.from_yaml(config, substitute=substitute)
     if summary:
-        return _emit_json_payload(_pipeline_summary(cfg), pretty=True)
+        return _emit_json_payload(_pipeline_summary(cfg), pretty=pretty)
 
     return _emit_json_payload(
         _check_sections(
