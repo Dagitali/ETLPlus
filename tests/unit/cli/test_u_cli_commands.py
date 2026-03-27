@@ -43,7 +43,9 @@ class TestCommandsInternalHelpers:
         assert helpers_mod.__all__ == [
             'call_handler',
             'fail_usage',
+            'normalize_file_format',
             'parse_json_option',
+            'require_any',
             'require_value',
             'resolve_resource',
         ]
