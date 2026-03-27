@@ -37,6 +37,8 @@ __all__ = [
     'OutputOption',
     'PipelineOption',
     'PipelinesOption',
+    'PrettyOption',
+    'QuietOption',
     'ReadinessOption',
     'RenderConfigOption',
     'RenderOutputOption',
@@ -58,6 +60,8 @@ __all__ = [
     'TargetTypeOption',
     'TargetsOption',
     'TransformsOption',
+    'VerboseOption',
+    'VersionOption',
 ]
 
 
@@ -199,6 +203,23 @@ PipelinesOption = Annotated[
     typer.Option(
         '--pipelines',
         help='List ETL pipelines',
+    ),
+]
+
+PrettyOption = Annotated[
+    bool,
+    typer.Option(
+        '--pretty/--no-pretty',
+        help='Pretty-print JSON output (default: pretty).',
+    ),
+]
+
+QuietOption = Annotated[
+    bool,
+    typer.Option(
+        '--quiet',
+        '-q',
+        help='Suppress warnings and non-essential output.',
     ),
 ]
 
@@ -382,5 +403,24 @@ TransformsOption = Annotated[
     typer.Option(
         '--transforms',
         help='List data transforms',
+    ),
+]
+
+VerboseOption = Annotated[
+    bool,
+    typer.Option(
+        '--verbose',
+        '-v',
+        help='Emit extra diagnostics to STDERR.',
+    ),
+]
+
+VersionOption = Annotated[
+    bool,
+    typer.Option(
+        '--version',
+        '-V',
+        is_eager=True,
+        help='Show the version and exit.',
     ),
 ]
