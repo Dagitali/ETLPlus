@@ -12,6 +12,9 @@ from typing import Literal
 import typer
 
 from ...file import FileFormat
+from .._options import _typer_connector_option_kwargs
+from .._options import _typer_resource_argument_kwargs
+from .._options import _typer_timestamp_option_kwargs
 from .._options import typer_format_option_kwargs
 
 # SECTION: EXPORTS ========================================================== #
@@ -118,9 +121,7 @@ HistorySinceOption = Annotated[
     str | None,
     typer.Option(
         '--since',
-        metavar='ISO8601',
-        help='Emit only records at or after the given ISO-8601 timestamp.',
-        show_default=False,
+        **_typer_timestamp_option_kwargs(bound='since'),
     ),
 ]
 
@@ -145,9 +146,7 @@ HistoryUntilOption = Annotated[
     str | None,
     typer.Option(
         '--until',
-        metavar='ISO8601',
-        help='Emit only records at or before the given ISO-8601 timestamp.',
-        show_default=False,
+        **_typer_timestamp_option_kwargs(bound='until'),
     ),
 ]
 
@@ -310,13 +309,7 @@ SourceArg = Annotated[
     str,
     typer.Argument(
         ...,
-        metavar='SOURCE',
-        help=(
-            'Extract data from SOURCE (JSON payload, file path, '
-            'URI/URL, or - for STDIN). Use --source-format to override the '
-            'inferred data format and --source-type to override the inferred '
-            'data connector.'
-        ),
+        **_typer_resource_argument_kwargs(context='source'),
     ),
 ]
 
@@ -332,10 +325,7 @@ SourceTypeOption = Annotated[
     str | None,
     typer.Option(
         '--source-type',
-        metavar='CONNECTOR',
-        show_default=False,
-        rich_help_panel='I/O overrides',
-        help='Override the inferred source type (api, database, file).',
+        **_typer_connector_option_kwargs(context='source'),
     ),
 ]
 
@@ -359,12 +349,7 @@ TargetArg = Annotated[
     str,
     typer.Argument(
         ...,
-        metavar='TARGET',
-        help=(
-            'Load data into TARGET (file path, URI/URL, or - for '
-            'STDOUT). Use --target-format to override the inferred data '
-            'format and --target-type to override the inferred data connector.'
-        ),
+        **_typer_resource_argument_kwargs(context='target'),
     ),
 ]
 
@@ -380,10 +365,7 @@ TargetTypeOption = Annotated[
     str | None,
     typer.Option(
         '--target-type',
-        metavar='CONNECTOR',
-        show_default=False,
-        rich_help_panel='I/O overrides',
-        help='Override the inferred target type (api, database, file).',
+        **_typer_connector_option_kwargs(context='target'),
     ),
 ]
 
