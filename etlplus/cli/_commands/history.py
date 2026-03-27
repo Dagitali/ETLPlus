@@ -11,6 +11,7 @@ import typer
 from .._handlers import history_handler as handle_history
 from .._state import ensure_state
 from .app import app
+from .helpers import _call_handler
 from .options import HistoryJsonOption
 from .options import HistoryLimitOption
 from .options import HistoryRawOption
@@ -75,17 +76,15 @@ def history_cmd(
     int
         Exit code (0 if checks passed, non-zero if any checks failed).
     """
-    state = ensure_state(ctx)
-    return int(
-        handle_history(
-            job=job,
-            json_output=json_output,
-            limit=limit,
-            raw=raw,
-            pretty=state.pretty,
-            since=since,
-            status=status,
-            table=table,
-            until=until,
-        ),
+    return _call_handler(
+        handle_history,
+        state=ensure_state(ctx),
+        job=job,
+        json_output=json_output,
+        limit=limit,
+        raw=raw,
+        since=since,
+        status=status,
+        table=table,
+        until=until,
     )
