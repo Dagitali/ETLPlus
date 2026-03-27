@@ -18,6 +18,68 @@ import etlplus.cli._options as cli_options
 
 
 @pytest.mark.parametrize(
+    ('help_text', 'show_default', 'expected'),
+    [
+        ('List data sources', None, {'help': 'List data sources'}),
+        (
+            'Show the version and exit.',
+            False,
+            {'help': 'Show the version and exit.', 'show_default': False},
+        ),
+    ],
+)
+def test_flag_option_kwargs_include_requested_metadata(
+    help_text: str,
+    show_default: bool | None,
+    expected: dict[str, object],
+) -> None:
+    """Test that shared flag kwargs include only requested metadata."""
+    kwargs = cli_options._typer_flag_option_kwargs(
+        help_text,
+        show_default=show_default,
+    )
+    assert kwargs == expected
+
+
+def test_flag_option_kwargs_include_is_eager_when_requested() -> None:
+    """Test that eager flag kwargs preserve Typer eager evaluation."""
+    kwargs = cli_options._typer_flag_option_kwargs(
+        'Show the version and exit.',
+        is_eager=True,
+    )
+    assert kwargs == {
+        'help': 'Show the version and exit.',
+        'is_eager': True,
+    }
+
+
+@pytest.mark.parametrize(
+    ('help_text', 'metavar', 'show_default'),
+    [
+        ('Path to YAML-formatted configuration file.', 'PATH', False),
+        ('Write rendered SQL to PATH (default: STDOUT).', 'OUT', None),
+    ],
+)
+def test_path_option_kwargs_preserve_metavar_and_optional_show_default(
+    help_text: str,
+    metavar: str,
+    show_default: bool | None,
+) -> None:
+    """Test that shared path kwargs preserve common path option metadata."""
+    kwargs = cli_options._typer_path_option_kwargs(
+        help_text,
+        metavar=metavar,
+        show_default=show_default,
+    )
+    assert kwargs['help'] == help_text
+    assert kwargs['metavar'] == metavar
+    if show_default is None:
+        assert 'show_default' not in kwargs
+    else:
+        assert kwargs['show_default'] is show_default
+
+
+@pytest.mark.parametrize(
     ('context', 'expected_help'),
     [
         ('source', 'Override the inferred source type'),
