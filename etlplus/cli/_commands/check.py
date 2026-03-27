@@ -8,19 +8,19 @@ from __future__ import annotations
 
 import typer
 
-from etlplus.cli import _handlers as handlers
-from etlplus.cli._commands.app import app
-from etlplus.cli._commands.helpers import fail_usage
-from etlplus.cli._commands.helpers import require_option
-from etlplus.cli._commands.options import CheckConfigOption
-from etlplus.cli._commands.options import JobsOption
-from etlplus.cli._commands.options import PipelinesOption
-from etlplus.cli._commands.options import ReadinessOption
-from etlplus.cli._commands.options import SourcesOption
-from etlplus.cli._commands.options import SummaryOption
-from etlplus.cli._commands.options import TargetsOption
-from etlplus.cli._commands.options import TransformsOption
-from etlplus.cli._state import ensure_state
+from .. import _handlers as handlers
+from .._state import ensure_state
+from .app import app
+from .helpers import fail_usage
+from .helpers import require_option
+from .options import CheckConfigOption
+from .options import JobsOption
+from .options import PipelinesOption
+from .options import ReadinessOption
+from .options import SourcesOption
+from .options import SummaryOption
+from .options import TargetsOption
+from .options import TransformsOption
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -79,7 +79,9 @@ def check_cmd(
         Exit code (0 if checks passed, non-zero if any checks failed).
 
     """
-    inspection_requested = any((jobs, pipelines, sources, summary, targets, transforms))
+    inspection_requested = any(
+        (jobs, pipelines, sources, summary, targets, transforms),
+    )
 
     if readiness and inspection_requested:
         fail_usage('--readiness cannot be combined with inspection flags.')
