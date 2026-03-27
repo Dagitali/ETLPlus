@@ -11,6 +11,7 @@ import typer
 from .. import _handlers as handlers
 from .._state import ensure_state
 from .app import app
+from .helpers import _call_handler
 from .helpers import require_any
 from .options import OutputOption
 from .options import RenderConfigOption
@@ -69,16 +70,14 @@ def render_cmd(
         message="Missing required option '--config' or '--spec'.",
     )
 
-    state = ensure_state(ctx)
-    return int(
-        handlers.render_handler(
-            config=config,
-            spec=spec,
-            table=table,
-            template=template,
-            template_path=template_path,
-            output=output,
-            pretty=state.pretty,
-            quiet=state.quiet,
-        ),
+    return _call_handler(
+        handlers.render_handler,
+        state=ensure_state(ctx),
+        state_fields=('pretty', 'quiet'),
+        config=config,
+        spec=spec,
+        table=table,
+        template=template,
+        template_path=template_path,
+        output=output,
     )
