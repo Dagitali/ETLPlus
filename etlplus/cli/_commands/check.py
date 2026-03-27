@@ -11,6 +11,7 @@ import typer
 from .. import _handlers as handlers
 from .._state import ensure_state
 from .app import app
+from .helpers import _call_handler
 from .helpers import fail_usage
 from .helpers import require_option
 from .options import CheckConfigOption
@@ -89,17 +90,15 @@ def check_cmd(
     if not readiness and not config:
         require_option(config, flag='--config')
 
-    state = ensure_state(ctx)
-    return int(
-        handlers.check_handler(
-            config=config,
-            jobs=jobs,
-            pipelines=pipelines,
-            readiness=readiness,
-            sources=sources,
-            summary=summary,
-            targets=targets,
-            transforms=transforms,
-            pretty=state.pretty,
-        ),
+    return _call_handler(
+        handlers.check_handler,
+        state=ensure_state(ctx),
+        config=config,
+        jobs=jobs,
+        pipelines=pipelines,
+        readiness=readiness,
+        sources=sources,
+        summary=summary,
+        targets=targets,
+        transforms=transforms,
     )
