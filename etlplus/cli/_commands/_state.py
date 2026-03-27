@@ -16,8 +16,8 @@ from typing import Final
 import typer
 
 from ...utils import normalize_str
-from .._constants import DATA_CONNECTORS
-from .._types import DataConnectorContext
+from ._constants import DATA_CONNECTORS
+from ._types import DataConnectorContext
 
 # SECTION: EXPORTS ========================================================== #
 
