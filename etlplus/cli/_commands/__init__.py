@@ -6,51 +6,34 @@ Typer application and subcommands for the ``etlplus`` command-line interface.
 
 from __future__ import annotations
 
-from etlplus.cli import _handlers as handlers
-from etlplus.cli._commands.app import app
-from etlplus.cli._commands.check import check_cmd
-from etlplus.cli._commands.extract import extract_cmd
-from etlplus.cli._commands.helpers import parse_json_option
-from etlplus.cli._commands.history import handle_history
-from etlplus.cli._commands.history import history_cmd
-from etlplus.cli._commands.load import load_cmd
-from etlplus.cli._commands.log import log_cmd
-from etlplus.cli._commands.render import render_cmd
-from etlplus.cli._commands.report import report_cmd
-from etlplus.cli._commands.root import _root
-from etlplus.cli._commands.run import run_cmd
-from etlplus.cli._commands.status import status_cmd
-from etlplus.cli._commands.transform import transform_cmd
-from etlplus.cli._commands.validate import validate_cmd
-from etlplus.cli._state import ResourceTypeResolver
-from etlplus.cli._state import ensure_state
-from etlplus.cli._state import infer_resource_type_soft
-from etlplus.cli._state import log_inferred_resource
-from etlplus.cli._state import optional_choice
-from etlplus.cli._state import resolve_resource_type
-from etlplus.cli._state import validate_choice
+from .. import _handlers as handlers
+from . import root as _root_module  # noqa: F401
+from .app import app
+from .check import check_cmd
+from .extract import extract_cmd
+from .helpers import parse_json_option
+from .history import history_cmd
+from .load import load_cmd
+from .log import log_cmd
+from .render import render_cmd
+from .report import report_cmd
+from .run import run_cmd
+from .status import status_cmd
+from .transform import transform_cmd
+from .validate import validate_cmd
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
     # Functions
-    'parse_json_option',
-    '_root',
-    'handlers',
-    'handle_history',
-    'ResourceTypeResolver',
-    'ensure_state',
-    'infer_resource_type_soft',
-    'log_inferred_resource',
-    'optional_choice',
-    'resolve_resource_type',
-    'validate_choice',
     'check_cmd',
     'extract_cmd',
+    'handlers',
     'history_cmd',
     'load_cmd',
     'log_cmd',
+    'parse_json_option',
     'render_cmd',
     'report_cmd',
     'run_cmd',
