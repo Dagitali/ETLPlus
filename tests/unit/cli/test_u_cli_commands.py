@@ -12,6 +12,7 @@ import pytest
 import typer
 
 import etlplus.cli._commands as commands_mod
+import etlplus.cli._commands._state as state_mod
 import etlplus.cli._commands.check as check_mod
 import etlplus.cli._commands.helpers as helpers_mod
 import etlplus.cli._commands.history as history_mod
@@ -19,8 +20,7 @@ import etlplus.cli._commands.log as log_mod
 import etlplus.cli._commands.report as report_mod
 import etlplus.cli._commands.status as status_mod
 import etlplus.cli._commands.transform as transform_mod
-import etlplus.cli._state as state_mod
-from etlplus.cli._state import CliState
+from etlplus.cli._commands._state import CliState
 from etlplus.file import FileFormat
 
 from .conftest import AssertCapturedText
