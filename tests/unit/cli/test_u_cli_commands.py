@@ -46,7 +46,7 @@ class TestCommandsInternalHelpers:
             captured.update(kwargs)
             return 7
 
-        result = helpers_mod._call_handler(
+        result = helpers_mod.call_handler(
             _handler,
             state=CliState(pretty=False, quiet=True, verbose=True),
             state_fields=('pretty', 'quiet'),
@@ -94,7 +94,7 @@ class TestCommandsInternalHelpers:
 
     def test_resolve_resource_normalizes_type_and_format(self) -> None:
         """Shared resource resolution should normalize type and format hints."""
-        resolved = helpers_mod._resolve_resource(
+        resolved = helpers_mod.resolve_resource(
             CliState(),
             role='source',
             value='payload.json',
