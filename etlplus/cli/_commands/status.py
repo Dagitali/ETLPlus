@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import typer
 
-from etlplus.cli import _handlers as handlers
-from etlplus.cli._commands.app import app
-from etlplus.cli._commands.options import JobOption
-from etlplus.cli._commands.options import RunIdOption
-from etlplus.cli._state import ensure_state
+from .. import _handlers as handlers
+from .._state import ensure_state
+from .app import app
+from .options import JobOption
+from .options import RunIdOption
 
 # SECTION: EXPORTS ========================================================== #
 
