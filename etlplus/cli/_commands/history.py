@@ -8,17 +8,17 @@ from __future__ import annotations
 
 import typer
 
-from etlplus.cli._commands.app import app
-from etlplus.cli._commands.options import HistoryJsonOption
-from etlplus.cli._commands.options import HistoryLimitOption
-from etlplus.cli._commands.options import HistoryRawOption
-from etlplus.cli._commands.options import HistorySinceOption
-from etlplus.cli._commands.options import HistoryStatusOption
-from etlplus.cli._commands.options import HistoryTableOption
-from etlplus.cli._commands.options import HistoryUntilOption
-from etlplus.cli._commands.options import JobOption
-from etlplus.cli._handlers import history_handler as handle_history
-from etlplus.cli._state import ensure_state
+from .._handlers import history_handler as handle_history
+from .._state import ensure_state
+from .app import app
+from .options import HistoryJsonOption
+from .options import HistoryLimitOption
+from .options import HistoryRawOption
+from .options import HistorySinceOption
+from .options import HistoryStatusOption
+from .options import HistoryTableOption
+from .options import HistoryUntilOption
+from .options import JobOption
 
 # SECTION: EXPORTS ========================================================== #
 
