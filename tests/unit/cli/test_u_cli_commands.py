@@ -38,6 +38,16 @@ from .conftest import TyperContextFactory
 class TestCommandsInternalHelpers:
     """Unit tests for command-level internal helper functions."""
 
+    def test_helpers_export_intentional_public_api(self) -> None:
+        """Command helpers should expose only the intended public surface."""
+        assert helpers_mod.__all__ == [
+            'call_handler',
+            'fail_usage',
+            'parse_json_option',
+            'require_value',
+            'resolve_resource',
+        ]
+
     def test_call_handler_injects_requested_state_fields(self) -> None:
         """Shared handler dispatch should merge selected CLI state fields."""
         captured: dict[str, object] = {}
@@ -85,10 +95,12 @@ class TestCommandsInternalHelpers:
         with pytest.raises(typer.BadParameter, match='Invalid JSON for --ops'):
             commands_mod.parse_json_option('not-json', '--ops')
 
-    def test_resolve_logged_resource_type_is_reexported_from_state(self) -> None:
+    def test_resolve_logged_resource_type_reuses_state_implementation(
+        self,
+    ) -> None:
         """Command helpers should reuse the shared state implementation."""
         assert (
-            helpers_mod.resolve_logged_resource_type
+            helpers_mod._resolve_logged_resource_type
             is state_mod.resolve_logged_resource_type
         )
 
@@ -563,7 +575,7 @@ class TestTransformCommand:
 
         monkeypatch.setattr(
             helpers_mod,
-            'resolve_logged_resource_type',
+            '_resolve_logged_resource_type',
             resolve_logged_resource_type,
         )
         captured = stub_handler(
