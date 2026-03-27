@@ -17,13 +17,13 @@ from typing import overload
 import typer
 
 from ...file import FileFormat
-from .._constants import DATA_CONNECTORS
-from .._constants import FILE_FORMATS
 from .._io import parse_json_payload
-from .._types import DataConnectorContext
+from ._constants import DATA_CONNECTORS
+from ._constants import FILE_FORMATS
 from ._state import CliState
 from ._state import optional_choice as _normalize_choice
 from ._state import resolve_logged_resource_type as _resolve_logged_resource_type
+from ._types import DataConnectorContext
 
 # SECTION: EXPORTS ========================================================== #
 
