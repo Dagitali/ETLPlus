@@ -11,6 +11,7 @@ import typer
 from .. import _handlers as handlers
 from .._state import ensure_state
 from .app import app
+from .helpers import _call_handler
 from .options import HistoryJsonOption
 from .options import HistorySinceOption
 from .options import HistoryTableOption
@@ -66,15 +67,13 @@ def report_cmd(
     int
         Exit code (0 if checks passed, non-zero if any checks failed).
     """
-    state = ensure_state(ctx)
-    return int(
-        handlers.report_handler(
-            group_by=group_by,
-            job=job,
-            json_output=json_output,
-            pretty=state.pretty,
-            since=since,
-            table=table,
-            until=until,
-        ),
+    return _call_handler(
+        handlers.report_handler,
+        state=ensure_state(ctx),
+        group_by=group_by,
+        job=job,
+        json_output=json_output,
+        since=since,
+        table=table,
+        until=until,
     )
