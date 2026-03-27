@@ -11,10 +11,9 @@ import typer
 from .. import _handlers as handlers
 from .._state import ensure_state
 from .app import app
-from .helpers import normalize_file_format
-from .helpers import normalize_resource_type
+from .helpers import _call_handler
+from .helpers import _resolve_resource
 from .helpers import parse_json_option
-from .helpers import resolve_logged_resource_type
 from .options import OutputOption
 from .options import RulesOption
 from .options import SourceArg
@@ -66,31 +65,23 @@ def validate_cmd(
     int
         Exit code (0 if checks passed, non-zero if any checks failed).
     """
-    source_format = normalize_file_format(
-        source_format,
-        label='source_format',
-    )
-    source_type = normalize_resource_type(
-        source_type,
-        label='source_type',
-    )
     state = ensure_state(ctx)
-    resolve_logged_resource_type(
+    resolved_source = _resolve_resource(
         state,
         role='source',
         value=source,
-        explicit_type=source_type,
+        connector_type=source_type,
+        format_value=source_format,
         soft_inference=True,
     )
 
-    return int(
-        handlers.validate_handler(
-            source=source,
-            rules=parse_json_option(rules, '--rules'),
-            event_format=event_format,
-            source_format=source_format,
-            target=output,
-            format_explicit=source_format is not None,
-            pretty=state.pretty,
-        ),
+    return _call_handler(
+        handlers.validate_handler,
+        state=state,
+        source=resolved_source.value,
+        rules=parse_json_option(rules, '--rules'),
+        event_format=event_format,
+        source_format=resolved_source.format_hint,
+        target=output,
+        format_explicit=resolved_source.format_hint is not None,
     )
