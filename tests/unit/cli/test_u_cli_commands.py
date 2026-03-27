@@ -53,7 +53,7 @@ class TestCommandsInternalHelpers:
             _parse_json_payload,
         )
         with pytest.raises(typer.BadParameter, match='Invalid JSON for --ops'):
-            commands_mod._parse_json_option('not-json', '--ops')
+            commands_mod.parse_json_option('not-json', '--ops')
 
 
 class TestCheckCommand:
@@ -501,7 +501,7 @@ class TestTransformCommand:
         )
         monkeypatch.setattr(
             transform_mod,
-            '_parse_json_option',
+            'parse_json_option',
             lambda value, flag: {},
         )
         validate_called = {'count': 0}
