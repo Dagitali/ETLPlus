@@ -246,7 +246,6 @@ def parse_json_option(
 def require_any(
     values: Collection[object],
     *,
-
     message: str,
 ) -> None:
     """
