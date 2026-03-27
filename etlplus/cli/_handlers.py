@@ -19,7 +19,6 @@ from typing import cast
 
 from .. import Config
 from .. import __version__
-from ..database import load_table_spec
 from ..database import render_tables
 from ..file import File
 from ..file import FileFormat
@@ -38,6 +37,7 @@ from ..runtime.events import RuntimeEvents
 from ..utils.types import JSONData
 from ..utils.types import TemplateKey
 from . import _io
+from . import _summary
 from ._history import HISTORY_TABLE_COLUMNS as _HISTORY_TABLE_COLUMNS
 from ._history import REPORT_TABLE_COLUMNS as _REPORT_TABLE_COLUMNS
 from ._history import HistoryReportBuilder
@@ -89,23 +89,6 @@ class _CommandContext:
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _collect_table_specs(
-    config_path: str | None,
-    spec_path: str | None,
-) -> list[dict[str, Any]]:
-    """Load table schemas from a pipeline config and/or standalone spec."""
-    specs: list[dict[str, Any]] = []
-
-    if spec_path:
-        specs.append(dict(load_table_spec(Path(spec_path))))
-
-    if config_path:
-        cfg = Config.from_yaml(config_path, substitute=True)
-        specs.extend(getattr(cfg, 'table_schemas', []))
-
-    return specs
 
 
 def _elapsed_ms(
@@ -861,7 +844,7 @@ def render_handler(
             file_override = str(candidate_path)
             template_key = None
 
-    specs = _collect_table_specs(config_path, spec_path)
+    specs = _summary.collect_table_specs(config_path, spec_path)
     if table_filter:
         specs = [
             spec
