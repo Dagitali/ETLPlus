@@ -6,23 +6,19 @@ Typer command for extracting data from supported sources.
 
 from __future__ import annotations
 
-from typing import cast
-
 import typer
 
-from etlplus.cli import _handlers as handlers
-from etlplus.cli._commands.app import app
-from etlplus.cli._commands.helpers import normalize_choice
-from etlplus.cli._commands.helpers import require_positional_argument
-from etlplus.cli._commands.options import SourceArg
-from etlplus.cli._commands.options import SourceFormatOption
-from etlplus.cli._commands.options import SourceTypeOption
-from etlplus.cli._commands.options import StructuredEventFormatOption
-from etlplus.cli._constants import DATA_CONNECTORS
-from etlplus.cli._constants import FILE_FORMATS
-from etlplus.cli._state import ResourceTypeResolver
-from etlplus.cli._state import ensure_state
-from etlplus.cli._state import log_inferred_resource
+from .. import _handlers as handlers
+from .._state import ensure_state
+from .app import app
+from .helpers import normalize_file_format
+from .helpers import normalize_resource_type
+from .helpers import require_positional_argument
+from .helpers import resolve_logged_resource_type
+from .options import SourceArg
+from .options import SourceFormatOption
+from .options import SourceTypeOption
+from .options import StructuredEventFormatOption
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -66,28 +62,21 @@ def extract_cmd(
     state = ensure_state(ctx)
 
     source = require_positional_argument(source, name='SOURCE')
-    source_type = normalize_choice(
+    source_type = normalize_resource_type(
         source_type,
-        DATA_CONNECTORS,
         label='source_type',
     )
-    source_format = cast(
-        SourceFormatOption,
-        normalize_choice(
-            source_format,
-            FILE_FORMATS,
-            label='source_format',
-        ),
+    source_format = normalize_file_format(
+        source_format,
+        label='source_format',
     )
-
-    resolved_source_type = source_type or ResourceTypeResolver.infer_or_exit(source)
-
-    log_inferred_resource(
+    resolved_source_type = resolve_logged_resource_type(
         state,
         role='source',
         value=source,
-        resource_type=resolved_source_type,
+        explicit_type=source_type,
     )
+    assert resolved_source_type is not None
 
     return int(
         handlers.extract_handler(
