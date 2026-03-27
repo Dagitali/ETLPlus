@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli.state` module.
+:mod:`etlplus.cli._commands._state` module.
 
 Shared state and helper utilities for the ``etlplus`` command-line interface
 (CLI).
@@ -15,9 +15,9 @@ from typing import Final
 
 import typer
 
-from ..utils import normalize_str
-from ._constants import DATA_CONNECTORS
-from ._types import DataConnectorContext
+from ...utils import normalize_str
+from .._constants import DATA_CONNECTORS
+from .._types import DataConnectorContext
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -258,7 +258,7 @@ def log_inferred_resource(
     ----------
     state : CliState
         The current CLI state.
-    role : str
+    role : DataConnectorContext
         The resource role, e.g., ``source`` or ``target``.
     value : str
         The resource identifier (path, URL, or DSN).
