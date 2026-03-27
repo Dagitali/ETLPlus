@@ -6,6 +6,7 @@ Shared abstractions for pandas-backed file handlers.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
@@ -57,6 +58,49 @@ type SpreadsheetOperation = Literal['read', 'write']
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _call_excel_io(
+    callback: Callable[..., Any],
+    path: Path,
+    *,
+    sheet_name: str | int | None,
+    engine: str | None = None,
+    index: bool | None = None,
+) -> Any:
+    """
+    Call one spreadsheet reader/writer, retrying without ``sheet_name``.
+
+    Parameters
+    ----------
+    callback : Callable[..., Any]
+        The spreadsheet I/O callable to invoke.
+    path : Path
+        Path to the spreadsheet file on disk.
+    sheet_name : str | int | None
+        Optional sheet selector passed as ``sheet_name`` when supported.
+    engine : str | None
+        Optional engine name.
+    index : bool | None, optional
+        Optional ``index`` argument used by write helpers.
+
+    Returns
+    -------
+    Any
+        The callback result.
+    """
+    kwargs: dict[str, Any] = {}
+    if index is not None:
+        kwargs['index'] = index
+    if engine is not None:
+        kwargs['engine'] = engine
+    if sheet_name is not None:
+        kwargs['sheet_name'] = sheet_name
+    try:
+        return callback(path, **kwargs)
+    except TypeError:
+        kwargs.pop('sheet_name', None)
+        return callback(path, **kwargs)
+
+
 def _spreadsheet_dependency_spec(
     engine: str | None,
 ) -> SpreadsheetDependencySpec | None:
@@ -76,29 +120,6 @@ def _spreadsheet_dependency_spec(
     if engine is None:
         return None
     return _SPREADSHEET_ENGINE_DEPENDENCIES.get(engine)
-
-
-def _effective_engine(
-    configured_engine: str | None,
-    fallback_engine: str,
-) -> str:
-    """
-    Return the effective engine from explicit then fallback configuration.
-
-    Parameters
-    ----------
-    configured_engine : str | None
-        The explicitly configured engine name, if any.
-    fallback_engine : str
-        The fallback engine name to use when no explicit configuration is
-        provided.
-
-    Returns
-    -------
-    str
-        The effective engine name.
-    """
-    return configured_engine or fallback_engine
 
 
 def _read_excel_frame(
@@ -127,49 +148,12 @@ def _read_excel_frame(
     Any
         The read DataFrame.
     """
-    kwargs: dict[str, Any] = {'sheet_name': sheet}
-    if engine is not None:
-        kwargs['engine'] = engine
-    try:
-        return pandas.read_excel(path, **kwargs)
-    except TypeError:
-        kwargs.pop('sheet_name', None)
-        return pandas.read_excel(path, **kwargs)
-
-
-def _read_sheet_records(
-    *,
-    path: Path,
-    sheet: str | int,
-    pandas: Any,
-    engine: str | None,
-) -> JSONList:
-    """
-    Read one spreadsheet sheet and return row records.
-
-    Parameters
-    ----------
-    path : Path
-        Path to the spreadsheet file on disk.
-    sheet : str | int
-        Sheet selector, by name or index.
-    pandas : Any
-        The pandas module to use for reading.
-    engine : str | None
-        Optional read engine name.
-
-    Returns
-    -------
-    JSONList
-        Row records parsed from the selected sheet.
-    """
-    frame = _read_excel_frame(
-        pandas,
+    return _call_excel_io(
+        pandas.read_excel,
         path,
-        sheet=sheet,
+        sheet_name=sheet,
         engine=engine,
     )
-    return records_from_table(frame)
 
 
 def _resolve_pyarrow_dependency(
@@ -253,16 +237,13 @@ def _write_excel_frame(
     engine : str | None, optional
         Optional write engine name.
     """
-    kwargs: dict[str, Any] = {'index': False}
-    if engine is not None:
-        kwargs['engine'] = engine
-    if isinstance(sheet, str):
-        kwargs['sheet_name'] = sheet
-    try:
-        frame.to_excel(path, **kwargs)
-    except TypeError:
-        kwargs.pop('sheet_name', None)
-        frame.to_excel(path, **kwargs)
+    _call_excel_io(
+        frame.to_excel,
+        path,
+        sheet_name=sheet if isinstance(sheet, str) else None,
+        engine=engine,
+        index=False,
+    )
 
 
 # SECTION: CLASSES ========================================================== #
@@ -304,7 +285,7 @@ class _PandasSpreadsheetEngineMixin(_PandasModuleResolverMixin):
         configured_engine = (
             self.read_engine if operation == 'read' else self.write_engine
         )
-        return _effective_engine(configured_engine, self.engine_name)
+        return configured_engine or self.engine_name
 
     def resolve_engine_dependency(
         self,
@@ -355,11 +336,13 @@ class _PandasSpreadsheetReadMixin(_PandasSpreadsheetEngineMixin):
         """
         _ = options
         engine = self.resolve_engine_dependency('read')
-        return _read_sheet_records(
-            path=path,
-            sheet=sheet,
-            pandas=self.resolve_pandas(),
-            engine=engine,
+        return records_from_table(
+            _read_excel_frame(
+                self.resolve_pandas(),
+                path,
+                sheet=sheet,
+                engine=engine,
+            ),
         )
 
 
