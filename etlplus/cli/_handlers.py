@@ -63,6 +63,13 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL TYPE ALIASES ============================================ #
+
+
+type _CompletionMode = Literal['file', 'json', 'json_file', 'or_write']
+type _RunCompletionStatus = Literal['failed', 'succeeded']
+
+
 # SECTION: TYPE ALIASES ===================================================== #
 
 
@@ -70,8 +77,6 @@ type TransformOperations = Mapping[
     Literal['filter', 'map', 'select', 'sort', 'aggregate'],
     Any,
 ]
-type _CompletionMode = Literal['file', 'json', 'json_file', 'or_write']
-
 
 # SECTION: INTERNAL DATA CLASSES ============================================ #
 
@@ -325,6 +330,30 @@ def _complete_output(
                 success_message=cast(str, success_message),
             )
             return 0
+
+
+def _record_run_completion(
+    history_store: HistoryStore,
+    context: _CommandContext,
+    *,
+    status: _RunCompletionStatus,
+    result_summary: JSONData | None = None,
+    exc: Exception | None = None,
+) -> None:
+    """Persist the terminal state for one tracked CLI run."""
+    history_store.record_run_finished(
+        RunCompletion(
+            run_id=context.run_id,
+            state=RunState(
+                status=status,
+                finished_at=RuntimeEvents.utc_now_iso(),
+                duration_ms=_elapsed_ms(context.started_perf),
+                result_summary=result_summary,
+                error_type=None if exc is None else type(exc).__name__,
+                error_message=None if exc is None else str(exc),
+            ),
+        ),
+    )
 
 
 def _emit_follow_history(
@@ -1007,18 +1036,11 @@ def run_handler(
         try:
             result = run(job=job_name, config_path=config)
         except Exception as exc:
-            duration_ms = _elapsed_ms(context.started_perf)
-            history_store.record_run_finished(
-                RunCompletion(
-                    run_id=context.run_id,
-                    state=RunState(
-                        status='failed',
-                        finished_at=RuntimeEvents.utc_now_iso(),
-                        duration_ms=duration_ms,
-                        error_type=type(exc).__name__,
-                        error_message=str(exc),
-                    ),
-                ),
+            _record_run_completion(
+                history_store,
+                context,
+                status='failed',
+                exc=exc,
             )
             _fail_command(
                 context,
@@ -1029,29 +1051,22 @@ def run_handler(
             )
             raise
 
-        duration_ms = _elapsed_ms(context.started_perf)
-        history_store.record_run_finished(
-            RunCompletion(
-                run_id=context.run_id,
-                state=RunState(
-                    status='succeeded',
-                    finished_at=RuntimeEvents.utc_now_iso(),
-                    duration_ms=duration_ms,
-                    result_summary=cast(JSONData | None, result),
-                ),
-            ),
-        )
-        _complete_command(
+        _record_run_completion(
+            history_store,
             context,
+            status='succeeded',
+            result_summary=cast(JSONData | None, result),
+        )
+        return _complete_output(
+            context,
+            {'run_id': context.run_id, 'status': 'ok', 'result': result},
+            mode='json',
+            pretty=pretty,
             config_path=config,
             job=job_name,
             pipeline_name=cfg.name,
             result_status=result.get('status'),
             status='ok',
-        )
-        return _emit_json_payload(
-            {'run_id': context.run_id, 'status': 'ok', 'result': result},
-            pretty=pretty,
         )
 
     return _emit_json_payload(_pipeline_summary(cfg), pretty=pretty)
