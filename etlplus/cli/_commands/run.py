@@ -10,6 +10,7 @@ import typer
 
 from etlplus.cli import _handlers as handlers
 from etlplus.cli._commands.app import app
+from etlplus.cli._commands.helpers import require_option
 from etlplus.cli._commands.options import ConfigOption
 from etlplus.cli._commands.options import JobOption
 from etlplus.cli._commands.options import PipelineOption
@@ -53,16 +54,8 @@ def run_cmd(
     -------
     int
         Exit code (0 if checks passed, non-zero if any checks failed).
-
-    Raises
-    ------
-    typer.Exit
-        If the provided options are invalid or if required options are missing.
-
     """
-    if not config:
-        typer.echo("Error: Missing required option '--config'.", err=True)
-        raise typer.Exit(2)
+    config = require_option(config, flag='--config')
 
     state = ensure_state(ctx)
     return int(
