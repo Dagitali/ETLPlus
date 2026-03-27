@@ -6,9 +6,14 @@ Shared helper functions for CLI command modules.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Collection
+from dataclasses import dataclass
 from typing import Any
+from typing import Literal
 from typing import NoReturn
+from typing import Protocol
+from typing import overload
 
 import typer
 
@@ -16,8 +21,10 @@ from ...file import FileFormat
 from .._constants import DATA_CONNECTORS
 from .._constants import FILE_FORMATS
 from .._io import parse_json_payload
+from .._state import CliState
 from .._state import optional_choice as normalize_choice
 from .._state import resolve_logged_resource_type  # noqa: F401
+from .._types import DataConnectorContext
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -31,6 +38,122 @@ __all__ = [
     'require_option',
     'require_positional_argument',
 ]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type _StateField = Literal['pretty', 'quiet', 'verbose']
+
+
+# SECTION: INTERNAL DATA CLASSES ============================================ #
+
+
+@dataclass(frozen=True, slots=True)
+class _ResolvedResource:
+    """Normalized source/target CLI inputs for one command invocation."""
+
+    value: str
+    resource_type: str | None = None
+    format_hint: FileFormat | None = None
+
+
+class _CliHandler(Protocol):
+    """Protocol for CLI handlers that accept keyword arguments and return int."""
+
+    def __call__(self, /, **kwargs: Any) -> int: ...
+
+
+# SECTION: INTERNAL FUNCTIONS ============================================== #
+
+
+def _call_handler(
+    handler: _CliHandler,
+    /,
+    *,
+    state: CliState,
+    state_fields: tuple[_StateField, ...] = ('pretty',),
+    **kwargs: Any,
+) -> int:
+    """Invoke one handler with selected state-derived keyword arguments."""
+    state_kwargs: dict[str, Any] = {
+        field: getattr(state, field) for field in state_fields
+    }
+    return handler(**kwargs, **state_kwargs)
+
+
+@overload
+def _normalize_optional_choice(
+    value: object | None,
+    choices: Collection[str],
+    *,
+    label: str,
+) -> str | None: ...
+
+
+@overload
+def _normalize_optional_choice[T](
+    value: object | None,
+    choices: Collection[str],
+    *,
+    label: str,
+    coerce: Callable[[str], T],
+) -> T | None: ...
+
+
+def _normalize_optional_choice[T](
+    value: object | None,
+    choices: Collection[str],
+    *,
+    label: str,
+    coerce: Callable[[str], T] | None = None,
+) -> str | T | None:
+    """Normalize one optional CLI value against *choices*."""
+    normalized = normalize_choice(
+        None if value is None else str(value),
+        choices,
+        label=label,
+    )
+    if normalized is None or coerce is None:
+        return normalized
+    return coerce(normalized)
+
+
+def _resolve_resource(
+    state: CliState,
+    *,
+    role: DataConnectorContext,
+    value: str | None,
+    connector_type: str | None = None,
+    format_value: FileFormat | str | None = None,
+    positional: bool = False,
+    soft_inference: bool = False,
+    default_value: str = '-',
+) -> _ResolvedResource:
+    """Return normalized value, connector type, and format for one resource."""
+    resolved_value = default_value if value is None else value
+    if positional:
+        resolved_value = require_positional_argument(
+            resolved_value,
+            name=role.upper(),
+        )
+    return _ResolvedResource(
+        value=resolved_value,
+        resource_type=resolve_logged_resource_type(
+            state,
+            role=role,
+            value=resolved_value,
+            explicit_type=normalize_resource_type(
+                connector_type,
+                label=f'{role}_type',
+            ),
+            soft_inference=soft_inference,
+        ),
+        format_hint=normalize_file_format(
+            format_value,
+            label=f'{role}_format',
+        ),
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -81,14 +204,12 @@ def normalize_file_format(
     FileFormat | None
         The normalized file format or ``None`` if not provided.
     """
-    normalized = normalize_choice(
-        None if value is None else str(value),
+    return _normalize_optional_choice(
+        value,
         FILE_FORMATS,
         label=label,
+        coerce=FileFormat.coerce,
     )
-    if normalized is None:
-        return None
-    return FileFormat.coerce(normalized)
 
 
 def normalize_resource_type(
@@ -111,7 +232,11 @@ def normalize_resource_type(
     str | None
         The normalized connector type or ``None`` if not provided.
     """
-    return normalize_choice(value, DATA_CONNECTORS, label=label)
+    return _normalize_optional_choice(
+        value,
+        DATA_CONNECTORS,
+        label=label,
+    )
 
 
 def parse_json_option(
