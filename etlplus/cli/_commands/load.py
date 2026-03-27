@@ -12,6 +12,8 @@ import typer
 
 from etlplus.cli import _handlers as handlers
 from etlplus.cli._commands.app import app
+from etlplus.cli._commands.helpers import normalize_choice
+from etlplus.cli._commands.helpers import require_positional_argument
 from etlplus.cli._commands.options import SourceFormatOption
 from etlplus.cli._commands.options import StructuredEventFormatOption
 from etlplus.cli._commands.options import TargetArg
@@ -63,40 +65,26 @@ def load_cmd(
     -------
     int
         Exit code (0 if checks passed, non-zero if any checks failed).
-
-    Raises
-    ------
-    typer.Exit
-        If the provided options are invalid or if required options are missing.
     """
-    if target.startswith('--'):
-        typer.echo(
-            f"Error: Option '{target}' must follow the 'TARGET' argument.",
-            err=True,
-        )
-        raise typer.Exit(2)
-    if not target:
-        typer.echo("Error: Missing required argument 'TARGET'.", err=True)
-        raise typer.Exit(2)
-
     state = ensure_state(ctx)
+    target = require_positional_argument(target, name='TARGET')
 
     source_format = cast(
         SourceFormatOption,
-        ResourceTypeResolver.optional_choice(
+        normalize_choice(
             source_format,
             FILE_FORMATS,
             label='source_format',
         ),
     )
-    target_type = ResourceTypeResolver.optional_choice(
+    target_type = normalize_choice(
         target_type,
         DATA_CONNECTORS,
         label='target_type',
     )
     target_format = cast(
         TargetFormatOption,
-        ResourceTypeResolver.optional_choice(
+        normalize_choice(
             target_format,
             FILE_FORMATS,
             label='target_format',
