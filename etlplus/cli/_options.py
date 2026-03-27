@@ -74,17 +74,16 @@ def _typer_resource_argument_kwargs(
     }
 
 
-def _typer_path_option_kwargs(
+def _typer_value_option_kwargs(
     help_text: str,
     *,
-    metavar: str = 'PATH',
+    metavar: str | None = None,
     show_default: bool | None = False,
 ) -> dict[str, object]:
-    """Return common Typer option kwargs for path-like string inputs."""
-    kwargs: dict[str, object] = {
-        'help': help_text,
-        'metavar': metavar,
-    }
+    """Return common Typer option kwargs for scalar string-like inputs."""
+    kwargs: dict[str, object] = {'help': help_text}
+    if metavar is not None:
+        kwargs['metavar'] = metavar
     if show_default is not None:
         kwargs['show_default'] = show_default
     return kwargs

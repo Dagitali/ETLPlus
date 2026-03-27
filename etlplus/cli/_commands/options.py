@@ -14,9 +14,9 @@ import typer
 from ...file import FileFormat
 from .._options import _typer_connector_option_kwargs
 from .._options import _typer_flag_option_kwargs
-from .._options import _typer_path_option_kwargs
 from .._options import _typer_resource_argument_kwargs
 from .._options import _typer_timestamp_option_kwargs
+from .._options import _typer_value_option_kwargs
 from .._options import typer_format_option_kwargs
 
 # SECTION: EXPORTS ========================================================== #
@@ -73,8 +73,9 @@ CheckConfigOption = Annotated[
     str | None,
     typer.Option(
         '--config',
-        **_typer_path_option_kwargs(
+        **_typer_value_option_kwargs(
             'Path to YAML-formatted configuration file.',
+            metavar='PATH',
         ),
     ),
 ]
@@ -84,8 +85,9 @@ ConfigOption = Annotated[
     typer.Option(
         ...,
         '--config',
-        **_typer_path_option_kwargs(
+        **_typer_value_option_kwargs(
             'Path to YAML-formatted configuration file.',
+            metavar='PATH',
             show_default=None,
         ),
     ),
@@ -114,8 +116,9 @@ HistoryLimitOption = Annotated[
     typer.Option(
         '--limit',
         min=1,
-        help='Maximum number of history records to emit.',
-        show_default=False,
+        **_typer_value_option_kwargs(
+            'Maximum number of history records to emit.',
+        ),
     ),
 ]
 
@@ -141,8 +144,7 @@ HistoryStatusOption = Annotated[
     str | None,
     typer.Option(
         '--status',
-        help='Filter persisted runs by status.',
-        show_default=False,
+        **_typer_value_option_kwargs('Filter persisted runs by status.'),
     ),
 ]
 
@@ -169,7 +171,10 @@ JobOption = Annotated[
     typer.Option(
         '-j',
         '--job',
-        help='Name of the job to run',
+        **_typer_value_option_kwargs(
+            'Name of the job to run',
+            show_default=None,
+        ),
     ),
 ]
 
@@ -185,7 +190,10 @@ OperationsOption = Annotated[
     str,
     typer.Option(
         '--operations',
-        help='Transformation operations as JSON string.',
+        **_typer_value_option_kwargs(
+            'Transformation operations as JSON string.',
+            show_default=None,
+        ),
     ),
 ]
 
@@ -194,8 +202,9 @@ OutputOption = Annotated[
     typer.Option(
         '--output',
         '-o',
-        **_typer_path_option_kwargs(
+        **_typer_value_option_kwargs(
             'Write output to file PATH (default: STDOUT).',
+            metavar='PATH',
             show_default=None,
         ),
     ),
@@ -206,7 +215,10 @@ PipelineOption = Annotated[
     typer.Option(
         '-p',
         '--pipeline',
-        help='Name of the pipeline to run',
+        **_typer_value_option_kwargs(
+            'Name of the pipeline to run',
+            show_default=None,
+        ),
     ),
 ]
 
@@ -222,7 +234,9 @@ PrettyOption = Annotated[
     bool,
     typer.Option(
         '--pretty/--no-pretty',
-        help='Pretty-print JSON output (default: pretty).',
+        **_typer_flag_option_kwargs(
+            'Pretty-print JSON output (default: pretty).',
+        ),
     ),
 ]
 
@@ -231,7 +245,9 @@ QuietOption = Annotated[
     typer.Option(
         '--quiet',
         '-q',
-        help='Suppress warnings and non-essential output.',
+        **_typer_flag_option_kwargs(
+            'Suppress warnings and non-essential output.',
+        ),
     ),
 ]
 
@@ -249,8 +265,9 @@ RenderConfigOption = Annotated[
     str | None,
     typer.Option(
         '--config',
-        **_typer_path_option_kwargs(
+        **_typer_value_option_kwargs(
             'Pipeline YAML that includes table_schemas for rendering.',
+            metavar='PATH',
         ),
     ),
 ]
@@ -260,8 +277,9 @@ RenderOutputOption = Annotated[
     typer.Option(
         '--output',
         '-o',
-        **_typer_path_option_kwargs(
+        **_typer_value_option_kwargs(
             'Write rendered SQL to PATH (default: STDOUT).',
+            metavar='PATH',
             show_default=None,
         ),
     ),
@@ -271,8 +289,9 @@ RenderSpecOption = Annotated[
     str | None,
     typer.Option(
         '--spec',
-        **_typer_path_option_kwargs(
+        **_typer_value_option_kwargs(
             'Standalone table spec file (.yml/.yaml/.json).',
+            metavar='PATH',
         ),
     ),
 ]
@@ -281,8 +300,11 @@ RenderTableOption = Annotated[
     str | None,
     typer.Option(
         '--table',
-        metavar='NAME',
-        help='Filter to a single table name from table_schemas.',
+        **_typer_value_option_kwargs(
+            'Filter to a single table name from table_schemas.',
+            metavar='NAME',
+            show_default=None,
+        ),
     ),
 ]
 
@@ -291,9 +313,11 @@ RenderTemplateOption = Annotated[
     typer.Option(
         '--template',
         '-t',
-        metavar='KEY',
-        help='Template key (ddl/view).',
-        show_default=True,
+        **_typer_value_option_kwargs(
+            'Template key (ddl/view).',
+            metavar='KEY',
+            show_default=True,
+        ),
     ),
 ]
 
@@ -301,8 +325,9 @@ RenderTemplatePathOption = Annotated[
     str | None,
     typer.Option(
         '--template-path',
-        **_typer_path_option_kwargs(
+        **_typer_value_option_kwargs(
             'Explicit path to a Jinja template file (overrides template key).',
+            metavar='PATH',
             show_default=None,
         ),
     ),
@@ -312,8 +337,10 @@ ReportGroupByOption = Annotated[
     Literal['day', 'job', 'status'],
     typer.Option(
         '--group-by',
-        help='Grouping dimension for aggregated history reports.',
-        show_default=True,
+        **_typer_value_option_kwargs(
+            'Grouping dimension for aggregated history reports.',
+            show_default=True,
+        ),
     ),
 ]
 
@@ -321,7 +348,10 @@ RulesOption = Annotated[
     str,
     typer.Option(
         '--rules',
-        help='Validation rules as JSON string.',
+        **_typer_value_option_kwargs(
+            'Validation rules as JSON string.',
+            show_default=None,
+        ),
     ),
 ]
 
@@ -329,8 +359,7 @@ RunIdOption = Annotated[
     str | None,
     typer.Option(
         '--run-id',
-        help='Filter persisted runs by run identifier.',
-        show_default=False,
+        **_typer_value_option_kwargs('Filter persisted runs by run identifier.'),
     ),
 ]
 
@@ -338,9 +367,10 @@ StructuredEventFormatOption = Annotated[
     Literal['jsonl'] | None,
     typer.Option(
         '--event-format',
-        metavar='FORMAT',
-        help='Emit structured command events to STDERR (currently: jsonl).',
-        show_default=False,
+        **_typer_value_option_kwargs(
+            'Emit structured command events to STDERR (currently: jsonl).',
+            metavar='FORMAT',
+        ),
     ),
 ]
 
