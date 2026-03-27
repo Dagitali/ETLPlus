@@ -333,6 +333,26 @@ class TestCliStateHelpers:
         assert isinstance(state, cli_state_module.CliState)
         assert ctx.obj is state
 
+    def test_set_state_replaces_context_state(self) -> None:
+        """Test that explicit root flags replace the stored CLI state."""
+        command = typer.main.get_command(commands.app)
+        ctx = typer.Context(command)
+        ctx.obj = {'unexpected': True}
+
+        state = cli_state_module._set_state(
+            ctx,
+            pretty=False,
+            quiet=True,
+            verbose=True,
+        )
+
+        assert state == cli_state_module.CliState(
+            pretty=False,
+            quiet=True,
+            verbose=True,
+        )
+        assert ctx.obj is state
+
     def test_infer_resource_type_soft_none_returns_none(self) -> None:
         """Test that soft inference returns ``None`` for missing values."""
         assert cli_state_module.infer_resource_type_soft(None) is None
