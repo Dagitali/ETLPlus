@@ -58,21 +58,25 @@ def test_flag_option_kwargs_include_is_eager_when_requested() -> None:
     [
         ('Path to YAML-formatted configuration file.', 'PATH', False),
         ('Write rendered SQL to PATH (default: STDOUT).', 'OUT', None),
+        ('Name of the job to run', None, None),
     ],
 )
-def test_path_option_kwargs_preserve_metavar_and_optional_show_default(
+def test_value_option_kwargs_preserve_metavar_and_optional_show_default(
     help_text: str,
-    metavar: str,
+    metavar: str | None,
     show_default: bool | None,
 ) -> None:
-    """Test that shared path kwargs preserve common path option metadata."""
-    kwargs = cli_options._typer_path_option_kwargs(
+    """Test that shared scalar kwargs preserve common option metadata."""
+    kwargs = cli_options._typer_value_option_kwargs(
         help_text,
         metavar=metavar,
         show_default=show_default,
     )
     assert kwargs['help'] == help_text
-    assert kwargs['metavar'] == metavar
+    if metavar is None:
+        assert 'metavar' not in kwargs
+    else:
+        assert kwargs['metavar'] == metavar
     if show_default is None:
         assert 'show_default' not in kwargs
     else:
