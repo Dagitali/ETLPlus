@@ -407,6 +407,43 @@ def _emit_render_output(
     return 0
 
 
+def _resolve_payload(
+    payload: object,
+    *,
+    format_hint: str | None,
+    format_explicit: bool,
+    hydrate_files: bool = True,
+) -> object:
+    """Resolve one CLI payload through the shared CLI payload loader."""
+    resolve_kwargs: dict[str, Any] = {
+        'format_hint': format_hint,
+        'format_explicit': format_explicit,
+    }
+    if not hydrate_files:
+        resolve_kwargs['hydrate_files'] = False
+    return _io.resolve_cli_payload(
+        payload,
+        **resolve_kwargs,
+    )
+
+
+def _resolve_mapping_payload(
+    payload: object,
+    *,
+    format_explicit: bool,
+    error_message: str,
+) -> dict[str, Any]:
+    """Resolve one CLI payload and require a mapping result."""
+    resolved_payload = _resolve_payload(
+        payload,
+        format_hint=None,
+        format_explicit=format_explicit,
+    )
+    if not isinstance(resolved_payload, dict):
+        raise ValueError(error_message)
+    return resolved_payload
+
+
 def _emit_follow_history(
     *,
     job: str | None = None,
@@ -816,10 +853,9 @@ def load_handler(
         target=target,
         target_type=target_type,
     ):
-        # Allow piping into load.
         source_value = cast(
             str | Path | os.PathLike[str] | dict[str, Any] | list[dict[str, Any]],
-            _io.resolve_cli_payload(
+            _resolve_payload(
                 source,
                 format_hint=source_format,
                 format_explicit=source_format is not None,
@@ -827,7 +863,6 @@ def load_handler(
             ),
         )
 
-        # Allow piping out of load for file targets.
         if target_type == 'file' and target == '-':
             payload = _io.materialize_file_payload(
                 source_value,
@@ -1188,8 +1223,7 @@ def transform_handler(
     ``database`` are delegated to :func:`etlplus.ops.load.load` so the
     transform command and load command share target behavior.
     """
-    format_hint: str | None = source_format
-    format_explicit = format_hint is not None or format_explicit
+    source_format_explicit = source_format is not None or format_explicit
     context = _start_command(
         command='transform',
         event_format=event_format,
@@ -1206,20 +1240,18 @@ def transform_handler(
     ):
         payload = cast(
             JSONData | str,
-            _io.resolve_cli_payload(
+            _resolve_payload(
                 source,
-                format_hint=format_hint,
-                format_explicit=format_explicit,
+                format_hint=source_format,
+                format_explicit=source_format_explicit,
             ),
         )
 
-        operations_payload = _io.resolve_cli_payload(
+        operations_payload = _resolve_mapping_payload(
             operations,
-            format_hint=None,
-            format_explicit=format_explicit,
+            format_explicit=source_format_explicit,
+            error_message='operations must resolve to a mapping of transforms',
         )
-        if not isinstance(operations_payload, dict):
-            raise ValueError('operations must resolve to a mapping of transforms')
 
         data = transform(payload, cast(TransformOperations, operations_payload))
 
@@ -1230,7 +1262,7 @@ def transform_handler(
                     data,
                     resolved_target_type,
                     target,
-                    file_format=target_format if format_explicit else None,
+                    file_format=target_format if source_format_explicit else None,
                 )
                 return _complete_output(
                     context,
@@ -1316,7 +1348,6 @@ def validate_handler(
         Re-raises validation failures after emitting a structured failure event
         when requested.
     """
-    format_hint: str | None = source_format
     context = _start_command(
         command='validate',
         event_format=event_format,
@@ -1329,22 +1360,21 @@ def validate_handler(
         source=source,
         target=target or 'stdout',
     ):
+        source_format_explicit = source_format is not None or format_explicit
         payload = cast(
             JSONData | str,
-            _io.resolve_cli_payload(
+            _resolve_payload(
                 source,
-                format_hint=format_hint,
-                format_explicit=format_explicit,
+                format_hint=source_format,
+                format_explicit=source_format_explicit,
             ),
         )
 
-        rules_payload = _io.resolve_cli_payload(
+        rules_payload = _resolve_mapping_payload(
             rules,
-            format_hint=None,
-            format_explicit=format_explicit,
+            format_explicit=source_format_explicit,
+            error_message='rules must resolve to a mapping of field rules',
         )
-        if not isinstance(rules_payload, dict):
-            raise ValueError('rules must resolve to a mapping of field rules')
 
         field_rules = cast(Mapping[str, FieldRulesDict], rules_payload)
         result = validate(payload, field_rules)
