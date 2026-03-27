@@ -10,8 +10,7 @@ from etlplus.cli import _handlers as handlers
 from etlplus.cli._commands.app import app
 from etlplus.cli._commands.check import check_cmd
 from etlplus.cli._commands.extract import extract_cmd
-from etlplus.cli._commands.helpers import _parse_json_option
-from etlplus.cli._commands.helpers import parse_json_payload
+from etlplus.cli._commands.helpers import parse_json_option
 from etlplus.cli._commands.history import handle_history
 from etlplus.cli._commands.history import history_cmd
 from etlplus.cli._commands.load import load_cmd
@@ -36,11 +35,10 @@ from etlplus.cli._state import validate_choice
 
 __all__ = [
     # Functions
-    '_parse_json_option',
+    'parse_json_option',
     '_root',
     'handlers',
     'handle_history',
-    'parse_json_payload',
     'ResourceTypeResolver',
     'ensure_state',
     'infer_resource_type_soft',

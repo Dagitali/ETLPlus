@@ -12,7 +12,7 @@ import typer
 
 from etlplus.cli import _handlers as handlers
 from etlplus.cli._commands.app import app
-from etlplus.cli._commands.helpers import _parse_json_option
+from etlplus.cli._commands.helpers import parse_json_option
 from etlplus.cli._commands.options import OperationsOption
 from etlplus.cli._commands.options import SourceArg
 from etlplus.cli._commands.options import SourceFormatOption
@@ -143,7 +143,7 @@ def transform_cmd(
     return int(
         handlers.transform_handler(
             source=resolved_source_value,
-            operations=_parse_json_option(operations, '--operations'),
+            operations=parse_json_option(operations, '--operations'),
             target=resolved_target_value,
             target_type=resolved_target_type,
             event_format=event_format,

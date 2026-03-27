@@ -12,7 +12,8 @@ import typer
 
 from etlplus.cli import _handlers as handlers
 from etlplus.cli._commands.app import app
-from etlplus.cli._commands.helpers import _parse_json_option
+from etlplus.cli._commands.helpers import normalize_choice
+from etlplus.cli._commands.helpers import parse_json_option
 from etlplus.cli._commands.options import OutputOption
 from etlplus.cli._commands.options import RulesOption
 from etlplus.cli._commands.options import SourceArg
@@ -71,13 +72,13 @@ def validate_cmd(
     """
     source_format = cast(
         SourceFormatOption,
-        ResourceTypeResolver.optional_choice(
+        normalize_choice(
             source_format,
             FILE_FORMATS,
             label='source_format',
         ),
     )
-    source_type = ResourceTypeResolver.optional_choice(
+    source_type = normalize_choice(
         source_type,
         DATA_CONNECTORS,
         label='source_type',
@@ -95,7 +96,7 @@ def validate_cmd(
     return int(
         handlers.validate_handler(
             source=source,
-            rules=_parse_json_option(rules, '--rules'),
+            rules=parse_json_option(rules, '--rules'),
             event_format=event_format,
             source_format=source_format,
             target=output,
