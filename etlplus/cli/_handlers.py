@@ -371,6 +371,42 @@ def _record_run_completion(
     )
 
 
+def _resolve_render_template(
+    template: TemplateKey | None,
+    template_path: str | None,
+) -> tuple[TemplateKey | None, str | None]:
+    """Resolve the render template key and optional template-file override."""
+    template_key: TemplateKey | None = template or 'ddl'
+    if template_path is not None:
+        return template_key, template_path
+
+    candidate_path = Path(cast(str, template_key))
+    if candidate_path.exists():
+        return None, str(candidate_path)
+    return template_key, None
+
+
+def _emit_render_output(
+    rendered_chunks: list[str],
+    *,
+    output_path: str | None,
+    pretty: bool,
+    quiet: bool,
+    schema_count: int,
+) -> int:
+    """Write rendered SQL to a file path or print it to STDOUT."""
+    sql_text = '\n'.join(chunk.rstrip() for chunk in rendered_chunks).rstrip() + '\n'
+    rendered_output = sql_text if pretty else sql_text.rstrip('\n')
+    if output_path and output_path != '-':
+        Path(output_path).write_text(rendered_output, encoding='utf-8')
+        if not quiet:
+            print(f'Rendered {schema_count} schema(s) to {output_path}')
+        return 0
+
+    print(rendered_output)
+    return 0
+
+
 def _emit_follow_history(
     *,
     job: str | None = None,
@@ -872,32 +908,17 @@ def render_handler(
     int
         Zero on success.
     """
-    template_value: TemplateKey = template or 'ddl'
-    template_path_override = template_path
-    table_filter = table
-    spec_path = spec
-    config_path = config
-
-    # If the provided template points to a file, treat it as a path override.
-    file_override = template_path_override
-    template_key: TemplateKey | None = template_value
-    if template_path_override is None:
-        candidate_path = Path(template_value)
-        if candidate_path.exists():
-            file_override = str(candidate_path)
-            template_key = None
-
-    specs = _summary.collect_table_specs(config_path, spec_path)
-    if table_filter:
+    template_key, file_override = _resolve_render_template(template, template_path)
+    specs = _summary.collect_table_specs(config, spec)
+    if table:
         specs = [
             spec
             for spec in specs
-            if str(spec.get('table')) == table_filter
-            or str(spec.get('name', '')) == table_filter
+            if str(spec.get('table')) == table or str(spec.get('name', '')) == table
         ]
 
     if not specs:
-        target_desc = table_filter or 'table_schemas'
+        target_desc = table or 'table_schemas'
         print(
             'No table schemas found for '
             f'{target_desc}. Provide --spec or a pipeline --config with '
@@ -911,18 +932,13 @@ def render_handler(
         template=template_key,
         template_path=file_override,
     )
-    sql_text = '\n'.join(chunk.rstrip() for chunk in rendered_chunks).rstrip() + '\n'
-    rendered_output = sql_text if pretty else sql_text.rstrip('\n')
-
-    output_path = output
-    if output_path and output_path != '-':
-        Path(output_path).write_text(rendered_output, encoding='utf-8')
-        if not quiet:
-            print(f'Rendered {len(specs)} schema(s) to {output_path}')
-        return 0
-
-    print(rendered_output)
-    return 0
+    return _emit_render_output(
+        rendered_chunks,
+        output_path=output,
+        pretty=pretty,
+        quiet=quiet,
+        schema_count=len(specs),
+    )
 
 
 def report_handler(
