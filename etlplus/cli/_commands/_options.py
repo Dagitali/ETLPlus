@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli.options` module.
+:mod:`etlplus.cli._commands._options` module.
 
 Shared Typer helper utilities for command-line interface (CLI) option
 configuration.
