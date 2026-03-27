@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 from typing import NoReturn
-from typing import Protocol
 from typing import overload
 
 import typer
@@ -58,17 +57,11 @@ class _ResolvedResource:
     format_hint: FileFormat | None = None
 
 
-class _CliHandler(Protocol):
-    """Protocol for CLI handlers that accept keyword arguments and return int."""
-
-    def __call__(self, /, **kwargs: Any) -> int: ...
-
-
 # SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
 def _call_handler(
-    handler: _CliHandler,
+    handler: Callable[..., int],
     /,
     *,
     state: CliState,
