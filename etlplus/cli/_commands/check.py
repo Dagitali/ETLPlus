@@ -10,6 +10,8 @@ import typer
 
 from etlplus.cli import _handlers as handlers
 from etlplus.cli._commands.app import app
+from etlplus.cli._commands.helpers import fail_usage
+from etlplus.cli._commands.helpers import require_option
 from etlplus.cli._commands.options import CheckConfigOption
 from etlplus.cli._commands.options import JobsOption
 from etlplus.cli._commands.options import PipelinesOption
@@ -76,23 +78,14 @@ def check_cmd(
     int
         Exit code (0 if checks passed, non-zero if any checks failed).
 
-    Raises
-    ------
-    typer.Exit
-        If the provided options are invalid or if required options are missing.
     """
     inspection_requested = any((jobs, pipelines, sources, summary, targets, transforms))
 
     if readiness and inspection_requested:
-        typer.echo(
-            'Error: --readiness cannot be combined with inspection flags.',
-            err=True,
-        )
-        raise typer.Exit(2)
+        fail_usage('--readiness cannot be combined with inspection flags.')
 
     if not readiness and not config:
-        typer.echo("Error: Missing required option '--config'.", err=True)
-        raise typer.Exit(2)
+        require_option(config, flag='--config')
 
     state = ensure_state(ctx)
     return int(
