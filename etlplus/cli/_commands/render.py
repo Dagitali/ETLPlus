@@ -8,16 +8,16 @@ from __future__ import annotations
 
 import typer
 
-from etlplus.cli import _handlers as handlers
-from etlplus.cli._commands.app import app
-from etlplus.cli._commands.helpers import require_any
-from etlplus.cli._commands.options import OutputOption
-from etlplus.cli._commands.options import RenderConfigOption
-from etlplus.cli._commands.options import RenderSpecOption
-from etlplus.cli._commands.options import RenderTableOption
-from etlplus.cli._commands.options import RenderTemplateOption
-from etlplus.cli._commands.options import RenderTemplatePathOption
-from etlplus.cli._state import ensure_state
+from .. import _handlers as handlers
+from .._state import ensure_state
+from .app import app
+from .helpers import require_any
+from .options import OutputOption
+from .options import RenderConfigOption
+from .options import RenderSpecOption
+from .options import RenderTableOption
+from .options import RenderTemplateOption
+from .options import RenderTemplatePathOption
 
 # SECTION: EXPORTS ========================================================== #
 
