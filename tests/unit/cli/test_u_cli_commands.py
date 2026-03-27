@@ -20,6 +20,7 @@ import etlplus.cli._commands.report as report_mod
 import etlplus.cli._commands.status as status_mod
 import etlplus.cli._commands.transform as transform_mod
 from etlplus.cli._state import CliState
+from etlplus.file import FileFormat
 
 from .conftest import AssertCapturedText
 from .conftest import InvokeCli
@@ -35,6 +36,12 @@ from .conftest import TyperContextFactory
 
 class TestCommandsInternalHelpers:
     """Unit tests for command-level internal helper functions."""
+
+    def test_normalize_file_format_returns_enum_member(self) -> None:
+        """Shared format normalization should preserve ``FileFormat`` typing."""
+        assert helpers_mod.normalize_file_format('json', label='source') is (
+            FileFormat.JSON
+        )
 
     def test_parse_json_option_wraps_value_errors(
         self,
@@ -54,6 +61,38 @@ class TestCommandsInternalHelpers:
         )
         with pytest.raises(typer.BadParameter, match='Invalid JSON for --ops'):
             commands_mod.parse_json_option('not-json', '--ops')
+
+    def test_resolve_logged_resource_type_uses_soft_inference(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Soft resource inference should tolerate inline payload scenarios."""
+        logged: dict[str, object] = {}
+        monkeypatch.setattr(
+            helpers_mod.ResourceTypeResolver,
+            'infer_soft',
+            lambda _value: 'file',
+        )
+        monkeypatch.setattr(
+            helpers_mod,
+            'log_inferred_resource',
+            lambda state, **kwargs: logged.update(kwargs),
+        )
+
+        resolved = helpers_mod.resolve_logged_resource_type(
+            CliState(verbose=True),
+            role='source',
+            value='payload.json',
+            explicit_type=None,
+            soft_inference=True,
+        )
+
+        assert resolved == 'file'
+        assert logged == {
+            'role': 'source',
+            'value': 'payload.json',
+            'resource_type': 'file',
+        }
 
 
 class TestCheckCommand:
@@ -470,7 +509,7 @@ class TestStatusCommand:
 class TestTransformCommand:
     """Unit tests for :func:`etlplus.cli._commands.transform_cmd`."""
 
-    def test_skips_source_validation_when_source_type_cannot_be_inferred(
+    def test_allows_unknown_source_type_when_soft_inference_returns_none(
         self,
         monkeypatch: pytest.MonkeyPatch,
         typer_ctx_factory: TyperContextFactory,
@@ -486,36 +525,35 @@ class TestTransformCommand:
         )
         monkeypatch.setattr(
             transform_mod,
-            'optional_choice',
-            lambda value, choices, label: value,
-        )
-        monkeypatch.setattr(
-            transform_mod,
-            'infer_resource_type_soft',
-            lambda _source: None,
-        )
-        monkeypatch.setattr(
-            transform_mod,
-            'resolve_resource_type',
-            lambda **kwargs: 'file',
-        )
-        monkeypatch.setattr(
-            transform_mod,
             'parse_json_option',
             lambda value, flag: {},
         )
-        validate_called = {'count': 0}
+        resolver_calls: list[dict[str, object]] = []
 
-        def _validate_choice(
-            value: str | object,
-            choices: set[str] | frozenset[str],
+        def resolve_logged_resource_type(
+            state: CliState,
             *,
-            label: str,
-        ) -> str:
-            validate_called['count'] += 1
-            return str(value)
+            role: str,
+            value: str,
+            explicit_type: str | None,
+            soft_inference: bool = False,
+        ) -> str | None:
+            resolver_calls.append(
+                {
+                    'state': state,
+                    'role': role,
+                    'value': value,
+                    'explicit_type': explicit_type,
+                    'soft_inference': soft_inference,
+                },
+            )
+            return None if role == 'source' else 'file'
 
-        monkeypatch.setattr(transform_mod, 'validate_choice', _validate_choice)
+        monkeypatch.setattr(
+            transform_mod,
+            'resolve_logged_resource_type',
+            resolve_logged_resource_type,
+        )
         captured = stub_handler(
             commands_mod.handlers,
             'transform_handler',
@@ -534,6 +572,21 @@ class TestTransformCommand:
         )
 
         assert result == 0
-        assert validate_called['count'] == 0
+        assert resolver_calls == [
+            {
+                'state': CliState(),
+                'role': 'source',
+                'value': 'payload',
+                'explicit_type': None,
+                'soft_inference': True,
+            },
+            {
+                'state': CliState(),
+                'role': 'target',
+                'value': '-',
+                'explicit_type': None,
+                'soft_inference': False,
+            },
+        ]
         assert captured['source'] == 'payload'
         assert captured['target_type'] == 'file'

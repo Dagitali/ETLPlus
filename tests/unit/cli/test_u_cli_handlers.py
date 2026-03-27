@@ -107,7 +107,7 @@ class TestCliHandlersInternalHelpers:
         assert result['jobs'] == ['j1']
         assert result['transforms'] == ['trim', 'dedupe']
 
-    def test_collect_table_specs_merges_config_and_spec(
+    def test_summary_collect_table_specs_merges_config_and_spec(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -116,19 +116,19 @@ class TestCliHandlersInternalHelpers:
         spec_path = tmp_path / 'table.json'
         spec_path.write_text('{}', encoding='utf-8')
         monkeypatch.setattr(
-            handlers,
+            handlers._summary,
             'load_table_spec',
             lambda _path: {'table': 'from_spec'},
         )
         monkeypatch.setattr(
-            handlers.Config,
+            handlers._summary.Config,
             'from_yaml',
             lambda _path, substitute: SimpleNamespace(
                 table_schemas=[{'table': 'from_config'}],
             ),
         )
 
-        specs = handlers._collect_table_specs(
+        specs = handlers._summary.collect_table_specs(
             config_path='pipeline.yml',
             spec_path=str(spec_path),
         )
@@ -1392,8 +1392,8 @@ class TestRenderHandler:
         """Test output-file rendering without a status log in quiet mode."""
         output_path = tmp_path / 'rendered.sql'
         monkeypatch.setattr(
-            handlers,
-            '_collect_table_specs',
+            handlers._summary,
+            'collect_table_specs',
             lambda _cfg, _spec: [{'table': 'Widget'}],
         )
         monkeypatch.setattr(
@@ -1430,8 +1430,8 @@ class TestRenderHandler:
         template_path = tmp_path / 'ddl.sql.j2'
         template_path.write_text('CREATE TABLE {{ table }}', encoding='utf-8')
         monkeypatch.setattr(
-            handlers,
-            '_collect_table_specs',
+            handlers._summary,
+            'collect_table_specs',
             lambda _cfg, _spec: [{'table': 'Widget'}],
         )
         captured: dict[str, object] = {}
