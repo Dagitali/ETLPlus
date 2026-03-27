@@ -227,13 +227,13 @@ class TestCheckHandler:
             pretty=True,
         )
 
-    def test_summary_branch_uses_pipeline_summary(
+    def test_summary_branch_uses_pipeline_summary_with_requested_pretty_flag(
         self,
         monkeypatch: pytest.MonkeyPatch,
         dummy_cfg: Config,
         capture_io: CaptureIo,
     ) -> None:
-        """Test that summary mode emits only the pipeline summary."""
+        """Test that summary mode preserves the caller's pretty setting."""
         monkeypatch.setattr(
             handlers.Config,
             'from_yaml',
@@ -245,11 +245,18 @@ class TestCheckHandler:
             lambda _cfg: {'name': 'p1', 'jobs': ['j1']},
         )
 
-        assert handlers.check_handler(config='cfg.yml', summary=True) == 0
+        assert (
+            handlers.check_handler(
+                config='cfg.yml',
+                summary=True,
+                pretty=False,
+            )
+            == 0
+        )
         assert_emit_json(
             capture_io,
             {'name': 'p1', 'jobs': ['j1']},
-            pretty=True,
+            pretty=False,
         )
 
 
