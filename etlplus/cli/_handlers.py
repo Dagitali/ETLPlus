@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Callable
 from collections.abc import Iterator
 from collections.abc import Mapping
 from contextlib import contextmanager
@@ -244,12 +245,16 @@ def _fail_command(
 @contextmanager
 def _failure_boundary(
     context: _CommandContext,
+    *,
+    on_error: Callable[[Exception], None] | None = None,
     **fields: Any,
 ) -> Iterator[None]:
     """Emit a failed lifecycle event for exceptions raised inside the block."""
     try:
         yield
     except Exception as exc:
+        if on_error is not None:
+            on_error(exc)
         _fail_command(context, exc, **fields)
         raise
 
@@ -1071,63 +1076,60 @@ def run_handler(
     cfg = Config.from_yaml(config, substitute=True)
 
     job_name = job or pipeline
-    if job_name:
-        context = _start_command(
-            command='run',
-            event_format=event_format,
-            config_path=config,
-            etlplus_version=__version__,
-            job=job_name,
-            pipeline_name=cfg.name,
-            status='running',
-        )
-        history_store = HistoryStore.from_environment()
-        history_store.record_run_started(
-            build_run_record(
-                run_id=context.run_id,
-                config_path=config,
-                started_at=context.started_at,
-                pipeline_name=cfg.name,
-                job_name=job_name,
-            ),
-        )
-        try:
-            result = run(job=job_name, config_path=config)
-        except Exception as exc:
-            _record_run_completion(
-                history_store,
-                context,
-                status='failed',
-                exc=exc,
-            )
-            _fail_command(
-                context,
-                exc,
-                config_path=config,
-                job=job_name,
-                pipeline_name=cfg.name,
-            )
-            raise
+    if not job_name:
+        return _emit_json_payload(_pipeline_summary(cfg), pretty=pretty)
 
-        _record_run_completion(
+    context = _start_command(
+        command='run',
+        event_format=event_format,
+        config_path=config,
+        etlplus_version=__version__,
+        job=job_name,
+        pipeline_name=cfg.name,
+        status='running',
+    )
+    history_store = HistoryStore.from_environment()
+    history_store.record_run_started(
+        build_run_record(
+            run_id=context.run_id,
+            config_path=config,
+            started_at=context.started_at,
+            pipeline_name=cfg.name,
+            job_name=job_name,
+        ),
+    )
+
+    with _failure_boundary(
+        context,
+        on_error=lambda exc: _record_run_completion(
             history_store,
             context,
-            status='succeeded',
-            result_summary=cast(JSONData | None, result),
-        )
-        return _complete_output(
-            context,
-            {'run_id': context.run_id, 'status': 'ok', 'result': result},
-            mode='json',
-            pretty=pretty,
-            config_path=config,
-            job=job_name,
-            pipeline_name=cfg.name,
-            result_status=result.get('status'),
-            status='ok',
-        )
+            status='failed',
+            exc=exc,
+        ),
+        config_path=config,
+        job=job_name,
+        pipeline_name=cfg.name,
+    ):
+        result = run(job=job_name, config_path=config)
 
-    return _emit_json_payload(_pipeline_summary(cfg), pretty=pretty)
+    _record_run_completion(
+        history_store,
+        context,
+        status='succeeded',
+        result_summary=cast(JSONData | None, result),
+    )
+    return _complete_output(
+        context,
+        {'run_id': context.run_id, 'status': 'ok', 'result': result},
+        mode='json',
+        pretty=pretty,
+        config_path=config,
+        job=job_name,
+        pipeline_name=cfg.name,
+        result_status=result.get('status'),
+        status='ok',
+    )
 
 
 def status_handler(
