@@ -11,6 +11,7 @@ import typer
 from .. import _handlers as handlers
 from .._state import ensure_state
 from .app import app
+from .helpers import _call_handler
 from .options import JobOption
 from .options import RunIdOption
 
@@ -46,11 +47,9 @@ def status_cmd(
     int
         Exit code (0 if checks passed, non-zero if any checks failed).
     """
-    state = ensure_state(ctx)
-    return int(
-        handlers.status_handler(
-            job=job,
-            pretty=state.pretty,
-            run_id=run_id,
-        ),
+    return _call_handler(
+        handlers.status_handler,
+        state=ensure_state(ctx),
+        job=job,
+        run_id=run_id,
     )
