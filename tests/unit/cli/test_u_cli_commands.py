@@ -38,6 +38,28 @@ from .conftest import TyperContextFactory
 class TestCommandsInternalHelpers:
     """Unit tests for command-level internal helper functions."""
 
+    def test_call_handler_injects_requested_state_fields(self) -> None:
+        """Shared handler dispatch should merge selected CLI state fields."""
+        captured: dict[str, object] = {}
+
+        def _handler(**kwargs: object) -> int:
+            captured.update(kwargs)
+            return 7
+
+        result = helpers_mod._call_handler(
+            _handler,
+            state=CliState(pretty=False, quiet=True, verbose=True),
+            state_fields=('pretty', 'quiet'),
+            value='payload',
+        )
+
+        assert result == 7
+        assert captured == {
+            'pretty': False,
+            'quiet': True,
+            'value': 'payload',
+        }
+
     def test_normalize_file_format_returns_enum_member(self) -> None:
         """Shared format normalization should preserve ``FileFormat`` typing."""
         assert helpers_mod.normalize_file_format('json', label='source') is (
@@ -69,6 +91,20 @@ class TestCommandsInternalHelpers:
             helpers_mod.resolve_logged_resource_type
             is state_mod.resolve_logged_resource_type
         )
+
+    def test_resolve_resource_normalizes_type_and_format(self) -> None:
+        """Shared resource resolution should normalize type and format hints."""
+        resolved = helpers_mod._resolve_resource(
+            CliState(),
+            role='source',
+            value='payload.json',
+            connector_type='API',
+            format_value='json',
+        )
+
+        assert resolved.value == 'payload.json'
+        assert resolved.resource_type == 'api'
+        assert resolved.format_hint is FileFormat.JSON
 
 
 class TestCheckCommand:
@@ -526,7 +562,7 @@ class TestTransformCommand:
             return None if role == 'source' else 'file'
 
         monkeypatch.setattr(
-            transform_mod,
+            helpers_mod,
             'resolve_logged_resource_type',
             resolve_logged_resource_type,
         )
