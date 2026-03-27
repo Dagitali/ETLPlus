@@ -21,8 +21,8 @@ from pathlib import Path
 from typing import ClassVar
 
 from ..utils.types import JSONData
-from ._imports import get_dependency as _get_dependency
-from ._imports import get_pandas as _get_pandas
+from ._imports import get_dependency  # noqa: F401
+from ._imports import get_pandas  # noqa: F401
 from ._scientific_handlers import PyreadstatMode
 from ._scientific_handlers import SingleDatasetTabularScientificReadMixin
 from ._statistical_handlers import PyreadstatReadSasFallbackFrameMixin
@@ -37,15 +37,6 @@ __all__ = [
     # Classes
     'Sas7bdatFile',
 ]
-
-
-# SECTION: INTERNAL HELPERS ================================================= #
-
-
-# Preserve module-level resolver hooks for contract tests.
-get_dependency = _get_dependency
-get_pandas = _get_pandas
-
 
 # SECTION: CLASSES ========================================================== #
 
