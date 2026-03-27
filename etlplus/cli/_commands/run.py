@@ -8,14 +8,14 @@ from __future__ import annotations
 
 import typer
 
-from etlplus.cli import _handlers as handlers
-from etlplus.cli._commands.app import app
-from etlplus.cli._commands.helpers import require_option
-from etlplus.cli._commands.options import ConfigOption
-from etlplus.cli._commands.options import JobOption
-from etlplus.cli._commands.options import PipelineOption
-from etlplus.cli._commands.options import StructuredEventFormatOption
-from etlplus.cli._state import ensure_state
+from .. import _handlers as handlers
+from .._state import ensure_state
+from .app import app
+from .helpers import require_option
+from .options import ConfigOption
+from .options import JobOption
+from .options import PipelineOption
+from .options import StructuredEventFormatOption
 
 # SECTION: EXPORTS ========================================================== #
 
