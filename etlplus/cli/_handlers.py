@@ -170,6 +170,28 @@ def _emit_or_write_payload(
     return 0
 
 
+def _emit_history_payload(
+    payload: Any,
+    *,
+    columns: tuple[str, ...],
+    pretty: bool,
+    table: bool = False,
+    json_output: bool = False,
+    table_rows: list[dict[str, Any]] | None = None,
+    exit_code: int = 0,
+) -> int:
+    """Validate history output mode and emit one JSON or table payload."""
+    HistoryView.validate_output_mode(json_output=json_output, table=table)
+    return _emit_json_or_table(
+        payload,
+        columns=columns,
+        pretty=pretty,
+        table=table,
+        table_rows=table_rows,
+        exit_code=exit_code,
+    )
+
+
 def _emit_table_payload(
     rows: list[dict[str, Any]],
     *,
@@ -214,7 +236,7 @@ def _fail_command(
 
 def _load_history_records(
     *,
-    raw: bool,
+    raw: bool = False,
     job: str | None = None,
     limit: int | None = None,
     run_id: str | None = None,
@@ -223,14 +245,19 @@ def _load_history_records(
     status: str | None = None,
 ) -> list[dict[str, Any]]:
     """Load, filter, and sort history records for CLI read commands."""
+    load_kwargs: dict[str, Any] = {'raw': raw}
+    for key, value in (
+        ('job', job),
+        ('limit', limit),
+        ('run_id', run_id),
+        ('since', since),
+        ('until', until),
+        ('status', status),
+    ):
+        if value is not None:
+            load_kwargs[key] = value
     return HistoryView.load_records(
-        raw=raw,
-        job=job,
-        limit=limit,
-        run_id=run_id,
-        since=since,
-        until=until,
-        status=status,
+        **load_kwargs,
     )
 
 
@@ -520,7 +547,6 @@ def history_handler(
     int
         Zero on success.
     """
-    HistoryView.validate_output_mode(json_output=json_output, table=table)
     if follow:
         return _emit_follow_history(
             job=job,
@@ -530,20 +556,20 @@ def history_handler(
             status=status,
             until=until,
         )
-    records = _load_history_records(
-        job=job,
-        limit=limit,
-        raw=raw,
-        run_id=run_id,
-        since=since,
-        until=until,
-        status=status,
-    )
-    return _emit_json_or_table(
-        records,
+    return _emit_history_payload(
+        _load_history_records(
+            job=job,
+            limit=limit,
+            raw=raw,
+            run_id=run_id,
+            since=since,
+            until=until,
+            status=status,
+        ),
         columns=_HISTORY_TABLE_COLUMNS,
         pretty=pretty,
         table=table,
+        json_output=json_output,
     )
 
 
@@ -900,19 +926,20 @@ def report_handler(
     int
         Zero on success.
     """
-    HistoryView.validate_output_mode(json_output=json_output, table=table)
-    records = HistoryView.load_records(
-        job=job,
-        raw=False,
-        since=since,
-        until=until,
+    report = HistoryReportBuilder.build(
+        _load_history_records(
+            job=job,
+            since=since,
+            until=until,
+        ),
+        group_by=group_by,
     )
-    report = HistoryReportBuilder.build(records, group_by=group_by)
-    return _emit_json_or_table(
+    return _emit_history_payload(
         report,
         columns=_REPORT_TABLE_COLUMNS,
         pretty=pretty,
         table=table,
+        json_output=json_output,
         table_rows=cast(list[dict[str, Any]], report['rows']),
     )
 
@@ -1053,10 +1080,9 @@ def status_handler(
     int
         Zero when a matching run exists, otherwise ``1``.
     """
-    records = HistoryView.load_records(
+    records = _load_history_records(
         job=job,
         limit=1,
-        raw=False,
         run_id=run_id,
     )
     if not records:
