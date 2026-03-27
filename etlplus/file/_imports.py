@@ -258,11 +258,7 @@ def get_pandas(
     Any
         The pandas module.
     """
-    return get_dependency(
-        'pandas',
-        format_name=format_name,
-        required=True,
-    )
+    return get_dependency('pandas', format_name=format_name, required=True)
 
 
 def get_pyarrow(
@@ -281,11 +277,7 @@ def get_pyarrow(
     Any
         The pyarrow module.
     """
-    return get_dependency(
-        'pyarrow',
-        format_name=format_name,
-        required=True,
-    )
+    return get_dependency('pyarrow', format_name=format_name, required=True)
 
 
 def get_yaml() -> Any:
