@@ -17,6 +17,7 @@ import typer
 
 from ..utils import normalize_str
 from ._constants import DATA_CONNECTORS
+from ._types import DataConnectorContext
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -31,6 +32,7 @@ __all__ = [
     'infer_resource_type_soft',
     'log_inferred_resource',
     'optional_choice',
+    'resolve_logged_resource_type',
     'resolve_resource_type',
     'validate_choice',
 ]
@@ -67,6 +69,26 @@ class CliState:
     pretty: bool = True
     quiet: bool = False
     verbose: bool = False
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _validate_choice_value(
+    value: str | object,
+    choices: Collection[str],
+    *,
+    label: str,
+) -> str:
+    """Validate one CLI value against *choices* and preserve canonical case."""
+    normalized_value = normalize_str(str(value or ''))
+    normalized_choices = {normalize_str(choice): choice for choice in choices}
+    if normalized_value in normalized_choices:
+        return normalized_choices[normalized_value]
+    allowed = ', '.join(sorted(choices))
+    raise typer.BadParameter(
+        f"Invalid {label} '{value}'. Choose from: {allowed}",
+    )
 
 
 # SECTION: CLASSES ========================================================== #
@@ -122,14 +144,7 @@ class ResourceTypeResolver:
         label: str,
     ) -> str:
         """Validate CLI input against a whitelist of choices."""
-        normalized_value = normalize_str(str(value or ''))
-        normalized_choices = {normalize_str(choice): choice for choice in choices}
-        if normalized_value in normalized_choices:
-            return normalized_choices[normalized_value]
-        allowed = ', '.join(sorted(choices))
-        raise typer.BadParameter(
-            f"Invalid {label} '{value}'. Choose from: {allowed}",
-        )
+        return _validate_choice_value(value, choices, label=label)
 
     # -- Class Methods -- #
 
@@ -157,7 +172,7 @@ class ResourceTypeResolver:
         """Validate optional CLI choice inputs while preserving ``None``."""
         if value is None:
             return None
-        return validate_choice(value, choices, label=label)
+        return _validate_choice_value(value, choices, label=label)
 
     @classmethod
     def resolve(
@@ -270,7 +285,7 @@ def infer_resource_type_soft(
 def log_inferred_resource(
     state: CliState,
     *,
-    role: str,
+    role: DataConnectorContext,
     value: str,
     resource_type: str | None,
 ) -> None:
@@ -296,6 +311,56 @@ def log_inferred_resource(
     )
 
 
+def resolve_logged_resource_type(
+    state: CliState,
+    *,
+    role: DataConnectorContext,
+    value: str,
+    explicit_type: str | None,
+    soft_inference: bool = False,
+) -> str | None:
+    """
+    Resolve one resource type, validate it, and emit shared verbose logging.
+
+    Parameters
+    ----------
+    state : CliState
+        The current CLI state.
+    role : DataConnectorContext
+        The resource role, e.g. ``'source'`` or ``'target'``.
+    value : str
+        The resource identifier (path, URL, or DSN).
+    explicit_type : str | None
+        The explicit CLI connector type, if provided.
+    soft_inference : bool, optional
+        Whether to tolerate inference failures and return ``None``.
+
+    Returns
+    -------
+    str | None
+        The validated resource type, or ``None`` when soft inference fails.
+    """
+    resource_type = explicit_type
+    if resource_type is None:
+        infer = (
+            infer_resource_type_soft if soft_inference else infer_resource_type_or_exit
+        )
+        resource_type = infer(value)
+    if resource_type is not None:
+        resource_type = validate_choice(
+            resource_type,
+            DATA_CONNECTORS,
+            label=f'{role}_type',
+        )
+    log_inferred_resource(
+        state,
+        role=role,
+        value=value,
+        resource_type=resource_type,
+    )
+    return resource_type
+
+
 def optional_choice(
     value: str | None,
     choices: Collection[str],
@@ -319,7 +384,9 @@ def optional_choice(
     str | None
         The validated choice, or ``None`` if input was ``None``.
     """
-    return ResourceTypeResolver.optional_choice(value, choices, label=label)
+    if value is None:
+        return None
+    return _validate_choice_value(value, choices, label=label)
 
 
 def resolve_resource_type(
@@ -391,4 +458,4 @@ def validate_choice(
         The validated choice.
 
     """
-    return ResourceTypeResolver.validate(value, choices, label=label)
+    return _validate_choice_value(value, choices, label=label)
