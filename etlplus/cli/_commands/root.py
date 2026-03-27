@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import typer
 
-from etlplus import __version__
-from etlplus.cli._commands.app import app
-from etlplus.cli._state import CliState
-from etlplus.runtime import configure_logging
+from ... import __version__
+from ...runtime import configure_logging
+from .._state import CliState
+from .app import app
 
 # SECTION: EXPORTS ========================================================== #
 
