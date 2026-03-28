@@ -120,7 +120,10 @@ add-ignore = [
 ]
 
 [tool.mypy]
-exclude = '(^|/)(docs|etlplus)/*_(CURRENT|FIXED|OLD|ORIG|NEW)\.py$'
+exclude = '''(?x)(
+  (^|/)(docs|etlplus)/*_(CURRENT|DEFUNCT|FIXED|NEW|OLD|ORIG)\.py$
+  | (^|/)etlplus/*_(CURRENT|DEFUNCT|FIXED|NEW|OLD|ORIG)/
+)'''
 
 [tool.setuptools.package-data]
 etlplus = ["py.typed", "templates/*.j2"]
