@@ -19,8 +19,6 @@ from ._types import DataConnectorContext
 
 
 __all__ = [
-    # Functions
-    'typer_format_option_kwargs',
     # Types
     'CheckConfigOption',
     'ConfigOption',
@@ -98,60 +96,7 @@ def _typer_flag_option_kwargs(
     return kwargs
 
 
-def _typer_resource_argument_kwargs(
-    *,
-    context: DataConnectorContext,
-) -> dict[str, object]:
-    """Return common Typer argument kwargs for source/target resources."""
-    if context == 'source':
-        description = 'JSON payload, file path, URI/URL, or - for STDIN'
-        verb = 'Extract data from'
-    else:
-        description = 'file path, URI/URL, or - for STDOUT'
-        verb = 'Load data into'
-    return {
-        'metavar': context.upper(),
-        'help': (
-            f'{verb} {context.upper()} ({description}). Use '
-            f'--{context}-format to override '
-            'the inferred data format and '
-            f'--{context}-type to override the inferred data connector.'
-        ),
-    }
-
-
-def _typer_value_option_kwargs(
-    help_text: str,
-    *,
-    metavar: str | None = None,
-    show_default: bool | None = False,
-) -> dict[str, object]:
-    """Return common Typer option kwargs for scalar string-like inputs."""
-    kwargs: dict[str, object] = {'help': help_text}
-    if metavar is not None:
-        kwargs['metavar'] = metavar
-    if show_default is not None:
-        kwargs['show_default'] = show_default
-    return kwargs
-
-
-def _typer_timestamp_option_kwargs(
-    *,
-    bound: Literal['since', 'until'],
-) -> dict[str, object]:
-    """Return common Typer option kwargs for ISO-8601 history bounds."""
-    direction = 'after' if bound == 'since' else 'before'
-    return {
-        'metavar': 'ISO8601',
-        'show_default': False,
-        'help': (f'Emit only records at or {direction} the given ISO-8601 timestamp.'),
-    }
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-def typer_format_option_kwargs(
+def _typer_format_option_kwargs(
     *,
     context: DataConnectorContext,
     rich_help_panel: str = 'Format overrides',
@@ -180,6 +125,56 @@ def typer_format_option_kwargs(
             'non-file connector. File connectors infer from extensions.'
         ),
     }
+
+
+def _typer_resource_argument_kwargs(
+    *,
+    context: DataConnectorContext,
+) -> dict[str, object]:
+    """Return common Typer argument kwargs for source/target resources."""
+    if context == 'source':
+        description = 'JSON payload, file path, URI/URL, or - for STDIN'
+        verb = 'Extract data from'
+    else:
+        description = 'file path, URI/URL, or - for STDOUT'
+        verb = 'Load data into'
+    return {
+        'metavar': context.upper(),
+        'help': (
+            f'{verb} {context.upper()} ({description}). Use '
+            f'--{context}-format to override '
+            'the inferred data format and '
+            f'--{context}-type to override the inferred data connector.'
+        ),
+    }
+
+
+def _typer_timestamp_option_kwargs(
+    *,
+    bound: Literal['since', 'until'],
+) -> dict[str, object]:
+    """Return common Typer option kwargs for ISO-8601 history bounds."""
+    direction = 'after' if bound == 'since' else 'before'
+    return {
+        'metavar': 'ISO8601',
+        'show_default': False,
+        'help': (f'Emit only records at or {direction} the given ISO-8601 timestamp.'),
+    }
+
+
+def _typer_value_option_kwargs(
+    help_text: str,
+    *,
+    metavar: str | None = None,
+    show_default: bool | None = False,
+) -> dict[str, object]:
+    """Return common Typer option kwargs for scalar string-like inputs."""
+    kwargs: dict[str, object] = {'help': help_text}
+    if metavar is not None:
+        kwargs['metavar'] = metavar
+    if show_default is not None:
+        kwargs['show_default'] = show_default
+    return kwargs
 
 
 # SECTION: TYPES ============================================================ #
@@ -502,7 +497,7 @@ SourceFormatOption = Annotated[
     FileFormat | None,
     typer.Option(
         '--source-format',
-        **typer_format_option_kwargs(context='source'),
+        **_typer_format_option_kwargs(context='source'),
     ),
 ]
 
@@ -544,7 +539,7 @@ TargetFormatOption = Annotated[
     FileFormat | None,
     typer.Option(
         '--target-format',
-        **typer_format_option_kwargs(context='target'),
+        **_typer_format_option_kwargs(context='target'),
     ),
 ]
 
