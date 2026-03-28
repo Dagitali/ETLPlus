@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.rate_limiting.config` module.
+:mod:`etlplus.api.rate_limiting._config` module.
 
 Rate limiting configuration primitives.
 
