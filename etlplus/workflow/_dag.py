@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.workflow.dag` module.
+:mod:`etlplus.workflow._dag` module.
 
 Lightweight directed acyclic graph (DAG) helpers for ordering jobs based on
 :attr:`depends_on`.
@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass
 
-from .jobs import JobConfig
+from ._jobs import JobConfig
 
 # SECTION: EXPORTS ========================================================== #
 
