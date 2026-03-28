@@ -10,12 +10,12 @@ import typer
 
 from ... import __version__
 from ...runtime import configure_logging
+from ._options import PrettyOption
+from ._options import QuietOption
+from ._options import VerboseOption
+from ._options import VersionOption
 from ._state import _set_state
 from .app import app
-from .options import PrettyOption
-from .options import QuietOption
-from .options import VerboseOption
-from .options import VersionOption
 
 # SECTION: EXPORTS ========================================================== #
 

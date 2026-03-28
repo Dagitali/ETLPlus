@@ -12,16 +12,16 @@ from .. import _handlers as handlers
 from ._helpers import call_handler
 from ._helpers import fail_usage
 from ._helpers import require_value
+from ._options import CheckConfigOption
+from ._options import JobsOption
+from ._options import PipelinesOption
+from ._options import ReadinessOption
+from ._options import SourcesOption
+from ._options import SummaryOption
+from ._options import TargetsOption
+from ._options import TransformsOption
 from ._state import ensure_state
 from .app import app
-from .options import CheckConfigOption
-from .options import JobsOption
-from .options import PipelinesOption
-from .options import ReadinessOption
-from .options import SourcesOption
-from .options import SummaryOption
-from .options import TargetsOption
-from .options import TransformsOption
 
 # SECTION: EXPORTS ========================================================== #
 

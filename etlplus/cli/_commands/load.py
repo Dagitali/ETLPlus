@@ -12,13 +12,13 @@ from .. import _handlers as handlers
 from ._helpers import call_handler
 from ._helpers import normalize_file_format
 from ._helpers import resolve_resource
+from ._options import SourceFormatOption
+from ._options import StructuredEventFormatOption
+from ._options import TargetArg
+from ._options import TargetFormatOption
+from ._options import TargetTypeOption
 from ._state import ensure_state
 from .app import app
-from .options import SourceFormatOption
-from .options import StructuredEventFormatOption
-from .options import TargetArg
-from .options import TargetFormatOption
-from .options import TargetTypeOption
 
 # SECTION: EXPORTS ========================================================== #
 

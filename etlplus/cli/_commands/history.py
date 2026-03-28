@@ -10,16 +10,16 @@ import typer
 
 from .. import _handlers
 from ._helpers import call_handler
+from ._options import HistoryJsonOption
+from ._options import HistoryLimitOption
+from ._options import HistoryRawOption
+from ._options import HistorySinceOption
+from ._options import HistoryStatusOption
+from ._options import HistoryTableOption
+from ._options import HistoryUntilOption
+from ._options import JobOption
 from ._state import ensure_state
 from .app import app
-from .options import HistoryJsonOption
-from .options import HistoryLimitOption
-from .options import HistoryRawOption
-from .options import HistorySinceOption
-from .options import HistoryStatusOption
-from .options import HistoryTableOption
-from .options import HistoryUntilOption
-from .options import JobOption
 
 # SECTION: EXPORTS ========================================================== #
 
