@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.pagination.config` module.
+:mod:`etlplus.api.pagination._config` module.
 
 Pagination configuration shapes for REST API pagination.
 
