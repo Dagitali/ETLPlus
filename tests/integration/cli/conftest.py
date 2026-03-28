@@ -358,8 +358,8 @@ def real_remote_target_factory_fixture() -> Iterator[RealRemoteTargetFactory]:
 def remote_storage_harness_fixture(
     monkeypatch: pytest.MonkeyPatch,
 ) -> RemoteStorageHarness:
-    """Patch :mod:`etlplus.file.core` with an in-memory remote backend."""
-    core_mod = importlib.import_module('etlplus.file.core')
+    """Patch :mod:`etlplus.file._core` with an in-memory remote backend."""
+    core_mod = importlib.import_module('etlplus.file._core')
     objects: dict[str, bytes] = {}
     writes: list[tuple[str, bytes]] = []
 
