@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.retry_manager` module.
+:mod:`etlplus.api._retry_manager` module.
 
 Retry policies and exponential backoff helpers.
 
@@ -10,7 +10,7 @@ Examples
 --------
 Retry a request with exponential backoff::
 
-    >>> from etlplus.api.retry_manager import RetryManager
+    >>> from etlplus.api import RetryManager
     >>> policy = {"max_attempts": 3, "backoff": 0.25, "retry_on": [429]}
     >>> mgr = RetryManager(policy=policy)
     >>> mgr.get_sleep_time(1)
@@ -36,8 +36,8 @@ from ..utils import to_int
 from ..utils import to_positive_int
 from ..utils.types import JSONData
 from ..utils.types import Sleeper
-from .errors import ApiAuthError
-from .errors import ApiRequestError
+from ._errors import ApiAuthError
+from ._errors import ApiRequestError
 
 # SECTION: EXPORTS ========================================================== #
 

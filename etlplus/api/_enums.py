@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.enums` module.
+:mod:`etlplus.api._enums` module.
 
 REST API-aligned enums and helpers.
 """

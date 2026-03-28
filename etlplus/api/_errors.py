@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.errors` module.
+:mod:`etlplus.api._errors` module.
 
 Exception types with rich context for debugging REST API failures.
 
@@ -30,7 +30,7 @@ from typing import Any
 import requests  # type: ignore[import]
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from .retry_manager import RetryPolicyDict
+    from ._retry_manager import RetryPolicyDict
 
 
 # SECTION: EXPORTS ========================================================== #

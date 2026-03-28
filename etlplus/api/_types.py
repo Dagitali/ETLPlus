@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.types` module.
+:mod:`etlplus.api._types` module.
 
 HTTP-centric type aliases for :mod:`etlplus.api` helpers.
 
@@ -85,7 +85,7 @@ def _to_dict(
 
 class ApiConfigDict(TypedDict, total=False):
     """
-    Top-level API config shape for :class:`etlplus.api.config.ApiConfig`.
+    Top-level API config shape for :class:`etlplus.api.ApiConfig`.
 
     Either provide a :attr:`base_url` with optional :attr:`headers` and
     :attr:`endpoints`, or provide :attr:`profiles` with at least one profile
@@ -93,7 +93,7 @@ class ApiConfigDict(TypedDict, total=False):
 
     See Also
     --------
-    - :class:`etlplus.api.config.ApiConfig`
+    - :class:`etlplus.api.ApiConfig`
     """
 
     base_url: str
@@ -110,11 +110,11 @@ class ApiProfileConfigDict(TypedDict, total=False):
     -----
     - :attr:`base_url` is required at runtime when :attr:`profiles` key/value
         pairs are provided.
-    - :meth:`etlplus.api.config.ApiProfileConfig.from_obj` parses this mapping.
+    - :meth:`etlplus.api.ApiProfileConfig.from_obj` parses this mapping.
 
     See Also
     --------
-    - :class:`etlplus.api.config.ApiProfileConfig`
+    - :class:`etlplus.api.ApiProfileConfig`
     """
 
     base_url: str
@@ -131,7 +131,7 @@ class ApiProfileDefaultsDict(TypedDict, total=False):
     Notes
     -----
     - Runtime expects header values to be ``str``; typing remains permissive.
-    - :meth:`etlplus.api.config.ApiProfileConfig.from_obj` consumes this block.
+    - :meth:`etlplus.api.ApiProfileConfig.from_obj` consumes this block.
     - :meth:`etlplus.api.pagination.PaginationConfig.from_obj` parses
         :attr:`pagination`.
     - :meth:`etlplus.api.rate_limiting.RateLimitConfig.from_obj` parses
@@ -139,7 +139,7 @@ class ApiProfileDefaultsDict(TypedDict, total=False):
 
     See Also
     --------
-    - :class:`etlplus.api.config.ApiProfileConfig`
+    - :class:`etlplus.api.ApiProfileConfig`
     - :class:`etlplus.api.pagination.PaginationConfig`
     - :class:`etlplus.api.rate_limiting.RateLimitConfig`
     """
@@ -151,13 +151,13 @@ class ApiProfileDefaultsDict(TypedDict, total=False):
 
 class EndpointConfigDict(TypedDict, total=False):
     """
-    Shape accepted by :meth:`etlplus.api.config.EndpointConfig.from_obj`.
+    Shape accepted by :meth:`etlplus.api.EndpointConfig.from_obj`.
 
     One of :attr:`path` or :attr:`url` should be provided.
 
     See Also
     --------
-    - :class:`etlplus.api.config.EndpointConfig`
+    - :class:`etlplus.api.EndpointConfig`
     """
 
     path: str

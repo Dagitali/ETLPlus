@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.config` module.
+:mod:`etlplus.api._config` module.
 
 Configuration dataclasses for REST API services, profiles, and endpoints.
 
@@ -30,15 +30,15 @@ from ..utils import coerce_dict
 from ..utils import maybe_mapping
 from ..utils.types import StrAnyMap
 from ..utils.types import StrStrMap
+from ._enums import HttpMethod
 from .endpoint_client import EndpointClient
-from .enums import HttpMethod
 from .pagination import PaginationConfig
 from .rate_limiting import RateLimitConfig
 
 if TYPE_CHECKING:
-    from .types import ApiConfigDict
-    from .types import ApiProfileConfigDict
-    from .types import EndpointConfigDict
+    from ._types import ApiConfigDict
+    from ._types import ApiProfileConfigDict
+    from ._types import EndpointConfigDict
 
 
 # SECTION: EXPORTS ========================================================== #

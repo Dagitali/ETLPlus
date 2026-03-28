@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.auth` module.
+:mod:`etlplus.api._auth` module.
 
 Bearer token authentication for REST APIs using the OAuth2 Client Credentials
 flow.
@@ -50,7 +50,7 @@ from requests import PreparedRequest  # type: ignore
 from requests import Response  # type: ignore
 from requests.auth import AuthBase  # type: ignore
 
-from .types import Url
+from ._types import Url
 
 logger = logging.getLogger(__name__)
 
