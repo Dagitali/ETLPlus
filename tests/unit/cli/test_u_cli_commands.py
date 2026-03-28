@@ -174,7 +174,7 @@ class TestCliInvokeParsing:
             captured.update(kwargs)
             return 0
 
-        monkeypatch.setattr(history_mod.handlers, 'history_handler', _stub)
+        monkeypatch.setattr(history_mod._handlers, 'history_handler', _stub)
 
         result = invoke_cli(
             'history',
@@ -197,7 +197,7 @@ class TestCliInvokeParsing:
             captured.update(kwargs)
             return 0
 
-        monkeypatch.setattr(log_mod.handlers, 'history_handler', _stub)
+        monkeypatch.setattr(log_mod._handlers, 'history_handler', _stub)
 
         result = invoke_cli(
             'log',
