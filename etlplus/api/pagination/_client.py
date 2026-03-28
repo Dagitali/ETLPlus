@@ -17,10 +17,10 @@ from typing import cast
 
 from ...utils.types import JSONDict
 from ...utils.types import JSONRecords
+from .._types import FetchPageCallable
+from .._types import RequestOptions
+from .._types import Url
 from ..rate_limiting import RateLimiter
-from ..types import FetchPageCallable
-from ..types import RequestOptions
-from ..types import Url
 from ._config import PaginationConfig
 from ._config import PaginationInput
 from ._config import PaginationType

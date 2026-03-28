@@ -10,8 +10,8 @@ requests, extracting records, and enforcing limits.
 
 Examples
 --------
+>>> from etlplus.api import RequestOptions, Url
 >>> from etlplus.api.pagination import Paginator, PaginationType
->>> from etlplus.api.types import RequestOptions, Url
 >>> def fetch(url: Url, req: RequestOptions, page: int | None) -> dict:
 ...     ...  # issue HTTP request and return JSON payload
 >>> paginator = Paginator(type=PaginationType.PAGE, page_size=100)
@@ -33,12 +33,12 @@ from ...utils import to_maximum_int
 from ...utils import to_positive_int
 from ...utils.types import JSONDict
 from ...utils.types import JSONRecords
-from ..errors import ApiRequestError
-from ..errors import PaginationError
+from .._errors import ApiRequestError
+from .._errors import PaginationError
+from .._types import FetchPageCallable
+from .._types import RequestOptions
+from .._types import Url
 from ..rate_limiting import RateLimiter
-from ..types import FetchPageCallable
-from ..types import RequestOptions
-from ..types import Url
 from ._config import PaginationConfig
 from ._config import PaginationInput
 from ._config import PaginationType

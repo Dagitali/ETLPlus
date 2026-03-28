@@ -17,19 +17,19 @@ import requests  # type: ignore[import]
 
 from ..utils import coerce_dict
 from ..utils.types import Timeout
-from .config import ApiConfig
-from .config import EndpointConfig
+from ._config import ApiConfig
+from ._config import EndpointConfig
+from ._enums import HttpMethod
+from ._retry_manager import RetryPolicyDict
+from ._types import Headers
+from ._types import Params
+from ._types import Url
 from .endpoint_client import EndpointClient
-from .enums import HttpMethod
 from .pagination import PaginationConfig
 from .pagination import PaginationConfigDict
 from .rate_limiting import RateLimitConfig
 from .rate_limiting import RateLimitConfigDict
 from .rate_limiting import RateLimiter
-from .retry_manager import RetryPolicyDict
-from .types import Headers
-from .types import Params
-from .types import Url
 
 # SECTION: CONSTANTS ======================================================== #
 

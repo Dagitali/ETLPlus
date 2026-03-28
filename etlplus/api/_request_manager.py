@@ -24,12 +24,12 @@ from requests import Response  # type: ignore[import]
 from ..utils.types import JSONData
 from ..utils.types import JSONDict
 from ..utils.types import Timeout
-from .errors import ApiAuthError
-from .errors import ApiRequestError
-from .retry_manager import RetryInput
-from .retry_manager import RetryManager
-from .transport import HTTPAdapterMountConfigDict
-from .transport import build_session_with_adapters
+from ._errors import ApiAuthError
+from ._errors import ApiRequestError
+from ._retry_manager import RetryInput
+from ._retry_manager import RetryManager
+from ._transport import HTTPAdapterMountConfigDict
+from ._transport import build_session_with_adapters
 
 # SECTION: TYPE ALIASES ==================================================== #
 
@@ -70,7 +70,7 @@ class RequestManager:
         Maximum backoff cap in seconds. Default is 30.0.
     session_adapters : Sequence[HTTPAdapterMountConfigDict] | None, optional
         Adapter mount configurations used when lazily building a session via
-        :func:`etlplus.api.transport.build_session_with_adapters`.
+        :func:`etlplus.api.build_session_with_adapters`.
 
     Attributes
     ----------

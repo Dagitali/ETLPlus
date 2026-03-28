@@ -65,20 +65,41 @@ Notes
 
 See Also
 --------
-- :mod:`etlplus.api.rate_limiting` for rate-limit helpers and config shapes
 - :mod:`etlplus.api.pagination` for pagination helpers and config shapes
-- :mod:`etlplus.api.retry_manager` for retry policies
-- :mod:`etlplus.api.transport` for HTTPAdapter helpers
+- :mod:`etlplus.api.rate_limiting` for rate-limit helpers and config shapes
+- :mod:`etlplus.api._errors` for API error exceptions
+- :mod:`etlplus.api._retry_manager` for retry policies
+- :mod:`etlplus.api._transport` for HTTPAdapter helpers
+- retry, error, and transport helpers re-exported by :mod:`etlplus.api`
 """
 
 from __future__ import annotations
 
-from .auth import EndpointCredentialsBearer
-from .config import ApiConfig
-from .config import ApiProfileConfig
-from .config import EndpointConfig
+from ._auth import EndpointCredentialsBearer
+from ._config import ApiConfig
+from ._config import ApiProfileConfig
+from ._config import EndpointConfig
+from ._enums import HttpMethod
+from ._errors import ApiAuthError
+from ._errors import ApiRequestError
+from ._errors import PaginationError
+from ._retry_manager import RetryManager
+from ._retry_manager import RetryPolicyDict
+from ._retry_manager import RetryStrategy
+from ._transport import HTTPAdapterMountConfigDict
+from ._transport import HTTPAdapterRetryConfigDict
+from ._transport import build_http_adapter
+from ._transport import build_session_with_adapters
+from ._types import ApiConfigDict
+from ._types import ApiProfileConfigDict
+from ._types import ApiProfileDefaultsDict
+from ._types import EndpointConfigDict
+from ._types import FetchPageCallable
+from ._types import Headers
+from ._types import Params
+from ._types import RequestOptions
+from ._types import Url
 from .endpoint_client import EndpointClient
-from .enums import HttpMethod
 from .pagination import CursorPaginationConfigDict
 from .pagination import PagePaginationConfigDict
 from .pagination import PaginationClient
@@ -89,16 +110,6 @@ from .pagination import Paginator
 from .rate_limiting import RateLimitConfig
 from .rate_limiting import RateLimitConfigDict
 from .rate_limiting import RateLimiter
-from .retry_manager import RetryManager
-from .retry_manager import RetryPolicyDict
-from .retry_manager import RetryStrategy
-from .transport import HTTPAdapterMountConfigDict
-from .transport import HTTPAdapterRetryConfigDict
-from .transport import build_http_adapter
-from .types import Headers
-from .types import Params
-from .types import RequestOptions
-from .types import Url
 from .utils import compose_api_request_env
 from .utils import compose_api_target_env
 from .utils import paginate_with_client
@@ -114,6 +125,10 @@ __all__ = [
     'Paginator',
     'RateLimiter',
     'RetryManager',
+    # Exceptions
+    'ApiAuthError',
+    'ApiRequestError',
+    'PaginationError',
     # Data Classes
     'ApiConfig',
     'ApiProfileConfig',
@@ -128,12 +143,18 @@ __all__ = [
     'PaginationType',
     # Functions
     'build_http_adapter',
+    'build_session_with_adapters',
     'compose_api_request_env',
     'compose_api_target_env',
     'paginate_with_client',
     'resolve_request',
     # Type Aliases
+    'ApiConfigDict',
+    'ApiProfileConfigDict',
+    'ApiProfileDefaultsDict',
     'CursorPaginationConfigDict',
+    'EndpointConfigDict',
+    'FetchPageCallable',
     'Headers',
     'HTTPAdapterMountConfigDict',
     'HTTPAdapterRetryConfigDict',
