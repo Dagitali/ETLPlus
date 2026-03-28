@@ -15,17 +15,17 @@ from .._config import Config
 from ..api import HttpMethod
 from ..connector import DataConnectorType
 from ..file import FileFormat
-from ..ops.types import PipelineConfig
 from ..utils import print_json
 from ..utils.types import JSONData
 from ..utils.types import JSONDict
 from ..utils.types import StrPath
+from ._types import PipelineConfig
+from ._utils import maybe_validate
 from .extract import extract
 from .extract import extract_from_api_source
 from .load import load
 from .load import load_to_api_target
 from .transform import transform
-from .utils import maybe_validate
 from .validate import validate
 
 # SECTION: EXPORTS ========================================================== #
