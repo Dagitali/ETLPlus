@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.storage.location` module.
+:mod:`etlplus.storage._location` module.
 
 Parsed storage-location helpers.
 """
@@ -13,7 +13,7 @@ from urllib.parse import unquote
 from urllib.parse import urlsplit
 
 from ..utils.types import StrPath
-from .enums import StorageScheme
+from ._enums import StorageScheme
 
 # SECTION: EXPORTS ========================================================== #
 
