@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._commands.app` module.
+:mod:`etlplus.cli._commands._app` module.
 
 Typer application object for the ``etlplus`` CLI.
 """
@@ -14,7 +14,10 @@ from ._constants import CLI_EPILOG
 # SECTION: EXPORTS ========================================================== #
 
 
-__all__ = ['app']
+__all__ = [
+    # Variables
+    'app',
+]
 
 
 # SECTION: VARIABLES ======================================================== #
