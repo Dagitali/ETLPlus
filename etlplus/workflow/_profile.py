@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.workflow.profile` module.
+:mod:`etlplus.workflow._profile` module.
 
 Profile model for pipeline-level defaults and environment.
 
