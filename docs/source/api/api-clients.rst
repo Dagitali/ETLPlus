@@ -11,4 +11,3 @@ support.
    etlplus.api.endpoint_client
    etlplus.api.pagination
    etlplus.api.rate_limiting
-   etlplus.api.utils
