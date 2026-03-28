@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.rate_limiting.rate_limiter` module.
+:mod:`etlplus.api.rate_limiting._rate_limiter` module.
 
 Centralized logic for limiting HTTP request rates.
 
@@ -24,10 +24,10 @@ from typing import Self
 
 from ...utils import to_float
 from ...utils import to_positive_float
-from .config import RateLimitConfig
-from .config import RateLimitConfigDict
-from .config import RateLimitInput
-from .config import RateLimitOverrides
+from ._config import RateLimitConfig
+from ._config import RateLimitConfigDict
+from ._config import RateLimitInput
+from ._config import RateLimitOverrides
 
 # SECTION: EXPORTS ========================================================== #
 
