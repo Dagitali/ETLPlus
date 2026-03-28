@@ -12,9 +12,9 @@ import pytest
 import typer
 
 import etlplus.cli._commands as commands_mod
+import etlplus.cli._commands._helpers as helpers_mod
 import etlplus.cli._commands._state as state_mod
 import etlplus.cli._commands.check as check_mod
-import etlplus.cli._commands.helpers as helpers_mod
 import etlplus.cli._commands.history as history_mod
 import etlplus.cli._commands.log as log_mod
 import etlplus.cli._commands.report as report_mod
@@ -95,7 +95,7 @@ class TestCommandsInternalHelpers:
             _parse_json_payload,
         )
         with pytest.raises(typer.BadParameter, match='Invalid JSON for --ops'):
-            commands_mod.parse_json_option('not-json', '--ops')
+            helpers_mod.parse_json_option('not-json', '--ops')
 
     def test_resolve_logged_resource_type_reuses_state_implementation(
         self,
