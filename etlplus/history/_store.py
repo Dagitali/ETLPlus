@@ -32,8 +32,6 @@ from ..utils.types import JSONData
 
 
 __all__ = [
-    # Constants
-    'HISTORY_SCHEMA_VERSION',
     # Classes
     'HistoryStore',
     'JsonlHistoryStore',
@@ -41,6 +39,8 @@ __all__ = [
     'RunRecord',
     'RunState',
     'SQLiteHistoryStore',
+    # Constants
+    'HISTORY_SCHEMA_VERSION',
     # Functions
     'build_run_record',
 ]
