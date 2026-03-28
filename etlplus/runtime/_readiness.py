@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.runtime.readiness` module.
+:mod:`etlplus.runtime._readiness` module.
 
 Runtime readiness checks for the CLI and future execution surfaces.
 """
@@ -21,7 +21,7 @@ from typing import cast
 from urllib.parse import urlsplit
 
 from .. import __version__
-from ..config import Config
+from .._config import Config
 from ..connector import Connector
 from ..connector import DataConnectorType
 from ..file import File
