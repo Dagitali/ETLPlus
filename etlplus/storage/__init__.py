@@ -7,16 +7,16 @@ Storage location and backend helpers.
 from __future__ import annotations
 
 from ._base import StorageBackendABC
+from ._enums import StorageScheme
+from ._location import StorageLocation
 from ._registry import coerce_location
 from ._registry import get_backend
 from ._remote import RemoteStorageBackend
 from .abfs import AbfsStorageBackend
 from .azure_blob import AzureBlobStorageBackend
-from .enums import StorageScheme
 from .ftp import FtpStorageBackend
 from .http import HttpStorageBackend
 from .local import LocalStorageBackend
-from .location import StorageLocation
 from .s3 import S3StorageBackend
 from .stub import StubStorageBackend
 

@@ -11,7 +11,7 @@ from typing import IO
 from typing import Any
 
 from ._base import StorageBackendABC
-from .location import StorageLocation
+from ._location import StorageLocation
 
 # SECTION: EXPORTS ========================================================== #
 

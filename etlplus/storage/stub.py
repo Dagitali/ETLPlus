@@ -11,8 +11,8 @@ from typing import Any
 from typing import ClassVar
 from typing import Never
 
+from ._location import StorageLocation
 from ._remote import RemoteStorageBackend
-from .location import StorageLocation
 
 # SECTION: EXPORTS ========================================================== #
 

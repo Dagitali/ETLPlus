@@ -6,7 +6,7 @@ FTP storage backend skeleton.
 
 from __future__ import annotations
 
-from .enums import StorageScheme
+from ._enums import StorageScheme
 from .stub import StubStorageBackend
 
 # SECTION: EXPORTS ========================================================== #
