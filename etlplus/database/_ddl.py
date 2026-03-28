@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.database.ddl` module.
+:mod:`etlplus.database._ddl` module.
 
 DDL rendering utilities for pipeline table schemas.
 
