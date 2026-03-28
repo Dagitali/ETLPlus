@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.runtime.logging` module.
+:mod:`etlplus.runtime._logging` module.
 
 Shared runtime logging policy helpers.
 
