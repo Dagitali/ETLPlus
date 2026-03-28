@@ -99,6 +99,10 @@ from ._types import Headers
 from ._types import Params
 from ._types import RequestOptions
 from ._types import Url
+from ._utils import compose_api_request_env
+from ._utils import compose_api_target_env
+from ._utils import paginate_with_client
+from ._utils import resolve_request
 from .endpoint_client import EndpointClient
 from .pagination import CursorPaginationConfigDict
 from .pagination import PagePaginationConfigDict
@@ -110,10 +114,6 @@ from .pagination import Paginator
 from .rate_limiting import RateLimitConfig
 from .rate_limiting import RateLimitConfigDict
 from .rate_limiting import RateLimiter
-from .utils import compose_api_request_env
-from .utils import compose_api_target_env
-from .utils import paginate_with_client
-from .utils import resolve_request
 
 # SECTION: EXPORTS ========================================================== #
 
