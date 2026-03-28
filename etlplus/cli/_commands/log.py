@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .._handlers import history_handler as handle_history
+from .. import _handlers as handlers
 from ._helpers import call_handler
 from ._state import ensure_state
 from .app import app
@@ -23,7 +23,6 @@ from .options import RunIdOption
 
 __all__ = [
     # Functions
-    'handle_history',
     'log_cmd',
 ]
 
@@ -68,7 +67,7 @@ def log_cmd(
         Exit code (0 if checks passed, non-zero if any checks failed).
     """
     return call_handler(
-        handle_history,
+        handlers.history_handler,
         state=ensure_state(ctx),
         follow=follow,
         limit=limit,
