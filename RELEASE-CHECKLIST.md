@@ -92,7 +92,9 @@ release.
   stable releases; they are retained here as audit history rather than as pending work.
 - The stable-surface trimming work now treats CLI support modules and command wiring, storage
   registry/base plumbing, connector support modules, the file-handler registry, database typing
-  helpers, and API request manager plumbing as protected underscore-prefixed implementation modules.
+  helpers, API request manager plumbing, and the top-level `etlplus.api` support modules (`auth`,
+  `config`, `enums`, `errors`, `retry_manager`, `transport`, and `types`) as protected
+  underscore-prefixed implementation modules behind package-level facades.
 - The documented stable CLI surface keeps readiness under `check --readiness`.
 - Runtime execution hygiene progress on the current branch includes:
   - Shared runtime logging policy and config precedence documentation
