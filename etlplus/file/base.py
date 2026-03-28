@@ -20,6 +20,7 @@ from ..utils.types import JSONData
 from ..utils.types import JSONDict
 from ..utils.types import JSONList
 from ..utils.types import StrPath
+from ._enums import FileFormat
 from ._handler_abc import BinarySerializationABC
 from ._handler_abc import ColumnarABC
 from ._handler_abc import EmbeddedDatabaseABC
@@ -35,7 +36,6 @@ from ._io import write_delimited
 from ._mixins import SemiStructuredPayloadMixin
 from ._mixins import SingleDatasetValidation
 from ._mixins import TemplateTextIOMixin
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -112,7 +112,7 @@ class BoundFileHandler:
         This is used for non-local paths to delegate read/write operations to
         the core file logic, which handles remote interactions and format-aware.
         """
-        from .core import File
+        from ._core import File
 
         return File(self.path, self.handler.format)
 

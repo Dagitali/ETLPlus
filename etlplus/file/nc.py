@@ -24,6 +24,7 @@ from typing import Any
 from ..utils.types import JSONData
 from ..utils.types import JSONList
 from ._dataframe import dataframe_from_records
+from ._enums import FileFormat
 from ._imports import FormatPandasResolverMixin
 from ._imports import get_dependency  # noqa: F401
 from ._imports import get_pandas  # noqa: F401
@@ -34,7 +35,6 @@ from ._scientific_handlers import ScientificXarrayResolverMixin
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

@@ -23,9 +23,9 @@ import configparser
 from io import StringIO
 
 from ..utils.types import JSONDict
+from ._enums import FileFormat
 from ._io import stringify_value
 from ._semi_structured_handlers import DictPayloadTextCodecHandlerMixin
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

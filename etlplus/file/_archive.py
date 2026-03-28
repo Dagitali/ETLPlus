@@ -9,14 +9,15 @@ from __future__ import annotations
 from typing import cast
 
 from ..utils.types import StrPath
-from .enums import CompressionFormat
-from .enums import FileFormat
-from .enums import infer_file_format_and_compression
+from ._enums import CompressionFormat
+from ._enums import FileFormat
+from ._enums import infer_file_format_and_compression
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Functions
     'infer_archive_payload_format',
 ]
 

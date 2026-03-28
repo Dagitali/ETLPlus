@@ -24,11 +24,11 @@ from typing import Any
 from ..utils import count_records
 from ..utils.types import JSONData
 from ..utils.types import JSONDict
+from ._enums import FileFormat
 from ._io import ensure_parent_dir
 from .base import ReadOptions
 from .base import SemiStructuredTextFileHandlerABC
 from .base import WriteOptions
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

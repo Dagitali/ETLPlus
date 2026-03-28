@@ -24,6 +24,7 @@ from typing import Any
 
 from ..utils.types import JSONData
 from ..utils.types import JSONList
+from ._enums import FileFormat
 from ._imports import FormatPandasResolverMixin
 from ._imports import get_pandas  # noqa: F401
 from ._io import records_from_table
@@ -33,7 +34,6 @@ from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
 from .base import ScientificDatasetFileHandlerABC
 from .base import WriteOptions
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

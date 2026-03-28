@@ -20,8 +20,8 @@ from __future__ import annotations
 
 import re
 
+from ._enums import FileFormat
 from ._template_handlers import RegexTemplateHandlerMixin
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

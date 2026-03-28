@@ -24,13 +24,13 @@ from pathlib import Path
 from ..utils.types import JSONData
 from ..utils.types import JSONDict
 from ..utils.types import JSONList
+from ._enums import FileFormat
 from ._io import _open_text_handle
 from ._io import normalize_records
 from ._io import write_text
 from .base import LogEventFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

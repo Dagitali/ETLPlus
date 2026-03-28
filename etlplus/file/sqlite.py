@@ -22,12 +22,12 @@ import sqlite3
 from pathlib import Path
 
 from ..utils.types import JSONList
+from ._enums import FileFormat
 from ._sql import DEFAULT_TABLE
 from ._sql import SQLITE_DIALECT
 from ._sql import quote_identifier
 from ._sql import write_table_rows
 from .base import EmbeddedDatabaseFileHandlerABC
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

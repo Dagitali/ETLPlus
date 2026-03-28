@@ -15,12 +15,12 @@ from ..utils.types import StrPath
 from ._archive import infer_archive_payload_format
 from ._core_dispatch import read_payload_with_core
 from ._core_dispatch import write_payload_with_core
+from ._enums import CompressionFormat
+from ._enums import FileFormat
 from ._io import ensure_parent_dir
 from .base import ArchiveWrapperFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
-from .enums import CompressionFormat
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

@@ -21,13 +21,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..utils.types import JSONData
+from ._enums import FileFormat
 from ._imports import get_dependency  # noqa: F401
 from ._imports import get_pandas  # noqa: F401
 from ._r_handlers import RDataHandlerMixin
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

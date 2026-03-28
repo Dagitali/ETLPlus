@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from ..utils.types import JSONData
+from ._enums import FileFormat
 from ._imports import get_dependency  # noqa: F401
 from ._imports import get_pandas  # noqa: F401
 from ._scientific_handlers import PyreadstatMode
@@ -28,7 +29,6 @@ from ._scientific_handlers import SingleDatasetTabularScientificReadMixin
 from ._statistical_handlers import PyreadstatReadSasFallbackFrameMixin
 from .base import ReadOnlyFileHandlerABC
 from .base import WriteOptions
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

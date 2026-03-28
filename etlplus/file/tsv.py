@@ -19,8 +19,8 @@ Notes
 
 from __future__ import annotations
 
+from ._enums import FileFormat
 from .base import StandardDelimitedTextFileHandlerABC
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

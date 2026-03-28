@@ -23,13 +23,13 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 from ..utils.types import JSONList
+from ._enums import FileFormat
 from ._imports import get_dependency
 from ._sql import DEFAULT_TABLE
 from ._sql import DUCKDB_DIALECT
 from ._sql import quote_identifier
 from ._sql import write_table_rows
 from .base import EmbeddedDatabaseFileHandlerABC
-from .enums import FileFormat
 
 if TYPE_CHECKING:
     import duckdb

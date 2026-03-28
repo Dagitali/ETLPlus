@@ -18,12 +18,12 @@ Notes
 
 from __future__ import annotations
 
+from ._enums import FileFormat
 from ._imports import get_dependency  # noqa: F401
 from ._imports import get_pandas  # noqa: F401
 from ._scientific_handlers import SingleDatasetTabularScientificReadWriteMixin
 from ._statistical_handlers import PyreadstatReadSasFallbackFrameMixin
 from ._statistical_handlers import PyreadstatRequiredWriteFrameMixin
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
