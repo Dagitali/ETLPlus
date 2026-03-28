@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.storage.enums` module.
+:mod:`etlplus.storage._enums` module.
 
 Storage scheme enums and helpers.
 """
