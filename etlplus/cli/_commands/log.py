@@ -9,9 +9,9 @@ from __future__ import annotations
 import typer
 
 from .._handlers import history_handler as handle_history
+from ._helpers import call_handler
 from ._state import ensure_state
 from .app import app
-from .helpers import call_handler
 from .options import HistoryFollowOption
 from .options import HistoryLimitOption
 from .options import HistorySinceOption
@@ -21,7 +21,11 @@ from .options import RunIdOption
 # SECTION: EXPORTS ========================================================== #
 
 
-__all__ = ['handle_history', 'log_cmd']
+__all__ = [
+    # Functions
+    'handle_history',
+    'log_cmd',
+]
 
 
 # SECTION: FUNCTIONS ======================================================== #

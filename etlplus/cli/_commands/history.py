@@ -9,9 +9,9 @@ from __future__ import annotations
 import typer
 
 from .._handlers import history_handler as handle_history
+from ._helpers import call_handler
 from ._state import ensure_state
 from .app import app
-from .helpers import call_handler
 from .options import HistoryJsonOption
 from .options import HistoryLimitOption
 from .options import HistoryRawOption
@@ -24,7 +24,11 @@ from .options import JobOption
 # SECTION: EXPORTS ========================================================== #
 
 
-__all__ = ['handle_history', 'history_cmd']
+__all__ = [
+    # Functions
+    'handle_history',
+    'history_cmd',
+]
 
 
 # SECTION: FUNCTIONS ======================================================== #

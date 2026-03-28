@@ -11,7 +11,6 @@ from . import root as _root_module  # noqa: F401
 from .app import app
 from .check import check_cmd
 from .extract import extract_cmd
-from .helpers import parse_json_option
 from .history import history_cmd
 from .load import load_cmd
 from .log import log_cmd
@@ -33,7 +32,6 @@ __all__ = [
     'history_cmd',
     'load_cmd',
     'log_cmd',
-    'parse_json_option',
     'render_cmd',
     'report_cmd',
     'run_cmd',

@@ -9,9 +9,9 @@ from __future__ import annotations
 import typer
 
 from .. import _handlers as handlers
+from ._helpers import call_handler
 from ._state import ensure_state
 from .app import app
-from .helpers import call_handler
 from .options import HistoryJsonOption
 from .options import HistorySinceOption
 from .options import HistoryTableOption
@@ -22,7 +22,10 @@ from .options import ReportGroupByOption
 # SECTION: EXPORTS ========================================================== #
 
 
-__all__ = ['report_cmd']
+__all__ = [
+    # Functions
+    'report_cmd',
+]
 
 
 # SECTION: FUNCTIONS ======================================================== #
