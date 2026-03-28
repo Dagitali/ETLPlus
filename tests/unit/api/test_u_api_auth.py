@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_auth` module.
 
-Unit tests for :mod:`etlplus.api.auth`.
+Unit tests for :mod:`etlplus.api._auth`.
 
 Notes
 -----
@@ -25,9 +25,9 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
-from etlplus.api.auth import CLOCK_SKEW_SEC
-from etlplus.api.auth import EndpointCredentialsBearer
-from etlplus.api.auth import _truncate
+from etlplus.api._auth import CLOCK_SKEW_SEC
+from etlplus.api._auth import EndpointCredentialsBearer
+from etlplus.api._auth import _truncate
 
 from ...conftest import RequestFactory
 

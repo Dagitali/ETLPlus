@@ -1,18 +1,18 @@
 """
 :mod:`tests.unit.api.test_u_api_types` module.
 
-Unit tests for :mod:`etlplus.api.types`.
+Unit tests for :mod:`etlplus.api._types`.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from etlplus.api.types import FetchPageCallable
-from etlplus.api.types import Headers
-from etlplus.api.types import Params
-from etlplus.api.types import RequestOptions
-from etlplus.api.types import Url
+from etlplus.api._types import FetchPageCallable
+from etlplus.api._types import Headers
+from etlplus.api._types import Params
+from etlplus.api._types import RequestOptions
+from etlplus.api._types import Url
 
 # SECTION: PRAGMAS ========================================================== #
 

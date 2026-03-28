@@ -14,10 +14,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from etlplus.api import RequestOptions
 from etlplus.api.pagination import PaginationClient
 from etlplus.api.pagination import PaginationConfig
 from etlplus.api.pagination import PaginationType
-from etlplus.api.types import RequestOptions
 
 # SECTION: PRAGMAS ========================================================== #
 

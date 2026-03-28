@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_api_config` module.
 
-Unit tests for :mod:`etlplus.api.config`.
+Unit tests for :mod:`etlplus.api._config`.
 
 Notes
 -----
@@ -18,7 +18,7 @@ from typing import cast
 
 import pytest
 
-import etlplus.api.config as config_module
+import etlplus.api._config as config_mod
 from etlplus.api import ApiConfig
 from etlplus.api import ApiProfileConfig
 from etlplus.api import EndpointConfig
@@ -569,7 +569,7 @@ class TestConfigInternalBranches:
         Test that fallback base URL is a string when profiles are absent.
         """
         with pytest.raises(TypeError, match='base_url'):
-            config_module._effective_service_defaults(
+            config_mod._effective_service_defaults(
                 profiles={},
                 fallback_base=123,
                 fallback_headers={},
@@ -610,10 +610,10 @@ class TestConfigInternalBranches:
         """
         Test that method normalizer handles enum, blank, and invalid values.
         """
-        assert config_module._normalize_method(HttpMethod.GET) == 'GET'
-        assert config_module._normalize_method('   ') is None
+        assert config_mod._normalize_method(HttpMethod.GET) == 'GET'
+        assert config_mod._normalize_method('   ') is None
         with pytest.raises(ValueError, match='Unsupported HTTP method'):
-            config_module._normalize_method('tracee')
+            config_mod._normalize_method('tracee')
 
     def test_parse_profiles_skips_non_mapping_entries(
         self,
@@ -627,5 +627,5 @@ class TestConfigInternalBranches:
             'good': {'base_url': base_url},
             'bad': ['not', 'mapping'],
         }
-        parsed = config_module._parse_profiles(raw)
+        parsed = config_mod._parse_profiles(raw)
         assert list(parsed.keys()) == ['good']

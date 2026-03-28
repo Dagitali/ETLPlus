@@ -13,7 +13,7 @@ from typing import cast
 
 import pytest
 
-import etlplus.runtime._readiness as readiness_module
+import etlplus.runtime._readiness as readiness_mod
 
 # SECTION: TESTS ============================================================ #
 
@@ -23,8 +23,8 @@ class TestReadinessReportBuilder:
 
     def test_build_matches_wrapper_runtime_only(self) -> None:
         """Test that the class builder matches the function wrapper."""
-        expected = readiness_module.ReadinessReportBuilder.build(env={})
-        actual = readiness_module.ReadinessReportBuilder.build(env={})
+        expected = readiness_mod.ReadinessReportBuilder.build(env={})
+        actual = readiness_mod.ReadinessReportBuilder.build(env={})
 
         assert actual == expected
 
@@ -34,12 +34,12 @@ class TestReadinessReportBuilder:
     ) -> None:
         """Test that build converts config-check exceptions into error rows."""
         monkeypatch.setattr(
-            readiness_module.ReadinessReportBuilder,
+            readiness_mod.ReadinessReportBuilder,
             'config_checks',
             lambda _config_path, env=None: (_ for _ in ()).throw(TypeError('boom')),
         )
 
-        report = readiness_module.ReadinessReportBuilder.build(
+        report = readiness_mod.ReadinessReportBuilder.build(
             config_path='pipeline.yml',
             env={},
         )
@@ -60,7 +60,7 @@ class TestReadinessReportBuilder:
         """Test that config checks return a config-file error for missing paths."""
         missing_path = tmp_path / 'missing.yml'
 
-        checks = readiness_module.ReadinessReportBuilder.config_checks(
+        checks = readiness_mod.ReadinessReportBuilder.config_checks(
             str(missing_path),
             env={},
         )
@@ -84,7 +84,7 @@ class TestReadinessReportBuilder:
         config_path.write_text('name: pipeline\n', encoding='utf-8')
 
         monkeypatch.setattr(
-            readiness_module.ReadinessReportBuilder,
+            readiness_mod.ReadinessReportBuilder,
             'load_raw_config',
             lambda _path: {'profile': {'env': {}}, 'vars': {'token': 'value'}},
         )
@@ -97,9 +97,9 @@ class TestReadinessReportBuilder:
                 vars=raw.get('vars', {}),
             )
 
-        monkeypatch.setattr(readiness_module.Config, 'from_dict', _config_from_dict)
+        monkeypatch.setattr(readiness_mod.Config, 'from_dict', _config_from_dict)
         monkeypatch.setattr(
-            readiness_module,
+            readiness_mod,
             'deep_substitute',
             lambda raw, _vars, _env: {'token': '${MISSING_TOKEN}'},
         )
@@ -111,12 +111,12 @@ class TestReadinessReportBuilder:
             return [{'name': 'connector-readiness', 'status': 'ok'}]
 
         monkeypatch.setattr(
-            readiness_module.ReadinessReportBuilder,
+            readiness_mod.ReadinessReportBuilder,
             'connector_readiness_checks',
             _connector_readiness_checks,
         )
 
-        checks = readiness_module.ReadinessReportBuilder.config_checks(
+        checks = readiness_mod.ReadinessReportBuilder.config_checks(
             str(config_path),
             env={},
         )
@@ -159,7 +159,7 @@ class TestReadinessReportBuilder:
             apis={},
         )
 
-        rows = readiness_module.ReadinessReportBuilder.connector_gap_rows(
+        rows = readiness_mod.ReadinessReportBuilder.connector_gap_rows(
             cast(Any, cfg),
         )
 
@@ -184,7 +184,7 @@ class TestReadinessReportBuilder:
     ) -> None:
         """Test that class-based dependency checks still honor wrapper patches."""
         monkeypatch.setattr(
-            readiness_module.ReadinessReportBuilder,
+            readiness_mod.ReadinessReportBuilder,
             'package_available',
             lambda module_name: False if module_name == 'boto3' else True,
         )
@@ -201,7 +201,7 @@ class TestReadinessReportBuilder:
             apis={},
         )
 
-        rows = readiness_module.ReadinessReportBuilder.missing_requirement_rows(
+        rows = readiness_mod.ReadinessReportBuilder.missing_requirement_rows(
             cfg=cast(Any, cfg),
         )
 
@@ -232,7 +232,7 @@ class TestReadinessReportBuilder:
             apis={},
         )
 
-        checks = readiness_module.ReadinessReportBuilder.provider_environment_checks(
+        checks = readiness_mod.ReadinessReportBuilder.provider_environment_checks(
             cfg=cast(Any, cfg),
             env={},
         )
@@ -284,7 +284,7 @@ class TestReadinessReportBuilder:
             apis={},
         )
 
-        checks = readiness_module.ReadinessReportBuilder.provider_environment_checks(
+        checks = readiness_mod.ReadinessReportBuilder.provider_environment_checks(
             cfg=cast(Any, cfg),
             env={},
         )

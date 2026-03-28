@@ -1,13 +1,13 @@
 """
 :mod:`tests.unit.api.test_u_api_errors` module.
 
-Unit tests for :mod:`etlplus.api.errors`.
+Unit tests for :mod:`etlplus.api._errors`.
 """
 
 from __future__ import annotations
 
-from etlplus.api.errors import ApiRequestError
-from etlplus.api.errors import PaginationError
+from etlplus.api._errors import ApiRequestError
+from etlplus.api._errors import PaginationError
 
 # SECTION: PRAGMAS ========================================================== #
 
