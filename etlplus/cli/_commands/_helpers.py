@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._commands.helpers` module.
+:mod:`etlplus.cli._commands._helpers` module.
 
 Shared helper functions for CLI command modules.
 """
