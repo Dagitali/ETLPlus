@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.history.store` module.
+:mod:`etlplus.history._store` module.
 
 Local run-history persistence backends.
 """
