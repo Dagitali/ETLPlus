@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.database.schema` module.
+:mod:`etlplus.database._schema` module.
 
 Helpers for loading and translating YAML definitions of database table schema
 specifications into Pydantic models for dynamic SQLAlchemy generation.
