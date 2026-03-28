@@ -155,7 +155,7 @@ def test_typer_format_option_kwargs_context_specific_help(
     expected_fragment: str,
 ) -> None:
     """Test that the option helper tailors help text by connector context."""
-    kwargs = cli_options.typer_format_option_kwargs(
+    kwargs = cli_options._typer_format_option_kwargs(
         context=context,  # type: ignore[arg-type]
     )
     assert kwargs['metavar'] == 'FORMAT'
