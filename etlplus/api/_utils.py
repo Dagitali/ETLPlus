@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.utils` module.
+:mod:`etlplus.api._utils` module.
 
 Shared HTTP helpers for API clients that communicate with REST endpoints.
 """
