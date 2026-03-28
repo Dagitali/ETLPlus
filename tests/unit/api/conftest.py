@@ -21,7 +21,7 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
-import etlplus.api.rate_limiting.rate_limiter as rl_module
+import etlplus.api.rate_limiting._rate_limiter as rl_module
 import etlplus.api.retry_manager as rm_module
 
 # SECTION: MARKERS ========================================================== #
