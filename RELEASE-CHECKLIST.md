@@ -97,6 +97,7 @@ release.
   underscore-prefixed implementation modules behind package-level facades.
 - Database DDL/engine/ORM/schema helpers and storage enum/location helpers now follow the same
   package-facade pattern.
+- Connector config/type/enum helpers now also live behind the `etlplus.connector` package facade.
 - The documented stable CLI surface keeps readiness under `check --readiness`.
 - Runtime execution hygiene progress on the current branch includes:
   - Shared runtime logging policy and config precedence documentation
