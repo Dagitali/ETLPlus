@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.connector.types` module.
+:mod:`etlplus.connector._types` module.
 
 Connector type aliases for :mod:`etlplus.connector`.
 
@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from .enums import DataConnectorType
+from ._enums import DataConnectorType
 
 # SECTION: EXPORTS  ========================================================= #
 

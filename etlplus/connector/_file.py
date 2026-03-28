@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.connector.file` module.
+:mod:`etlplus.connector._file` module.
 
 File connector configuration dataclass.
 
@@ -24,8 +24,8 @@ from typing import overload
 from ..utils import coerce_dict
 from ..utils.types import StrAnyMap
 from ._core import ConnectorBase
-from .enums import DataConnectorType
-from .types import ConnectorType
+from ._enums import DataConnectorType
+from ._types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -45,7 +45,7 @@ class ConnectorFileConfigDict(TypedDict, total=False):
 
     See Also
     --------
-    - :meth:`etlplus.connector.file.ConnectorFile.from_obj`
+    - :meth:`etlplus.connector.ConnectorFile.from_obj`
     """
 
     name: str
@@ -65,7 +65,7 @@ class ConnectorFile(ConnectorBase):
 
     Attributes
     ----------
-    type : ConnectorType
+    type : DataConnectorType
         Connector kind, always ``'file'``.
     format : str | None
         File format (e.g., ``'json'``, ``'csv'``).
@@ -77,7 +77,7 @@ class ConnectorFile(ConnectorBase):
 
     # -- Attributes -- #
 
-    type: ConnectorType = DataConnectorType.FILE
+    type: DataConnectorType = DataConnectorType.FILE
     format: str | None = None
     path: str | None = None
     options: dict[str, Any] = field(default_factory=dict)

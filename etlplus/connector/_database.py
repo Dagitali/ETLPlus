@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.connector.database` module.
+:mod:`etlplus.connector._database` module.
 
 Database connector configuration dataclass.
 
@@ -21,8 +21,8 @@ from typing import overload
 
 from ..utils.types import StrAnyMap
 from ._core import ConnectorBase
-from .enums import DataConnectorType
-from .types import ConnectorType
+from ._enums import DataConnectorType
+from ._types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -42,7 +42,7 @@ class ConnectorDbConfigDict(TypedDict, total=False):
 
     See Also
     --------
-    - :meth:`etlplus.connector.database.ConnectorDb.from_obj`
+    - :meth:`etlplus.connector.ConnectorDb.from_obj`
     """
 
     name: str
@@ -63,7 +63,7 @@ class ConnectorDb(ConnectorBase):
 
     Attributes
     ----------
-    type : ConnectorType
+    type : DataConnectorType
         Connector kind, always ``'database'``.
     connection_string : str | None
         Connection string/DSN for the database.
@@ -77,7 +77,7 @@ class ConnectorDb(ConnectorBase):
 
     # -- Attributes -- #
 
-    type: ConnectorType = DataConnectorType.DATABASE
+    type: DataConnectorType = DataConnectorType.DATABASE
     connection_string: str | None = None
     query: str | None = None
     table: str | None = None

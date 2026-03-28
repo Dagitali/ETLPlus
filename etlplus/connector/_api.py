@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.connector.api` module.
+:mod:`etlplus.connector._api` module.
 
 API connector configuration dataclass.
 
@@ -31,8 +31,8 @@ from ..utils import maybe_mapping
 from ..utils.types import StrAnyMap
 from ..utils.types import StrStrMap
 from ._core import ConnectorBase
-from .enums import DataConnectorType
-from .types import ConnectorType
+from ._enums import DataConnectorType
+from ._types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -52,7 +52,7 @@ class ConnectorApiConfigDict(TypedDict, total=False):
 
     See Also
     --------
-    - :meth:`etlplus.connector.api.ConnectorApi.from_obj`
+    - :meth:`etlplus.connector.ConnectorApi.from_obj`
     """
 
     name: str
@@ -77,7 +77,7 @@ class ConnectorApi(ConnectorBase):
 
     Attributes
     ----------
-    type : ConnectorType
+    type : DataConnectorType
         Connector kind, always ``'api'``.
     url : str | None
         Direct absolute URL (when not using ``service``/``endpoint`` refs).
@@ -101,7 +101,7 @@ class ConnectorApi(ConnectorBase):
 
     # -- Attributes -- #
 
-    type: ConnectorType = DataConnectorType.API
+    type: DataConnectorType = DataConnectorType.API
 
     # Direct form
     url: str | None = None

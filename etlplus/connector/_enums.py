@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.connector.enums` module.
+:mod:`etlplus.connector._enums` module.
 
 Connector enums and helpers.
 """
