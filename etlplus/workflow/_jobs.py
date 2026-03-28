@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.workflow.jobs` module.
+:mod:`etlplus.workflow._jobs` module.
 
 Data classes modeling job orchestration references (extract, validate,
 transform, load).
