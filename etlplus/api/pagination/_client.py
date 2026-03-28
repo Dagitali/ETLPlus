@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.api.pagination.client` module.
+:mod:`etlplus.api.pagination._client` module.
 
 Client-facing pagination driver for REST API responses.
 
@@ -21,10 +21,10 @@ from ..rate_limiting import RateLimiter
 from ..types import FetchPageCallable
 from ..types import RequestOptions
 from ..types import Url
-from .config import PaginationConfig
-from .config import PaginationInput
-from .config import PaginationType
-from .paginator import Paginator
+from ._config import PaginationConfig
+from ._config import PaginationInput
+from ._config import PaginationType
+from ._paginator import Paginator
 
 # SECTION: EXPORTS ========================================================== #
 
