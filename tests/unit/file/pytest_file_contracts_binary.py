@@ -97,7 +97,7 @@ class BinaryCodecStub:
 
 class CoreDispatchFileStub:
     """
-    Minimal stand-in for :class:`etlplus.file.core.File` in archive tests.
+    Minimal stand-in for :class:`etlplus.file._core.File` in archive tests.
     """
 
     def __init__(
@@ -183,7 +183,7 @@ class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
     ) -> None:
         """Patch core file dispatch for deterministic archive tests."""
         monkeypatch.setattr(
-            'etlplus.file.core.File',
+            'etlplus.file._core.File',
             CoreDispatchFileStub,
         )
 
