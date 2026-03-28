@@ -292,7 +292,7 @@ class TestRateLimiterEnforce:
         # Patch the module-level ``time.sleep`` used by
         # :class:`RateLimiter`.
         monkeypatch.setattr(
-            'etlplus.api.rate_limiting.rate_limiter.time.sleep',
+            'etlplus.api.rate_limiting._rate_limiter.time.sleep',
             fake_sleep,
         )
 
@@ -317,7 +317,7 @@ class TestRateLimiterEnforce:
             calls.append(value)
 
         monkeypatch.setattr(
-            'etlplus.api.rate_limiting.rate_limiter.time.sleep',
+            'etlplus.api.rate_limiting._rate_limiter.time.sleep',
             fake_sleep,
         )
 
