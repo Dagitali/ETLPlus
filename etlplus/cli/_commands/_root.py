@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._commands.root` module.
+:mod:`etlplus.cli._commands._root` module.
 
 Root callback and global CLI flags for the Typer app.
 """
@@ -10,18 +10,12 @@ import typer
 
 from ... import __version__
 from ...runtime import configure_logging
+from ._app import app
 from ._options import PrettyOption
 from ._options import QuietOption
 from ._options import VerboseOption
 from ._options import VersionOption
 from ._state import _set_state
-from .app import app
-
-# SECTION: EXPORTS ========================================================== #
-
-
-__all__ = ['_root']
-
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
