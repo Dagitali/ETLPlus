@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_runtime_readiness` module.
 
-Unit tests for :mod:`etlplus.runtime.readiness`.
+Unit tests for :mod:`etlplus.runtime._readiness`.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from typing import cast
 
 import pytest
 
-import etlplus.runtime.readiness as readiness_module
+import etlplus.runtime._readiness as readiness_module
 
 # SECTION: TESTS ============================================================ #
 

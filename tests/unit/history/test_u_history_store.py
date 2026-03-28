@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_history_store` module.
 
-Unit tests for :mod:`etlplus.history.store`.
+Unit tests for :mod:`etlplus.history._store`.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from etlplus.history import store as mod
+import etlplus.history._store as mod
 
 # SECTION: HELPERS ========================================================== #
 

@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.workflow.test_u_workflow_jobs` module.
 
-Unit tests for :mod:`etlplus.workflow.jobs`.
+Unit tests for :mod:`etlplus.workflow._jobs`.
 
 Covers dataclass parsing, from_obj methods, and edge cases.
 """
@@ -28,7 +28,7 @@ pytestmark = pytest.mark.unit
 
 
 # Directory-level marker for unit tests.
-jobs = importlib.import_module('etlplus.workflow.jobs')
+jobs = importlib.import_module('etlplus.workflow._jobs')
 
 
 # SECTION: TESTS ============================================================ #
