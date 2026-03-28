@@ -18,7 +18,7 @@ from typing import cast
 import pytest
 
 from etlplus.file import FileFormat
-from etlplus.file import core as core_mod
+from etlplus.file import _core as core_mod
 from etlplus.file._stub_categories import StubSingleDatasetScientificFileHandlerABC
 from etlplus.file.base import BoundFileHandler
 from etlplus.file.base import DelimitedTextFileHandlerABC

@@ -7,7 +7,7 @@ Unit tests for :mod:`etlplus.file._template_handlers`.
 from __future__ import annotations
 
 from etlplus.file import _template_handlers as mod
-from etlplus.file.enums import FileFormat
+from etlplus.file._enums import FileFormat
 
 # SECTION: PRAGMAS ========================================================== #
 

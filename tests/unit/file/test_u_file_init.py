@@ -7,10 +7,10 @@ Unit tests for :mod:`etlplus.file.__init__`.
 from __future__ import annotations
 
 from etlplus import file as mod
-from etlplus.file.core import File
-from etlplus.file.enums import CompressionFormat
-from etlplus.file.enums import FileFormat
-from etlplus.file.enums import infer_file_format_and_compression
+from etlplus.file._core import File
+from etlplus.file._enums import CompressionFormat
+from etlplus.file._enums import FileFormat
+from etlplus.file._enums import infer_file_format_and_compression
 
 # SECTION: PRAGMAS ========================================================== #
 

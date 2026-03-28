@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.file.test_u_file_core` module.
 
-Unit tests for :mod:`etlplus.file.core`.
+Unit tests for :mod:`etlplus.file._core`.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ import pytest
 
 from etlplus.file import File
 from etlplus.file import FileFormat
-from etlplus.file import core as core_mod
+from etlplus.file import _core as core_mod
 from etlplus.file import csv as csv_file
 from etlplus.file import json as json_file
 from etlplus.file import xml as xml_file

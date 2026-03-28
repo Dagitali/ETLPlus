@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.file.test_u_file_enums` module.
 
-Unit tests for :mod:`etlplus.file.enums`.
+Unit tests for :mod:`etlplus.file._enums`.
 """
 
 from __future__ import annotations

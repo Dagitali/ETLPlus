@@ -11,9 +11,9 @@ from typing import Any
 
 import pytest
 
+from etlplus.file import _core as core_mod
 from etlplus.file import _core_dispatch as mod
-from etlplus.file import core as core_mod
-from etlplus.file.enums import FileFormat
+from etlplus.file._enums import FileFormat
 
 # SECTION: PRAGMAS ========================================================== #
 

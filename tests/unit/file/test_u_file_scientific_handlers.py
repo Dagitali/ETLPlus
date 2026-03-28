@@ -13,7 +13,7 @@ from typing import cast
 import pytest
 
 from etlplus.file import _scientific_handlers as mod
-from etlplus.file.enums import FileFormat
+from etlplus.file._enums import FileFormat
 
 from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import RDataPandasStub
