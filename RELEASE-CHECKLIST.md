@@ -98,6 +98,8 @@ release.
 - Database DDL/engine/ORM/schema helpers and storage enum/location helpers now follow the same
   package-facade pattern.
 - Connector config/type/enum helpers now also live behind the `etlplus.connector` package facade.
+- The top-level version module, `etlplus.file` core/enums helpers, and `etlplus.api` utility helpers
+  now also follow the underscore-prefixed implementation plus package-facade pattern.
 - The documented stable CLI surface keeps readiness under `check --readiness`.
 - Runtime execution hygiene progress on the current branch includes:
   - Shared runtime logging policy and config precedence documentation
