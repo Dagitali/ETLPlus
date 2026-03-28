@@ -11,8 +11,8 @@ from typing import Any
 from typing import Final
 from typing import cast
 
+from .._config import Config
 from ..api import HttpMethod
-from ..config import Config
 from ..connector import DataConnectorType
 from ..file import FileFormat
 from ..ops.types import PipelineConfig
