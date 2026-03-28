@@ -6,18 +6,18 @@ Connector configuration types and enums.
 
 from __future__ import annotations
 
+from ._api import ConnectorApi
+from ._api import ConnectorApiConfigDict
 from ._connector import Connector
 from ._core import ConnectorBase
 from ._core import ConnectorProtocol
+from ._database import ConnectorDb
+from ._database import ConnectorDbConfigDict
+from ._enums import DataConnectorType
+from ._file import ConnectorFile
+from ._file import ConnectorFileConfigDict
+from ._types import ConnectorType
 from ._utils import parse_connector
-from .api import ConnectorApi
-from .api import ConnectorApiConfigDict
-from .database import ConnectorDb
-from .database import ConnectorDbConfigDict
-from .enums import DataConnectorType
-from .file import ConnectorFile
-from .file import ConnectorFileConfigDict
-from .types import ConnectorType
 
 # SECTION: EXPORTS ========================================================== #
 

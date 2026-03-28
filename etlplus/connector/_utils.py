@@ -9,11 +9,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from ._api import ConnectorApi
 from ._connector import Connector
-from .api import ConnectorApi
-from .database import ConnectorDb
-from .enums import DataConnectorType
-from .file import ConnectorFile
+from ._database import ConnectorDb
+from ._enums import DataConnectorType
+from ._file import ConnectorFile
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -120,7 +120,7 @@ def parse_connector(
     -----
     Delegates to the tolerant ``from_obj`` constructors for each connector
     kind. Connector types are normalized via
-    :class:`etlplus.connector.enums.DataConnectorType`, so common aliases
+    :class:`etlplus.connector.DataConnectorType`, so common aliases
     (e.g., ``'db'`` or ``'http'``) are accepted.
     """
     if not isinstance(obj, Mapping):

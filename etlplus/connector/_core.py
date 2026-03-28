@@ -14,13 +14,15 @@ from typing import Self
 from typing import runtime_checkable
 
 from ..utils.types import StrAnyMap
-from .types import ConnectorType
+from ._enums import DataConnectorType
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Abstract Base Classes
     'ConnectorBase',
+    # Protocols
     'ConnectorProtocol',
 ]
 
@@ -37,14 +39,14 @@ class ConnectorProtocol(Protocol):
     ----------
     name : str
         Unique connector name.
-    type : ConnectorType
+    type : DataConnectorType
         Connector kind.
     """
 
     # -- Attributes -- #
 
     name: str
-    type: ConnectorType
+    type: DataConnectorType
 
     # -- Class Methods -- #
 
@@ -107,12 +109,12 @@ class ConnectorBase(ABC, ConnectorProtocol):
     ----------
     name : str
         Unique connector name.
-    type : ConnectorType
+    type : DataConnectorType
         Connector kind.
     """
 
     name: str
-    type: ConnectorType
+    type: DataConnectorType
 
     @classmethod
     @abstractmethod
