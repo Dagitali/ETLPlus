@@ -19,7 +19,7 @@ from etlplus.connector import ConnectorApi
 from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorFile
 from etlplus.connector import parse_connector
-from etlplus.connector.enums import DataConnectorType
+from etlplus.connector._enums import DataConnectorType
 
 # SECTION: PRAGMAS ========================================================== #
 

@@ -6,8 +6,8 @@ Unit tests for :mod:`etlplus.connector._types`.
 
 from __future__ import annotations
 
-import etlplus.connector.types as connector_types
-from etlplus.connector.enums import DataConnectorType
+import etlplus.connector._types as connector_types
+from etlplus.connector._enums import DataConnectorType
 
 # SECTION: PRAGMAS ========================================================== #
 

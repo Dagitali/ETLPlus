@@ -6,10 +6,10 @@ Unit tests for :mod:`etlplus.connector.connector`.
 
 from __future__ import annotations
 
+from etlplus.connector import ConnectorApi
+from etlplus.connector import ConnectorDb
+from etlplus.connector import ConnectorFile
 from etlplus.connector._connector import Connector
-from etlplus.connector.api import ConnectorApi
-from etlplus.connector.database import ConnectorDb
-from etlplus.connector.file import ConnectorFile
 
 # SECTION: PRAGMAS ========================================================== #
 
