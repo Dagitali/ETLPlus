@@ -19,14 +19,14 @@ Notes
 
 from __future__ import annotations
 
-from .client import PaginationClient
-from .config import CursorPaginationConfigDict
-from .config import PagePaginationConfigDict
-from .config import PaginationConfig
-from .config import PaginationConfigDict
-from .config import PaginationInput
-from .config import PaginationType
-from .paginator import Paginator
+from ._client import PaginationClient
+from ._config import CursorPaginationConfigDict
+from ._config import PagePaginationConfigDict
+from ._config import PaginationConfig
+from ._config import PaginationConfigDict
+from ._config import PaginationInput
+from ._config import PaginationType
+from ._paginator import Paginator
 
 # SECTION: EXPORTS ========================================================== #
 
