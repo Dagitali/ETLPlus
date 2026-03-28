@@ -9,6 +9,7 @@ from __future__ import annotations
 import typer
 
 from .. import _handlers
+from ._app import app
 from ._helpers import call_handler
 from ._options import HistoryJsonOption
 from ._options import HistoryLimitOption
@@ -19,7 +20,6 @@ from ._options import HistoryTableOption
 from ._options import HistoryUntilOption
 from ._options import JobOption
 from ._state import ensure_state
-from .app import app
 
 # SECTION: EXPORTS ========================================================== #
 

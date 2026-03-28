@@ -9,6 +9,7 @@ from __future__ import annotations
 import typer
 
 from .. import _handlers as handlers
+from ._app import app
 from ._helpers import call_handler
 from ._helpers import require_value
 from ._options import ConfigOption
@@ -16,7 +17,6 @@ from ._options import JobOption
 from ._options import PipelineOption
 from ._options import StructuredEventFormatOption
 from ._state import ensure_state
-from .app import app
 
 # SECTION: EXPORTS ========================================================== #
 

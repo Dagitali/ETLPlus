@@ -7,8 +7,8 @@ Typer application and subcommands for the ``etlplus`` command-line interface.
 from __future__ import annotations
 
 from .. import _handlers as handlers
-from . import root as _root_module  # noqa: F401
-from .app import app
+from . import _root  # noqa: F401  # Register root callback.
+from ._app import app
 from .check import check_cmd
 from .extract import extract_cmd
 from .history import history_cmd

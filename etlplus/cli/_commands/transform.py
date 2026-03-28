@@ -9,6 +9,7 @@ from __future__ import annotations
 import typer
 
 from .. import _handlers as handlers
+from ._app import app
 from ._helpers import call_handler
 from ._helpers import parse_json_option
 from ._helpers import resolve_resource
@@ -21,7 +22,6 @@ from ._options import TargetArg
 from ._options import TargetFormatOption
 from ._options import TargetTypeOption
 from ._state import ensure_state
-from .app import app
 
 # SECTION: EXPORTS ========================================================== #
 
