@@ -1,11 +1,11 @@
 """
-:mod:`etlplus.database.orm` module.
+:mod:`etlplus.database._orm` module.
 
 Dynamic SQLAlchemy model generation from YAML table specs.
 
 Usage
 -----
->>> from etlplus.database.orm import load_and_build_models
+>>> from etlplus.database import load_and_build_models
 >>> registry = load_and_build_models('examples/configs/ddl_spec.yml')
 >>> Player = registry['dbo.Customers']
 """
@@ -41,11 +41,11 @@ from sqlalchemy.orm import mapped_column
 from sqlalchemy.types import TypeEngine
 
 from ..utils.types import StrPath
+from ._schema import ForeignKeySpec
+from ._schema import TableSpec
+from ._schema import load_table_specs
 from ._types import ModelRegistry
 from ._types import TypeFactory
-from .schema import ForeignKeySpec
-from .schema import TableSpec
-from .schema import load_table_specs
 
 # SECTION: EXPORTS ========================================================== #
 
