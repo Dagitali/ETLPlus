@@ -41,14 +41,14 @@ def _root(
     ----------
     ctx : typer.Context
         The Typer command context.
-    version : bool, optional
+    version : VersionOption, optional
         Show the version and exit. Default is ``False``.
-    pretty : bool, optional
+    pretty : PrettyOption, optional
         Whether to pretty-print JSON output. Default is ``True``.
-    quiet : bool, optional
+    quiet : QuietOption, optional
         Whether to suppress warnings and non-essential output. Default is
         ``False``.
-    verbose : bool, optional
+    verbose : VerboseOption, optional
         Whether to emit extra diagnostics to STDERR. Default is ``False``.
 
     Raises
