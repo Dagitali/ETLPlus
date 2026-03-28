@@ -9,9 +9,8 @@ See also: :doc:`../guides/file-handler-matrix`
 .. autosummary::
    :toctree: generated
 
+   etlplus.file
    etlplus.file.base
-   etlplus.file.core
-   etlplus.file.enums
 
 .. toctree::
    :maxdepth: 1
