@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.ops.enums` module.
+:mod:`etlplus.ops._enums` module.
 
 Operation-specific enums and helpers.
 """
@@ -11,8 +11,8 @@ from statistics import fmean
 
 from ..utils.enums import CoercibleStrEnum
 from ..utils.types import StrStrMap
-from .types import AggregateFunc
-from .types import OperatorFunc
+from ._types import AggregateFunc
+from ._types import OperatorFunc
 
 # SECTION: EXPORTS ========================================================= #
 

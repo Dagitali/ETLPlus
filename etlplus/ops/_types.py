@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.ops.types` module.
+:mod:`etlplus.ops._types` module.
 
 Shared type aliases leveraged across :mod:`etlplus.ops` modules.
 
@@ -10,7 +10,7 @@ Notes
 
 Examples
 --------
->>> from etlplus.ops.types import AggregateFunc, OperatorFunc
+>>> from etlplus.ops._types import AggregateFunc, OperatorFunc
 >>> def total(xs: list[float], _: int) -> float:
 ...     return sum(xs)
 >>> agg: AggregateFunc = total
@@ -94,7 +94,7 @@ type MapSpec = StrStrMap
 #
 # Examples
 # --------
-# >>> from etlplus.ops.types import SelectSpec
+# >>> from etlplus.ops._types import SelectSpec
 # >>> spec1: SelectSpec = ['a','b']
 # >>> spec2: SelectSpec = {'fields': [...]}
 type SelectSpec = Fields | StrSeqMap
@@ -103,7 +103,7 @@ type SelectSpec = Fields | StrSeqMap
 #
 # Examples
 # --------
-# >>> from etlplus.ops.types import SortSpec
+# >>> from etlplus.ops._types import SortSpec
 # >>> spec1: SortSpec = 'field'
 # >>> spec2: SortSpec = {'field': 'x', 'reverse': True}
 type SortSpec = str | StrAnyMap
@@ -113,7 +113,7 @@ type SortSpec = str | StrAnyMap
 # Supported functions: ``avg``, ``count``, ``max``, ``min``, and ``sum``.
 # Examples
 # --------
-# >>> from etlplus.ops.types import AggregateSpec
+# >>> from etlplus.ops._types import AggregateSpec
 # >>> spec: AggregateSpec = \
 # ...   {'field': 'x', 'func': 'sum' | 'avg' | ..., 'alias'?: '...'}
 type AggregateSpec = StrAnyMap

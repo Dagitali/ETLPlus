@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.ops.utils` module.
+:mod:`etlplus.ops._utils` module.
 
 Utility helpers for conditional data ops orchestration.
 
