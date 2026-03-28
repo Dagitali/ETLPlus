@@ -1,11 +1,11 @@
 """
-:mod:`etlplus.api.pagination.paginator` module.
+:mod:`etlplus.api.pagination._paginator` module.
 
 Core pagination runtime for REST API responses.
 
 This module implements :class:`Paginator`, which encapsulates pagination
 behavior for page-, offset-, and cursor-based APIs. It delegates configuration
-parsing to :mod:`etlplus.api.pagination.config` and focuses on executing
+parsing to :mod:`etlplus.api.pagination._config` and focuses on executing
 requests, extracting records, and enforcing limits.
 
 Examples
@@ -39,9 +39,9 @@ from ..rate_limiting import RateLimiter
 from ..types import FetchPageCallable
 from ..types import RequestOptions
 from ..types import Url
-from .config import PaginationConfig
-from .config import PaginationInput
-from .config import PaginationType
+from ._config import PaginationConfig
+from ._config import PaginationInput
+from ._config import PaginationType
 
 # SECTION: EXPORTS ========================================================== #
 
