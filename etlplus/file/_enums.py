@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.file.enums` module.
+:mod:`etlplus.file._enums` module.
 
 File-specific enums and helpers.
 """
@@ -14,8 +14,10 @@ from ..utils.types import StrStrMap
 # SECTION: EXPORTS ========================================================= #
 
 __all__ = [
+    # Classes
     'CompressionFormat',
     'FileFormat',
+    # Functions
     'infer_file_format_and_compression',
 ]
 
@@ -26,7 +28,7 @@ __all__ = [
 class CompressionFormat(CoercibleStrEnum):
     """Supported compression formats."""
 
-    # -- Constants -- #
+    # -- Class Attributes -- #
 
     GZ = 'gz'
     ZIP = 'zip'
