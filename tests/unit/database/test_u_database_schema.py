@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.database.test_u_database_schema` module.
 
-Unit tests for :mod:`etlplus.database.schema`.
+Unit tests for :mod:`etlplus.database._schema`.
 """
 
 from __future__ import annotations
@@ -14,10 +14,10 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from etlplus.database import schema as schema_mod
-from etlplus.database.schema import ColumnSpec
-from etlplus.database.schema import IdentitySpec
-from etlplus.database.schema import TableSpec
+import etlplus.database._schema as schema_mod
+from etlplus.database._schema import ColumnSpec
+from etlplus.database._schema import IdentitySpec
+from etlplus.database._schema import TableSpec
 
 # SECTION: PRAGMAS ========================================================== #
 

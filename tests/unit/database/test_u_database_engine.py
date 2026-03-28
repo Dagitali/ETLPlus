@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.database.test_u_database_engine` module.
 
-Unit tests for :mod:`etlplus.database.engine`.
+Unit tests for :mod:`etlplus.database._engine`.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from typing import cast
 
 import pytest
 
-from etlplus.database.engine import load_database_url_from_config
+from etlplus.database._engine import load_database_url_from_config
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -23,7 +23,7 @@ from etlplus.database.engine import load_database_url_from_config
 
 
 # Directory-level marker for unit tests.
-engine_mod = importlib.import_module('etlplus.database.engine')
+engine_mod = importlib.import_module('etlplus.database._engine')
 
 
 # SECTION: TESTS ============================================================ #
@@ -168,13 +168,17 @@ class TestMakeEngine:
 
         monkeypatch.setattr('sqlalchemy.create_engine', _fake_create_engine)
 
-        reloaded = importlib.reload(engine_mod)
-        default_engine = cast(dict[str, Any], reloaded.engine)
+        try:
+            reloaded = importlib.reload(engine_mod)
+            default_engine = cast(dict[str, Any], reloaded.engine)
 
-        assert reloaded.DATABASE_URL == 'sqlite:///env.db'
-        assert default_engine['url'] == 'sqlite:///env.db'
-        assert captured[0][1]['pool_pre_ping'] is True
+            assert reloaded.DATABASE_URL == 'sqlite:///env.db'
+            assert default_engine['url'] == 'sqlite:///env.db'
+            assert captured[0][1]['pool_pre_ping'] is True
 
-        eng = reloaded.make_engine()
-        eng_dict = cast(dict[str, Any], eng)
-        assert eng_dict['url'] == 'sqlite:///env.db'
+            eng = reloaded.make_engine()
+            eng_dict = cast(dict[str, Any], eng)
+            assert eng_dict['url'] == 'sqlite:///env.db'
+        finally:
+            monkeypatch.undo()
+            importlib.reload(engine_mod)
