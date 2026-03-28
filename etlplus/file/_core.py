@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.file.core` module.
+:mod:`etlplus.file._core` module.
 
 Shared helpers for reading and writing structured and semi-structured data
 files.
@@ -24,13 +24,13 @@ from ..storage import StorageLocation
 from ..storage import get_backend
 from ..utils.types import StrPath
 from . import xml
+from ._enums import FileFormat
+from ._enums import infer_file_format_and_compression
 from ._registry import get_handler
 from .base import BoundFileHandler
 from .base import FileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
-from .enums import FileFormat
-from .enums import infer_file_format_and_compression
 
 # SECTION: EXPORTS ========================================================== #
 
