@@ -15,7 +15,7 @@ from typing import cast
 
 from ..api import HttpMethod
 from ..api import compose_api_target_env
-from ..api.utils import resolve_request
+from ..api._utils import resolve_request
 from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
