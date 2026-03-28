@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.runtime.events` module.
+:mod:`etlplus.runtime._events` module.
 
 Structured runtime event helpers for CLI execution paths.
 """
