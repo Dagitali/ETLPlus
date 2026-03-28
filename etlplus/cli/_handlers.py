@@ -36,7 +36,7 @@ from ..ops import transform
 from ..ops import validate
 from ..ops.validate import FieldRulesDict
 from ..runtime import ReadinessReportBuilder
-from ..runtime.events import RuntimeEvents
+from ..runtime import RuntimeEvents
 from ..utils.types import JSONData
 from ..utils.types import TemplateKey
 from . import _io
