@@ -12,7 +12,7 @@ Notes
 See Also
 --------
 - :mod:`etlplus.api._types` for HTTP-specific aliases and data classes
-- :mod:`etlplus.connector.types` for connector-specific aliases
+- :mod:`etlplus.connector._types` for connector-specific aliases
 
 Examples
 --------
