@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.database.engine` module.
+:mod:`etlplus.database._engine` module.
 
 Lightweight engine/session factory with optional config-driven URL loading.
 """
