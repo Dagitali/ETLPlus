@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.config` module.
+:mod:`etlplus._config` module.
 
 Configuration model and helpers for job pipeline orchestration.
 
@@ -33,8 +33,8 @@ from .utils import coerce_dict
 from .utils import deep_substitute
 from .utils import maybe_mapping
 from .utils.types import StrAnyMap
-from .workflow.jobs import JobConfig
-from .workflow.profile import ProfileConfig
+from .workflow._jobs import JobConfig
+from .workflow._profile import ProfileConfig
 
 # SECTION: EXPORTS ========================================================== #
 
