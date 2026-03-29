@@ -107,6 +107,10 @@ release.
   already used at their boundaries: `etlplus.ops` exports validation TypedDicts, `etlplus.api`
   exports `PaginationInput` and `RateLimitOverrides`, and `etlplus.history` exports
   `HISTORY_SCHEMA_VERSION`.
+- The stable package facades also expose adjacent public contract types and exceptions where the
+  documented surface already depends on them: `etlplus.workflow` exports `DagError`,
+  `etlplus.api.rate_limiting` exports `RateLimitInput`, and `etlplus.file` exports `ReadOptions` and
+  `WriteOptions`.
 - `etlplus.utils` now follows the same package-facade pattern: user-facing helpers plus the shared
   enum/mixin base abstractions are exported from `etlplus.utils`, while utility type aliases stay
   internal on an underscore-prefixed module.
