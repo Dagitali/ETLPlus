@@ -16,7 +16,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 
 from ..file import File
-from ..utils.types import StrPath
+from ..utils._types import StrPath
 
 # SECTION: EXPORTS ========================================================== #
 

@@ -40,7 +40,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.types import TypeEngine
 
-from ..utils.types import StrPath
+from ..utils._types import StrPath
 from ._schema import ForeignKeySpec
 from ._schema import TableSpec
 from ._schema import load_table_specs
