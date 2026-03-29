@@ -7,7 +7,7 @@ subcommands for ``etlplus``.
 
 from __future__ import annotations
 
-from .main import main
+from ._main import main
 
 # SECTION: EXPORTS ========================================================== #
 
