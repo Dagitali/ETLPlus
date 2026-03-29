@@ -14,7 +14,7 @@ published docs or the API reference.
 
 ```bash
 pip install -e ".[dev,file,docs]"
-python -m sphinx -T -W --keep-going -b html docs/source docs/build/html
+make docs-strict
 ```
 
 ## Community and support
