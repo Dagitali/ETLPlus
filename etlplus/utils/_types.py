@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.utils.types` module.
+:mod:`etlplus.utils._types` module.
 
 Shared type aliases leveraged across ETLPlus modules.
 
@@ -16,7 +16,7 @@ See Also
 
 Examples
 --------
->>> from etlplus.utils.types import JSONDict
+>>> from etlplus.utils._types import JSONDict
 >>> from etlplus.ops._types import PipelineConfig
 >>> payload: JSONDict = {'id': 1, 'name': 'Ada'}
 >>> isinstance(payload, dict)

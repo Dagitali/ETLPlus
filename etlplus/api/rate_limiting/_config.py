@@ -29,8 +29,8 @@ from typing import overload
 
 from ...utils import to_float
 from ...utils import to_positive_float
-from ...utils.mixins import BoundsWarningsMixin
-from ...utils.types import StrAnyMap
+from ...utils._mixins import BoundsWarningsMixin
+from ...utils._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
 
