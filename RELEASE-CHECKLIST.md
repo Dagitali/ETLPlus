@@ -95,8 +95,8 @@ release.
   helpers, API request manager plumbing, and the top-level `etlplus.api` support modules (`auth`,
   `config`, `enums`, `errors`, `retry_manager`, `transport`, and `types`) as protected
   underscore-prefixed implementation modules behind package-level facades.
-- Database DDL/engine/ORM/schema helpers and storage enum/location helpers now follow the same
-  package-facade pattern.
+- Database DDL/engine/ORM/schema helpers and storage enum/location helpers plus concrete storage
+  backend implementations now follow the same package-facade pattern.
 - Connector config/type/enum helpers now also live behind the `etlplus.connector` package facade.
 - The top-level version module, `etlplus.file` core/enums helpers, and `etlplus.api` utility helpers
   now also follow the underscore-prefixed implementation plus package-facade pattern.
