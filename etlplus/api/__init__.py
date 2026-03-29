@@ -109,11 +109,13 @@ from .pagination import PagePaginationConfigDict
 from .pagination import PaginationClient
 from .pagination import PaginationConfig
 from .pagination import PaginationConfigDict
+from .pagination import PaginationInput
 from .pagination import PaginationType
 from .pagination import Paginator
 from .rate_limiting import RateLimitConfig
 from .rate_limiting import RateLimitConfigDict
 from .rate_limiting import RateLimiter
+from .rate_limiting import RateLimitOverrides
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -160,8 +162,10 @@ __all__ = [
     'HTTPAdapterRetryConfigDict',
     'PagePaginationConfigDict',
     'PaginationConfigDict',
+    'PaginationInput',
     'Params',
     'RateLimitConfigDict',
+    'RateLimitOverrides',
     'RetryPolicyDict',
     'Url',
 ]
