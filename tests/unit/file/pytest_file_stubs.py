@@ -15,8 +15,8 @@ import etlplus.file._imports as import_helpers
 
 from .pytest_file_support import PandasModuleStub
 from .pytest_file_support import RecordsFrameStub
-from .pytest_file_support import make_import_error_reader_module
-from .pytest_file_support import make_import_error_writer_module
+from .pytest_file_support import make_import_error_reader_mod
+from .pytest_file_support import make_import_error_writer_mod
 from .pytest_file_types import OptionalModuleInstaller
 
 # SECTION: PRAGMAS ========================================================== #
@@ -29,13 +29,13 @@ from .pytest_file_types import OptionalModuleInstaller
 @pytest.fixture(name='make_import_error_reader')
 def make_import_error_reader_fixture() -> Callable[[str], object]:
     """Return factory for module-like objects with failing reader methods."""
-    return make_import_error_reader_module
+    return make_import_error_reader_mod
 
 
 @pytest.fixture(name='make_import_error_writer')
 def make_import_error_writer_fixture() -> Callable[[], object]:
     """Return factory for pandas-like objects with failing write paths."""
-    return make_import_error_writer_module
+    return make_import_error_writer_mod
 
 
 @pytest.fixture(name='make_pandas_stub')

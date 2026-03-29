@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.api.test_i_api_auth` module.
 
-Integration tests for :mod:`etlplus.api.auth` request handshake wiring.
+Integration tests for package-level API auth request handshake wiring.
 """
 
 from __future__ import annotations
@@ -12,9 +12,9 @@ from typing import Any
 import pytest
 import requests  # type: ignore[import]
 
+from etlplus.api import ApiAuthError
 from etlplus.api import EndpointClient
-from etlplus.api.auth import EndpointCredentialsBearer
-from etlplus.api.errors import ApiAuthError
+from etlplus.api import EndpointCredentialsBearer
 
 # SECTION: PRAGMAS ========================================================== #
 

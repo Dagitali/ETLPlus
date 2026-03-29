@@ -9,8 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
 from ._io import records_from_table
 
 # SECTION: EXPORTS ========================================================== #

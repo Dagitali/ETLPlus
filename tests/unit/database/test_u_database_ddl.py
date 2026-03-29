@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.database.test_u_database_ddl` module.
 
-Unit tests for :mod:`etlplus.database.ddl`.
+Unit tests for :mod:`etlplus.database._ddl`.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from etlplus.database import ddl
+import etlplus.database._ddl as ddl
 
 # SECTION: PRAGMAS ========================================================== #
 

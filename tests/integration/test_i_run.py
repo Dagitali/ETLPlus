@@ -25,6 +25,7 @@ from pytest import MonkeyPatch
 
 from etlplus import Config
 from etlplus.connector import ConnectorFile
+from etlplus.connector import DataConnectorType
 from etlplus.workflow import ExtractRef
 from etlplus.workflow import JobConfig
 from etlplus.workflow import LoadRef
@@ -46,7 +47,7 @@ def test_remote_file_pipeline_reads_and_writes_via_storage_backend(
     monkeypatch: MonkeyPatch,
 ) -> None:
     """Test a full remote file pipeline run with option forwarding."""
-    core_mod = importlib.import_module('etlplus.file.core')
+    core_mod = importlib.import_module('etlplus.file._core')
 
     remote_objects: dict[str, bytes] = {
         's3://bucket/input.csv': b'name|age\nAda|36\nGrace|47\n',
@@ -91,7 +92,7 @@ def test_remote_file_pipeline_reads_and_writes_via_storage_backend(
         sources=[
             ConnectorFile(
                 name='remote_src',
-                type='file',
+                type=DataConnectorType.FILE,
                 format='csv',
                 path='s3://bucket/input.csv',
                 options={'delimiter': ',', 'encoding': 'utf-8'},
@@ -100,7 +101,7 @@ def test_remote_file_pipeline_reads_and_writes_via_storage_backend(
         targets=[
             ConnectorFile(
                 name='remote_tgt',
-                type='file',
+                type=DataConnectorType.FILE,
                 format='csv',
                 path='s3://bucket/output.csv',
                 options={'delimiter': ',', 'encoding': 'utf-8'},

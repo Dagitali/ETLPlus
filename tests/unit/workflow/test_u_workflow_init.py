@@ -7,13 +7,13 @@ Unit tests for :mod:`etlplus.workflow` package exports.
 from __future__ import annotations
 
 import etlplus.workflow as workflow_pkg
-from etlplus.workflow.dag import topological_sort_jobs
-from etlplus.workflow.jobs import ExtractRef
-from etlplus.workflow.jobs import JobConfig
-from etlplus.workflow.jobs import LoadRef
-from etlplus.workflow.jobs import TransformRef
-from etlplus.workflow.jobs import ValidationRef
-from etlplus.workflow.profile import ProfileConfig
+from etlplus.workflow._dag import topological_sort_jobs
+from etlplus.workflow._jobs import ExtractRef
+from etlplus.workflow._jobs import JobConfig
+from etlplus.workflow._jobs import LoadRef
+from etlplus.workflow._jobs import TransformRef
+from etlplus.workflow._jobs import ValidationRef
+from etlplus.workflow._profile import ProfileConfig
 
 # SECTION: PRAGMAS ========================================================== #
 

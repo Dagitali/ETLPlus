@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.utils.test_u_utils_data` module.
 
-Unit tests for :mod:`etlplus.utils.data`.
+Unit tests for :mod:`etlplus.utils._data`.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import pytest
 
 from etlplus.utils import count_records
 from etlplus.utils import print_json
-from etlplus.utils.types import JSONData
+from etlplus.utils._types import JSONData
 
 # SECTION: PRAGMAS ========================================================== #
 

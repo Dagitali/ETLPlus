@@ -6,9 +6,9 @@ Compatibility re-exports for connector configuration classes.
 
 from __future__ import annotations
 
-from .api import ConnectorApi
-from .database import ConnectorDb
-from .file import ConnectorFile
+from ._api import ConnectorApi
+from ._database import ConnectorDb
+from ._file import ConnectorFile
 
 # SECTION: EXPORTS ========================================================== #
 

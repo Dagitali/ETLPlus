@@ -21,20 +21,20 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..utils.types import JSONData
-from ..utils.types import JSONList
+from ..utils._types import JSONData
+from ..utils._types import JSONList
 from ._dataframe import dataframe_from_records
-from ._imports import get_dependency as _get_dependency
-from ._imports import get_pandas as _get_pandas
+from ._enums import FileFormat
+from ._imports import FormatPandasResolverMixin
+from ._imports import get_dependency  # noqa: F401
+from ._imports import get_pandas  # noqa: F401
 from ._imports import raise_engine_import_error
 from ._io import ensure_parent_dir
 from ._io import records_from_table
-from ._scientific_handlers import ScientificPandasResolverMixin
 from ._scientific_handlers import ScientificXarrayResolverMixin
 from .base import ReadOptions
 from .base import SingleDatasetScientificFileHandlerABC
 from .base import WriteOptions
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -44,21 +44,12 @@ __all__ = [
     'NcFile',
 ]
 
-
-# SECTION: INTERNAL HELPERS ================================================= #
-
-
-# Preserve module-level resolver hooks for contract tests.
-get_dependency = _get_dependency
-get_pandas = _get_pandas
-
-
 # SECTION: CLASSES ========================================================== #
 
 
 class NcFile(
     ScientificXarrayResolverMixin,
-    ScientificPandasResolverMixin,
+    FormatPandasResolverMixin,
     SingleDatasetScientificFileHandlerABC,
 ):
     """Handler implementation for NC files."""

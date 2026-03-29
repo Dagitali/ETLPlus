@@ -12,7 +12,16 @@ import pytest
 import typer
 
 import etlplus.cli._commands as commands_mod
-from etlplus.cli._state import CliState
+import etlplus.cli._commands._helpers as helpers_mod
+import etlplus.cli._commands._state as state_mod
+import etlplus.cli._commands.check as check_mod
+import etlplus.cli._commands.history as history_mod
+import etlplus.cli._commands.log as log_mod
+import etlplus.cli._commands.report as report_mod
+import etlplus.cli._commands.status as status_mod
+import etlplus.cli._commands.transform as transform_mod
+from etlplus.cli._commands._state import CliState
+from etlplus.file import FileFormat
 
 from .conftest import AssertCapturedText
 from .conftest import InvokeCli
@@ -29,6 +38,46 @@ from .conftest import TyperContextFactory
 class TestCommandsInternalHelpers:
     """Unit tests for command-level internal helper functions."""
 
+    def test_helpers_export_intentional_public_api(self) -> None:
+        """Command helpers should expose only the intended public surface."""
+        assert helpers_mod.__all__ == [
+            'call_handler',
+            'fail_usage',
+            'normalize_file_format',
+            'parse_json_option',
+            'require_any',
+            'require_value',
+            'resolve_resource',
+        ]
+
+    def test_call_handler_injects_requested_state_fields(self) -> None:
+        """Shared handler dispatch should merge selected CLI state fields."""
+        captured: dict[str, object] = {}
+
+        def _handler(**kwargs: object) -> int:
+            captured.update(kwargs)
+            return 7
+
+        result = helpers_mod.call_handler(
+            _handler,
+            state=CliState(pretty=False, quiet=True, verbose=True),
+            state_fields=('pretty', 'quiet'),
+            value='payload',
+        )
+
+        assert result == 7
+        assert captured == {
+            'pretty': False,
+            'quiet': True,
+            'value': 'payload',
+        }
+
+    def test_normalize_file_format_returns_enum_member(self) -> None:
+        """Shared format normalization should preserve ``FileFormat`` typing."""
+        assert helpers_mod.normalize_file_format('json', label='source') is (
+            FileFormat.JSON
+        )
+
     def test_parse_json_option_wraps_value_errors(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -41,12 +90,35 @@ class TestCommandsInternalHelpers:
             raise ValueError('bad json')
 
         monkeypatch.setattr(
-            commands_mod,
+            helpers_mod,
             'parse_json_payload',
             _parse_json_payload,
         )
         with pytest.raises(typer.BadParameter, match='Invalid JSON for --ops'):
-            commands_mod._parse_json_option('not-json', '--ops')
+            helpers_mod.parse_json_option('not-json', '--ops')
+
+    def test_resolve_logged_resource_type_reuses_state_implementation(
+        self,
+    ) -> None:
+        """Command helpers should reuse the shared state implementation."""
+        assert (
+            helpers_mod._resolve_logged_resource_type
+            is state_mod.resolve_logged_resource_type
+        )
+
+    def test_resolve_resource_normalizes_type_and_format(self) -> None:
+        """Shared resource resolution should normalize type and format hints."""
+        resolved = helpers_mod.resolve_resource(
+            CliState(),
+            role='source',
+            value='payload.json',
+            connector_type='API',
+            format_value='json',
+        )
+
+        assert resolved.value == 'payload.json'
+        assert resolved.resource_type == 'api'
+        assert resolved.format_hint is FileFormat.JSON
 
 
 class TestCheckCommand:
@@ -60,7 +132,7 @@ class TestCheckCommand:
     ) -> None:
         """Test that valid inputs dispatch to ``check_handler``."""
         monkeypatch.setattr(
-            commands_mod,
+            check_mod,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
@@ -102,7 +174,7 @@ class TestCliInvokeParsing:
             captured.update(kwargs)
             return 0
 
-        monkeypatch.setattr(commands_mod, 'handle_history', _stub)
+        monkeypatch.setattr(history_mod._handlers, 'history_handler', _stub)
 
         result = invoke_cli(
             'history',
@@ -125,7 +197,7 @@ class TestCliInvokeParsing:
             captured.update(kwargs)
             return 0
 
-        monkeypatch.setattr(commands_mod, 'handle_history', _stub)
+        monkeypatch.setattr(log_mod._handlers, 'history_handler', _stub)
 
         result = invoke_cli(
             'log',
@@ -294,7 +366,7 @@ class TestHistoryCommand:
     ) -> None:
         """Test that history inputs dispatch to ``history_handler``."""
         monkeypatch.setattr(
-            commands_mod,
+            history_mod,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
@@ -302,11 +374,6 @@ class TestHistoryCommand:
             commands_mod.handlers,
             'history_handler',
             result=0,
-        )
-        monkeypatch.setattr(
-            commands_mod,
-            'handle_history',
-            commands_mod.handlers.history_handler,
         )
 
         result = commands_mod.history_cmd(
@@ -346,7 +413,7 @@ class TestLogCommand:
     ) -> None:
         """Test that log inputs dispatch to the raw history handler."""
         monkeypatch.setattr(
-            commands_mod,
+            log_mod,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
@@ -354,11 +421,6 @@ class TestLogCommand:
             commands_mod.handlers,
             'history_handler',
             result=0,
-        )
-        monkeypatch.setattr(
-            commands_mod,
-            'handle_history',
-            commands_mod.handlers.history_handler,
         )
 
         result = commands_mod.log_cmd(
@@ -393,7 +455,7 @@ class TestReportCommand:
     ) -> None:
         """Test that report inputs dispatch to ``report_handler``."""
         monkeypatch.setattr(
-            commands_mod,
+            report_mod,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
@@ -436,7 +498,7 @@ class TestStatusCommand:
     ) -> None:
         """Test that status inputs dispatch to ``status_handler``."""
         monkeypatch.setattr(
-            commands_mod,
+            status_mod,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
@@ -463,7 +525,7 @@ class TestStatusCommand:
 class TestTransformCommand:
     """Unit tests for :func:`etlplus.cli._commands.transform_cmd`."""
 
-    def test_skips_source_validation_when_source_type_cannot_be_inferred(
+    def test_allows_unknown_source_type_when_soft_inference_returns_none(
         self,
         monkeypatch: pytest.MonkeyPatch,
         typer_ctx_factory: TyperContextFactory,
@@ -473,42 +535,41 @@ class TestTransformCommand:
         Test that, when source type is ``None``, source validation is skipped.
         """
         monkeypatch.setattr(
-            commands_mod,
+            transform_mod,
             'ensure_state',
             lambda _ctx: CliState(),
         )
         monkeypatch.setattr(
-            commands_mod,
-            'optional_choice',
-            lambda value, choices, label: value,
-        )
-        monkeypatch.setattr(
-            commands_mod,
-            'infer_resource_type_soft',
-            lambda _source: None,
-        )
-        monkeypatch.setattr(
-            commands_mod,
-            'resolve_resource_type',
-            lambda **kwargs: 'file',
-        )
-        monkeypatch.setattr(
-            commands_mod,
-            '_parse_json_option',
+            transform_mod,
+            'parse_json_option',
             lambda value, flag: {},
         )
-        validate_called = {'count': 0}
+        resolver_calls: list[dict[str, object]] = []
 
-        def _validate_choice(
-            value: str | object,
-            choices: set[str] | frozenset[str],
+        def resolve_logged_resource_type(
+            state: CliState,
             *,
-            label: str,
-        ) -> str:
-            validate_called['count'] += 1
-            return str(value)
+            role: str,
+            value: str,
+            explicit_type: str | None,
+            soft_inference: bool = False,
+        ) -> str | None:
+            resolver_calls.append(
+                {
+                    'state': state,
+                    'role': role,
+                    'value': value,
+                    'explicit_type': explicit_type,
+                    'soft_inference': soft_inference,
+                },
+            )
+            return None if role == 'source' else 'file'
 
-        monkeypatch.setattr(commands_mod, 'validate_choice', _validate_choice)
+        monkeypatch.setattr(
+            helpers_mod,
+            '_resolve_logged_resource_type',
+            resolve_logged_resource_type,
+        )
         captured = stub_handler(
             commands_mod.handlers,
             'transform_handler',
@@ -527,6 +588,21 @@ class TestTransformCommand:
         )
 
         assert result == 0
-        assert validate_called['count'] == 0
+        assert resolver_calls == [
+            {
+                'state': CliState(),
+                'role': 'source',
+                'value': 'payload',
+                'explicit_type': None,
+                'soft_inference': True,
+            },
+            {
+                'state': CliState(),
+                'role': 'target',
+                'value': '-',
+                'explicit_type': None,
+                'soft_inference': False,
+            },
+        ]
         assert captured['source'] == 'payload'
         assert captured['target_type'] == 'file'

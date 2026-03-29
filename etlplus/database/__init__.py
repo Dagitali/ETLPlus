@@ -10,23 +10,40 @@ Database utilities for:
 
 from __future__ import annotations
 
-from .ddl import load_table_spec
-from .ddl import render_table_sql
-from .ddl import render_tables
-from .ddl import render_tables_to_string
-from .engine import engine
-from .engine import load_database_url_from_config
-from .engine import make_engine
-from .engine import session
-from .orm import Base
-from .orm import build_models
-from .orm import load_and_build_models
-from .schema import load_table_specs
+from ._ddl import load_table_spec
+from ._ddl import render_table_sql
+from ._ddl import render_tables
+from ._ddl import render_tables_to_string
+from ._engine import engine
+from ._engine import load_database_url_from_config
+from ._engine import make_engine
+from ._engine import session
+from ._orm import Base
+from ._orm import build_models
+from ._orm import load_and_build_models
+from ._orm import resolve_type
+from ._schema import ColumnSpec
+from ._schema import ForeignKeySpec
+from ._schema import IdentitySpec
+from ._schema import IndexSpec
+from ._schema import PrimaryKeySpec
+from ._schema import TableSpec
+from ._schema import UniqueConstraintSpec
+from ._schema import load_table_specs
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Classes
+    'Base',
+    'ColumnSpec',
+    'ForeignKeySpec',
+    'IdentitySpec',
+    'IndexSpec',
+    'PrimaryKeySpec',
+    'TableSpec',
+    'UniqueConstraintSpec',
     # Functions
     'build_models',
     'load_and_build_models',
@@ -37,7 +54,7 @@ __all__ = [
     'render_table_sql',
     'render_tables',
     'render_tables_to_string',
-    'Base',
+    'resolve_type',
     # Singletons
     'engine',
     'session',

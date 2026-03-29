@@ -22,14 +22,14 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
-from ..utils.types import JSONData
-from ..utils.types import JSONList
+from ..utils._types import JSONData
+from ..utils._types import JSONList
+from ._enums import FileFormat
 from ._imports import get_dependency
 from ._io import normalize_records
 from .base import ColumnarFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

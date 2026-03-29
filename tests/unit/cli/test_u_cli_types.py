@@ -1,14 +1,14 @@
 """
 :mod:`tests.unit.cli.test_u_cli_types` module.
 
-Unit tests for :mod:`etlplus.cli._types`.
+Unit tests for :mod:`etlplus.cli._commands._types`.
 """
 
 from __future__ import annotations
 
 from typing import get_args
 
-from etlplus.cli._types import DataConnectorContext
+from etlplus.cli._commands._types import DataConnectorContext
 
 # SECTION: PRAGMAS ========================================================== #
 

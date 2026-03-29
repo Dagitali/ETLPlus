@@ -174,6 +174,17 @@ def _require_env(name: str) -> str:
 # SECTION: FIXTURES ========================================================= #
 
 
+@pytest.fixture(autouse=True)
+def isolated_cli_state_dir_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Route CLI state/history writes to a per-test temporary directory."""
+    state_dir = tmp_path / '.etlplus-state'
+    state_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv('ETLPLUS_STATE_DIR', str(state_dir))
+
+
 @pytest.fixture(name='pipeline_config_factory')
 def pipeline_config_factory_fixture(
     tmp_path: Path,
@@ -347,8 +358,8 @@ def real_remote_target_factory_fixture() -> Iterator[RealRemoteTargetFactory]:
 def remote_storage_harness_fixture(
     monkeypatch: pytest.MonkeyPatch,
 ) -> RemoteStorageHarness:
-    """Patch :mod:`etlplus.file.core` with an in-memory remote backend."""
-    core_mod = importlib.import_module('etlplus.file.core')
+    """Patch :mod:`etlplus.file._core` with an in-memory remote backend."""
+    core_mod = importlib.import_module('etlplus.file._core')
     objects: dict[str, bytes] = {}
     writes: list[tuple[str, bytes]] = []
 

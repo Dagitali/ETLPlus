@@ -30,9 +30,9 @@ def _import_by_name_prefer_module(
     """
     Resolve exact module imports before falling back to autosummary defaults.
 
-    This avoids stubs like ``etlplus.database.engine`` resolving to the
-    ``etlplus.database.engine`` singleton exported by the package instead of
-    the actual ``etlplus.database.engine`` module.
+    This avoids package exports shadowing same-named modules during stub
+    generation when a package facade and a sibling module would otherwise
+    compete for the same autosummary target.
 
     Parameters
     ----------

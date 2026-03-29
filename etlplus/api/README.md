@@ -218,18 +218,17 @@ providers can fall back to their own defaults. If you already possess a static t
 
 ## Types and Transport
 
-- Types: pagination config helpers live in `etlplus/api/pagination/paginator.py`; retry helpers
-  (including `RetryPolicy`) live in `etlplus/api/retry_manager.py`; rate-limit helpers live in
-  `etlplus/api/rate_limiting/rate_limiter.py`. These are all re-exported from `etlplus.api` for
-  convenience.
-- Transport/session: `etlplus/api/transport.py` contains the HTTP adapter helpers and the internal
+- Types: pagination config helpers live in `etlplus/api/pagination/_paginator.py`; retry helpers
+  (including `RetryPolicy`) live in `etlplus/api/_retry_manager.py`; rate-limit helpers live in
+  `etlplus/api/rate_limiting/_rate_limiter.py`.
+- Transport/session: `etlplus/api/_transport.py` contains the HTTP adapter helpers and the internal
   `etlplus/api/_request_manager.py` module wraps `requests` sessions plus retry orchestration.
   Advanced users may consult those internals to adapt behavior.
 
 ## Config Schemas
 
-`etlplus.api.types` defines TypedDict-based configuration shapes for API profiles and endpoints.
-Runtime parsing remains permissive in `etlplus.api.config`, but these types improve IDE
+`etlplus.api._types` defines TypedDict-based configuration shapes for API profiles and endpoints.
+Runtime parsing remains permissive in `etlplus.api._config`, but these types improve IDE
 autocomplete and static analysis.
 
 Exported types:
@@ -258,7 +257,7 @@ api_cfg: ApiConfigMap = {
 
 ## Supporting Modules
 
-- `etlplus.api.types` collects friendly aliases such as `Headers`, `Params`, `Url`, and
+- `etlplus.api._types` collects friendly aliases such as `Headers`, `Params`, `Url`, and
   `RateLimitOverrides` (whose values accept numeric override inputs) so endpoint helpers share the
   same type vocabulary.
 - `etlplus.utils` exposes lightweight helpers used across the project, including `print_json` and

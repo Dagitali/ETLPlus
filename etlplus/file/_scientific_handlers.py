@@ -12,8 +12,8 @@ from typing import Any
 from typing import ClassVar
 from typing import Literal
 
-from ..utils.types import JSONData
-from ..utils.types import JSONList
+from ..utils._types import JSONData
+from ..utils._types import JSONList
 from ._dataframe import dataframe_from_records
 from ._imports import FormatDependencyResolverMixin
 from ._imports import FormatPandasResolverMixin
@@ -28,7 +28,6 @@ from .base import WriteOptions
 
 __all__ = [
     # Classes
-    'ScientificPandasResolverMixin',
     'ScientificXarrayResolverMixin',
     'SingleDatasetTabularScientificReadMixin',
     'SingleDatasetTabularScientificReadWriteMixin',
@@ -59,10 +58,6 @@ _PYREADSTAT_REQUIRED_OPERATIONS: dict[
 # SECTION: CLASSES ========================================================== #
 
 
-class ScientificPandasResolverMixin(FormatPandasResolverMixin):
-    """Shared pandas dependency resolver for scientific handlers."""
-
-
 class ScientificXarrayResolverMixin(FormatDependencyResolverMixin):
     """Shared xarray dependency resolver for scientific handlers."""
 
@@ -72,7 +67,7 @@ class ScientificXarrayResolverMixin(FormatDependencyResolverMixin):
 
 
 class SingleDatasetTabularScientificReadMixin(
-    ScientificPandasResolverMixin,
+    FormatPandasResolverMixin,
     SingleDatasetScientificFileHandlerABC,
 ):
     """Shared read support for single-dataset scientific tabular formats."""
@@ -120,37 +115,6 @@ class SingleDatasetTabularScientificReadMixin(
 
     # -- Internal Instance Methods -- #
 
-    def _pyreadstat_is_required_for(
-        self,
-        operation: ScientificOperation,
-    ) -> bool:
-        """
-        Return whether pyreadstat is required for one operation kind.
-
-        Parameters
-        ----------
-        operation : ScientificOperation
-            Operation kind.
-
-        Returns
-        -------
-        bool
-            True when pyreadstat is required for the operation.
-
-        Raises
-        ------
-        ValueError
-            If *pyreadstat_mode* is set to an unsupported value.
-        """
-        try:
-            required_operations = _PYREADSTAT_REQUIRED_OPERATIONS[self.pyreadstat_mode]
-        except KeyError as error:
-            raise ValueError(
-                'Unsupported pyreadstat mode '
-                f'"{self.pyreadstat_mode}" for {self.format_name}',
-            ) from error
-        return operation in required_operations
-
     def _resolve_pyreadstat_for(
         self,
         operation: ScientificOperation,
@@ -167,12 +131,20 @@ class SingleDatasetTabularScientificReadMixin(
         -------
         Any | None
             The pyreadstat module when required, else None.
+
+        Raises
+        ------
+        ValueError
+            If *pyreadstat_mode* is set to an unsupported value.
         """
-        return (
-            self.resolve_pyreadstat()
-            if self._pyreadstat_is_required_for(operation)
-            else None
-        )
+        try:
+            required_operations = _PYREADSTAT_REQUIRED_OPERATIONS[self.pyreadstat_mode]
+        except KeyError as error:
+            raise ValueError(
+                'Unsupported pyreadstat mode '
+                f'"{self.pyreadstat_mode}" for {self.format_name}',
+            ) from error
+        return self.resolve_pyreadstat() if operation in required_operations else None
 
     # -- Instance Methods -- #
 

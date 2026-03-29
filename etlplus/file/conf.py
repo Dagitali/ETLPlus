@@ -20,8 +20,8 @@ Notes
 
 from __future__ import annotations
 
+from ._enums import FileFormat
 from ._stub_categories import StubSemiStructuredTextFileHandlerABC
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

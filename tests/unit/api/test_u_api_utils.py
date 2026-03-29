@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_api_utils` module.
 
-Unit tests for :mod:`etlplus.api.utils`.
+Unit tests for :mod:`etlplus.api._utils`.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from etlplus.api import PagePaginationConfigDict
 from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
 from etlplus.api import RateLimitConfig
-from etlplus.api import utils
+from etlplus.api import _utils
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -95,7 +95,7 @@ class TestBuildPaginationCfg:
             'page_size': 42,
         }
 
-        cfg_map = utils.build_pagination_cfg(None, overrides)
+        cfg_map = _utils.build_pagination_cfg(None, overrides)
 
         assert cfg_map == {
             'type': 'cursor',
@@ -110,7 +110,7 @@ class TestBuildPaginationCfg:
 
     def test_missing_type_returns_none(self) -> None:
         """Test that missing pagination type returns ``None``."""
-        assert utils.build_pagination_cfg(None, None) is None
+        assert _utils.build_pagination_cfg(None, None) is None
 
     def test_page_config_with_overrides(self) -> None:
         """Test building page-based pagination config with overrides."""
@@ -126,7 +126,7 @@ class TestBuildPaginationCfg:
         )
         overrides = {'max_pages': 5, 'page_param': 'page'}
 
-        cfg_map = utils.build_pagination_cfg(pagination, overrides)
+        cfg_map = _utils.build_pagination_cfg(pagination, overrides)
         assert cfg_map is not None
         page_cfg = cast(PagePaginationConfigDict, cfg_map)
 
@@ -143,7 +143,7 @@ class TestBuildSession:
 
     def test_applies_configuration(self) -> None:
         """Test that session is built with given configuration."""
-        sess = utils.build_session(
+        sess = _utils.build_session(
             {
                 'headers': {'X': '1'},
                 'params': {'debug': '1'},
@@ -196,7 +196,7 @@ class TestComposeApiRequestEnv:
             'retry_network_errors': True,
         }
 
-        env = utils.compose_api_request_env(cfg, source, overrides)
+        env = _utils.compose_api_request_env(cfg, source, overrides)
 
         assert env['use_endpoints'] is True
         assert env['base_url'] == base_url
@@ -223,14 +223,14 @@ class TestComposeApiRequestEnv:
         cfg = SimpleNamespace(apis={})
         source = SimpleNamespace(api='missing', endpoint='users')
         with pytest.raises(ValueError, match='API not defined'):
-            utils.compose_api_request_env(cfg, source, None)
+            _utils.compose_api_request_env(cfg, source, None)
 
     def test_missing_endpoint_raises(self) -> None:
         """Test that missing endpoint raises a ValueError."""
         cfg = SimpleNamespace(apis={'core': SimpleNamespace(endpoints={})})
         source = SimpleNamespace(api='core', endpoint='ghost')
         with pytest.raises(ValueError, match='Endpoint "ghost" not defined'):
-            utils.compose_api_request_env(cfg, source, None)
+            _utils.compose_api_request_env(cfg, source, None)
 
 
 class TestComposeApiTargetEnv:
@@ -254,7 +254,7 @@ class TestComposeApiTargetEnv:
             'session': {'headers': {'Auth': 'token'}},
         }
 
-        env = utils.compose_api_target_env(cfg, target, overrides)
+        env = _utils.compose_api_target_env(cfg, target, overrides)
 
         assert env['url'] == f'{base_url}/v1/users'
         assert env['method'] == 'put'
@@ -270,12 +270,12 @@ class TestComputeRlSleepSeconds:
 
     def test_defaults_when_missing(self) -> None:
         """Test that default sleep seconds is used when missing."""
-        assert utils.compute_rl_sleep_seconds(None, None) == 0.0
+        assert _utils.compute_rl_sleep_seconds(None, None) == 0.0
 
     def test_override_wins(self) -> None:
         """Test that override value takes precedence."""
         base = {'sleep_seconds': 0.4, 'max_per_sec': None}
-        assert utils.compute_rl_sleep_seconds(base, {'sleep_seconds': 0.1}) == 0.1
+        assert _utils.compute_rl_sleep_seconds(base, {'sleep_seconds': 0.1}) == 0.1
 
 
 class TestPaginateWithClient:
@@ -324,7 +324,7 @@ class TestPaginateWithClient:
                 'page_size': 100,
             },
         )
-        result = utils.paginate_with_client(
+        result = _utils.paginate_with_client(
             client,
             'users',
             {'q': '1'},
@@ -382,7 +382,7 @@ class TestPaginateWithClient:
                 'page_size': 100,
             },
         )
-        utils.paginate_with_client(
+        _utils.paginate_with_client(
             client,
             'users',
             {'q': '1'},
@@ -403,7 +403,7 @@ class TestUtilsInternalBranches:
         Test that :func:`build_endpoint_client` wires env options into
         :class:`EndpointClient`.
         """
-        client = utils.build_endpoint_client(
+        client = _utils.build_endpoint_client(
             base_url='https://example.test',
             base_path='/v1',
             endpoints={'users': '/users'},
@@ -421,7 +421,7 @@ class TestUtilsInternalBranches:
         Test that :func:`build_pagination_cfg` covers page/cursor/unknown type
         branches.
         """
-        raw_page_cfg = utils.build_pagination_cfg(None, {'type': 'page'})
+        raw_page_cfg = _utils.build_pagination_cfg(None, {'type': 'page'})
         assert raw_page_cfg is not None
         page_cfg = cast(PagePaginationConfigDict, raw_page_cfg)
         assert page_cfg['type'] == 'page'
@@ -435,7 +435,7 @@ class TestUtilsInternalBranches:
             page_size=50,
             start_cursor='abc',
         )
-        raw_cursor_cfg = utils.build_pagination_cfg(
+        raw_cursor_cfg = _utils.build_pagination_cfg(
             cursor_base,
             {'type': 'cursor'},
         )
@@ -448,7 +448,7 @@ class TestUtilsInternalBranches:
         assert cursor_cfg['page_size'] == 50
         assert cursor_cfg['start_cursor'] == 'abc'
 
-        unknown = utils.build_pagination_cfg(None, {'type': 'custom'})
+        unknown = _utils.build_pagination_cfg(None, {'type': 'custom'})
         assert unknown is not None
         assert unknown['type'] == 'custom'
 
@@ -480,7 +480,7 @@ class TestUtilsInternalBranches:
             def items(self):
                 raise ValueError('bad cookies')
 
-        session = utils.build_session(
+        session = _utils.build_session(
             {
                 'params': cast(Any, _BrokenMapping()),
                 'cookies': cast(Any, _BadCookies()),
@@ -517,9 +517,9 @@ class TestUtilsInternalBranches:
                     raise AttributeError('no trust_env')
                 object.__setattr__(self, name, value)
 
-        monkeypatch.setattr(utils.requests, 'Session', _TinySession)
+        monkeypatch.setattr(_utils.requests, 'Session', _TinySession)
 
-        session = utils.build_session(
+        session = _utils.build_session(
             {
                 'headers': cast(Any, ['not-mapping']),
                 'params': cast(Any, _BadMap({'a': 1})),
@@ -531,7 +531,7 @@ class TestUtilsInternalBranches:
         assert isinstance(session, _TinySession)
         assert session.auth == 'token-auth'
 
-        default_session = utils.build_session(None)
+        default_session = _utils.build_session(None)
         assert isinstance(default_session, _TinySession)
 
     def test_compose_api_request_env_without_api_reference(self) -> None:
@@ -552,7 +552,7 @@ class TestUtilsInternalBranches:
             api=None,
             endpoint=None,
         )
-        env = utils.compose_api_request_env(
+        env = _utils.compose_api_request_env(
             cfg,
             source,
             {
@@ -587,7 +587,7 @@ class TestUtilsInternalBranches:
             retry_network_errors=False,
             session=None,
         )
-        env = utils.compose_api_request_env(cfg, source, {})
+        env = _utils.compose_api_request_env(cfg, source, {})
         assert env['retry'] == {'max_attempts': 9}
         assert env['retry_network_errors'] is False
 
@@ -602,7 +602,7 @@ class TestUtilsInternalBranches:
             endpoint='users',
             headers={'T': '1'},
         )
-        env = utils.compose_api_target_env(
+        env = _utils.compose_api_target_env(
             cfg,
             target,
             {'url': 'https://override.test/u'},
@@ -617,16 +617,16 @@ class TestUtilsInternalBranches:
         """
         Test that internal helper branches gracefully handles invalid inputs.
         """
-        assert utils._build_session_optional(cast(Any, 'bad')) is None
-        assert utils._coalesce(None, None) is None
+        assert _utils._build_session_optional(cast(Any, 'bad')) is None
+        assert _utils._coalesce(None, None) is None
 
         target: dict[str, Any] = {'a': 1}
-        utils._update_mapping(target, cast(Any, ['not', 'mapping']))
+        _utils._update_mapping(target, cast(Any, ['not', 'mapping']))
         assert target == {'a': 1}
 
         api_cfg = _ApiCfg(base_url)
         ep = _Endpoint()
-        url, headers, session_cfg = utils._inherit_http_from_api_endpoint(
+        url, headers, session_cfg = _utils._inherit_http_from_api_endpoint(
             cast(ApiConfig, api_cfg),
             cast(EndpointConfig, ep),
             'https://already.test/u',
@@ -651,7 +651,7 @@ class TestUtilsInternalBranches:
         api_cfg.session = cast(Any, 'bad')
         ep = _Endpoint()
         ep.session = cast(Any, 'bad')
-        merged = utils._merge_session_cfg_three(  # type: ignore[attr-defined]
+        merged = _utils._merge_session_cfg_three(  # type: ignore[attr-defined]
             cast(ApiConfig, api_cfg),
             cast(EndpointConfig, ep),
             cast(Any, 'bad'),
@@ -661,16 +661,16 @@ class TestUtilsInternalBranches:
     def test_compute_rl_sleep_seconds_variants(self) -> None:
         """Test that rate-limit sleep helper filters overrides correctly."""
         rl_obj = RateLimitConfig(sleep_seconds=0.5, max_per_sec=None)
-        assert utils.compute_rl_sleep_seconds(rl_obj, {'max_per_sec': 4}) == 0.5
-        assert utils.compute_rl_sleep_seconds(None, {'max_per_sec': 4}) == 0.25
-        assert utils.compute_rl_sleep_seconds({'sleep_seconds': 0.2}, {'x': 1}) == 0.2
+        assert _utils.compute_rl_sleep_seconds(rl_obj, {'max_per_sec': 4}) == 0.5
+        assert _utils.compute_rl_sleep_seconds(None, {'max_per_sec': 4}) == 0.25
+        assert _utils.compute_rl_sleep_seconds({'sleep_seconds': 0.2}, {'x': 1}) == 0.2
 
     def test_resolve_request_raises_when_method_missing(self) -> None:
         """
         Test that resolve_request fails when session lacks method callable.
         """
         with pytest.raises(TypeError, match='must supply a callable'):
-            utils.resolve_request(
+            _utils.resolve_request(
                 'get',
                 session=SimpleNamespace(),
                 timeout=1.0,
@@ -686,11 +686,11 @@ class TestUtilsInternalBranches:
             def post(*_args: Any, **_kwargs: Any) -> Any:
                 return object()
 
-        call, timeout, method = utils.resolve_request(
+        call, timeout, method = _utils.resolve_request(
             'post',
             session=_Session(),
             timeout=2.0,
         )
         assert callable(call)
         assert timeout == 2.0
-        assert method == utils.HttpMethod.POST
+        assert method == _utils.HttpMethod.POST

@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.cli.test_u_cli_state` module.
 
-Unit tests for :mod:`etlplus.cli._state`.
+Unit tests for :mod:`etlplus.cli._commands._state`.
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ import typer
 
 import etlplus
 import etlplus.cli._commands as commands
+import etlplus.cli._commands._state as cli_state_mod
 import etlplus.cli._handlers as handlers
-import etlplus.cli._state as cli_state_module
 
 from ...conftest import CaptureHandler
 from .conftest import InvokeCli
@@ -286,7 +286,7 @@ class TestInferResourceType:
         """
         path = tmp_path / 'payload.csv'
         path.write_text('a,b\n1,2\n', encoding='utf-8')
-        assert cli_state_module.infer_resource_type(str(path)) == 'file'
+        assert cli_state_mod.infer_resource_type(str(path)) == 'file'
 
     def test_invalid_raises(self) -> None:
         """
@@ -294,7 +294,7 @@ class TestInferResourceType:
         guidance.
         """
         with pytest.raises(ValueError, match='Could not infer resource type'):
-            cli_state_module.infer_resource_type('unknown-resource')
+            cli_state_mod.infer_resource_type('unknown-resource')
 
     @pytest.mark.parametrize(
         ('raw', 'expected'),
@@ -313,11 +313,11 @@ class TestInferResourceType:
         Test that :func:`infer_resource_type` classifies common resource
         inputs.
         """
-        assert cli_state_module.infer_resource_type(raw) == expected
+        assert cli_state_mod.infer_resource_type(raw) == expected
 
 
 class TestCliStateHelpers:
-    """Unit tests for :mod:`etlplus.cli._state` helper branches."""
+    """Unit tests for :mod:`etlplus.cli._commands._state` helper branches."""
 
     def test_ensure_state_initializes_missing_context_state(self) -> None:
         """
@@ -328,14 +328,34 @@ class TestCliStateHelpers:
         ctx = typer.Context(command)
         ctx.obj = {'unexpected': True}
 
-        state = cli_state_module.ensure_state(ctx)
+        state = cli_state_mod.ensure_state(ctx)
 
-        assert isinstance(state, cli_state_module.CliState)
+        assert isinstance(state, cli_state_mod.CliState)
+        assert ctx.obj is state
+
+    def test_set_state_replaces_context_state(self) -> None:
+        """Test that explicit root flags replace the stored CLI state."""
+        command = typer.main.get_command(commands.app)
+        ctx = typer.Context(command)
+        ctx.obj = {'unexpected': True}
+
+        state = cli_state_mod._set_state(
+            ctx,
+            pretty=False,
+            quiet=True,
+            verbose=True,
+        )
+
+        assert state == cli_state_mod.CliState(
+            pretty=False,
+            quiet=True,
+            verbose=True,
+        )
         assert ctx.obj is state
 
     def test_infer_resource_type_soft_none_returns_none(self) -> None:
         """Test that soft inference returns ``None`` for missing values."""
-        assert cli_state_module.infer_resource_type_soft(None) is None
+        assert cli_state_mod.infer_resource_type_soft(None) is None
 
     def test_infer_resource_type_soft_swallows_inference_errors(
         self,
@@ -343,29 +363,61 @@ class TestCliStateHelpers:
     ) -> None:
         """Test that soft inference returns ``None`` for invalid resources."""
         monkeypatch.setattr(
-            cli_state_module,
+            cli_state_mod,
             'infer_resource_type',
             lambda _value: (_ for _ in ()).throw(ValueError('bad')),
         )
-        assert cli_state_module.infer_resource_type_soft('invalid') is None
+        assert cli_state_mod.infer_resource_type_soft('invalid') is None
 
     def test_log_inferred_resource_prints_verbose_messages(
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test that verbose mode emits inferred-resource diagnostics."""
-        cli_state_module.log_inferred_resource(
-            cli_state_module.CliState(pretty=True, quiet=False, verbose=True),
+        cli_state_mod.log_inferred_resource(
+            cli_state_mod.CliState(pretty=True, quiet=False, verbose=True),
             role='source',
             value='input.json',
             resource_type='file',
         )
         assert 'Inferred source_type=file' in capsys.readouterr().err
 
+    def test_resolve_logged_resource_type_uses_soft_inference(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test the shared resolve/validate/log state helper."""
+        logged: dict[str, object] = {}
+        monkeypatch.setattr(
+            cli_state_mod,
+            'infer_resource_type_soft',
+            lambda _value: 'file',
+        )
+        monkeypatch.setattr(
+            cli_state_mod,
+            'log_inferred_resource',
+            lambda state, **kwargs: logged.update(kwargs),
+        )
+
+        resolved = cli_state_mod.resolve_logged_resource_type(
+            cli_state_mod.CliState(verbose=True),
+            role='source',
+            value='payload.json',
+            explicit_type=None,
+            soft_inference=True,
+        )
+
+        assert resolved == 'file'
+        assert logged == {
+            'role': 'source',
+            'value': 'payload.json',
+            'resource_type': 'file',
+        }
+
     def test_resolve_resource_type_conflict_raises_bad_parameter(self) -> None:
         """Test that conflicting explicit/override values raise errors."""
         with pytest.raises(typer.BadParameter, match='conflict'):
-            cli_state_module.resolve_resource_type(
+            cli_state_mod.resolve_resource_type(
                 explicit_type='api',
                 override_type='file',
                 value='input',
@@ -380,7 +432,7 @@ class TestCliStateHelpers:
         Test that legacy file-specific explicit type raises when disallowed.
         """
         with pytest.raises(typer.BadParameter, match='legacy'):
-            cli_state_module.resolve_resource_type(
+            cli_state_mod.resolve_resource_type(
                 explicit_type='file',
                 override_type=None,
                 value='input',
@@ -392,7 +444,7 @@ class TestCliStateHelpers:
         self,
     ) -> None:
         """Test that explicit non-file values pass through validation."""
-        resolved = cli_state_module.resolve_resource_type(
+        resolved = cli_state_mod.resolve_resource_type(
             explicit_type='api',
             override_type=None,
             value='input',
@@ -400,6 +452,19 @@ class TestCliStateHelpers:
             legacy_file_error='legacy',
         )
         assert resolved == 'api'
+
+    def test_resource_type_resolver_infer_soft_uses_function_seam(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that class-based soft inference still respects wrapper patches."""
+        monkeypatch.setattr(
+            cli_state_mod,
+            'infer_resource_type',
+            lambda _value: (_ for _ in ()).throw(ValueError('bad')),
+        )
+
+        assert cli_state_mod.ResourceTypeResolver.infer_soft('invalid') is None
 
 
 class TestOptionalChoice:
@@ -419,7 +484,7 @@ class TestOptionalChoice:
         valid values.
         """
         assert (
-            cli_state_module.optional_choice(
+            cli_state_mod.optional_choice(
                 choice,
                 {'json', 'csv'},
                 label='format',
@@ -431,4 +496,15 @@ class TestOptionalChoice:
     def test_rejects_invalid(self, invalid: str) -> None:
         """Test that invalid choices raise :class:`typer.BadParameter`."""
         with pytest.raises(typer.BadParameter):
-            cli_state_module.optional_choice(invalid, {'json'}, label='format')
+            cli_state_mod.optional_choice(invalid, {'json'}, label='format')
+
+    def test_resource_type_resolver_optional_choice_preserves_none(self) -> None:
+        """Test that class-based optional choice preserves missing values."""
+        assert (
+            cli_state_mod.ResourceTypeResolver.optional_choice(
+                None,
+                {'json', 'csv'},
+                label='format',
+            )
+            is None
+        )

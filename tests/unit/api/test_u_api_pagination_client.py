@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_api_pagination_client` module.
 
-Unit tests for :class:`etlplus.api.pagination.client.PaginationClient`.
+Unit tests for :class:`etlplus.api.pagination.PaginationClient`.
 
 Focus
 ------
@@ -14,10 +14,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from etlplus.api import RequestOptions
 from etlplus.api.pagination import PaginationClient
 from etlplus.api.pagination import PaginationConfig
 from etlplus.api.pagination import PaginationType
-from etlplus.api.types import RequestOptions
 
 # SECTION: PRAGMAS ========================================================== #
 

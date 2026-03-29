@@ -26,7 +26,7 @@ from etlplus.ops.extract import extract
 from etlplus.ops.extract import extract_from_api
 from etlplus.ops.extract import extract_from_database
 from etlplus.ops.extract import extract_from_file
-from etlplus.utils.types import JSONData
+from etlplus.utils._types import JSONData
 
 # SECTION: PRAGMAS ========================================================== #
 

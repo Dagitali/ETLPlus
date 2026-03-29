@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.workflow.test_i_workflow_dag` module.
 
-Integration smoke tests for :mod:`etlplus.workflow.dag`.
+Integration smoke tests for :mod:`etlplus.workflow`.
 """
 
 from __future__ import annotations

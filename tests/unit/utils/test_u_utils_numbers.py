@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.utils.test_u_utils_numbers` module.
 
-Unit tests for :mod:`etlplus.utils.numbers`.
+Unit tests for :mod:`etlplus.utils._numbers`.
 """
 
 from __future__ import annotations

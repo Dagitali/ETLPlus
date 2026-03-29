@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_config` module.
 
-Unit tests for :mod:`etlplus.config`.
+Unit tests for :mod:`etlplus._config`.
 
 Notes
 -----
@@ -19,10 +19,10 @@ from typing import Any
 
 import pytest
 
-import etlplus.config as config_mod
+import etlplus._config as config_mod
 from etlplus import Config
-from etlplus.config import _collect_parsed
-from etlplus.config import _parse_connector_entry
+from etlplus._config import _collect_parsed
+from etlplus._config import _parse_connector_entry
 from etlplus.connector import ConnectorApi
 from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorFile

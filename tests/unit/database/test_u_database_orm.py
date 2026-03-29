@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.database.test_u_database_orm` module.
 
-Unit tests for :mod:`etlplus.database.orm`.
+Unit tests for :mod:`etlplus.database._orm`.
 """
 
 from __future__ import annotations
@@ -24,12 +24,12 @@ from sqlalchemy.types import Numeric
 from sqlalchemy.types import String
 from sqlalchemy.types import Text
 
-from etlplus.database import orm as orm_mod
-from etlplus.database.orm import Base
-from etlplus.database.orm import build_models
-from etlplus.database.orm import load_and_build_models
-from etlplus.database.orm import resolve_type
-from etlplus.database.schema import TableSpec
+import etlplus.database._orm as orm_mod
+from etlplus.database._orm import Base
+from etlplus.database._orm import build_models
+from etlplus.database._orm import load_and_build_models
+from etlplus.database._orm import resolve_type
+from etlplus.database._schema import TableSpec
 
 # SECTION: PRAGMAS ========================================================== #
 

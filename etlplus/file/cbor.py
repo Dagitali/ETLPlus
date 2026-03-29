@@ -19,7 +19,7 @@ Notes
 from __future__ import annotations
 
 from ._binary_codec_handlers import BinaryRecordCodecHandlerMixin
-from .enums import FileFormat
+from ._enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

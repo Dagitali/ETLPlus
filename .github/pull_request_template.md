@@ -15,7 +15,7 @@ List the commands you ran locally, for example:
 
 ```bash
 pytest
-make docs
+make docs-strict
 make dist
 ```
 

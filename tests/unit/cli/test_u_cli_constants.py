@@ -1,12 +1,12 @@
 """
 :mod:`tests.unit.cli.test_u_cli_constants` module.
 
-Unit tests for :mod:`etlplus.cli._constants`.
+Unit tests for :mod:`etlplus.cli._commands._constants`.
 """
 
 from __future__ import annotations
 
-import etlplus.cli._constants as constants_mod
+import etlplus.cli._commands._constants as constants_mod
 
 # SECTION: PRAGMAS ========================================================== #
 

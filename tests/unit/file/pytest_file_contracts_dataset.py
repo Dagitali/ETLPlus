@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from etlplus.utils.types import JSONData
+from etlplus.utils._types import JSONData
 
 from .pytest_file_contract_bases import ScientificCategoryContractBase
 from .pytest_file_contract_bases import SemiStructuredCategoryContractBase

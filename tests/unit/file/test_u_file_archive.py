@@ -9,8 +9,8 @@ from __future__ import annotations
 import pytest
 
 from etlplus.file import _archive as mod
-from etlplus.file.enums import CompressionFormat
-from etlplus.file.enums import FileFormat
+from etlplus.file._enums import CompressionFormat
+from etlplus.file._enums import FileFormat
 
 # SECTION: PRAGMAS ========================================================== #
 

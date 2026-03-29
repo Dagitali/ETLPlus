@@ -10,7 +10,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from ..utils.types import JSONList
+from ..utils._types import JSONList
 
 # SECTION: EXPORTS ========================================================== #
 

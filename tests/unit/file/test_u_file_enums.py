@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.file.test_u_file_enums` module.
 
-Unit tests for :mod:`etlplus.file.enums`.
+Unit tests for :mod:`etlplus.file._enums`.
 """
 
 from __future__ import annotations
@@ -110,7 +110,7 @@ GENERATED_INFER_CASES: tuple[InferCase, ...] = (
 
 
 class TestFileFormat:
-    """Unit tests for :class:`etlplus.utils.enums.FileFormat`."""
+    """Unit tests for :class:`etlplus.utils._enums.FileFormat`."""
 
     @pytest.mark.parametrize(
         ('value', 'expected'),

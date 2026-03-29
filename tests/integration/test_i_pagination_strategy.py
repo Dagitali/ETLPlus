@@ -30,7 +30,7 @@ from typing import Any
 
 import pytest
 
-import etlplus.api._request_manager as rm_module
+import etlplus.api._request_manager as rm_mod
 import etlplus.cli._handlers as cli_handlers
 from etlplus import Config
 from etlplus.cli import main
@@ -48,7 +48,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 # SECTION: HELPERS ========================================================== #
 
 
-extract_module = importlib.import_module('etlplus.ops.extract')
+extract_mod = importlib.import_module('etlplus.ops.extract')
 
 
 def _build_api_pipeline_yaml(
@@ -309,10 +309,10 @@ def pipeline_cli_runner_fixture(
         """Run the CLI with the given pipeline YAML and patched extractors."""
         cfg_path = _write_pipeline(tmp_path, yaml_text)
         monkeypatch.setattr(cli_handlers, 'extract', extract_func)
-        monkeypatch.setattr(extract_module, 'extract', extract_func)
+        monkeypatch.setattr(extract_mod, 'extract', extract_func)
 
         def _default_request(
-            self: rm_module.RequestManager,
+            self: rm_mod.RequestManager,
             method: str,
             url: str,
             *,
@@ -323,7 +323,7 @@ def pipeline_cli_runner_fixture(
             return extract_func('api', url, **kwargs)
 
         monkeypatch.setattr(
-            rm_module.RequestManager,
+            rm_mod.RequestManager,
             'request_once',
             request_func or _default_request,
         )

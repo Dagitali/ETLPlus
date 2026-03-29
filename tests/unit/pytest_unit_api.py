@@ -186,12 +186,12 @@ def request_once_stub(
             kwargs: list[dict[str, Any]]
     """
     # Locally import to avoid cycles.
-    import etlplus.api._request_manager as rm_module
+    import etlplus.api._request_manager as rm_mod
 
     calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
     def _fake_request(
-        self: rm_module.RequestManager,
+        self: rm_mod.RequestManager,
         method: str,
         url: str,
         *,
@@ -206,7 +206,7 @@ def request_once_stub(
         return {'ok': True}
 
     monkeypatch.setattr(
-        rm_module.RequestManager,
+        rm_mod.RequestManager,
         'request_once',
         _fake_request,
     )
@@ -243,16 +243,16 @@ def extract_stub_factory() -> Callable[..., Any]:
     ) -> Any:
         import contextlib
 
-        import etlplus.api._request_manager as rm_module
+        import etlplus.api._request_manager as rm_mod
 
         calls: dict[str, Any] = {'urls': [], 'kwargs': []}
 
         @contextlib.contextmanager
         def _cm() -> Any:
-            original = rm_module.RequestManager.request_once
+            original = rm_mod.RequestManager.request_once
 
             def _fake_request(
-                self: rm_module.RequestManager,
+                self: rm_mod.RequestManager,
                 method: str,
                 url: str,
                 *,
@@ -268,7 +268,7 @@ def extract_stub_factory() -> Callable[..., Any]:
 
             monkeypatch = pytest.MonkeyPatch()
             monkeypatch.setattr(
-                rm_module.RequestManager,
+                rm_mod.RequestManager,
                 'request_once',
                 _fake_request,
             )
@@ -276,7 +276,7 @@ def extract_stub_factory() -> Callable[..., Any]:
                 yield calls
             finally:
                 monkeypatch.setattr(
-                    rm_module.RequestManager,
+                    rm_mod.RequestManager,
                     'request_once',
                     original,
                 )

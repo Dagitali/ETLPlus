@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.utils.test_u_utils_substitution` module.
 
-Unit tests for :mod:`etlplus.utils.substitution`.
+Unit tests for :mod:`etlplus.utils._substitution`.
 """
 
 from __future__ import annotations

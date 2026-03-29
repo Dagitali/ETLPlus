@@ -24,12 +24,12 @@ from typing import cast
 
 import pytest
 
+from etlplus.api import ApiRequestError
 from etlplus.api import EndpointClient
 from etlplus.api import PaginationConfig
+from etlplus.api import PaginationError
 from etlplus.api import RateLimiter
 from etlplus.api import RequestOptions
-from etlplus.api.errors import ApiRequestError
-from etlplus.api.errors import PaginationError
 from etlplus.api.pagination import PagePaginationConfigDict
 from etlplus.api.pagination import PaginationInput
 from etlplus.api.pagination import PaginationType

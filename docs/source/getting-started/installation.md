@@ -18,7 +18,7 @@ pip install -e ".[docs]"
 From there, build the docs locally with:
 
 ```bash
-python -m sphinx -T -W --keep-going -b html docs/source docs/build/html
+make docs-strict
 ```
 
 Next steps:

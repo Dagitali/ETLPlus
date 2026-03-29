@@ -16,7 +16,7 @@ from types import SimpleNamespace
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def make_import_error_reader_module(
+def make_import_error_reader_mod(
     method_name: str,
 ) -> object:
     """Build a module-like object whose reader method raises ImportError."""
@@ -30,7 +30,7 @@ def make_import_error_reader_module(
     return SimpleNamespace(**{method_name: _fail_reader})
 
 
-def make_import_error_writer_module() -> object:
+def make_import_error_writer_mod() -> object:
     """Build a pandas-like module whose DataFrame writes raise ImportError."""
 
     class _FailFrame:

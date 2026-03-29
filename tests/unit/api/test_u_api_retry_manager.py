@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_api_retry_manager` module.
 
-Unit tests for :mod:`etlplus.api.retry_manager` helpers.
+Unit tests for :mod:`etlplus.api._retry_manager` helpers.
 """
 
 from __future__ import annotations
@@ -11,10 +11,10 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
-from etlplus.api.errors import ApiAuthError
-from etlplus.api.retry_manager import RetryManager
-from etlplus.api.retry_manager import RetryPolicyDict
-from etlplus.api.retry_manager import RetryStrategy
+from etlplus.api._errors import ApiAuthError
+from etlplus.api._retry_manager import RetryManager
+from etlplus.api._retry_manager import RetryPolicyDict
+from etlplus.api._retry_manager import RetryStrategy
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -59,7 +59,7 @@ class TestRetryManager:
     ) -> None:
         """Test that sleep time never exceeds the configured cap."""
         monkeypatch.setattr(
-            'etlplus.api.retry_manager.random.uniform',
+            'etlplus.api._retry_manager.random.uniform',
             lambda _a, b: b,
         )
         manager = RetryManager(

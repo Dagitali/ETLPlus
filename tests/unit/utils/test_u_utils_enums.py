@@ -1,14 +1,14 @@
 """
 :mod:`tests.unit.utils.test_u_utils_enums` module.
 
-Unit tests for :mod:`etlplus.utils.enums`.
+Unit tests for :mod:`etlplus.utils._enums`.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from etlplus.utils.enums import CoercibleStrEnum
+from etlplus.utils._enums import CoercibleStrEnum
 
 # SECTION: PRAGMAS ========================================================== #
 

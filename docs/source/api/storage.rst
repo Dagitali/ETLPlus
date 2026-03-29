@@ -8,7 +8,3 @@ providers, and placeholder backends for unsupported schemes.
    :toctree: generated
 
    etlplus.storage
-   etlplus.storage.azure_blob
-   etlplus.storage.local
-   etlplus.storage.s3
-   etlplus.storage.stub

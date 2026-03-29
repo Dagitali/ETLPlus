@@ -62,6 +62,13 @@
 
 .DEFAULT_GOAL := help
 
+### Docs ###
+
+DOCS_SOURCE_DIR ?= docs/source
+DOCS_BUILD_DIR ?= docs/build
+DOCS_GENERATED_DIR ?= $(DOCS_SOURCE_DIR)/api/generated
+SPHINX_STRICT_FLAGS ?= -T -W --keep-going
+
 ### Docker ###
 
 DOCKER_BACKUPS_DIR ?= ./backups
@@ -137,6 +144,18 @@ define ECHO_INFO
 	printf "\033[36mℹ\033[0m %s\n" "$(1)"
 endef
 
+define RUN_SPHINX_BUILD
+	@$(PYTHON) -m pip install --no-build-isolation -e $(PKG_DIR)[docs]
+	@find $(DOCS_GENERATED_DIR) -type f -name '*.rst' -delete 2>/dev/null || true
+	@rm -rf $(DOCS_BUILD_DIR)/$(1) $(DOCS_BUILD_DIR)/doctrees/$(1)
+	@$(PYTHON) -m sphinx $(2) \
+		-b $(1) \
+		-d $(DOCS_BUILD_DIR)/doctrees/$(1) \
+		$(DOCS_SOURCE_DIR) \
+		$(DOCS_BUILD_DIR)/$(1)
+	@$(call ECHO_OK,Built $(1) docs in ./$(DOCS_BUILD_DIR)/$(1))
+endef
+
 
 # SECTION: PHONY TARGETS ==================================================== #
 
@@ -195,27 +214,19 @@ dist: ## Build sdist and wheel into ./dist using pyproject.toml
 
 .PHONY: docs
 docs: venv ## Build HTML docs with Sphinx (in ./docs/build/html)
-	@$(PYTHON) -m pip install -e $(PKG_DIR)[docs]
-	@find docs/source/api/generated -type f -name '*.rst' -delete 2>/dev/null || true
-	@rm -rf docs/build/html docs/build/doctrees/html
-	@$(MAKE) -C docs html SPHINXBUILD="$(abspath $(PYTHON)) -m sphinx"
-	@$(call ECHO_OK,"Built HTML docs in ./docs/build/html")
+	$(call RUN_SPHINX_BUILD,html,)
+
+.PHONY: docs-strict
+docs-strict: venv ## Build HTML docs with CI-parity Sphinx flags and fail on warnings
+	$(call RUN_SPHINX_BUILD,html,$(SPHINX_STRICT_FLAGS))
 
 .PHONY: docs-epub
-docs-epub: venv ## Build EPUB docs with Sphinx (in ./docs/build/epub)
-	@$(PYTHON) -m pip install -e $(PKG_DIR)[docs]
-	@find docs/source/api/generated -type f -name '*.rst' -delete 2>/dev/null || true
-	@rm -rf docs/build/epub docs/build/doctrees/epub
-	@$(MAKE) -C docs epub SPHINXBUILD="$(abspath $(PYTHON)) -m sphinx"
-	@$(call ECHO_OK,"Built EPUB docs in ./docs/build/epub")
+docs-epub: venv ## Build EPUB docs with CI-parity Sphinx flags (in ./docs/build/epub)
+	$(call RUN_SPHINX_BUILD,epub,$(SPHINX_STRICT_FLAGS))
 
 .PHONY: docs-linkcheck
-docs-linkcheck: venv ## Run Sphinx linkcheck against the published docs set
-	@$(PYTHON) -m pip install -e $(PKG_DIR)[docs]
-	@find docs/source/api/generated -type f -name '*.rst' -delete 2>/dev/null || true
-	@rm -rf docs/build/linkcheck docs/build/doctrees/linkcheck
-	@$(MAKE) -C docs linkcheck SPHINXBUILD="$(abspath $(PYTHON)) -m sphinx"
-	@$(call ECHO_OK,"Validated docs links in ./docs/build/linkcheck")
+docs-linkcheck: venv ## Run Sphinx linkcheck with CI-parity flags against the published docs set
+	$(call RUN_SPHINX_BUILD,linkcheck,$(SPHINX_STRICT_FLAGS))
 
 .PHONY: file
 file: venv ## Install package + file extras

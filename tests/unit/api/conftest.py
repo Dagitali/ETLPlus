@@ -21,8 +21,8 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
-import etlplus.api.rate_limiting.rate_limiter as rl_module
-import etlplus.api.retry_manager as rm_module
+import etlplus.api._retry_manager as rm_mod
+import etlplus.api.rate_limiting._rate_limiter as rl_mod
 
 # SECTION: MARKERS ========================================================== #
 
@@ -160,7 +160,7 @@ def capture_sleeps(
     sleeps: list[float] = []
 
     # Patch RetryManager to inject a recording sleeper when none is given.
-    original_init = rm_module.RetryManager.__init__
+    original_init = rm_mod.RetryManager.__init__
 
     def _init(self, *args, **kwargs):
         if 'sleeper' not in kwargs:
@@ -172,17 +172,17 @@ def capture_sleeps(
         original_init(self, *args, **kwargs)
 
     monkeypatch.setattr(
-        rm_module.RetryManager,
+        rm_mod.RetryManager,
         '__init__',
         _init,  # type: ignore[assignment]
     )
 
     # Patch :meth:`RateLimiter.enforce` so rate-limit sleeps are captured.
-    def _capture_sleep(self: rl_module.RateLimiter) -> None:
+    def _capture_sleep(self: rl_mod.RateLimiter) -> None:
         sleeps.append(self.sleep_seconds)
 
     monkeypatch.setattr(
-        rl_module.RateLimiter,
+        rl_mod.RateLimiter,
         'enforce',
         _capture_sleep,
     )
@@ -295,7 +295,7 @@ def jitter(
         return b
 
     monkeypatch.setattr(
-        rm_module.random,
+        rm_mod.random,
         'uniform',
         fake_uniform,
     )
@@ -337,7 +337,7 @@ def patch_sleep_fixture(monkeypatch: pytest.MonkeyPatch) -> None:
     # invoke ``time.sleep`` (allowing targeted tests to inspect it) without
     # pausing.
     monkeypatch.setattr(
-        rl_module.time,
+        rl_mod.time,
         'sleep',
         lambda _seconds: None,
     )

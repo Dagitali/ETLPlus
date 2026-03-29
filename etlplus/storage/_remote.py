@@ -9,8 +9,8 @@ from __future__ import annotations
 from typing import ClassVar
 
 from ._base import StorageBackendABC
-from .enums import StorageScheme
-from .location import StorageLocation
+from ._enums import StorageScheme
+from ._location import StorageLocation
 
 # SECTION: EXPORTS ========================================================== #
 
