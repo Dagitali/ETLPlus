@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.cli.test_u_cli_main` module.
 
-Unit tests for :mod:`etlplus.cli.main`.
+Unit tests for :mod:`etlplus.cli._main`.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import pytest
 import typer
 
 import etlplus.cli._handlers as cli_handlers_mod
-from etlplus.cli.main import main as cli_main
+from etlplus.cli import main as cli_main
 
 from .conftest import StubCommand
 from .conftest import StubCommandMain
@@ -29,7 +29,7 @@ from .conftest import StubCommandMain
 
 
 PROG_NAME: Final[str] = 'etlplus'
-main_mod = importlib.import_module('etlplus.cli.main')
+main_mod = importlib.import_module('etlplus.cli._main')
 
 
 # SECTION: TESTS ============================================================ #

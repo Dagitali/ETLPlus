@@ -7,7 +7,7 @@ Unit tests for :mod:`etlplus.cli` package exports.
 from __future__ import annotations
 
 import etlplus.cli as cli_pkg
-from etlplus.cli.main import main as cli_main
+from etlplus.cli import main as cli_main
 
 # SECTION: PRAGMAS ========================================================== #
 
