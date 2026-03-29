@@ -34,8 +34,8 @@ import requests  # type: ignore[import]
 from ..utils import to_float
 from ..utils import to_int
 from ..utils import to_positive_int
-from ..utils.types import JSONData
-from ..utils.types import Sleeper
+from ..utils._types import JSONData
+from ..utils._types import Sleeper
 from ._errors import ApiAuthError
 from ._errors import ApiRequestError
 

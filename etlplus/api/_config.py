@@ -28,8 +28,8 @@ from urllib.parse import urlunsplit
 from ..utils import cast_str_dict
 from ..utils import coerce_dict
 from ..utils import maybe_mapping
-from ..utils.types import StrAnyMap
-from ..utils.types import StrStrMap
+from ..utils._types import StrAnyMap
+from ..utils._types import StrStrMap
 from ._enums import HttpMethod
 from .endpoint_client import EndpointClient
 from .pagination import PaginationConfig

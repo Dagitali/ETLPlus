@@ -58,8 +58,8 @@ from urllib.parse import urlunsplit
 
 import requests  # type: ignore[import]
 
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
 from ._errors import ApiRequestError
 from ._errors import PaginationError
 from ._request_manager import RequestManager

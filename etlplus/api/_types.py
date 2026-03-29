@@ -27,9 +27,9 @@ from typing import Self
 from typing import TypedDict
 from typing import cast
 
-from ..utils.types import JSONData
-from ..utils.types import StrAnyMap
-from ..utils.types import StrStrMap
+from ..utils._types import JSONData
+from ..utils._types import StrAnyMap
+from ..utils._types import StrStrMap
 
 # SECTION: EXPORTS ========================================================== #
 

@@ -15,8 +15,8 @@ from dataclasses import dataclass
 from typing import Any
 from typing import cast
 
-from ...utils.types import JSONDict
-from ...utils.types import JSONRecords
+from ...utils._types import JSONDict
+from ...utils._types import JSONRecords
 from .._types import FetchPageCallable
 from .._types import RequestOptions
 from .._types import Url
