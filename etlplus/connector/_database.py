@@ -19,7 +19,7 @@ from typing import Self
 from typing import TypedDict
 from typing import overload
 
-from ..utils.types import StrAnyMap
+from ..utils._types import StrAnyMap
 from ._core import ConnectorBase
 from ._enums import DataConnectorType
 from ._types import ConnectorType

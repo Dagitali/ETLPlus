@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from functools import cache
 
-from ..utils.types import StrPath
+from ..utils._types import StrPath
 from ._base import StorageBackendABC
 from ._enums import StorageScheme
 from ._location import StorageLocation

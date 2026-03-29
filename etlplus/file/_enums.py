@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from pathlib import PurePath
 
-from ..utils.enums import CoercibleStrEnum
-from ..utils.types import StrStrMap
+from ..utils._enums import CoercibleStrEnum
+from ..utils._types import StrStrMap
 
 # SECTION: EXPORTS ========================================================= #
 

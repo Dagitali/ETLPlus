@@ -12,7 +12,7 @@ from pathlib import Path
 from urllib.parse import unquote
 from urllib.parse import urlsplit
 
-from ..utils.types import StrPath
+from ..utils._types import StrPath
 from ._enums import StorageScheme
 
 # SECTION: EXPORTS ========================================================== #

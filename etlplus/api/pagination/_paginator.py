@@ -31,8 +31,8 @@ from typing import cast
 from ...utils import to_int
 from ...utils import to_maximum_int
 from ...utils import to_positive_int
-from ...utils.types import JSONDict
-from ...utils.types import JSONRecords
+from ...utils._types import JSONDict
+from ...utils._types import JSONRecords
 from .._errors import ApiRequestError
 from .._errors import PaginationError
 from .._types import FetchPageCallable

@@ -22,7 +22,7 @@ from typing import TypedDict
 from typing import overload
 
 from ..utils import coerce_dict
-from ..utils.types import StrAnyMap
+from ..utils._types import StrAnyMap
 from ._core import ConnectorBase
 from ._enums import DataConnectorType
 from ._types import ConnectorType

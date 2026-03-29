@@ -6,8 +6,8 @@ Storage scheme enums and helpers.
 
 from __future__ import annotations
 
-from ..utils.enums import CoercibleStrEnum
-from ..utils.types import StrStrMap
+from ..utils._enums import CoercibleStrEnum
+from ..utils._types import StrStrMap
 
 # SECTION: EXPORTS ========================================================== #
 

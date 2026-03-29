@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.utils.enums` module.
+:mod:`etlplus.utils._enums` module.
 
 Shared enumeration base class.
 """
@@ -9,7 +9,7 @@ from __future__ import annotations
 import enum
 from typing import Self
 
-from .types import StrStrMap
+from ._types import StrStrMap
 
 # SECTION: EXPORTS ========================================================== #
 
