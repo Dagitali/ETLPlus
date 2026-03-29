@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.storage.ftp` module.
+:mod:`etlplus.storage._ftp` module.
 
 FTP storage backend skeleton.
 """
@@ -7,7 +7,7 @@ FTP storage backend skeleton.
 from __future__ import annotations
 
 from ._enums import StorageScheme
-from .stub import StubStorageBackend
+from ._stub import StubStorageBackend
 
 # SECTION: EXPORTS ========================================================== #
 

@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.storage.http` module.
+:mod:`etlplus.storage._http` module.
 
 HTTP(S) storage backend.
 """

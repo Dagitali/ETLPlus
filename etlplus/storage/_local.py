@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.storage.local` module.
+:mod:`etlplus.storage._local` module.
 
 Local-disk storage backend.
 """

@@ -1,7 +1,7 @@
 """
-:mod:`etlplus.storage.azure_blob` module.
+:mod:`etlplus.storage._abfs` module.
 
-Azure Blob Storage backend.
+Azure Data Lake Storage Gen2 backend.
 """
 
 from __future__ import annotations
@@ -23,60 +23,58 @@ from ._remote_buffer import parse_remote_open_mode
 
 __all__ = [
     # Classes
-    'AzureBlobStorageBackend',
+    'AbfsStorageBackend',
 ]
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _import_blob_types() -> tuple[Any, Any | None]:
+def _import_datalake_types() -> tuple[Any, Any | None]:
     """
-    Import Azure Blob SDK types.
+    Import Azure Data Lake SDK types.
 
     Returns
     -------
     tuple[Any, Any | None]
-        ``(BlobServiceClient, ContentSettings or None)``.
+        ``(DataLakeServiceClient, ContentSettings or None)``.
 
     Raises
     ------
     ImportError
-        If azure-storage-blob is not installed.
+        If ``azure-storage-file-datalake`` is not installed.
     """
     try:
-        module = import_module('azure.storage.blob')
+        module = import_module('azure.storage.filedatalake')
     except ImportError as e:  # pragma: no cover
         raise ImportError(
-            'Azure Blob storage support requires optional dependency '
-            '"azure-storage-blob".\n'
-            'Install with: pip install azure-storage-blob',
+            'ABFS storage support requires optional dependency '
+            '"azure-storage-file-datalake".\n'
+            'Install with: pip install azure-storage-file-datalake',
         ) from e
-    return module.BlobServiceClient, getattr(module, 'ContentSettings', None)
+    return module.DataLakeServiceClient, getattr(module, 'ContentSettings', None)
 
 
 # SECTION: CLASSES ========================================================== #
 
 
-class AzureBlobStorageBackend(RemoteStorageBackend):
+class AbfsStorageBackend(RemoteStorageBackend):
     """
-    Storage backend for Azure Blob object locations.
+    Storage backend for ``abfs://filesystem@account/path`` locations.
 
-    The canonical URI form for this surface is
-    ``azure-blob://container/blob/path``. HTTPS object URLs in the form
-    ``https://account.blob.core.windows.net/container/blob/path`` are also
-    accepted. Runtime operations use :mod:`azure-storage-blob` and can be
-    configured with an explicit connection string, an account URL, or the
-    corresponding Azure environment variables.
+    Runtime operations use ``azure-storage-file-datalake``. The canonical
+    authority shape is ``filesystem@account.dfs.core.windows.net``.
     """
 
     # -- Class Attributes -- #
 
-    authority_label = 'container name'
-    package_name = 'azure-storage-blob'
-    path_label = 'blob path'
-    scheme = StorageScheme.AZURE_BLOB
-    service_name = 'Azure Blob'
+    authority_label = 'filesystem/account authority'
+    package_name = 'azure-storage-file-datalake'
+    path_label = 'filesystem path'
+    scheme = StorageScheme.ABFS
+    service_name = 'Azure Data Lake Storage Gen2'
+
+    # -- Magic Methods (Object Lifecycle) -- #
 
     def __init__(
         self,
@@ -91,12 +89,32 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
 
     # -- Internal Instance Methods -- #
 
-    def _blob_client(
+    def _account_url_from_authority(
+        self,
+        authority: str,
+    ) -> str:
+        """
+        Derive one HTTPS account URL from an ABFS authority string.
+
+        Parameters
+        ----------
+        authority : str
+            ABFS authority string in the form ``filesystem@account-host``.
+
+        Returns
+        -------
+        str
+            HTTPS account URL for the specified authority.
+        """
+        _, account_host = self._split_authority(authority)
+        return f'https://{account_host}'
+
+    def _file_client(
         self,
         location: StorageLocation,
     ) -> Any:
         """
-        Return one blob client for *location*.
+        Return one file client for *location*.
 
         Parameters
         ----------
@@ -106,53 +124,45 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
         Returns
         -------
         Any
-            Azure Blob client for the specified location.
+            Data Lake file client for the specified location.
         """
-        container, _ = self._split_authority(location.authority)
-        return self._service_client(location).get_blob_client(
-            blob=location.path,
-            container=container,
+        file_system, _ = self._split_authority(location.authority)
+        return self._service_client(location).get_file_client(
+            file_system=file_system,
+            file_path=location.path,
         )
-
-    def _account_url_from_authority(
-        self,
-        authority: str,
-    ) -> str | None:
-        """Derive one HTTPS account URL from an extended authority string."""
-        _, account_host = self._split_authority(authority)
-        if account_host is None:
-            return None
-        return f'https://{account_host}'
-
-    def _split_authority(
-        self,
-        authority: str,
-    ) -> tuple[str, str | None]:
-        """Split authority into container and optional account host."""
-        container, separator, account_host = authority.partition('@')
-        if not container:
-            raise ValueError(
-                'Azure Blob locations require authority in the form '
-                '"container" or "container@account.blob.core.windows.net"',
-            )
-        if separator and not account_host:
-            raise ValueError(
-                'Azure Blob locations require authority in the form '
-                '"container" or "container@account.blob.core.windows.net"',
-            )
-        return container, account_host or None
 
     def _service_client(
         self,
         location: StorageLocation | None = None,
     ) -> Any:
-        """Return one Azure Blob service client."""
-        blob_service_client_type, _ = _import_blob_types()
+        """
+        Return one Azure Data Lake service client.
+
+        Parameters
+        ----------
+        location : StorageLocation | None, optional
+            Parsed storage location. Used to derive account URL if not
+            explicitly provided.
+
+        Returns
+        -------
+        Any
+            Azure Data Lake service client instance.
+
+        Raises
+        ------
+        ValueError
+            If neither a connection string nor an account URL can be
+            resolved from explicit configuration, environment variables, or
+            the provided location authority.
+        """
+        service_client_type, _ = _import_datalake_types()
         connection_string = self.connection_string or os.getenv(
             'AZURE_STORAGE_CONNECTION_STRING',
         )
         if connection_string:
-            return cast(Any, blob_service_client_type).from_connection_string(
+            return cast(Any, service_client_type).from_connection_string(
                 connection_string,
             )
 
@@ -161,20 +171,55 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
             account_url = self._account_url_from_authority(location.authority)
         if not account_url:
             raise ValueError(
-                'Azure Blob backend requires AZURE_STORAGE_CONNECTION_STRING '
-                'or AZURE_STORAGE_ACCOUNT_URL, or an authority containing '
-                'the account host',
+                'ABFS backend requires AZURE_STORAGE_CONNECTION_STRING, '
+                'AZURE_STORAGE_ACCOUNT_URL, or an authority containing the '
+                'account host',
             )
 
         credential = self.credential
         if credential is None:
             credential = os.getenv('AZURE_STORAGE_CREDENTIAL')
         if credential is None:
-            return cast(Any, blob_service_client_type)(account_url=account_url)
-        return cast(Any, blob_service_client_type)(
+            return cast(Any, service_client_type)(account_url=account_url)
+        return cast(Any, service_client_type)(
             account_url=account_url,
             credential=credential,
         )
+
+    def _split_authority(
+        self,
+        authority: str,
+    ) -> tuple[str, str]:
+        """
+        Split ``filesystem@account-host`` into filesystem and host.
+
+        Parameters
+        ----------
+        authority : str
+            ABFS authority string in the form ``filesystem@account-host``.
+
+        Returns
+        -------
+        tuple[str, str]
+            A tuple containing the filesystem and account host.
+
+        Raises
+        ------
+        ValueError
+            If the authority string is not in the expected format.
+        """
+        if '@' not in authority:
+            raise ValueError(
+                'ABFS locations require authority in the form '
+                '"filesystem@account.dfs.core.windows.net"',
+            )
+        file_system, account_host = authority.split('@', 1)
+        if not file_system or not account_host:
+            raise ValueError(
+                'ABFS locations require authority in the form '
+                '"filesystem@account.dfs.core.windows.net"',
+            )
+        return file_system, account_host
 
     # -- Instance Methods -- #
 
@@ -183,7 +228,7 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
         location: StorageLocation,
     ) -> None:
         """
-        Delete one Azure Blob object if it exists.
+        Delete one ADLS Gen2 file if it exists.
 
         Parameters
         ----------
@@ -191,14 +236,14 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
             Parsed storage location.
         """
         self._validate(location)
-        self._blob_client(location).delete_blob(delete_snapshots='include')
+        self._file_client(location).delete_file()
 
     def exists(
         self,
         location: StorageLocation,
     ) -> bool:
         """
-        Return whether one Azure Blob exists.
+        Return whether one ADLS Gen2 file exists.
 
         Parameters
         ----------
@@ -208,10 +253,10 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
         Returns
         -------
         bool
-            ``True`` when the blob exists.
+            ``True`` when the file exists.
         """
         self._validate(location)
-        return bool(self._blob_client(location).exists())
+        return bool(self._file_client(location).exists())
 
     def open(
         self,
@@ -220,7 +265,7 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
         **kwargs: Any,
     ) -> IO[Any]:
         """
-        Open one Azure blob via an in-memory file-like buffer.
+        Open one ADLS Gen2 file via an in-memory file-like buffer.
 
         Parameters
         ----------
@@ -236,8 +281,7 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
         Returns
         -------
         IO[Any]
-            In-memory file-like object backed by Azure Blob download or upload
-            calls.
+            In-memory file-like object backed by ADLS download or upload calls.
 
         Raises
         ------
@@ -246,7 +290,7 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
         """
         self._validate(location)
         kind, text_mode = parse_remote_open_mode(mode)
-        blob_client = self._blob_client(location)
+        file_client = self._file_client(location)
         encoding = kwargs.pop('encoding', 'utf-8')
         errors = kwargs.pop('errors', None)
         newline = kwargs.pop('newline', None)
@@ -255,11 +299,11 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
         if kwargs:
             unexpected = ', '.join(sorted(kwargs))
             raise TypeError(
-                f'Unsupported Azure Blob open() keyword arguments: {unexpected}',
+                f'Unsupported ABFS open() keyword arguments: {unexpected}',
             )
 
         if kind == 'read':
-            payload = blob_client.download_blob().readall()
+            payload = file_client.download_file().readall()
             return open_remote_buffer(
                 kind='read',
                 text_mode=text_mode,
@@ -269,7 +313,7 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
                 newline=newline,
             )
 
-        _, content_settings_type = _import_blob_types()
+        _, content_settings_type = _import_datalake_types()
 
         def _uploader(payload: bytes) -> None:
             upload_kwargs: dict[str, Any] = {
@@ -280,7 +324,7 @@ class AzureBlobStorageBackend(RemoteStorageBackend):
                 upload_kwargs['content_settings'] = content_settings_type(
                     content_type=content_type,
                 )
-            blob_client.upload_blob(**upload_kwargs)
+            file_client.upload_data(**upload_kwargs)
 
         return open_remote_buffer(
             kind='write',

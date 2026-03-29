@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.storage.s3` module.
+:mod:`etlplus.storage._s3` module.
 
 AWS S3 storage backend.
 """

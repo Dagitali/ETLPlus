@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.storage.stub` module.
+:mod:`etlplus.storage._stub` module.
 
 Helpers for intentionally unsupported (stubbed) storage services.
 """
