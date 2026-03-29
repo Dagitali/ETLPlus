@@ -23,11 +23,11 @@ from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
 from ..file.base import ReadOptions
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
-from ..utils.types import JSONList
-from ..utils.types import StrPath
-from ..utils.types import Timeout
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
+from ..utils._types import JSONList
+from ..utils._types import StrPath
+from ..utils._types import Timeout
 
 # SECTION: EXPORTS ========================================================== #
 

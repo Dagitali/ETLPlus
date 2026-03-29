@@ -21,7 +21,7 @@ from typing import TypedDict
 from typing import cast
 
 from ..utils import normalize_choice
-from ..utils.types import StrAnyMap
+from ..utils._types import StrAnyMap
 
 # SECTION: TYPED DICTIONARIES =============================================== #
 

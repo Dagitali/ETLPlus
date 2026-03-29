@@ -22,10 +22,10 @@ from ..file import FileFormat
 from ..file.base import WriteOptions
 from ..storage import StorageLocation
 from ..utils import count_records
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
-from ..utils.types import JSONList
-from ..utils.types import StrPath
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
+from ..utils._types import JSONList
+from ..utils._types import StrPath
 
 # SECTION: EXPORTS ========================================================== #
 

@@ -16,9 +16,9 @@ from ..api import HttpMethod
 from ..connector import DataConnectorType
 from ..file import FileFormat
 from ..utils import print_json
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
-from ..utils.types import StrPath
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
+from ..utils._types import StrPath
 from ._types import PipelineConfig
 from ._utils import maybe_validate
 from .extract import extract

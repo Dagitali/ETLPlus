@@ -25,10 +25,10 @@ from collections.abc import Sequence
 from typing import Any
 from typing import Literal
 
-from ..utils.types import JSONList
-from ..utils.types import StrAnyMap
-from ..utils.types import StrSeqMap
-from ..utils.types import StrStrMap
+from ..utils._types import JSONList
+from ..utils._types import StrAnyMap
+from ..utils._types import StrSeqMap
+from ..utils._types import StrStrMap
 
 # SECTION: EXPORTS ========================================================== #
 

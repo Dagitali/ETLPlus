@@ -24,7 +24,7 @@ Basic pipeline with strings::
 
 Using enums for keys and functions::
 
-    from etlplus.utils.enums import (
+    from etlplus.ops import (
         PipelineStep,
         OperatorName,
         AggregateName,
@@ -49,10 +49,10 @@ from typing import Any
 from typing import cast
 
 from ..utils import to_number
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
-from ..utils.types import JSONList
-from ..utils.types import StrPath
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
+from ..utils._types import JSONList
+from ..utils._types import StrPath
 from ._enums import AggregateName
 from ._enums import OperatorName
 from ._enums import PipelineStep
@@ -1001,7 +1001,7 @@ def transform(
 
     Using enums for keys and functions::
 
-        from etlplus.utils.enums import (
+        from etlplus.ops import (
             PipelineStep,
             OperatorName,
             AggregateName,
