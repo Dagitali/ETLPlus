@@ -98,8 +98,9 @@ release.
 - Database DDL/engine/ORM/schema helpers and storage enum/location helpers plus concrete storage
   backend implementations now follow the same package-facade pattern.
 - Connector config/type/enum helpers now also live behind the `etlplus.connector` package facade.
-- The top-level version module, `etlplus.file` core/enums helpers, and `etlplus.api` utility helpers
-  now also follow the underscore-prefixed implementation plus package-facade pattern.
+- The top-level `__version__` module and the `etlplus.cli` entrypoint module, `etlplus.file`
+  core/enums helpers, and `etlplus.api` utility helpers now also follow the underscore-prefixed
+  implementation plus package-facade pattern.
 - `etlplus.ops` now exposes validation helpers and operation enums from its package facade while
   keeping low-level ops type aliases on an internal underscore-prefixed module.
 - `etlplus.utils` now follows the same package-facade pattern: user-facing helpers plus the shared
