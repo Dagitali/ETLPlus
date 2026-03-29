@@ -54,7 +54,7 @@ type FileFormatArg = FileFormat | str | None
 type FilePathArg = StrPath
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(init=False, slots=True)

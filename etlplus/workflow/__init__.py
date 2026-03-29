@@ -6,6 +6,7 @@ Job workflow helpers.
 
 from __future__ import annotations
 
+from ._dag import DagError
 from ._dag import topological_sort_jobs
 from ._jobs import ExtractRef
 from ._jobs import JobConfig
@@ -25,6 +26,8 @@ __all__ = [
     'ProfileConfig',
     'TransformRef',
     'ValidationRef',
+    # Errors
+    'DagError',
     # Functions
     'topological_sort_jobs',
 ]

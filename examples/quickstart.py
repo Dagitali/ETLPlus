@@ -14,11 +14,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 # Allow direct execution from a source checkout without requiring PYTHONPATH=.
+from etlplus.ops import FieldRulesDict  # noqa: E402
 from etlplus.ops import extract  # noqa: E402
 from etlplus.ops import load  # noqa: E402
 from etlplus.ops import transform  # noqa: E402
 from etlplus.ops import validate  # noqa: E402
-from etlplus.ops.validate import FieldRulesDict  # noqa: E402
 
 # SECTION: CONSTANTS ======================================================== #
 
