@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.utils.text` module.
+:mod:`etlplus.utils._text` module.
 
 Text-processing utility helpers.
 """
