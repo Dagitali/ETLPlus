@@ -1,12 +1,12 @@
 """
 :mod:`tests.unit.utils.test_u_utils_mixins` module.
 
-Unit tests for :mod:`etlplus.utils.mixins` helpers.
+Unit tests for :mod:`etlplus.utils._mixins` helpers.
 """
 
 from __future__ import annotations
 
-from etlplus.utils.mixins import BoundsWarningsMixin
+from etlplus.utils._mixins import BoundsWarningsMixin
 
 # SECTION: PRAGMAS ========================================================== #
 

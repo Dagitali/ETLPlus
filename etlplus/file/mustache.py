@@ -18,8 +18,8 @@ Notes
 
 from __future__ import annotations
 
+from ._enums import FileFormat
 from ._template_handlers import BraceTokenTemplateHandlerMixin
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

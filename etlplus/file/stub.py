@@ -10,12 +10,12 @@ from pathlib import Path
 from typing import ClassVar
 from typing import Never
 
-from ..utils.types import JSONData
-from ..utils.types import JSONList
+from ..utils._types import JSONData
+from ..utils._types import JSONList
+from ._enums import FileFormat
 from .base import FileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

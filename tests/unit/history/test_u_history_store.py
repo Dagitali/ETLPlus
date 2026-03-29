@@ -1,16 +1,17 @@
 """
 :mod:`tests.unit.test_u_history_store` module.
 
-Unit tests for :mod:`etlplus.history.store`.
+Unit tests for :mod:`etlplus.history._store`.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
-from etlplus.history import store as mod
+import etlplus.history._store as mod
 
 # SECTION: HELPERS ========================================================== #
 
@@ -23,16 +24,14 @@ def build_sample_record() -> mod.RunRecord:
         job_name='job-a',
         config_path='pipeline.yml',
         config_sha256='sha256',
-        status='running',
         started_at='2026-03-23T00:00:00Z',
-        finished_at=None,
-        duration_ms=None,
         records_in=None,
         records_out=None,
-        error_type=None,
-        error_message=None,
-        error_traceback=None,
-        result_summary=None,
+        state=mod.RunState(
+            status='running',
+            finished_at=None,
+            duration_ms=None,
+        ),
         host='host-a',
         pid=123,
         etlplus_version='1.0.3',
@@ -42,24 +41,42 @@ def build_sample_record() -> mod.RunRecord:
 # SECTION: TESTS ============================================================ #
 
 
-def test_iter_history_runs_merges_append_events_into_one_run(
+def test_history_store_from_environment_selects_jsonl_backend(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    """HistoryStore.from_environment should honor the configured backend."""
+    monkeypatch.setenv('ETLPLUS_HISTORY_BACKEND', 'jsonl')
+    monkeypatch.setenv('ETLPLUS_STATE_DIR', str(tmp_path))
+
+    store = mod.HistoryStore.from_environment()
+
+    assert isinstance(store, mod.JsonlHistoryStore)
+    assert store.log_path == tmp_path / 'history.jsonl'
+
+
+def test_iter_runs_merges_append_events_into_one_run(
     tmp_path: Path,
 ) -> None:
-    """Normalized history reads should merge JSONL start/finish events."""
+    """HistoryStore.iter_runs should merge JSONL start/finish events."""
     path = tmp_path / 'history.jsonl'
     store = mod.JsonlHistoryStore(path)
     record = build_sample_record()
 
     store.record_run_started(record)
     store.record_run_finished(
-        record.run_id,
-        status='succeeded',
-        finished_at='2026-03-23T00:00:05Z',
-        duration_ms=5000,
-        result_summary={'rows': 10},
+        mod.RunCompletion(
+            run_id=record.run_id,
+            state=mod.RunState(
+                status='succeeded',
+                finished_at='2026-03-23T00:00:05Z',
+                duration_ms=5000,
+                result_summary={'rows': 10},
+            ),
+        ),
     )
 
-    assert list(mod.iter_history_runs(store)) == [
+    assert list(store.iter_runs()) == [
         {
             'config_path': 'pipeline.yml',
             'config_sha256': 'sha256',
@@ -91,11 +108,15 @@ def test_jsonl_history_store_appends_finished_records_as_ndjson(
     store = mod.JsonlHistoryStore(path)
 
     store.record_run_finished(
-        'run-123',
-        status='success',
-        finished_at='2026-03-23T00:00:05Z',
-        duration_ms=5000,
-        result_summary={'rows': 10},
+        mod.RunCompletion(
+            run_id='run-123',
+            state=mod.RunState(
+                status='success',
+                finished_at='2026-03-23T00:00:05Z',
+                duration_ms=5000,
+                result_summary={'rows': 10},
+            ),
+        ),
     )
 
     lines = path.read_text(encoding='utf-8').splitlines()
@@ -201,3 +222,27 @@ def test_jsonl_history_store_serializes_started_records_with_ndjson(
     }
     assert captured['options'] is None
     assert path.read_text(encoding='utf-8') == '{"serialized":true}\n'
+
+
+def test_run_record_build_populates_runtime_metadata(
+    tmp_path: Path,
+) -> None:
+    """RunRecord.build should populate derived metadata consistently."""
+    config_path = tmp_path / 'pipeline.yml'
+    config_path.write_text('name: pipeline-a\n', encoding='utf-8')
+
+    record = mod.RunRecord.build(
+        run_id='run-123',
+        config_path=str(config_path),
+        started_at='2026-03-23T00:00:00Z',
+        pipeline_name='pipeline-a',
+        job_name='job-a',
+    )
+
+    assert record.run_id == 'run-123'
+    assert record.pipeline_name == 'pipeline-a'
+    assert record.job_name == 'job-a'
+    assert record.state.status == 'running'
+    assert record.config_sha256 == hashlib.sha256(config_path.read_bytes()).hexdigest()
+    assert record.host is not None
+    assert record.pid is not None

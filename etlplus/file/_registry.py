@@ -10,8 +10,8 @@ import importlib
 from functools import cache
 from typing import cast
 
+from ._enums import FileFormat
 from .base import FileHandlerABC
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

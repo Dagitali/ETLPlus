@@ -11,7 +11,7 @@ from abc import abstractmethod
 from typing import IO
 from typing import Any
 
-from .location import StorageLocation
+from ._location import StorageLocation
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -22,7 +22,7 @@ __all__ = [
 ]
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: ABSTRACT BASE CLASSES ============================================ #
 
 
 class StorageBackendABC(ABC):

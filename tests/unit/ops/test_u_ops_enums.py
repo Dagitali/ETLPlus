@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_ops_enums` module.
 
-Unit tests for :mod:`etlplus.ops.enums` coercion helpers and behaviors.
+Unit tests for :mod:`etlplus.ops._enums` coercion helpers and behaviors.
 """
 
 from __future__ import annotations
@@ -11,9 +11,9 @@ from typing import cast
 
 import pytest
 
-from etlplus.ops.enums import AggregateName
-from etlplus.ops.enums import OperatorName
-from etlplus.ops.enums import PipelineStep
+from etlplus.ops._enums import AggregateName
+from etlplus.ops._enums import OperatorName
+from etlplus.ops._enums import PipelineStep
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -23,7 +23,7 @@ from etlplus.ops.enums import PipelineStep
 
 
 class TestAggregateName:
-    """Unit tests for :class:`etlplus.ops.enums.AggregateName`."""
+    """Unit tests for :class:`etlplus.ops._enums.AggregateName`."""
 
     @pytest.mark.parametrize(
         'nums',
@@ -42,7 +42,7 @@ class TestAggregateName:
 
 
 class TestOperatorName:
-    """Unit tests for :class:`etlplus.ops.enums.OperatorName`."""
+    """Unit tests for :class:`etlplus.ops._enums.OperatorName`."""
 
     def test_func_property_defensive_fallthrough(self) -> None:
         """Test descriptor fallback when called with a non-enum self."""
@@ -63,7 +63,7 @@ class TestOperatorName:
 
 
 class TestPipelineStep:
-    """Unit tests for :class:`etlplus.ops.enums.PipelineStep`."""
+    """Unit tests for :class:`etlplus.ops._enums.PipelineStep`."""
 
     def test_order(self) -> None:
         """Test the order values."""

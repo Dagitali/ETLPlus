@@ -26,9 +26,9 @@ from typing import cast
 import pytest
 
 # from etlplus.ops import transform as tx
-from etlplus.ops.enums import AggregateName
-from etlplus.ops.enums import OperatorName
-from etlplus.ops.enums import PipelineStep
+from etlplus.ops._enums import AggregateName
+from etlplus.ops._enums import OperatorName
+from etlplus.ops._enums import PipelineStep
 from etlplus.ops.transform import _agg_avg
 from etlplus.ops.transform import _agg_count
 from etlplus.ops.transform import _agg_max
@@ -56,7 +56,7 @@ from etlplus.ops.transform import apply_map
 from etlplus.ops.transform import apply_select
 from etlplus.ops.transform import apply_sort
 from etlplus.ops.transform import transform
-from etlplus.utils.types import JSONData
+from etlplus.utils._types import JSONData
 
 # SECTION: PRAGMAS ========================================================== #
 

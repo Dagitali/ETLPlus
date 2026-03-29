@@ -18,10 +18,10 @@ Notes
 
 from __future__ import annotations
 
-from .config import RateLimitConfig
-from .config import RateLimitConfigDict
-from .config import RateLimitOverrides
-from .rate_limiter import RateLimiter
+from ._config import RateLimitConfig
+from ._config import RateLimitConfigDict
+from ._config import RateLimitOverrides
+from ._rate_limiter import RateLimiter
 
 # SECTION: EXPORTS ========================================================== #
 

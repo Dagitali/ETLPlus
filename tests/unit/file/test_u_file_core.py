@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.file.test_u_file_core` module.
 
-Unit tests for :mod:`etlplus.file.core`.
+Unit tests for :mod:`etlplus.file._core`.
 """
 
 from __future__ import annotations
@@ -20,16 +20,16 @@ import pytest
 
 from etlplus.file import File
 from etlplus.file import FileFormat
-from etlplus.file import core as core_mod
+from etlplus.file import _core as core_mod
 from etlplus.file import csv as csv_file
 from etlplus.file import json as json_file
 from etlplus.file import xml as xml_file
 from etlplus.file.base import WriteOptions
 from etlplus.storage import S3StorageBackend
 from etlplus.storage import StorageScheme
+from etlplus.storage import _http as http_storage_mod
 from etlplus.storage import get_backend
-from etlplus.storage import http as http_storage_mod
-from etlplus.utils.types import JSONData
+from etlplus.utils._types import JSONData
 
 from ...pytest_file_common import Operation
 from ...pytest_file_common import skip_on_known_file_io_error

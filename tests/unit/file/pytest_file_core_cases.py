@@ -9,7 +9,7 @@ from __future__ import annotations
 from copy import deepcopy
 
 from etlplus.file import FileFormat
-from etlplus.utils.types import JSONData
+from etlplus.utils._types import JSONData
 
 # SECTION: PRAGMAS ========================================================== #
 

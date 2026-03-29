@@ -6,10 +6,10 @@ Public file IO helpers.
 
 from __future__ import annotations
 
-from .core import File
-from .enums import CompressionFormat
-from .enums import FileFormat
-from .enums import infer_file_format_and_compression
+from ._core import File
+from ._enums import CompressionFormat
+from ._enums import FileFormat
+from ._enums import infer_file_format_and_compression
 
 # SECTION: EXPORTS ========================================================== #
 

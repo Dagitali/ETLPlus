@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.api.test_u_api_transport` module.
 
-Unit tests for :mod:`etlplus.api.transport`.
+Unit tests for :mod:`etlplus.api._transport`.
 
 Notes
 -----
@@ -21,9 +21,9 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
-import etlplus.api.transport as transport_module
-from etlplus.api.transport import build_http_adapter
-from etlplus.api.transport import build_session_with_adapters
+import etlplus.api._transport as transport_mod
+from etlplus.api._transport import build_http_adapter
+from etlplus.api._transport import build_session_with_adapters
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -119,7 +119,7 @@ class TestBuildHttpAdapter:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that invalid adapter builds are skipped by session builder."""
-        real_builder = transport_module.build_http_adapter
+        real_builder = transport_mod.build_http_adapter
         calls: list[str] = []
 
         def _wrapped(cfg: dict[str, object]) -> requests.adapters.HTTPAdapter:
@@ -128,7 +128,7 @@ class TestBuildHttpAdapter:
                 raise TypeError('invalid')
             return real_builder(cfg)
 
-        monkeypatch.setattr(transport_module, 'build_http_adapter', _wrapped)
+        monkeypatch.setattr(transport_mod, 'build_http_adapter', _wrapped)
 
         session = build_session_with_adapters(
             [
@@ -235,7 +235,7 @@ class TestBuildHttpAdapter:
         def _boom(_cfg: dict[str, object]) -> int:
             raise ValueError('bad retry config')
 
-        monkeypatch.setattr(transport_module, '_build_retry_value', _boom)
+        monkeypatch.setattr(transport_mod, '_build_retry_value', _boom)
 
         adapter = build_http_adapter({'max_retries': {'total': 7}})
         max_retries = adapter.max_retries

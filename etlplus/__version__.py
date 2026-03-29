@@ -1,5 +1,5 @@
 """
-etlplus.__version__ module.
+:mod:`etlplus.__version__` module.
 
 Expose the installed ETLPlus version.
 """

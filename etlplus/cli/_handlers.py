@@ -1,16 +1,18 @@
 """
-:mod:`etlplus.cli.handlers` module.
+:mod:`etlplus.cli._handlers` module.
 
 Command handler functions for the ``etlplus`` command-line interface (CLI).
 """
 
 from __future__ import annotations
 
-import json
 import os
 import sys
+from collections.abc import Callable
+from collections.abc import Iterator
 from collections.abc import Mapping
-from datetime import datetime
+from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
 from time import sleep
@@ -20,27 +22,31 @@ from typing import cast
 
 from .. import Config
 from .. import __version__
-from ..database import load_table_spec
 from ..database import render_tables
 from ..file import File
 from ..file import FileFormat
+from ..history import HistoryStore
+from ..history import RunCompletion
+from ..history import RunState
 from ..history import build_run_record
-from ..history import iter_history_runs
-from ..history import open_history_store
 from ..ops import extract
 from ..ops import load
 from ..ops import run
 from ..ops import transform
 from ..ops import validate
 from ..ops.validate import FieldRulesDict
-from ..runtime import build_readiness_report
-from ..runtime.events import build_structured_event
-from ..runtime.events import create_run_id
-from ..runtime.events import emit_structured_event
-from ..runtime.events import utc_now_iso
-from ..utils.types import JSONData
-from ..utils.types import TemplateKey
+from ..runtime import ReadinessReportBuilder
+from ..runtime import RuntimeEvents
+from ..utils._types import JSONData
+from ..utils._types import TemplateKey
 from . import _io
+from . import _summary
+from ._history import HISTORY_TABLE_COLUMNS as _HISTORY_TABLE_COLUMNS
+from ._history import REPORT_TABLE_COLUMNS as _REPORT_TABLE_COLUMNS
+from ._history import HistoryReportBuilder
+from ._history import HistoryView
+from ._summary import check_sections as _check_sections
+from ._summary import pipeline_summary as _pipeline_summary
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -60,131 +66,45 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL TYPE ALIASES ============================================ #
+
+
+type _CompletionMode = Literal['file', 'json', 'json_file', 'or_write']
+type _RunCompletionStatus = Literal['failed', 'succeeded']
+
+
 # SECTION: TYPE ALIASES ===================================================== #
 
 
-HistoryRecord = Mapping[str, Any]
-
-
-TransformOperations = Mapping[
+type TransformOperations = Mapping[
     Literal['filter', 'map', 'select', 'sort', 'aggregate'],
     Any,
 ]
 
+# SECTION: INTERNAL DATA CLASSES ============================================ #
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
 
+@dataclass(frozen=True, slots=True)
+class _CommandContext:
+    """Shared runtime context for one CLI command invocation."""
 
-_HISTORY_TABLE_COLUMNS = (
-    'run_id',
-    'status',
-    'job_name',
-    'pipeline_name',
-    'started_at',
-    'finished_at',
-    'duration_ms',
-)
+    # -- Instance Attributes -- #
 
-_REPORT_TABLE_COLUMNS = (
-    'group',
-    'runs',
-    'succeeded',
-    'failed',
-    'running',
-    'other',
-    'success_rate_pct',
-    'avg_duration_ms',
-    'min_duration_ms',
-    'max_duration_ms',
-    'last_started_at',
-)
+    command: str
+    event_format: str | None
+    run_id: str
+    started_at: str
+    started_perf: float
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _collect_table_specs(
-    config_path: str | None,
-    spec_path: str | None,
-) -> list[dict[str, Any]]:
-    """
-    Load table schemas from a pipeline config and/or standalone spec.
-
-    Parameters
-    ----------
-    config_path : str | None
-        Path to a pipeline YAML config file.
-    spec_path : str | None
-        Path to a standalone table spec file.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        Collected table specification mappings.
-    """
-    specs: list[dict[str, Any]] = []
-
-    if spec_path:
-        specs.append(dict(load_table_spec(Path(spec_path))))
-
-    if config_path:
-        cfg = Config.from_yaml(config_path, substitute=True)
-        specs.extend(getattr(cfg, 'table_schemas', []))
-
-    return specs
-
-
-def _check_sections(
-    cfg: Config,
-    *,
-    jobs: bool,
-    pipelines: bool,
-    sources: bool,
-    targets: bool,
-    transforms: bool,
-) -> dict[str, Any]:
-    """
-    Build sectioned metadata output for the check command.
-
-    Parameters
-    ----------
-    cfg : Config
-        The loaded pipeline configuration.
-    jobs : bool
-        Whether to include job metadata.
-    pipelines : bool
-        Whether to include pipeline metadata.
-    sources : bool
-        Whether to include source metadata.
-    targets : bool
-        Whether to include target metadata.
-    transforms : bool
-        Whether to include transform metadata.
-
-    Returns
-    -------
-    dict[str, Any]
-        Metadata output for the check command.
-    """
-    sections: dict[str, Any] = {}
-    if jobs:
-        sections['jobs'] = _pipeline_summary(cfg)['jobs']
-    if pipelines:
-        sections['pipelines'] = [cfg.name]
-    if sources:
-        sections['sources'] = [src.name for src in cfg.sources]
-    if targets:
-        sections['targets'] = [tgt.name for tgt in cfg.targets]
-    if transforms:
-        if isinstance(cfg.transforms, Mapping):
-            sections['transforms'] = list(cfg.transforms)
-        else:
-            sections['transforms'] = [
-                getattr(trf, 'name', None) for trf in cfg.transforms
-            ]
-    if not sections:
-        sections['jobs'] = _pipeline_summary(cfg)['jobs']
-    return sections
+def _elapsed_ms(
+    started_perf: float,
+) -> int:
+    """Return elapsed milliseconds since *started_perf*."""
+    return int((perf_counter() - started_perf) * 1000)
 
 
 def _emit_failure_event(
@@ -202,12 +122,23 @@ def _emit_failure_event(
         lifecycle='failed',
         run_id=run_id,
         event_format=event_format,
-        duration_ms=int((perf_counter() - started_perf) * 1000),
+        duration_ms=_elapsed_ms(started_perf),
         error_message=str(exc),
         error_type=type(exc).__name__,
         status='error',
         **fields,
     )
+
+
+def _emit_json_payload(
+    payload: Any,
+    *,
+    pretty: bool,
+    exit_code: int = 0,
+) -> int:
+    """Emit one JSON payload and return the requested exit code."""
+    _io.emit_json(payload, pretty=pretty)
+    return exit_code
 
 
 def _emit_lifecycle_event(
@@ -219,8 +150,8 @@ def _emit_lifecycle_event(
     **fields: Any,
 ) -> None:
     """Emit one structured command lifecycle event."""
-    emit_structured_event(
-        build_structured_event(
+    RuntimeEvents.emit(
+        RuntimeEvents.build(
             command=command,
             lifecycle=lifecycle,
             run_id=run_id,
@@ -230,69 +161,80 @@ def _emit_lifecycle_event(
     )
 
 
-def _history_record_fingerprint(
-    record: Mapping[str, Any],
-) -> str:
-    """Return a stable fingerprint for a persisted history record."""
-    return json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
-
-
-def _history_sort_key(
-    record: Mapping[str, Any],
-) -> tuple[str, str]:
-    """Return a reverse-sortable key for history records."""
-    timestamp = cast(
-        str,
-        record.get('started_at') or record.get('finished_at') or '',
-    )
-    run_id = cast(str, record.get('run_id') or '')
-    return (timestamp, run_id)
-
-
-def _parse_history_timestamp(
-    value: object,
-) -> datetime | None:
-    """Parse an ISO-8601 timestamp used in persisted history records."""
-    if not isinstance(value, str) or not value:
-        return None
-    normalized = value.replace('Z', '+00:00')
-    try:
-        return datetime.fromisoformat(normalized)
-    except ValueError:
-        return None
-
-
-def _history_record_matches(
-    record: HistoryRecord,
+def _emit_history_payload(
+    payload: Any,
     *,
-    job: str | None = None,
-    run_id: str | None = None,
-    since: datetime | None = None,
-    until: datetime | None = None,
-    status: str | None = None,
-) -> bool:
-    """Return whether a history record matches CLI filter values."""
-    if job is not None and record.get('job_name') != job:
-        return False
-    if run_id is not None and record.get('run_id') != run_id:
-        return False
-    if status is not None and record.get('status') != status:
-        return False
-    record_timestamp = _parse_history_timestamp(
-        record.get('started_at') or record.get('finished_at'),
+    columns: tuple[str, ...],
+    pretty: bool,
+    table: bool = False,
+    json_output: bool = False,
+    table_rows: list[dict[str, Any]] | None = None,
+    exit_code: int = 0,
+) -> int:
+    """Validate history output mode and emit one JSON or table payload."""
+    HistoryView.validate_output_mode(json_output=json_output, table=table)
+    if table:
+        _io.emit_markdown_table(
+            table_rows
+            if table_rows is not None
+            else cast(list[dict[str, Any]], payload),
+            columns=columns,
+        )
+        return exit_code
+    return _emit_json_payload(payload, pretty=pretty, exit_code=exit_code)
+
+
+def _complete_command(
+    context: _CommandContext,
+    **fields: Any,
+) -> None:
+    """Emit a completed lifecycle event for one command context."""
+    _emit_lifecycle_event(
+        command=context.command,
+        lifecycle='completed',
+        run_id=context.run_id,
+        event_format=context.event_format,
+        duration_ms=_elapsed_ms(context.started_perf),
+        **fields,
     )
-    if since is not None:
-        if record_timestamp is None or record_timestamp < since:
-            return False
-    if until is not None:
-        if record_timestamp is None or record_timestamp > until:
-            return False
-    return True
+
+
+def _fail_command(
+    context: _CommandContext,
+    exc: Exception,
+    **fields: Any,
+) -> None:
+    """Emit a failed lifecycle event for one command context."""
+    _emit_failure_event(
+        command=context.command,
+        run_id=context.run_id,
+        started_perf=context.started_perf,
+        event_format=context.event_format,
+        exc=exc,
+        **fields,
+    )
+
+
+@contextmanager
+def _failure_boundary(
+    context: _CommandContext,
+    *,
+    on_error: Callable[[Exception], None] | None = None,
+    **fields: Any,
+) -> Iterator[None]:
+    """Emit a failed lifecycle event for exceptions raised inside the block."""
+    try:
+        yield
+    except Exception as exc:
+        if on_error is not None:
+            on_error(exc)
+        _fail_command(context, exc, **fields)
+        raise
 
 
 def _load_history_records(
     *,
-    raw: bool,
+    raw: bool = False,
     job: str | None = None,
     limit: int | None = None,
     run_id: str | None = None,
@@ -301,38 +243,184 @@ def _load_history_records(
     status: str | None = None,
 ) -> list[dict[str, Any]]:
     """Load, filter, and sort history records for CLI read commands."""
-    parsed_since = _parse_history_timestamp(since)
-    parsed_until = _parse_history_timestamp(until)
-    history_store = open_history_store()
-    records_iter = (
-        history_store.iter_records() if raw else iter_history_runs(history_store)
+    load_kwargs: dict[str, Any] = {'raw': raw}
+    for key, value in (
+        ('job', job),
+        ('limit', limit),
+        ('run_id', run_id),
+        ('since', since),
+        ('until', until),
+        ('status', status),
+    ):
+        if value is not None:
+            load_kwargs[key] = value
+    return HistoryView.load_records(
+        **load_kwargs,
     )
-    records = [
-        dict(record)
-        for record in records_iter
-        if _history_record_matches(
-            record,
-            job=job,
-            run_id=run_id,
-            since=parsed_since,
-            until=parsed_until,
-            status=status,
-        )
-    ]
-    records.sort(key=_history_sort_key, reverse=True)
-    if limit is not None:
-        records = records[:limit]
-    return records
 
 
-def _validate_history_output_mode(
+def _start_command(
     *,
-    json_output: bool,
-    table: bool,
+    command: str,
+    event_format: str | None,
+    **fields: Any,
+) -> _CommandContext:
+    """Create one command context and emit its started lifecycle event."""
+    context = _CommandContext(
+        command=command,
+        event_format=event_format,
+        run_id=RuntimeEvents.create_run_id(),
+        started_at=RuntimeEvents.utc_now_iso(),
+        started_perf=perf_counter(),
+    )
+    _emit_lifecycle_event(
+        command=context.command,
+        lifecycle='started',
+        run_id=context.run_id,
+        event_format=context.event_format,
+        timestamp=context.started_at,
+        **fields,
+    )
+    return context
+
+
+def _complete_output(
+    context: _CommandContext,
+    payload: Any,
+    *,
+    mode: _CompletionMode,
+    pretty: bool = True,
+    output_path: str | None = None,
+    format_hint: str | None = None,
+    success_message: str | None = None,
+    **fields: Any,
+) -> int:
+    """Emit completion for *context* and route the payload by output mode."""
+    _complete_command(context, **fields)
+    match mode:
+        case 'json':
+            return _emit_json_payload(payload, pretty=pretty)
+        case 'or_write':
+            _io.emit_or_write(
+                payload,
+                output_path,
+                pretty=pretty,
+                success_message=cast(str, success_message),
+            )
+            return 0
+        case 'file':
+            target = cast(str, output_path)
+            _write_file_payload(
+                cast(JSONData, payload),
+                target,
+                format_hint=format_hint,
+            )
+            print(f'{cast(str, success_message)} {target}')
+            return 0
+        case 'json_file':
+            _io.write_json_output(
+                payload,
+                cast(str, output_path),
+                success_message=cast(str, success_message),
+            )
+            return 0
+
+
+def _record_run_completion(
+    history_store: HistoryStore,
+    context: _CommandContext,
+    *,
+    status: _RunCompletionStatus,
+    result_summary: JSONData | None = None,
+    exc: Exception | None = None,
 ) -> None:
-    """Validate that at most one explicit history output mode was requested."""
-    if json_output and table:
-        raise ValueError('choose either json output or table output, not both')
+    """Persist the terminal state for one tracked CLI run."""
+    history_store.record_run_finished(
+        RunCompletion(
+            run_id=context.run_id,
+            state=RunState(
+                status=status,
+                finished_at=RuntimeEvents.utc_now_iso(),
+                duration_ms=_elapsed_ms(context.started_perf),
+                result_summary=result_summary,
+                error_type=None if exc is None else type(exc).__name__,
+                error_message=None if exc is None else str(exc),
+            ),
+        ),
+    )
+
+
+def _resolve_render_template(
+    template: TemplateKey | None,
+    template_path: str | None,
+) -> tuple[TemplateKey | None, str | None]:
+    """Resolve the render template key and optional template-file override."""
+    template_key: TemplateKey | None = template or 'ddl'
+    if template_path is not None:
+        return template_key, template_path
+
+    candidate_path = Path(cast(str, template_key))
+    if candidate_path.exists():
+        return None, str(candidate_path)
+    return template_key, None
+
+
+def _emit_render_output(
+    rendered_chunks: list[str],
+    *,
+    output_path: str | None,
+    pretty: bool,
+    quiet: bool,
+    schema_count: int,
+) -> int:
+    """Write rendered SQL to a file path or print it to STDOUT."""
+    sql_text = '\n'.join(chunk.rstrip() for chunk in rendered_chunks).rstrip() + '\n'
+    rendered_output = sql_text if pretty else sql_text.rstrip('\n')
+    if output_path and output_path != '-':
+        Path(output_path).write_text(rendered_output, encoding='utf-8')
+        if not quiet:
+            print(f'Rendered {schema_count} schema(s) to {output_path}')
+        return 0
+
+    print(rendered_output)
+    return 0
+
+
+def _resolve_payload(
+    payload: object,
+    *,
+    format_hint: str | None,
+    format_explicit: bool,
+    hydrate_files: bool = True,
+) -> object:
+    """Resolve one CLI payload through the shared CLI payload loader."""
+    resolve_kwargs: dict[str, Any] = {
+        'format_hint': format_hint,
+        'format_explicit': format_explicit,
+    }
+    if not hydrate_files:
+        resolve_kwargs['hydrate_files'] = False
+    return _io.resolve_cli_payload(
+        payload,
+        **resolve_kwargs,
+    )
+
+
+def _resolve_mapping_payload(
+    payload: object,
+    *,
+    format_explicit: bool,
+    error_message: str,
+) -> dict[str, Any]:
+    """Resolve one CLI payload and require a mapping result."""
+    resolved_payload = _resolve_payload(
+        payload,
+        format_hint=None,
+        format_explicit=format_explicit,
+    )
+    if not isinstance(resolved_payload, dict):
+        raise ValueError(error_message)
+    return resolved_payload
 
 
 def _emit_follow_history(
@@ -358,186 +446,28 @@ def _emit_follow_history(
                 status=status,
             )
             for record in reversed(records):
-                fingerprint = _history_record_fingerprint(record)
+                fingerprint = HistoryView.fingerprint(record)
                 if fingerprint in seen:
                     continue
                 seen.add(fingerprint)
-                _io.emit_json(record, pretty=False)
+                _emit_json_payload(record, pretty=False)
             sleep(1.0)
     except KeyboardInterrupt:
         return 0
 
 
-def _increment_metric(
-    bucket: dict[str, Any],
-    key: str,
-    amount: int = 1,
-) -> None:
-    """Increment an integer metric stored inside a mutable report bucket."""
-    bucket[key] = int(bucket.get(key) or 0) + amount
-
-
-def _report_group_key(
-    record: Mapping[str, Any],
+def _emit_readiness_report(
     *,
-    group_by: Literal['day', 'job', 'status'],
-) -> str:
-    """Return the grouping key for one normalized history record."""
-    if group_by == 'job':
-        return cast(str, record.get('job_name') or '(no job)')
-    if group_by == 'status':
-        return cast(str, record.get('status') or '(unknown)')
-    timestamp = cast(str, record.get('started_at') or record.get('finished_at') or '')
-    return timestamp.split('T', maxsplit=1)[0] if 'T' in timestamp else '(unknown)'
-
-
-def _success_rate_pct(
-    succeeded: int,
-    runs: int,
-) -> float | None:
-    """Return the success-rate percentage for the given counters."""
-    if runs <= 0:
-        return None
-    return round((succeeded / runs) * 100, 2)
-
-
-def _update_duration_metrics(
-    bucket: dict[str, Any],
-    duration_ms: int,
-) -> None:
-    """Update duration-related metrics for one report bucket."""
-    _increment_metric(bucket, 'total_duration_ms', duration_ms)
-    _increment_metric(bucket, 'duration_samples', 1)
-    current_min = bucket.get('min_duration_ms')
-    current_max = bucket.get('max_duration_ms')
-    bucket['min_duration_ms'] = (
-        duration_ms if current_min is None else min(int(current_min), duration_ms)
+    config: str | None,
+    pretty: bool,
+) -> int:
+    """Build and emit one readiness report, returning its CLI exit code."""
+    report = ReadinessReportBuilder.build(config_path=config)
+    return _emit_json_payload(
+        report,
+        pretty=pretty,
+        exit_code=0 if report.get('status') == 'ok' else 1,
     )
-    bucket['max_duration_ms'] = (
-        duration_ms if current_max is None else max(int(current_max), duration_ms)
-    )
-
-
-def _build_history_report(
-    records: list[dict[str, Any]],
-    *,
-    group_by: Literal['day', 'job', 'status'],
-) -> dict[str, Any]:
-    """Aggregate normalized history records into a grouped report."""
-    rows_by_group: dict[str, dict[str, Any]] = {}
-    summary: dict[str, Any] = {
-        'avg_duration_ms': None,
-        'failed': 0,
-        'max_duration_ms': None,
-        'min_duration_ms': None,
-        'other': 0,
-        'running': 0,
-        'runs': len(records),
-        'success_rate_pct': None,
-        'succeeded': 0,
-        'total_duration_ms': 0,
-        'duration_samples': 0,
-    }
-
-    for record in records:
-        status = cast(str, record.get('status') or '')
-        if status in ('succeeded', 'failed', 'running'):
-            _increment_metric(summary, status)
-        else:
-            _increment_metric(summary, 'other')
-
-        key = _report_group_key(record, group_by=group_by)
-        row = cast(
-            dict[str, Any],
-            rows_by_group.setdefault(
-                key,
-                {
-                    'avg_duration_ms': None,
-                    'duration_samples': 0,
-                    'group': key,
-                    'last_started_at': None,
-                    'max_duration_ms': None,
-                    'min_duration_ms': None,
-                    'runs': 0,
-                    'succeeded': 0,
-                    'failed': 0,
-                    'running': 0,
-                    'other': 0,
-                    'success_rate_pct': None,
-                    'total_duration_ms': 0,
-                },
-            ),
-        )
-        _increment_metric(row, 'runs')
-        if status in ('succeeded', 'failed', 'running'):
-            _increment_metric(row, status)
-        else:
-            _increment_metric(row, 'other')
-
-        duration_ms = record.get('duration_ms')
-        if isinstance(duration_ms, int):
-            _update_duration_metrics(row, duration_ms)
-            _update_duration_metrics(summary, duration_ms)
-
-        started_at = record.get('started_at')
-        if isinstance(started_at, str) and (
-            row['last_started_at'] is None or started_at > row['last_started_at']
-        ):
-            row['last_started_at'] = started_at
-
-    rows = sorted(rows_by_group.values(), key=lambda item: cast(str, item['group']))
-    for row in rows:
-        samples = cast(int, row.pop('duration_samples'))
-        total_duration = cast(int, row.pop('total_duration_ms'))
-        row['avg_duration_ms'] = int(total_duration / samples) if samples > 0 else None
-        row['success_rate_pct'] = _success_rate_pct(
-            int(row['succeeded']),
-            int(row['runs']),
-        )
-
-    summary_samples = cast(int, summary.pop('duration_samples'))
-    summary_total_duration = cast(int, summary.pop('total_duration_ms'))
-    summary['avg_duration_ms'] = (
-        int(summary_total_duration / summary_samples) if summary_samples > 0 else None
-    )
-    summary['success_rate_pct'] = _success_rate_pct(
-        int(summary['succeeded']),
-        int(summary['runs']),
-    )
-
-    return {
-        'group_by': group_by,
-        'rows': rows,
-        'summary': summary,
-    }
-
-
-def _pipeline_summary(
-    cfg: Config,
-) -> dict[str, Any]:
-    """
-    Return a human-friendly snapshot of a pipeline config.
-
-    Parameters
-    ----------
-    cfg : Config
-        The loaded pipeline configuration.
-
-    Returns
-    -------
-    dict[str, Any]
-        A human-friendly snapshot of a pipeline config.
-    """
-    sources = [src.name for src in cfg.sources]
-    targets = [tgt.name for tgt in cfg.targets]
-    jobs = [job.name for job in cfg.jobs]
-    return {
-        'name': cfg.name,
-        'version': cfg.version,
-        'sources': sources,
-        'targets': targets,
-        'jobs': jobs,
-    }
 
 
 def _write_file_payload(
@@ -618,19 +548,16 @@ def check_handler(
 
     """
     if readiness:
-        report = build_readiness_report(config_path=config)
-        _io.emit_json(report, pretty=pretty)
-        return 0 if report.get('status') == 'ok' else 1
+        return _emit_readiness_report(config=config, pretty=pretty)
 
     if config is None:
         raise ValueError('config is required unless readiness-only mode is used')
 
     cfg = Config.from_yaml(config, substitute=substitute)
     if summary:
-        _io.emit_json(_pipeline_summary(cfg), pretty=True)
-        return 0
+        return _emit_json_payload(_pipeline_summary(cfg), pretty=pretty)
 
-    _io.emit_json(
+    return _emit_json_payload(
         _check_sections(
             cfg,
             jobs=jobs,
@@ -641,7 +568,6 @@ def check_handler(
         ),
         pretty=pretty,
     )
-    return 0
 
 
 def history_handler(
@@ -696,7 +622,6 @@ def history_handler(
     int
         Zero on success.
     """
-    _validate_history_output_mode(json_output=json_output, table=table)
     if follow:
         return _emit_follow_history(
             job=job,
@@ -706,20 +631,21 @@ def history_handler(
             status=status,
             until=until,
         )
-    records = _load_history_records(
-        job=job,
-        limit=limit,
-        raw=raw,
-        run_id=run_id,
-        since=since,
-        until=until,
-        status=status,
+    return _emit_history_payload(
+        _load_history_records(
+            job=job,
+            limit=limit,
+            raw=raw,
+            run_id=run_id,
+            since=since,
+            until=until,
+            status=status,
+        ),
+        columns=_HISTORY_TABLE_COLUMNS,
+        pretty=pretty,
+        table=table,
+        json_output=json_output,
     )
-    if table:
-        _io.emit_markdown_table(records, columns=_HISTORY_TABLE_COLUMNS)
-        return 0
-    _io.emit_json(records, pretty=pretty)
-    return 0
 
 
 def extract_handler(
@@ -769,38 +695,34 @@ def extract_handler(
 
     """
     explicit_format = format_hint if format_explicit else None
-    run_id = create_run_id()
-    started_perf = perf_counter()
-    _emit_lifecycle_event(
+    context = _start_command(
         command='extract',
-        lifecycle='started',
-        run_id=run_id,
         event_format=event_format,
         source=source,
         source_type=source_type,
     )
 
-    try:
+    with _failure_boundary(
+        context,
+        source=source,
+        source_type=source_type,
+    ):
         if source == '-':
             text = _io.read_stdin_text()
             payload = _io.parse_text_payload(
                 text,
                 format_hint,
             )
-            _emit_lifecycle_event(
-                command='extract',
-                lifecycle='completed',
-                run_id=run_id,
-                event_format=event_format,
-                duration_ms=int((perf_counter() - started_perf) * 1000),
+            return _complete_output(
+                context,
+                payload,
+                mode='json',
+                pretty=pretty,
                 result_status='ok',
                 status='ok',
                 source=source,
                 source_type=source_type,
             )
-            _io.emit_json(payload, pretty=pretty)
-
-            return 0
 
         result = extract(
             source_type,
@@ -809,38 +731,19 @@ def extract_handler(
         )
         output_path = target or output
 
-        _emit_lifecycle_event(
-            command='extract',
-            lifecycle='completed',
-            run_id=run_id,
-            event_format=event_format,
+        return _complete_output(
+            context,
+            result,
+            mode='or_write',
+            output_path=output_path,
+            pretty=pretty,
+            success_message='Data extracted and saved to',
             destination=output_path or 'stdout',
-            duration_ms=int((perf_counter() - started_perf) * 1000),
             result_status='ok',
             source=source,
             source_type=source_type,
             status='ok',
         )
-
-        _io.emit_or_write(
-            result,
-            output_path,
-            pretty=pretty,
-            success_message='Data extracted and saved to',
-        )
-    except Exception as exc:
-        _emit_failure_event(
-            command='extract',
-            run_id=run_id,
-            started_perf=started_perf,
-            event_format=event_format,
-            exc=exc,
-            source=source,
-            source_type=source_type,
-        )
-        raise
-
-    return 0
 
 
 def load_handler(
@@ -894,23 +797,23 @@ def load_handler(
         requested.
     """
     explicit_format = target_format if format_explicit else None
-    run_id = create_run_id()
-    started_perf = perf_counter()
-    _emit_lifecycle_event(
+    context = _start_command(
         command='load',
-        lifecycle='started',
-        run_id=run_id,
         event_format=event_format,
         source=source,
         target=target,
         target_type=target_type,
     )
 
-    try:
-        # Allow piping into load.
+    with _failure_boundary(
+        context,
+        source=source,
+        target=target,
+        target_type=target_type,
+    ):
         source_value = cast(
             str | Path | os.PathLike[str] | dict[str, Any] | list[dict[str, Any]],
-            _io.resolve_cli_payload(
+            _resolve_payload(
                 source,
                 format_hint=source_format,
                 format_explicit=source_format is not None,
@@ -918,27 +821,23 @@ def load_handler(
             ),
         )
 
-        # Allow piping out of load for file targets.
         if target_type == 'file' and target == '-':
             payload = _io.materialize_file_payload(
                 source_value,
                 format_hint=source_format,
                 format_explicit=source_format is not None,
             )
-            _emit_lifecycle_event(
-                command='load',
-                lifecycle='completed',
-                run_id=run_id,
-                event_format=event_format,
-                duration_ms=int((perf_counter() - started_perf) * 1000),
+            return _complete_output(
+                context,
+                payload,
+                mode='json',
+                pretty=pretty,
                 result_status='ok',
                 source=source,
                 status='ok',
                 target=target,
                 target_type=target_type,
             )
-            _io.emit_json(payload, pretty=pretty)
-            return 0
 
         result = load(
             source_value,
@@ -948,39 +847,20 @@ def load_handler(
         )
 
         output_path = output
-        _emit_lifecycle_event(
-            command='load',
-            lifecycle='completed',
-            run_id=run_id,
-            event_format=event_format,
+        return _complete_output(
+            context,
+            result,
+            mode='or_write',
+            output_path=output_path,
+            pretty=pretty,
+            success_message='Load result saved to',
             destination=output_path or 'stdout',
-            duration_ms=int((perf_counter() - started_perf) * 1000),
             result_status=result.get('status') if isinstance(result, dict) else 'ok',
             source=source,
             status='ok',
             target=target,
             target_type=target_type,
         )
-        _io.emit_or_write(
-            result,
-            output_path,
-            pretty=pretty,
-            success_message='Load result saved to',
-        )
-    except Exception as exc:
-        _emit_failure_event(
-            command='load',
-            run_id=run_id,
-            started_perf=started_perf,
-            event_format=event_format,
-            exc=exc,
-            source=source,
-            target=target,
-            target_type=target_type,
-        )
-        raise
-
-    return 0
 
 
 def render_handler(
@@ -1021,32 +901,17 @@ def render_handler(
     int
         Zero on success.
     """
-    template_value: TemplateKey = template or 'ddl'
-    template_path_override = template_path
-    table_filter = table
-    spec_path = spec
-    config_path = config
-
-    # If the provided template points to a file, treat it as a path override.
-    file_override = template_path_override
-    template_key: TemplateKey | None = template_value
-    if template_path_override is None:
-        candidate_path = Path(template_value)
-        if candidate_path.exists():
-            file_override = str(candidate_path)
-            template_key = None
-
-    specs = _collect_table_specs(config_path, spec_path)
-    if table_filter:
+    template_key, file_override = _resolve_render_template(template, template_path)
+    specs = _summary.collect_table_specs(config, spec)
+    if table:
         specs = [
             spec
             for spec in specs
-            if str(spec.get('table')) == table_filter
-            or str(spec.get('name', '')) == table_filter
+            if str(spec.get('table')) == table or str(spec.get('name', '')) == table
         ]
 
     if not specs:
-        target_desc = table_filter or 'table_schemas'
+        target_desc = table or 'table_schemas'
         print(
             'No table schemas found for '
             f'{target_desc}. Provide --spec or a pipeline --config with '
@@ -1060,18 +925,13 @@ def render_handler(
         template=template_key,
         template_path=file_override,
     )
-    sql_text = '\n'.join(chunk.rstrip() for chunk in rendered_chunks).rstrip() + '\n'
-    rendered_output = sql_text if pretty else sql_text.rstrip('\n')
-
-    output_path = output
-    if output_path and output_path != '-':
-        Path(output_path).write_text(rendered_output, encoding='utf-8')
-        if not quiet:
-            print(f'Rendered {len(specs)} schema(s) to {output_path}')
-        return 0
-
-    print(rendered_output)
-    return 0
+    return _emit_render_output(
+        rendered_chunks,
+        output_path=output,
+        pretty=pretty,
+        quiet=quiet,
+        schema_count=len(specs),
+    )
 
 
 def report_handler(
@@ -1111,19 +971,22 @@ def report_handler(
     int
         Zero on success.
     """
-    _validate_history_output_mode(json_output=json_output, table=table)
-    records = _load_history_records(
-        job=job,
-        raw=False,
-        since=since,
-        until=until,
+    report = HistoryReportBuilder.build(
+        _load_history_records(
+            job=job,
+            since=since,
+            until=until,
+        ),
+        group_by=group_by,
     )
-    report = _build_history_report(records, group_by=group_by)
-    if table:
-        _io.emit_markdown_table(report['rows'], columns=_REPORT_TABLE_COLUMNS)
-        return 0
-    _io.emit_json(report, pretty=pretty)
-    return 0
+    return _emit_history_payload(
+        report,
+        columns=_REPORT_TABLE_COLUMNS,
+        pretty=pretty,
+        table=table,
+        json_output=json_output,
+        table_rows=cast(list[dict[str, Any]], report['rows']),
+    )
 
 
 def run_handler(
@@ -1166,84 +1029,60 @@ def run_handler(
     cfg = Config.from_yaml(config, substitute=True)
 
     job_name = job or pipeline
-    if job_name:
-        run_id = create_run_id()
-        started_at = utc_now_iso()
-        started_perf = perf_counter()
-        history_store = open_history_store()
-        history_store.record_run_started(
-            build_run_record(
-                run_id=run_id,
-                config_path=config,
-                started_at=started_at,
-                pipeline_name=cfg.name,
-                job_name=job_name,
-            ),
-        )
-        _emit_lifecycle_event(
-            command='run',
-            lifecycle='started',
-            run_id=run_id,
-            event_format=event_format,
-            config_path=config,
-            etlplus_version=__version__,
-            job=job_name,
-            pipeline_name=cfg.name,
-            status='running',
-            timestamp=started_at,
-        )
-        try:
-            result = run(job=job_name, config_path=config)
-        except Exception as exc:
-            duration_ms = int((perf_counter() - started_perf) * 1000)
-            history_store.record_run_finished(
-                run_id,
-                status='failed',
-                finished_at=utc_now_iso(),
-                duration_ms=duration_ms,
-                error_type=type(exc).__name__,
-                error_message=str(exc),
-            )
-            _emit_failure_event(
-                command='run',
-                run_id=run_id,
-                started_perf=started_perf,
-                event_format=event_format,
-                exc=exc,
-                config_path=config,
-                job=job_name,
-                pipeline_name=cfg.name,
-            )
-            raise
+    if not job_name:
+        return _emit_json_payload(_pipeline_summary(cfg), pretty=pretty)
 
-        duration_ms = int((perf_counter() - started_perf) * 1000)
-        history_store.record_run_finished(
-            run_id,
-            status='succeeded',
-            finished_at=utc_now_iso(),
-            duration_ms=duration_ms,
-            result_summary=cast(JSONData | None, result),
-        )
-        _emit_lifecycle_event(
-            command='run',
-            lifecycle='completed',
-            run_id=run_id,
-            event_format=event_format,
+    context = _start_command(
+        command='run',
+        event_format=event_format,
+        config_path=config,
+        etlplus_version=__version__,
+        job=job_name,
+        pipeline_name=cfg.name,
+        status='running',
+    )
+    history_store = HistoryStore.from_environment()
+    history_store.record_run_started(
+        build_run_record(
+            run_id=context.run_id,
             config_path=config,
-            duration_ms=duration_ms,
-            job=job_name,
+            started_at=context.started_at,
             pipeline_name=cfg.name,
-            result_status=result.get('status'),
-            status='ok',
-        )
-        _io.emit_json(
-            {'run_id': run_id, 'status': 'ok', 'result': result},
-            pretty=pretty,
-        )
-        return 0
+            job_name=job_name,
+        ),
+    )
 
-    _io.emit_json(_pipeline_summary(cfg), pretty=pretty)
-    return 0
+    with _failure_boundary(
+        context,
+        on_error=lambda exc: _record_run_completion(
+            history_store,
+            context,
+            status='failed',
+            exc=exc,
+        ),
+        config_path=config,
+        job=job_name,
+        pipeline_name=cfg.name,
+    ):
+        result = run(job=job_name, config_path=config)
+
+    _record_run_completion(
+        history_store,
+        context,
+        status='succeeded',
+        result_summary=cast(JSONData | None, result),
+    )
+    return _complete_output(
+        context,
+        {'run_id': context.run_id, 'status': 'ok', 'result': result},
+        mode='json',
+        pretty=pretty,
+        config_path=config,
+        job=job_name,
+        pipeline_name=cfg.name,
+        result_status=result.get('status'),
+        status='ok',
+    )
 
 
 def status_handler(
@@ -1269,12 +1108,14 @@ def status_handler(
     int
         Zero when a matching run exists, otherwise ``1``.
     """
-    records = _load_history_records(job=job, limit=1, raw=False, run_id=run_id)
+    records = _load_history_records(
+        job=job,
+        limit=1,
+        run_id=run_id,
+    )
     if not records:
-        _io.emit_json({}, pretty=pretty)
-        return 1
-    _io.emit_json(records[0], pretty=pretty)
-    return 0
+        return _emit_json_payload({}, pretty=pretty, exit_code=1)
+    return _emit_json_payload(records[0], pretty=pretty)
 
 
 def transform_handler(
@@ -1337,37 +1178,35 @@ def transform_handler(
     ``database`` are delegated to :func:`etlplus.ops.load.load` so the
     transform command and load command share target behavior.
     """
-    format_hint: str | None = source_format
-    format_explicit = format_hint is not None or format_explicit
-    run_id = create_run_id()
-    started_perf = perf_counter()
-    _emit_lifecycle_event(
+    source_format_explicit = source_format is not None or format_explicit
+    context = _start_command(
         command='transform',
-        lifecycle='started',
-        run_id=run_id,
         event_format=event_format,
         source=source,
         target=target or 'stdout',
         target_type=target_type,
     )
 
-    try:
+    with _failure_boundary(
+        context,
+        source=source,
+        target=target or 'stdout',
+        target_type=target_type,
+    ):
         payload = cast(
             JSONData | str,
-            _io.resolve_cli_payload(
+            _resolve_payload(
                 source,
-                format_hint=format_hint,
-                format_explicit=format_explicit,
+                format_hint=source_format,
+                format_explicit=source_format_explicit,
             ),
         )
 
-        operations_payload = _io.resolve_cli_payload(
+        operations_payload = _resolve_mapping_payload(
             operations,
-            format_hint=None,
-            format_explicit=format_explicit,
+            format_explicit=source_format_explicit,
+            error_message='operations must resolve to a mapping of transforms',
         )
-        if not isinstance(operations_payload, dict):
-            raise ValueError('operations must resolve to a mapping of transforms')
 
         data = transform(payload, cast(TransformOperations, operations_payload))
 
@@ -1378,66 +1217,45 @@ def transform_handler(
                     data,
                     resolved_target_type,
                     target,
-                    file_format=target_format if format_explicit else None,
+                    file_format=target_format if source_format_explicit else None,
                 )
-                _emit_lifecycle_event(
-                    command='transform',
-                    lifecycle='completed',
-                    run_id=run_id,
-                    event_format=event_format,
-                    duration_ms=int((perf_counter() - started_perf) * 1000),
+                return _complete_output(
+                    context,
+                    result,
+                    mode='json',
+                    pretty=pretty,
                     result_status='ok',
                     source=source,
                     status='ok',
                     target=target,
                     target_type=resolved_target_type,
                 )
-                _io.emit_json(result, pretty=pretty)
-                return 0
 
-            _emit_lifecycle_event(
-                command='transform',
-                lifecycle='completed',
-                run_id=run_id,
-                event_format=event_format,
-                duration_ms=int((perf_counter() - started_perf) * 1000),
+            return _complete_output(
+                context,
+                data,
+                mode='file',
+                output_path=target,
+                format_hint=target_format,
+                success_message='Data transformed and saved to',
                 result_status='ok',
                 source=source,
                 status='ok',
                 target=target,
                 target_type=target_type or 'file',
             )
-            _write_file_payload(data, target, format_hint=target_format)
-            print(f'Data transformed and saved to {target}')
-            return 0
 
-        _emit_lifecycle_event(
-            command='transform',
-            lifecycle='completed',
-            run_id=run_id,
-            event_format=event_format,
-            duration_ms=int((perf_counter() - started_perf) * 1000),
+        return _complete_output(
+            context,
+            data,
+            mode='json',
+            pretty=pretty,
             result_status='ok',
             source=source,
             status='ok',
             target=target or 'stdout',
             target_type=target_type,
         )
-        _io.emit_json(data, pretty=pretty)
-    except Exception as exc:
-        _emit_failure_event(
-            command='transform',
-            run_id=run_id,
-            started_perf=started_perf,
-            event_format=event_format,
-            exc=exc,
-            source=source,
-            target=target or 'stdout',
-            target_type=target_type,
-        )
-        raise
-
-    return 0
 
 
 def validate_handler(
@@ -1485,35 +1303,33 @@ def validate_handler(
         Re-raises validation failures after emitting a structured failure event
         when requested.
     """
-    format_hint: str | None = source_format
-    run_id = create_run_id()
-    started_perf = perf_counter()
-    _emit_lifecycle_event(
+    context = _start_command(
         command='validate',
-        lifecycle='started',
-        run_id=run_id,
         event_format=event_format,
         source=source,
         target=target or 'stdout',
     )
 
-    try:
+    with _failure_boundary(
+        context,
+        source=source,
+        target=target or 'stdout',
+    ):
+        source_format_explicit = source_format is not None or format_explicit
         payload = cast(
             JSONData | str,
-            _io.resolve_cli_payload(
+            _resolve_payload(
                 source,
-                format_hint=format_hint,
-                format_explicit=format_explicit,
+                format_hint=source_format,
+                format_explicit=source_format_explicit,
             ),
         )
 
-        rules_payload = _io.resolve_cli_payload(
+        rules_payload = _resolve_mapping_payload(
             rules,
-            format_hint=None,
-            format_explicit=format_explicit,
+            format_explicit=source_format_explicit,
+            error_message='rules must resolve to a mapping of field rules',
         )
-        if not isinstance(rules_payload, dict):
-            raise ValueError('rules must resolve to a mapping of field rules')
 
         field_rules = cast(Mapping[str, FieldRulesDict], rules_payload)
         result = validate(payload, field_rules)
@@ -1521,52 +1337,32 @@ def validate_handler(
         if target and target != '-':
             validated_data = result.get('data')
             if validated_data is not None:
-                _emit_lifecycle_event(
-                    command='validate',
-                    lifecycle='completed',
-                    run_id=run_id,
-                    event_format=event_format,
-                    duration_ms=int((perf_counter() - started_perf) * 1000),
+                return _complete_output(
+                    context,
+                    validated_data,
+                    mode='json_file',
+                    output_path=target,
+                    success_message='ValidationDict result saved to',
                     result_status='ok',
                     source=source,
                     status='ok',
                     target=target,
                     valid=result.get('valid'),
                 )
-                _io.write_json_output(
-                    validated_data,
-                    target,
-                    success_message='ValidationDict result saved to',
-                )
-            else:
-                print(
-                    f'ValidationDict failed, no data to save for {target}',
-                    file=sys.stderr,
-                )
-        else:
-            _emit_lifecycle_event(
-                command='validate',
-                lifecycle='completed',
-                run_id=run_id,
-                event_format=event_format,
-                duration_ms=int((perf_counter() - started_perf) * 1000),
-                result_status='ok',
-                source=source,
-                status='ok',
-                target=target or 'stdout',
-                valid=result.get('valid'),
+            print(
+                f'ValidationDict failed, no data to save for {target}',
+                file=sys.stderr,
             )
-            _io.emit_json(result, pretty=pretty)
-    except Exception as exc:
-        _emit_failure_event(
-            command='validate',
-            run_id=run_id,
-            started_perf=started_perf,
-            event_format=event_format,
-            exc=exc,
-            source=source,
-            target=target or 'stdout',
-        )
-        raise
+            return 0
 
-    return 0
+        return _complete_output(
+            context,
+            result,
+            mode='json',
+            pretty=pretty,
+            result_status='ok',
+            source=source,
+            status='ok',
+            target=target or 'stdout',
+            valid=result.get('valid'),
+        )

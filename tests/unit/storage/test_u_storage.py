@@ -22,8 +22,8 @@ from etlplus.storage import S3StorageBackend
 from etlplus.storage import StorageLocation
 from etlplus.storage import StorageScheme
 from etlplus.storage import StubStorageBackend
-from etlplus.storage import abfs as abfs_mod
-from etlplus.storage import azure_blob as azure_blob_mod
+from etlplus.storage import _abfs as abfs_mod
+from etlplus.storage import _azure_blob as azure_blob_mod
 from etlplus.storage import coerce_location
 from etlplus.storage import get_backend
 

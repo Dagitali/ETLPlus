@@ -1,15 +1,15 @@
 """
 :mod:`tests.unit.connector.test_u_connector_database` module.
 
-Unit tests for :mod:`etlplus.connector.database`.
+Unit tests for :mod:`etlplus.connector._database`.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from etlplus.connector.database import ConnectorDb
-from etlplus.connector.enums import DataConnectorType
+from etlplus.connector._database import ConnectorDb
+from etlplus.connector._enums import DataConnectorType
 
 # SECTION: PRAGMAS ========================================================== #
 

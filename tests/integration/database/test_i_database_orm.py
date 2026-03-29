@@ -1,7 +1,7 @@
 """
 :mod:`tests.integration.database.test_i_database_orm` module.
 
-Integration sanity tests for :mod:`etlplus.database.orm`.
+Integration sanity tests for :mod:`etlplus.database._orm`.
 """
 
 from __future__ import annotations
@@ -13,9 +13,9 @@ import pytest
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import sessionmaker
 
-from etlplus.database.engine import make_engine
-from etlplus.database.orm import build_models
-from etlplus.database.schema import TableSpec
+from etlplus.database import TableSpec
+from etlplus.database import build_models
+from etlplus.database import make_engine
 
 # SECTION: PRAGMAS ========================================================== #
 

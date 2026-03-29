@@ -8,7 +8,7 @@ about: ``extract``, ``transform``, ``load``, ``validate``, ``run``, and
 ``run_pipeline``. Each helper delegates to the richer modules under
 ``etlplus.ops.*`` while presenting a compact public API surface. Conditional
 validation orchestration is available via
-:func:`etlplus.ops.utils.maybe_validate`.
+:func:`etlplus.ops.maybe_validate`.
 
 Examples
 --------
@@ -16,7 +16,7 @@ Examples
 >>> raw = extract('file', 'input.json')
 >>> curated = transform(raw, {'select': ['id', 'name']})
 
->>> from etlplus.ops.utils import maybe_validate
+>>> from etlplus.ops import maybe_validate
 >>> payload = {'name': 'Alice'}
 >>> rules = {'required': ['name']}
 >>> def validator(data, config):
@@ -37,9 +37,15 @@ Examples
 See Also
 --------
 :mod:`etlplus.ops.run`
-:mod:`etlplus.ops.utils`
+:mod:`etlplus.ops`
 """
 
+from ._enums import AggregateName
+from ._enums import OperatorName
+from ._enums import PipelineStep
+from ._utils import ValidationResultDict
+from ._utils import ValidationSettings
+from ._utils import maybe_validate
 from .extract import extract
 from .load import load
 from .run import run
@@ -51,11 +57,19 @@ from .validate import validate
 
 
 __all__ = [
+    # Enums
+    'AggregateName',
+    'OperatorName',
+    'PipelineStep',
     # Functions
     'extract',
     'load',
+    'maybe_validate',
     'run',
     'run_pipeline',
     'transform',
     'validate',
+    # Typed dicts / data classes
+    'ValidationResultDict',
+    'ValidationSettings',
 ]

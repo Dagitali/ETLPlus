@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 
 from etlplus.file import _semi_structured_handlers as mod
-from etlplus.file.enums import FileFormat
+from etlplus.file._enums import FileFormat
 
 # SECTION: PRAGMAS ========================================================== #
 

@@ -18,12 +18,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ._enums import FileFormat
 from ._io import read_text
 from ._io import write_text
 from .base import PlainTextFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

@@ -23,14 +23,14 @@ from pathlib import Path
 from typing import Protocol
 from typing import cast
 
-from ..utils.types import JSONDict
-from ..utils.types import JSONList
+from ..utils._types import JSONDict
+from ..utils._types import JSONList
+from ._enums import FileFormat
 from ._io import _open_text_handle
 from ._io import write_delimited
 from .base import DelimitedTextFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

@@ -10,7 +10,7 @@ it in production workflows.
   stubs in `etlplus/file/_stub_categories.py` (read/write raise `NotImplementedError`).
 - `read/write support` reflects handler contract (`read/write` or `read-only`).
 - Legacy module-level `etlplus.file.<format>.read()` / `write()` wrappers have been removed.
-- Read/write calls should target handler instances directly (or `etlplus.file.core.File`).
+- Read/write calls should target handler instances directly (or `etlplus.file.File`).
 
 | Format | Handler Class | Base ABC | Read/Write Support | Status |
 | --- | --- | --- | --- | --- |

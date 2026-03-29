@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import _pandas_handlers as mod
-from etlplus.file.enums import FileFormat
+from etlplus.file._enums import FileFormat
 
 # SECTION: PRAGMAS ========================================================== #
 

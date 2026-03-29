@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.utils.test_u_utils_types` module.
 
-Unit tests for :mod:`etlplus.utils.types`.
+Unit tests for :mod:`etlplus.utils._types`.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import cast
 
-from etlplus.utils import types as core_types
+from etlplus.utils import _types as core_types
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -17,7 +17,7 @@ from etlplus.utils import types as core_types
 
 
 class TestTypesModule:
-    """Unit tests for exported aliases in :mod:`etlplus.utils.types`."""
+    """Unit tests for exported aliases in :mod:`etlplus.utils._types`."""
 
     def test_aliases_are_usable_in_annotations(self) -> None:
         """Test that aliases are importable and usable in typed values."""

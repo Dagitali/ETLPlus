@@ -20,10 +20,10 @@ from __future__ import annotations
 from io import StringIO
 from typing import Any
 
-from ..utils.types import JSONData
+from ..utils._types import JSONData
+from ._enums import FileFormat
 from ._imports import get_yaml
 from ._semi_structured_handlers import RecordPayloadTextCodecHandlerMixin
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

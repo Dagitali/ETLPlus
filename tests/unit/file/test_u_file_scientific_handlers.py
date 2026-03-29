@@ -13,7 +13,7 @@ from typing import cast
 import pytest
 
 from etlplus.file import _scientific_handlers as mod
-from etlplus.file.enums import FileFormat
+from etlplus.file._enums import FileFormat
 
 from .pytest_file_support import DictRecordsFrameStub
 from .pytest_file_support import RDataPandasStub
@@ -126,7 +126,7 @@ class TestScientificHandlers:
         )
 
         with pytest.raises(ValueError, match='Unsupported pyreadstat mode'):
-            handler._pyreadstat_is_required_for('read')
+            handler._resolve_pyreadstat_for('read')
 
     def test_read_write_dataset_wiring_passes_injected_dependencies(
         self,

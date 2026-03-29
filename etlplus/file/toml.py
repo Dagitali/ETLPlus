@@ -21,10 +21,10 @@ from __future__ import annotations
 import tomllib
 from typing import Any
 
-from ..utils.types import JSONDict
+from ..utils._types import JSONDict
+from ._enums import FileFormat
 from ._imports import get_dependency
 from ._semi_structured_handlers import DictPayloadTextCodecHandlerMixin
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

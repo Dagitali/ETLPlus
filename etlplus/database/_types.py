@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.database.types` module.
+:mod:`etlplus.database._types` module.
 
 Shared type aliases leveraged across :mod:`etlplus.database` modules.
 """

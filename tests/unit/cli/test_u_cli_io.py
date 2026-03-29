@@ -116,11 +116,11 @@ class TestInferPayloadFormat:
 class TestMaterializeFilePayload:
     """Unit tests for :func:`materialize_file_payload`."""
 
-    def test_explicit_without_hint_skips_suffix_inference(
+    def test_explicit_without_hint_still_allows_suffix_inference(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test that explicit mode without hint does not infer from suffix."""
+        """Test that explicit mode without a hint still infers from suffix."""
         file_path = tmp_path / 'payload.json'
         file_path.write_text('{"ok": true}', encoding='utf-8')
 
@@ -129,7 +129,7 @@ class TestMaterializeFilePayload:
             format_hint=None,
             format_explicit=True,
         )
-        assert payload == str(file_path)
+        assert payload == {'ok': True}
 
     def test_ignoring_hint_without_flag(
         self,

@@ -6,31 +6,38 @@ Small shared helpers used across modules.
 
 from __future__ import annotations
 
-from .data import count_records
-from .data import print_json
-from .mapping import cast_str_dict
-from .mapping import coerce_dict
-from .mapping import maybe_mapping
-from .numbers import to_float
-from .numbers import to_int
-from .numbers import to_maximum_float
-from .numbers import to_maximum_int
-from .numbers import to_minimum_float
-from .numbers import to_minimum_int
-from .numbers import to_number
-from .numbers import to_positive_float
-from .numbers import to_positive_int
-from .substitution import deep_substitute
-from .text import normalize_choice
-from .text import normalize_str
+from ._data import count_records
+from ._data import print_json
+from ._data import serialize_json
+from ._enums import CoercibleStrEnum
+from ._mapping import cast_str_dict
+from ._mapping import coerce_dict
+from ._mapping import maybe_mapping
+from ._mixins import BoundsWarningsMixin
+from ._numbers import to_float
+from ._numbers import to_int
+from ._numbers import to_maximum_float
+from ._numbers import to_maximum_int
+from ._numbers import to_minimum_float
+from ._numbers import to_minimum_int
+from ._numbers import to_number
+from ._numbers import to_positive_float
+from ._numbers import to_positive_int
+from ._substitution import deep_substitute
+from ._text import normalize_choice
+from ._text import normalize_str
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Shared base abstractions
+    'BoundsWarningsMixin',
+    'CoercibleStrEnum',
     # Functions (data utilities)
     'count_records',
     'print_json',
+    'serialize_json',
     # Functions (mapping utilities)
     'cast_str_dict',
     'coerce_dict',

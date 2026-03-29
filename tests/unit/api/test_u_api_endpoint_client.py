@@ -25,15 +25,15 @@ from typing import cast
 import pytest
 import requests  # type: ignore[import]
 
-import etlplus.api._request_manager as rm_module
-import etlplus.api.endpoint_client as ec_module
+import etlplus.api._errors as api_errors
+import etlplus.api._request_manager as rm_mod
+import etlplus.api.endpoint_client as ec_mod
 from etlplus.api import CursorPaginationConfigDict
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigDict
 from etlplus.api import PaginationType
 from etlplus.api import RequestOptions
 from etlplus.api import RetryPolicyDict
-from etlplus.api import errors as api_errors
 
 from .test_u_api_mocks import MockSession
 
@@ -174,7 +174,7 @@ def _stub_request_manager(
     calls: list[dict[str, Any]] = []
 
     def _fake_request(
-        self: rm_module.RequestManager,  # noqa: D401
+        self: rm_mod.RequestManager,  # noqa: D401
         method: str,
         url: str,
         *,
@@ -188,7 +188,7 @@ def _stub_request_manager(
         return responses[idx]
 
     monkeypatch.setattr(
-        rm_module.RequestManager,
+        rm_mod.RequestManager,
         'request_once',
         _fake_request,
     )
@@ -229,7 +229,7 @@ def patch_request_once_fixture(
 
     def _apply(handler: Callable[..., Any]) -> Callable[..., Any]:
         monkeypatch.setattr(
-            rm_module.RequestManager,
+            rm_mod.RequestManager,
             'request_once',
             handler,
         )
@@ -286,7 +286,7 @@ class TestContextManager:
             return s
 
         # Patch extract to avoid network and capture params.
-        monkeypatch.setattr(ec_module.requests, 'Session', ctor)
+        monkeypatch.setattr(ec_mod.requests, 'Session', ctor)
 
         client = client_factory(endpoints={})
         with client:
@@ -577,7 +577,7 @@ class TestRequestOptionIntegration:
             return _StubPaginator()
 
         monkeypatch.setattr(
-            ec_module.Paginator,
+            ec_mod.Paginator,
             'from_config',
             classmethod(fake_from_config),
         )
@@ -1311,7 +1311,7 @@ class TestEndpointClientInternalBranches:
         provided sleeper.
         """
         recorded: list[float] = []
-        monkeypatch.setattr(ec_module.time, 'sleep', recorded.append)
+        monkeypatch.setattr(ec_mod.time, 'sleep', recorded.append)
 
         EndpointClient.apply_sleep(0.05)
         assert recorded == [0.05]
@@ -1379,7 +1379,7 @@ class TestEndpointClientInternalBranches:
         seen: dict[str, Any] = {}
 
         def _post(
-            _self: rm_module.RequestManager,
+            _self: rm_mod.RequestManager,
             url: str,
             **kwargs: Any,
         ) -> dict[str, Any]:
@@ -1387,7 +1387,7 @@ class TestEndpointClientInternalBranches:
             return {'ok': 'post'}
 
         def _request(
-            _self: rm_module.RequestManager,
+            _self: rm_mod.RequestManager,
             method: str,
             url: str,
             **kwargs: Any,
@@ -1395,8 +1395,8 @@ class TestEndpointClientInternalBranches:
             seen['request'] = (method, url, kwargs)
             return {'ok': 'request'}
 
-        monkeypatch.setattr(rm_module.RequestManager, 'post', _post)
-        monkeypatch.setattr(rm_module.RequestManager, 'request', _request)
+        monkeypatch.setattr(rm_mod.RequestManager, 'post', _post)
+        monkeypatch.setattr(rm_mod.RequestManager, 'request', _request)
 
         out_post = client.post('https://example.test/p', json={'x': 1})
         out_req = client.request('PATCH', 'https://example.test/r', timeout=3)

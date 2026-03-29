@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.workflow.test_u_workflow_profile` module.
 
-Unit tests for :mod:`etlplus.workflow.profile`.
+Unit tests for :mod:`etlplus.workflow._profile`.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ import importlib
 # SECTION: HELPERS ========================================================== #
 
 
-profile = importlib.import_module('etlplus.workflow.profile')
+profile = importlib.import_module('etlplus.workflow._profile')
 
 
 # SECTION: TESTS ============================================================ #

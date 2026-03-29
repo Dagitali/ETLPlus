@@ -92,7 +92,20 @@ release.
   stable releases; they are retained here as audit history rather than as pending work.
 - The stable-surface trimming work now treats CLI support modules and command wiring, storage
   registry/base plumbing, connector support modules, the file-handler registry, database typing
-  helpers, and API request manager plumbing as protected underscore-prefixed implementation modules.
+  helpers, API request manager plumbing, and the top-level `etlplus.api` support modules (`auth`,
+  `config`, `enums`, `errors`, `retry_manager`, `transport`, and `types`) as protected
+  underscore-prefixed implementation modules behind package-level facades.
+- Database DDL/engine/ORM/schema helpers and storage enum/location helpers plus concrete storage
+  backend implementations now follow the same package-facade pattern.
+- Connector config/type/enum helpers now also live behind the `etlplus.connector` package facade.
+- The top-level `__version__` module and the `etlplus.cli` entrypoint module, `etlplus.file`
+  core/enums helpers, and `etlplus.api` utility helpers now also follow the underscore-prefixed
+  implementation plus package-facade pattern.
+- `etlplus.ops` now exposes validation helpers and operation enums from its package facade while
+  keeping low-level ops type aliases on an internal underscore-prefixed module.
+- `etlplus.utils` now follows the same package-facade pattern: user-facing helpers plus the shared
+  enum/mixin base abstractions are exported from `etlplus.utils`, while utility type aliases stay
+  internal on an underscore-prefixed module.
 - The documented stable CLI surface keeps readiness under `check --readiness`.
 - Runtime execution hygiene progress on the current branch includes:
   - Shared runtime logging policy and config precedence documentation

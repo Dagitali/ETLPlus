@@ -9,7 +9,7 @@ policies, and wires pagination helpers to fetch JSON records from REST APIs.
 
 Notes
 -----
-- Retry-related types live in :mod:`etlplus.api.retry_manager`.
+- Retry-related types are re-exported by :mod:`etlplus.api`.
 - Pagination requires a ``PaginationConfig``; see
     :class:`PagePaginationConfigDict` and :class:`CursorPaginationConfigDict`
     for the accepted shapes.
@@ -58,23 +58,23 @@ from urllib.parse import urlunsplit
 
 import requests  # type: ignore[import]
 
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
+from ._errors import ApiRequestError
+from ._errors import PaginationError
 from ._request_manager import RequestManager
-from .errors import ApiRequestError
-from .errors import PaginationError
+from ._retry_manager import RetryManager
+from ._retry_manager import RetryPolicyDict
+from ._retry_manager import RetryStrategy
+from ._transport import HTTPAdapterMountConfigDict
+from ._types import RequestOptions
+from ._types import Url
 from .pagination import PaginationClient
 from .pagination import PaginationInput
 from .pagination import Paginator
 from .rate_limiting import RateLimitConfigDict
 from .rate_limiting import RateLimiter
 from .rate_limiting import RateLimitOverrides
-from .retry_manager import RetryManager
-from .retry_manager import RetryPolicyDict
-from .retry_manager import RetryStrategy
-from .transport import HTTPAdapterMountConfigDict
-from .types import RequestOptions
-from .types import Url
 
 # SECTION: CLASSES ========================================================== #
 

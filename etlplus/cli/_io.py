@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli.io` module.
+:mod:`etlplus.cli._io` module.
 
 Shared I/O helpers for CLI handlers (STDIN/STDOUT, payload hydration).
 """
@@ -20,7 +20,8 @@ from typing import cast
 from ..file import File
 from ..file import FileFormat
 from ..utils import print_json
-from ..utils.types import JSONData
+from ..utils import serialize_json
+from ..utils._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -62,8 +63,7 @@ def emit_json(
     if pretty:
         print_json(data)
         return
-    dumped = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
-    print(dumped)
+    print(serialize_json(data))
 
 
 def emit_markdown_table(
@@ -86,12 +86,7 @@ def emit_markdown_table(
         if value is None:
             return ''
         if isinstance(value, (dict, list)):
-            rendered = json.dumps(
-                value,
-                ensure_ascii=False,
-                separators=(',', ':'),
-                sort_keys=True,
-            )
+            rendered = serialize_json(value, sort_keys=True)
         else:
             rendered = str(value)
         return rendered.replace('|', '\\|').replace('\n', '<br>')
@@ -202,7 +197,7 @@ def materialize_file_payload(
             file = File(source, FileFormat(normalized_hint))
         except ValueError:
             file = None
-    elif not format_explicit:
+    else:
         file = File(source)
 
     if file is None or file.file_format is None:

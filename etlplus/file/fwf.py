@@ -20,7 +20,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..utils.types import JSONList
+from ..utils._types import JSONList
+from ._enums import FileFormat
 from ._imports import get_pandas
 from ._io import _open_text_handle
 from ._io import ensure_parent_dir
@@ -29,7 +30,6 @@ from ._io import stringify_value
 from .base import ReadOptions
 from .base import TextFixedWidthFileHandlerABC
 from .base import WriteOptions
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 

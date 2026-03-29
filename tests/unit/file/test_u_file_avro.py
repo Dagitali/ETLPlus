@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from etlplus.file import avro as mod
-from etlplus.file.enums import FileFormat
+from etlplus.file._enums import FileFormat
 
 from .pytest_file_contract_utils import patch_dependency_resolver_unreachable
 from .pytest_file_contracts import BinaryDependencyModuleContract

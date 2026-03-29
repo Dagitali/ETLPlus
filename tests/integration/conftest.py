@@ -248,6 +248,17 @@ def file_to_api_pipeline_factory_fixture(
     return _make
 
 
+@pytest.fixture(name='isolated_state_dir', autouse=True)
+def isolated_state_dir_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+) -> None:
+    """Route integration state/history writes to a per-test temp directory."""
+    state_dir = tmp_path / '.etlplus-state'
+    state_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv('ETLPLUS_STATE_DIR', str(state_dir))
+
+
 @pytest.fixture(name='pipeline_cfg_factory')
 def pipeline_cfg_factory_fixture(
     tmp_path: pathlib.Path,

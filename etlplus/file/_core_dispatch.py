@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file._core_dispatch` module.
 
-Shared helpers that route typed payloads through :mod:`etlplus.file.core`.
+Shared helpers that route typed payloads through :mod:`etlplus.file._core`.
 """
 
 from __future__ import annotations
@@ -12,8 +12,18 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-from ..utils.types import JSONData
-from .enums import FileFormat
+from ..utils._types import JSONData
+from ._enums import FileFormat
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    # Functions
+    'read_payload_with_core',
+    'write_payload_with_core',
+]
+
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
@@ -37,7 +47,7 @@ def _core_file(
     Any
         Core file handler instance for *fmt*.
     """
-    from .core import File
+    from ._core import File
 
     return File(path, fmt)
 

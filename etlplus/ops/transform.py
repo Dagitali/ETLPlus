@@ -24,7 +24,7 @@ Basic pipeline with strings::
 
 Using enums for keys and functions::
 
-    from etlplus.utils.enums import (
+    from etlplus.ops import (
         PipelineStep,
         OperatorName,
         AggregateName,
@@ -48,28 +48,28 @@ from collections.abc import Sequence
 from typing import Any
 from typing import cast
 
-from ..ops.types import PipelineConfig
 from ..utils import to_number
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
-from ..utils.types import JSONList
-from ..utils.types import StrPath
-from .enums import AggregateName
-from .enums import OperatorName
-from .enums import PipelineStep
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
+from ..utils._types import JSONList
+from ..utils._types import StrPath
+from ._enums import AggregateName
+from ._enums import OperatorName
+from ._enums import PipelineStep
+from ._types import AggregateFunc
+from ._types import AggregateSpec
+from ._types import FieldName
+from ._types import Fields
+from ._types import FilterSpec
+from ._types import MapSpec
+from ._types import OperatorFunc
+from ._types import PipelineConfig
+from ._types import PipelineStepName
+from ._types import SortKey
+from ._types import StepApplier
+from ._types import StepOrSteps
+from ._types import StepSpec
 from .load import load_data
-from .types import AggregateFunc
-from .types import AggregateSpec
-from .types import FieldName
-from .types import Fields
-from .types import FilterSpec
-from .types import MapSpec
-from .types import OperatorFunc
-from .types import PipelineStepName
-from .types import SortKey
-from .types import StepApplier
-from .types import StepOrSteps
-from .types import StepSpec
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -1001,7 +1001,7 @@ def transform(
 
     Using enums for keys and functions::
 
-        from etlplus.utils.enums import (
+        from etlplus.ops import (
             PipelineStep,
             OperatorName,
             AggregateName,

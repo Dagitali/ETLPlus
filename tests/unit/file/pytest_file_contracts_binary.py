@@ -13,8 +13,8 @@ import pytest
 
 from etlplus.file import FileFormat
 from etlplus.file.stub import StubFileHandlerABC
-from etlplus.utils.types import JSONData
-from etlplus.utils.types import JSONDict
+from etlplus.utils._types import JSONData
+from etlplus.utils._types import JSONDict
 
 from .pytest_file_contract_mixins import PathMixin
 from .pytest_file_contract_utils import Operation
@@ -97,7 +97,7 @@ class BinaryCodecStub:
 
 class CoreDispatchFileStub:
     """
-    Minimal stand-in for :class:`etlplus.file.core.File` in archive tests.
+    Minimal stand-in for :class:`etlplus.file._core.File` in archive tests.
     """
 
     def __init__(
@@ -183,7 +183,7 @@ class ArchiveWrapperCoreDispatchModuleContract(PathMixin):
     ) -> None:
         """Patch core file dispatch for deterministic archive tests."""
         monkeypatch.setattr(
-            'etlplus.file.core.File',
+            'etlplus.file._core.File',
             CoreDispatchFileStub,
         )
 

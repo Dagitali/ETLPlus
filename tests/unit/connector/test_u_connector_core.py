@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import pytest
 
+from etlplus.connector import ConnectorFile
 from etlplus.connector._core import ConnectorBase
 from etlplus.connector._core import ConnectorProtocol
-from etlplus.connector.file import ConnectorFile
 
 # SECTION: PRAGMAS ========================================================== #
 

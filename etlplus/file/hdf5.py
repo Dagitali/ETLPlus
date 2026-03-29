@@ -22,18 +22,18 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..utils.types import JSONData
-from ..utils.types import JSONList
-from ._imports import get_pandas as _get_pandas
+from ..utils._types import JSONData
+from ..utils._types import JSONList
+from ._enums import FileFormat
+from ._imports import FormatPandasResolverMixin
+from ._imports import get_pandas  # noqa: F401
 from ._io import records_from_table
 from ._scientific_dataset import normalize_store_dataset_keys
 from ._scientific_dataset import resolve_store_dataset_key
-from ._scientific_handlers import ScientificPandasResolverMixin
 from .base import ReadOnlyFileHandlerABC
 from .base import ReadOptions
 from .base import ScientificDatasetFileHandlerABC
 from .base import WriteOptions
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -42,14 +42,6 @@ __all__ = [
     # Classes
     'Hdf5File',
 ]
-
-
-# SECTION: INTERNAL HELPERS ================================================= #
-
-
-# Preserve module-level resolver hooks for contract tests.
-get_pandas = _get_pandas
-
 
 # SECTION: CONSTANTS ======================================================== #
 
@@ -87,7 +79,7 @@ def _raise_tables_error(
 
 
 class Hdf5File(
-    ScientificPandasResolverMixin,
+    FormatPandasResolverMixin,
     ReadOnlyFileHandlerABC,
     ScientificDatasetFileHandlerABC,
 ):

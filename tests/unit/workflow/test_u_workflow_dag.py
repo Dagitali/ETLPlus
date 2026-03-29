@@ -1,17 +1,17 @@
 """
 :mod:`tests.unit.workflow.test_u_workflow_dag` module.
 
-Unit tests for :mod:`etlplus.workflow.dag`.
+Unit tests for :mod:`etlplus.workflow._dag`.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from etlplus.workflow.dag import DagError
-from etlplus.workflow.dag import _ready
-from etlplus.workflow.dag import topological_sort_jobs
-from etlplus.workflow.jobs import JobConfig
+from etlplus.workflow._dag import DagError
+from etlplus.workflow._dag import _ready
+from etlplus.workflow._dag import topological_sort_jobs
+from etlplus.workflow._jobs import JobConfig
 
 # SECTION: PRAGMAS ========================================================== #
 

@@ -15,8 +15,8 @@ from typing import Any
 from typing import ClassVar
 
 from ..utils import count_records
-from ..utils.types import JSONData
-from ..utils.types import JSONList
+from ..utils._types import JSONData
+from ..utils._types import JSONList
 from ._io import EmbeddedDatabaseTableOption
 from ._io import FileHandlerOption
 from ._io import ScientificDatasetOption

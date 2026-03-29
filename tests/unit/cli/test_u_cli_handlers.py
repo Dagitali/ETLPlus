@@ -26,6 +26,25 @@ from .conftest import assert_emit_or_write
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: HELPERS ========================================================== #
+
+
+class _ReadOnlyFakeHistoryStore(handlers.HistoryStore):
+    """Test double for read-only history queries."""
+
+    def iter_records(self) -> Any:
+        raise NotImplementedError
+
+    def record_run_started(self, record: object) -> None:
+        _ = record
+
+    def record_run_finished(
+        self,
+        completion: object,
+    ) -> None:
+        _ = completion
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -88,7 +107,7 @@ class TestCliHandlersInternalHelpers:
         assert result['jobs'] == ['j1']
         assert result['transforms'] == ['trim', 'dedupe']
 
-    def test_collect_table_specs_merges_config_and_spec(
+    def test_summary_collect_table_specs_merges_config_and_spec(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -97,19 +116,19 @@ class TestCliHandlersInternalHelpers:
         spec_path = tmp_path / 'table.json'
         spec_path.write_text('{}', encoding='utf-8')
         monkeypatch.setattr(
-            handlers,
+            handlers._summary,
             'load_table_spec',
             lambda _path: {'table': 'from_spec'},
         )
         monkeypatch.setattr(
-            handlers.Config,
+            handlers._summary.Config,
             'from_yaml',
             lambda _path, substitute: SimpleNamespace(
                 table_schemas=[{'table': 'from_config'}],
             ),
         )
 
-        specs = handlers._collect_table_specs(
+        specs = handlers._summary.collect_table_specs(
             config_path='pipeline.yml',
             spec_path=str(spec_path),
         )
@@ -186,13 +205,35 @@ class TestCheckHandler:
         assert handlers.check_handler(config='cfg.yml') == 0
         assert_emit_json(capture_io, {'targets': ['t1']}, pretty=True)
 
-    def test_summary_branch_uses_pipeline_summary(
+    def test_readiness_branch_emits_report_and_returns_nonzero_on_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that readiness mode emits the runtime report and exit code."""
+        monkeypatch.setattr(
+            handlers.ReadinessReportBuilder,
+            'build',
+            lambda config_path: {
+                'checks': [],
+                'status': 'error',
+            },
+        )
+
+        assert handlers.check_handler(config='cfg.yml', readiness=True) == 1
+        assert_emit_json(
+            capture_io,
+            {'checks': [], 'status': 'error'},
+            pretty=True,
+        )
+
+    def test_summary_branch_uses_pipeline_summary_with_requested_pretty_flag(
         self,
         monkeypatch: pytest.MonkeyPatch,
         dummy_cfg: Config,
         capture_io: CaptureIo,
     ) -> None:
-        """Test that summary mode emits only the pipeline summary."""
+        """Test that summary mode preserves the caller's pretty setting."""
         monkeypatch.setattr(
             handlers.Config,
             'from_yaml',
@@ -204,11 +245,18 @@ class TestCheckHandler:
             lambda _cfg: {'name': 'p1', 'jobs': ['j1']},
         )
 
-        assert handlers.check_handler(config='cfg.yml', summary=True) == 0
+        assert (
+            handlers.check_handler(
+                config='cfg.yml',
+                summary=True,
+                pretty=False,
+            )
+            == 0
+        )
         assert_emit_json(
             capture_io,
             {'name': 'p1', 'jobs': ['j1']},
-            pretty=True,
+            pretty=False,
         )
 
 
@@ -419,7 +467,7 @@ class TestHistoryHandler:
     ) -> None:
         """Test that history emits merged runs by default."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -441,9 +489,9 @@ class TestHistoryHandler:
                 )
 
         monkeypatch.setattr(
-            handlers,
-            'open_history_store',
-            _FakeHistoryStore,
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
         )
 
         assert handlers.history_handler(pretty=True) == 0
@@ -482,7 +530,7 @@ class TestHistoryHandler:
     ) -> None:
         """Test that raw history mode returns append events and applies limit."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -500,9 +548,9 @@ class TestHistoryHandler:
                 )
 
         monkeypatch.setattr(
-            handlers,
-            'open_history_store',
-            _FakeHistoryStore,
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
         )
 
         assert handlers.history_handler(raw=True, limit=1, pretty=False) == 0
@@ -526,7 +574,7 @@ class TestHistoryHandler:
     ) -> None:
         """Test that the explicit JSON flag still routes through JSON output."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -540,7 +588,11 @@ class TestHistoryHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert handlers.history_handler(json_output=True, pretty=False) == 0
 
@@ -578,7 +630,7 @@ class TestHistoryHandler:
     ) -> None:
         """Test that history filters normalized runs and can emit tables."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -604,7 +656,11 @@ class TestHistoryHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert (
             handlers.history_handler(
@@ -686,7 +742,11 @@ class TestHistoryHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert (
             handlers.history_handler(
@@ -785,11 +845,15 @@ class TestHistoryHandler:
     ) -> None:
         """Test that JSON and table modes cannot be requested together."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter([])
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         with pytest.raises(ValueError, match='choose either json output'):
             handlers.history_handler(json_output=True, table=True)
@@ -805,7 +869,7 @@ class TestReportHandler:
     ) -> None:
         """Test that report aggregates normalized runs into JSON output."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -828,7 +892,11 @@ class TestReportHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert (
             handlers.report_handler(
@@ -882,7 +950,7 @@ class TestReportHandler:
     ) -> None:
         """Test that report can emit grouped rows as a Markdown table."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -897,7 +965,11 @@ class TestReportHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert handlers.report_handler(group_by='status', table=True) == 0
 
@@ -946,7 +1018,7 @@ class TestReportHandler:
     ) -> None:
         """Test that per-day grouping reports a day-level success rate."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -969,7 +1041,11 @@ class TestReportHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert handlers.report_handler(group_by='day', pretty=False) == 0
 
@@ -1003,6 +1079,102 @@ class TestReportHandler:
                     'success_rate_pct': 50.0,
                     'succeeded': 1,
                 },
+            },
+            pretty=False,
+        )
+
+    def test_uses_history_view_and_report_builder_directly(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that report delegates through the direct class-based helpers."""
+        recorded: dict[str, object] = {}
+
+        def fake_validate_output_mode(*, json_output: bool, table: bool) -> None:
+            recorded['validate'] = (json_output, table)
+
+        def fake_load_records(
+            cls: type[handlers.HistoryView],
+            **kwargs: object,
+        ) -> list[dict[str, object]]:
+            recorded['load'] = kwargs
+            return [
+                {
+                    'duration_ms': 1000,
+                    'job_name': 'job-a',
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ]
+
+        def fake_build(
+            cls: type[handlers.HistoryReportBuilder],
+            records: list[dict[str, object]],
+            *,
+            group_by: str,
+        ) -> dict[str, object]:
+            recorded['build'] = (records, group_by)
+            return {
+                'group_by': group_by,
+                'rows': [{'group': 'job-a', 'runs': 1}],
+                'summary': {'runs': 1},
+            }
+
+        monkeypatch.setattr(
+            handlers.HistoryView,
+            'validate_output_mode',
+            staticmethod(fake_validate_output_mode),
+        )
+        monkeypatch.setattr(
+            handlers.HistoryView,
+            'load_records',
+            classmethod(fake_load_records),
+        )
+        monkeypatch.setattr(
+            handlers.HistoryReportBuilder,
+            'build',
+            classmethod(fake_build),
+        )
+
+        assert (
+            handlers.report_handler(
+                group_by='job',
+                job='job-a',
+                json_output=True,
+                pretty=False,
+                since='2026-03-23T00:00:00Z',
+                until='2026-03-24T00:00:00Z',
+            )
+            == 0
+        )
+
+        assert recorded['validate'] == (True, False)
+        assert recorded['load'] == {
+            'job': 'job-a',
+            'raw': False,
+            'since': '2026-03-23T00:00:00Z',
+            'until': '2026-03-24T00:00:00Z',
+        }
+        assert recorded['build'] == (
+            [
+                {
+                    'duration_ms': 1000,
+                    'job_name': 'job-a',
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ],
+            'job',
+        )
+        assert_emit_json(
+            capture_io,
+            {
+                'group_by': 'job',
+                'rows': [{'group': 'job-a', 'runs': 1}],
+                'summary': {'runs': 1},
             },
             pretty=False,
         )
@@ -1227,8 +1399,8 @@ class TestRenderHandler:
         """Test output-file rendering without a status log in quiet mode."""
         output_path = tmp_path / 'rendered.sql'
         monkeypatch.setattr(
-            handlers,
-            '_collect_table_specs',
+            handlers._summary,
+            'collect_table_specs',
             lambda _cfg, _spec: [{'table': 'Widget'}],
         )
         monkeypatch.setattr(
@@ -1265,8 +1437,8 @@ class TestRenderHandler:
         template_path = tmp_path / 'ddl.sql.j2'
         template_path.write_text('CREATE TABLE {{ table }}', encoding='utf-8')
         monkeypatch.setattr(
-            handlers,
-            '_collect_table_specs',
+            handlers._summary,
+            'collect_table_specs',
             lambda _cfg, _spec: [{'table': 'Widget'}],
         )
         captured: dict[str, object] = {}
@@ -1382,7 +1554,11 @@ class TestRunHandler:
             'from_yaml',
             lambda path, substitute: dummy_cfg,
         )
-        monkeypatch.setattr(handlers, 'create_run_id', lambda: 'run-123')
+        monkeypatch.setattr(
+            handlers.RuntimeEvents,
+            'create_run_id',
+            lambda: 'run-123',
+        )
 
         history_calls: dict[str, object] = {}
 
@@ -1392,31 +1568,24 @@ class TestRunHandler:
 
             def record_run_finished(
                 self,
-                run_id: str,
-                *,
-                status: str,
-                finished_at: str,
-                duration_ms: int,
-                result_summary: object | None = None,
-                error_type: str | None = None,
-                error_message: str | None = None,
-                error_traceback: str | None = None,
+                completion: object,
             ) -> None:
+                completion_obj = cast(handlers.RunCompletion, completion)
                 history_calls['finished'] = {
-                    'duration_ms': duration_ms,
-                    'error_message': error_message,
-                    'error_traceback': error_traceback,
-                    'error_type': error_type,
-                    'finished_at': finished_at,
-                    'result_summary': result_summary,
-                    'run_id': run_id,
-                    'status': status,
+                    'duration_ms': completion_obj.state.duration_ms,
+                    'error_message': completion_obj.state.error_message,
+                    'error_traceback': completion_obj.state.error_traceback,
+                    'error_type': completion_obj.state.error_type,
+                    'finished_at': completion_obj.state.finished_at,
+                    'result_summary': completion_obj.state.result_summary,
+                    'run_id': completion_obj.run_id,
+                    'status': completion_obj.state.status,
                 }
 
         monkeypatch.setattr(
-            handlers,
-            'open_history_store',
-            _FakeHistoryStore,
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
         )
         run_calls: dict[str, object] = {}
 
@@ -1460,6 +1629,51 @@ class TestRunHandler:
 class TestStatusHandler:
     """Unit tests for :func:`status_handler`."""
 
+    def test_uses_history_view_load_records_directly(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that status delegates through the direct class-based loader."""
+        recorded: dict[str, object] = {}
+
+        def fake_load_records(
+            cls: type[handlers.HistoryView],
+            **kwargs: object,
+        ) -> list[dict[str, object]]:
+            recorded['load'] = kwargs
+            return [
+                {
+                    'run_id': 'run-9',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ]
+
+        monkeypatch.setattr(
+            handlers.HistoryView,
+            'load_records',
+            classmethod(fake_load_records),
+        )
+
+        assert handlers.status_handler(job='job-a', pretty=False, run_id='run-9') == 0
+
+        assert recorded['load'] == {
+            'job': 'job-a',
+            'limit': 1,
+            'raw': False,
+            'run_id': 'run-9',
+        }
+        assert_emit_json(
+            capture_io,
+            {
+                'run_id': 'run-9',
+                'started_at': '2026-03-23T00:00:00Z',
+                'status': 'succeeded',
+            },
+            pretty=False,
+        )
+
     def test_emits_latest_matching_normalized_run(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -1467,7 +1681,7 @@ class TestStatusHandler:
     ) -> None:
         """Test that status emits the newest normalized run."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter(
                     [
@@ -1488,7 +1702,11 @@ class TestStatusHandler:
                     ],
                 )
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert handlers.status_handler(job='job-a', pretty=True) == 0
 
@@ -1524,11 +1742,15 @@ class TestStatusHandler:
     ) -> None:
         """Test that status returns 1 and emits an empty object on misses."""
 
-        class _FakeHistoryStore:
+        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
             def iter_records(self) -> Any:
                 return iter([])
 
-        monkeypatch.setattr(handlers, 'open_history_store', _FakeHistoryStore)
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
 
         assert handlers.status_handler(run_id='missing', pretty=False) == 1
 
@@ -1877,6 +2099,55 @@ class TestValidateHandler:
                 target=None,
                 pretty=True,
             )
+
+    def test_rules_payload_resolves_even_when_format_is_explicit_elsewhere(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that rules files still resolve when other format state is explicit."""
+        resolve_calls: list[tuple[object, str | None, bool]] = []
+
+        def fake_resolve(
+            source: object,
+            *,
+            format_hint: str | None,
+            format_explicit: bool,
+        ) -> object:
+            resolve_calls.append((source, format_hint, format_explicit))
+            if source == 'data.json':
+                return {'source': source}
+            return {'id': {'required': True}}
+
+        monkeypatch.setattr(handlers._io, 'resolve_cli_payload', fake_resolve)
+        monkeypatch.setattr(
+            handlers,
+            'validate',
+            lambda payload, rules: {'data': payload, 'rules': rules},
+        )
+
+        assert (
+            handlers.validate_handler(
+                source='data.json',
+                rules='rules.json',
+                source_format='json',
+                format_explicit=True,
+                pretty=False,
+            )
+            == 0
+        )
+        assert resolve_calls == [
+            ('data.json', 'json', True),
+            ('rules.json', None, True),
+        ]
+        assert_emit_json(
+            capture_io,
+            {
+                'data': {'source': 'data.json'},
+                'rules': {'id': {'required': True}},
+            },
+            pretty=False,
+        )
 
     def test_target_stdout_emits_result_json(
         self,

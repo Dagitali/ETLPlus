@@ -7,5 +7,4 @@ Top-level package entry points, shared config, and the CLI entrypoint.
    :toctree: generated
 
    etlplus
-   etlplus.config
-   etlplus.cli.main
+   etlplus.cli

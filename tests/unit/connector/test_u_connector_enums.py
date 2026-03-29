@@ -1,14 +1,14 @@
 """
 :mod:`tests.unit.test_u_connector_enums` module.
 
-Unit tests for :mod:`etlplus.connector.enums` coercion helpers and behaviors.
+Unit tests for :mod:`etlplus.connector._enums` coercion helpers and behaviors.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from etlplus.connector.enums import DataConnectorType
+from etlplus.connector._enums import DataConnectorType
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -19,7 +19,7 @@ from etlplus.connector.enums import DataConnectorType
 
 class TestDataConnectorType:
     """
-    Unit tests for :class:`etlplus.connector.enums.DataConnectorType`.
+    Unit tests for :class:`etlplus.connector._enums.DataConnectorType`.
     """
 
     @pytest.mark.parametrize(

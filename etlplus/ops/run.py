@@ -11,21 +11,21 @@ from typing import Any
 from typing import Final
 from typing import cast
 
+from .._config import Config
 from ..api import HttpMethod
-from ..config import Config
 from ..connector import DataConnectorType
 from ..file import FileFormat
-from ..ops.types import PipelineConfig
 from ..utils import print_json
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
-from ..utils.types import StrPath
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
+from ..utils._types import StrPath
+from ._types import PipelineConfig
+from ._utils import maybe_validate
 from .extract import extract
 from .extract import extract_from_api_source
 from .load import load
 from .load import load_to_api_target
 from .transform import transform
-from .utils import maybe_validate
 from .validate import validate
 
 # SECTION: EXPORTS ========================================================== #

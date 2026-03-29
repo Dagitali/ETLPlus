@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.ops.test_u_ops_utils` module.
 
-Unit tests for :mod:`etlplus.ops.utils`.
+Unit tests for :mod:`etlplus.ops._utils`.
 
 Notes
 -----
@@ -17,9 +17,9 @@ from typing import cast
 
 import pytest
 
-import etlplus.ops.utils as utils_mod
-from etlplus.ops.utils import ValidationResultDict
-from etlplus.ops.utils import maybe_validate
+import etlplus.ops._utils as utils_mod
+from etlplus.ops._utils import ValidationResultDict
+from etlplus.ops._utils import maybe_validate
 
 # SECTION: PRAGMAS ========================================================== #
 

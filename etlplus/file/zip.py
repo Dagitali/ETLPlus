@@ -10,17 +10,17 @@ import zipfile
 from pathlib import Path
 from typing import cast
 
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
 from ._archive import infer_archive_payload_format
 from ._core_dispatch import read_payload_with_core
 from ._core_dispatch import write_payload_with_core
+from ._enums import CompressionFormat
+from ._enums import FileFormat
 from ._io import ensure_parent_dir
 from .base import ArchiveWrapperFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
-from .enums import CompressionFormat
-from .enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -147,7 +147,7 @@ def _decode_entry_with_core(
     entry: zipfile.ZipInfo,
 ) -> JSONData:
     """
-    Decode one archive member payload through :mod:`etlplus.file.core`.
+    Decode one archive member payload through :mod:`etlplus.file._core`.
 
     Parameters
     ----------

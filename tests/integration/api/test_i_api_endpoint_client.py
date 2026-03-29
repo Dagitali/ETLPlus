@@ -12,8 +12,8 @@ from typing import Any
 import pytest
 import requests  # type: ignore[import]
 
-import etlplus.api._request_manager as rm_module
-import etlplus.api.rate_limiting.rate_limiter as rl_module
+import etlplus.api._request_manager as rm_mod
+import etlplus.api.rate_limiting._rate_limiter as rl_mod
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigDict
 from etlplus.api import PaginationType
@@ -42,13 +42,13 @@ def test_local_fake_http_flow_wires_endpoint_client_stack(
     attempts_by_page: dict[int, int] = {}
     enforced_sleeps: list[float] = []
 
-    def _capture_rate_limit(self: rl_module.RateLimiter) -> None:
+    def _capture_rate_limit(self: rl_mod.RateLimiter) -> None:
         enforced_sleeps.append(self.sleep_seconds)
 
-    monkeypatch.setattr(rl_module.RateLimiter, 'enforce', _capture_rate_limit)
+    monkeypatch.setattr(rl_mod.RateLimiter, 'enforce', _capture_rate_limit)
 
     def _fake_request_once(
-        self: rm_module.RequestManager,  # noqa: ARG001
+        self: rm_mod.RequestManager,  # noqa: ARG001
         method: str,
         url: str,
         *,
@@ -75,7 +75,7 @@ def test_local_fake_http_flow_wires_endpoint_client_stack(
         return {'items': []}
 
     monkeypatch.setattr(
-        rm_module.RequestManager,
+        rm_mod.RequestManager,
         'request_once',
         _fake_request_once,
     )
