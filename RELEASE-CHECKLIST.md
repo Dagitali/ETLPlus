@@ -103,6 +103,15 @@ release.
   implementation plus package-facade pattern.
 - `etlplus.ops` now exposes validation helpers and operation enums from its package facade while
   keeping low-level ops type aliases on an internal underscore-prefixed module.
+- The stable package facades now also re-export the public validation and request-shape symbols
+  already used at their boundaries: `etlplus.ops` exports validation TypedDicts, `etlplus.api`
+  exports `PaginationInput` and `RateLimitOverrides`, and `etlplus.history` exports
+  `HISTORY_SCHEMA_VERSION`.
+- The stable package facades also expose adjacent public contract types and exceptions where the
+  documented surface already depends on them: `etlplus.workflow` exports `DagError`,
+  `etlplus.api.rate_limiting` exports `RateLimitInput`, and `etlplus.file` now re-exports the
+  curated handler-authoring layer from `etlplus.file.base`, including `BoundFileHandler`,
+  `ReadOptions`, and `WriteOptions`.
 - `etlplus.utils` now follows the same package-facade pattern: user-facing helpers plus the shared
   enum/mixin base abstractions are exported from `etlplus.utils`, while utility type aliases stay
   internal on an underscore-prefixed module.

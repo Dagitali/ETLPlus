@@ -13,6 +13,9 @@ from etlplus.ops._enums import PipelineStep
 from etlplus.ops._utils import ValidationResultDict
 from etlplus.ops._utils import ValidationSettings
 from etlplus.ops._utils import maybe_validate
+from etlplus.ops.validate import FieldRulesDict
+from etlplus.ops.validate import FieldValidationDict
+from etlplus.ops.validate import ValidationDict
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -26,6 +29,9 @@ def test_public_exports_are_wired_to_internal_modules() -> None:
     assert mod.AggregateName is AggregateName
     assert mod.OperatorName is OperatorName
     assert mod.PipelineStep is PipelineStep
+    assert mod.FieldRulesDict is FieldRulesDict
+    assert mod.FieldValidationDict is FieldValidationDict
+    assert mod.ValidationDict is ValidationDict
     assert mod.ValidationResultDict is ValidationResultDict
     assert mod.ValidationSettings is ValidationSettings
     assert mod.maybe_validate is maybe_validate
@@ -40,6 +46,9 @@ def test_public_exports_are_wired_to_internal_modules() -> None:
         'run_pipeline',
         'transform',
         'validate',
+        'FieldRulesDict',
+        'FieldValidationDict',
+        'ValidationDict',
         'ValidationResultDict',
         'ValidationSettings',
     ]

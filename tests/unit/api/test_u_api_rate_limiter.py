@@ -21,8 +21,10 @@ from typing import cast
 
 import pytest
 
+import etlplus.api.rate_limiting as rate_limiting_pkg
 from etlplus.api.rate_limiting import RateLimitConfigDict
 from etlplus.api.rate_limiting import RateLimiter
+from etlplus.api.rate_limiting import RateLimitInput
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -48,6 +50,15 @@ def fixed_limiter_fixture() -> RateLimiter:
 
 
 # SECTION: TESTS ============================================================ #
+
+
+class TestRateLimitingPackageExports:
+    """Unit tests for rate-limiting package exports."""
+
+    def test_rate_limit_input_is_reexported(self) -> None:
+        """Test that the package facade exports the rate-limit input alias."""
+        assert 'RateLimitInput' in rate_limiting_pkg.__all__
+        assert rate_limiting_pkg.RateLimitInput is RateLimitInput
 
 
 class TestResolveSleepSeconds:

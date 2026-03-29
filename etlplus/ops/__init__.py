@@ -51,6 +51,9 @@ from .load import load
 from .run import run
 from .run import run_pipeline
 from .transform import transform
+from .validate import FieldRulesDict
+from .validate import FieldValidationDict
+from .validate import ValidationDict
 from .validate import validate
 
 # SECTION: EXPORTS ========================================================== #
@@ -70,6 +73,9 @@ __all__ = [
     'transform',
     'validate',
     # Typed dicts / data classes
+    'FieldRulesDict',
+    'FieldValidationDict',
+    'ValidationDict',
     'ValidationResultDict',
     'ValidationSettings',
 ]
