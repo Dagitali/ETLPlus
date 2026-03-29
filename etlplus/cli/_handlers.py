@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli.handlers` module.
+:mod:`etlplus.cli._handlers` module.
 
 Command handler functions for the ``etlplus`` command-line interface (CLI).
 """
