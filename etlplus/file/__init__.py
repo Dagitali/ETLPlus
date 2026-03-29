@@ -10,6 +10,8 @@ from ._core import File
 from ._enums import CompressionFormat
 from ._enums import FileFormat
 from ._enums import infer_file_format_and_compression
+from .base import ReadOptions
+from .base import WriteOptions
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -17,6 +19,9 @@ from ._enums import infer_file_format_and_compression
 __all__ = [
     # Class
     'File',
+    # Data Classes
+    'ReadOptions',
+    'WriteOptions',
     # Enums
     'CompressionFormat',
     'FileFormat',
