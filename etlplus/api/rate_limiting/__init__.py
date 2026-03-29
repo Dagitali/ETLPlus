@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from ._config import RateLimitConfig
 from ._config import RateLimitConfigDict
+from ._config import RateLimitInput
 from ._config import RateLimitOverrides
 from ._rate_limiter import RateLimiter
 
@@ -32,6 +33,7 @@ __all__ = [
     # Data Classes
     'RateLimitConfig',
     # Type Aliases
+    'RateLimitInput',
     'RateLimitOverrides',
     # Type Dicts
     'RateLimitConfigDict',
