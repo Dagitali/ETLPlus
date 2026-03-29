@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.utils.data` module.
+:mod:`etlplus.utils._data` module.
 
 Data-oriented utility helpers.
 """
@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .types import JSONData
+from ._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
 
