@@ -51,7 +51,7 @@ from etlplus.file.xlsx import XlsxFile
 from etlplus.file.xpt import XptFile
 from etlplus.file.zip import ZipFile
 from etlplus.file.zsav import ZsavFile
-from etlplus.storage import http as http_storage_mod
+from etlplus.storage import _http as http_storage_mod
 from etlplus.utils._types import JSONData
 from etlplus.utils._types import JSONList
 

@@ -27,8 +27,8 @@ from etlplus.file import xml as xml_file
 from etlplus.file.base import WriteOptions
 from etlplus.storage import S3StorageBackend
 from etlplus.storage import StorageScheme
+from etlplus.storage import _http as http_storage_mod
 from etlplus.storage import get_backend
-from etlplus.storage import http as http_storage_mod
 from etlplus.utils._types import JSONData
 
 from ...pytest_file_common import Operation
