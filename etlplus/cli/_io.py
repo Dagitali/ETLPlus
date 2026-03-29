@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli.io` module.
+:mod:`etlplus.cli._io` module.
 
 Shared I/O helpers for CLI handlers (STDIN/STDOUT, payload hydration).
 """
