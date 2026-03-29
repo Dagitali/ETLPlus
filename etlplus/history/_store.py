@@ -26,7 +26,7 @@ from ..__version__ import __version__
 from ..file.ndjson import NdjsonFile
 from ..file.sqlite import SqliteFile
 from ..utils import serialize_json
-from ..utils.types import JSONData
+from ..utils._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
 
