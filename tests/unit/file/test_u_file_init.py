@@ -11,6 +11,7 @@ from etlplus.file._core import File
 from etlplus.file._enums import CompressionFormat
 from etlplus.file._enums import FileFormat
 from etlplus.file._enums import infer_file_format_and_compression
+from etlplus.file.base import BoundFileHandler
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 
@@ -27,6 +28,7 @@ class TestFilePackageExports:
     def test_all_exports_are_expected_and_importable(self) -> None:
         """Test that ``__all__`` and top-level package symbol wiring."""
         assert mod.__all__ == [
+            'BoundFileHandler',
             'File',
             'ReadOptions',
             'WriteOptions',
@@ -35,6 +37,7 @@ class TestFilePackageExports:
             'infer_file_format_and_compression',
         ]
         assert mod.File is File
+        assert mod.BoundFileHandler is BoundFileHandler
         assert mod.CompressionFormat is CompressionFormat
         assert mod.FileFormat is FileFormat
         assert mod.ReadOptions is ReadOptions
