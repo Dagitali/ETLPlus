@@ -32,7 +32,7 @@ from .file import FileFormat
 from .utils import coerce_dict
 from .utils import deep_substitute
 from .utils import maybe_mapping
-from .utils.types import StrAnyMap
+from .utils._types import StrAnyMap
 from .workflow._jobs import JobConfig
 from .workflow._profile import ProfileConfig
 
