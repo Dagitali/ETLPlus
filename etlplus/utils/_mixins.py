@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.utils.mixins` module.
+:mod:`etlplus.utils._mixins` module.
 
 Shared mixin utilities used across configuration and API layers.
 
