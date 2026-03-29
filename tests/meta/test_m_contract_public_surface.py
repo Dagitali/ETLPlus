@@ -12,6 +12,7 @@ import etlplus
 import etlplus.api as api_pkg
 import etlplus.cli as cli_pkg
 import etlplus.cli._commands as commands_mod
+import etlplus.file as file_pkg
 import etlplus.history as history_pkg
 import etlplus.ops as ops_pkg
 from etlplus import Config
@@ -25,6 +26,11 @@ from etlplus.api import RateLimiter
 from etlplus.api import RateLimitOverrides
 from etlplus.api import RetryManager
 from etlplus.cli import main as main_mod
+from etlplus.file import BoundFileHandler
+from etlplus.file import File
+from etlplus.file import FileFormat
+from etlplus.file import ReadOptions
+from etlplus.file import WriteOptions
 from etlplus.history import HISTORY_SCHEMA_VERSION
 from etlplus.ops.extract import extract
 from etlplus.ops.load import load
@@ -107,23 +113,6 @@ class TestStableCliSurface:
 class TestStableImportSurface:
     """Contract tests for the documented stable Python import surface."""
 
-    def test_top_level_package_keeps_documented_exports(self) -> None:
-        """Test that the top-level package keeps stable facade symbols."""
-        assert etlplus.__all__ == ['__author__', '__version__', 'Config']
-        assert etlplus.Config is Config
-        assert isinstance(etlplus.__version__, str)
-        assert etlplus.__version__
-
-    def test_ops_package_keeps_documented_entrypoints(self) -> None:
-        """Test that :mod:`etlplus.ops` keeps the documented helpers."""
-        assert ops_pkg.__all__ == EXPECTED_OPS_EXPORTS
-        assert ops_pkg.extract is extract
-        assert ops_pkg.load is load
-        assert ops_pkg.run is run
-        assert ops_pkg.run_pipeline is run_pipeline
-        assert ops_pkg.transform is transform
-        assert ops_pkg.validate is validate
-
     def test_api_package_keeps_documented_core_exports(self) -> None:
         """Test that :mod:`etlplus.api` keeps core documented imports."""
         expected_members = {
@@ -141,13 +130,43 @@ class TestStableImportSurface:
             assert name in api_pkg.__all__
             assert getattr(api_pkg, name) is expected
 
+    def test_file_package_keeps_handler_authoring_facade(self) -> None:
+        """Test that :mod:`etlplus.file` exposes the handler authoring layer."""
+        expected_members = {
+            'BoundFileHandler': BoundFileHandler,
+            'File': File,
+            'FileFormat': FileFormat,
+            'ReadOptions': ReadOptions,
+            'WriteOptions': WriteOptions,
+        }
+        for name, expected in expected_members.items():
+            assert name in file_pkg.__all__
+            assert getattr(file_pkg, name) is expected
+
     def test_history_package_keeps_documented_runtime_metadata(self) -> None:
         """Test that :mod:`etlplus.history` keeps schema metadata exports."""
         assert 'HISTORY_SCHEMA_VERSION' in history_pkg.__all__
         assert history_pkg.HISTORY_SCHEMA_VERSION == HISTORY_SCHEMA_VERSION
+
+    def test_ops_package_keeps_documented_entrypoints(self) -> None:
+        """Test that :mod:`etlplus.ops` keeps the documented helpers."""
+        assert ops_pkg.__all__ == EXPECTED_OPS_EXPORTS
+        assert ops_pkg.extract is extract
+        assert ops_pkg.load is load
+        assert ops_pkg.run is run
+        assert ops_pkg.run_pipeline is run_pipeline
+        assert ops_pkg.transform is transform
+        assert ops_pkg.validate is validate
 
     def test_ops_package_keeps_documented_validation_shapes(self) -> None:
         """Test that :mod:`etlplus.ops` re-exports validation typed dicts."""
         assert ops_pkg.FieldRulesDict is FieldRulesDict
         assert ops_pkg.FieldValidationDict is FieldValidationDict
         assert ops_pkg.ValidationDict is ValidationDict
+
+    def test_top_level_package_keeps_documented_exports(self) -> None:
+        """Test that the top-level package keeps stable facade symbols."""
+        assert etlplus.__all__ == ['__author__', '__version__', 'Config']
+        assert etlplus.Config is Config
+        assert isinstance(etlplus.__version__, str)
+        assert etlplus.__version__
