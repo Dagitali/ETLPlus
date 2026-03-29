@@ -18,7 +18,7 @@ from typing import Self
 
 from ..utils import cast_str_dict
 from ..utils import maybe_mapping
-from ..utils.types import StrAnyMap
+from ..utils._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
 
