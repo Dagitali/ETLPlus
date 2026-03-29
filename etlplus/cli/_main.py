@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli.main` module.
+:mod:`etlplus.cli._main` module.
 
 Entry point helpers for the Typer-powered ``etlplus`` CLI.
 
