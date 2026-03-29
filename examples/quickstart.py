@@ -3,15 +3,22 @@ Quickstart example demonstrating typical data pipeline operations: extract,
 transform, validate, and load.
 """
 
+import sys
 from collections.abc import Mapping
-from typing import cast
+from pathlib import Path
+from typing import Any
+from typing import Literal
 
-from etlplus.ops import extract
-from etlplus.ops import load
-from etlplus.ops import transform
-from etlplus.ops import validate
-from etlplus.ops.types import PipelineConfig
-from etlplus.ops.validate import FieldRulesDict
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+# Allow direct execution from a source checkout without requiring PYTHONPATH=.
+from etlplus.ops import extract  # noqa: E402
+from etlplus.ops import load  # noqa: E402
+from etlplus.ops import transform  # noqa: E402
+from etlplus.ops import validate  # noqa: E402
+from etlplus.ops.validate import FieldRulesDict  # noqa: E402
 
 # SECTION: CONSTANTS ======================================================== #
 
@@ -19,6 +26,14 @@ from etlplus.ops.validate import FieldRulesDict
 # Extract sample data
 DATA_PATH = 'examples/data/sample.json'
 OUTPUT_PATH = 'temp/sample_output.json'
+
+type QuickstartStepName = Literal[
+    'aggregate',
+    'filter',
+    'map',
+    'select',
+    'sort',
+]
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -35,23 +50,20 @@ def main() -> None:
     data = extract('file', DATA_PATH, file_format='json')
 
     # Transform: filter and select.
-    ops = cast(
-        PipelineConfig,
-        {
-            'filter': {'field': 'age', 'op': 'gt', 'value': 25},
-            'select': ['name', 'email'],
-        },
-    )
+    ops: Mapping[
+        QuickstartStepName,
+        Mapping[str, Any] | list[str],
+    ] = {
+        'filter': {'field': 'age', 'op': 'gt', 'value': 25},
+        'select': ['name', 'email'],
+    }
     transformed = transform(data, ops)
 
     # Validate the transformed data.
-    rules = cast(
-        Mapping[str, FieldRulesDict],
-        {
-            'name': {'type': 'string', 'required': True},
-            'email': {'type': 'string', 'required': True},
-        },
-    )
+    rules: Mapping[str, FieldRulesDict] = {
+        'name': {'type': 'string', 'required': True},
+        'email': {'type': 'string', 'required': True},
+    }
     result = validate(transformed, rules)
     if not result.get('valid', False):
         print('ValidationDict failed:\n', result)
