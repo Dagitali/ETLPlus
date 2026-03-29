@@ -9,15 +9,15 @@ from __future__ import annotations
 from functools import cache
 
 from ..utils._types import StrPath
+from ._abfs import AbfsStorageBackend
+from ._azure_blob import AzureBlobStorageBackend
 from ._base import StorageBackendABC
 from ._enums import StorageScheme
+from ._ftp import FtpStorageBackend
+from ._http import HttpStorageBackend
+from ._local import LocalStorageBackend
 from ._location import StorageLocation
-from .abfs import AbfsStorageBackend
-from .azure_blob import AzureBlobStorageBackend
-from .ftp import FtpStorageBackend
-from .http import HttpStorageBackend
-from .local import LocalStorageBackend
-from .s3 import S3StorageBackend
+from ._s3 import S3StorageBackend
 
 # SECTION: EXPORTS ========================================================== #
 
