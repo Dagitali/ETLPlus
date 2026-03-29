@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.utils.substitution` module.
+:mod:`etlplus.utils._substitution` module.
 
 Substitution utility helpers.
 """
@@ -10,7 +10,7 @@ from collections.abc import Iterable
 from collections.abc import Mapping
 from typing import Any
 
-from .types import StrAnyMap
+from ._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
 
