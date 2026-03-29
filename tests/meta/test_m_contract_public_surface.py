@@ -21,7 +21,7 @@ from etlplus.api import Paginator
 from etlplus.api import RateLimitConfig
 from etlplus.api import RateLimiter
 from etlplus.api import RetryManager
-from etlplus.cli.main import main as cli_main
+from etlplus.cli import main as main_mod
 from etlplus.ops.extract import extract
 from etlplus.ops.load import load
 from etlplus.ops.run import run
@@ -58,12 +58,18 @@ EXPECTED_CLI_COMMANDS = {
 }
 
 EXPECTED_OPS_EXPORTS = [
+    'AggregateName',
+    'OperatorName',
+    'PipelineStep',
     'extract',
     'load',
+    'maybe_validate',
     'run',
     'run_pipeline',
     'transform',
     'validate',
+    'ValidationResultDict',
+    'ValidationSettings',
 ]
 
 
@@ -85,7 +91,7 @@ class TestStableCliSurface:
     def test_cli_package_export_points_to_main_entrypoint(self) -> None:
         """Test that the public CLI package export remains stable."""
         assert cli_pkg.__all__ == ['main']
-        assert cli_pkg.main is cli_main
+        assert cli_pkg.main is main_mod
 
 
 class TestStableImportSurface:
