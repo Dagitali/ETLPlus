@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.utils.numbers` module.
+:mod:`etlplus.utils._numbers` module.
 
 Numeric coercion utility helpers.
 """
