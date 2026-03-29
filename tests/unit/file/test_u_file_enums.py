@@ -110,7 +110,7 @@ GENERATED_INFER_CASES: tuple[InferCase, ...] = (
 
 
 class TestFileFormat:
-    """Unit tests for :class:`etlplus.utils.enums.FileFormat`."""
+    """Unit tests for :class:`etlplus.utils._enums.FileFormat`."""
 
     @pytest.mark.parametrize(
         ('value', 'expected'),

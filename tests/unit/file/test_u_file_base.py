@@ -52,8 +52,8 @@ from etlplus.file.xpt import XptFile
 from etlplus.file.zip import ZipFile
 from etlplus.file.zsav import ZsavFile
 from etlplus.storage import http as http_storage_mod
-from etlplus.utils.types import JSONData
-from etlplus.utils.types import JSONList
+from etlplus.utils._types import JSONData
+from etlplus.utils._types import JSONList
 
 from .pytest_file_contract_utils import assert_single_dataset_rejects_non_default_key
 

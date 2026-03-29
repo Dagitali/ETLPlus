@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.test_u_api_enums` module.
 
-Unit tests for :mod:`etlplus.utils.enums` coercion helpers and behaviors.
+Unit tests for :mod:`etlplus.utils._enums` coercion helpers and behaviors.
 """
 
 from __future__ import annotations

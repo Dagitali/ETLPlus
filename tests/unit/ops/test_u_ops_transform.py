@@ -56,7 +56,7 @@ from etlplus.ops.transform import apply_map
 from etlplus.ops.transform import apply_select
 from etlplus.ops.transform import apply_sort
 from etlplus.ops.transform import transform
-from etlplus.utils.types import JSONData
+from etlplus.utils._types import JSONData
 
 # SECTION: PRAGMAS ========================================================== #
 

@@ -7,24 +7,26 @@ Unit tests for :mod:`etlplus.utils.__init__`.
 from __future__ import annotations
 
 from etlplus import utils as mod
-from etlplus.utils.data import count_records
-from etlplus.utils.data import print_json
-from etlplus.utils.data import serialize_json
-from etlplus.utils.mapping import cast_str_dict
-from etlplus.utils.mapping import coerce_dict
-from etlplus.utils.mapping import maybe_mapping
-from etlplus.utils.numbers import to_float
-from etlplus.utils.numbers import to_int
-from etlplus.utils.numbers import to_maximum_float
-from etlplus.utils.numbers import to_maximum_int
-from etlplus.utils.numbers import to_minimum_float
-from etlplus.utils.numbers import to_minimum_int
-from etlplus.utils.numbers import to_number
-from etlplus.utils.numbers import to_positive_float
-from etlplus.utils.numbers import to_positive_int
-from etlplus.utils.substitution import deep_substitute
-from etlplus.utils.text import normalize_choice
-from etlplus.utils.text import normalize_str
+from etlplus.utils._data import count_records
+from etlplus.utils._data import print_json
+from etlplus.utils._data import serialize_json
+from etlplus.utils._enums import CoercibleStrEnum
+from etlplus.utils._mapping import cast_str_dict
+from etlplus.utils._mapping import coerce_dict
+from etlplus.utils._mapping import maybe_mapping
+from etlplus.utils._mixins import BoundsWarningsMixin
+from etlplus.utils._numbers import to_float
+from etlplus.utils._numbers import to_int
+from etlplus.utils._numbers import to_maximum_float
+from etlplus.utils._numbers import to_maximum_int
+from etlplus.utils._numbers import to_minimum_float
+from etlplus.utils._numbers import to_minimum_int
+from etlplus.utils._numbers import to_number
+from etlplus.utils._numbers import to_positive_float
+from etlplus.utils._numbers import to_positive_int
+from etlplus.utils._substitution import deep_substitute
+from etlplus.utils._text import normalize_choice
+from etlplus.utils._text import normalize_str
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -39,6 +41,8 @@ class TestUtilsPackageExports:
     def test_all_exports_are_expected_and_importable(self) -> None:
         """Test ``__all__`` and top-level package symbol wiring."""
         assert mod.__all__ == [
+            'BoundsWarningsMixin',
+            'CoercibleStrEnum',
             'count_records',
             'print_json',
             'serialize_json',
@@ -58,6 +62,8 @@ class TestUtilsPackageExports:
             'normalize_choice',
             'normalize_str',
         ]
+        assert mod.BoundsWarningsMixin is BoundsWarningsMixin
+        assert mod.CoercibleStrEnum is CoercibleStrEnum
         assert mod.count_records is count_records
         assert mod.print_json is print_json
         assert mod.serialize_json is serialize_json

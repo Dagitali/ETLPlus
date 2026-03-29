@@ -22,7 +22,7 @@ from etlplus.ops.validate import FieldRulesDict
 from etlplus.ops.validate import load_data
 from etlplus.ops.validate import validate
 from etlplus.ops.validate import validate_field
-from etlplus.utils.types import JSONData
+from etlplus.utils._types import JSONData
 
 # SECTION: PRAGMAS ========================================================== #
 
