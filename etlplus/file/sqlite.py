@@ -21,7 +21,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from ..utils.types import JSONList
+from ..utils._types import JSONList
 from ._enums import FileFormat
 from ._sql import DEFAULT_TABLE
 from ._sql import SQLITE_DIALECT

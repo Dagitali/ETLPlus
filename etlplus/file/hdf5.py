@@ -22,8 +22,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..utils.types import JSONData
-from ..utils.types import JSONList
+from ..utils._types import JSONData
+from ..utils._types import JSONList
 from ._enums import FileFormat
 from ._imports import FormatPandasResolverMixin
 from ._imports import get_pandas  # noqa: F401

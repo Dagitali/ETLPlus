@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-from ..utils.types import JSONData
+from ..utils._types import JSONData
 from ._enums import FileFormat
 
 # SECTION: EXPORTS ========================================================== #

@@ -21,10 +21,10 @@ from typing import cast
 
 from ..storage import StorageLocation
 from ..storage import get_backend
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
-from ..utils.types import JSONList
-from ..utils.types import StrPath
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
+from ..utils._types import JSONList
+from ..utils._types import StrPath
 
 if TYPE_CHECKING:
     from .base import ReadOptions

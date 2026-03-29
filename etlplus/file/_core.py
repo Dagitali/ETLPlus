@@ -22,7 +22,7 @@ from typing import cast
 
 from ..storage import StorageLocation
 from ..storage import get_backend
-from ..utils.types import StrPath
+from ..utils._types import StrPath
 from . import xml
 from ._enums import FileFormat
 from ._enums import infer_file_format_and_compression

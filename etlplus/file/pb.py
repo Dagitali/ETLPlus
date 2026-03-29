@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import base64
 
-from ..utils.types import JSONData
+from ..utils._types import JSONData
 from ._enums import FileFormat
 from ._io import require_dict_payload
 from ._io import require_str_key

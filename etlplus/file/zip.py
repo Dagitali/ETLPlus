@@ -10,8 +10,8 @@ import zipfile
 from pathlib import Path
 from typing import cast
 
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
 from ._archive import infer_archive_payload_format
 from ._core_dispatch import read_payload_with_core
 from ._core_dispatch import write_payload_with_core

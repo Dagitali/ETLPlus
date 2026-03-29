@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..utils.types import JSONDict
+from ..utils._types import JSONDict
 from ._enums import FileFormat
 from ._imports import get_dependency
 from .base import TemplateFileHandlerABC

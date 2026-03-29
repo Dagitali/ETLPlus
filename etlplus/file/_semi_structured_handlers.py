@@ -9,8 +9,8 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import ClassVar
 
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
 from .base import DictPayloadSemiStructuredTextFileHandlerABC
 from .base import ReadOptions
 from .base import RecordPayloadSemiStructuredTextFileHandlerABC

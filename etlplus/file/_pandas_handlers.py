@@ -12,8 +12,8 @@ from typing import Any
 from typing import ClassVar
 from typing import Literal
 
-from ..utils.types import JSONData
-from ..utils.types import JSONList
+from ..utils._types import JSONData
+from ..utils._types import JSONList
 from ._dataframe import dataframe_from_data
 from ._dataframe import dataframe_from_records
 from ._imports import resolve_dependency

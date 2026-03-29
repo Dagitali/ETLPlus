@@ -16,10 +16,10 @@ from typing import ClassVar
 from typing import cast
 
 from ..storage import StorageLocation
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
-from ..utils.types import JSONList
-from ..utils.types import StrPath
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
+from ..utils._types import JSONList
+from ..utils._types import StrPath
 from ._enums import FileFormat
 from ._handler_abc import BinarySerializationABC
 from ._handler_abc import ColumnarABC

@@ -21,9 +21,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from ..utils.types import JSONData
-from ..utils.types import JSONDict
-from ..utils.types import JSONList
+from ..utils._types import JSONData
+from ..utils._types import JSONDict
+from ..utils._types import JSONList
 from ._enums import FileFormat
 from ._io import _open_text_handle
 from ._io import normalize_records

@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
 
-from ..utils.types import JSONList
+from ..utils._types import JSONList
 from ._enums import FileFormat
 from ._imports import get_dependency
 from ._sql import DEFAULT_TABLE

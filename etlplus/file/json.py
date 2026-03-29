@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 
-from ..utils.types import JSONData
+from ..utils._types import JSONData
 from ._enums import FileFormat
 from ._semi_structured_handlers import RecordPayloadTextCodecHandlerMixin
 

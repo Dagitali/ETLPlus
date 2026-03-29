@@ -20,7 +20,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar
 
-from ..utils.types import JSONData
+from ..utils._types import JSONData
 from ._enums import FileFormat
 from ._imports import get_dependency  # noqa: F401
 from ._imports import get_pandas  # noqa: F401
