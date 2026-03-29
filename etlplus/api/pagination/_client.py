@@ -57,7 +57,7 @@ class PaginationClient:
     pagination : PaginationInput
         Resolved pagination configuration.
     fetch : FetchPageCallable
-        Stored fetch callback invoked by ``Paginator``.
+        Stored fetch callback invoked by :class:`Paginator`.
     rate_limiter : RateLimiter | None
         Limiter applied between requests when configured.
     """
