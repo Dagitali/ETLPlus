@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
-from ..utils.data import serialize_json
+from ..utils import serialize_json
 
 # SECTION: EXPORTS ========================================================== #
 

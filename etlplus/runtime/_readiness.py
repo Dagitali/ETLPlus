@@ -29,7 +29,7 @@ from ..file import FileFormat
 from ..storage import StorageScheme
 from ..utils import deep_substitute
 from ..utils import maybe_mapping
-from ..utils.types import StrAnyMap
+from ..utils._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
 
