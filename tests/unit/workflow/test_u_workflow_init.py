@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.workflow` package exports.
 from __future__ import annotations
 
 import etlplus.workflow as workflow_pkg
+from etlplus.workflow._dag import DagError
 from etlplus.workflow._dag import topological_sort_jobs
 from etlplus.workflow._jobs import ExtractRef
 from etlplus.workflow._jobs import JobConfig
@@ -24,6 +25,7 @@ from etlplus.workflow._profile import ProfileConfig
 
 def test_workflow_package_exports_expected_symbols() -> None:
     """Test that package re-exports match documented ``__all__``."""
+    assert workflow_pkg.DagError is DagError
     assert workflow_pkg.ExtractRef is ExtractRef
     assert workflow_pkg.JobConfig is JobConfig
     assert workflow_pkg.LoadRef is LoadRef
@@ -33,6 +35,7 @@ def test_workflow_package_exports_expected_symbols() -> None:
     assert workflow_pkg.topological_sort_jobs is topological_sort_jobs
 
     assert set(workflow_pkg.__all__) == {
+        'DagError',
         'ExtractRef',
         'JobConfig',
         'LoadRef',
