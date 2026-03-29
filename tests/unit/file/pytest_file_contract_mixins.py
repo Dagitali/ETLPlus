@@ -22,7 +22,7 @@ from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.file.base import WriteOptions
 from etlplus.utils import count_records
-from etlplus.utils.types import JSONData
+from etlplus.utils._types import JSONData
 
 from ...pytest_file_common import resolve_module_handler
 from .pytest_file_contract_utils import assert_single_dataset_rejects_non_default_key

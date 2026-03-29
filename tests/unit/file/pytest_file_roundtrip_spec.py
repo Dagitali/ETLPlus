@@ -11,7 +11,7 @@ from typing import Literal
 
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
-from etlplus.utils.types import JSONData
+from etlplus.utils._types import JSONData
 
 # SECTION: PRAGMAS ========================================================== #
 

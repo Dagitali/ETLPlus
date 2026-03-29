@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from etlplus.utils.types import JSONData
+from etlplus.utils._types import JSONData
 
 from .pytest_file_contract_mixins import PathMixin
 from .pytest_file_contract_utils import make_payload

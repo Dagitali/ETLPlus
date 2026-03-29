@@ -12,8 +12,8 @@ from types import ModuleType
 
 import pytest
 
-from etlplus.utils.types import JSONDict
-from etlplus.utils.types import JSONList
+from etlplus.utils._types import JSONDict
+from etlplus.utils._types import JSONList
 
 from ...pytest_file_common import call_handler_operation
 from ...pytest_file_common import resolve_module_handler
