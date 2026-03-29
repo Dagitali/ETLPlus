@@ -686,13 +686,6 @@ def extract_handler(
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    Exception
-        Re-raises extraction failures after emitting a structured failure event
-        when requested.
-
     """
     explicit_format = format_hint if format_explicit else None
     context = _start_command(
@@ -789,12 +782,6 @@ def load_handler(
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    Exception
-        Re-raises load failures after emitting a structured failure event when
-        requested.
     """
     explicit_format = target_format if format_explicit else None
     context = _start_command(
@@ -1019,12 +1006,6 @@ def run_handler(
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    Exception
-        Re-raises the underlying execution error after emitting a failure
-        event when structured event output is enabled.
     """
     cfg = Config.from_yaml(config, substitute=True)
 
@@ -1164,14 +1145,6 @@ def transform_handler(
     int
         Zero on success.
 
-    Raises
-    ------
-    ValueError
-        If the operations payload is not a mapping.
-    Exception
-        Re-raises transform failures after emitting a structured failure event
-        when requested.
-
     Notes
     -----
     File targets are written directly. Non-file targets such as ``api`` and
@@ -1294,14 +1267,6 @@ def validate_handler(
     -------
     int
         Zero on success.
-
-    Raises
-    ------
-    ValueError
-        If the rules payload is not a mapping.
-    Exception
-        Re-raises validation failures after emitting a structured failure event
-        when requested.
     """
     context = _start_command(
         command='validate',
