@@ -37,8 +37,8 @@ from ..ops import validate
 from ..ops.validate import FieldRulesDict
 from ..runtime import ReadinessReportBuilder
 from ..runtime import RuntimeEvents
-from ..utils.types import JSONData
-from ..utils.types import TemplateKey
+from ..utils._types import JSONData
+from ..utils._types import TemplateKey
 from . import _io
 from . import _summary
 from ._history import HISTORY_TABLE_COLUMNS as _HISTORY_TABLE_COLUMNS

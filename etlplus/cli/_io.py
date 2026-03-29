@@ -20,8 +20,8 @@ from typing import cast
 from ..file import File
 from ..file import FileFormat
 from ..utils import print_json
-from ..utils.data import serialize_json
-from ..utils.types import JSONData
+from ..utils import serialize_json
+from ..utils._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
 

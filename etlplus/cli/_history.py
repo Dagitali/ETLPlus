@@ -13,7 +13,7 @@ from typing import Literal
 from typing import cast
 
 from ..history import HistoryStore
-from ..utils.data import serialize_json
+from ..utils import serialize_json
 
 # SECTION: TYPE ALIASES ===================================================== #
 
