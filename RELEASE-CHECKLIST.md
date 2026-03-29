@@ -102,6 +102,9 @@ release.
   now also follow the underscore-prefixed implementation plus package-facade pattern.
 - `etlplus.ops` now exposes validation helpers and operation enums from its package facade while
   keeping low-level ops type aliases on an internal underscore-prefixed module.
+- `etlplus.utils` now follows the same package-facade pattern: user-facing helpers plus the shared
+  enum/mixin base abstractions are exported from `etlplus.utils`, while utility type aliases stay
+  internal on an underscore-prefixed module.
 - The documented stable CLI surface keeps readiness under `check --readiness`.
 - Runtime execution hygiene progress on the current branch includes:
   - Shared runtime logging policy and config precedence documentation
