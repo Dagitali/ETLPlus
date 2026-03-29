@@ -31,8 +31,8 @@ def _import_by_name_prefer_module(
     Resolve exact module imports before falling back to autosummary defaults.
 
     This avoids package exports shadowing same-named modules during stub
-    generation, which matters when facades re-export objects like
-    ``etlplus.database.engine``.
+    generation when a package facade and a sibling module would otherwise
+    compete for the same autosummary target.
 
     Parameters
     ----------
