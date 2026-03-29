@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.utils.mapping` module.
+:mod:`etlplus.utils._mapping` module.
 
 Mapping-oriented utility helpers.
 """
@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from .types import StrAnyMap
+from ._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
 
