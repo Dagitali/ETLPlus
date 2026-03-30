@@ -164,6 +164,90 @@ class TestExtract:
         assert result == expected_extracts
 
 
+class TestExtractDefensiveDispatch:
+    """Unit tests for defensive connector dispatch behavior."""
+
+    def test_extract_defensive_default_branch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that unexpected connector coercion triggers the
+        :class:`ValueError` branch.
+        """
+
+        def _coerce(_value: object) -> object:
+            return object()
+
+        monkeypatch.setattr(
+            extract_mod.DataConnectorType,
+            'coerce',
+            classmethod(lambda cls, value: _coerce(value)),
+        )
+        with pytest.raises(ValueError, match='Invalid source type'):
+            extract('file', 'ignored')
+
+    def test_extract_dispatches_database_branch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that database connector types dispatch to DB extraction."""
+        calls: list[str] = []
+
+        def _extract_from_database(source: str) -> list[dict[str, str]]:
+            calls.append(source)
+            return [{'source': source}]
+
+        monkeypatch.setattr(
+            extract_mod,
+            'extract_from_database',
+            _extract_from_database,
+        )
+
+        result = extract('database', 'sqlite:///source.db')
+
+        assert calls == ['sqlite:///source.db']
+        assert result == [{'source': 'sqlite:///source.db'}]
+
+    def test_extract_dispatches_api_branch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that API connector types dispatch to API extraction."""
+        calls: list[tuple[str, dict[str, Any]]] = []
+
+        def _extract_from_api(
+            source: str,
+            **kwargs: Any,
+        ) -> dict[str, Any]:
+            calls.append((source, kwargs))
+            return {'source': source, 'kwargs': kwargs}
+
+        monkeypatch.setattr(
+            extract_mod,
+            'extract_from_api',
+            _extract_from_api,
+        )
+
+        result = extract(
+            'api',
+            'https://example.test/data',
+            method='post',
+            timeout=3.0,
+        )
+
+        assert calls == [
+            (
+                'https://example.test/data',
+                {'method': 'post', 'timeout': 3.0},
+            ),
+        ]
+        assert result == {
+            'source': 'https://example.test/data',
+            'kwargs': {'method': 'post', 'timeout': 3.0},
+        }
+
+
 class TestExtractErrors:
     """
     Unit tests for :mod:`etlplus.ops.extract` function errors.
@@ -644,85 +728,24 @@ class TestExtractFromFile:
             extract_from_file(str(path), file_format)
 
 
-class TestExtractDefensiveDispatch:
-    """Unit tests for defensive connector dispatch behavior."""
+class TestExtractHelpers:
+    """Unit tests for internal extract option coercion helpers."""
 
-    def test_extract_defensive_default_branch(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that unexpected connector coercion triggers the
-        :class:`ValueError` branch.
-        """
-
-        def _coerce(_value: object) -> object:
-            return object()
-
-        monkeypatch.setattr(
-            extract_mod.DataConnectorType,
-            'coerce',
-            classmethod(lambda cls, value: _coerce(value)),
-        )
-        with pytest.raises(ValueError, match='Invalid source type'):
-            extract('file', 'ignored')
-
-    def test_extract_dispatches_database_branch(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that database connector types dispatch to DB extraction."""
-        calls: list[str] = []
-
-        def _extract_from_database(source: str) -> list[dict[str, str]]:
-            calls.append(source)
-            return [{'source': source}]
-
-        monkeypatch.setattr(
-            extract_mod,
-            'extract_from_database',
-            _extract_from_database,
+    def test_coerce_read_options_stringifies_optional_identifiers(self) -> None:
+        """Test that read-option identifiers are coerced to strings."""
+        options = extract_mod._coerce_read_options(
+            {
+                'encoding': 'utf-16',
+                'table': 123,
+                'dataset': 456,
+                'inner_name': 789,
+                'delimiter': '|',
+            },
         )
 
-        result = extract('database', 'sqlite:///source.db')
-
-        assert calls == ['sqlite:///source.db']
-        assert result == [{'source': 'sqlite:///source.db'}]
-
-    def test_extract_dispatches_api_branch(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that API connector types dispatch to API extraction."""
-        calls: list[tuple[str, dict[str, Any]]] = []
-
-        def _extract_from_api(
-            source: str,
-            **kwargs: Any,
-        ) -> dict[str, Any]:
-            calls.append((source, kwargs))
-            return {'source': source, 'kwargs': kwargs}
-
-        monkeypatch.setattr(
-            extract_mod,
-            'extract_from_api',
-            _extract_from_api,
-        )
-
-        result = extract(
-            'api',
-            'https://example.test/data',
-            method='post',
-            timeout=3.0,
-        )
-
-        assert calls == [
-            (
-                'https://example.test/data',
-                {'method': 'post', 'timeout': 3.0},
-            ),
-        ]
-        assert result == {
-            'source': 'https://example.test/data',
-            'kwargs': {'method': 'post', 'timeout': 3.0},
-        }
+        assert options is not None
+        assert options.encoding == 'utf-16'
+        assert options.table == '123'
+        assert options.dataset == '456'
+        assert options.inner_name == '789'
+        assert options.extras == {'delimiter': '|'}
