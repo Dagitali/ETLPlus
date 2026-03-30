@@ -18,6 +18,7 @@ from .._types import SortKey
 
 __all__ = [
     'apply_sort',
+    'apply_sort_step',
 ]
 
 
@@ -54,38 +55,6 @@ def _sort_key(
     return (1, str(value))
 
 
-def _apply_sort_step(
-    records: JSONList,
-    spec: Any,
-) -> JSONList:
-    """
-    Apply a functional sort step to a list of records.
-
-    Parameters
-    ----------
-    records : JSONList
-        Input records to sort.
-    spec : Any
-        Either a mapping with keys ``'field'`` and optional ``'reverse'``, or
-        a plain field name.
-
-    Returns
-    -------
-    JSONList
-        Sorted records.
-    """
-    if isinstance(spec, Mapping):
-        field_value = spec.get('field')
-        field = str(field_value) if field_value is not None else None
-        reverse = bool(spec.get('reverse', False))
-        return apply_sort(records, field, reverse)
-
-    if spec is None:
-        return records
-
-    return apply_sort(records, str(spec), False)
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -120,3 +89,35 @@ def apply_sort(
         key=lambda item: _sort_key(item.get(key_field)),
         reverse=reverse,
     )
+
+
+def apply_sort_step(
+    records: JSONList,
+    spec: Any,
+) -> JSONList:
+    """
+    Apply a functional sort step to a list of records.
+
+    Parameters
+    ----------
+    records : JSONList
+        Input records to sort.
+    spec : Any
+        Either a mapping with keys ``'field'`` and optional ``'reverse'``, or
+        a plain field name.
+
+    Returns
+    -------
+    JSONList
+        Sorted records.
+    """
+    if isinstance(spec, Mapping):
+        field_value = spec.get('field')
+        field = str(field_value) if field_value is not None else None
+        reverse = bool(spec.get('reverse', False))
+        return apply_sort(records, field, reverse)
+
+    if spec is None:
+        return records
+
+    return apply_sort(records, str(spec), False)
