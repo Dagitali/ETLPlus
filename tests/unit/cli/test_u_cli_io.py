@@ -104,6 +104,35 @@ class TestEmitOrWrite:
         assert emitted == []
 
 
+class TestEmitMarkdownTable:
+    """Unit tests for :func:`emit_markdown_table`."""
+
+    def test_formats_none_mappings_sequences_and_escaped_text(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Markdown table emission should normalize and escape cell values."""
+        _io.emit_markdown_table(
+            [
+                {
+                    'none': None,
+                    'mapping': {'a': 1},
+                    'sequence': ['x', 'y'],
+                    'text': 'a|b\nc',
+                },
+            ],
+            columns=('none', 'mapping', 'sequence', 'text'),
+        )
+
+        captured = capsys.readouterr().out.splitlines()
+
+        assert captured == [
+            '| none | mapping | sequence | text |',
+            '| --- | --- | --- | --- |',
+            '|  | {"a":1} | ["x","y"] | a\\|b<br>c |',
+        ]
+
+
 class TestInferPayloadFormat:
     """Unit tests for :func:`infer_payload_format`."""
 
