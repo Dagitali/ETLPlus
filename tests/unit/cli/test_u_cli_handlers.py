@@ -47,108 +47,6 @@ class _ReadOnlyFakeHistoryStore(handlers.HistoryStore):
 
 # SECTION: TESTS ============================================================ #
 
-
-class TestCliHandlersInternalHelpers:
-    """Unit tests for internal CLI helpers in :mod:`handlers`."""
-
-    def test_check_sections_all(self, dummy_cfg: Config) -> None:
-        """
-        Test that :func:`_check_sections` includes all requested sections."""
-        result = handlers._check_sections(
-            dummy_cfg,
-            jobs=False,
-            pipelines=True,
-            sources=True,
-            targets=True,
-            transforms=True,
-        )
-        assert set(result) >= {'pipelines', 'sources', 'targets', 'transforms'}
-
-    def test_check_sections_default(self, dummy_cfg: Config) -> None:
-        """
-        Test that :func:`_check_sections` defaults to jobs when no flags are
-        set.
-        """
-        result = handlers._check_sections(
-            dummy_cfg,
-            jobs=False,
-            pipelines=False,
-            sources=False,
-            targets=False,
-            transforms=False,
-        )
-        assert 'jobs' in result
-
-    def test_check_sections_jobs_and_mapping_transforms(
-        self,
-        dummy_cfg: Config,
-    ) -> None:
-        """Test that jobs flag plus mapping-style transforms extraction."""
-        cfg = SimpleNamespace(
-            name=dummy_cfg.name,
-            version=dummy_cfg.version,
-            sources=dummy_cfg.sources,
-            targets=dummy_cfg.targets,
-            jobs=dummy_cfg.jobs,
-            transforms={
-                'trim': {'field': 'name'},
-                'dedupe': {'on': 'id'},
-            },
-        )
-
-        result = handlers._check_sections(
-            cast(Config, cfg),
-            jobs=True,
-            pipelines=False,
-            sources=False,
-            targets=False,
-            transforms=True,
-        )
-        assert result['jobs'] == ['j1']
-        assert result['transforms'] == ['trim', 'dedupe']
-
-    def test_summary_collect_table_specs_merges_config_and_spec(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that config and standalone spec entries are merged."""
-        spec_path = tmp_path / 'table.json'
-        spec_path.write_text('{}', encoding='utf-8')
-        monkeypatch.setattr(
-            handlers._summary,
-            'load_table_spec',
-            lambda _path: {'table': 'from_spec'},
-        )
-        monkeypatch.setattr(
-            handlers._summary.Config,
-            'from_yaml',
-            lambda _path, substitute: SimpleNamespace(
-                table_schemas=[{'table': 'from_config'}],
-            ),
-        )
-
-        specs = handlers._summary.collect_table_specs(
-            config_path='pipeline.yml',
-            spec_path=str(spec_path),
-        )
-        assert specs == [
-            {'table': 'from_spec'},
-            {'table': 'from_config'},
-        ]
-
-    def test_pipeline_summary(self, dummy_cfg: Config) -> None:
-        """
-        Test that :func:`_pipeline_summary` returns a mapping for a pipeline
-        config.
-        """
-        summary = handlers._pipeline_summary(dummy_cfg)
-        result: Mapping[str, object] = summary
-        assert result['name'] == 'p1'
-        assert result['version'] == 'v1'
-        assert set(result) >= {'sources', 'targets', 'jobs'}
-
-
 class TestCheckHandler:
     """Unit tests for :func:`check_handler`."""
 
@@ -227,6 +125,14 @@ class TestCheckHandler:
             pretty=True,
         )
 
+    def test_requires_config_when_not_in_readiness_mode(self) -> None:
+        """Non-readiness check mode should require a config path."""
+        with pytest.raises(
+            ValueError,
+            match='config is required unless readiness-only mode is used',
+        ):
+            handlers.check_handler(config=None, readiness=False)
+
     def test_summary_branch_uses_pipeline_summary_with_requested_pretty_flag(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -258,6 +164,171 @@ class TestCheckHandler:
             {'name': 'p1', 'jobs': ['j1']},
             pretty=False,
         )
+
+
+class TestCliHandlersInternalHelpers:
+    """Unit tests for internal CLI helpers in :mod:`handlers`."""
+
+    def test_check_sections_all(self, dummy_cfg: Config) -> None:
+        """
+        Test that :func:`_check_sections` includes all requested sections."""
+        result = handlers._check_sections(
+            dummy_cfg,
+            jobs=False,
+            pipelines=True,
+            sources=True,
+            targets=True,
+            transforms=True,
+        )
+        assert set(result) >= {'pipelines', 'sources', 'targets', 'transforms'}
+
+    def test_check_sections_default(self, dummy_cfg: Config) -> None:
+        """
+        Test that :func:`_check_sections` defaults to jobs when no flags are
+        set.
+        """
+        result = handlers._check_sections(
+            dummy_cfg,
+            jobs=False,
+            pipelines=False,
+            sources=False,
+            targets=False,
+            transforms=False,
+        )
+        assert 'jobs' in result
+
+    def test_check_sections_jobs_and_mapping_transforms(
+        self,
+        dummy_cfg: Config,
+    ) -> None:
+        """Test that jobs flag plus mapping-style transforms extraction."""
+        cfg = SimpleNamespace(
+            name=dummy_cfg.name,
+            version=dummy_cfg.version,
+            sources=dummy_cfg.sources,
+            targets=dummy_cfg.targets,
+            jobs=dummy_cfg.jobs,
+            transforms={
+                'trim': {'field': 'name'},
+                'dedupe': {'on': 'id'},
+            },
+        )
+
+        result = handlers._check_sections(
+            cast(Config, cfg),
+            jobs=True,
+            pipelines=False,
+            sources=False,
+            targets=False,
+            transforms=True,
+        )
+        assert result['jobs'] == ['j1']
+        assert result['transforms'] == ['trim', 'dedupe']
+
+    def test_complete_output_rejects_unknown_modes(self) -> None:
+        """Unknown completion modes should fail fast with an assertion."""
+        context = handlers._CommandContext(
+            command='extract',
+            event_format=None,
+            run_id='run-123',
+            started_at='2026-03-23T00:00:00Z',
+            started_perf=0.0,
+        )
+
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(
+                handlers,
+                '_complete_command',
+                lambda _context, **_fields: None,
+            )
+            with pytest.raises(AssertionError, match='Unsupported completion mode'):
+                handlers._complete_output(
+                    context,
+                    {'ok': True},
+                    mode=cast(Any, 'unsupported'),
+                )
+
+    def test_failure_boundary_invokes_on_error_callback(self) -> None:
+        """The failure boundary should call its optional error callback."""
+        captured: dict[str, object] = {}
+
+        def on_error(exc: Exception) -> None:
+            captured['exc'] = exc
+
+        def fake_fail_command(
+            context: object,
+            exc: Exception,
+            **fields: object,
+        ) -> None:
+            captured['context'] = context
+            captured['failed'] = (exc, fields)
+
+        context = handlers._CommandContext(
+            command='extract',
+            event_format=None,
+            run_id='run-123',
+            started_at='2026-03-23T00:00:00Z',
+            started_perf=0.0,
+        )
+
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(handlers, '_fail_command', fake_fail_command)
+            with pytest.raises(RuntimeError, match='boom'):
+                with handlers._failure_boundary(
+                    context,
+                    on_error=on_error,
+                    step='extract',
+                ):
+                    raise RuntimeError('boom')
+
+        assert isinstance(captured['exc'], RuntimeError)
+        failed_exc, failed_fields = cast(
+            tuple[Exception, dict[str, object]],
+            captured['failed'],
+        )
+        assert isinstance(failed_exc, RuntimeError)
+        assert failed_fields == {'step': 'extract'}
+
+    def test_pipeline_summary(self, dummy_cfg: Config) -> None:
+        """
+        Test that :func:`_pipeline_summary` returns a mapping for a pipeline
+        config.
+        """
+        summary = handlers._pipeline_summary(dummy_cfg)
+        result: Mapping[str, object] = summary
+        assert result['name'] == 'p1'
+        assert result['version'] == 'v1'
+        assert set(result) >= {'sources', 'targets', 'jobs'}
+
+    def test_summary_collect_table_specs_merges_config_and_spec(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that config and standalone spec entries are merged."""
+        spec_path = tmp_path / 'table.json'
+        spec_path.write_text('{}', encoding='utf-8')
+        monkeypatch.setattr(
+            handlers._summary,
+            'load_table_spec',
+            lambda _path: {'table': 'from_spec'},
+        )
+        monkeypatch.setattr(
+            handlers._summary.Config,
+            'from_yaml',
+            lambda _path, substitute: SimpleNamespace(
+                table_schemas=[{'table': 'from_config'}],
+            ),
+        )
+
+        specs = handlers._summary.collect_table_specs(
+            config_path='pipeline.yml',
+            spec_path=str(spec_path),
+        )
+        assert specs == [
+            {'table': 'from_spec'},
+            {'table': 'from_config'},
+        ]
 
 
 class TestExtractHandler:
@@ -859,6 +930,192 @@ class TestHistoryHandler:
             handlers.history_handler(json_output=True, table=True)
 
 
+class TestLoadHandler:
+    """Unit tests for :func:`load_handler`."""
+
+    def test_file_target_streams_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that :func:`load_handler` streams payload for file targets."""
+        recorded: dict[str, object] = {}
+
+        def fake_materialize(
+            src: str,
+            *,
+            format_hint: str | None,
+            format_explicit: bool,
+        ) -> list[object]:
+            recorded['call'] = (src, format_hint, format_explicit)
+            return ['rows', src]
+
+        monkeypatch.setattr(
+            handlers._io,
+            'materialize_file_payload',
+            fake_materialize,
+        )
+
+        def fail_load(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError('load should not be called for STDOUT path')
+
+        monkeypatch.setattr(handlers, 'load', fail_load)
+
+        assert (
+            handlers.load_handler(
+                source='data.csv',
+                target_type='file',
+                target='-',
+                source_format=None,
+                target_format=None,
+                format_explicit=False,
+                output=None,
+                pretty=True,
+            )
+            == 0
+        )
+        assert recorded['call'] == ('data.csv', None, False)
+        assert_emit_json(capture_io, ['rows', 'data.csv'], pretty=True)
+
+    def test_reads_stdin_and_invokes_load(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """
+        Test that :func:`load_handler` parses STDIN and routes through load.
+        """
+        read_calls = {'count': 0}
+
+        def fake_read_stdin() -> str:
+            read_calls['count'] += 1
+            return 'stdin-payload'
+
+        monkeypatch.setattr(
+            handlers._io,
+            'read_stdin_text',
+            fake_read_stdin,
+        )
+
+        parsed_payload = {'payload': 'stdin-payload', 'fmt': None}
+        parse_calls: dict[str, object] = {}
+
+        def fake_parse(text: str, fmt: str | None) -> object:
+            parse_calls['params'] = (text, fmt)
+            return parsed_payload
+
+        monkeypatch.setattr(handlers._io, 'parse_text_payload', fake_parse)
+
+        def fail_materialize(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError(
+                'materialize_file_payload should not be called for STDIN sources',
+            )
+
+        monkeypatch.setattr(
+            handlers._io,
+            'materialize_file_payload',
+            fail_materialize,
+        )
+
+        load_record: dict[str, object] = {}
+
+        def fake_load(
+            payload: object,
+            target_type: str,
+            target: str,
+            *,
+            file_format: str | None,
+        ) -> dict[str, object]:
+            load_record['params'] = (payload, target_type, target, file_format)
+            return {'loaded': True}
+
+        monkeypatch.setattr(handlers, 'load', fake_load)
+
+        assert (
+            handlers.load_handler(
+                source='-',
+                target_type='api',
+                target='endpoint',
+                source_format=None,
+                target_format=None,
+                format_explicit=False,
+                output=None,
+                pretty=False,
+            )
+            == 0
+        )
+        assert read_calls['count'] == 1
+        assert parse_calls['params'] == ('stdin-payload', None)
+        assert load_record['params'] == (
+            parsed_payload,
+            'api',
+            'endpoint',
+            None,
+        )
+        kwargs = assert_emit_or_write(
+            capture_io,
+            {'loaded': True},
+            None,
+            pretty=False,
+        )
+        assert isinstance(kwargs['success_message'], str)
+
+    def test_writes_output_file_and_skips_emit(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """
+        Test that :func:`load_handler` writes to a file and skips STDOUT
+        emission.
+        """
+        load_record: dict[str, object] = {}
+
+        def fake_load(
+            payload_obj: object,
+            target_type: str,
+            target: str,
+            *,
+            file_format: str | None,
+        ) -> dict[str, object]:
+            load_record['params'] = (
+                payload_obj,
+                target_type,
+                target,
+                file_format,
+            )
+            return {'status': 'queued'}
+
+        monkeypatch.setattr(handlers, 'load', fake_load)
+
+        assert (
+            handlers.load_handler(
+                source='payload.json',
+                target_type='db',
+                target='warehouse',
+                source_format='json',
+                target_format='json',
+                format_explicit=True,
+                output='result.json',
+                pretty=True,
+            )
+            == 0
+        )
+        assert load_record['params'] == (
+            'payload.json',
+            'db',
+            'warehouse',
+            'json',
+        )
+        kwargs = assert_emit_or_write(
+            capture_io,
+            {'status': 'queued'},
+            'result.json',
+            pretty=True,
+        )
+        assert isinstance(kwargs['success_message'], str)
+
+
 class TestReportHandler:
     """Unit tests for :func:`report_handler`."""
 
@@ -1180,192 +1437,6 @@ class TestReportHandler:
         )
 
 
-class TestLoadHandler:
-    """Unit tests for :func:`load_handler`."""
-
-    def test_file_target_streams_payload(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """Test that :func:`load_handler` streams payload for file targets."""
-        recorded: dict[str, object] = {}
-
-        def fake_materialize(
-            src: str,
-            *,
-            format_hint: str | None,
-            format_explicit: bool,
-        ) -> list[object]:
-            recorded['call'] = (src, format_hint, format_explicit)
-            return ['rows', src]
-
-        monkeypatch.setattr(
-            handlers._io,
-            'materialize_file_payload',
-            fake_materialize,
-        )
-
-        def fail_load(*_args: object, **_kwargs: object) -> None:
-            raise AssertionError('load should not be called for STDOUT path')
-
-        monkeypatch.setattr(handlers, 'load', fail_load)
-
-        assert (
-            handlers.load_handler(
-                source='data.csv',
-                target_type='file',
-                target='-',
-                source_format=None,
-                target_format=None,
-                format_explicit=False,
-                output=None,
-                pretty=True,
-            )
-            == 0
-        )
-        assert recorded['call'] == ('data.csv', None, False)
-        assert_emit_json(capture_io, ['rows', 'data.csv'], pretty=True)
-
-    def test_reads_stdin_and_invokes_load(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """
-        Test that :func:`load_handler` parses STDIN and routes through load.
-        """
-        read_calls = {'count': 0}
-
-        def fake_read_stdin() -> str:
-            read_calls['count'] += 1
-            return 'stdin-payload'
-
-        monkeypatch.setattr(
-            handlers._io,
-            'read_stdin_text',
-            fake_read_stdin,
-        )
-
-        parsed_payload = {'payload': 'stdin-payload', 'fmt': None}
-        parse_calls: dict[str, object] = {}
-
-        def fake_parse(text: str, fmt: str | None) -> object:
-            parse_calls['params'] = (text, fmt)
-            return parsed_payload
-
-        monkeypatch.setattr(handlers._io, 'parse_text_payload', fake_parse)
-
-        def fail_materialize(*_args: object, **_kwargs: object) -> None:
-            raise AssertionError(
-                'materialize_file_payload should not be called for STDIN sources',
-            )
-
-        monkeypatch.setattr(
-            handlers._io,
-            'materialize_file_payload',
-            fail_materialize,
-        )
-
-        load_record: dict[str, object] = {}
-
-        def fake_load(
-            payload: object,
-            target_type: str,
-            target: str,
-            *,
-            file_format: str | None,
-        ) -> dict[str, object]:
-            load_record['params'] = (payload, target_type, target, file_format)
-            return {'loaded': True}
-
-        monkeypatch.setattr(handlers, 'load', fake_load)
-
-        assert (
-            handlers.load_handler(
-                source='-',
-                target_type='api',
-                target='endpoint',
-                source_format=None,
-                target_format=None,
-                format_explicit=False,
-                output=None,
-                pretty=False,
-            )
-            == 0
-        )
-        assert read_calls['count'] == 1
-        assert parse_calls['params'] == ('stdin-payload', None)
-        assert load_record['params'] == (
-            parsed_payload,
-            'api',
-            'endpoint',
-            None,
-        )
-        kwargs = assert_emit_or_write(
-            capture_io,
-            {'loaded': True},
-            None,
-            pretty=False,
-        )
-        assert isinstance(kwargs['success_message'], str)
-
-    def test_writes_output_file_and_skips_emit(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """
-        Test that :func:`load_handler` writes to a file and skips STDOUT
-        emission.
-        """
-        load_record: dict[str, object] = {}
-
-        def fake_load(
-            payload_obj: object,
-            target_type: str,
-            target: str,
-            *,
-            file_format: str | None,
-        ) -> dict[str, object]:
-            load_record['params'] = (
-                payload_obj,
-                target_type,
-                target,
-                file_format,
-            )
-            return {'status': 'queued'}
-
-        monkeypatch.setattr(handlers, 'load', fake_load)
-
-        assert (
-            handlers.load_handler(
-                source='payload.json',
-                target_type='db',
-                target='warehouse',
-                source_format='json',
-                target_format='json',
-                format_explicit=True,
-                output='result.json',
-                pretty=True,
-            )
-            == 0
-        )
-        assert load_record['params'] == (
-            'payload.json',
-            'db',
-            'warehouse',
-            'json',
-        )
-        kwargs = assert_emit_or_write(
-            capture_io,
-            {'status': 'queued'},
-            'result.json',
-            pretty=True,
-        )
-        assert isinstance(kwargs['success_message'], str)
-
-
 class TestRenderHandler:
     """Unit tests for :func:`render_handler`."""
 
@@ -1629,51 +1700,6 @@ class TestRunHandler:
 class TestStatusHandler:
     """Unit tests for :func:`status_handler`."""
 
-    def test_uses_history_view_load_records_directly(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """Test that status delegates through the direct class-based loader."""
-        recorded: dict[str, object] = {}
-
-        def fake_load_records(
-            cls: type[handlers.HistoryView],
-            **kwargs: object,
-        ) -> list[dict[str, object]]:
-            recorded['load'] = kwargs
-            return [
-                {
-                    'run_id': 'run-9',
-                    'started_at': '2026-03-23T00:00:00Z',
-                    'status': 'succeeded',
-                },
-            ]
-
-        monkeypatch.setattr(
-            handlers.HistoryView,
-            'load_records',
-            classmethod(fake_load_records),
-        )
-
-        assert handlers.status_handler(job='job-a', pretty=False, run_id='run-9') == 0
-
-        assert recorded['load'] == {
-            'job': 'job-a',
-            'limit': 1,
-            'raw': False,
-            'run_id': 'run-9',
-        }
-        assert_emit_json(
-            capture_io,
-            {
-                'run_id': 'run-9',
-                'started_at': '2026-03-23T00:00:00Z',
-                'status': 'succeeded',
-            },
-            pretty=False,
-        )
-
     def test_emits_latest_matching_normalized_run(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -1755,6 +1781,51 @@ class TestStatusHandler:
         assert handlers.status_handler(run_id='missing', pretty=False) == 1
 
         assert_emit_json(capture_io, {}, pretty=False)
+
+    def test_uses_history_view_load_records_directly(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test that status delegates through the direct class-based loader."""
+        recorded: dict[str, object] = {}
+
+        def fake_load_records(
+            cls: type[handlers.HistoryView],
+            **kwargs: object,
+        ) -> list[dict[str, object]]:
+            recorded['load'] = kwargs
+            return [
+                {
+                    'run_id': 'run-9',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ]
+
+        monkeypatch.setattr(
+            handlers.HistoryView,
+            'load_records',
+            classmethod(fake_load_records),
+        )
+
+        assert handlers.status_handler(job='job-a', pretty=False, run_id='run-9') == 0
+
+        assert recorded['load'] == {
+            'job': 'job-a',
+            'limit': 1,
+            'raw': False,
+            'run_id': 'run-9',
+        }
+        assert_emit_json(
+            capture_io,
+            {
+                'run_id': 'run-9',
+                'started_at': '2026-03-23T00:00:00Z',
+                'status': 'succeeded',
+            },
+            pretty=False,
+        )
 
 
 class TestTransformHandler:
