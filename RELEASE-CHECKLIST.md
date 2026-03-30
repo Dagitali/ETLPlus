@@ -103,6 +103,8 @@ release.
   implementation plus package-facade pattern.
 - `etlplus.ops` now exposes validation helpers and operation enums from its package facade while
   keeping low-level ops type aliases on an internal underscore-prefixed module.
+- The documented stable ops surface now treats :mod:`etlplus.ops.transform` as the orchestration
+  facade and :mod:`etlplus.ops.transformations` as the advanced step-level transform module family.
 - The stable package facades now also re-export the public validation and request-shape symbols
   already used at their boundaries: `etlplus.ops` exports validation TypedDicts, `etlplus.api`
   exports `PaginationInput` and `RateLimitOverrides`, and `etlplus.history` exports
