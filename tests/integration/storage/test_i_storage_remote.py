@@ -18,11 +18,9 @@ from etlplus.file import FileFormat
 from etlplus.storage import StorageLocation
 from etlplus.storage import get_backend
 
-# SECTION: MARKS ============================================================ #
+# SECTION: PRAGMAS ========================================================== #
 
-
-pytestmark = [pytest.mark.integration]
-
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 # SECTION: HELPERS ========================================================== #
 

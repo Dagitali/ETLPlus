@@ -9,6 +9,12 @@ from __future__ import annotations
 import etlplus.history as history_pkg
 from etlplus.history._store import HISTORY_SCHEMA_VERSION
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: TESTS ============================================================ #
+
 
 class TestHistoryPackageExports:
     """Unit tests for package-level history exports."""

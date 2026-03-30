@@ -15,6 +15,10 @@ import pytest
 
 import etlplus.runtime._readiness as readiness_mod
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 

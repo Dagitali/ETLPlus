@@ -13,6 +13,10 @@ import pytest
 
 import etlplus.runtime._events as events_mod
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
