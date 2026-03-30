@@ -20,6 +20,7 @@ import pytest
 
 from etlplus.file import File
 from etlplus.file import FileFormat
+from etlplus.file import ReadOptions
 from etlplus.file import _core as core_mod
 from etlplus.file import csv as csv_file
 from etlplus.file import json as json_file
@@ -463,6 +464,17 @@ class TestFile:
 
         assert File(path).read_bytes() == b'payload'
 
+    def test_repr_preserves_public_path_and_format(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that ``repr(file)`` shows the public path and file format."""
+        path = tmp_path / 'data.json'
+
+        assert repr(File(path, FileFormat.JSON)) == (
+            f'File(path={path!r}, file_format={FileFormat.JSON!r})'
+        )
+
     def test_touch_creates_missing_local_file(
         self,
         tmp_path: Path,
@@ -868,6 +880,25 @@ class TestFile:
         with pytest.raises(FileNotFoundError):
             file.read()
 
+    def test_read_missing_remote_file_raises_before_dispatch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that missing remote objects raise using the raw URI."""
+
+        class FakeBackend:
+            """Remote backend test double reporting one missing object."""
+
+            def exists(self, location: object) -> bool:
+                """Report the remote object as absent."""
+                del location
+                return False
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        with pytest.raises(FileNotFoundError, match='s3://bucket/missing.json'):
+            File('s3://bucket/missing.json', FileFormat.JSON).read()
+
     @pytest.mark.parametrize(
         ('filename', 'contents', 'operation', 'error_pattern'),
         UNKNOWN_FORMAT_CASES,
@@ -1074,6 +1105,138 @@ class TestFile:
 class TestFileCoreDispatch:
     """Unit tests for class-based dispatch in :class:`etlplus.file.File`."""
 
+    @pytest.mark.parametrize(
+        ('uri', 'file_format', 'expected_name'),
+        [
+            pytest.param(
+                's3://bucket',
+                FileFormat.JSON,
+                'payload.json',
+                id='format-fallback',
+            ),
+            pytest.param(
+                's3://bucket',
+                None,
+                'payload.tmp',
+                id='tmp-fallback',
+            ),
+        ],
+    )
+    def test_dispatch_path_for_remote_writes_uploads_staged_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        uri: str,
+        file_format: FileFormat | None,
+        expected_name: str,
+    ) -> None:
+        """Test that remote write dispatch uploads the staged file payload."""
+        uploads: list[bytes] = []
+        calls: list[str] = []
+
+        class CaptureUpload(BytesIO):
+            """Writable upload stream test double."""
+
+            def close(self) -> None:
+                """Capture uploaded bytes before closing the stream."""
+                uploads.append(self.getvalue())
+                super().close()
+
+        class FakeBackend:
+            """Remote backend test double for staging uploads."""
+
+            def ensure_parent_dir(self, location: object) -> None:
+                """Record parent preparation before upload."""
+                del location
+                calls.append('ensure_parent_dir')
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> CaptureUpload:
+                """Return one writable upload target."""
+                del location, kwargs
+                calls.append(mode)
+                return CaptureUpload()
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        with File(uri, file_format)._dispatch_path(for_write=True) as dispatch_path:
+            assert dispatch_path.name == expected_name
+            dispatch_path.write_bytes(b'payload')
+
+        assert calls == ['ensure_parent_dir', 'wb']
+        assert uploads == [b'payload']
+
+    def test_dispatch_path_for_remote_writes_propagates_upload_open_errors(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that upload-open failures propagate after staging writes."""
+        calls: list[str] = []
+
+        class FakeBackend:
+            """Remote backend test double raising during upload open."""
+
+            def ensure_parent_dir(self, location: object) -> None:
+                """Record parent preparation before upload."""
+                del location
+                calls.append('ensure_parent_dir')
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> BytesIO:
+                """Raise while opening the remote upload target."""
+                del location, kwargs
+                calls.append(mode)
+                raise RuntimeError('upload failed')
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        with pytest.raises(RuntimeError, match='upload failed'):
+            with File('s3://bucket', FileFormat.JSON)._dispatch_path(
+                for_write=True,
+            ) as dispatch_path:
+                dispatch_path.write_bytes(b'payload')
+
+        assert calls == ['ensure_parent_dir', 'wb']
+
+    def test_read_forwards_options_to_bound_handler(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ``File.read(options=...)`` forwards read options."""
+        path = tmp_path / 'sample.json'
+        path.write_text('{}', encoding='utf-8')
+        calls: dict[str, object] = {}
+
+        class _StubHandler:
+            """Handler test double capturing bound reads."""
+
+            def at(self, bound_path: Path) -> object:
+                """Bind one handler to the supplied path."""
+                calls['bound_path'] = bound_path
+
+                def _read(*, options: ReadOptions | None = None) -> JSONData:
+                    calls['options'] = options
+                    return {'ok': True}
+
+                return SimpleNamespace(read=_read)
+
+        monkeypatch.setattr(core_mod, 'get_handler', lambda file_format: _StubHandler())
+        options = ReadOptions(encoding='utf-16', table='people')
+
+        result = File(path, FileFormat.JSON).read(options=options)
+
+        assert result == {'ok': True}
+        assert calls['bound_path'] == path
+        assert calls['options'] is options
+
     def test_read_uses_class_based_handler_dispatch(
         self,
         tmp_path: Path,
@@ -1096,6 +1259,66 @@ class TestFileCoreDispatch:
         assert calls['format'] is FileFormat.CSV
         assert calls['bound_path'] == path
         assert calls['read_path'] == path
+
+    @pytest.mark.parametrize(
+        ('root_tag', 'option_root_tag', 'same_object'),
+        [
+            pytest.param(
+                xml_file.DEFAULT_XML_ROOT,
+                'records',
+                True,
+                id='default-root-keeps-options',
+            ),
+            pytest.param(
+                'records',
+                'records',
+                True,
+                id='matching-root-keeps-options',
+            ),
+            pytest.param(
+                'records',
+                'items',
+                False,
+                id='different-root-replaces-options',
+            ),
+        ],
+    )
+    def test_resolved_write_options_handles_existing_root_tags(
+        self,
+        root_tag: str,
+        option_root_tag: str,
+        same_object: bool,
+    ) -> None:
+        """Test that resolved write options preserve or replace root tags."""
+        file = File('s3://bucket/data.xml', FileFormat.XML)
+        options = WriteOptions(root_tag=option_root_tag)
+
+        resolved = file._resolved_write_options(
+            options=options,
+            root_tag=root_tag,
+        )
+
+        if same_object:
+            assert resolved is options
+        else:
+            assert resolved is not options
+            assert resolved.root_tag == root_tag
+            assert options.root_tag == option_root_tag
+
+    def test_staging_filename_uses_format_fallback_when_remote_name_missing(
+        self,
+    ) -> None:
+        """Test staging filename fallback using the explicit file format."""
+        file = File('s3://bucket', FileFormat.JSON)
+
+        assert file._staging_filename() == 'payload.json'
+
+    def test_staging_filename_uses_tmp_suffix_without_name_or_format(self) -> None:
+        """Test staging filename fallback when neither name nor format exists."""
+        file = File('s3://bucket')
+
+        assert file.file_format is None
+        assert file._staging_filename() == 'payload.tmp'
 
     @pytest.mark.parametrize(
         ('root_tag', 'expected_root_tag', 'write_result'),
