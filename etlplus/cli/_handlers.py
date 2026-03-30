@@ -6,13 +6,10 @@ Command handler functions for the ``etlplus`` command-line interface (CLI).
 
 from __future__ import annotations
 
-import os
 import sys
 from collections.abc import Callable
 from collections.abc import Iterator
-from collections.abc import Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
 from time import sleep
@@ -34,11 +31,15 @@ from ..ops import load
 from ..ops import run
 from ..ops import transform
 from ..ops import validate
-from ..ops.validate import FieldRulesDict
 from ..runtime import ReadinessReportBuilder
 from ..runtime import RuntimeEvents
 from ..utils._types import JSONData
 from ..utils._types import TemplateKey
+from . import _handler_check as _check_impl
+from . import _handler_common as _common_impl
+from . import _handler_dataops as _dataops_impl
+from . import _handler_history as _history_impl
+from . import _handler_render as _render_impl
 from . import _io
 from . import _summary
 from ._history import HISTORY_TABLE_COLUMNS as _HISTORY_TABLE_COLUMNS
@@ -72,29 +73,7 @@ __all__ = [
 type _CompletionMode = Literal['file', 'json', 'json_file', 'or_write']
 type _RunCompletionStatus = Literal['failed', 'succeeded']
 
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type TransformOperations = Mapping[
-    Literal['filter', 'map', 'select', 'sort', 'aggregate'],
-    Any,
-]
-
-# SECTION: INTERNAL DATA CLASSES ============================================ #
-
-
-@dataclass(frozen=True, slots=True)
-class _CommandContext:
-    """Shared runtime context for one CLI command invocation."""
-
-    # -- Instance Attributes -- #
-
-    command: str
-    event_format: str | None
-    run_id: str
-    started_at: str
-    started_perf: float
+_CommandContext = _common_impl.CommandContext
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -104,7 +83,10 @@ def _elapsed_ms(
     started_perf: float,
 ) -> int:
     """Return elapsed milliseconds since *started_perf*."""
-    return int((perf_counter() - started_perf) * 1000)
+    return _common_impl.elapsed_ms(
+        started_perf,
+        perf_counter_fn=perf_counter,
+    )
 
 
 def _emit_failure_event(
@@ -117,15 +99,14 @@ def _emit_failure_event(
     **fields: Any,
 ) -> None:
     """Emit a failure event with the shared stable schema."""
-    _emit_lifecycle_event(
+    _common_impl.emit_failure_event(
         command=command,
-        lifecycle='failed',
         run_id=run_id,
+        started_perf=started_perf,
         event_format=event_format,
-        duration_ms=_elapsed_ms(started_perf),
-        error_message=str(exc),
-        error_type=type(exc).__name__,
-        status='error',
+        exc=exc,
+        elapsed_ms_fn=_elapsed_ms,
+        emit_lifecycle_event_fn=_emit_lifecycle_event,
         **fields,
     )
 
@@ -137,8 +118,12 @@ def _emit_json_payload(
     exit_code: int = 0,
 ) -> int:
     """Emit one JSON payload and return the requested exit code."""
-    _io.emit_json(payload, pretty=pretty)
-    return exit_code
+    return _common_impl.emit_json_payload(
+        payload,
+        pretty=pretty,
+        io_module=_io,
+        exit_code=exit_code,
+    )
 
 
 def _emit_lifecycle_event(
@@ -150,14 +135,13 @@ def _emit_lifecycle_event(
     **fields: Any,
 ) -> None:
     """Emit one structured command lifecycle event."""
-    RuntimeEvents.emit(
-        RuntimeEvents.build(
-            command=command,
-            lifecycle=lifecycle,
-            run_id=run_id,
-            **fields,
-        ),
+    _common_impl.emit_lifecycle_event(
+        command=command,
+        lifecycle=lifecycle,
+        run_id=run_id,
         event_format=event_format,
+        runtime_events=RuntimeEvents,
+        **fields,
     )
 
 
@@ -172,16 +156,18 @@ def _emit_history_payload(
     exit_code: int = 0,
 ) -> int:
     """Validate history output mode and emit one JSON or table payload."""
-    HistoryView.validate_output_mode(json_output=json_output, table=table)
-    if table:
-        _io.emit_markdown_table(
-            table_rows
-            if table_rows is not None
-            else cast(list[dict[str, Any]], payload),
-            columns=columns,
-        )
-        return exit_code
-    return _emit_json_payload(payload, pretty=pretty, exit_code=exit_code)
+    return _common_impl.emit_history_payload(
+        payload,
+        columns=columns,
+        pretty=pretty,
+        history_view=HistoryView,
+        emit_json_payload_fn=_emit_json_payload,
+        io_module=_io,
+        table=table,
+        json_output=json_output,
+        table_rows=table_rows,
+        exit_code=exit_code,
+    )
 
 
 def _complete_command(
@@ -243,19 +229,15 @@ def _load_history_records(
     status: str | None = None,
 ) -> list[dict[str, Any]]:
     """Load, filter, and sort history records for CLI read commands."""
-    load_kwargs: dict[str, Any] = {'raw': raw}
-    for key, value in (
-        ('job', job),
-        ('limit', limit),
-        ('run_id', run_id),
-        ('since', since),
-        ('until', until),
-        ('status', status),
-    ):
-        if value is not None:
-            load_kwargs[key] = value
-    return HistoryView.load_records(
-        **load_kwargs,
+    return _history_impl.load_history_records(
+        history_view=HistoryView,
+        raw=raw,
+        job=job,
+        limit=limit,
+        run_id=run_id,
+        since=since,
+        until=until,
+        status=status,
     )
 
 
@@ -266,22 +248,14 @@ def _start_command(
     **fields: Any,
 ) -> _CommandContext:
     """Create one command context and emit its started lifecycle event."""
-    context = _CommandContext(
+    return _common_impl.start_command(
         command=command,
         event_format=event_format,
-        run_id=RuntimeEvents.create_run_id(),
-        started_at=RuntimeEvents.utc_now_iso(),
-        started_perf=perf_counter(),
-    )
-    _emit_lifecycle_event(
-        command=context.command,
-        lifecycle='started',
-        run_id=context.run_id,
-        event_format=context.event_format,
-        timestamp=context.started_at,
+        runtime_events=RuntimeEvents,
+        emit_lifecycle_event_fn=_emit_lifecycle_event,
+        perf_counter_fn=perf_counter,
         **fields,
     )
-    return context
 
 
 def _complete_output(
@@ -296,36 +270,20 @@ def _complete_output(
     **fields: Any,
 ) -> int:
     """Emit completion for *context* and route the payload by output mode."""
-    _complete_command(context, **fields)
-    match mode:
-        case 'json':
-            return _emit_json_payload(payload, pretty=pretty)
-        case 'or_write':
-            _io.emit_or_write(
-                payload,
-                output_path,
-                pretty=pretty,
-                success_message=cast(str, success_message),
-            )
-            return 0
-        case 'file':
-            target = cast(str, output_path)
-            _write_file_payload(
-                cast(JSONData, payload),
-                target,
-                format_hint=format_hint,
-            )
-            print(f'{cast(str, success_message)} {target}')
-            return 0
-        case 'json_file':
-            _io.write_json_output(
-                payload,
-                cast(str, output_path),
-                success_message=cast(str, success_message),
-            )
-            return 0
-        case _:
-            raise AssertionError(f'Unsupported completion mode: {mode!r}')
+    return _common_impl.complete_output(
+        context,
+        payload,
+        mode=mode,
+        complete_command_fn=_complete_command,
+        emit_json_payload_fn=_emit_json_payload,
+        io_module=_io,
+        write_file_payload_fn=_write_file_payload,
+        pretty=pretty,
+        output_path=output_path,
+        format_hint=format_hint,
+        success_message=success_message,
+        **fields,
+    )
 
 
 def _record_run_completion(
@@ -337,18 +295,16 @@ def _record_run_completion(
     exc: Exception | None = None,
 ) -> None:
     """Persist the terminal state for one tracked CLI run."""
-    history_store.record_run_finished(
-        RunCompletion(
-            run_id=context.run_id,
-            state=RunState(
-                status=status,
-                finished_at=RuntimeEvents.utc_now_iso(),
-                duration_ms=_elapsed_ms(context.started_perf),
-                result_summary=result_summary,
-                error_type=None if exc is None else type(exc).__name__,
-                error_message=None if exc is None else str(exc),
-            ),
-        ),
+    _common_impl.record_run_completion(
+        history_store,
+        context,
+        status=status,
+        runtime_events=RuntimeEvents,
+        elapsed_ms_fn=_elapsed_ms,
+        run_completion_cls=RunCompletion,
+        run_state_cls=RunState,
+        result_summary=result_summary,
+        exc=exc,
     )
 
 
@@ -357,14 +313,11 @@ def _resolve_render_template(
     template_path: str | None,
 ) -> tuple[TemplateKey | None, str | None]:
     """Resolve the render template key and optional template-file override."""
-    template_key: TemplateKey | None = template or 'ddl'
-    if template_path is not None:
-        return template_key, template_path
-
-    candidate_path = Path(cast(str, template_key))
-    if candidate_path.exists():
-        return None, str(candidate_path)
-    return template_key, None
+    return _common_impl.resolve_render_template(
+        template,
+        template_path,
+        path_cls=Path,
+    )
 
 
 def _emit_render_output(
@@ -376,16 +329,14 @@ def _emit_render_output(
     schema_count: int,
 ) -> int:
     """Write rendered SQL to a file path or print it to STDOUT."""
-    sql_text = '\n'.join(chunk.rstrip() for chunk in rendered_chunks).rstrip() + '\n'
-    rendered_output = sql_text if pretty else sql_text.rstrip('\n')
-    if output_path and output_path != '-':
-        Path(output_path).write_text(rendered_output, encoding='utf-8')
-        if not quiet:
-            print(f'Rendered {schema_count} schema(s) to {output_path}')
-        return 0
-
-    print(rendered_output)
-    return 0
+    return _common_impl.emit_render_output(
+        rendered_chunks,
+        output_path=output_path,
+        pretty=pretty,
+        quiet=quiet,
+        schema_count=schema_count,
+        path_cls=Path,
+    )
 
 
 def _resolve_payload(
@@ -396,15 +347,12 @@ def _resolve_payload(
     hydrate_files: bool = True,
 ) -> object:
     """Resolve one CLI payload through the shared CLI payload loader."""
-    resolve_kwargs: dict[str, Any] = {
-        'format_hint': format_hint,
-        'format_explicit': format_explicit,
-    }
-    if not hydrate_files:
-        resolve_kwargs['hydrate_files'] = False
-    return _io.resolve_cli_payload(
+    return _common_impl.resolve_payload(
         payload,
-        **resolve_kwargs,
+        format_hint=format_hint,
+        format_explicit=format_explicit,
+        hydrate_files=hydrate_files,
+        io_module=_io,
     )
 
 
@@ -415,14 +363,12 @@ def _resolve_mapping_payload(
     error_message: str,
 ) -> dict[str, Any]:
     """Resolve one CLI payload and require a mapping result."""
-    resolved_payload = _resolve_payload(
+    return _common_impl.resolve_mapping_payload(
         payload,
-        format_hint=None,
         format_explicit=format_explicit,
+        error_message=error_message,
+        resolve_payload_fn=_resolve_payload,
     )
-    if not isinstance(resolved_payload, dict):
-        raise ValueError(error_message)
-    return resolved_payload
 
 
 def _emit_follow_history(
@@ -435,27 +381,18 @@ def _emit_follow_history(
     status: str | None = None,
 ) -> int:
     """Stream newly observed raw history records until interrupted."""
-    seen: set[str] = set()
-    try:
-        while True:
-            records = _load_history_records(
-                job=job,
-                limit=limit,
-                raw=True,
-                run_id=run_id,
-                since=since,
-                until=until,
-                status=status,
-            )
-            for record in reversed(records):
-                fingerprint = HistoryView.fingerprint(record)
-                if fingerprint in seen:
-                    continue
-                seen.add(fingerprint)
-                _emit_json_payload(record, pretty=False)
-            sleep(1.0)
-    except KeyboardInterrupt:
-        return 0
+    return _history_impl.emit_follow_history(
+        load_history_records_fn=_load_history_records,
+        history_view=HistoryView,
+        emit_json_payload_fn=_emit_json_payload,
+        sleep_fn=sleep,
+        job=job,
+        limit=limit,
+        run_id=run_id,
+        since=since,
+        until=until,
+        status=status,
+    )
 
 
 def _emit_readiness_report(
@@ -464,11 +401,11 @@ def _emit_readiness_report(
     pretty: bool,
 ) -> int:
     """Build and emit one readiness report, returning its CLI exit code."""
-    report = ReadinessReportBuilder.build(config_path=config)
-    return _emit_json_payload(
-        report,
+    return _common_impl.emit_readiness_report(
+        config=config,
         pretty=pretty,
-        exit_code=0 if report.get('status') == 'ok' else 1,
+        readiness_builder=ReadinessReportBuilder,
+        emit_json_payload_fn=_emit_json_payload,
     )
 
 
@@ -478,20 +415,14 @@ def _write_file_payload(
     *,
     format_hint: str | None,
 ) -> None:
-    """
-    Write a JSON-like payload to a file path using an optional format hint.
-
-    Parameters
-    ----------
-    payload : JSONData
-        The structured data to write.
-    target : str
-        File path to write to.
-    format_hint : str | None
-        Optional format hint for :class:`FileFormat`.
-    """
-    file_format = FileFormat.coerce(format_hint) if format_hint else None
-    File(target, file_format=file_format).write(payload)
+    """Write a JSON-like payload to a file path using an optional format hint."""
+    _common_impl.write_file_payload(
+        payload,
+        target,
+        format_hint=format_hint,
+        file_cls=File,
+        file_format_cls=FileFormat,
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -549,26 +480,22 @@ def check_handler(
         If config inspection is requested without a configuration path.
 
     """
-    if readiness:
-        return _emit_readiness_report(config=config, pretty=pretty)
-
-    if config is None:
-        raise ValueError('config is required unless readiness-only mode is used')
-
-    cfg = Config.from_yaml(config, substitute=substitute)
-    if summary:
-        return _emit_json_payload(_pipeline_summary(cfg), pretty=pretty)
-
-    return _emit_json_payload(
-        _check_sections(
-            cfg,
-            jobs=jobs,
-            pipelines=pipelines,
-            sources=sources,
-            targets=targets,
-            transforms=transforms,
-        ),
+    return _check_impl.check_handler(
+        config=config,
+        jobs=jobs,
+        pipelines=pipelines,
+        readiness=readiness,
+        sources=sources,
+        summary=summary,
+        targets=targets,
+        transforms=transforms,
+        substitute=substitute,
         pretty=pretty,
+        config_cls=Config,
+        emit_json_payload_fn=_emit_json_payload,
+        emit_readiness_report_fn=_emit_readiness_report,
+        check_sections_fn=_check_sections,
+        pipeline_summary_fn=_pipeline_summary,
     )
 
 
@@ -624,29 +551,22 @@ def history_handler(
     int
         Zero on success.
     """
-    if follow:
-        return _emit_follow_history(
-            job=job,
-            limit=limit,
-            run_id=run_id,
-            since=since,
-            status=status,
-            until=until,
-        )
-    return _emit_history_payload(
-        _load_history_records(
-            job=job,
-            limit=limit,
-            raw=raw,
-            run_id=run_id,
-            since=since,
-            until=until,
-            status=status,
-        ),
-        columns=_HISTORY_TABLE_COLUMNS,
-        pretty=pretty,
-        table=table,
+    return _history_impl.history_handler(
+        follow=follow,
+        job=job,
         json_output=json_output,
+        limit=limit,
+        raw=raw,
+        pretty=pretty,
+        run_id=run_id,
+        since=since,
+        until=until,
+        status=status,
+        table=table,
+        emit_follow_history_fn=_emit_follow_history,
+        emit_history_payload_fn=_emit_history_payload,
+        load_history_records_fn=_load_history_records,
+        columns=_HISTORY_TABLE_COLUMNS,
     )
 
 
@@ -689,56 +609,21 @@ def extract_handler(
     int
         Zero on success.
     """
-    explicit_format = format_hint if format_explicit else None
-    context = _start_command(
-        command='extract',
+    return _dataops_impl.extract_handler(
+        source_type=source_type,
+        source=source,
         event_format=event_format,
-        source=source,
-        source_type=source_type,
+        format_hint=format_hint,
+        format_explicit=format_explicit,
+        target=target,
+        output=output,
+        pretty=pretty,
+        extract_fn=extract,
+        io_module=_io,
+        start_command_fn=_start_command,
+        failure_boundary_fn=_failure_boundary,
+        complete_output_fn=_complete_output,
     )
-
-    with _failure_boundary(
-        context,
-        source=source,
-        source_type=source_type,
-    ):
-        if source == '-':
-            text = _io.read_stdin_text()
-            payload = _io.parse_text_payload(
-                text,
-                format_hint,
-            )
-            return _complete_output(
-                context,
-                payload,
-                mode='json',
-                pretty=pretty,
-                result_status='ok',
-                status='ok',
-                source=source,
-                source_type=source_type,
-            )
-
-        result = extract(
-            source_type,
-            source,
-            file_format=explicit_format,
-        )
-        output_path = target or output
-
-        return _complete_output(
-            context,
-            result,
-            mode='or_write',
-            output_path=output_path,
-            pretty=pretty,
-            success_message='Data extracted and saved to',
-            destination=output_path or 'stdout',
-            result_status='ok',
-            source=source,
-            source_type=source_type,
-            status='ok',
-        )
 
 
 def load_handler(
@@ -785,71 +670,23 @@ def load_handler(
     int
         Zero on success.
     """
-    explicit_format = target_format if format_explicit else None
-    context = _start_command(
-        command='load',
+    return _dataops_impl.load_handler(
+        source=source,
+        target_type=target_type,
+        target=target,
         event_format=event_format,
-        source=source,
-        target=target,
-        target_type=target_type,
+        source_format=source_format,
+        target_format=target_format,
+        format_explicit=format_explicit,
+        output=output,
+        pretty=pretty,
+        load_fn=load,
+        io_module=_io,
+        start_command_fn=_start_command,
+        failure_boundary_fn=_failure_boundary,
+        resolve_payload_fn=_resolve_payload,
+        complete_output_fn=_complete_output,
     )
-
-    with _failure_boundary(
-        context,
-        source=source,
-        target=target,
-        target_type=target_type,
-    ):
-        source_value = cast(
-            str | Path | os.PathLike[str] | dict[str, Any] | list[dict[str, Any]],
-            _resolve_payload(
-                source,
-                format_hint=source_format,
-                format_explicit=source_format is not None,
-                hydrate_files=False,
-            ),
-        )
-
-        if target_type == 'file' and target == '-':
-            payload = _io.materialize_file_payload(
-                source_value,
-                format_hint=source_format,
-                format_explicit=source_format is not None,
-            )
-            return _complete_output(
-                context,
-                payload,
-                mode='json',
-                pretty=pretty,
-                result_status='ok',
-                source=source,
-                status='ok',
-                target=target,
-                target_type=target_type,
-            )
-
-        result = load(
-            source_value,
-            target_type,
-            target,
-            file_format=explicit_format,
-        )
-
-        output_path = output
-        return _complete_output(
-            context,
-            result,
-            mode='or_write',
-            output_path=output_path,
-            pretty=pretty,
-            success_message='Load result saved to',
-            destination=output_path or 'stdout',
-            result_status=result.get('status') if isinstance(result, dict) else 'ok',
-            source=source,
-            status='ok',
-            target=target,
-            target_type=target_type,
-        )
 
 
 def render_handler(
@@ -890,36 +727,21 @@ def render_handler(
     int
         Zero on success.
     """
-    template_key, file_override = _resolve_render_template(template, template_path)
-    specs = _summary.collect_table_specs(config, spec)
-    if table:
-        specs = [
-            spec
-            for spec in specs
-            if str(spec.get('table')) == table or str(spec.get('name', '')) == table
-        ]
-
-    if not specs:
-        target_desc = table or 'table_schemas'
-        print(
-            'No table schemas found for '
-            f'{target_desc}. Provide --spec or a pipeline --config with '
-            'table_schemas.',
-            file=sys.stderr,
-        )
-        return 1
-
-    rendered_chunks = render_tables(
-        specs,
-        template=template_key,
-        template_path=file_override,
-    )
-    return _emit_render_output(
-        rendered_chunks,
-        output_path=output,
+    return _render_impl.render_handler(
+        config=config,
+        spec=spec,
+        table=table,
+        template=template,
+        template_path=template_path,
+        output=output,
         pretty=pretty,
         quiet=quiet,
-        schema_count=len(specs),
+        resolve_render_template_fn=_resolve_render_template,
+        summary_module=_summary,
+        render_tables_fn=render_tables,
+        emit_render_output_fn=_emit_render_output,
+        print_fn=print,
+        stderr=sys.stderr,
     )
 
 
@@ -960,21 +782,18 @@ def report_handler(
     int
         Zero on success.
     """
-    report = HistoryReportBuilder.build(
-        _load_history_records(
-            job=job,
-            since=since,
-            until=until,
-        ),
+    return _history_impl.report_handler(
         group_by=group_by,
-    )
-    return _emit_history_payload(
-        report,
-        columns=_REPORT_TABLE_COLUMNS,
-        pretty=pretty,
-        table=table,
+        job=job,
         json_output=json_output,
-        table_rows=cast(list[dict[str, Any]], report['rows']),
+        pretty=pretty,
+        since=since,
+        table=table,
+        until=until,
+        load_history_records_fn=_load_history_records,
+        report_builder=HistoryReportBuilder,
+        emit_history_payload_fn=_emit_history_payload,
+        columns=_REPORT_TABLE_COLUMNS,
     )
 
 
@@ -1091,14 +910,13 @@ def status_handler(
     int
         Zero when a matching run exists, otherwise ``1``.
     """
-    records = _load_history_records(
+    return _history_impl.status_handler(
         job=job,
-        limit=1,
+        pretty=pretty,
         run_id=run_id,
+        load_history_records_fn=_load_history_records,
+        emit_json_payload_fn=_emit_json_payload,
     )
-    if not records:
-        return _emit_json_payload({}, pretty=pretty, exit_code=1)
-    return _emit_json_payload(records[0], pretty=pretty)
 
 
 def transform_handler(
@@ -1153,84 +971,24 @@ def transform_handler(
     ``database`` are delegated to :func:`etlplus.ops.load.load` so the
     transform command and load command share target behavior.
     """
-    source_format_explicit = source_format is not None or format_explicit
-    context = _start_command(
-        command='transform',
+    return _dataops_impl.transform_handler(
+        source=source,
+        operations=operations,
+        target=target,
+        target_type=target_type,
         event_format=event_format,
-        source=source,
-        target=target or 'stdout',
-        target_type=target_type,
+        source_format=source_format,
+        target_format=target_format,
+        pretty=pretty,
+        format_explicit=format_explicit,
+        load_fn=load,
+        transform_fn=transform,
+        start_command_fn=_start_command,
+        failure_boundary_fn=_failure_boundary,
+        resolve_payload_fn=_resolve_payload,
+        resolve_mapping_payload_fn=_resolve_mapping_payload,
+        complete_output_fn=_complete_output,
     )
-
-    with _failure_boundary(
-        context,
-        source=source,
-        target=target or 'stdout',
-        target_type=target_type,
-    ):
-        payload = cast(
-            JSONData | str,
-            _resolve_payload(
-                source,
-                format_hint=source_format,
-                format_explicit=source_format_explicit,
-            ),
-        )
-
-        operations_payload = _resolve_mapping_payload(
-            operations,
-            format_explicit=source_format_explicit,
-            error_message='operations must resolve to a mapping of transforms',
-        )
-
-        data = transform(payload, cast(TransformOperations, operations_payload))
-
-        if target and target != '-':
-            if target_type not in (None, 'file'):
-                resolved_target_type = cast(str, target_type)
-                result = load(
-                    data,
-                    resolved_target_type,
-                    target,
-                    file_format=target_format if source_format_explicit else None,
-                )
-                return _complete_output(
-                    context,
-                    result,
-                    mode='json',
-                    pretty=pretty,
-                    result_status='ok',
-                    source=source,
-                    status='ok',
-                    target=target,
-                    target_type=resolved_target_type,
-                )
-
-            return _complete_output(
-                context,
-                data,
-                mode='file',
-                output_path=target,
-                format_hint=target_format,
-                success_message='Data transformed and saved to',
-                result_status='ok',
-                source=source,
-                status='ok',
-                target=target,
-                target_type=target_type or 'file',
-            )
-
-        return _complete_output(
-            context,
-            data,
-            mode='json',
-            pretty=pretty,
-            result_status='ok',
-            source=source,
-            status='ok',
-            target=target or 'stdout',
-            target_type=target_type,
-        )
 
 
 def validate_handler(
@@ -1270,66 +1028,20 @@ def validate_handler(
     int
         Zero on success.
     """
-    context = _start_command(
-        command='validate',
+    return _dataops_impl.validate_handler(
+        source=source,
+        rules=rules,
         event_format=event_format,
-        source=source,
-        target=target or 'stdout',
+        source_format=source_format,
+        target=target,
+        format_explicit=format_explicit,
+        pretty=pretty,
+        validate_fn=validate,
+        start_command_fn=_start_command,
+        failure_boundary_fn=_failure_boundary,
+        resolve_payload_fn=_resolve_payload,
+        resolve_mapping_payload_fn=_resolve_mapping_payload,
+        complete_output_fn=_complete_output,
+        print_fn=print,
+        stderr=sys.stderr,
     )
-
-    with _failure_boundary(
-        context,
-        source=source,
-        target=target or 'stdout',
-    ):
-        source_format_explicit = source_format is not None or format_explicit
-        payload = cast(
-            JSONData | str,
-            _resolve_payload(
-                source,
-                format_hint=source_format,
-                format_explicit=source_format_explicit,
-            ),
-        )
-
-        rules_payload = _resolve_mapping_payload(
-            rules,
-            format_explicit=source_format_explicit,
-            error_message='rules must resolve to a mapping of field rules',
-        )
-
-        field_rules = cast(Mapping[str, FieldRulesDict], rules_payload)
-        result = validate(payload, field_rules)
-
-        if target and target != '-':
-            validated_data = result.get('data')
-            if validated_data is not None:
-                return _complete_output(
-                    context,
-                    validated_data,
-                    mode='json_file',
-                    output_path=target,
-                    success_message='ValidationDict result saved to',
-                    result_status='ok',
-                    source=source,
-                    status='ok',
-                    target=target,
-                    valid=result.get('valid'),
-                )
-            print(
-                f'ValidationDict failed, no data to save for {target}',
-                file=sys.stderr,
-            )
-            return 0
-
-        return _complete_output(
-            context,
-            result,
-            mode='json',
-            pretty=pretty,
-            result_status='ok',
-            source=source,
-            status='ok',
-            target=target or 'stdout',
-            valid=result.get('valid'),
-        )
