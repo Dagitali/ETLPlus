@@ -158,6 +158,29 @@ class TestCheckCommand:
         assert captured['jobs'] is True
         assert captured['pretty'] is False
 
+    def test_rejects_readiness_with_inspection_flags(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+    ) -> None:
+        """Readiness mode should reject inspection-flag combinations."""
+        monkeypatch.setattr(
+            check_mod,
+            'fail_usage',
+            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
+        )
+
+        with pytest.raises(
+            typer.BadParameter,
+            match='--readiness cannot be combined with inspection flags',
+        ):
+            commands_mod.check_cmd(
+                typer_ctx_factory(),
+                config='pipeline.yml',
+                jobs=True,
+                readiness=True,
+            )
+
 
 class TestCliInvokeParsing:
     """Typer runner coverage for history/log/report option parsing."""

@@ -324,6 +324,8 @@ def _complete_output(
                 success_message=cast(str, success_message),
             )
             return 0
+        case _:
+            raise AssertionError(f'Unsupported completion mode: {mode!r}')
 
 
 def _record_run_completion(

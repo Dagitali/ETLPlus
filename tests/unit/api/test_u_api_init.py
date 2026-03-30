@@ -10,6 +10,12 @@ import etlplus.api as api_pkg
 from etlplus.api.pagination import PaginationInput
 from etlplus.api.rate_limiting import RateLimitOverrides
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: TESTS ============================================================ #
+
 
 class TestApiPackageExports:
     """Unit tests for top-level API package exports."""

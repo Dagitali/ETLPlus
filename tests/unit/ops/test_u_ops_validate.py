@@ -51,77 +51,6 @@ class TestLoadData:
             load_data('not a valid json string')
 
 
-class TestValidateField:
-    """Unit tests for :func:`validate_field`."""
-
-    def test_boolean_type_branch(self) -> None:
-        """Test that explicit boolean type branch in type matches."""
-        assert validate_field(True, {'type': 'boolean'})['valid'] is True
-        assert validate_field(1, {'type': 'boolean'})['valid'] is False
-
-    def test_enum_rule_requires_list(self) -> None:
-        """Test that non-list enum rules add an error entry."""
-
-        # Test expects the value for key ``enum`` to not be a list.
-        result = validate_field('a', {'enum': 'abc'})  # type: ignore
-        assert result['valid'] is False
-        assert any('enum' in err for err in result['errors'])
-
-    def test_pattern_rule_type_and_mismatch_paths(self) -> None:
-        """Test pattern mismatch and non-string pattern validation paths."""
-        mismatch = validate_field('abc', {'pattern': '^z'})
-        assert mismatch['valid'] is False
-        assert any('does not match pattern' in err for err in mismatch['errors'])
-
-        matched = validate_field('abc', {'pattern': '^a'})
-        assert matched['valid'] is True
-
-        invalid_type = validate_field('abc', {'pattern': 123})
-        assert invalid_type['valid'] is False
-        assert any('must be a string' in err for err in invalid_type['errors'])
-
-    def test_pattern_rule_with_invalid_regex(self) -> None:
-        """Test that invalid regex patterns add an error entry."""
-
-        result = validate_field('abc', {'pattern': '['})
-        assert result['valid'] is False
-        assert any('pattern' in err for err in result['errors'])
-
-    def test_required_error_message(self) -> None:
-        """Test error message for required field."""
-        result = validate_field(None, {'required': True})
-        assert 'required' in result['errors'][0].lower()
-
-    @pytest.mark.parametrize(
-        ('value', 'rule', 'expected_valid'),
-        [
-            (None, {'required': True}, False),
-            ('test', {'type': 'string'}, True),
-            (123, {'type': 'string'}, False),
-            (123, {'type': 'number'}, True),
-            (123.45, {'type': 'number'}, True),
-            ('123', {'type': 'number'}, False),
-            (5, {'min': 1, 'max': 10}, True),
-            (0, {'min': 1}, False),
-            (11, {'max': 10}, False),
-            ('hello', {'minLength': 3, 'maxLength': 10}, True),
-            ('hi', {'minLength': 3}, False),
-            ('hello world!', {'maxLength': 10}, False),
-            ('red', {'enum': ['red', 'green', 'blue']}, True),
-            ('yellow', {'enum': ['red', 'green', 'blue']}, False),
-        ],
-    )
-    def test_validate_field(
-        self,
-        value: Any,
-        rule: dict[str, Any],
-        expected_valid: bool,
-    ) -> None:
-        """Test field rules using parameterized cases."""
-        result = validate_field(value, rule)
-        assert result['valid'] is expected_valid
-
-
 class TestValidate:
     """Unit tests for :func:`validate`."""
 
@@ -256,6 +185,82 @@ class TestValidate:
         assert not result['errors']
         assert not result['field_errors']
         assert result['data'] == 42
+
+
+class TestValidateField:
+    """Unit tests for :func:`validate_field`."""
+
+    def test_boolean_type_branch(self) -> None:
+        """Test that explicit boolean type branch in type matches."""
+        assert validate_field(True, {'type': 'boolean'})['valid'] is True
+        assert validate_field(1, {'type': 'boolean'})['valid'] is False
+
+    def test_enum_rule_requires_list(self) -> None:
+        """Test that non-list enum rules add an error entry."""
+
+        # Test expects the value for key ``enum`` to not be a list.
+        result = validate_field('a', {'enum': 'abc'})  # type: ignore
+        assert result['valid'] is False
+        assert any('enum' in err for err in result['errors'])
+
+    def test_integer_type_branch(self) -> None:
+        """Test that integer type excludes booleans."""
+        assert validate_field(7, {'type': 'integer'})['valid'] is True
+        assert validate_field(True, {'type': 'integer'})['valid'] is False
+
+    def test_pattern_rule_type_and_mismatch_paths(self) -> None:
+        """Test pattern mismatch and non-string pattern validation paths."""
+        mismatch = validate_field('abc', {'pattern': '^z'})
+        assert mismatch['valid'] is False
+        assert any('does not match pattern' in err for err in mismatch['errors'])
+
+        matched = validate_field('abc', {'pattern': '^a'})
+        assert matched['valid'] is True
+
+        invalid_type = validate_field('abc', {'pattern': 123})
+        assert invalid_type['valid'] is False
+        assert any('must be a string' in err for err in invalid_type['errors'])
+
+    def test_pattern_rule_with_invalid_regex(self) -> None:
+        """Test that invalid regex patterns add an error entry."""
+
+        result = validate_field('abc', {'pattern': '['})
+        assert result['valid'] is False
+        assert any('pattern' in err for err in result['errors'])
+
+    def test_required_error_message(self) -> None:
+        """Test error message for required field."""
+        result = validate_field(None, {'required': True})
+        assert 'required' in result['errors'][0].lower()
+
+    @pytest.mark.parametrize(
+        ('value', 'rule', 'expected_valid'),
+        [
+            (None, {'required': True}, False),
+            ('test', {'type': 'string'}, True),
+            (123, {'type': 'string'}, False),
+            (123, {'type': 'number'}, True),
+            (123.45, {'type': 'number'}, True),
+            ('123', {'type': 'number'}, False),
+            (5, {'min': 1, 'max': 10}, True),
+            (0, {'min': 1}, False),
+            (11, {'max': 10}, False),
+            ('hello', {'minLength': 3, 'maxLength': 10}, True),
+            ('hi', {'minLength': 3}, False),
+            ('hello world!', {'maxLength': 10}, False),
+            ('red', {'enum': ['red', 'green', 'blue']}, True),
+            ('yellow', {'enum': ['red', 'green', 'blue']}, False),
+        ],
+    )
+    def test_validate_field(
+        self,
+        value: Any,
+        rule: dict[str, Any],
+        expected_valid: bool,
+    ) -> None:
+        """Test field rules using parameterized cases."""
+        result = validate_field(value, rule)
+        assert result['valid'] is expected_valid
 
 
 class TestValidateInternalHelpers:

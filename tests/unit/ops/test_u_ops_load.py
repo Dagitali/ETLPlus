@@ -272,59 +272,6 @@ class TestLoad:
         assert err_msg in str(e.value)
 
 
-class TestLoadErrors:
-    """
-    Unit tests for :mod:`etlplus.ops.load` function errors.
-
-    Notes
-    -----
-    - Tests error handling for load and load_data.
-    """
-
-    @pytest.mark.parametrize(
-        ('exc_type', 'call', 'args', 'err_msg'),
-        [
-            (
-                ValueError,
-                load_data,
-                ['/nonexistent/file.json'],
-                'Invalid data source',
-            ),
-            (
-                ValueError,
-                load,
-                ['/nonexistent/file.json', 'invalid', 'source', 'json'],
-                'Invalid data source',
-            ),
-        ],
-    )
-    def test_error_cases(
-        self,
-        exc_type: type[Exception],
-        call: Callable[..., Any],
-        args: list[Any],
-        err_msg: str | None,
-    ) -> None:
-        """
-        Test parametrized error case tests for load/load_data.
-
-        Parameters
-        ----------
-        exc_type : type[Exception]
-            Expected exception type.
-        call : Callable[..., Any]
-            Function to call.
-        args : list[Any]
-            Arguments to pass to the function.
-        err_msg : str | None
-            Expected error message substring, if applicable.
-        """
-        with pytest.raises(exc_type) as exc:
-            call(*args)
-        if err_msg:
-            assert err_msg in str(exc.value)
-
-
 class TestLoadData:
     """
     Unit tests for :func:`etlplus.ops.load.load_data`.
@@ -477,209 +424,57 @@ class TestLoadData:
             load_data(cast(Any, 123))
 
 
-class TestLoadToFile:
+class TestLoadErrors:
     """
-    Unit tests for :func:`etlplus.ops.load.load_to_file`.
+    Unit tests for :mod:`etlplus.ops.load` function errors.
 
     Notes
     -----
-    - Tests writing to CSV and JSON files,
-        directory creation, and error handling.
+    - Tests error handling for load and load_data.
     """
 
-    def test_remote_uri_preserves_path_and_coerces_write_options(
+    @pytest.mark.parametrize(
+        ('exc_type', 'call', 'args', 'err_msg'),
+        [
+            (
+                ValueError,
+                load_data,
+                ['/nonexistent/file.json'],
+                'Invalid data source',
+            ),
+            (
+                ValueError,
+                load,
+                ['/nonexistent/file.json', 'invalid', 'source', 'json'],
+                'Invalid data source',
+            ),
+        ],
+    )
+    def test_error_cases(
         self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that remote file loads keep the URI and forward write options."""
-        captured: dict[str, Any] = {}
-
-        class _FakeFile:
-            file_format = load_mod.FileFormat.CSV
-
-            def __init__(
-                self,
-                path: str,
-                file_format: object = None,
-            ) -> None:
-                captured['path'] = path
-                captured['file_format'] = file_format
-
-            def write(
-                self,
-                data: JSONData,
-                *,
-                options: object | None = None,
-            ) -> int:
-                captured['data'] = data
-                captured['options'] = options
-                return 1
-
-        monkeypatch.setattr(load_mod, 'File', _FakeFile)
-
-        result = load_to_file(
-            [{'name': 'Ada'}],
-            's3://bucket/output.csv',
-            'csv',
-            {'encoding': 'utf-16', 'delimiter': '|'},
-        )
-
-        assert result['status'] == 'success'
-        assert result['message'] == 'Data loaded to s3://bucket/output.csv'
-        assert captured['path'] == 's3://bucket/output.csv'
-        assert captured['file_format'] == load_mod.FileFormat.CSV
-        options = captured['options']
-        assert options is not None
-        assert options.encoding == 'utf-16'
-        assert options.extras == {'delimiter': '|'}
-
-    def test_to_csv_file(
-        self,
-        tmp_path: Path,
+        exc_type: type[Exception],
+        call: Callable[..., Any],
+        args: list[Any],
+        err_msg: str | None,
     ) -> None:
         """
-        Test writing a list of dicts to a CSV file.
+        Test parametrized error case tests for load/load_data.
 
         Parameters
         ----------
-        tmp_path : Path
-            Temporary directory provided by pytest.
+        exc_type : type[Exception]
+            Expected exception type.
+        call : Callable[..., Any]
+            Function to call.
+        args : list[Any]
+            Arguments to pass to the function.
+        err_msg : str | None
+            Expected error message substring, if applicable.
         """
-        path = tmp_path / 'output.csv'
-        mock_data = [
-            {'name': 'John', 'age': 30},
-            {'name': 'Jane', 'age': 25},
-        ]
-        result: dict[str, Any] = load_to_file(mock_data, str(path), 'csv')
-        assert result['status'] == 'success'
-        assert path.exists()
-        with open(path, encoding='utf-8', newline='') as f:
-            reader = csv.DictReader(f)
-            loaded_data: list[dict[str, Any]] = list(reader)
-        assert len(loaded_data) == 2
-        first_row: dict[str, Any] = loaded_data[0]
-        assert isinstance(first_row, dict)
-        assert first_row['name'] == 'John'
-
-    def test_to_csv_file_empty_list(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test writing an empty list to a CSV file.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Temporary directory provided by pytest.
-        """
-        output_path = tmp_path / 'output.csv'
-        mock_data: list[dict[str, Any]] = []
-        result = load_to_file(mock_data, str(output_path), 'csv')
-        assert result['status'] == 'success'
-        assert result['records'] == 0
-
-    def test_to_csv_file_single_dict(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test writing a single dict to a CSV file.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Temporary directory provided by pytest.
-        """
-        output_path = tmp_path / 'output.csv'
-        mock_data = {'name': 'John', 'age': 30}
-        result: dict[str, Any] = load_to_file(
-            mock_data,
-            str(output_path),
-            'csv',
-        )
-        assert result['status'] == 'success'
-        assert output_path.exists()
-
-    def test_to_file_creates_directory(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that parent directories are created for file targets.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Temporary directory provided by pytest.
-        """
-        output_path = tmp_path / 'subdir' / 'output.json'
-        mock_data = {'test': 'data'}
-        result: dict[str, Any] = load_to_file(
-            mock_data,
-            str(output_path),
-            'json',
-        )
-        assert result['status'] == 'success'
-        assert output_path.exists()
-
-    def test_to_file_infers_format_when_none(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that omitting file_format infers from the output extension.
-        """
-        output_path = tmp_path / 'auto.json'
-        payload = {'status': 'ok'}
-
-        result = load_to_file(payload, str(output_path), None)
-
-        assert result['status'] == 'success'
-        assert result['records'] == 1
-        assert output_path.exists()
-        with open(output_path, encoding='utf-8') as f:
-            loaded_data = js.load(f)
-        assert loaded_data == payload
-
-    def test_to_file_unsupported_format(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test error raised for unsupported file format.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Temporary directory provided by pytest.
-        """
-        output_path = tmp_path / 'output.txt'
-        mock_data = {'test': 'data'}
-        with pytest.raises(ValueError, match='Invalid FileFormat'):
-            load_to_file(mock_data, str(output_path), 'unsupported')
-
-    def test_to_json_file(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test writing a dict to a JSON file.
-
-        Parameters
-        ----------
-        tmp_path : Path
-            Temporary directory provided by pytest.
-        """
-        output_path = tmp_path / 'output.json'
-        mock_data = {'name': 'John', 'age': 30}
-        result: dict[str, Any] = load_to_file(
-            mock_data,
-            str(output_path),
-            'json',
-        )
-        assert result['status'] == 'success'
-        assert output_path.exists()
+        with pytest.raises(exc_type) as exc:
+            call(*args)
+        if err_msg:
+            assert err_msg in str(exc.value)
 
 
 class TestLoadToApi:
@@ -947,3 +742,263 @@ class TestLoadApiOrchestrator:
         options = calls[0][3]
         assert options is not None
         assert options == {'encoding': 'utf-8', 'delimiter': ';'}
+
+
+class TestLoadToFile:
+    """
+    Unit tests for :func:`etlplus.ops.load.load_to_file`.
+
+    Notes
+    -----
+    - Tests writing to CSV and JSON files,
+        directory creation, and error handling.
+    """
+
+    def test_remote_uri_preserves_path_and_coerces_write_options(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote file loads keep the URI and forward write options."""
+        captured: dict[str, Any] = {}
+
+        class _FakeFile:
+            file_format = load_mod.FileFormat.CSV
+
+            def __init__(
+                self,
+                path: str,
+                file_format: object = None,
+            ) -> None:
+                captured['path'] = path
+                captured['file_format'] = file_format
+
+            def write(
+                self,
+                data: JSONData,
+                *,
+                options: object | None = None,
+            ) -> int:
+                captured['data'] = data
+                captured['options'] = options
+                return 1
+
+        monkeypatch.setattr(load_mod, 'File', _FakeFile)
+
+        result = load_to_file(
+            [{'name': 'Ada'}],
+            's3://bucket/output.csv',
+            'csv',
+            {'encoding': 'utf-16', 'delimiter': '|'},
+        )
+
+        assert result['status'] == 'success'
+        assert result['message'] == 'Data loaded to s3://bucket/output.csv'
+        assert captured['path'] == 's3://bucket/output.csv'
+        assert captured['file_format'] == load_mod.FileFormat.CSV
+        options = captured['options']
+        assert options is not None
+        assert options.encoding == 'utf-16'
+        assert options.extras == {'delimiter': '|'}
+
+    def test_to_csv_file(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test writing a list of dicts to a CSV file.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        """
+        path = tmp_path / 'output.csv'
+        mock_data = [
+            {'name': 'John', 'age': 30},
+            {'name': 'Jane', 'age': 25},
+        ]
+        result: dict[str, Any] = load_to_file(mock_data, str(path), 'csv')
+        assert result['status'] == 'success'
+        assert path.exists()
+        with open(path, encoding='utf-8', newline='') as f:
+            reader = csv.DictReader(f)
+            loaded_data: list[dict[str, Any]] = list(reader)
+        assert len(loaded_data) == 2
+        first_row: dict[str, Any] = loaded_data[0]
+        assert isinstance(first_row, dict)
+        assert first_row['name'] == 'John'
+
+    def test_to_csv_file_empty_list(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test writing an empty list to a CSV file.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        """
+        output_path = tmp_path / 'output.csv'
+        mock_data: list[dict[str, Any]] = []
+        result = load_to_file(mock_data, str(output_path), 'csv')
+        assert result['status'] == 'success'
+        assert result['records'] == 0
+
+    def test_to_csv_file_single_dict(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test writing a single dict to a CSV file.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        """
+        output_path = tmp_path / 'output.csv'
+        mock_data = {'name': 'John', 'age': 30}
+        result: dict[str, Any] = load_to_file(
+            mock_data,
+            str(output_path),
+            'csv',
+        )
+        assert result['status'] == 'success'
+        assert output_path.exists()
+
+    def test_to_file_creates_directory(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test that parent directories are created for file targets.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        """
+        output_path = tmp_path / 'subdir' / 'output.json'
+        mock_data = {'test': 'data'}
+        result: dict[str, Any] = load_to_file(
+            mock_data,
+            str(output_path),
+            'json',
+        )
+        assert result['status'] == 'success'
+        assert output_path.exists()
+
+    def test_to_file_infers_format_when_none(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test that omitting file_format infers from the output extension.
+        """
+        output_path = tmp_path / 'auto.json'
+        payload = {'status': 'ok'}
+
+        result = load_to_file(payload, str(output_path), None)
+
+        assert result['status'] == 'success'
+        assert result['records'] == 1
+        assert output_path.exists()
+        with open(output_path, encoding='utf-8') as f:
+            loaded_data = js.load(f)
+        assert loaded_data == payload
+
+    def test_to_file_infers_format_and_forwards_coerced_options_when_none(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test inferred format path when optional write options are supplied."""
+        captured: dict[str, Any] = {}
+
+        class _FakeFile:
+            file_format = load_mod.FileFormat.JSON
+
+            def __init__(
+                self,
+                path: str,
+                file_format: object = None,
+            ) -> None:
+                captured['path'] = path
+                captured['file_format'] = file_format
+
+            def write(
+                self,
+                data: JSONData,
+                *,
+                options: object | None = None,
+            ) -> int:
+                captured['data'] = data
+                captured['options'] = options
+                return 1
+
+        monkeypatch.setattr(load_mod, 'File', _FakeFile)
+
+        result = load_to_file(
+            {'status': 'ok'},
+            'auto.json',
+            None,
+            {
+                'root_tag': 99,
+                'table': 123,
+                'dataset': 456,
+                'inner_name': 789,
+                'indent': 2,
+            },
+        )
+
+        assert result['status'] == 'success'
+        assert result['message'] == 'Data loaded to auto.json'
+        assert captured['path'] == 'auto.json'
+        assert captured['file_format'] is None
+        options = captured['options']
+        assert options is not None
+        assert options.root_tag == '99'
+        assert options.table == '123'
+        assert options.dataset == '456'
+        assert options.inner_name == '789'
+        assert options.extras == {'indent': 2}
+
+    def test_to_file_unsupported_format(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test error raised for unsupported file format.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        """
+        output_path = tmp_path / 'output.txt'
+        mock_data = {'test': 'data'}
+        with pytest.raises(ValueError, match='Invalid FileFormat'):
+            load_to_file(mock_data, str(output_path), 'unsupported')
+
+    def test_to_json_file(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test writing a dict to a JSON file.
+
+        Parameters
+        ----------
+        tmp_path : Path
+            Temporary directory provided by pytest.
+        """
+        output_path = tmp_path / 'output.json'
+        mock_data = {'name': 'John', 'age': 30}
+        result: dict[str, Any] = load_to_file(
+            mock_data,
+            str(output_path),
+            'json',
+        )
+        assert result['status'] == 'success'
+        assert output_path.exists()

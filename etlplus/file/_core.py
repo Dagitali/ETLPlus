@@ -212,8 +212,11 @@ class File:
             if for_write:
                 backend.ensure_parent_dir(self.location)
                 with dispatch_path.open('rb') as source:
-                    with backend.open(self.location, 'wb') as target:
-                        shutil.copyfileobj(source, target)
+                    upload_target: IO[Any] = backend.open(self.location, 'wb')
+                    try:
+                        shutil.copyfileobj(source, upload_target)
+                    finally:
+                        upload_target.close()
 
     def _ensure_format(self) -> FileFormat:
         """
