@@ -23,6 +23,7 @@ from .._types import OperatorFunc
 
 __all__ = [
     'apply_filter',
+    'apply_filter_step',
 ]
 
 
@@ -170,41 +171,6 @@ def _eval_condition(
         raise
 
 
-def _apply_filter_step(
-    records: JSONList,
-    spec: Any,
-) -> JSONList:
-    """
-    Apply a function filter step to a list of records.
-
-    Parameters
-    ----------
-    records : JSONList
-        Input records to filter.
-    spec : Any
-        Mapping with keys ``field``, ``op``, and ``value``. ``op`` may be a
-        string, :class:`OperatorName`, or a callable.
-
-    Returns
-    -------
-    JSONList
-        Filtered records.
-    """
-    field: FieldName = spec.get('field')  # type: ignore[assignment]
-    op = spec.get('op')
-    value = spec.get('value')
-
-    if not field:
-        return records
-
-    op_func = _resolve_operator(op)
-    return [
-        record
-        for record in records
-        if _eval_condition(record, field, op_func, value, catch_all=True)
-    ]
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -253,3 +219,38 @@ def apply_filter(
             continue
 
     return result
+
+
+def apply_filter_step(
+    records: JSONList,
+    spec: Any,
+) -> JSONList:
+    """
+    Apply a function filter step to a list of records.
+
+    Parameters
+    ----------
+    records : JSONList
+        Input records to filter.
+    spec : Any
+        Mapping with keys ``field``, ``op``, and ``value``. ``op`` may be a
+        string, :class:`OperatorName`, or a callable.
+
+    Returns
+    -------
+    JSONList
+        Filtered records.
+    """
+    field: FieldName = spec.get('field')  # type: ignore[assignment]
+    op = spec.get('op')
+    value = spec.get('value')
+
+    if not field:
+        return records
+
+    op_func = _resolve_operator(op)
+    return [
+        record
+        for record in records
+        if _eval_condition(record, field, op_func, value, catch_all=True)
+    ]
