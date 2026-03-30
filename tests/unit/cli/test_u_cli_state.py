@@ -382,6 +382,45 @@ class TestCliStateHelpers:
         )
         assert 'Inferred source_type=file' in capsys.readouterr().err
 
+    def test_resolve_logged_resource_type_returns_none_when_soft_inference_fails(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Soft inference should allow a ``None`` result without validation."""
+        logged: dict[str, object] = {}
+        validated: list[object] = []
+        monkeypatch.setattr(
+            cli_state_mod,
+            'infer_resource_type_soft',
+            lambda _value: None,
+        )
+        monkeypatch.setattr(
+            cli_state_mod,
+            'validate_choice',
+            lambda value, choices, *, label: validated.append((value, choices, label)),
+        )
+        monkeypatch.setattr(
+            cli_state_mod,
+            'log_inferred_resource',
+            lambda state, **kwargs: logged.update(kwargs),
+        )
+
+        resolved = cli_state_mod.resolve_logged_resource_type(
+            cli_state_mod.CliState(verbose=True),
+            role='source',
+            value='payload.json',
+            explicit_type=None,
+            soft_inference=True,
+        )
+
+        assert resolved is None
+        assert validated == []
+        assert logged == {
+            'role': 'source',
+            'value': 'payload.json',
+            'resource_type': None,
+        }
+
     def test_resolve_logged_resource_type_uses_soft_inference(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -451,6 +490,26 @@ class TestCliStateHelpers:
             label='source_type',
             legacy_file_error='legacy',
         )
+        assert resolved == 'api'
+
+    def test_resolve_resource_type_infers_when_no_explicit_or_override(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Resolver should infer a connector type when no preference is given."""
+        monkeypatch.setattr(
+            cli_state_mod,
+            'infer_resource_type_or_exit',
+            lambda _value: 'api',
+        )
+
+        resolved = cli_state_mod.resolve_resource_type(
+            explicit_type=None,
+            override_type=None,
+            value='https://example.com/items',
+            label='source_type',
+        )
+
         assert resolved == 'api'
 
     def test_resource_type_resolver_infer_soft_uses_function_seam(
