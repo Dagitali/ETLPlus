@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.ops.transformations._sort` module.
+:mod:`etlplus.ops.transformations.sort` module.
 
 Sort transformation helpers extracted from :mod:`etlplus.ops.transform`.
 """

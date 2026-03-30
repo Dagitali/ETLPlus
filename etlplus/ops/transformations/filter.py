@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.ops.transformations._filter` module.
+:mod:`etlplus.ops.transformations.filter` module.
 
 Filter transformation helpers extracted from :mod:`etlplus.ops.transform`.
 """

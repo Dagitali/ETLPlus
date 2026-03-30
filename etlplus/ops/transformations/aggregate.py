@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.ops.transformations._aggregate` module.
+:mod:`etlplus.ops.transformations.aggregate` module.
 
 Aggregate transformation helpers extracted from :mod:`etlplus.ops.transform`.
 """

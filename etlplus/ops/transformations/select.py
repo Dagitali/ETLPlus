@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.ops.transformations._select` module.
+:mod:`etlplus.ops.transformations.select` module.
 
 Select transformation helpers extracted from :mod:`etlplus.ops.transform`.
 """

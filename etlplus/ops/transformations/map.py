@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.ops.transformations._map` module.
+:mod:`etlplus.ops.transformations.map` module.
 
 Map transformation helpers extracted from :mod:`etlplus.ops.transform`.
 """
