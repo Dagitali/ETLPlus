@@ -1,8 +1,7 @@
 """
 :mod:`etlplus.ops.transformations` package.
 
-Protected step-specific transformation helpers used by
-:mod:`etlplus.ops.transform`.
+Step-specific transformation helpers used by :mod:`etlplus.ops.transform`.
 """
 
 # SECTION: EXPORTS ========================================================== #
