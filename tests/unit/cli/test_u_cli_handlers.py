@@ -47,6 +47,7 @@ class _ReadOnlyFakeHistoryStore(handlers.HistoryStore):
 
 # SECTION: TESTS ============================================================ #
 
+
 class TestCheckHandler:
     """Unit tests for :func:`check_handler`."""
 
