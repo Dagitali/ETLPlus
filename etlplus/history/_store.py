@@ -15,6 +15,7 @@ from abc import ABC
 from abc import abstractmethod
 from collections.abc import Iterator
 from collections.abc import Mapping
+from contextlib import closing
 from dataclasses import dataclass
 from dataclasses import fields
 from pathlib import Path
@@ -597,7 +598,7 @@ class SQLiteHistoryStore(HistoryStore):
 
     def _ensure_schema(self) -> None:
         """Ensure the database schema is created and up-to-date."""
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS meta (
@@ -643,7 +644,7 @@ class SQLiteHistoryStore(HistoryStore):
 
     def iter_records(self) -> Iterator[dict[str, Any]]:
         """Yield persisted SQLite run rows as dictionaries."""
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 f"""
@@ -669,7 +670,7 @@ class SQLiteHistoryStore(HistoryStore):
             Stable completion details for the run.
         """
         state = completion.state
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             conn.execute(
                 """
                 UPDATE runs
@@ -708,7 +709,7 @@ class SQLiteHistoryStore(HistoryStore):
             Initial run record to persist.
         """
         payload = _sqlite_record_payload(record)
-        with self._connect() as conn:
+        with closing(self._connect()) as conn, conn:
             conn.execute(
                 f"""
                 INSERT OR REPLACE INTO runs (
