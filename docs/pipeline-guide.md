@@ -333,7 +333,7 @@ validations:
 
 ## Transforms
 
-Transformation pipelines follow `etlplus.ops.transform` shapes exactly:
+Transformation pipelines follow `etlplus.ops.transform.transform()` shapes exactly:
 
 ```yaml
 transforms:
@@ -344,14 +344,26 @@ transforms:
       LastName: last_name
     select: [CustomerId, first_name, last_name, Email, Status]
     sort:
-      - last_name
       - { field: first_name, reverse: false }
+      - last_name
 
   summarize_customers:
     aggregate:
       - { field: CustomerId, func: count, alias: row_count }
       - { field: CustomerId, func: max, alias: max_id }
 ```
+
+Transform semantics to keep in mind:
+
+- `etlplus.ops.transform.transform()` applies steps in the fixed order `aggregate`, `filter`, `map`,
+  `select`, `sort`, regardless of YAML key order.
+- When an `aggregate` step is present, the transform result is a single mapping containing the
+  merged aggregate outputs. That makes aggregate transforms ideal for summaries, but it also means
+  row-wise cleanup steps are not applied afterward.
+- When you provide multiple `sort` specs, they are applied sequentially. Because each step sorts the
+  output of the previous one, later sort specs become the higher-precedence keys.
+- For custom Python orchestration, the same per-step behavior is available through the public
+  modules under `etlplus.ops.transformations`.
 
 ## Targets
 

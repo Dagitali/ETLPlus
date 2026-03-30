@@ -1,14 +1,15 @@
 """
 :mod:`etlplus.ops` package.
 
-Data operations helpers.
+Runtime ETL primitives and orchestration helpers.
 
 Importing :mod:`etlplus.ops` exposes the coarse-grained helpers most users care
 about: ``extract``, ``transform``, ``load``, ``validate``, ``run``, and
 ``run_pipeline``. Each helper delegates to the richer modules under
-``etlplus.ops.*`` while presenting a compact public API surface. Conditional
-validation orchestration is available via
-:func:`etlplus.ops.maybe_validate`.
+``etlplus.ops.*`` while presenting a compact public API surface. Advanced
+transform-specific imports live under :mod:`etlplus.ops.transform` and the
+step modules in :mod:`etlplus.ops.transformations`. Conditional validation
+orchestration is available via :func:`etlplus.ops.maybe_validate`.
 
 Examples
 --------
@@ -37,7 +38,8 @@ Examples
 See Also
 --------
 :mod:`etlplus.ops.run`
-:mod:`etlplus.ops`
+:mod:`etlplus.ops.transform`
+:mod:`etlplus.ops.transformations`
 """
 
 from ._enums import AggregateName

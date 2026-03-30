@@ -6,6 +6,8 @@ Contract tests for ETLPlus stable CLI and import surfaces.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 import etlplus
@@ -15,6 +17,11 @@ import etlplus.cli._commands as commands_mod
 import etlplus.file as file_pkg
 import etlplus.history as history_pkg
 import etlplus.ops as ops_pkg
+import etlplus.ops.transformations.aggregate as aggregate_tx_mod
+import etlplus.ops.transformations.filter as filter_tx_mod
+import etlplus.ops.transformations.map as map_tx_mod
+import etlplus.ops.transformations.select as select_tx_mod
+import etlplus.ops.transformations.sort as sort_tx_mod
 from etlplus import Config
 from etlplus.api import EndpointClient
 from etlplus.api import PaginationConfig
@@ -37,6 +44,18 @@ from etlplus.ops.load import load
 from etlplus.ops.run import run
 from etlplus.ops.run import run_pipeline
 from etlplus.ops.transform import transform
+from etlplus.ops.transformations.aggregate import apply_aggregate
+from etlplus.ops.transformations.aggregate import apply_aggregate_step
+from etlplus.ops.transformations.filter import apply_filter
+from etlplus.ops.transformations.filter import apply_filter_step
+from etlplus.ops.transformations.map import apply_map
+from etlplus.ops.transformations.map import apply_map_step
+from etlplus.ops.transformations.select import apply_select
+from etlplus.ops.transformations.select import apply_select_step
+from etlplus.ops.transformations.select import is_plain_fields_list
+from etlplus.ops.transformations.select import is_sequence_not_text
+from etlplus.ops.transformations.sort import apply_sort
+from etlplus.ops.transformations.sort import apply_sort_step
 from etlplus.ops.validate import FieldRulesDict
 from etlplus.ops.validate import FieldValidationDict
 from etlplus.ops.validate import ValidationDict
@@ -163,6 +182,37 @@ class TestStableImportSurface:
         assert ops_pkg.FieldRulesDict is FieldRulesDict
         assert ops_pkg.FieldValidationDict is FieldValidationDict
         assert ops_pkg.ValidationDict is ValidationDict
+
+    def test_ops_transformations_modules_keep_documented_helpers(self) -> None:
+        """Test that step-level transform modules keep documented helpers."""
+        expected_members: dict[Any, dict[str, object]] = {
+            aggregate_tx_mod: {
+                'apply_aggregate': apply_aggregate,
+                'apply_aggregate_step': apply_aggregate_step,
+            },
+            filter_tx_mod: {
+                'apply_filter': apply_filter,
+                'apply_filter_step': apply_filter_step,
+            },
+            map_tx_mod: {
+                'apply_map': apply_map,
+                'apply_map_step': apply_map_step,
+            },
+            select_tx_mod: {
+                'apply_select': apply_select,
+                'apply_select_step': apply_select_step,
+                'is_plain_fields_list': is_plain_fields_list,
+                'is_sequence_not_text': is_sequence_not_text,
+            },
+            sort_tx_mod: {
+                'apply_sort': apply_sort,
+                'apply_sort_step': apply_sort_step,
+            },
+        }
+        for module, members in expected_members.items():
+            for name, expected in members.items():
+                assert name in module.__all__
+                assert getattr(module, name) is expected
 
     def test_top_level_package_keeps_documented_exports(self) -> None:
         """Test that the top-level package keeps stable facade symbols."""
