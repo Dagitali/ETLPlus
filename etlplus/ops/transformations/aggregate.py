@@ -21,6 +21,7 @@ from .._types import FieldName
 
 __all__ = [
     'apply_aggregate',
+    'apply_aggregate_step',
 ]
 
 
@@ -233,37 +234,6 @@ def _derive_agg_key(
     return label if not field else f'{label}_{field}'
 
 
-def _apply_aggregate_step(
-    rows: JSONList,
-    spec: AggregateSpec,
-) -> JSONList:
-    """
-    Apply a single aggregate spec and return a one-row result list.
-
-    Parameters
-    ----------
-    rows : JSONList
-        Input records.
-    spec : AggregateSpec
-        Mapping with keys like ``{'field': 'amount', 'func': 'sum', 'alias':
-        'total'}``.
-
-    Returns
-    -------
-    JSONList
-        A list containing one mapping ``[{alias: value}]``.
-    """
-    field: FieldName | None = spec.get('field')  # type: ignore[assignment]
-    func_raw = spec.get('func', 'count')
-    alias = spec.get('alias')
-
-    agg_func = _resolve_aggregator(func_raw)
-    nums, present = _collect_numeric_and_presence(rows, field)
-    key = _derive_agg_key(func_raw, field, alias)
-    result = agg_func(nums, present)
-    return [{key: result}]
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -309,3 +279,34 @@ def apply_aggregate(
     nums, present = _collect_numeric_and_presence(records, field)
     key_name = _derive_agg_key(func, field, alias)
     return {key_name: aggregator(nums, present)}
+
+
+def apply_aggregate_step(
+    rows: JSONList,
+    spec: AggregateSpec,
+) -> JSONList:
+    """
+    Apply a single aggregate spec and return a one-row result list.
+
+    Parameters
+    ----------
+    rows : JSONList
+        Input records.
+    spec : AggregateSpec
+        Mapping with keys like ``{'field': 'amount', 'func': 'sum', 'alias':
+        'total'}``.
+
+    Returns
+    -------
+    JSONList
+        A list containing one mapping ``[{alias: value}]``.
+    """
+    field: FieldName | None = spec.get('field')  # type: ignore[assignment]
+    func_raw = spec.get('func', 'count')
+    alias = spec.get('alias')
+
+    agg_func = _resolve_aggregator(func_raw)
+    nums, present = _collect_numeric_and_presence(rows, field)
+    key = _derive_agg_key(func_raw, field, alias)
+    result = agg_func(nums, present)
+    return [{key: result}]
