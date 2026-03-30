@@ -19,13 +19,16 @@ from .._types import Fields
 
 __all__ = [
     'apply_select',
+    'apply_select_step',
+    'is_plain_fields_list',
+    'is_sequence_not_text',
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS ============================================== #
+# SECTION: FUNCTIONS ======================================================== #
 
 
-def _is_sequence_not_text(
+def is_sequence_not_text(
     obj: Any,
 ) -> bool:
     """
@@ -47,7 +50,7 @@ def _is_sequence_not_text(
     )
 
 
-def _is_plain_fields_list(
+def is_plain_fields_list(
     obj: Any,
 ) -> bool:
     """
@@ -66,44 +69,7 @@ def _is_plain_fields_list(
         True if obj is a non-text sequence of non-mapping items, False
         otherwise.
     """
-    return _is_sequence_not_text(obj) and not any(isinstance(x, Mapping) for x in obj)
-
-
-def _apply_select_step(
-    records: JSONList,
-    spec: Any,
-) -> JSONList:
-    """
-    Apply a functional select/project step to a list of records.
-
-    Parameters
-    ----------
-    records : JSONList
-        Input records to transform.
-    spec : Any
-        Either a mapping with key ``'fields'`` whose value is a sequence of
-        field names, or a plain sequence of field names.
-
-    Returns
-    -------
-    JSONList
-        Transformed data.
-    """
-    fields: Sequence[Any]
-    if isinstance(spec, Mapping):
-        maybe_fields = spec.get('fields')
-        if not _is_plain_fields_list(maybe_fields):
-            return records
-        fields = cast(Sequence[Any], maybe_fields)
-    elif _is_plain_fields_list(spec):
-        fields = cast(Sequence[Any], spec)
-    else:
-        return records
-
-    return apply_select(records, [str(field) for field in fields])
-
-
-# SECTION: FUNCTIONS ======================================================== #
+    return is_sequence_not_text(obj) and not any(isinstance(x, Mapping) for x in obj)
 
 
 def apply_select(
@@ -126,3 +92,37 @@ def apply_select(
         Records containing the requested fields; missing fields are ``None``.
     """
     return [{field: record.get(field) for field in fields} for record in records]
+
+
+def apply_select_step(
+    records: JSONList,
+    spec: Any,
+) -> JSONList:
+    """
+    Apply a functional select/project step to a list of records.
+
+    Parameters
+    ----------
+    records : JSONList
+        Input records to transform.
+    spec : Any
+        Either a mapping with key ``'fields'`` whose value is a sequence of
+        field names, or a plain sequence of field names.
+
+    Returns
+    -------
+    JSONList
+        Transformed data.
+    """
+    fields: Sequence[Any]
+    if isinstance(spec, Mapping):
+        maybe_fields = spec.get('fields')
+        if not is_plain_fields_list(maybe_fields):
+            return records
+        fields = cast(Sequence[Any], maybe_fields)
+    elif is_plain_fields_list(spec):
+        fields = cast(Sequence[Any], spec)
+    else:
+        return records
+
+    return apply_select(records, [str(field) for field in fields])
