@@ -17,35 +17,8 @@ from .._types import MapSpec
 
 __all__ = [
     'apply_map',
+    'apply_map_step',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS ============================================== #
-
-
-def _apply_map_step(
-    records: JSONList,
-    spec: Any,
-) -> JSONList:
-    """
-    Apply a functional map/rename step to a list of records.
-
-    Parameters
-    ----------
-    records : JSONList
-        Input records to transform.
-    spec : Any
-        Mapping of **old field names** to **new field names**.
-
-    Returns
-    -------
-    JSONList
-        Transformed records.
-    """
-    if isinstance(spec, Mapping):
-        return apply_map(records, spec)
-
-    return records
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -85,3 +58,28 @@ def apply_map(
         result.append(renamed)
 
     return result
+
+
+def apply_map_step(
+    records: JSONList,
+    spec: Any,
+) -> JSONList:
+    """
+    Apply a functional map/rename step to a list of records.
+
+    Parameters
+    ----------
+    records : JSONList
+        Input records to transform.
+    spec : Any
+        Mapping of **old field names** to **new field names**.
+
+    Returns
+    -------
+    JSONList
+        Transformed records.
+    """
+    if isinstance(spec, Mapping):
+        return apply_map(records, spec)
+
+    return records
