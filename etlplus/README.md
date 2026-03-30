@@ -4,7 +4,7 @@ The `etlplus` package provides a unified Python API and CLI for ETL operations: 
 validation, transformation, and loading of data from files, APIs, and databases.
 
 - Top-level entry points for extract, validate, transform, and load
-- Utilities for pipeline orchestration and helpers
+- Utilities for pipeline orchestration, runner helpers, and step-specific transforms
 - Exposes all subpackages for advanced usage
 
 Back to project overview: see the top-level [README](../README.md).
@@ -15,7 +15,8 @@ Back to project overview: see the top-level [README](../README.md).
 - [etlplus.cli](cli/README.md): Command-line interface definitions for `etlplus`
 - [etlplus.database](database/README.md): Database engine, schema, and ORM helpers
 - [etlplus.file](file/README.md): Unified file format support and helpers
-- [etlplus.ops](ops/README.md): Extract/validate/transform/load primitives
+- [etlplus.ops](ops/README.md): Extract/validate/transform/load primitives, runners, and
+  step-specific helpers under `etlplus.ops.transformations`
 - [etlplus.storage](storage/README.md): Storage location parsing and backend helpers
 - [etlplus.templates](templates/README.md): SQL and DDL template helpers
 - [etlplus.workflow](workflow/README.md): Helpers for data connectors, pipelines, jobs, and
@@ -31,6 +32,9 @@ filtered = transform(data, {"filter": {"field": "age", "op": "gt", "value": 25}}
 assert validate(filtered, {"age": {"type": "number", "min": 0}})["valid"]
 load(filtered, "file", "output.json", file_format="json")
 ```
+
+Advanced callers that need one transformation family without the full orchestrator can also import
+the public step modules under `etlplus.ops.transformations`.
 
 ## Loading and Validating Configs
 
