@@ -1,7 +1,13 @@
 """
 :mod:`etlplus.ops.transformations.select` module.
 
-Select transformation helpers extracted from :mod:`etlplus.ops.transform`.
+Select helpers shared by :mod:`etlplus.ops.transform` and custom runners.
+
+Use :func:`apply_select` for direct field projection. Use
+:func:`apply_select_step` when you need the pipeline-style adapter consumed by
+:func:`etlplus.ops.transform.transform`. The normalization helpers
+:func:`is_sequence_not_text` and :func:`is_plain_fields_list` are public for
+callers that need to validate select-step configs before orchestration.
 """
 
 from __future__ import annotations
@@ -54,9 +60,10 @@ def is_plain_fields_list(
     obj: Any,
 ) -> bool:
     """
-    Return True if *obj* is a non-text sequence of non-mapping items.
+    Return ``True`` if *obj* is a non-text sequence of non-mapping items.
 
-    Used to detect a list/tuple of field names like ['name', 'age'].
+    Used to detect a list or tuple of field names such as ``['name', 'age']``
+    when normalizing select specs for :func:`etlplus.ops.transform.transform`.
 
     Parameters
     ----------
@@ -66,8 +73,8 @@ def is_plain_fields_list(
     Returns
     -------
     bool
-        True if obj is a non-text sequence of non-mapping items, False
-        otherwise.
+        ``True`` if *obj* is a non-text sequence of non-mapping items;
+        ``False`` otherwise.
     """
     return is_sequence_not_text(obj) and not any(isinstance(x, Mapping) for x in obj)
 
@@ -99,7 +106,7 @@ def apply_select_step(
     spec: Any,
 ) -> JSONList:
     """
-    Apply a functional select/project step to a list of records.
+    Apply a select/project pipeline step to a list of records.
 
     Parameters
     ----------
@@ -112,7 +119,8 @@ def apply_select_step(
     Returns
     -------
     JSONList
-        Transformed data.
+        Projected records using the same step semantics as
+        :func:`etlplus.ops.transform.transform`.
     """
     fields: Sequence[Any]
     if isinstance(spec, Mapping):

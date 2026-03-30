@@ -1,7 +1,11 @@
 """
 :mod:`etlplus.ops.transformations.sort` module.
 
-Sort transformation helpers extracted from :mod:`etlplus.ops.transform`.
+Sort helpers shared by :mod:`etlplus.ops.transform` and custom runners.
+
+Use :func:`apply_sort` for direct record sorting. Use :func:`apply_sort_step`
+when you need the pipeline-style adapter consumed by
+:func:`etlplus.ops.transform.transform`.
 """
 
 from __future__ import annotations
@@ -96,7 +100,7 @@ def apply_sort_step(
     spec: Any,
 ) -> JSONList:
     """
-    Apply a functional sort step to a list of records.
+    Apply a sort pipeline step to a list of records.
 
     Parameters
     ----------
@@ -109,7 +113,8 @@ def apply_sort_step(
     Returns
     -------
     JSONList
-        Sorted records.
+        Sorted records using the same step semantics as
+        :func:`etlplus.ops.transform.transform`.
     """
     if isinstance(spec, Mapping):
         field_value = spec.get('field')

@@ -1,7 +1,12 @@
 """
 :mod:`etlplus.ops.transformations.map` module.
 
-Map transformation helpers extracted from :mod:`etlplus.ops.transform`.
+Map and rename helpers shared by :mod:`etlplus.ops.transform` and custom
+runners.
+
+Use :func:`apply_map` for direct field renaming. Use :func:`apply_map_step`
+when you need the pipeline-style adapter consumed by
+:func:`etlplus.ops.transform.transform`.
 """
 
 from __future__ import annotations
@@ -65,7 +70,7 @@ def apply_map_step(
     spec: Any,
 ) -> JSONList:
     """
-    Apply a functional map/rename step to a list of records.
+    Apply a map/rename pipeline step to a list of records.
 
     Parameters
     ----------
@@ -77,7 +82,8 @@ def apply_map_step(
     Returns
     -------
     JSONList
-        Transformed records.
+        Transformed records using the same step semantics as
+        :func:`etlplus.ops.transform.transform`.
     """
     if isinstance(spec, Mapping):
         return apply_map(records, spec)

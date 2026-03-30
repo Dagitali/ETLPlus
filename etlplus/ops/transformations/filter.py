@@ -1,7 +1,11 @@
 """
 :mod:`etlplus.ops.transformations.filter` module.
 
-Filter transformation helpers extracted from :mod:`etlplus.ops.transform`.
+Filter helpers shared by :mod:`etlplus.ops.transform` and custom runners.
+
+Use :func:`apply_filter` for direct record filtering. Use
+:func:`apply_filter_step` when you need the pipeline-style adapter consumed by
+:func:`etlplus.ops.transform.transform`.
 """
 
 from __future__ import annotations
@@ -226,7 +230,7 @@ def apply_filter_step(
     spec: Any,
 ) -> JSONList:
     """
-    Apply a function filter step to a list of records.
+    Apply a filter pipeline step to a list of records.
 
     Parameters
     ----------
@@ -239,7 +243,8 @@ def apply_filter_step(
     Returns
     -------
     JSONList
-        Filtered records.
+        Filtered records using the same step semantics as
+        :func:`etlplus.ops.transform.transform`.
     """
     field: FieldName = spec.get('field')  # type: ignore[assignment]
     op = spec.get('op')

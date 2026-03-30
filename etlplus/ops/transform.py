@@ -192,19 +192,27 @@ def transform(
     Notes
     -----
     Operation keys may be provided as strings (e.g., ``"filter"``) or as
-    :class:`PipelineStep` enum members. The aggregate step returns a **single
-    mapping** with merged aggregate results when present.
+    :class:`PipelineStep` enum members. Steps are evaluated in the fixed order
+    ``aggregate``, ``filter``, ``map``, ``select``, ``sort``. When the
+    aggregate step is present, it returns a **single mapping** with merged
+    aggregate results and row-wise steps are not applied afterward.
 
     Examples
     --------
-    Minimal example with multiple steps::
+    Row-wise pipeline example::
 
         ops = {
             'filter': {'field': 'age', 'op': 'gt', 'value': 18},
             'map': {'old_name': 'new_name'},
             'select': ['name', 'age'],
             'sort': {'field': 'name', 'reverse': False},
-            'aggregate': {'field': 'age', 'func': 'avg'},
+        }
+        result = transform(data, ops)
+
+    Aggregate-only summary::
+
+        ops = {
+            'aggregate': {'field': 'age', 'func': 'avg', 'alias': 'avg_age'},
         }
         result = transform(data, ops)
 
@@ -213,14 +221,13 @@ def transform(
         from etlplus.ops import (
             PipelineStep,
             OperatorName,
-            AggregateName,
         )
         ops = {
             PipelineStep.FILTER: {
                 'field': 'age', 'op': OperatorName.GTE, 'value': 18
             },
-            PipelineStep.AGGREGATE: {
-                'field': 'age', 'func': AggregateName.AVG
+            PipelineStep.SORT: {
+                'field': 'age', 'reverse': True
             },
         }
         result = transform(data, ops)

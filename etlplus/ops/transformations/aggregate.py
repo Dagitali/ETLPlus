@@ -1,7 +1,11 @@
 """
 :mod:`etlplus.ops.transformations.aggregate` module.
 
-Aggregate transformation helpers extracted from :mod:`etlplus.ops.transform`.
+Aggregate helpers shared by :mod:`etlplus.ops.transform` and custom runners.
+
+Use :func:`apply_aggregate` for a single aggregate spec that returns one
+mapping. Use :func:`apply_aggregate_step` when you need the one-row list shape
+consumed by :func:`etlplus.ops.transform.transform`.
 """
 
 from __future__ import annotations
@@ -286,7 +290,7 @@ def apply_aggregate_step(
     spec: AggregateSpec,
 ) -> JSONList:
     """
-    Apply a single aggregate spec and return a one-row result list.
+    Apply a single aggregate pipeline step and return a one-row result list.
 
     Parameters
     ----------
@@ -299,7 +303,8 @@ def apply_aggregate_step(
     Returns
     -------
     JSONList
-        A list containing one mapping ``[{alias: value}]``.
+        A list containing one mapping ``[{alias: value}]`` so callers can reuse
+        the same adapter shape as :func:`etlplus.ops.transform.transform`.
     """
     field: FieldName | None = spec.get('field')  # type: ignore[assignment]
     func_raw = spec.get('func', 'count')
