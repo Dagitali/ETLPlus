@@ -117,7 +117,8 @@ The stable surface for the current `v1.x` releases is:
 
 - The documented CLI commands: `check`, `extract`, `history`, `load`, `log`, `render`, `report`,
   `run`, `status`, `transform`, and `validate`
-- The documented Python ETL primitives in `etlplus.ops`
+- The documented Python ETL primitives in `etlplus.ops`, including the advanced step modules under
+  `etlplus.ops.transformations`
 - The implemented file handlers listed as `implemented` in the handler matrix
 - The documented API client and pagination helpers under `etlplus.api`
 

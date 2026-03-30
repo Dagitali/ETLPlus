@@ -29,33 +29,33 @@ import pytest
 from etlplus.ops._enums import AggregateName
 from etlplus.ops._enums import OperatorName
 from etlplus.ops._enums import PipelineStep
-from etlplus.ops.transform import _agg_avg
-from etlplus.ops.transform import _agg_count
-from etlplus.ops.transform import _agg_max
-from etlplus.ops.transform import _agg_min
-from etlplus.ops.transform import _agg_sum
-from etlplus.ops.transform import _apply_aggregate_step
-from etlplus.ops.transform import _apply_filter_step
-from etlplus.ops.transform import _apply_map_step
-from etlplus.ops.transform import _apply_select_step
-from etlplus.ops.transform import _apply_sort_step
-from etlplus.ops.transform import _collect_numeric_and_presence
-from etlplus.ops.transform import _contains
-from etlplus.ops.transform import _derive_agg_key
-from etlplus.ops.transform import _eval_condition
-from etlplus.ops.transform import _has
-from etlplus.ops.transform import _is_plain_fields_list
 from etlplus.ops.transform import _normalize_operation_keys
 from etlplus.ops.transform import _normalize_specs
-from etlplus.ops.transform import _resolve_aggregator
-from etlplus.ops.transform import _resolve_operator
-from etlplus.ops.transform import _sort_key
 from etlplus.ops.transform import apply_aggregate
 from etlplus.ops.transform import apply_filter
 from etlplus.ops.transform import apply_map
 from etlplus.ops.transform import apply_select
 from etlplus.ops.transform import apply_sort
 from etlplus.ops.transform import transform
+from etlplus.ops.transformations.aggregate import _agg_avg
+from etlplus.ops.transformations.aggregate import _agg_count
+from etlplus.ops.transformations.aggregate import _agg_max
+from etlplus.ops.transformations.aggregate import _agg_min
+from etlplus.ops.transformations.aggregate import _agg_sum
+from etlplus.ops.transformations.aggregate import _collect_numeric_and_presence
+from etlplus.ops.transformations.aggregate import _derive_agg_key
+from etlplus.ops.transformations.aggregate import _resolve_aggregator
+from etlplus.ops.transformations.aggregate import apply_aggregate_step
+from etlplus.ops.transformations.filter import _contains
+from etlplus.ops.transformations.filter import _eval_condition
+from etlplus.ops.transformations.filter import _has
+from etlplus.ops.transformations.filter import _resolve_operator
+from etlplus.ops.transformations.filter import apply_filter_step
+from etlplus.ops.transformations.map import apply_map_step
+from etlplus.ops.transformations.select import apply_select_step
+from etlplus.ops.transformations.select import is_plain_fields_list
+from etlplus.ops.transformations.sort import _sort_key
+from etlplus.ops.transformations.sort import apply_sort_step
 from etlplus.utils._types import JSONData
 
 # SECTION: PRAGMAS ========================================================== #
@@ -401,7 +401,7 @@ class TestTransform:
         """Test that empty aggregate outputs do not mutate records."""
         monkeypatch.setattr(
             transform_mod,
-            '_apply_aggregate_step',
+            'apply_aggregate_step',
             lambda _records, _spec: [],
         )
         data = [{'value': 1}]
@@ -641,11 +641,11 @@ class TestTransformInternalHelpers:
 
     def test_apply_aggregate_step(self) -> None:
         """
-        Test that :func:`_apply_aggregate_step` returns a correct aggregation.
+        Test that :func:`apply_aggregate_step` returns a correct aggregation.
         """
         rows = [{'a': 1}, {'a': 2}]
         spec = {'field': 'a', 'func': 'sum', 'alias': 'total'}
-        result = _apply_aggregate_step(rows, spec)
+        result = apply_aggregate_step(rows, spec)
         assert result == [{'total': 3}]
 
     def test_apply_aggregate_unknown_function_returns_error(self) -> None:
@@ -687,11 +687,11 @@ class TestTransformInternalHelpers:
 
     def test_apply_filter_step(self) -> None:
         """
-        Test that :func:`_apply_filter_step` returns correct filtered rows.
+        Test that :func:`apply_filter_step` returns correct filtered rows.
         """
         rows = [{'a': 1}, {'a': 2}]
         spec = {'field': 'a', 'op': 'gt', 'value': 1}
-        result = _apply_filter_step(rows, spec)
+        result = apply_filter_step(rows, spec)
         assert result == [{'a': 2}]
 
     def test_apply_filter_step_returns_input_when_field_missing(self) -> None:
@@ -699,21 +699,21 @@ class TestTransformInternalHelpers:
         Test that filter step returns input unchanged when field is absent.
         """
         rows = [{'a': 1}]
-        assert _apply_filter_step(rows, {'op': 'eq', 'value': 1}) == rows
+        assert apply_filter_step(rows, {'op': 'eq', 'value': 1}) == rows
 
     def test_apply_map_step(self) -> None:
         """
-        Test that :func:`_apply_map_step` returns correct mapped records.
+        Test that :func:`apply_map_step` returns correct mapped records.
         """
         rows = [{'a': 1, 'b': 2}]
         spec = {'a': 'x', 'b': 'y'}
-        result = _apply_map_step(rows, spec)
+        result = apply_map_step(rows, spec)
         assert result == [{'x': 1, 'y': 2}]
 
     def test_apply_map_step_non_mapping_is_noop(self) -> None:
         """Test that map step is a no-op for non-mapping specs."""
         rows = [{'a': 1}]
-        assert _apply_map_step(rows, 123) == rows
+        assert apply_map_step(rows, 123) == rows
 
     @pytest.mark.parametrize(
         ('spec', 'expected'),
@@ -730,20 +730,20 @@ class TestTransformInternalHelpers:
         expected: list[dict[str, int]],
     ) -> None:
         """
-        Test that :func:`_apply_select_step` returns correct selected fields
+        Test that :func:`apply_select_step` returns correct selected fields
         for a given spec.
         """
         rows = [{'a': 1, 'b': 2}]
-        result = _apply_select_step(rows, spec)
+        result = apply_select_step(rows, spec)
         assert result == expected
 
     def test_apply_select_step_invalid_mapping_fields_is_noop(self) -> None:
         """
-        Test that :func:`_apply_select_step` is a no-op when mapping fields
+        Test that :func:`apply_select_step` is a no-op when mapping fields
         value is invalid.
         """
         rows = [{'a': 1, 'b': 2}]
-        assert _apply_select_step(rows, {'fields': {'not': 'list'}}) == rows
+        assert apply_select_step(rows, {'fields': {'not': 'list'}}) == rows
 
     @pytest.mark.parametrize(
         ('spec', 'expected'),
@@ -760,11 +760,11 @@ class TestTransformInternalHelpers:
         expected: list[dict[str, int]],
     ) -> None:
         """
-        Test that :func:`_apply_sort_step` returns correct sorted records for a
+        Test that :func:`apply_sort_step` returns correct sorted records for a
         given spec.
         """
         rows = [{'a': 2}, {'a': 1}]
-        result = _apply_sort_step(rows, spec)
+        result = apply_sort_step(rows, spec)
         assert result == expected
 
     def test_collect_numeric_and_presence(self) -> None:
@@ -910,10 +910,10 @@ class TestTransformInternalHelpers:
         expected: bool,
     ) -> None:
         """
-        Test that :func:`_is_plain_fields_list` returns ``True`` only for plain
+        Test that :func:`is_plain_fields_list` returns ``True`` only for plain
         sequences of non-mappings.
         """
-        assert _is_plain_fields_list(value) is expected
+        assert is_plain_fields_list(value) is expected
 
     def test_normalize_operation_keys_accepts_enums(self) -> None:
         """
