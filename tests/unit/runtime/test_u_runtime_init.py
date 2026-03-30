@@ -14,6 +14,10 @@ from etlplus.runtime._logging import configure_logging
 from etlplus.runtime._logging import resolve_log_level
 from etlplus.runtime._readiness import ReadinessReportBuilder
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
