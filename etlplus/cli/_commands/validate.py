@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handler_dataops import validate_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import parse_json_option
@@ -79,7 +79,7 @@ def validate_cmd(
     )
 
     return call_handler(
-        handlers.validate_handler,
+        validate_handler,
         state=state,
         source=resolved_source.value,
         rules=parse_json_option(rules, '--rules'),
