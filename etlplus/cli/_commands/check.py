@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handler_check import check_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import fail_usage
@@ -97,7 +97,7 @@ def check_cmd(
         )
 
     return call_handler(
-        handlers.check_handler,
+        check_handler,
         state=ensure_state(ctx),
         config=config,
         jobs=jobs,
