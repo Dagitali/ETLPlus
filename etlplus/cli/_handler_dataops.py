@@ -12,9 +12,16 @@ from contextlib import contextmanager
 from typing import Any
 from typing import cast
 
+from ..ops import extract
+from ..ops import load
+from ..ops import transform
+from ..ops import validate
+from ..ops._types import PipelineConfig
 from ..ops.validate import FieldRulesDict
 from ..utils._types import JSONData
-from . import _handler_common as _common_impl
+from . import _handler_lifecycle as _lifecycle
+from . import _handler_output as _output
+from . import _handler_payload as _payload
 from . import _io
 
 # SECTION: EXPORTS ========================================================== #
@@ -38,9 +45,9 @@ def _command_scope(
     command: str,
     event_format: str | None,
     fields: dict[str, Any],
-) -> Iterator[_common_impl.CommandContext]:
+) -> Iterator[_lifecycle.CommandContext]:
     """Start a command context and wrap it in the shared failure boundary."""
-    context = _common_impl.start_command(
+    context = _lifecycle.start_command(
         command=command,
         event_format=event_format,
         **fields,
@@ -48,12 +55,12 @@ def _command_scope(
     try:
         yield context
     except Exception as exc:
-        _common_impl.fail_command(context, exc, **fields)
+        _lifecycle.fail_command(context, exc, **fields)
         raise
 
 
 def _complete_success(
-    context: _common_impl.CommandContext,
+    context: _lifecycle.CommandContext,
     payload: Any,
     *,
     mode: str,
@@ -61,17 +68,43 @@ def _complete_success(
     result_status: str = 'ok',
     **fields: Any,
 ) -> int:
-    """Complete a command using the standard successful status fields."""
-    return _common_impl.complete_output(
+    """Complete a command using the shared successful-status fields."""
+    return _output.complete_output(
         context,
         payload,
         mode=mode,
-        complete_command=_common_impl.complete_command,
         pretty=pretty,
         result_status=result_status,
         status='ok',
         **fields,
     )
+
+
+def _resolve_source_mapping_inputs(
+    *,
+    source: str,
+    mapping_payload: JSONData | str,
+    source_format: str | None,
+    format_explicit: bool,
+    error_message: str,
+) -> tuple[JSONData | str, dict[str, Any]]:
+    """Resolve a source payload plus a required mapping-style side payload."""
+    source_format_explicit = source_format is not None or format_explicit
+    payload = cast(
+        JSONData | str,
+        _payload.resolve_payload(
+            source,
+            format_hint=source_format,
+            format_explicit=source_format_explicit,
+        ),
+    )
+    mapping = _payload.resolve_mapping_payload(
+        mapping_payload,
+        format_explicit=source_format_explicit,
+        error_message=error_message,
+    )
+    return payload, mapping
+
 
 # SECTION: FUNCTIONS ======================================================== #
 
@@ -86,7 +119,6 @@ def extract_handler(
     target: str | None = None,
     output: str | None = None,
     pretty: bool = True,
-    extract_fn: Any,
 ) -> int:
     """
     Extract data from a source.
@@ -113,9 +145,6 @@ def extract_handler(
         The output location for the extracted data. Default is ``None``.
     pretty : bool, optional
         Whether to pretty-print the output. Default is ``True``.
-    extract_fn : Any
-        The callable to use for extracting data, which should accept parameters
-        (source_type, source, file_format) and return the extracted data.
     Returns
     -------
     int
@@ -145,7 +174,7 @@ def extract_handler(
         output_path = target or output
         return _complete_success(
             context,
-            extract_fn(
+            extract(
                 source_type,
                 source,
                 file_format=explicit_format,
@@ -170,7 +199,6 @@ def load_handler(
     format_explicit: bool = False,
     output: str | None = None,
     pretty: bool = True,
-    load_fn: Any,
 ) -> int:
     """
     Load data into a target.
@@ -178,32 +206,29 @@ def load_handler(
     Parameters
     ----------
     source : str
-        The source location (e.g. a file path or a database connection string).
+        The source location (e.g., a file path, a database connection string,
+        or an API endpoint).
     target_type : str
-        The type of the target (e.g. "file", "database", or "api").
+        The type of the target (e.g., "file", "database", or "api").
     target : str
-        The target location (e.g. a file path or a database connection string).
+        The target location (e.g., a file path, a database connection string,
+        or an API endpoint).
     event_format : str | None, optional
-        The requested event output format for event logging (e.g. "jsonl" or
-        ``None`` for no events).
+        The requested event output format (e.g., "jsonl" or ``None`` for no
+        events).
     source_format : str | None, optional
-        An optional format hint for the source data to assist with parsing when
-        the format is not explicit.
+        An optional format hint for the source data to assist with parsing
+        when the format is not explicit.
     target_format : str | None, optional
-        An optional format hint for the target data to assist with formatting
+        An optional format hint for the target data to assist with parsing
         when the format is not explicit.
     format_explicit : bool, optional
-        Whether the format hints are explicit (e.g. via CLI options) and should
+        Whether the format hint is explicit (e.g., via a CLI option) and should
         be used as-is without inference. Default is ``False``.
     output : str | None, optional
-        The output location for the load result, if applicable. Default is
-        ``None``.
+        The output location for the loaded data. Default is ``None``.
     pretty : bool, optional
         Whether to pretty-print the output. Default is ``True``.
-    load_fn : Any
-        The function to use for loading data, which should accept parameters
-        (source_value, target_type, target, file_format) and return a result
-        dict or value.
     Returns
     -------
     int
@@ -222,11 +247,14 @@ def load_handler(
         event_format=event_format,
         fields=command_fields,
     ) as context:
-        source_value = _common_impl.resolve_payload(
-            source,
-            format_hint=source_format,
-            format_explicit=source_format_explicit,
-            hydrate_files=False,
+        source_value = cast(
+            str | JSONData,
+            _payload.resolve_payload(
+                source,
+                format_hint=source_format,
+                format_explicit=source_format_explicit,
+                hydrate_files=False,
+            ),
         )
 
         if target_type == 'file' and target == '-':
@@ -242,7 +270,7 @@ def load_handler(
                 **command_fields,
             )
 
-        result = load_fn(
+        result = load(
             source_value,
             target_type,
             target,
@@ -278,8 +306,6 @@ def transform_handler(
     target_format: str | None = None,
     pretty: bool = True,
     format_explicit: bool = False,
-    load_fn: Any,
-    transform_fn: Any,
 ) -> int:
     """
     Transform data from a source and optionally write the result.
@@ -287,44 +313,36 @@ def transform_handler(
     Parameters
     ----------
     source : str
-        The source location (e.g., a file path or a database connection string)
-        for the data to transform or a JSON representation of the data to
-        transform.
+        The source location (e.g., a file path, a database connection string,
+        or an API endpoint).
     operations : JSONData | str
-        The transformation operations to apply, either as a JSON-like object or
-        a string that resolves to such an object (e.g., a file path).
+        The operations to apply to the source data.
     target : str | None, optional
         The target location for the transformed data. Default is ``None``.
     target_type : str | None, optional
-        The type of the target (e.g., "file", "database", or "api"). Default is
-        ``None``.
+        The type of the target (e.g., "file", "database", or "api").
     event_format : str | None, optional
-        The requested event output format for event logging (e.g., "jsonl" or
-        ``None`` for no events).
+        The requested event output format (e.g., "jsonl" or ``None`` for no
+        events).
     source_format : str | None, optional
-        An optional format hint for the source data to assist with parsing when
-        the format is not explicit.
-    target_format : str | None, optional
-        An optional format hint for the target data to assist with formatting
+        An optional format hint for the source data to assist with parsing
         when the format is not explicit.
+    target_format : str | None, optional
+        An optional format hint for the target data to assist with parsing
+        when the format is not explicit.
+    format_explicit : bool, optional
+        Whether the format hint is explicit (e.g., via a CLI option) and should
+        be used as-is without inference. Default is ``False``.
     pretty : bool, optional
         Whether to pretty-print the output. Default is ``True``.
     format_explicit : bool, optional
         Whether the format hints are explicit (e.g., via CLI options) and
         should be used as-is without inference. Default is ``False``.
-    load_fn : Any
-        The function to use for loading the transformed data, which should
-        accept parameters (data, target type, target, file_format) and return a
-        result dict or value.
-    transform_fn : Any
-        The function to use for transforming the data, which should accept
-        parameters (payload, operations) and return the transformed data.
     Returns
     -------
     int
         The CLI exit code.
     """
-    source_format_explicit = source_format is not None or format_explicit
     target_format_explicit = target_format is not None or format_explicit
     target_label = target or 'stdout'
     command_fields: dict[str, Any] = {
@@ -338,31 +356,25 @@ def transform_handler(
         event_format=event_format,
         fields=command_fields,
     ) as context:
-        payload = cast(
-            JSONData | str,
-            _common_impl.resolve_payload(
-                source,
-                format_hint=source_format,
-                format_explicit=source_format_explicit,
-            ),
-        )
-        operations_payload = _common_impl.resolve_mapping_payload(
-            operations,
-            format_explicit=source_format_explicit,
+        payload, operations_payload = _resolve_source_mapping_inputs(
+            source=source,
+            mapping_payload=operations,
+            source_format=source_format,
+            format_explicit=format_explicit,
             error_message='operations must resolve to a mapping of transforms',
         )
-        data = transform_fn(payload, operations_payload)
+        data = transform(payload, cast(PipelineConfig, operations_payload))
 
         if target and target != '-':
             if target_type not in (None, 'file'):
                 resolved_target_type = cast(str, target_type)
                 return _complete_success(
                     context,
-                    load_fn(
+                    load(
                         data,
                         resolved_target_type,
                         target,
-                        file_format=(target_format if target_format_explicit else None),
+                        file_format=target_format if target_format_explicit else None,
                     ),
                     mode='json',
                     pretty=pretty,
@@ -401,9 +413,6 @@ def validate_handler(
     target: str | None = None,
     format_explicit: bool = False,
     pretty: bool = True,
-    validate_fn: Any,
-    print_fn: Any = print,
-    stderr: Any = sys.stderr,
 ) -> int:
     """
     Validate data from a source.
@@ -411,35 +420,28 @@ def validate_handler(
     Parameters
     ----------
     source : str
-        The source location (e.g., a file path or a database connection string)
-        for the data to validate or a JSON representation of the data to
-        validate.
+        The source location (e.g., a file path, a database connection string,
+        or an API endpoint).
     rules : JSONData | str
-        The validation rules to apply to the data.
+        The validation rules to apply to the source data.
     event_format : str | None, optional
-        The format of the events, by default ``None``.
+        The requested event output format (e.g., "jsonl" or ``None`` for no
+        events).
     source_format : str | None, optional
-        The format of the source data, by default ``None``.
+        An optional format hint for the source data to assist with parsing
+        when the format is not explicit.
     target : str | None, optional
-        The target to write the validation results to, by default ``None``.
+        The target location for the validation results. Default is ``None``.
     format_explicit : bool, optional
-        Whether the format is explicitly specified, by default ``False``.
+        Whether the format hints are explicit (e.g., via CLI options) and
+        should be used as-is without inference. Default is ``False``.
     pretty : bool, optional
-        Whether to pretty-print the output, by default ``True``.
-    validate_fn : Any
-        The function to call to perform the validation.
-    print_fn : Any, optional
-        The function to use for printing messages, by default print.
-    stderr : Any, optional
-        The stream to use to write error messages, by default
-        :obj:`sys.stderr`.
-
+        Whether to pretty-print the output. Default is ``True``.
     Returns
     -------
     int
         The CLI exit code.
     """
-    source_format_explicit = source_format is not None or format_explicit
     target_label = target or 'stdout'
     command_fields: dict[str, Any] = {
         'source': source,
@@ -451,20 +453,14 @@ def validate_handler(
         event_format=event_format,
         fields=command_fields,
     ) as context:
-        payload = cast(
-            JSONData | str,
-            _common_impl.resolve_payload(
-                source,
-                format_hint=source_format,
-                format_explicit=source_format_explicit,
-            ),
-        )
-        rules_payload = _common_impl.resolve_mapping_payload(
-            rules,
-            format_explicit=source_format_explicit,
+        payload, rules_payload = _resolve_source_mapping_inputs(
+            source=source,
+            mapping_payload=rules,
+            source_format=source_format,
+            format_explicit=format_explicit,
             error_message='rules must resolve to a mapping of field rules',
         )
-        result = validate_fn(
+        result = validate(
             payload,
             cast(dict[str, FieldRulesDict], rules_payload),
         )
@@ -483,9 +479,9 @@ def validate_handler(
                     valid=result.get('valid'),
                 )
 
-            print_fn(
+            print(
                 f'ValidationDict failed, no data to save for {target}',
-                file=stderr,
+                file=sys.stderr,
             )
             return 0
 

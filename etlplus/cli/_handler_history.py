@@ -6,11 +6,12 @@ History, report, and status handler implementations for the CLI facade.
 
 from __future__ import annotations
 
+from time import sleep
 from typing import Any
 from typing import Literal
 from typing import cast
 
-from . import _handler_common as _common_impl
+from . import _handler_output as _output
 from ._history import HISTORY_TABLE_COLUMNS
 from ._history import REPORT_TABLE_COLUMNS
 from ._history import HistoryReportBuilder
@@ -91,8 +92,6 @@ def load_history_records(
 
 def emit_follow_history(
     *,
-    load_records: Any,
-    sleep_fn: Any,
     job: str | None = None,
     limit: int | None = None,
     run_id: str | None = None,
@@ -105,12 +104,6 @@ def emit_follow_history(
 
     Parameters
     ----------
-    load_records : Any
-        Callable to load history records with the same signature as
-        :func:`load_history_records`.
-    sleep_fn : Any
-        Callable to sleep for a given number of seconds (e.g.,
-        :func:`time.sleep`).
     job : str | None, optional
         Optional job name filter. Default is ``None``.
     limit : int | None, optional
@@ -135,7 +128,7 @@ def emit_follow_history(
     seen: set[str] = set()
     try:
         while True:
-            records = load_records(
+            records = load_history_records(
                 job=job,
                 limit=limit,
                 raw=True,
@@ -149,8 +142,8 @@ def emit_follow_history(
                 if fingerprint in seen:
                     continue
                 seen.add(fingerprint)
-                _common_impl.emit_json_payload(record, pretty=False)
-            sleep_fn(1.0)
+                _output.emit_json_payload(record, pretty=False)
+            sleep(1.0)
     except KeyboardInterrupt:
         return 0
 
@@ -168,8 +161,6 @@ def history_handler(
     until: str | None = None,
     status: str | None = None,
     table: bool = False,
-    load_records: Any,
-    sleep_fn: Any,
 ) -> int:
     """
     Emit persisted local run history.
@@ -204,12 +195,6 @@ def history_handler(
     table : bool, optional
         Whether to emit output as a human-friendly table instead of JSON.
         Default is ``False``.
-    load_records : Any
-        Callable to load history records with the same signature as
-        :func:`load_history_records`.
-    sleep_fn : Any
-        Callable to sleep for a given number of seconds (e.g.,
-        :func:`time.sleep`).
 
     Returns
     -------
@@ -218,8 +203,6 @@ def history_handler(
     """
     if follow:
         return emit_follow_history(
-            load_records=load_records,
-            sleep_fn=sleep_fn,
             job=job,
             limit=limit,
             run_id=run_id,
@@ -228,8 +211,8 @@ def history_handler(
             status=status,
         )
 
-    return _common_impl.emit_history_payload(
-        load_records(
+    return _output.emit_history_payload(
+        load_history_records(
             job=job,
             limit=limit,
             raw=raw,
@@ -254,7 +237,6 @@ def report_handler(
     since: str | None = None,
     table: bool = False,
     until: str | None = None,
-    load_records: Any,
 ) -> int:
     """
     Emit a grouped history report derived from normalized runs.
@@ -279,9 +261,6 @@ def report_handler(
     until : str | None, optional
         Optional ISO 8601 timestamp filter to load records created before the
         given time.  Default is ``None``.
-    load_records : Any
-        Callable to load history records with the same signature as
-        :func:`load_history_records`.
 
     Returns
     -------
@@ -289,14 +268,14 @@ def report_handler(
         Exit code ``0`` on success; non-zero on error.
     """
     report = HistoryReportBuilder.build(
-        load_records(
+        load_history_records(
             job=job,
             since=since,
             until=until,
         ),
         group_by=group_by,
     )
-    return _common_impl.emit_history_payload(
+    return _output.emit_history_payload(
         report,
         columns=REPORT_TABLE_COLUMNS,
         pretty=pretty,
@@ -311,7 +290,6 @@ def status_handler(
     job: str | None = None,
     pretty: bool = True,
     run_id: str | None = None,
-    load_records: Any,
 ) -> int:
     """
     Emit the latest normalized run matching the given filters.
@@ -324,20 +302,17 @@ def status_handler(
         Whether to pretty-print JSON output. Default is ``True``.
     run_id : str | None, optional
         Optional run ID filter. Default is ``None``.
-    load_records : Any
-        Callable to load history records with the same signature as
-        :func:`load_history_records`.
 
     Returns
     -------
     int
         Exit code ``0`` on success; non-zero on error.
     """
-    records = load_records(
+    records = load_history_records(
         job=job,
         limit=1,
         run_id=run_id,
     )
     if not records:
-        return _common_impl.emit_json_payload({}, pretty=pretty, exit_code=1)
-    return _common_impl.emit_json_payload(records[0], pretty=pretty)
+        return _output.emit_json_payload({}, pretty=pretty, exit_code=1)
+    return _output.emit_json_payload(records[0], pretty=pretty)

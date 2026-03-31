@@ -6,10 +6,12 @@ SQL render helpers for the CLI facade.
 
 from __future__ import annotations
 
-from typing import Any
+import sys
 
+from ..database import render_tables
 from ..utils._types import TemplateKey
-from . import _handler_common as _common_impl
+from . import _handler_output as _output
+from . import _handler_payload as _payload
 from . import _summary
 
 # SECTION: EXPORTS ========================================================== #
@@ -34,9 +36,6 @@ def render_handler(
     output: str | None = None,
     pretty: bool = True,
     quiet: bool = False,
-    render_tables_fn: Any,
-    print_fn: Any,
-    stderr: Any,
 ) -> int:
     """
     Render SQL DDL statements from table schema specs.
@@ -68,49 +67,37 @@ def render_handler(
         Whether to pretty-print the rendered output. Default is ``True``.
     quiet : bool, optional
         Whether to suppress output. Default is ``False``.
-    render_tables_fn : Any
-        Callable to render tables with the specified template. Should, at
-        minimum, accept the following parameters:
-            - specs: list of table schema specifications
-            - template: template key
-            - template_path: path to a custom template file
-    print_fn : Any
-        Callable to print output (e.g., :func:`print`). Should accept the
-        following parameters:
-            - message: str, the message to print
-            - file: optional, the file to print to (e.g., :func:`sys.stdout`)
-    stderr : Any
-        Stream to write error messages to (e.g., :func:`sys.stderr`).
 
     Returns
     -------
     int
         Exit code ``0`` on success; non-zero on error.
     """
-    template_key, file_override = _common_impl.resolve_render_template(
+    template_key, file_override = _payload.resolve_render_template(
         template,
         template_path,
     )
     specs = _summary.collect_table_specs(config, spec)
     if table:
         specs = [
-            spec
-            for spec in specs
-            if str(spec.get('table')) == table or str(spec.get('name', '')) == table
+            spec_item
+            for spec_item in specs
+            if str(spec_item.get('table')) == table
+            or str(spec_item.get('name', '')) == table
         ]
 
     if not specs:
         target_desc = table or 'table_schemas'
-        print_fn(
+        print(
             'No table schemas found for '
             f'{target_desc}. Provide --spec or a pipeline --config with '
             'table_schemas.',
-            file=stderr,
+            file=sys.stderr,
         )
         return 1
 
-    return _common_impl.emit_render_output(
-        render_tables_fn(
+    return _output.emit_render_output(
+        render_tables(
             specs,
             template=template_key,
             template_path=file_override,
@@ -119,5 +106,4 @@ def render_handler(
         pretty=pretty,
         quiet=quiet,
         schema_count=len(specs),
-        print_fn=print_fn,
     )

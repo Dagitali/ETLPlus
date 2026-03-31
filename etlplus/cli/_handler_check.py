@@ -6,10 +6,9 @@ Config inspection helpers for the CLI facade.
 
 from __future__ import annotations
 
-from typing import Any
-
 from .. import Config
-from . import _handler_common as _common_impl
+from . import _handler_output as _output
+from . import _summary
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -35,13 +34,6 @@ def check_handler(
     transforms: bool = False,
     substitute: bool = True,
     pretty: bool = True,
-    check_sections: Any | None = None,
-    pipeline_summary: Any | None = None,
-    config_cls: Any = Config,
-    emit_json_payload_fn: Any = _common_impl.emit_json_payload,
-    emit_readiness_report_fn: Any = _common_impl.emit_readiness_report,
-    check_sections_fn: Any | None = None,
-    pipeline_summary_fn: Any | None = None,
 ) -> int:
     """
     Print requested pipeline sections from a YAML configuration.
@@ -70,54 +62,24 @@ def check_handler(
     substitute : bool, optional
         Whether to perform variable substitution in the config. Default is
         ``True``.
-    check_sections : Any | None, optional
-        Optional function to retrieve check sections from the config. If not
-        provided, a default implementation will be used. Default is ``None``.
-    pipeline_summary : Any | None, optional
-        Optional function to retrieve a summary of the pipeline configuration.
-        If not provided, a default implementation will be used. Default is
-        ``None``.
-    config_cls : Any, optional
-        The configuration class to use for parsing the config file. Default is
-        :class:`Config`.
-    emit_json_payload_fn : Any, optional
-        Function to emit a JSON payload. Default is
-        :func:`_common_impl.emit_json_payload`.
-    emit_readiness_report_fn : Any, optional
-        Function to emit a readiness report. Default is
-        :func:`_common_impl.emit_readiness_report`.
-    check_sections_fn : Any | None, optional
-        Optional function to retrieve check sections from the config. If not
-        provided, a default implementation will be used. Default is ``None``.
-    pipeline_summary_fn : Any | None, optional
-        Optional function to retrieve a summary of the pipeline configuration.
-        If not provided, a default implementation will be used. Default is
-        ``None``.
+    pretty : bool, optional
+         Whether to pretty-print the JSON output. Default is ``True``.
 
     Returns
     -------
     int
         Exit code indicating success (``0``) or failure (non-zero).
     """
-    resolved_check_sections = (
-        check_sections if check_sections is not None else check_sections_fn
-    )
-    resolved_pipeline_summary = (
-        pipeline_summary if pipeline_summary is not None else pipeline_summary_fn
-    )
-
     if readiness:
-        return emit_readiness_report_fn(config=config, pretty=pretty)
+        return _output.emit_readiness_report(config=config, pretty=pretty)
     if config is None:
         raise ValueError('config is required unless readiness-only mode is used')
-    if resolved_check_sections is None or resolved_pipeline_summary is None:
-        raise ValueError('check_sections and pipeline_summary are required')
 
-    cfg = config_cls.from_yaml(config, substitute=substitute)
+    cfg = Config.from_yaml(config, substitute=substitute)
     payload = (
-        resolved_pipeline_summary(cfg)
+        _summary.pipeline_summary(cfg)
         if summary
-        else resolved_check_sections(
+        else _summary.check_sections(
             cfg,
             jobs=jobs,
             pipelines=pipelines,
@@ -126,4 +88,4 @@ def check_handler(
             transforms=transforms,
         )
     )
-    return emit_json_payload_fn(payload, pretty=pretty)
+    return _output.emit_json_payload(payload, pretty=pretty)
