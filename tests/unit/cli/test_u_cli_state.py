@@ -14,7 +14,12 @@ import typer
 import etlplus
 import etlplus.cli._commands as commands
 import etlplus.cli._commands._state as cli_state_mod
-import etlplus.cli._handlers as handlers
+import etlplus.cli._commands.extract as extract_mod
+import etlplus.cli._commands.load as load_mod
+import etlplus.cli._commands.render as render_mod
+import etlplus.cli._commands.run as run_mod
+import etlplus.cli._commands.transform as transform_mod
+import etlplus.cli._commands.validate as validate_mod
 
 from ...conftest import CaptureHandler
 from .conftest import InvokeCli
@@ -68,7 +73,7 @@ class TestCliExtractState:
         expected: dict[str, object],
     ) -> None:
         """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(handlers, 'extract_handler')
+        calls = capture_handler(extract_mod, 'extract_handler')
 
         result = invoke_cli(*argv)
 
@@ -116,7 +121,7 @@ class TestCliLoadState:
         expected: dict[str, object],
     ) -> None:
         """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(handlers, 'load_handler')
+        calls = capture_handler(load_mod, 'load_handler')
 
         result = invoke_cli(*argv)
 
@@ -133,7 +138,7 @@ class TestCliRenderState:
         capture_handler: CaptureHandler,
     ) -> None:
         """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(handlers, 'render_handler')
+        calls = capture_handler(render_mod, 'render_handler')
 
         result = invoke_cli(
             'render',
@@ -163,7 +168,7 @@ class TestCliRunState:
         capture_handler: CaptureHandler,
     ) -> None:
         """Test that CLI flags map to handler parameters correctly."""
-        calls = capture_handler(handlers, 'run_handler')
+        calls = capture_handler(run_mod, 'run_handler')
 
         result = invoke_cli('run', '--config', 'p.yml', '--job', 'j1')
 
@@ -206,7 +211,7 @@ class TestCliTransformState:
         expected: dict[str, object],
     ) -> None:
         """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(handlers, 'transform_handler')
+        calls = capture_handler(transform_mod, 'transform_handler')
 
         result = invoke_cli(*argv)
 
@@ -248,7 +253,7 @@ class TestCliValidateState:
         expected: dict[str, object],
     ) -> None:
         """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(handlers, 'validate_handler')
+        calls = capture_handler(validate_mod, 'validate_handler')
 
         result = invoke_cli(*argv)
 

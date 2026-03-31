@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.cli.test_u_cli_handlers` module.
 
-Unit tests for :mod:`etlplus.cli._handlers`.
+Unit tests for CLI handler implementation modules.
 """
 
 from __future__ import annotations
@@ -15,14 +15,24 @@ from unittest.mock import ANY
 
 import pytest
 
-import etlplus.cli._handlers as handlers
 from etlplus import Config
 from etlplus.cli import _handler_check as check_mod
 from etlplus.cli import _handler_dataops as dataops_mod
 from etlplus.cli import _handler_history as history_mod
 from etlplus.cli import _handler_lifecycle as lifecycle_mod
+from etlplus.cli import _handler_output as output_mod
 from etlplus.cli import _handler_render as render_mod
 from etlplus.cli import _handler_run as run_mod
+from etlplus.cli import _io
+from etlplus.cli import _summary
+from etlplus.cli._history import HistoryReportBuilder
+from etlplus.cli._history import HistoryView
+from etlplus.file import File
+from etlplus.history import HistoryStore
+from etlplus.history import RunCompletion
+from etlplus.history import RunState
+from etlplus.runtime import ReadinessReportBuilder
+from etlplus.runtime import RuntimeEvents
 
 from .conftest import CaptureIo
 from .conftest import assert_emit_json
@@ -33,6 +43,36 @@ from .conftest import assert_emit_or_write
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 # SECTION: HELPERS ========================================================== #
+
+
+handlers: Any = SimpleNamespace(
+    Config=Config,
+    File=File,
+    HistoryReportBuilder=HistoryReportBuilder,
+    HistoryStore=HistoryStore,
+    HistoryView=HistoryView,
+    ReadinessReportBuilder=ReadinessReportBuilder,
+    RunCompletion=RunCompletion,
+    RunState=RunState,
+    RuntimeEvents=RuntimeEvents,
+    _CommandContext=lifecycle_mod.CommandContext,
+    _check_sections=_summary.check_sections,
+    _complete_output=output_mod.complete_output,
+    _failure_boundary=lifecycle_mod.failure_boundary,
+    _io=_io,
+    _pipeline_summary=_summary.pipeline_summary,
+    _summary=_summary,
+    check_handler=check_mod.check_handler,
+    extract_handler=dataops_mod.extract_handler,
+    history_handler=history_mod.history_handler,
+    load_handler=dataops_mod.load_handler,
+    render_handler=render_mod.render_handler,
+    report_handler=history_mod.report_handler,
+    run_handler=run_mod.run_handler,
+    status_handler=history_mod.status_handler,
+    transform_handler=dataops_mod.transform_handler,
+    validate_handler=dataops_mod.validate_handler,
+)
 
 
 class _ReadOnlyFakeHistoryStore(handlers.HistoryStore):

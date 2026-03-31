@@ -137,7 +137,7 @@ class TestCheckCommand:
             lambda _ctx: CliState(pretty=False),
         )
         captured = stub_handler(
-            commands_mod.handlers,
+            check_mod,
             'check_handler',
             result=3,
         )
@@ -197,7 +197,7 @@ class TestCliInvokeParsing:
             captured.update(kwargs)
             return 0
 
-        monkeypatch.setattr(history_mod._handlers, 'history_handler', _stub)
+        monkeypatch.setattr(history_mod, 'history_handler', _stub)
 
         result = invoke_cli(
             'history',
@@ -220,7 +220,7 @@ class TestCliInvokeParsing:
             captured.update(kwargs)
             return 0
 
-        monkeypatch.setattr(log_mod._handlers, 'history_handler', _stub)
+        monkeypatch.setattr(log_mod, 'history_handler', _stub)
 
         result = invoke_cli(
             'log',
@@ -244,7 +244,7 @@ class TestCliInvokeParsing:
             captured.update(kwargs)
             return 0
 
-        monkeypatch.setattr(commands_mod.handlers, 'report_handler', _stub)
+        monkeypatch.setattr(report_mod, 'report_handler', _stub)
 
         result = invoke_cli(
             'report',
@@ -267,7 +267,7 @@ class TestCliInvokeParsing:
             captured.update(kwargs)
             return 0
 
-        monkeypatch.setattr(commands_mod.handlers, 'transform_handler', _stub)
+        monkeypatch.setattr(transform_mod, 'transform_handler', _stub)
 
         result = invoke_cli(
             'transform',
@@ -394,7 +394,7 @@ class TestHistoryCommand:
             lambda _ctx: CliState(pretty=False),
         )
         captured = stub_handler(
-            commands_mod.handlers,
+            history_mod,
             'history_handler',
             result=0,
         )
@@ -441,7 +441,7 @@ class TestLogCommand:
             lambda _ctx: CliState(pretty=False),
         )
         captured = stub_handler(
-            commands_mod.handlers,
+            log_mod,
             'history_handler',
             result=0,
         )
@@ -483,7 +483,7 @@ class TestReportCommand:
             lambda _ctx: CliState(pretty=False),
         )
         captured = stub_handler(
-            commands_mod.handlers,
+            report_mod,
             'report_handler',
             result=0,
         )
@@ -526,7 +526,7 @@ class TestStatusCommand:
             lambda _ctx: CliState(pretty=False),
         )
         captured = stub_handler(
-            commands_mod.handlers,
+            status_mod,
             'status_handler',
             result=0,
         )
@@ -594,7 +594,7 @@ class TestTransformCommand:
             resolve_logged_resource_type,
         )
         captured = stub_handler(
-            commands_mod.handlers,
+            transform_mod,
             'transform_handler',
             result=0,
         )

@@ -15,7 +15,7 @@ import click
 import pytest
 import typer
 
-import etlplus.cli._handlers as cli_handlers_mod
+import etlplus.cli._commands.extract as extract_mod
 from etlplus.cli import main as cli_main
 
 from .conftest import StubCommand
@@ -88,7 +88,7 @@ class TestMain:
         dispatched command.
         """
         monkeypatch.setattr(
-            cli_handlers_mod,
+            extract_mod,
             'extract_handler',
             Mock(side_effect=SystemExit(5)),
         )
@@ -157,7 +157,7 @@ class TestMain:
             exception() if isinstance(exception, type) else exception
         )
         monkeypatch.setattr(
-            cli_handlers_mod,
+            extract_mod,
             'extract_handler',
             Mock(side_effect=side_effect),
         )
@@ -185,7 +185,7 @@ class TestMain:
         [
             (
                 lambda mp: mp.setattr(
-                    cli_handlers_mod,
+                    extract_mod,
                     'extract_handler',
                     Mock(side_effect=typer.Abort()),
                 ),
@@ -193,7 +193,7 @@ class TestMain:
             ),
             (
                 lambda mp: mp.setattr(
-                    cli_handlers_mod,
+                    extract_mod,
                     'extract_handler',
                     Mock(side_effect=typer.Exit(17)),
                 ),
