@@ -56,8 +56,10 @@ _CommandContext = _lifecycle.CommandContext
 _complete_command = _lifecycle.complete_command
 _fail_command = _lifecycle.fail_command
 _failure_boundary = _lifecycle.failure_boundary
+_check_sections = _summary.check_sections
 _complete_output = _output.complete_output
 _load_history_records = _history_impl.load_history_records
+_pipeline_summary = _summary.pipeline_summary
 
 
 # Keep these module attributes available for tests that patch shared objects.
