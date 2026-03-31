@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handler_dataops import load_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import normalize_file_format
@@ -86,7 +86,7 @@ def load_cmd(
     )
 
     return call_handler(
-        handlers.load_handler,
+        load_handler,
         state=state,
         source=resolved_source.value,
         target_type=resolved_target.resource_type,
