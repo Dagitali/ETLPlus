@@ -7,6 +7,8 @@ Data-operation handler implementations for the CLI facade.
 from __future__ import annotations
 
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 from typing import cast
 
@@ -27,6 +29,50 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+@contextmanager
+def _command_scope(
+    *,
+    command: str,
+    event_format: str | None,
+    fields: dict[str, Any],
+) -> Iterator[_common_impl.CommandContext]:
+    """Start a command context and wrap it in the shared failure boundary."""
+    context = _common_impl.start_command(
+        command=command,
+        event_format=event_format,
+        **fields,
+    )
+    try:
+        yield context
+    except Exception as exc:
+        _common_impl.fail_command(context, exc, **fields)
+        raise
+
+
+def _complete_success(
+    context: _common_impl.CommandContext,
+    payload: Any,
+    *,
+    mode: str,
+    pretty: bool = True,
+    result_status: str = 'ok',
+    **fields: Any,
+) -> int:
+    """Complete a command using the standard successful status fields."""
+    return _common_impl.complete_output(
+        context,
+        payload,
+        mode=mode,
+        complete_command=_common_impl.complete_command,
+        pretty=pretty,
+        result_status=result_status,
+        status='ok',
+        **fields,
+    )
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -41,9 +87,6 @@ def extract_handler(
     output: str | None = None,
     pretty: bool = True,
     extract_fn: Any,
-    start_command: Any,
-    failure_boundary: Any,
-    complete_output: Any,
 ) -> int:
     """
     Extract data from a source.
@@ -73,52 +116,34 @@ def extract_handler(
     extract_fn : Any
         The callable to use for extracting data, which should accept parameters
         (source_type, source, file_format) and return the extracted data.
-    start_command : Any
-        The callable to start the command context for logging and telemetry,
-        expected to accept parameters (command, event_format, source,
-        source_type) and return a context object.
-    failure_boundary : Any
-        The callable context manager for handling exceptions and logging
-        failures, expected to accept parameters (context, source, source_type)
-        and yield a context for the command execution block.
-    complete_output : Any
-        The callable to complete the command with output, expected to accept
-        parameters (context, payload, mode, pretty, result_status, source,
-        status, target, target_type) and return an exit code.
-
     Returns
     -------
     int
         The CLI exit code.
     """
     explicit_format = format_hint if format_explicit else None
-    context = start_command(
+    command_fields: dict[str, Any] = {
+        'source': source,
+        'source_type': source_type,
+    }
+
+    with _command_scope(
         command='extract',
         event_format=event_format,
-        source=source,
-        source_type=source_type,
-    )
-
-    with failure_boundary(
-        context,
-        source=source,
-        source_type=source_type,
-    ):
+        fields=command_fields,
+    ) as context:
         if source == '-':
             payload = _io.parse_text_payload(_io.read_stdin_text(), format_hint)
-            return complete_output(
+            return _complete_success(
                 context,
                 payload,
                 mode='json',
                 pretty=pretty,
-                result_status='ok',
-                status='ok',
-                source=source,
-                source_type=source_type,
+                **command_fields,
             )
 
         output_path = target or output
-        return complete_output(
+        return _complete_success(
             context,
             extract_fn(
                 source_type,
@@ -130,10 +155,7 @@ def extract_handler(
             pretty=pretty,
             success_message='Data extracted and saved to',
             destination=output_path or 'stdout',
-            result_status='ok',
-            source=source,
-            source_type=source_type,
-            status='ok',
+            **command_fields,
         )
 
 
@@ -149,9 +171,6 @@ def load_handler(
     output: str | None = None,
     pretty: bool = True,
     load_fn: Any,
-    start_command: Any,
-    failure_boundary: Any,
-    complete_output: Any,
 ) -> int:
     """
     Load data into a target.
@@ -185,20 +204,6 @@ def load_handler(
         The function to use for loading data, which should accept parameters
         (source_value, target_type, target, file_format) and return a result
         dict or value.
-    start_command : Any
-        The function to call to start the command context for logging and
-        telemetry, expected to accept parameters (command, event_format,
-        source, target, target_type) and return a context object.
-    failure_boundary : Any
-        The context manager function to use for handling exceptions and logging
-        failures, expected to accept parameters (context, source, target,
-        target_type) and yield a context for the command execution block.
-    complete_output : Any
-        The function to call to complete the command execution and produce the
-        final output, expected to accept parameters (context, result, mode,
-        output_path, pretty, success_message, destination, result_status,
-        source, status, target, target_type) and return an integer exit code.
-
     Returns
     -------
     int
@@ -206,20 +211,17 @@ def load_handler(
     """
     source_format_explicit = source_format is not None
     target_format_explicit = target_format is not None or format_explicit
-    context = start_command(
+    command_fields: dict[str, Any] = {
+        'source': source,
+        'target': target,
+        'target_type': target_type,
+    }
+
+    with _command_scope(
         command='load',
         event_format=event_format,
-        source=source,
-        target=target,
-        target_type=target_type,
-    )
-
-    with failure_boundary(
-        context,
-        source=source,
-        target=target,
-        target_type=target_type,
-    ):
+        fields=command_fields,
+    ) as context:
         source_value = _common_impl.resolve_payload(
             source,
             format_hint=source_format,
@@ -228,7 +230,7 @@ def load_handler(
         )
 
         if target_type == 'file' and target == '-':
-            return complete_output(
+            return _complete_success(
                 context,
                 _io.materialize_file_payload(
                     source_value,
@@ -237,11 +239,7 @@ def load_handler(
                 ),
                 mode='json',
                 pretty=pretty,
-                result_status='ok',
-                source=source,
-                status='ok',
-                target=target,
-                target_type=target_type,
+                **command_fields,
             )
 
         result = load_fn(
@@ -250,9 +248,13 @@ def load_handler(
             target,
             file_format=target_format if target_format_explicit else None,
         )
-        result_status = result.get('status') if isinstance(result, dict) else 'ok'
+        result_status = (
+            cast(str, result.get('status') or 'ok')
+            if isinstance(result, dict)
+            else 'ok'
+        )
 
-        return complete_output(
+        return _complete_success(
             context,
             result,
             mode='or_write',
@@ -261,10 +263,7 @@ def load_handler(
             success_message='Load result saved to',
             destination=output or 'stdout',
             result_status=result_status,
-            source=source,
-            status='ok',
-            target=target,
-            target_type=target_type,
+            **command_fields,
         )
 
 
@@ -281,9 +280,6 @@ def transform_handler(
     format_explicit: bool = False,
     load_fn: Any,
     transform_fn: Any,
-    start_command: Any,
-    failure_boundary: Any,
-    complete_output: Any,
 ) -> int:
     """
     Transform data from a source and optionally write the result.
@@ -323,20 +319,6 @@ def transform_handler(
     transform_fn : Any
         The function to use for transforming the data, which should accept
         parameters (payload, operations) and return the transformed data.
-    start_command : Any
-        The function to call to start the command context for logging and
-        telemetry, expected to accept parameters (command, event_format,
-        source, target, target_type) and return a context object.
-    failure_boundary : Any
-        The context manager function to use for handling exceptions and logging
-        failures, expected to accept parameters (context, source, target,
-        target_type) and yield a context for the command execution block.
-    complete_output : Any
-        The function to call to complete the command execution and produce the
-        final output, expected to accept parameters (context, result, mode,
-        output_path, pretty, success_message, destination, result_status,
-        source, status, target, target_type) and return an integer exit code.
-
     Returns
     -------
     int
@@ -345,20 +327,17 @@ def transform_handler(
     source_format_explicit = source_format is not None or format_explicit
     target_format_explicit = target_format is not None or format_explicit
     target_label = target or 'stdout'
-    context = start_command(
+    command_fields: dict[str, Any] = {
+        'source': source,
+        'target': target_label,
+        'target_type': target_type,
+    }
+
+    with _command_scope(
         command='transform',
         event_format=event_format,
-        source=source,
-        target=target_label,
-        target_type=target_type,
-    )
-
-    with failure_boundary(
-        context,
-        source=source,
-        target=target_label,
-        target_type=target_type,
-    ):
+        fields=command_fields,
+    ) as context:
         payload = cast(
             JSONData | str,
             _common_impl.resolve_payload(
@@ -377,7 +356,7 @@ def transform_handler(
         if target and target != '-':
             if target_type not in (None, 'file'):
                 resolved_target_type = cast(str, target_type)
-                return complete_output(
+                return _complete_success(
                     context,
                     load_fn(
                         data,
@@ -387,37 +366,29 @@ def transform_handler(
                     ),
                     mode='json',
                     pretty=pretty,
-                    result_status='ok',
                     source=source,
-                    status='ok',
                     target=target,
                     target_type=resolved_target_type,
                 )
 
-            return complete_output(
+            return _complete_success(
                 context,
                 data,
                 mode='file',
                 output_path=target,
                 format_hint=target_format,
                 success_message='Data transformed and saved to',
-                result_status='ok',
                 source=source,
-                status='ok',
                 target=target,
                 target_type=target_type or 'file',
             )
 
-        return complete_output(
+        return _complete_success(
             context,
             data,
             mode='json',
             pretty=pretty,
-            result_status='ok',
-            source=source,
-            status='ok',
-            target=target_label,
-            target_type=target_type,
+            **command_fields,
         )
 
 
@@ -431,9 +402,6 @@ def validate_handler(
     format_explicit: bool = False,
     pretty: bool = True,
     validate_fn: Any,
-    start_command: Any,
-    failure_boundary: Any,
-    complete_output: Any,
     print_fn: Any = print,
     stderr: Any = sys.stderr,
 ) -> int:
@@ -460,19 +428,6 @@ def validate_handler(
         Whether to pretty-print the output, by default ``True``.
     validate_fn : Any
         The function to call to perform the validation.
-    start_command : Any
-        The function to call to start the command context for logging and
-        telemetry, expected to accept parameters (command, event_format,
-        source, target) and return a context object.
-    failure_boundary : Any
-        The context manager function to use for handling exceptions and logging
-        failures, expected to accept parameters (context, source, target) and
-        yield a context for the command execution block.
-    complete_output : Any
-        The function to call to complete the command execution and produce the
-        final output, expected to accept parameters (context, data, mode,
-        output_path, success_message, result_status, source, status, target,
-        valid) and return an integer exit code.
     print_fn : Any, optional
         The function to use for printing messages, by default print.
     stderr : Any, optional
@@ -486,18 +441,16 @@ def validate_handler(
     """
     source_format_explicit = source_format is not None or format_explicit
     target_label = target or 'stdout'
-    context = start_command(
+    command_fields: dict[str, Any] = {
+        'source': source,
+        'target': target_label,
+    }
+
+    with _command_scope(
         command='validate',
         event_format=event_format,
-        source=source,
-        target=target_label,
-    )
-
-    with failure_boundary(
-        context,
-        source=source,
-        target=target_label,
-    ):
+        fields=command_fields,
+    ) as context:
         payload = cast(
             JSONData | str,
             _common_impl.resolve_payload(
@@ -519,15 +472,13 @@ def validate_handler(
         if target and target != '-':
             validated_data = result.get('data')
             if validated_data is not None:
-                return complete_output(
+                return _complete_success(
                     context,
                     validated_data,
                     mode='json_file',
                     output_path=target,
                     success_message='ValidationDict result saved to',
-                    result_status='ok',
                     source=source,
-                    status='ok',
                     target=target,
                     valid=result.get('valid'),
                 )
@@ -538,14 +489,11 @@ def validate_handler(
             )
             return 0
 
-        return complete_output(
+        return _complete_success(
             context,
             result,
             mode='json',
             pretty=pretty,
-            result_status='ok',
-            source=source,
-            status='ok',
-            target=target_label,
             valid=result.get('valid'),
+            **command_fields,
         )

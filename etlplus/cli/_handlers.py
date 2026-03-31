@@ -312,9 +312,6 @@ def extract_handler(
         output=output,
         pretty=pretty,
         extract_fn=extract,
-        start_command=_common_impl.start_command,
-        failure_boundary=_failure_boundary,
-        complete_output=_complete_output,
     )
 
 
@@ -370,9 +367,6 @@ def load_handler(
         output=output,
         pretty=pretty,
         load_fn=load,
-        start_command=_common_impl.start_command,
-        failure_boundary=_failure_boundary,
-        complete_output=_complete_output,
     )
 
 
@@ -662,9 +656,6 @@ def transform_handler(
         format_explicit=format_explicit,
         load_fn=load,
         transform_fn=transform,
-        start_command=_common_impl.start_command,
-        failure_boundary=_failure_boundary,
-        complete_output=_complete_output,
     )
 
 
@@ -713,9 +704,6 @@ def validate_handler(
         format_explicit=format_explicit,
         pretty=pretty,
         validate_fn=validate,
-        start_command=_common_impl.start_command,
-        failure_boundary=_failure_boundary,
-        complete_output=_complete_output,
         print_fn=print,
         stderr=sys.stderr,
     )
