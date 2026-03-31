@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handler_run import run_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import require_value
@@ -65,7 +65,7 @@ def run_cmd(
     )
 
     return call_handler(
-        handlers.run_handler,
+        run_handler,
         state=ensure_state(ctx),
         config=config,
         job=job,
