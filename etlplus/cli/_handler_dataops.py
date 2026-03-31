@@ -6,14 +6,14 @@ Data-operation handler implementations for the CLI facade.
 
 from __future__ import annotations
 
-import os
 import sys
-from pathlib import Path
 from typing import Any
 from typing import cast
 
 from ..ops.validate import FieldRulesDict
 from ..utils._types import JSONData
+from . import _handler_common as _common_impl
+from . import _io
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -41,10 +41,9 @@ def extract_handler(
     output: str | None = None,
     pretty: bool = True,
     extract_fn: Any,
-    io_module: Any,
-    start_command_fn: Any,
-    failure_boundary_fn: Any,
-    complete_output_fn: Any,
+    start_command: Any,
+    failure_boundary: Any,
+    complete_output: Any,
 ) -> int:
     """
     Extract data from a source.
@@ -52,69 +51,62 @@ def extract_handler(
     Parameters
     ----------
     source_type : str
-        The type of the source (e.g. 'file', 'database', 'api').
+        The type of the source (e.g., "file", "database", or "api").
     source : str
-        The source identifier (e.g. file path, connection string, API endpoint).
+        The source location (e.g., a file path, a database connection string,
+        or an API endpoint).
     event_format : str | None, optional
-        The expected format of the source data for event logging purposes.
+        The requested event output format (e.g., "jsonl" or ``None`` for no
+        events).
     format_hint : str | None, optional
-        A hint for the data format to assist with parsing when the format is
-        not explicit.
+        An optional format hint for the source data  to assist with parsing
+        when the format is not explicit.
     format_explicit : bool, optional
-        Whether the format is explicitly specified (e.g. via a CLI option) and
-        should be used as-is without inference.
+        Whether the format hint is explicit (e.g., via a CLI option) and should
+        be used as-is without inference. Default is ``False``.
     target : str | None, optional
-        The target identifier for the extracted data, used for logging and
-        output handling.
+        The target location for the extracted data. Default is ``None``.
     output : str | None, optional
-        The file path to write the extracted data to, or None to write to stdout.
+        The output location for the extracted data. Default is ``None``.
     pretty : bool, optional
-        Whether to pretty-print the output when writing JSON to stdout.
+        Whether to pretty-print the output. Default is ``True``.
     extract_fn : Any
-        The function to perform the actual data extraction, which should accept
-        parameters (source_type, source, file_format) and return the extracted data.
-    io_module : Any
-        The module providing I/O utilities for reading from stdin and writing
-        output, expected to have methods :func:`read_stdin_text` and
-        :func:`parse_text_payload`.
-    start_command_fn : Any
-        The function to call to start the command context for logging and
-        telemetry, expected to accept parameters (command, event_format,
-        source, source_type) and return a context object.
-    failure_boundary_fn : Any
-        The context manager function to use for handling exceptions and logging
+        The callable to use for extracting data, which should accept parameters
+        (source_type, source, file_format) and return the extracted data.
+    start_command : Any
+        The callable to start the command context for logging and telemetry,
+        expected to accept parameters (command, event_format, source,
+        source_type) and return a context object.
+    failure_boundary : Any
+        The callable context manager for handling exceptions and logging
         failures, expected to accept parameters (context, source, source_type)
         and yield a context for the command execution block.
-    complete_output_fn : Any
-        The function to call to complete the command with output, expected to
-        accept parameters (context, payload, mode, pretty, result_status,
-        source, status, target, target_type) and return an exit code.
+    complete_output : Any
+        The callable to complete the command with output, expected to accept
+        parameters (context, payload, mode, pretty, result_status, source,
+        status, target, target_type) and return an exit code.
 
     Returns
     -------
     int
-        The exit code of the command.
+        The CLI exit code.
     """
     explicit_format = format_hint if format_explicit else None
-    context = start_command_fn(
+    context = start_command(
         command='extract',
         event_format=event_format,
         source=source,
         source_type=source_type,
     )
 
-    with failure_boundary_fn(
+    with failure_boundary(
         context,
         source=source,
         source_type=source_type,
     ):
         if source == '-':
-            text = io_module.read_stdin_text()
-            payload = io_module.parse_text_payload(
-                text,
-                format_hint,
-            )
-            return complete_output_fn(
+            payload = _io.parse_text_payload(_io.read_stdin_text(), format_hint)
+            return complete_output(
                 context,
                 payload,
                 mode='json',
@@ -125,16 +117,14 @@ def extract_handler(
                 source_type=source_type,
             )
 
-        result = extract_fn(
-            source_type,
-            source,
-            file_format=explicit_format,
-        )
         output_path = target or output
-
-        return complete_output_fn(
+        return complete_output(
             context,
-            result,
+            extract_fn(
+                source_type,
+                source,
+                file_format=explicit_format,
+            ),
             mode='or_write',
             output_path=output_path,
             pretty=pretty,
@@ -159,11 +149,9 @@ def load_handler(
     output: str | None = None,
     pretty: bool = True,
     load_fn: Any,
-    io_module: Any,
-    start_command_fn: Any,
-    failure_boundary_fn: Any,
-    resolve_payload_fn: Any,
-    complete_output_fn: Any,
+    start_command: Any,
+    failure_boundary: Any,
+    complete_output: Any,
 ) -> int:
     """
     Load data into a target.
@@ -171,56 +159,54 @@ def load_handler(
     Parameters
     ----------
     source : str
-        The source identifier for the data to load (e.g. file path, JSON string).
+        The source location (e.g. a file path or a database connection string).
     target_type : str
-        The type of the target (e.g. 'file', 'database', 'api').
+        The type of the target (e.g. "file", "database", or "api").
     target : str
-        The target identifier (e.g. file path, connection string, API endpoint).
+        The target location (e.g. a file path or a database connection string).
     event_format : str | None, optional
-        The expected format of the source data for event logging purposes.
+        The requested event output format for event logging (e.g. "jsonl" or
+        ``None`` for no events).
     source_format : str | None, optional
-        The format of the source data to assist with parsing when the format is
-        not explicit.
+        An optional format hint for the source data to assist with parsing when
+        the format is not explicit.
     target_format : str | None, optional
-        The format to write the data in when loading, if applicable.
+        An optional format hint for the target data to assist with formatting
+        when the format is not explicit.
     format_explicit : bool, optional
-        Whether the source format is explicitly specified (e.g. via a CLI
-        option) and should be used as-is without inference.
+        Whether the format hints are explicit (e.g. via CLI options) and should
+        be used as-is without inference. Default is ``False``.
     output : str | None, optional
-        The file path to write the load result to, or None to write to stdout.
+        The output location for the load result, if applicable. Default is
+        ``None``.
     pretty : bool, optional
-        Whether to pretty-print the output when writing JSON to stdout.
+        Whether to pretty-print the output. Default is ``True``.
     load_fn : Any
-        The function to perform the actual data loading, which should accept
-        parameters (data, target_type, target, file_format) and return a result
-        dict or status.
-    io_module : Any
-        The module providing I/O utilities for parsing payloads, expected to
-        have a method :func:`parse_text_payload`.
-    start_command_fn : Any
+        The function to use for loading data, which should accept parameters
+        (source_value, target_type, target, file_format) and return a result
+        dict or value.
+    start_command : Any
         The function to call to start the command context for logging and
         telemetry, expected to accept parameters (command, event_format,
         source, target, target_type) and return a context object.
-    failure_boundary_fn : Any
+    failure_boundary : Any
         The context manager function to use for handling exceptions and logging
         failures, expected to accept parameters (context, source, target,
         target_type) and yield a context for the command execution block.
-    resolve_payload_fn : Any
-        The function to call to resolve the source data into a payload,
-        expected to accept parameters (source, format_hint, format_explicit,
-        hydrate_files) and return the resolved data.
-    complete_output_fn : Any
-        The function to call to complete the command with output, expected to
-        accept parameters (context, payload, mode, pretty, result_status,
-        source, status, target, target_type) and return an exit code.
+    complete_output : Any
+        The function to call to complete the command execution and produce the
+        final output, expected to accept parameters (context, result, mode,
+        output_path, pretty, success_message, destination, result_status,
+        source, status, target, target_type) and return an integer exit code.
 
     Returns
     -------
     int
-        The exit code of the command execution.
+        The CLI exit code.
     """
-    explicit_format = target_format if format_explicit else None
-    context = start_command_fn(
+    source_format_explicit = source_format is not None
+    target_format_explicit = target_format is not None or format_explicit
+    context = start_command(
         command='load',
         event_format=event_format,
         source=source,
@@ -228,31 +214,27 @@ def load_handler(
         target_type=target_type,
     )
 
-    with failure_boundary_fn(
+    with failure_boundary(
         context,
         source=source,
         target=target,
         target_type=target_type,
     ):
-        source_value = cast(
-            str | Path | os.PathLike[str] | dict[str, Any] | list[dict[str, Any]],
-            resolve_payload_fn(
-                source,
-                format_hint=source_format,
-                format_explicit=source_format is not None,
-                hydrate_files=False,
-            ),
+        source_value = _common_impl.resolve_payload(
+            source,
+            format_hint=source_format,
+            format_explicit=source_format_explicit,
+            hydrate_files=False,
         )
 
         if target_type == 'file' and target == '-':
-            payload = io_module.materialize_file_payload(
-                source_value,
-                format_hint=source_format,
-                format_explicit=source_format is not None,
-            )
-            return complete_output_fn(
+            return complete_output(
                 context,
-                payload,
+                _io.materialize_file_payload(
+                    source_value,
+                    format_hint=source_format,
+                    format_explicit=source_format_explicit,
+                ),
                 mode='json',
                 pretty=pretty,
                 result_status='ok',
@@ -266,10 +248,11 @@ def load_handler(
             source_value,
             target_type,
             target,
-            file_format=explicit_format,
+            file_format=target_format if target_format_explicit else None,
         )
+        result_status = result.get('status') if isinstance(result, dict) else 'ok'
 
-        return complete_output_fn(
+        return complete_output(
             context,
             result,
             mode='or_write',
@@ -277,7 +260,7 @@ def load_handler(
             pretty=pretty,
             success_message='Load result saved to',
             destination=output or 'stdout',
-            result_status=result.get('status') if isinstance(result, dict) else 'ok',
+            result_status=result_status,
             source=source,
             status='ok',
             target=target,
@@ -298,11 +281,9 @@ def transform_handler(
     format_explicit: bool = False,
     load_fn: Any,
     transform_fn: Any,
-    start_command_fn: Any,
-    failure_boundary_fn: Any,
-    resolve_payload_fn: Any,
-    resolve_mapping_payload_fn: Any,
-    complete_output_fn: Any,
+    start_command: Any,
+    failure_boundary: Any,
+    complete_output: Any,
 ) -> int:
     """
     Transform data from a source and optionally write the result.
@@ -310,106 +291,100 @@ def transform_handler(
     Parameters
     ----------
     source : str
-        The source identifier for the data to transform (e.g. file path, JSON string).
+        The source location (e.g., a file path or a database connection string)
+        for the data to transform or a JSON representation of the data to
+        transform.
     operations : JSONData | str
-        The transformation operations to apply, either as a JSON-like dict or a
-        string that resolves to such a dict.
+        The transformation operations to apply, either as a JSON-like object or
+        a string that resolves to such an object (e.g., a file path).
     target : str | None, optional
-        The target identifier for the transformed data, used for logging and
-        output handling.
+        The target location for the transformed data. Default is ``None``.
     target_type : str | None, optional
-        The type of the target (e.g. 'file', 'database', 'api'), used for
-        logging and output handling.
+        The type of the target (e.g., "file", "database", or "api"). Default is
+        ``None``.
     event_format : str | None, optional
-        The expected format of the source data for event logging purposes.
+        The requested event output format for event logging (e.g., "jsonl" or
+        ``None`` for no events).
     source_format : str | None, optional
-        The format of the source data to assist with parsing when the format is
-        not explicit.
+        An optional format hint for the source data to assist with parsing when
+        the format is not explicit.
     target_format : str | None, optional
-        The format to write the data in when loading, if applicable.
+        An optional format hint for the target data to assist with formatting
+        when the format is not explicit.
     pretty : bool, optional
-        Whether to pretty-print the output when writing JSON to stdout.
+        Whether to pretty-print the output. Default is ``True``.
     format_explicit : bool, optional
-        Whether the source format is explicitly specified (e.g. via a CLI
-        option) and should be used as-is without inference.
+        Whether the format hints are explicit (e.g., via CLI options) and
+        should be used as-is without inference. Default is ``False``.
     load_fn : Any
-        The function to perform the actual data loading, which should accept
-        parameters (data, target_type, target, file_format) and return a result
-        dict or status.
+        The function to use for loading the transformed data, which should
+        accept parameters (data, target type, target, file_format) and return a
+        result dict or value.
     transform_fn : Any
-        The function to perform the actual data transformation, which should
-        accept parameters (source_data, operations) and return the transformed
-        data.
-    start_command_fn : Any
+        The function to use for transforming the data, which should accept
+        parameters (payload, operations) and return the transformed data.
+    start_command : Any
         The function to call to start the command context for logging and
         telemetry, expected to accept parameters (command, event_format,
         source, target, target_type) and return a context object.
-    failure_boundary_fn : Any
+    failure_boundary : Any
         The context manager function to use for handling exceptions and logging
         failures, expected to accept parameters (context, source, target,
         target_type) and yield a context for the command execution block.
-    resolve_payload_fn : Any
-        The function to call to resolve the source data into a payload,
-        expected to accept parameters (source, format_hint, format_explicit,
-        hydrate_files) and return the resolved data.
-    resolve_mapping_payload_fn : Any
-        The function to call to resolve the operations into a mapping payload,
-        expected to accept parameters (operations, format_explicit,
-        error_message) and return the resolved mapping.
-    complete_output_fn : Any
-        The function to call to complete the command with output, expected to
-        accept parameters (context, payload, mode, pretty, result_status,
-        source, status, target, target_type) and return an exit code.
+    complete_output : Any
+        The function to call to complete the command execution and produce the
+        final output, expected to accept parameters (context, result, mode,
+        output_path, pretty, success_message, destination, result_status,
+        source, status, target, target_type) and return an integer exit code.
 
     Returns
     -------
     int
-        The exit code of the command execution.
+        The CLI exit code.
     """
     source_format_explicit = source_format is not None or format_explicit
-    context = start_command_fn(
+    target_format_explicit = target_format is not None or format_explicit
+    target_label = target or 'stdout'
+    context = start_command(
         command='transform',
         event_format=event_format,
         source=source,
-        target=target or 'stdout',
+        target=target_label,
         target_type=target_type,
     )
 
-    with failure_boundary_fn(
+    with failure_boundary(
         context,
         source=source,
-        target=target or 'stdout',
+        target=target_label,
         target_type=target_type,
     ):
         payload = cast(
             JSONData | str,
-            resolve_payload_fn(
+            _common_impl.resolve_payload(
                 source,
                 format_hint=source_format,
                 format_explicit=source_format_explicit,
             ),
         )
-
-        operations_payload = resolve_mapping_payload_fn(
+        operations_payload = _common_impl.resolve_mapping_payload(
             operations,
             format_explicit=source_format_explicit,
             error_message='operations must resolve to a mapping of transforms',
         )
-
         data = transform_fn(payload, operations_payload)
 
         if target and target != '-':
             if target_type not in (None, 'file'):
                 resolved_target_type = cast(str, target_type)
-                result = load_fn(
-                    data,
-                    resolved_target_type,
-                    target,
-                    file_format=target_format if source_format_explicit else None,
-                )
-                return complete_output_fn(
+                return complete_output(
                     context,
-                    result,
+                    load_fn(
+                        data,
+                        resolved_target_type,
+                        target,
+                        file_format=(target_format if target_format_explicit else None),
+                    ),
                     mode='json',
                     pretty=pretty,
                     result_status='ok',
@@ -419,7 +394,7 @@ def transform_handler(
                     target_type=resolved_target_type,
                 )
 
-            return complete_output_fn(
+            return complete_output(
                 context,
                 data,
                 mode='file',
@@ -433,7 +408,7 @@ def transform_handler(
                 target_type=target_type or 'file',
             )
 
-        return complete_output_fn(
+        return complete_output(
             context,
             data,
             mode='json',
@@ -441,7 +416,7 @@ def transform_handler(
             result_status='ok',
             source=source,
             status='ok',
-            target=target or 'stdout',
+            target=target_label,
             target_type=target_type,
         )
 
@@ -456,11 +431,9 @@ def validate_handler(
     format_explicit: bool = False,
     pretty: bool = True,
     validate_fn: Any,
-    start_command_fn: Any,
-    failure_boundary_fn: Any,
-    resolve_payload_fn: Any,
-    resolve_mapping_payload_fn: Any,
-    complete_output_fn: Any,
+    start_command: Any,
+    failure_boundary: Any,
+    complete_output: Any,
     print_fn: Any = print,
     stderr: Any = sys.stderr,
 ) -> int:
@@ -470,93 +443,83 @@ def validate_handler(
     Parameters
     ----------
     source : str
-        The source identifier for the data to validate (e.g. file path, JSON
-        string).
+        The source location (e.g., a file path or a database connection string)
+        for the data to validate or a JSON representation of the data to
+        validate.
     rules : JSONData | str
-        The validation rules to apply, either as a JSON-like dict or a string
-        that resolves to such a dict.
+        The validation rules to apply to the data.
     event_format : str | None, optional
-        The expected format of the source data for event logging purposes.
+        The format of the events, by default ``None``.
     source_format : str | None, optional
-        The format of the source data to assist with parsing when the format is
-        not explicit.
+        The format of the source data, by default ``None``.
     target : str | None, optional
-        The target identifier for the validation result, used for logging and
-        output handling.
+        The target to write the validation results to, by default ``None``.
     format_explicit : bool, optional
-        Whether the source format is explicitly specified (e.g. via a CLI
-        option) and should be used as-is without inference.
+        Whether the format is explicitly specified, by default ``False``.
     pretty : bool, optional
-        Whether to pretty-print the output when writing JSON to stdout.
+        Whether to pretty-print the output, by default ``True``.
     validate_fn : Any
-        The function to perform the actual data validation, which should accept
-        parameters (data, rules) and return a dict with validation results.
-    start_command_fn : Any
+        The function to call to perform the validation.
+    start_command : Any
         The function to call to start the command context for logging and
         telemetry, expected to accept parameters (command, event_format,
         source, target) and return a context object.
-    failure_boundary_fn : Any
+    failure_boundary : Any
         The context manager function to use for handling exceptions and logging
         failures, expected to accept parameters (context, source, target) and
         yield a context for the command execution block.
-    resolve_payload_fn : Any
-        The function to call to resolve the source data into a payload,
-        expected to accept parameters (source, format_hint, format_explicit,
-        hydrate_files) and return the resolved data.
-    resolve_mapping_payload_fn : Any
-        The function to call to resolve the rules into a mapping payload,
-        expected to accept parameters (rules, format_explicit, error_message)
-        and return the resolved mapping.
-    complete_output_fn : Any
-        The function to call to complete the command with output, expected to
-        accept parameters (context, payload, mode, pretty, result_status,
-        source, status, target, valid) and return an exit code.
+    complete_output : Any
+        The function to call to complete the command execution and produce the
+        final output, expected to accept parameters (context, data, mode,
+        output_path, success_message, result_status, source, status, target,
+        valid) and return an integer exit code.
     print_fn : Any, optional
-        The function to use for printing messages, defaulting to the built-in
-        :func:`print`.
+        The function to use for printing messages, by default print.
     stderr : Any, optional
-        The stream to write error messages to, defaulting to :obj:`sys.stderr`.
+        The stream to use to write error messages, by default
+        :obj:`sys.stderr`.
 
     Returns
     -------
     int
-        The exit code of the validation command.
+        The CLI exit code.
     """
-    context = start_command_fn(
+    source_format_explicit = source_format is not None or format_explicit
+    target_label = target or 'stdout'
+    context = start_command(
         command='validate',
         event_format=event_format,
         source=source,
-        target=target or 'stdout',
+        target=target_label,
     )
 
-    with failure_boundary_fn(
+    with failure_boundary(
         context,
         source=source,
-        target=target or 'stdout',
+        target=target_label,
     ):
-        source_format_explicit = source_format is not None or format_explicit
         payload = cast(
             JSONData | str,
-            resolve_payload_fn(
+            _common_impl.resolve_payload(
                 source,
                 format_hint=source_format,
                 format_explicit=source_format_explicit,
             ),
         )
-
-        rules_payload = resolve_mapping_payload_fn(
+        rules_payload = _common_impl.resolve_mapping_payload(
             rules,
             format_explicit=source_format_explicit,
             error_message='rules must resolve to a mapping of field rules',
         )
-
-        field_rules = cast(dict[str, FieldRulesDict], rules_payload)
-        result = validate_fn(payload, field_rules)
+        result = validate_fn(
+            payload,
+            cast(dict[str, FieldRulesDict], rules_payload),
+        )
 
         if target and target != '-':
             validated_data = result.get('data')
             if validated_data is not None:
-                return complete_output_fn(
+                return complete_output(
                     context,
                     validated_data,
                     mode='json_file',
@@ -568,13 +531,14 @@ def validate_handler(
                     target=target,
                     valid=result.get('valid'),
                 )
+
             print_fn(
                 f'ValidationDict failed, no data to save for {target}',
                 file=stderr,
             )
             return 0
 
-        return complete_output_fn(
+        return complete_output(
             context,
             result,
             mode='json',
@@ -582,6 +546,6 @@ def validate_handler(
             result_status='ok',
             source=source,
             status='ok',
-            target=target or 'stdout',
+            target=target_label,
             valid=result.get('valid'),
         )

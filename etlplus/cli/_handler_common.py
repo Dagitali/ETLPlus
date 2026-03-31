@@ -8,13 +8,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 from typing import cast
 
 from ..file import File
 from ..file import FileFormat
+from ..history import RunCompletion
+from ..history import RunState
+from ..runtime import ReadinessReportBuilder
+from ..runtime import RuntimeEvents
 from ..utils._types import JSONData
 from ..utils._types import TemplateKey
+from . import _io
+from ._history import HistoryView
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -22,7 +29,7 @@ from ..utils._types import TemplateKey
 __all__ = [
     # Data Classes
     'CommandContext',
-    # FUnctions
+    # Funnctions
     'complete_output',
     'elapsed_ms',
     'emit_failure_event',
@@ -45,7 +52,7 @@ __all__ = [
 
 @dataclass(frozen=True, slots=True)
 class CommandContext:
-    """Shared runtime context for one CLI command invocation."""
+    """Runtime context for one CLI command invocation."""
 
     # -- Instance Attributes -- #
 
@@ -62,7 +69,7 @@ class CommandContext:
 def elapsed_ms(
     started_perf: float,
     *,
-    perf_counter_fn: Any,
+    perf_counter_fn: Any = perf_counter,
 ) -> int:
     """
     Return elapsed milliseconds since *started_perf*.
@@ -73,6 +80,8 @@ def elapsed_ms(
         The starting performance counter value to compare against.
     perf_counter_fn : Any
         The performance counter function to use for measuring elapsed time.
+        Defaults to :func:`time.perf_counter` but can be overridden for
+        testing.
 
     Returns
     -------
@@ -88,7 +97,6 @@ def emit_lifecycle_event(
     lifecycle: str,
     run_id: str,
     event_format: str | None,
-    runtime_events: Any,
     **fields: Any,
 ) -> None:
     """
@@ -104,14 +112,13 @@ def emit_lifecycle_event(
         The unique identifier for this command run.
     event_format : str | None
         The requested event output format, e.g. "jsonl" or None for no events.
-    runtime_events : Any
-        The runtime events module or instance to use for event construction and
+
         emission.
     **fields : Any
         Additional fields to include in the emitted event payload.
     """
-    runtime_events.emit(
-        runtime_events.build(
+    RuntimeEvents.emit(
+        RuntimeEvents.build(
             command=command,
             lifecycle=lifecycle,
             run_id=run_id,
@@ -128,12 +135,10 @@ def emit_failure_event(
     started_perf: float,
     event_format: str | None,
     exc: Exception,
-    elapsed_ms_fn: Any,
-    emit_lifecycle_event_fn: Any,
     **fields: Any,
 ) -> None:
     """
-    Emit a failure event with the shared stable schema.
+    Emit a failed command lifecycle event with the shared stable schema.
 
     Parameters
     ----------
@@ -154,12 +159,12 @@ def emit_failure_event(
     **fields : Any
         Additional fields to include in the emitted event payload.
     """
-    emit_lifecycle_event_fn(
+    emit_lifecycle_event(
         command=command,
         lifecycle='failed',
         run_id=run_id,
         event_format=event_format,
-        duration_ms=elapsed_ms_fn(started_perf),
+        duration_ms=elapsed_ms(started_perf),
         error_message=str(exc),
         error_type=type(exc).__name__,
         status='error',
@@ -171,11 +176,11 @@ def emit_json_payload(
     payload: Any,
     *,
     pretty: bool,
-    io_module: Any,
+    io_module: Any = _io,
     exit_code: int = 0,
 ) -> int:
     """
-    Emit one JSON payload and return the requested exit code.
+    Emit one JSON payload and return *exit_code*.
 
     Parameters
     ----------
@@ -202,16 +207,13 @@ def emit_history_payload(
     *,
     columns: tuple[str, ...],
     pretty: bool,
-    history_view: Any,
-    emit_json_payload_fn: Any,
-    io_module: Any,
     table: bool = False,
     json_output: bool = False,
     table_rows: list[dict[str, Any]] | None = None,
     exit_code: int = 0,
 ) -> int:
     """
-    Validate history output mode and emit one JSON or table payload.
+    Emit history data as JSON or a Markdown table.
 
     Parameters
     ----------
@@ -221,65 +223,51 @@ def emit_history_payload(
         The columns to include in the table output.
     pretty : bool
         Whether to pretty-print the JSON output.
-    history_view : Any
-        The history view instance to use for validation.
-    emit_json_payload_fn : Any
-        The function to emit JSON payloads.
-    io_module : Any
-        The I/O module to use for emitting tables.
     table : bool, optional
-        Whether to emit a table. Default is ``False``.
+        Whether to emit the data as a Markdown table. Default is ``False``.
     json_output : bool, optional
-        Whether to emit JSON output. Default is ``False``.
+        Whether to emit the data as JSON. Default is ``False``.
     table_rows : list[dict[str, Any]] | None, optional
-        The rows to include in the table output. Default is ``None``.
+        The rows to include in the Markdown table. Default is ``None``.
     exit_code : int, optional
-        The exit code to return after emitting the payload. Default is ``0``.
+        The exit code to return after emitting the data. Default is ``0``.
 
     Returns
     -------
     int
-        The exit code to return after emitting the payload.
+        The exit code to return after emitting the data.
     """
-    history_view.validate_output_mode(json_output=json_output, table=table)
+    HistoryView.validate_output_mode(json_output=json_output, table=table)
     if table:
-        io_module.emit_markdown_table(
+        _io.emit_markdown_table(
             table_rows
             if table_rows is not None
-            else cast(list[dict[str, Any]], payload),
+            else cast(
+                list[dict[str, Any]],
+                payload,
+            ),
             columns=columns,
         )
         return exit_code
-    return emit_json_payload_fn(payload, pretty=pretty, exit_code=exit_code)
+    return emit_json_payload(payload, pretty=pretty, exit_code=exit_code)
 
 
 def start_command(
     *,
     command: str,
     event_format: str | None,
-    runtime_events: Any,
-    emit_lifecycle_event_fn: Any,
-    perf_counter_fn: Any,
-    context_cls: type[CommandContext] = CommandContext,
     **fields: Any,
 ) -> CommandContext:
     """
-    Create one command context and emit its started lifecycle event.
+    Create a command context and emit its started event.
 
     Parameters
     ----------
     command : str
-        The command name.
+        The CLI command name (e.g. "run" or "render").
     event_format : str | None
-        The event format to use.
-    runtime_events : Any
-        The runtime events instance.
-    emit_lifecycle_event_fn : Any
-        The function to emit lifecycle events.
-    perf_counter_fn : Any
-        The function to get the performance counter.
-    context_cls : type[CommandContext], optional
-        The context class to use (default is CommandContext).
+        The requested event output format (e.g. "jsonl" or ``None`` for no
+        events).
     **fields : Any
         Additional fields to include in the emitted event payload.
 
@@ -288,14 +276,14 @@ def start_command(
     CommandContext
         The created command context.
     """
-    context = context_cls(
+    context = CommandContext(
         command=command,
         event_format=event_format,
-        run_id=runtime_events.create_run_id(),
-        started_at=runtime_events.utc_now_iso(),
-        started_perf=perf_counter_fn(),
+        run_id=RuntimeEvents.create_run_id(),
+        started_at=RuntimeEvents.utc_now_iso(),
+        started_perf=perf_counter(),
     )
-    emit_lifecycle_event_fn(
+    emit_lifecycle_event(
         command=context.command,
         lifecycle='started',
         run_id=context.run_id,
@@ -311,10 +299,7 @@ def complete_output(
     payload: Any,
     *,
     mode: str,
-    complete_command_fn: Any,
-    emit_json_payload_fn: Any,
-    io_module: Any,
-    write_file_payload_fn: Any,
+    complete_command: Any,
     pretty: bool = True,
     output_path: str | None = None,
     format_hint: str | None = None,
@@ -322,7 +307,7 @@ def complete_output(
     **fields: Any,
 ) -> int:
     """
-    Emit completion for *context* and route the payload by output mode.
+    Emit command completion and route the payload by output mode.
 
     Parameters
     ----------
@@ -332,20 +317,14 @@ def complete_output(
         The payload to emit.
     mode : str
         The output mode.
-    complete_command_fn : Any
-        The function to complete the command.
-    emit_json_payload_fn : Any
-        The function to emit JSON payloads.
-    io_module : Any
-        The I/O module to use for emitting tables.
-    write_file_payload_fn : Any
-        The function to write payloads to files.
+    complete_command : Any
+        The command completion function.
     pretty : bool, optional
-        Whether to pretty-print the JSON output. Default is ``True``.
+        Whether to pretty-print the output. Default is ``True``.
     output_path : str | None, optional
-        The output path for file-based modes. Default is ``None``.
+        The path to write the output to. Default is ``None``.
     format_hint : str | None, optional
-        The format hint for file-based modes. Default is ``None``.
+        The format hint for the output. Default is ``None``.
     success_message : str | None, optional
         The success message to display. Default is ``None``.
     **fields : Any
@@ -354,19 +333,19 @@ def complete_output(
     Returns
     -------
     int
-        The exit code after emitting the payload.
+        The exit code after emitting the output.
 
     Raises
     ------
     AssertionError
         If an unsupported completion mode is provided.
     """
-    complete_command_fn(context, **fields)
+    complete_command(context, **fields)
     match mode:
         case 'json':
-            return emit_json_payload_fn(payload, pretty=pretty)
+            return emit_json_payload(payload, pretty=pretty)
         case 'or_write':
-            io_module.emit_or_write(
+            _io.emit_or_write(
                 payload,
                 output_path,
                 pretty=pretty,
@@ -375,7 +354,7 @@ def complete_output(
             return 0
         case 'file':
             target = cast(str, output_path)
-            write_file_payload_fn(
+            write_file_payload(
                 cast(JSONData, payload),
                 target,
                 format_hint=format_hint,
@@ -383,7 +362,7 @@ def complete_output(
             print(f'{cast(str, success_message)} {target}')
             return 0
         case 'json_file':
-            io_module.write_json_output(
+            _io.write_json_output(
                 payload,
                 cast(str, output_path),
                 success_message=cast(str, success_message),
@@ -398,10 +377,6 @@ def record_run_completion(
     context: CommandContext,
     *,
     status: str,
-    runtime_events: Any,
-    elapsed_ms_fn: Any,
-    run_completion_cls: Any,
-    run_state_cls: Any,
     result_summary: JSONData | None = None,
     exc: Exception | None = None,
 ) -> None:
@@ -411,33 +386,24 @@ def record_run_completion(
     Parameters
     ----------
     history_store : Any
-        The history store instance to record the run completion.
+        The history store to record the run completion.
     context : CommandContext
-        The command context for the run.
+        The command context.
     status : str
-        The terminal status of the run, e.g. "ok" or "error".
-    runtime_events : Any
-        The runtime events module or instance to use for timestamping.
-    elapsed_ms_fn : Any
-        The function to calculate elapsed milliseconds.
-    run_completion_cls : Any
-        The class to use for constructing the run completion record.
-    run_state_cls : Any
-        The class to use for constructing the run state record.
+        The final status of the run (e.g. "ok" or "error").
     result_summary : JSONData | None, optional
-        An optional summary of the run result to include in the run state.
-        Default is ``None``.
+        An optional summary of the run results, if any. Default is ``None``.
     exc : Exception | None, optional
-        An optional exception that caused the run to fail, if applicable.
-        Default is ``None``.
+        An optional exception raised during the run, if any. Default is
+        ``None``.
     """
     history_store.record_run_finished(
-        run_completion_cls(
+        RunCompletion(
             run_id=context.run_id,
-            state=run_state_cls(
+            state=RunState(
                 status=status,
-                finished_at=runtime_events.utc_now_iso(),
-                duration_ms=elapsed_ms_fn(context.started_perf),
+                finished_at=RuntimeEvents.utc_now_iso(),
+                duration_ms=elapsed_ms(context.started_perf),
                 result_summary=result_summary,
                 error_type=None if exc is None else type(exc).__name__,
                 error_message=None if exc is None else str(exc),
@@ -449,31 +415,27 @@ def record_run_completion(
 def resolve_render_template(
     template: TemplateKey | None,
     template_path: str | None,
-    *,
-    path_cls: type[Path] = Path,
 ) -> tuple[TemplateKey | None, str | None]:
     """
-    Resolve the render template key and optional template-file override.
+    Resolve a key for a template from which to render.
 
     Parameters
     ----------
     template : TemplateKey | None
-        The template key to use, if any.
+        The template key to use, if any. Default is ``None``.
     template_path : str | None
-        The path to the template file, if any.
-    path_cls : type[Path], optional
-        The class to use for path operations. Default is :class:`Path`.
+        The path to the template file, if any. Default is ``None``.
 
     Returns
     -------
     tuple[TemplateKey | None, str | None]
-        A tuple containing the resolved template key and template file path.
+        A tuple containing the resolved template key and file path.
     """
     template_key: TemplateKey | None = template or 'ddl'
     if template_path is not None:
         return template_key, template_path
 
-    candidate_path = path_cls(cast(str, template_key))
+    candidate_path = Path(cast(str, template_key))
     if candidate_path.exists():
         return None, str(candidate_path)
     return template_key, None
@@ -486,26 +448,23 @@ def emit_render_output(
     pretty: bool,
     quiet: bool,
     schema_count: int,
-    path_cls: type[Path] = Path,
     print_fn: Any = print,
 ) -> int:
     """
-    Write rendered SQL to a file path or print it to STDOUT.
+    Write rendered SQL to a file or STDOUT.
 
     Parameters
     ----------
     rendered_chunks : list[str]
         The list of rendered SQL chunks.
     output_path : str | None
-        The path to the output file, or None to print to STDOUT.
+        The path to the output file, or ``None`` to print to STDOUT.
     pretty : bool
-        Whether to pretty-print the SQL output.
+        Whether to pretty-print the SQL output. Default is ``False``.
     quiet : bool
-        Whether to suppress informational messages.
+        Whether to suppress informational messages. Default is ``False``.
     schema_count : int
         The number of schemas rendered.
-    path_cls : type[Path], optional
-        The class to use for path operations. Default is :class:`Path`.
     print_fn : Any, optional
         The function to use for printing output. Default is ``print``.
 
@@ -517,12 +476,12 @@ def emit_render_output(
     sql_text = '\n'.join(chunk.rstrip() for chunk in rendered_chunks).rstrip() + '\n'
     rendered_output = sql_text if pretty else sql_text.rstrip('\n')
     if output_path and output_path != '-':
-        path_cls(output_path).write_text(rendered_output, encoding='utf-8')
+        Path(output_path).write_text(rendered_output, encoding='utf-8')
         if not quiet:
             print_fn(f'Rendered {schema_count} schema(s) to {output_path}')
         return 0
 
-    print_fn(rendered_output)
+    print_fn(rendered_output, end='')
     return 0
 
 
@@ -532,7 +491,6 @@ def resolve_payload(
     format_hint: str | None,
     format_explicit: bool,
     hydrate_files: bool = True,
-    io_module: Any,
 ) -> object:
     """
     Resolve one CLI payload through the shared CLI payload loader.
@@ -542,13 +500,12 @@ def resolve_payload(
     payload : object
         The CLI payload to resolve.
     format_hint : str | None
-        An optional format hint for the payload.
+        An optional format hint for the payload, if any. Default is ``None``.
     format_explicit : bool
-        Whether the format is explicitly specified.
+        Whether the format is explicitly specified. Default is ``False``.
     hydrate_files : bool, optional
-        Whether to hydrate file references in the payload. Default is True.
-    io_module : Any
-        The module to use for I/O operations.
+        Whether to hydrate files referenced in the payload. Default is
+        ``True``.
 
     Returns
     -------
@@ -561,10 +518,7 @@ def resolve_payload(
     }
     if not hydrate_files:
         resolve_kwargs['hydrate_files'] = False
-    return io_module.resolve_cli_payload(
-        payload,
-        **resolve_kwargs,
-    )
+    return _io.resolve_cli_payload(payload, **resolve_kwargs)
 
 
 def resolve_mapping_payload(
@@ -572,7 +526,6 @@ def resolve_mapping_payload(
     *,
     format_explicit: bool,
     error_message: str,
-    resolve_payload_fn: Any,
 ) -> dict[str, Any]:
     """
     Resolve one CLI payload and require a mapping result.
@@ -585,8 +538,6 @@ def resolve_mapping_payload(
         Whether the format is explicitly specified.
     error_message : str
         The error message to raise if the resolved payload is not a mapping.
-    resolve_payload_fn : Any
-        The function to use for resolving the payload.
 
     Returns
     -------
@@ -598,7 +549,7 @@ def resolve_mapping_payload(
     ValueError
         If the resolved payload is not a mapping.
     """
-    resolved_payload = resolve_payload_fn(
+    resolved_payload = resolve_payload(
         payload,
         format_hint=None,
         format_explicit=format_explicit,
@@ -612,22 +563,19 @@ def emit_readiness_report(
     *,
     config: str | None,
     pretty: bool,
-    readiness_builder: Any,
-    emit_json_payload_fn: Any,
+    readiness_builder: Any = ReadinessReportBuilder,
+    emit_json_payload_fn: Any = emit_json_payload,
 ) -> int:
     """
-    Build and emit one readiness report, returning its CLI exit code.
+    Build and emit one readiness report, returning its CLI exit code..
 
     Parameters
     ----------
     config : str | None
-        The path to the configuration file, or None to use the default.
+        The path to the configuration file, or ``None`` to use the default
+        configuration.
     pretty : bool
-        Whether to pretty-print the JSON output.
-    readiness_builder : Any
-        The builder to use for creating the readiness report.
-    emit_json_payload_fn : Any
-        The function to use for emitting the JSON payload.
+        Whether to pretty-print the JSON output. Default is ``False``.
 
     Returns
     -------
@@ -647,11 +595,9 @@ def write_file_payload(
     target: str,
     *,
     format_hint: str | None,
-    file_cls: type[File] = File,
-    file_format_cls: type[FileFormat] = FileFormat,
 ) -> None:
     """
-    Write a JSON-like payload to a file path using an optional format hint.
+    Write a JSON-like payload to *target* using *format_hint* when given.
 
     Parameters
     ----------
@@ -661,10 +607,6 @@ def write_file_payload(
         The target file path.
     format_hint : str | None
         An optional format hint for the file.
-    file_cls : type[File], optional
-        The file class to use. Default is File.
-    file_format_cls : type[FileFormat], optional
-        The file format class to use. Default is FileFormat.
     """
-    file_format = file_format_cls.coerce(format_hint) if format_hint else None
-    file_cls(target, file_format=file_format).write(payload)
+    file_format = FileFormat.coerce(format_hint) if format_hint else None
+    File(target, file_format=file_format).write(payload)

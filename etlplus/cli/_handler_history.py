@@ -10,6 +10,12 @@ from typing import Any
 from typing import Literal
 from typing import cast
 
+from . import _handler_common as _common_impl
+from ._history import HISTORY_TABLE_COLUMNS
+from ._history import REPORT_TABLE_COLUMNS
+from ._history import HistoryReportBuilder
+from ._history import HistoryView
+
 # SECTION: EXPORTS ========================================================== #
 
 
@@ -28,7 +34,6 @@ __all__ = [
 
 def load_history_records(
     *,
-    history_view: Any,
     raw: bool = False,
     job: str | None = None,
     limit: int | None = None,
@@ -38,28 +43,28 @@ def load_history_records(
     status: str | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Load, filter, and sort history records for CLI read commands.
+    Load filtered history records for CLI read commands.
 
     Parameters
     ----------
-    history_view : Any
-        History view instance to load records from.
     raw : bool, optional
-        Whether to load raw records instead of normalized runs.
+        Whether to load raw records instead of normalized runs. Default is
+        ``False``.
     job : str | None, optional
-        Optional job name filter.
+        Optional job name to filter records. Default is ``None``.
     limit : int | None, optional
-        Optional maximum number of records to load.
+        Optional maximum number of history records to load. Default is
+        ``None``.
     run_id : str | None, optional
-        Optional run ID filter.
+        Optional run ID to filter records. Default is ``None``.
     since : str | None, optional
-        Optional ISO 8601 timestamp filter to load records started after the
-        given time.
+        Optional ISO 8601 timestamp to filter records created after the given
+        time.  Default is ``None``.
     until : str | None, optional
-        Optional ISO 8601 timestamp filter to load records started before the
-        given time.
+        Optional ISO 8601 timestamp to filter records created before the given
+        time.  Default is ``None``.
     status : str | None, optional
-        Optional status filter.
+        Optional status to filter records. Default is ``None``.
 
     Returns
     -------
@@ -67,26 +72,26 @@ def load_history_records(
         A list of history records matching the specified filters.
     """
     load_kwargs: dict[str, Any] = {'raw': raw}
-    for key, value in (
-        ('job', job),
-        ('limit', limit),
-        ('run_id', run_id),
-        ('since', since),
-        ('until', until),
-        ('status', status),
-    ):
-        if value is not None:
-            load_kwargs[key] = value
-    return history_view.load_records(
-        **load_kwargs,
+    load_kwargs.update(
+        {
+            key: value
+            for key, value in {
+                'job': job,
+                'limit': limit,
+                'run_id': run_id,
+                'since': since,
+                'until': until,
+                'status': status,
+            }.items()
+            if value is not None
+        },
     )
+    return HistoryView.load_records(**load_kwargs)
 
 
 def emit_follow_history(
     *,
-    load_history_records_fn: Any,
-    history_view: Any,
-    emit_json_payload_fn: Any,
+    load_records: Any,
     sleep_fn: Any,
     job: str | None = None,
     limit: int | None = None,
@@ -100,41 +105,37 @@ def emit_follow_history(
 
     Parameters
     ----------
-    load_history_records_fn: Any
-        Function to load history records with the same signature as
+    load_records : Any
+        Callable to load history records with the same signature as
         :func:`load_history_records`.
-    history_view: Any
-        History view instance to fingerprint records with.
-    emit_json_payload_fn: Any
-        Function to emit JSON payloads with the same signature as
-        :func:`etlplus.cli._handler_common.emit_json_payload`.
-    sleep_fn: Any
-        Function to sleep for a given number of seconds, like
-        :func:`time.sleep`.
+    sleep_fn : Any
+        Callable to sleep for a given number of seconds (e.g.,
+        :func:`time.sleep`).
     job : str | None, optional
-        Optional job name filter.
+        Optional job name filter. Default is ``None``.
     limit : int | None, optional
-        Optional maximum number of records to load per poll.
+        Optional maximum number of records to load per iteration. Default
+        is ``None``.
     run_id : str | None, optional
-        Optional run ID filter.
+        Optional run ID filter. Default is ``None``.
     since : str | None, optional
-        Optional ISO 8601 timestamp filter to load records started after the
-        given time.
+        Optional ISO 8601 timestamp filter to load records created after the
+        given time.  Default is ``None``.
     until : str | None, optional
-        Optional ISO 8601 timestamp filter to load records started before the
-        given time.
+        Optional ISO 8601 timestamp filter to load records created before the
+        given time.  Default is ``None``.
     status : str | None, optional
-        Optional status filter.
+        Optional status filter. Default is ``None``.
 
     Returns
     -------
     int
-        Exit code. ``0`` indicates success, non-zero indicates failure.
+        Exit code ``0`` on successful interruption; non-zero on error.
     """
     seen: set[str] = set()
     try:
         while True:
-            records = load_history_records_fn(
+            records = load_records(
                 job=job,
                 limit=limit,
                 raw=True,
@@ -144,11 +145,11 @@ def emit_follow_history(
                 status=status,
             )
             for record in reversed(records):
-                fingerprint = history_view.fingerprint(record)
+                fingerprint = HistoryView.fingerprint(record)
                 if fingerprint in seen:
                     continue
                 seen.add(fingerprint)
-                emit_json_payload_fn(record, pretty=False)
+                _common_impl.emit_json_payload(record, pretty=False)
             sleep_fn(1.0)
     except KeyboardInterrupt:
         return 0
@@ -167,10 +168,8 @@ def history_handler(
     until: str | None = None,
     status: str | None = None,
     table: bool = False,
-    emit_follow_history_fn: Any,
-    emit_history_payload_fn: Any,
-    load_history_records_fn: Any,
-    columns: tuple[str, ...],
+    load_records: Any,
+    sleep_fn: Any,
 ) -> int:
     """
     Emit persisted local run history.
@@ -181,60 +180,56 @@ def history_handler(
         Whether to stream newly observed records until interrupted. Default is
         ``False``.
     job : str | None, optional
-        Optional job name filter.
+        Optional job name filter. Default is ``None``.
     json_output : bool, optional
-        Whether to emit JSON output instead of a human-friendly table. Default
-        is ``False``.
+        Whether to emit output as JSON instead of a human-friendly table.
+        Default is ``False``.
     limit : int | None, optional
-        Optional maximum number of records to load. Default is ``None`` (no
-        limit).
+        Optional maximum number of records to load. Default is ``None``.
     raw : bool, optional
         Whether to load raw records instead of normalized runs. Default is
         ``False``.
     pretty : bool, optional
         Whether to pretty-print JSON output. Default is ``True``.
     run_id : str | None, optional
-        Optional run ID filter. Default is ``None`` (no filter).
+        Optional run ID filter. Default is ``None``.
     since : str | None, optional
-        Optional ISO 8601 timestamp filter to load records started after the
-        given time. Default is ``None`` (no filter).
+        Optional ISO 8601 timestamp filter to load records created after the
+        given time.  Default is ``None``.
     until : str | None, optional
-        Optional ISO 8601 timestamp filter to load records started before the
-        given time. Default is ``None`` (no filter).
+        Optional ISO 8601 timestamp filter to load records created before the
+        given time.  Default is ``None``.
     status : str | None, optional
-        Optional status filter. Default is ``None`` (no filter).
+        Optional status filter. Default is ``None``.
     table : bool, optional
-        Whether to format output as a human-friendly table. Default is
-        ``False``.
-    emit_follow_history_fn: Any
-        Function to emit follow history with the same signature as
-        :func:`emit_follow_history`.
-    emit_history_payload_fn: Any
-        Function to emit history payloads with the same signature as
-        :func:`etlplus.cli._handler_common.emit_history_payload`.
-    load_history_records_fn: Any
-        Function to load history records with the same signature as
+        Whether to emit output as a human-friendly table instead of JSON.
+        Default is ``False``.
+    load_records : Any
+        Callable to load history records with the same signature as
         :func:`load_history_records`.
-    columns: tuple[str, ...]
-        Column names to include in table output. Ignored if *table* is
-        ``False``. Default is an empty tuple.
+    sleep_fn : Any
+        Callable to sleep for a given number of seconds (e.g.,
+        :func:`time.sleep`).
 
     Returns
     -------
     int
-        Exit code. ``0`` indicates success, non-zero indicates failure.
+        Exit code ``0`` on success; non-zero on error.
     """
     if follow:
-        return emit_follow_history_fn(
+        return emit_follow_history(
+            load_records=load_records,
+            sleep_fn=sleep_fn,
             job=job,
             limit=limit,
             run_id=run_id,
             since=since,
-            status=status,
             until=until,
+            status=status,
         )
-    return emit_history_payload_fn(
-        load_history_records_fn(
+
+    return _common_impl.emit_history_payload(
+        load_records(
             job=job,
             limit=limit,
             raw=raw,
@@ -243,7 +238,7 @@ def history_handler(
             until=until,
             status=status,
         ),
-        columns=columns,
+        columns=HISTORY_TABLE_COLUMNS,
         pretty=pretty,
         table=table,
         json_output=json_output,
@@ -259,63 +254,51 @@ def report_handler(
     since: str | None = None,
     table: bool = False,
     until: str | None = None,
-    load_history_records_fn: Any,
-    report_builder: Any,
-    emit_history_payload_fn: Any,
-    columns: tuple[str, ...],
+    load_records: Any,
 ) -> int:
     """
-    Emit a grouped history report derived from normalized persisted runs.
+    Emit a grouped history report derived from normalized runs.
 
     Parameters
     ----------
-    group_by : Literal['day', 'job', 'status'], optional
+    group_by : {'day', 'job', 'status'}, optional
         The field by which to group the report. Default is 'job'.
     job : str | None, optional
-        Optional job name filter.
+        Optional job name filter. Default is ``None``.
     json_output : bool, optional
-        Whether to emit JSON output instead of a human-friendly table. Default
-        is ``False``.
+        Whether to emit output as JSON instead of a human-friendly table.
+        Default is ``False``.
     pretty : bool, optional
         Whether to pretty-print JSON output. Default is ``True``.
     since : str | None, optional
-        Optional ISO 8601 timestamp filter to load records started after the
-        given time. Default is ``None`` (no filter).
+        Optional ISO 8601 timestamp filter to load records created after the
+        given time.  Default is ``None``.
     table : bool, optional
-        Whether to format output as a human-friendly table. Default is
-        ``False``.
+        Whether to emit output as a human-friendly table instead of JSON.
+        Default is ``False``.
     until : str | None, optional
-        Optional ISO 8601 timestamp filter to load records started before the
-        given time. Default is ``None`` (no filter).
-    load_history_records_fn: Any
-        Function to load history records with the same signature as
+        Optional ISO 8601 timestamp filter to load records created before the
+        given time.  Default is ``None``.
+    load_records : Any
+        Callable to load history records with the same signature as
         :func:`load_history_records`.
-    report_builder: Any
-        Function to build the report with the same signature as
-        :func:`report_builder`.
-    emit_history_payload_fn: Any
-        Function to emit history payloads with the same signature as
-        :func:`etlplus.cli._handler_common.emit_history_payload`.
-    columns: tuple[str, ...]
-        Column names to include in table output. Ignored if *table* is
-        ``False``. Default is an empty tuple.
 
     Returns
     -------
     int
-        Exit code. ``0`` indicates success, non-zero indicates failure.
+        Exit code ``0`` on success; non-zero on error.
     """
-    report = report_builder.build(
-        load_history_records_fn(
+    report = HistoryReportBuilder.build(
+        load_records(
             job=job,
             since=since,
             until=until,
         ),
         group_by=group_by,
     )
-    return emit_history_payload_fn(
+    return _common_impl.emit_history_payload(
         report,
-        columns=columns,
+        columns=REPORT_TABLE_COLUMNS,
         pretty=pretty,
         table=table,
         json_output=json_output,
@@ -328,37 +311,33 @@ def status_handler(
     job: str | None = None,
     pretty: bool = True,
     run_id: str | None = None,
-    load_history_records_fn: Any,
-    emit_json_payload_fn: Any,
+    load_records: Any,
 ) -> int:
     """
-    Emit the latest normalized run matching the given status filters.
+    Emit the latest normalized run matching the given filters.
 
     Parameters
     ----------
     job : str | None, optional
-        Optional job name filter.
+        Optional job name filter. Default is ``None``.
     pretty : bool, optional
         Whether to pretty-print JSON output. Default is ``True``.
     run_id : str | None, optional
-        Optional run ID filter.
-    load_history_records_fn: Any
-        Function to load history records with the same signature as
+        Optional run ID filter. Default is ``None``.
+    load_records : Any
+        Callable to load history records with the same signature as
         :func:`load_history_records`.
-    emit_json_payload_fn: Any
-        Function to emit JSON payloads with the same signature as
-        :func:`etlplus.cli._handler_common.emit_json_payload`.
 
     Returns
     -------
     int
-        Exit code. ``0`` indicates success, non-zero indicates failure.
+        Exit code ``0`` on success; non-zero on error.
     """
-    records = load_history_records_fn(
+    records = load_records(
         job=job,
         limit=1,
         run_id=run_id,
     )
     if not records:
-        return emit_json_payload_fn({}, pretty=pretty, exit_code=1)
-    return emit_json_payload_fn(records[0], pretty=pretty)
+        return _common_impl.emit_json_payload({}, pretty=pretty, exit_code=1)
+    return _common_impl.emit_json_payload(records[0], pretty=pretty)

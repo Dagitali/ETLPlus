@@ -1,12 +1,16 @@
 """
 :mod:`etlplus.cli._handler_render` module.
 
-SQL render handler implementation for the CLI facade.
+SQL render helpers for the CLI facade.
 """
 
 from __future__ import annotations
 
 from typing import Any
+
+from ..utils._types import TemplateKey
+from . import _handler_common as _common_impl
+from . import _summary
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -25,15 +29,12 @@ def render_handler(
     config: str | None = None,
     spec: str | None = None,
     table: str | None = None,
-    template: Any = None,
+    template: TemplateKey | None = None,
     template_path: str | None = None,
     output: str | None = None,
     pretty: bool = True,
     quiet: bool = False,
-    resolve_render_template_fn: Any,
-    summary_module: Any,
     render_tables_fn: Any,
-    emit_render_output_fn: Any,
     print_fn: Any,
     stderr: Any,
 ) -> int:
@@ -43,52 +44,54 @@ def render_handler(
     Parameters
     ----------
     config : str | None, optional
-        Optional path to a pipeline config file containing table schema specs.
+        Optional path to a config file containing table schema specs.
+        Default is ``None``.
     spec : str | None, optional
         Optional path to a single table schema spec file. If provided, this
-        takes precedence over any specs in a config file.
+        takes precedence over any specs defined in a config file. Default is
+        ``None``.
     table : str | None, optional
-        Optional table name to filter specs by. Matches against the 'table' or
-        'name' field of specs. If provided, only specs matching this table name
-        are rendered.
-    template : Any, optional
-        Optional template name or object to use for rendering. If not provided,
-        a default template is used.
+        Optional table name for filtering specs. Matches against the 'table' or
+        'name' field in specs. If provided, only specs matching this table name
+        will be rendered. Default is ``None``.
+    template : TemplateKey | None, optional
+        Optional key of template to use for rendering. If not provided, a
+        default template will be used. Default is ``None``.
     template_path : str | None, optional
-        Optional path to a custom template file. If provided, this overrides
-        the default template or any template specified by name.
+        Optional path to a custom template file. If provided, this will
+        override the template specified by the *template* parameter. Default is
+        ``None``.
     output : str | None, optional
-        Optional path to write rendered output to. If not provided, output is
-        printed to stdout.
+        Optional path to write the rendered output to. If not provided, output
+        will be printed to stdout. Default is ``None``.
     pretty : bool, optional
         Whether to pretty-print the rendered output. Default is ``True``.
     quiet : bool, optional
-        Whether to suppress non-error output. Default is ``False``.
-    resolve_render_template_fn : Any
-        Function to resolve the rendering template. Should accept *template*
-        and *template_path* and return a tuple of (template_key,
-        file_override).
-    summary_module : Any
-        Module containing the summary.collect_table_specs function.
+        Whether to suppress output. Default is ``False``.
     render_tables_fn : Any
-        Function to render tables. Should accept specs, template, and
-        template_path.
-    emit_render_output_fn : Any
-        Function to emit the rendered output. Should accept rendered_chunks,
-        output_path, pretty, quiet, and schema_count.
+        Callable to render tables with the specified template. Should, at
+        minimum, accept the following parameters:
+            - specs: list of table schema specifications
+            - template: template key
+            - template_path: path to a custom template file
     print_fn : Any
-        Function to print messages. Should accept a message and a file (e.g.,
-        stderr).
+        Callable to print output (e.g., :func:`print`). Should accept the
+        following parameters:
+            - message: str, the message to print
+            - file: optional, the file to print to (e.g., :func:`sys.stdout`)
     stderr : Any
-        The stderr stream to use for printing error messages.
+        Stream to write error messages to (e.g., :func:`sys.stderr`).
 
     Returns
     -------
     int
-        Exit code. Returns 0 on success, 1 on failure.
+        Exit code ``0`` on success; non-zero on error.
     """
-    template_key, file_override = resolve_render_template_fn(template, template_path)
-    specs = summary_module.collect_table_specs(config, spec)
+    template_key, file_override = _common_impl.resolve_render_template(
+        template,
+        template_path,
+    )
+    specs = _summary.collect_table_specs(config, spec)
     if table:
         specs = [
             spec
@@ -106,15 +109,15 @@ def render_handler(
         )
         return 1
 
-    rendered_chunks = render_tables_fn(
-        specs,
-        template=template_key,
-        template_path=file_override,
-    )
-    return emit_render_output_fn(
-        rendered_chunks,
+    return _common_impl.emit_render_output(
+        render_tables_fn(
+            specs,
+            template=template_key,
+            template_path=file_override,
+        ),
         output_path=output,
         pretty=pretty,
         quiet=quiet,
         schema_count=len(specs),
+        print_fn=print_fn,
     )
