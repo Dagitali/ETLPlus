@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handler_dataops import extract_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import resolve_resource
@@ -72,7 +72,7 @@ def extract_cmd(
     assert resolved_source.resource_type is not None
 
     return call_handler(
-        handlers.extract_handler,
+        extract_handler,
         state=state,
         source_type=resolved_source.resource_type,
         source=resolved_source.value,
