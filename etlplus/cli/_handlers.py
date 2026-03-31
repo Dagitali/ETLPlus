@@ -91,35 +91,8 @@ _PATCHABLE_EXPORTS = (
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _complete_command(
-    context: _CommandContext,
-    **fields: Any,
-) -> None:
-    """Emit a completed lifecycle event for one command context."""
-    _common_impl.emit_lifecycle_event(
-        command=context.command,
-        lifecycle='completed',
-        run_id=context.run_id,
-        event_format=context.event_format,
-        duration_ms=_common_impl.elapsed_ms(context.started_perf),
-        **fields,
-    )
-
-
-def _fail_command(
-    context: _CommandContext,
-    exc: Exception,
-    **fields: Any,
-) -> None:
-    """Emit a failed lifecycle event for one command context."""
-    _common_impl.emit_failure_event(
-        command=context.command,
-        run_id=context.run_id,
-        started_perf=context.started_perf,
-        event_format=context.event_format,
-        exc=exc,
-        **fields,
-    )
+_complete_command = _common_impl.complete_command
+_fail_command = _common_impl.fail_command
 
 
 @contextmanager
@@ -139,26 +112,7 @@ def _failure_boundary(
         raise
 
 
-def _load_history_records(
-    *,
-    raw: bool = False,
-    job: str | None = None,
-    limit: int | None = None,
-    run_id: str | None = None,
-    since: str | None = None,
-    until: str | None = None,
-    status: str | None = None,
-) -> list[dict[str, Any]]:
-    """Load, filter, and sort history records for CLI read commands."""
-    return _history_impl.load_history_records(
-        raw=raw,
-        job=job,
-        limit=limit,
-        run_id=run_id,
-        since=since,
-        until=until,
-        status=status,
-    )
+_load_history_records = _history_impl.load_history_records
 
 
 def _complete_output(
