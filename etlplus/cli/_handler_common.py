@@ -30,6 +30,7 @@ __all__ = [
     # Data Classes
     'CommandContext',
     # Funnctions
+    'complete_command',
     'complete_output',
     'elapsed_ms',
     'emit_failure_event',
@@ -38,6 +39,7 @@ __all__ = [
     'emit_lifecycle_event',
     'emit_readiness_report',
     'emit_render_output',
+    'fail_command',
     'record_run_completion',
     'resolve_mapping_payload',
     'resolve_payload',
@@ -294,6 +296,30 @@ def start_command(
     return context
 
 
+def complete_command(
+    context: CommandContext,
+    **fields: Any,
+) -> None:
+    """
+    Emit a completed lifecycle event for one command context.
+
+    Parameters
+    ----------
+    context : CommandContext
+        The command context.
+    **fields : Any
+        Additional fields to include in the emitted event payload.
+    """
+    emit_lifecycle_event(
+        command=context.command,
+        lifecycle='completed',
+        run_id=context.run_id,
+        event_format=context.event_format,
+        duration_ms=elapsed_ms(context.started_perf),
+        **fields,
+    )
+
+
 def complete_output(
     context: CommandContext,
     payload: Any,
@@ -370,6 +396,33 @@ def complete_output(
             return 0
         case _:
             raise AssertionError(f'Unsupported completion mode: {mode!r}')
+
+
+def fail_command(
+    context: CommandContext,
+    exc: Exception,
+    **fields: Any,
+) -> None:
+    """
+    Emit a failed lifecycle event for one command context.
+
+    Parameters
+    ----------
+    context : CommandContext
+        The command context.
+    exc : Exception
+        The exception that caused the failure.
+    **fields : Any
+        Additional fields to include in the emitted event payload.
+    """
+    emit_failure_event(
+        command=context.command,
+        run_id=context.run_id,
+        started_perf=context.started_perf,
+        event_format=context.event_format,
+        exc=exc,
+        **fields,
+    )
 
 
 def record_run_completion(
