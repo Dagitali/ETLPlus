@@ -154,10 +154,6 @@ def emit_failure_event(
         The requested event output format, e.g. "jsonl" or None for no events.
     exc : Exception
         The exception that caused the failure.
-    elapsed_ms_fn : Any
-        The function to calculate elapsed milliseconds.
-    emit_lifecycle_event_fn : Any
-        The function to emit lifecycle events.
     **fields : Any
         Additional fields to include in the emitted event payload.
     """
@@ -325,7 +321,7 @@ def complete_output(
     payload: Any,
     *,
     mode: str,
-    complete_command: Any,
+    complete_command_fn: Any,
     pretty: bool = True,
     output_path: str | None = None,
     format_hint: str | None = None,
@@ -343,7 +339,7 @@ def complete_output(
         The payload to emit.
     mode : str
         The output mode.
-    complete_command : Any
+    complete_command_fn : Any
         The command completion function.
     pretty : bool, optional
         Whether to pretty-print the output. Default is ``True``.
@@ -366,7 +362,7 @@ def complete_output(
     AssertionError
         If an unsupported completion mode is provided.
     """
-    complete_command(context, **fields)
+    complete_command_fn(context, **fields)
     match mode:
         case 'json':
             return emit_json_payload(payload, pretty=pretty)
@@ -629,6 +625,12 @@ def emit_readiness_report(
         configuration.
     pretty : bool
         Whether to pretty-print the JSON output. Default is ``False``.
+    readiness_builder : Any
+        The readiness report builder to use. Default is
+        :class:`ReadinessReportBuilder`.
+    emit_json_payload_fn : Any
+        The function to use for emitting the JSON payload. Default is
+        :func:`emit_json_payload`.
 
     Returns
     -------
