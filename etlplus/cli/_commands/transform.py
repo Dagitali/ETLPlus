@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handler_dataops import transform_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import parse_json_option
@@ -95,7 +95,7 @@ def transform_cmd(
     assert resolved_target.resource_type is not None
 
     return call_handler(
-        handlers.transform_handler,
+        transform_handler,
         state=state,
         source=resolved_source.value,
         operations=parse_json_option(operations, '--operations'),
