@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handler_history import status_handler
 from ._app import app
 from ._helpers import call_handler
 from ._options import JobOption
@@ -51,7 +51,7 @@ def status_cmd(
         Exit code (0 if checks passed, non-zero if any checks failed).
     """
     return call_handler(
-        handlers.status_handler,
+        status_handler,
         state=ensure_state(ctx),
         job=job,
         run_id=run_id,
