@@ -6,7 +6,7 @@ Documentation for the `etlplus.cli` subpackage: command-line interface for ETLPl
 - Supports commands for extracting, transforming, validating, loading, rendering, running pipelines,
   and inspecting local run history
 - Includes options for configuration, state, and output control
-- Exposes handlers for custom command integration
+- Exposes focused handler modules for custom command integration
 - Organizes Typer command definitions under the [_commands](_commands) package
 
 Back to project overview: see the top-level [README](../../README.md).
@@ -44,6 +44,6 @@ etlplus run --config configs/pipeline.yml --job file_to_file_customers
 ## See Also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
-- Command handlers in [_handlers.py](_handlers.py)
+- Handler implementations in [_handler_check.py](_handler_check.py), [_handler_dataops.py](_handler_dataops.py), [_handler_history.py](_handler_history.py), [_handler_render.py](_handler_render.py), and [_handler_run.py](_handler_run.py)
 - Command modules in [_commands](_commands)
 - Command options in [_options.py](_options.py)
