@@ -321,7 +321,8 @@ def complete_output(
     payload: Any,
     *,
     mode: str,
-    complete_command_fn: Any,
+    complete_command: Any | None = None,
+    complete_command_fn: Any | None = None,
     pretty: bool = True,
     output_path: str | None = None,
     format_hint: str | None = None,
@@ -339,8 +340,10 @@ def complete_output(
         The payload to emit.
     mode : str
         The output mode.
-    complete_command_fn : Any
+    complete_command : Any | None, optional
         The command completion function.
+    complete_command_fn : Any | None, optional
+        Backward-compatible alias for *complete_command*.
     pretty : bool, optional
         Whether to pretty-print the output. Default is ``True``.
     output_path : str | None, optional
@@ -362,7 +365,14 @@ def complete_output(
     AssertionError
         If an unsupported completion mode is provided.
     """
-    complete_command_fn(context, **fields)
+    completion_fn = (
+        complete_command
+        if complete_command is not None
+        else complete_command_fn
+    )
+    if completion_fn is None:
+        raise TypeError('complete_command is required')
+    completion_fn(context, **fields)
     match mode:
         case 'json':
             return emit_json_payload(payload, pretty=pretty)
