@@ -17,6 +17,12 @@ import pytest
 
 import etlplus.cli._handlers as handlers
 from etlplus import Config
+from etlplus.cli import _handler_check as check_mod
+from etlplus.cli import _handler_dataops as dataops_mod
+from etlplus.cli import _handler_history as history_mod
+from etlplus.cli import _handler_lifecycle as lifecycle_mod
+from etlplus.cli import _handler_render as render_mod
+from etlplus.cli import _handler_run as run_mod
 
 from .conftest import CaptureIo
 from .conftest import assert_emit_json
@@ -76,8 +82,8 @@ class TestCheckHandler:
             fake_from_yaml,
         )
         monkeypatch.setattr(
-            handlers,
-            '_check_sections',
+            check_mod._summary,
+            'check_sections',
             lambda _cfg, **_kwargs: {'pipelines': ['p1']},
         )
         assert handlers.check_handler(config='cfg.yml', substitute=True) == 0
@@ -97,8 +103,8 @@ class TestCheckHandler:
             lambda path, substitute: dummy_cfg,
         )
         monkeypatch.setattr(
-            handlers,
-            '_check_sections',
+            check_mod._summary,
+            'check_sections',
             lambda _cfg, **_kwargs: {'targets': ['t1']},
         )
         assert handlers.check_handler(config='cfg.yml') == 0
@@ -147,8 +153,8 @@ class TestCheckHandler:
             lambda path, substitute: dummy_cfg,
         )
         monkeypatch.setattr(
-            handlers,
-            '_pipeline_summary',
+            check_mod._summary,
+            'pipeline_summary',
             lambda _cfg: {'name': 'p1', 'jobs': ['j1']},
         )
 
@@ -238,8 +244,8 @@ class TestCliHandlersInternalHelpers:
 
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(
-                handlers,
-                '_complete_command',
+                lifecycle_mod,
+                'complete_command',
                 lambda _context, **_fields: None,
             )
             with pytest.raises(AssertionError, match='Unsupported completion mode'):
@@ -273,7 +279,7 @@ class TestCliHandlersInternalHelpers:
         )
 
         with pytest.MonkeyPatch.context() as monkeypatch:
-            monkeypatch.setattr(handlers, '_fail_command', fake_fail_command)
+            monkeypatch.setattr(lifecycle_mod, 'fail_command', fake_fail_command)
             with pytest.raises(RuntimeError, match='boom'):
                 with handlers._failure_boundary(
                     context,
@@ -354,7 +360,7 @@ class TestExtractHandler:
             observed['params'] = (source_type, source, file_format)
             return {'status': 'ok'}
 
-        monkeypatch.setattr(handlers, 'extract', fake_extract)
+        monkeypatch.setattr(dataops_mod, 'extract', fake_extract)
 
         assert (
             handlers.extract_handler(
@@ -396,7 +402,7 @@ class TestExtractHandler:
             captured['params'] = (source_type, source, file_format)
             return {'ok': True}
 
-        monkeypatch.setattr(handlers, 'extract', fake_extract)
+        monkeypatch.setattr(dataops_mod, 'extract', fake_extract)
         assert (
             handlers.extract_handler(
                 source_type='file',
@@ -433,7 +439,7 @@ class TestExtractHandler:
         def fail_extract(*_args: object, **_kwargs: object) -> None:
             raise AssertionError('extract should not be called')
 
-        monkeypatch.setattr(handlers, 'extract', fail_extract)
+        monkeypatch.setattr(dataops_mod, 'extract', fail_extract)
         assert (
             handlers.extract_handler(
                 source_type='api',
@@ -462,7 +468,7 @@ class TestExtractHandler:
         set.
         """
         monkeypatch.setattr(
-            handlers,
+            dataops_mod,
             'extract',
             lambda *_args, **_kwargs: {'status': 'ok'},
         )
@@ -506,7 +512,7 @@ class TestExtractHandler:
             observed['params'] = (source_type, source, file_format)
             return {'status': 'ok'}
 
-        monkeypatch.setattr(handlers, 'extract', fake_extract)
+        monkeypatch.setattr(dataops_mod, 'extract', fake_extract)
 
         assert (
             handlers.extract_handler(
@@ -880,11 +886,11 @@ class TestHistoryHandler:
                 raise KeyboardInterrupt
 
         monkeypatch.setattr(
-            handlers,
-            '_load_history_records',
+            history_mod,
+            'load_history_records',
             fake_load_history_records,
         )
-        monkeypatch.setattr(handlers, 'sleep', fake_sleep)
+        monkeypatch.setattr(history_mod, 'sleep', fake_sleep)
 
         assert handlers.history_handler(follow=True, raw=True, pretty=True) == 0
 
@@ -960,7 +966,7 @@ class TestLoadHandler:
         def fail_load(*_args: object, **_kwargs: object) -> None:
             raise AssertionError('load should not be called for STDOUT path')
 
-        monkeypatch.setattr(handlers, 'load', fail_load)
+        monkeypatch.setattr(dataops_mod, 'load', fail_load)
 
         assert (
             handlers.load_handler(
@@ -1030,7 +1036,7 @@ class TestLoadHandler:
             load_record['params'] = (payload, target_type, target, file_format)
             return {'loaded': True}
 
-        monkeypatch.setattr(handlers, 'load', fake_load)
+        monkeypatch.setattr(dataops_mod, 'load', fake_load)
 
         assert (
             handlers.load_handler(
@@ -1087,7 +1093,7 @@ class TestLoadHandler:
             )
             return {'status': 'queued'}
 
-        monkeypatch.setattr(handlers, 'load', fake_load)
+        monkeypatch.setattr(dataops_mod, 'load', fake_load)
 
         assert (
             handlers.load_handler(
@@ -1476,7 +1482,7 @@ class TestRenderHandler:
             lambda _cfg, _spec: [{'table': 'Widget'}],
         )
         monkeypatch.setattr(
-            handlers,
+            render_mod,
             'render_tables',
             lambda specs, **kwargs: ['SELECT 1'],
         )
@@ -1526,7 +1532,7 @@ class TestRenderHandler:
             captured['template_path'] = template_path
             return ['SELECT 1']
 
-        monkeypatch.setattr(handlers, 'render_tables', _render_tables)
+        monkeypatch.setattr(render_mod, 'render_tables', _render_tables)
 
         assert (
             handlers.render_handler(
@@ -1665,7 +1671,7 @@ class TestRunHandler:
             run_calls['params'] = (job, config_path)
             return {'job': job, 'ok': True}
 
-        monkeypatch.setattr(handlers, 'run', fake_run)
+        monkeypatch.setattr(run_mod, 'run', fake_run)
 
         assert (
             handlers.run_handler(
@@ -1857,7 +1863,7 @@ class TestTransformHandler:
             fake_resolve,
         )
         monkeypatch.setattr(
-            handlers,
+            dataops_mod,
             'transform',
             lambda payload, ops: {'rows': payload, 'ops': ops},
         )
@@ -1896,7 +1902,7 @@ class TestTransformHandler:
             ),
         )
         monkeypatch.setattr(
-            handlers,
+            dataops_mod,
             'transform',
             lambda payload, ops: {'payload': payload, 'ops': ops},
         )
@@ -1912,7 +1918,7 @@ class TestTransformHandler:
             captured['params'] = (source, target_type, target, file_format)
             return {'status': 'success', 'target': target, 'target_type': target_type}
 
-        monkeypatch.setattr(handlers, 'load', fake_load)
+        monkeypatch.setattr(dataops_mod, 'load', fake_load)
 
         assert (
             handlers.transform_handler(
@@ -1987,7 +1993,7 @@ class TestTransformHandler:
             ),
         )
         monkeypatch.setattr(
-            handlers,
+            dataops_mod,
             'transform',
             lambda payload, ops: {'payload': payload, 'ops': ops},
         )
@@ -2034,7 +2040,7 @@ class TestTransformHandler:
             ),
         )
         monkeypatch.setattr(
-            handlers,
+            dataops_mod,
             'transform',
             lambda payload, ops: {'payload': payload, 'ops': ops},
         )
@@ -2085,7 +2091,7 @@ class TestValidateHandler:
             ),
         )
         monkeypatch.setattr(
-            handlers,
+            dataops_mod,
             'validate',
             lambda payload, rules: {'data': payload, 'rules': rules},
         )
@@ -2123,7 +2129,7 @@ class TestValidateHandler:
             ),
         )
         monkeypatch.setattr(
-            handlers,
+            dataops_mod,
             'validate',
             lambda *_args, **_kwargs: {'data': None},
         )
@@ -2193,7 +2199,7 @@ class TestValidateHandler:
 
         monkeypatch.setattr(handlers._io, 'resolve_cli_payload', fake_resolve)
         monkeypatch.setattr(
-            handlers,
+            dataops_mod,
             'validate',
             lambda payload, rules: {'data': payload, 'rules': rules},
         )
@@ -2239,7 +2245,7 @@ class TestValidateHandler:
             ),
         )
         monkeypatch.setattr(
-            handlers,
+            dataops_mod,
             'validate',
             lambda payload, rules: {
                 'data': payload,
@@ -2284,7 +2290,7 @@ class TestValidateHandler:
             ),
         )
         monkeypatch.setattr(
-            handlers,
+            dataops_mod,
             'validate',
             lambda *_args, **_kwargs: {'data': {'id': 1}},
         )
