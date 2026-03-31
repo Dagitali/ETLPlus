@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handler_history import report_handler
 from ._app import app
 from ._helpers import call_handler
 from ._options import HistoryJsonOption
@@ -71,7 +71,7 @@ def report_cmd(
         Exit code (0 if checks passed, non-zero if any checks failed).
     """
     return call_handler(
-        handlers.report_handler,
+        report_handler,
         state=ensure_state(ctx),
         group_by=group_by,
         job=job,
