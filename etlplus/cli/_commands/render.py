@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handler_render import render_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import require_any
@@ -74,7 +74,7 @@ def render_cmd(
     )
 
     return call_handler(
-        handlers.render_handler,
+        render_handler,
         state=ensure_state(ctx),
         state_fields=('pretty', 'quiet'),
         config=config,
