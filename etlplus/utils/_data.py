@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
+from typing import cast
 
 from ._types import JSONData
 
@@ -17,6 +18,7 @@ from ._types import JSONData
 __all__ = [
     # Functions (data utilities)
     'count_records',
+    'parse_json',
     'print_json',
     'serialize_json',
 ]
@@ -44,6 +46,35 @@ def count_records(
         Number of records in `data`.
     """
     return len(data) if isinstance(data, list) else 1
+
+
+def parse_json(
+    text: str,
+) -> JSONData:
+    """
+    Parse JSON text and surface a concise error when it fails.
+
+    Parameters
+    ----------
+    text : str
+        The JSON text to parse.
+
+    Returns
+    -------
+    JSONData
+        The parsed JSON data.
+
+    Raises
+    ------
+    ValueError
+        When the JSON text is invalid.
+    """
+    try:
+        return cast(JSONData, json.loads(text))
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f'Invalid JSON payload: {exc.msg} (pos {exc.pos})',
+        ) from exc
 
 
 def serialize_json(
