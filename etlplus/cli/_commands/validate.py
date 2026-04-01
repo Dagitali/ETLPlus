@@ -13,12 +13,12 @@ from ._app import app
 from ._helpers import call_handler
 from ._helpers import parse_json_option
 from ._helpers import resolve_resource
-from ._options import OutputOption
-from ._options import RulesOption
-from ._options import SourceArg
-from ._options import SourceFormatOption
-from ._options import SourceTypeOption
-from ._options import StructuredEventFormatOption
+from ._option_common import OutputOption
+from ._option_common import StructuredEventFormatOption
+from ._option_resources import SourceArg
+from ._option_resources import SourceFormatOption
+from ._option_resources import SourceTypeOption
+from ._option_specs import RulesOption
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #

@@ -12,12 +12,12 @@ from .._handlers.render import render_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import require_any
-from ._options import RenderConfigOption
-from ._options import RenderOutputOption
-from ._options import RenderSpecOption
-from ._options import RenderTableOption
-from ._options import RenderTemplateOption
-from ._options import RenderTemplatePathOption
+from ._option_specs import RenderConfigOption
+from ._option_specs import RenderOutputOption
+from ._option_specs import RenderSpecOption
+from ._option_specs import RenderTableOption
+from ._option_specs import RenderTemplateOption
+from ._option_specs import RenderTemplatePathOption
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #

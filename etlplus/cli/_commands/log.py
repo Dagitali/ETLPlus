@@ -11,11 +11,11 @@ import typer
 from .._handlers.history import history_handler
 from ._app import app
 from ._helpers import call_handler
-from ._options import HistoryFollowOption
-from ._options import HistoryLimitOption
-from ._options import HistorySinceOption
-from ._options import HistoryUntilOption
-from ._options import RunIdOption
+from ._option_history import HistoryFollowOption
+from ._option_history import HistoryLimitOption
+from ._option_history import HistorySinceOption
+from ._option_history import HistoryUntilOption
+from ._option_history import RunIdOption
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #

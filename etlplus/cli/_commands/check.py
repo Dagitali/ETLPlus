@@ -13,14 +13,14 @@ from ._app import app
 from ._helpers import call_handler
 from ._helpers import fail_usage
 from ._helpers import require_value
-from ._options import CheckConfigOption
-from ._options import JobsOption
-from ._options import PipelinesOption
-from ._options import ReadinessOption
-from ._options import SourcesOption
-from ._options import SummaryOption
-from ._options import TargetsOption
-from ._options import TransformsOption
+from ._option_common import CheckConfigOption
+from ._option_specs import JobsOption
+from ._option_specs import PipelinesOption
+from ._option_specs import ReadinessOption
+from ._option_specs import SourcesOption
+from ._option_specs import SummaryOption
+from ._option_specs import TargetsOption
+from ._option_specs import TransformsOption
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
