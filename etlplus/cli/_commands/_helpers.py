@@ -17,7 +17,7 @@ from typing import overload
 import typer
 
 from ...file import FileFormat
-from .._io import parse_json_payload
+from .._parsing import parse_json_payload
 from ._constants import DATA_CONNECTORS
 from ._constants import FILE_FORMATS
 from ._state import CliState

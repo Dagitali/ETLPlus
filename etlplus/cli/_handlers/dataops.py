@@ -19,7 +19,7 @@ from ...ops import validate
 from ...ops._types import PipelineConfig
 from ...ops.validate import FieldRulesDict
 from ...utils._types import JSONData
-from .. import _io
+from . import _input
 from . import _lifecycle
 from . import _output
 from . import _payload
@@ -160,7 +160,10 @@ def extract_handler(
         fields=command_fields,
     ) as context:
         if source == '-':
-            payload = _io.parse_text_payload(_io.read_stdin_text(), source_format)
+            payload = _input.parse_text_payload(
+                _input.read_stdin_text(),
+                source_format,
+            )
             return _complete_success(
                 context,
                 payload,
@@ -254,7 +257,7 @@ def load_handler(
         if target_type == 'file' and target == '-':
             return _complete_success(
                 context,
-                _io.materialize_file_payload(
+                _input.materialize_file_payload(
                     source_value,
                     format_hint=source_format,
                     format_explicit=source_format_explicit,

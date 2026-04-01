@@ -6,6 +6,8 @@ Output helpers shared by CLI handler implementations.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -13,8 +15,9 @@ from typing import cast
 from ...file import File
 from ...file import FileFormat
 from ...runtime import ReadinessReportBuilder
+from ...utils import print_json
+from ...utils import serialize_json
 from ...utils._types import JSONData
-from .. import _io
 from . import _lifecycle
 from ._history import HistoryView
 
@@ -24,15 +27,107 @@ from ._history import HistoryView
 __all__ = [
     # Functions
     'complete_output',
+    'emit_json',
+    'emit_markdown_table',
     'emit_history_payload',
     'emit_json_payload',
+    'emit_or_write',
     'emit_readiness_report',
     'emit_render_output',
+    'write_json_output',
     'write_file_payload',
 ]
 
 
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def emit_json(
+    data: Any,
+    *,
+    pretty: bool,
+) -> None:
+    """
+    Emit JSON honoring pretty/compact preference.
+
+    Parameters
+    ----------
+    data : Any
+        Data to serialize as JSON.
+    pretty : bool
+        Whether to pretty-print JSON output.
+    """
+    if pretty:
+        print_json(data)
+        return
+    print(serialize_json(data))
+
+
+def emit_markdown_table(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    columns: Sequence[str],
+) -> None:
+    """
+    Emit rows as a Markdown table.
+
+    Parameters
+    ----------
+    rows : Sequence[Mapping[str, Any]]
+        Table rows to emit.
+    columns : Sequence[str]
+        Ordered column names to include in the table.
+    """
+
+    def _format_cell(value: Any) -> str:
+        if value is None:
+            return ''
+        if isinstance(value, (dict, list)):
+            rendered = serialize_json(value, sort_keys=True)
+        else:
+            rendered = str(value)
+        return rendered.replace('|', '\\|').replace('\n', '<br>')
+
+    header = '| ' + ' | '.join(columns) + ' |'
+    separator = '| ' + ' | '.join('---' for _ in columns) + ' |'
+    print(header)
+    print(separator)
+    for row in rows:
+        print(
+            '| '
+            + ' | '.join(_format_cell(row.get(column)) for column in columns)
+            + ' |',
+        )
+
+
+def emit_or_write(
+    data: Any,
+    output_path: str | None,
+    *,
+    pretty: bool,
+    success_message: str,
+) -> None:
+    """
+    Emit JSON or persist to disk based on *output_path*.
+
+    Parameters
+    ----------
+    data : Any
+        The data to serialize.
+    output_path : str | None
+        Target file path; when falsy or ``'-'`` data is emitted to STDOUT.
+    pretty : bool
+        Whether to pretty-print JSON emission.
+    success_message : str
+        Message printed when writing to disk succeeds.
+    """
+    if write_json_output(
+        data,
+        output_path,
+        success_message=success_message,
+    ):
+        return
+    emit_json(data, pretty=pretty)
 
 
 def emit_json_payload(
@@ -58,7 +153,7 @@ def emit_json_payload(
     int
         The provided *exit_code* after emitting the JSON payload.
     """
-    _io.emit_json(payload, pretty=pretty)
+    emit_json(payload, pretty=pretty)
     return exit_code
 
 
@@ -99,7 +194,7 @@ def emit_history_payload(
     """
     HistoryView.validate_output_mode(json_output=json_output, table=table)
     if table:
-        _io.emit_markdown_table(
+        emit_markdown_table(
             table_rows
             if table_rows is not None
             else cast(list[dict[str, Any]], payload),
@@ -163,7 +258,7 @@ def complete_output(
         case 'json':
             return emit_json_payload(payload, pretty=pretty)
         case 'or_write':
-            _io.emit_or_write(
+            emit_or_write(
                 payload,
                 output_path,
                 pretty=pretty,
@@ -180,7 +275,7 @@ def complete_output(
             print(f'{cast(str, success_message)} {target}')
             return 0
         case 'json_file':
-            _io.write_json_output(
+            write_json_output(
                 payload,
                 cast(str, output_path),
                 success_message=cast(str, success_message),
@@ -259,6 +354,36 @@ def emit_readiness_report(
         pretty=pretty,
         exit_code=0 if report.get('status') == 'ok' else 1,
     )
+
+
+def write_json_output(
+    data: Any,
+    output_path: str | None,
+    *,
+    success_message: str,
+) -> bool:
+    """
+    Persist JSON data to disk when output path provided.
+
+    Parameters
+    ----------
+    data : Any
+        The data to serialize as JSON.
+    output_path : str | None
+        The output file path, or None/'-' to skip writing.
+    success_message : str
+        The message to print upon successful write.
+
+    Returns
+    -------
+    bool
+        True if data was written to disk; False if not.
+    """
+    if not output_path or output_path == '-':
+        return False
+    File(output_path, FileFormat.JSON).write(data)
+    print(f'{success_message} {output_path}')
+    return True
 
 
 def write_file_payload(

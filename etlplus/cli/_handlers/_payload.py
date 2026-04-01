@@ -11,7 +11,7 @@ from typing import Any
 from typing import cast
 
 from ...utils._types import TemplateKey
-from .. import _io
+from . import _input
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -61,7 +61,7 @@ def resolve_payload(
     }
     if not hydrate_files:
         resolve_kwargs['hydrate_files'] = False
-    return _io.resolve_cli_payload(payload, **resolve_kwargs)
+    return _input.resolve_cli_payload(payload, **resolve_kwargs)
 
 
 def resolve_mapping_payload(
