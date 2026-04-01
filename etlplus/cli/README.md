@@ -6,7 +6,7 @@ Documentation for the `etlplus.cli` subpackage: command-line interface for ETLPl
 - Supports commands for extracting, transforming, validating, loading, rendering, running pipelines,
   and inspecting local run history
 - Includes options for configuration, state, and output control
-- Exposes focused handler modules for custom command integration
+- Keeps command and handler modules organized internally for maintainability
 - Organizes Typer command definitions under the [_commands](_commands) package
 
 Back to project overview: see the top-level [README](../../README.md).
