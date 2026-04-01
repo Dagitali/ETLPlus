@@ -16,15 +16,15 @@ from unittest.mock import ANY
 import pytest
 
 from etlplus import Config
-from etlplus.cli import _handler_check as check_mod
-from etlplus.cli import _handler_dataops as dataops_mod
-from etlplus.cli import _handler_history as history_mod
-from etlplus.cli import _handler_lifecycle as lifecycle_mod
-from etlplus.cli import _handler_output as output_mod
-from etlplus.cli import _handler_render as render_mod
-from etlplus.cli import _handler_run as run_mod
 from etlplus.cli import _io
 from etlplus.cli import _summary
+from etlplus.cli._handlers import check as check_mod
+from etlplus.cli._handlers import dataops as dataops_mod
+from etlplus.cli._handlers import history as history_mod
+from etlplus.cli._handlers import lifecycle as lifecycle_mod
+from etlplus.cli._handlers import output as output_mod
+from etlplus.cli._handlers import render as render_mod
+from etlplus.cli._handlers import run as run_mod
 from etlplus.cli._history import HistoryReportBuilder
 from etlplus.cli._history import HistoryView
 from etlplus.file import File
