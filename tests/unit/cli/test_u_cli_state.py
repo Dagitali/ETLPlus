@@ -42,7 +42,7 @@ class TestCliExtractState:
                 ('extract', '/path/to/file.csv', '--source-format', 'csv'),
                 {
                     'source': '/path/to/file.csv',
-                    'format_hint': 'csv',
+                    'source_format': 'csv',
                     'format_explicit': True,
                 },
                 id='extract-file-format',

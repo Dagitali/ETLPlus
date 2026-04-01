@@ -406,7 +406,7 @@ class TestExtractHandler:
             handlers.extract_handler(
                 source_type='api',
                 source='endpoint',
-                format_hint='json',
+                source_format='json',
                 format_explicit=True,
                 output=None,
                 pretty=True,
@@ -447,7 +447,7 @@ class TestExtractHandler:
             handlers.extract_handler(
                 source_type='file',
                 source='table.dat',
-                format_hint='csv',
+                source_format='csv',
                 format_explicit=True,
                 output=None,
                 pretty=True,
@@ -484,7 +484,7 @@ class TestExtractHandler:
             handlers.extract_handler(
                 source_type='api',
                 source='-',
-                format_hint=None,
+                source_format=None,
                 format_explicit=False,
                 output=None,
                 pretty=False,
@@ -519,7 +519,7 @@ class TestExtractHandler:
                 source='data.json',
                 target='preferred.json',
                 output='ignored.json',
-                format_hint='json',
+                source_format='json',
                 format_explicit=True,
                 pretty=False,
             )
@@ -559,7 +559,7 @@ class TestExtractHandler:
                 source_type='api',
                 source='endpoint',
                 target='export.json',
-                format_hint='json',
+                source_format='json',
                 format_explicit=True,
                 pretty=True,
             )
