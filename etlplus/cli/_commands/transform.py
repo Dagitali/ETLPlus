@@ -13,14 +13,14 @@ from ._app import app
 from ._helpers import call_handler
 from ._helpers import parse_json_option
 from ._helpers import resolve_resource
-from ._option_common import StructuredEventFormatOption
-from ._option_resources import SourceArg
-from ._option_resources import SourceFormatOption
-from ._option_resources import SourceTypeOption
-from ._option_resources import TargetArg
-from ._option_resources import TargetFormatOption
-from ._option_resources import TargetTypeOption
-from ._option_specs import OperationsOption
+from ._options.common import StructuredEventFormatOption
+from ._options.resources import SourceArg
+from ._options.resources import SourceFormatOption
+from ._options.resources import SourceTypeOption
+from ._options.resources import TargetArg
+from ._options.resources import TargetFormatOption
+from ._options.resources import TargetTypeOption
+from ._options.specs import OperationsOption
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #

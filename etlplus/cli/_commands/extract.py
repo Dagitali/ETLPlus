@@ -12,10 +12,10 @@ from .._handlers.dataops import extract_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import resolve_resource
-from ._option_common import StructuredEventFormatOption
-from ._option_resources import SourceArg
-from ._option_resources import SourceFormatOption
-from ._option_resources import SourceTypeOption
+from ._options.common import StructuredEventFormatOption
+from ._options.resources import SourceArg
+from ._options.resources import SourceFormatOption
+from ._options.resources import SourceTypeOption
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #

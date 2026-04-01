@@ -11,8 +11,8 @@ import typer
 from .._handlers.history import status_handler
 from ._app import app
 from ._helpers import call_handler
-from ._option_common import JobOption
-from ._option_history import RunIdOption
+from ._options.common import JobOption
+from ._options.history import RunIdOption
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
