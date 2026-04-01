@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._handler_dataops` module.
+:mod:`etlplus.cli._handlers.dataops` module.
 
 Data-operation handler implementations for the CLI facade.
 """
@@ -12,17 +12,17 @@ from contextlib import contextmanager
 from typing import Any
 from typing import cast
 
-from ..ops import extract
-from ..ops import load
-from ..ops import transform
-from ..ops import validate
-from ..ops._types import PipelineConfig
-from ..ops.validate import FieldRulesDict
-from ..utils._types import JSONData
-from . import _handler_lifecycle as _lifecycle
-from . import _handler_output as _output
-from . import _handler_payload as _payload
-from . import _io
+from ...ops import extract
+from ...ops import load
+from ...ops import transform
+from ...ops import validate
+from ...ops._types import PipelineConfig
+from ...ops.validate import FieldRulesDict
+from ...utils._types import JSONData
+from .. import _io
+from . import lifecycle as _lifecycle
+from . import output as _output
+from . import payload as _payload
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -229,6 +229,7 @@ def load_handler(
         The output location for the loaded data. Default is ``None``.
     pretty : bool, optional
         Whether to pretty-print the output. Default is ``True``.
+
     Returns
     -------
     int
@@ -330,14 +331,12 @@ def transform_handler(
     target_format : str | None, optional
         An optional format hint for the target data to assist with parsing
         when the format is not explicit.
-    format_explicit : bool, optional
-        Whether the format hint is explicit (e.g., via a CLI option) and should
-        be used as-is without inference. Default is ``False``.
     pretty : bool, optional
         Whether to pretty-print the output. Default is ``True``.
     format_explicit : bool, optional
         Whether the format hints are explicit (e.g., via CLI options) and
         should be used as-is without inference. Default is ``False``.
+
     Returns
     -------
     int
@@ -437,6 +436,7 @@ def validate_handler(
         should be used as-is without inference. Default is ``False``.
     pretty : bool, optional
         Whether to pretty-print the output. Default is ``True``.
+
     Returns
     -------
     int
