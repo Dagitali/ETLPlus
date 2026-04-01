@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._handler_run` module.
+:mod:`etlplus.cli._handlers.run` module.
 
 Run-command implementation for the CLI facade.
 """
@@ -8,15 +8,15 @@ from __future__ import annotations
 
 from typing import cast
 
-from .. import Config
-from .. import __version__
-from ..history import HistoryStore
-from ..history import build_run_record
-from ..ops import run
-from ..utils._types import JSONData
-from . import _handler_lifecycle as _lifecycle
-from . import _handler_output as _output
-from . import _summary
+from ... import Config
+from ... import __version__
+from ...history import HistoryStore
+from ...history import build_run_record
+from ...ops import run
+from ...utils._types import JSONData
+from .. import _summary
+from . import lifecycle as _lifecycle
+from . import output as _output
 
 # SECTION: EXPORTS ========================================================== #
 
