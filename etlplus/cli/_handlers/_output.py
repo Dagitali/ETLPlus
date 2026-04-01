@@ -15,8 +15,8 @@ from ...file import FileFormat
 from ...runtime import ReadinessReportBuilder
 from ...utils._types import JSONData
 from .. import _io
-from .._history import HistoryView
 from . import _lifecycle
+from ._history import HistoryView
 
 # SECTION: EXPORTS ========================================================== #
 
