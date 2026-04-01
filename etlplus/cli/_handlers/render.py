@@ -34,44 +34,39 @@ def render_handler(
     template: TemplateKey | None = None,
     template_path: str | None = None,
     output: str | None = None,
-    pretty: bool = True,
     quiet: bool = False,
+    pretty: bool = True,
 ) -> int:
     """
-    Render SQL DDL statements from table schema specs.
+    Render SQL DDL from table schema specs.
 
     Parameters
     ----------
     config : str | None, optional
-        Optional path to a config file containing table schema specs.
+        Path to a YAML/JSON config file containing table schema specs.
         Default is ``None``.
     spec : str | None, optional
-        Optional path to a single table schema spec file. If provided, this
-        takes precedence over any specs defined in a config file. Default is
-        ``None``.
+        Path to a single table schema spec file. If provided, this takes
+        precedence over any specs defined in *config*. Default is ``None``.
     table : str | None, optional
-        Optional table name for filtering specs. Matches against the 'table' or
-        'name' field in specs. If provided, only specs matching this table name
-        will be rendered. Default is ``None``.
+        Optional table name filter. Matches the ``table`` or ``name`` field in
+        each spec. Default is ``None``.
     template : TemplateKey | None, optional
-        Optional key of template to use for rendering. If not provided, a
-        default template will be used. Default is ``None``.
+        Optional built-in template key. Default is ``None``.
     template_path : str | None, optional
-        Optional path to a custom template file. If provided, this will
-        override the template specified by the *template* parameter. Default is
-        ``None``.
+        Optional path to a custom template file. Overrides *template* when
+        provided. Default is ``None``.
     output : str | None, optional
-        Optional path to write the rendered output to. If not provided, output
-        will be printed to stdout. Default is ``None``.
-    pretty : bool, optional
-        Whether to pretty-print the rendered output. Default is ``True``.
+        Optional path to write rendered SQL. Default is ``None``.
     quiet : bool, optional
-        Whether to suppress output. Default is ``False``.
+        Whether to suppress status output. Default is ``False``.
+    pretty : bool, optional
+        Whether to pretty-print rendered output. Default is ``True``.
 
     Returns
     -------
     int
-        Exit code ``0`` on success; non-zero on error.
+        Exit code indicating success (``0``) or failure (non-zero).
     """
     template_key, file_override = _payload.resolve_render_template(
         template,
