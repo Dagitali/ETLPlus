@@ -17,10 +17,10 @@ import pytest
 
 from etlplus import Config
 from etlplus.cli import _io
-from etlplus.cli import _summary
 from etlplus.cli._handlers import _history as history_support_mod
 from etlplus.cli._handlers import _lifecycle as lifecycle_mod
 from etlplus.cli._handlers import _output as output_mod
+from etlplus.cli._handlers import _summary as summary_mod
 from etlplus.cli._handlers import check as check_mod
 from etlplus.cli._handlers import dataops as dataops_mod
 from etlplus.cli._handlers import history as history_mod
@@ -55,12 +55,12 @@ handlers: Any = SimpleNamespace(
     RunState=RunState,
     RuntimeEvents=RuntimeEvents,
     _CommandContext=lifecycle_mod.CommandContext,
-    _check_sections=_summary.check_sections,
+    _check_sections=summary_mod.check_sections,
     _complete_output=output_mod.complete_output,
     _failure_boundary=lifecycle_mod.failure_boundary,
     _io=_io,
-    _pipeline_summary=_summary.pipeline_summary,
-    _summary=_summary,
+    _pipeline_summary=summary_mod.pipeline_summary,
+    _summary=summary_mod,
     check_handler=check_mod.check_handler,
     extract_handler=dataops_mod.extract_handler,
     history_handler=history_mod.history_handler,
