@@ -113,9 +113,10 @@
 
 **Implementation Touchpoints**
 - New module: `etlplus/history` with `HistoryStore` interface and two backends.
-- `etlplus/cli/_handlers.py`: wrap `run()` to record history on start/end.
+- `etlplus/cli/_handlers/run.py` and `etlplus/cli/_handlers/_lifecycle.py`: wrap `run()` execution
+  to record history on start/end and emit lifecycle events.
 - `etlplus/cli/_commands/`: add `history`, `log`, `status`, and `report` commands.
-- `etlplus/run.py`: optionally return record counts for summary fields.
+- `etlplus/ops/run.py`: optionally return record counts for summary fields.
 
 **Non-Goals**
 - No external services or cloud dependencies.

@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._summary` module.
+:mod:`etlplus.cli._handlers._summary` module.
 
 Internal config-summary helpers shared by CLI handlers.
 """
@@ -10,8 +10,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from .. import Config
-from ..database import load_table_spec
+from ... import Config
+from ...database import load_table_spec
 
 # SECTION: EXPORTS ========================================================== #
 

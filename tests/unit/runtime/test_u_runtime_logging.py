@@ -29,7 +29,7 @@ class TestConfigureLogging:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that stderr is used when no explicit stream is supplied."""
+        """Test that STDERR is used when no explicit stream is supplied."""
         calls: dict[str, object] = {}
 
         monkeypatch.setattr(

@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.cli.test_u_cli_io` module.
 
-Unit tests for :mod:`etlplus.cli._io`.
+Unit tests for CLI parsing, input, and output helper modules.
 """
 
 from __future__ import annotations
@@ -13,8 +13,10 @@ from unittest.mock import Mock
 
 import pytest
 
-import etlplus.cli._io as _io
+from etlplus.cli._handlers import _input as input_mod
+from etlplus.cli._handlers import _output as output_mod
 from etlplus.file import FileFormat
+from etlplus.utils._data import parse_json
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -31,7 +33,7 @@ class TestEmitJson:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test that compact mode writes JSON to STDOUT."""
-        _io.emit_json({'b': 2, 'a': 1}, pretty=False)
+        output_mod.emit_json({'b': 2, 'a': 1}, pretty=False)
         captured = capsys.readouterr()
         assert captured.out.strip() == '{"b":2,"a":1}'
 
@@ -41,10 +43,10 @@ class TestEmitJson:
     ) -> None:
         """Test that pretty-printing delegates to :func:`print_json`."""
         called_with: list[object] = []
-        monkeypatch.setattr(_io, 'print_json', called_with.append)
+        monkeypatch.setattr(output_mod, 'print_json', called_with.append)
 
         payload = {'a': 1}
-        _io.emit_json(payload, pretty=True)
+        output_mod.emit_json(payload, pretty=True)
         assert called_with == [payload]
 
 
@@ -58,17 +60,17 @@ class TestEmitOrWrite:
         """Test that, when writes are skipped, payload emits to STDOUT."""
         emitted: list[tuple[object, bool]] = []
         monkeypatch.setattr(
-            _io,
+            output_mod,
             'write_json_output',
             lambda data, output_path, *, success_message: False,
         )
         monkeypatch.setattr(
-            _io,
+            output_mod,
             'emit_json',
             lambda data, *, pretty: emitted.append((data, pretty)),
         )
 
-        _io.emit_or_write(
+        output_mod.emit_or_write(
             {'ok': True},
             None,
             pretty=True,
@@ -84,17 +86,17 @@ class TestEmitOrWrite:
         """Test that successful writes skip STDOUT emission."""
         emitted: list[tuple[object, bool]] = []
         monkeypatch.setattr(
-            _io,
+            output_mod,
             'write_json_output',
             lambda data, output_path, *, success_message: True,
         )
         monkeypatch.setattr(
-            _io,
+            output_mod,
             'emit_json',
             lambda data, *, pretty: emitted.append((data, pretty)),
         )
 
-        _io.emit_or_write(
+        output_mod.emit_or_write(
             {'ok': True},
             'out.json',
             pretty=False,
@@ -112,7 +114,7 @@ class TestEmitMarkdownTable:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Markdown table emission should normalize and escape cell values."""
-        _io.emit_markdown_table(
+        output_mod.emit_markdown_table(
             [
                 {
                     'none': None,
@@ -138,8 +140,8 @@ class TestInferPayloadFormat:
 
     def test_inferring_payload_format(self) -> None:
         """Test that inferring JSON vs CSV using the first significant byte."""
-        assert _io.infer_payload_format(' {"a":1}') == 'json'
-        assert _io.infer_payload_format('  col1,col2') == 'csv'
+        assert input_mod.infer_payload_format(' {"a":1}') == 'json'
+        assert input_mod.infer_payload_format('  col1,col2') == 'csv'
 
 
 class TestMaterializeFilePayload:
@@ -153,7 +155,7 @@ class TestMaterializeFilePayload:
         file_path = tmp_path / 'payload.json'
         file_path.write_text('{"ok": true}', encoding='utf-8')
 
-        payload = _io.materialize_file_payload(
+        payload = input_mod.materialize_file_payload(
             str(file_path),
             format_hint=None,
             format_explicit=True,
@@ -170,7 +172,7 @@ class TestMaterializeFilePayload:
         file_path = tmp_path / 'payload.json'
         file_path.write_text('{"beta": 2}')
 
-        payload = _io.materialize_file_payload(
+        payload = input_mod.materialize_file_payload(
             str(file_path),
             format_hint='csv',
             format_explicit=False,
@@ -187,7 +189,7 @@ class TestMaterializeFilePayload:
         file_path = tmp_path / 'file.csv'
         file_path.write_text(csv_text)
 
-        rows = _io.materialize_file_payload(
+        rows = input_mod.materialize_file_payload(
             str(file_path),
             format_hint=None,
             format_explicit=False,
@@ -204,7 +206,7 @@ class TestMaterializeFilePayload:
         file_path = tmp_path / 'payload.json'
         file_path.write_text('{"alpha": 1}')
 
-        payload = _io.materialize_file_payload(
+        payload = input_mod.materialize_file_payload(
             str(file_path),
             format_hint=None,
             format_explicit=False,
@@ -250,9 +252,9 @@ class TestMaterializeFilePayload:
                 """Return the sentinel object."""
                 return sentinel
 
-        monkeypatch.setattr(_io, 'File', DummyFile)
+        monkeypatch.setattr(input_mod, 'File', DummyFile)
 
-        payload = _io.materialize_file_payload(
+        payload = input_mod.materialize_file_payload(
             str(file_path),
             format_hint=None,
             format_explicit=False,
@@ -266,7 +268,7 @@ class TestMaterializeFilePayload:
         """
         Test that inline payloads parse when format hints are explicit.
         """
-        payload = _io.materialize_file_payload(
+        payload = input_mod.materialize_file_payload(
             '[{"ok": true}]',
             format_hint='json',
             format_explicit=True,
@@ -281,7 +283,7 @@ class TestMaterializeFilePayload:
         file_path = tmp_path / 'payload.json'
         file_path.write_text('{"ok": true}', encoding='utf-8')
 
-        payload = _io.materialize_file_payload(
+        payload = input_mod.materialize_file_payload(
             str(file_path),
             format_hint='invalid-format',
             format_explicit=True,
@@ -298,7 +300,7 @@ class TestMaterializeFilePayload:
         file_path = tmp_path / 'missing.json'
 
         with pytest.raises(FileNotFoundError):
-            _io.materialize_file_payload(
+            input_mod.materialize_file_payload(
                 str(file_path),
                 format_hint=None,
                 format_explicit=False,
@@ -306,7 +308,7 @@ class TestMaterializeFilePayload:
 
     def test_missing_path_with_inline_json_is_parsed(self) -> None:
         """Test that inline JSON parses when treated as a missing file path."""
-        payload = _io.materialize_file_payload(
+        payload = input_mod.materialize_file_payload(
             '{"inline": true}',
             format_hint='json',
             format_explicit=True,
@@ -320,7 +322,7 @@ class TestMaterializeFilePayload:
         """Test that path-like sources still raise when files are missing."""
         missing = tmp_path / 'missing.json'
         with pytest.raises(FileNotFoundError, match='File not found'):
-            _io.materialize_file_payload(
+            input_mod.materialize_file_payload(
                 missing,
                 format_hint=None,
                 format_explicit=False,
@@ -334,7 +336,7 @@ class TestMaterializeFilePayload:
         file_path = tmp_path / 'payload'
         file_path.write_text('opaque', encoding='utf-8')
 
-        payload = _io.materialize_file_payload(
+        payload = input_mod.materialize_file_payload(
             str(file_path),
             format_hint=None,
             format_explicit=False,
@@ -345,7 +347,7 @@ class TestMaterializeFilePayload:
         """Test that non-pathlike payloads bypass file materialization."""
         payload: object = 123
         assert (
-            _io.materialize_file_payload(
+            input_mod.materialize_file_payload(
                 payload,
                 format_hint='json',
                 format_explicit=True,
@@ -381,9 +383,9 @@ class TestMaterializeFilePayload:
                 """Return a sentinel JSON payload."""
                 return {'remote': True}
 
-        monkeypatch.setattr(_io, 'File', DummyFile)
+        monkeypatch.setattr(input_mod, 'File', DummyFile)
 
-        payload = _io.materialize_file_payload(
+        payload = input_mod.materialize_file_payload(
             's3://bucket/payload.json',
             format_hint=None,
             format_explicit=False,
@@ -402,7 +404,7 @@ class TestMaterializeFilePayload:
         file_path = tmp_path / 'data.txt'
         file_path.write_text(csv_text)
 
-        rows = _io.materialize_file_payload(
+        rows = input_mod.materialize_file_payload(
             str(file_path),
             format_hint='csv',
             format_explicit=True,
@@ -411,7 +413,7 @@ class TestMaterializeFilePayload:
 
         json_path = tmp_path / 'mislabeled.csv'
         json_path.write_text('[{"ok": true}]')
-        payload = _io.materialize_file_payload(
+        payload = input_mod.materialize_file_payload(
             str(json_path),
             format_hint='json',
             format_explicit=True,
@@ -426,7 +428,7 @@ class TestMaterializeFilePayload:
         file_path = tmp_path / 'payload.unknown'
         file_path.write_text('opaque', encoding='utf-8')
 
-        payload = _io.materialize_file_payload(
+        payload = input_mod.materialize_file_payload(
             str(file_path),
             format_hint=None,
             format_explicit=False,
@@ -437,7 +439,7 @@ class TestMaterializeFilePayload:
         """Test that non-file payloads are returned unchanged."""
         payload: object = {'foo': 1}
         assert (
-            _io.materialize_file_payload(
+            input_mod.materialize_file_payload(
                 payload,
                 format_hint=None,
                 format_explicit=False,
@@ -467,7 +469,7 @@ class TestParseTextPayload:
         Test that :func:`parse_text_payload` handles JSON, CSV, and passthrough
         cases.
         """
-        assert _io.parse_text_payload(payload, fmt=fmt) == expected
+        assert input_mod.parse_text_payload(payload, fmt=fmt) == expected
 
     def test_inferring_csv_when_unspecified(
         self,
@@ -476,7 +478,7 @@ class TestParseTextPayload:
         """
         Test that CSV payloads are parsed when no format hint is provided.
         """
-        result = _io.parse_text_payload(csv_text, fmt=None)
+        result = input_mod.parse_text_payload(csv_text, fmt=None)
         assert result == [
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},
@@ -485,7 +487,7 @@ class TestParseTextPayload:
     def test_parse_json_payload_reports_decode_errors(self) -> None:
         """Test that invalid JSON raises a normalized :class:`ValueError`."""
         with pytest.raises(ValueError, match='Invalid JSON payload'):
-            _io.parse_json_payload('{broken')
+            parse_json('{broken')
 
 
 class TestReadCsvRows:
@@ -501,7 +503,7 @@ class TestReadCsvRows:
         """
         file_path = tmp_path / 'data.csv'
         file_path.write_text(csv_text)
-        assert _io.read_csv_rows(file_path) == [
+        assert input_mod.read_csv_rows(file_path) == [
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},
         ]
@@ -517,11 +519,11 @@ class TestReadStdinText:
         """Test that reading STDIN returns the buffered stream contents."""
         buffer = io.StringIO('stream-data')
         monkeypatch.setattr(
-            _io,
+            input_mod,
             'sys',
             types.SimpleNamespace(stdin=buffer),
         )
-        assert _io.read_stdin_text() == 'stream-data'
+        assert input_mod.read_stdin_text() == 'stream-data'
 
 
 class TestResolveCliPayload:
@@ -545,9 +547,9 @@ class TestResolveCliPayload:
             captured.append((source, format_hint, format_explicit))
             return {'ok': True}
 
-        monkeypatch.setattr(_io, 'materialize_file_payload', _materialize)
+        monkeypatch.setattr(input_mod, 'materialize_file_payload', _materialize)
 
-        result = _io.resolve_cli_payload(
+        result = input_mod.resolve_cli_payload(
             'payload.json',
             format_hint='json',
             format_explicit=True,
@@ -571,9 +573,9 @@ class TestWriteJsonOutput:
         data = {'x': 1}
 
         dummy_file = Mock()
-        monkeypatch.setattr(_io, 'File', lambda _p, _f: dummy_file)
+        monkeypatch.setattr(output_mod, 'File', lambda _p, _f: dummy_file)
 
-        _io.write_json_output(data, 'out.json', success_message='msg')
+        output_mod.write_json_output(data, 'out.json', success_message='msg')
         dummy_file.write.assert_called_once_with(data)
 
     def test_writing_to_stdout(self) -> None:
@@ -582,7 +584,7 @@ class TestWriteJsonOutput:
         path.
         """
         assert (
-            _io.write_json_output(
+            output_mod.write_json_output(
                 {'x': 1},
                 None,
                 success_message='msg',
@@ -608,10 +610,10 @@ class TestWriteJsonOutput:
                 """Capture the written JSON payload."""
                 captured['data'] = data
 
-        monkeypatch.setattr(_io, 'File', DummyFile)
+        monkeypatch.setattr(output_mod, 'File', DummyFile)
 
         assert (
-            _io.write_json_output(
+            output_mod.write_json_output(
                 {'remote': True},
                 's3://bucket/out.json',
                 success_message='msg',

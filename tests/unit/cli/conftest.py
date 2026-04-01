@@ -245,11 +245,11 @@ def capture_io_fixture(monkeypatch: pytest.MonkeyPatch) -> CaptureIo:
     CaptureIo
         Mapping of captured IO call arguments by function name.
     """
-    import etlplus.cli._io as _io
+    from etlplus.cli._handlers import _output as output_mod
 
     return _record_calls(
         monkeypatch,
-        _io,
+        output_mod,
         'emit_or_write',
         'emit_json',
         'emit_markdown_table',

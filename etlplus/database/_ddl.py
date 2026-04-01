@@ -292,7 +292,7 @@ def render_tables_to_string(
     Returns
     -------
     str
-        Concatenated SQL payload suitable for writing to disk or stdout.
+        Concatenated SQL payload suitable for writing to disk or STDOUT.
     """
     resolved_template_path = str(template_path) if template_path is not None else None
     rendered_sql: list[str] = []

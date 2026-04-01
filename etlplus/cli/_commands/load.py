@@ -8,16 +8,16 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handlers.dataops import load_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import normalize_file_format
 from ._helpers import resolve_resource
-from ._options import SourceFormatOption
-from ._options import StructuredEventFormatOption
-from ._options import TargetArg
-from ._options import TargetFormatOption
-from ._options import TargetTypeOption
+from ._options.common import StructuredEventFormatOption
+from ._options.resources import SourceFormatOption
+from ._options.resources import TargetArg
+from ._options.resources import TargetFormatOption
+from ._options.resources import TargetTypeOption
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
@@ -49,20 +49,20 @@ def load_cmd(
     ctx : typer.Context
         Typer context.
     source_format : SourceFormatOption, optional
-        Format of the source data.
+        Source payload format override for STDIN.
     target : TargetArg, optional
-        Target to load data into.
+        Target path, URI/URL, or ``-`` for STDOUT.
     target_format : TargetFormatOption, optional
-        Format of the target data.
+        Target payload format override.
     target_type : TargetTypeOption, optional
-        Type of the target.
+        Target connector type override.
     event_format : StructuredEventFormatOption, optional
-        Format of structured events.
+        Structured event output format.
 
     Returns
     -------
     int
-        Exit code (0 if checks passed, non-zero if any checks failed).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     state = ensure_state(ctx)
     source_format_hint = normalize_file_format(
@@ -86,14 +86,14 @@ def load_cmd(
     )
 
     return call_handler(
-        handlers.load_handler,
+        load_handler,
         state=state,
         source=resolved_source.value,
-        target_type=resolved_target.resource_type,
-        target=resolved_target.value,
-        event_format=event_format,
         source_format=source_format_hint,
+        target=resolved_target.value,
+        target_type=resolved_target.resource_type,
         target_format=resolved_target.format_hint,
-        format_explicit=resolved_target.format_hint is not None,
+        event_format=event_format,
         output=None,
+        format_explicit=resolved_target.format_hint is not None,
     )

@@ -1,0 +1,120 @@
+"""
+:mod:`etlplus.cli._handlers.run` module.
+
+Run-command implementation for the CLI facade.
+"""
+
+from __future__ import annotations
+
+from typing import cast
+
+from ... import Config
+from ... import __version__
+from ...history import HistoryStore
+from ...history import build_run_record
+from ...ops import run
+from ...utils._types import JSONData
+from . import _completion
+from . import _lifecycle
+from . import _output
+from . import _summary
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    # Functions
+    'run_handler',
+]
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def run_handler(
+    *,
+    config: str,
+    job: str | None = None,
+    pipeline: str | None = None,
+    event_format: str | None = None,
+    pretty: bool = True,
+) -> int:
+    """
+    Execute a configured ETL job or pipeline.
+
+    Parameters
+    ----------
+    config : str
+        Path to the YAML/JSON config file.
+    job : str | None, optional
+        Job name to run. Default is ``None``.
+    pipeline : str | None, optional
+        Pipeline name to run when *job* is not provided. Default is ``None``.
+    event_format : str | None, optional
+        Structured event output format. Default is ``None``.
+    pretty : bool, optional
+        Whether to pretty-print JSON output. Default is ``True``.
+
+    Returns
+    -------
+    int
+        CLI exit code indicating success (``0``) or failure (non-zero).
+    """
+    cfg = Config.from_yaml(config, substitute=True)
+
+    job_name = job or pipeline
+    if not job_name:
+        return _output.emit_json_payload(_summary.pipeline_summary(cfg), pretty=pretty)
+
+    context = _lifecycle.start_command(
+        command='run',
+        event_format=event_format,
+        config_path=config,
+        etlplus_version=__version__,
+        job=job_name,
+        pipeline_name=cfg.name,
+        status='running',
+    )
+    history_store = HistoryStore.from_environment()
+    history_store.record_run_started(
+        build_run_record(
+            run_id=context.run_id,
+            config_path=config,
+            started_at=context.started_at,
+            pipeline_name=cfg.name,
+            job_name=job_name,
+        ),
+    )
+
+    with _lifecycle.failure_boundary(
+        context,
+        on_error=lambda exc: _lifecycle.record_run_completion(
+            history_store,
+            context,
+            status='failed',
+            exc=exc,
+        ),
+        config_path=config,
+        job=job_name,
+        pipeline_name=cfg.name,
+    ):
+        result = run(job=job_name, config_path=config)
+
+    _lifecycle.record_run_completion(
+        history_store,
+        context,
+        status='succeeded',
+        result_summary=cast(JSONData | None, result),
+    )
+    result_status = result.get('status') if isinstance(result, dict) else None
+    return _completion.complete_output(
+        context,
+        {'run_id': context.run_id, 'status': 'ok', 'result': result},
+        mode='json',
+        pretty=pretty,
+        config_path=config,
+        job=job_name,
+        pipeline_name=cfg.name,
+        result_status=result_status,
+        status='ok',
+    )
