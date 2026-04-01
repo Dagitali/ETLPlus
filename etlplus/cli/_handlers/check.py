@@ -36,25 +36,25 @@ def check_handler(
     pretty: bool = True,
 ) -> int:
     """
-    Print requested pipeline sections from a YAML configuration.
+    Inspect requested specification sections of an ETL job/pipeline
+    configuration.
 
     Parameters
     ----------
     config : str | None, optional
-        Optional path to a config file containing pipeline specs. Default is
-        ``None``.
+        Optional path to the config file. Default is ``None``.
     jobs : bool, optional
         Whether to print job specs. Default is ``False``.
     pipelines : bool, optional
         Whether to print pipeline specs. Default is ``False``.
     readiness : bool, optional
-        Whether to emit a readiness report instead of pipeline specs. Default
-        is ``False``.
+        Whether to emit a readiness report instead of spec sections. Default is
+        ``False``.
     sources : bool, optional
         Whether to print source specs. Default is ``False``.
     summary : bool, optional
-        Whether to print a summary of the pipeline configuration instead of
-        detailed specs. Default is ``False``.
+        Whether to print a summary of the configuration instead of spec
+        sections. Default is ``False``.
     targets : bool, optional
         Whether to print target specs. Default is ``False``.
     transforms : bool, optional
