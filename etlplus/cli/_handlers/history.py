@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._handler_history` module.
+:mod:`etlplus.cli._handlers.history` module.
 
 History, report, and status handler implementations for the CLI facade.
 """
@@ -11,11 +11,11 @@ from typing import Any
 from typing import Literal
 from typing import cast
 
-from . import _handler_output as _output
-from ._history import HISTORY_TABLE_COLUMNS
-from ._history import REPORT_TABLE_COLUMNS
-from ._history import HistoryReportBuilder
-from ._history import HistoryView
+from .._history import HISTORY_TABLE_COLUMNS
+from .._history import REPORT_TABLE_COLUMNS
+from .._history import HistoryReportBuilder
+from .._history import HistoryView
+from . import output as _output
 
 # SECTION: EXPORTS ========================================================== #
 
