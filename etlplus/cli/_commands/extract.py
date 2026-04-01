@@ -57,7 +57,7 @@ def extract_cmd(
     Returns
     -------
     int
-        Exit code (0 if extraction succeeded, non-zero if any errors occurred).
+        CLI exit code indicating success (``0``) or failure (non-zero).
 
     """
     state = ensure_state(ctx)
@@ -74,9 +74,9 @@ def extract_cmd(
     return call_handler(
         extract_handler,
         state=state,
-        source_type=resolved_source.resource_type,
         source=resolved_source.value,
-        event_format=event_format,
-        format_hint=resolved_source.format_hint,
+        source_type=resolved_source.resource_type,
+        source_format=resolved_source.format_hint,
         format_explicit=resolved_source.format_hint is not None,
+        event_format=event_format,
     )
