@@ -36,39 +36,35 @@ def report_cmd(
     ctx: typer.Context,
     group_by: ReportGroupByOption = 'job',
     job: JobOption = None,
-    json_output: HistoryJsonOption = False,
     since: HistorySinceOption = None,
-    table: HistoryTableOption = False,
     until: HistoryUntilOption = None,
+    json_output: HistoryJsonOption = False,
+    table: HistoryTableOption = False,
 ) -> int:
     """
     Aggregate normalized persisted run history.
-
-    This command provides aggregated reports based on persisted run events,
-    with optional grouping, filtering, and formatting. For real-time
-    inspection of raw events, use the 'log' command instead.
 
     Parameters
     ----------
     ctx : typer.Context
         Typer context.
     group_by : ReportGroupByOption, optional
-        Grouping option for the report (defaults to 'job').
+        Grouping dimension for the report.
     job : JobOption, optional
-        Specific job to include in the report (defaults to all jobs).
-    json_output : HistoryJsonOption, optional
-        Whether to output the report in JSON format.
+        Job name filter.
     since : HistorySinceOption, optional
-        Start date for the report (defaults to the earliest available date).
-    table : HistoryTableOption, optional
-        Whether to display the report in a table format (defaults to False).
+        Lower timestamp bound for emitted records.
     until : HistoryUntilOption, optional
-        End date for the report (defaults to the latest available date).
+        Upper timestamp bound for emitted records.
+    json_output : HistoryJsonOption, optional
+        Whether to emit JSON explicitly.
+    table : HistoryTableOption, optional
+        Whether to emit a Markdown table.
 
     Returns
     -------
     int
-        Exit code (0 if checks passed, non-zero if any checks failed).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     return call_handler(
         report_handler,

@@ -36,10 +36,10 @@ __all__ = [
 @app.command('validate')
 def validate_cmd(
     ctx: typer.Context,
-    rules: RulesOption = '{}',
     source: SourceArg = '-',
     source_format: SourceFormatOption = None,
     source_type: SourceTypeOption = None,
+    rules: RulesOption = '{}',
     output: OutputOption = '-',
     event_format: StructuredEventFormatOption = None,
 ) -> int:
@@ -50,23 +50,23 @@ def validate_cmd(
     ----------
     ctx : typer.Context
         Typer context.
-    rules : RulesOption, optional
-        JSON string describing the validation rules (defaults to '{}').
     source : SourceArg, optional
-        Source resource (defaults to '-').
+        Source path, URI/URL, JSON payload, or ``-`` for STDIN.
     source_format : SourceFormatOption, optional
-        Format of the source resource (defaults to None).
+        Source payload format override.
     source_type : SourceTypeOption, optional
-        Type of the source resource (defaults to None).
+        Source connector type override.
+    rules : RulesOption, optional
+        JSON string describing the validation rules.
     output : OutputOption, optional
-        Path to output file for rendered SQL (defaults to stdout).
+        Optional output path for validation results.
     event_format : StructuredEventFormatOption, optional
-        Format for structured events (defaults to None).
+        Structured event output format.
 
     Returns
     -------
     int
-        Exit code (0 if checks passed, non-zero if any checks failed).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     state = ensure_state(ctx)
     resolved_source = resolve_resource(
@@ -83,8 +83,8 @@ def validate_cmd(
         state=state,
         source=resolved_source.value,
         rules=parse_json_option(rules, '--rules'),
-        event_format=event_format,
-        source_format=resolved_source.format_hint,
         target=output,
+        source_format=resolved_source.format_hint,
+        event_format=event_format,
         format_explicit=resolved_source.format_hint is not None,
     )

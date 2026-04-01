@@ -12,8 +12,8 @@ from .._handlers.render import render_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import require_any
-from ._options import OutputOption
 from ._options import RenderConfigOption
+from ._options import RenderOutputOption
 from ._options import RenderSpecOption
 from ._options import RenderTableOption
 from ._options import RenderTemplateOption
@@ -40,7 +40,7 @@ def render_cmd(
     table: RenderTableOption = None,
     template: RenderTemplateOption = 'ddl',
     template_path: RenderTemplatePathOption = None,
-    output: OutputOption = None,
+    output: RenderOutputOption = None,
 ) -> int:
     """
     Render SQL DDL from table schemas defined in YAML/JSON configs.
@@ -50,23 +50,22 @@ def render_cmd(
     ctx : typer.Context
         Typer context.
     config : RenderConfigOption, optional
-        Path to YAML/JSON config file.
+        Path to the YAML/JSON config file.
     spec : RenderSpecOption, optional
-        YAML/JSON string containing table schema definitions.
+        Path to a standalone table spec file.
     table : RenderTableOption, optional
-        Specific table to render (defaults to all tables in the config/spec).
+        Optional table name filter.
     template : RenderTemplateOption, optional
-        Name of the Jinja2 template to use for rendering (defaults to 'ddl').
+        Built-in template key to use for rendering.
     template_path : RenderTemplatePathOption, optional
-        Path to a custom Jinja2 template file to use for rendering (overrides
-        the `--template` option).
-    output : OutputOption, optional
-        Path to output file for rendered SQL (defaults to stdout).
+        Custom template path that overrides *template*.
+    output : RenderOutputOption, optional
+        Optional output path for rendered SQL. Defaults to ``None``.
 
     Returns
     -------
     int
-        Exit code (0 if checks passed, non-zero if any checks failed).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     require_any(
         (config, spec),

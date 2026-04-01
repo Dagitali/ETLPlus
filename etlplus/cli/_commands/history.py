@@ -37,13 +37,13 @@ __all__ = [
 def history_cmd(
     ctx: typer.Context,
     job: JobOption = None,
+    since: HistorySinceOption = None,
+    until: HistoryUntilOption = None,
+    status: HistoryStatusOption = None,
     limit: HistoryLimitOption = None,
     raw: HistoryRawOption = False,
-    since: HistorySinceOption = None,
-    status: HistoryStatusOption = None,
     json_output: HistoryJsonOption = False,
     table: HistoryTableOption = False,
-    until: HistoryUntilOption = None,
 ) -> int:
     """
     Inspect persisted local run history.
@@ -52,42 +52,41 @@ def history_cmd(
     optional filtering and formatting. For real-time inspection of raw events,
     use the 'log' command instead.
 
-
     Parameters
     ----------
     ctx : typer.Context
         Typer context.
     job : JobOption, optional
-        Job to filter history for.
-    limit : HistoryLimitOption, optional
-        Maximum number of history entries to return.
-    raw : HistoryRawOption, optional
-        Whether to return raw history entries.
+        Job name for filtering history.
     since : HistorySinceOption, optional
-        Start date for history entries.
-    status : HistoryStatusOption, optional
-        Status to filter history entries by.
-    json_output : HistoryJsonOption, optional
-        Whether to output history in JSON format.
-    table : HistoryTableOption, optional
-        Whether to output history in table format.
+        Lower timestamp bound for emitted records.
     until : HistoryUntilOption, optional
-        End date for history entries.
+        Upper timestamp bound for emitted records.
+    status : HistoryStatusOption, optional
+        Run status for filtering history.
+    limit : HistoryLimitOption, optional
+        Maximum number of history entries to emit.
+    raw : HistoryRawOption, optional
+        Whether to emit raw append events instead of normalized runs.
+    json_output : HistoryJsonOption, optional
+        Whether to emit JSON explicitly.
+    table : HistoryTableOption, optional
+        Whether to emit a Markdown table.
 
     Returns
     -------
     int
-        Exit code (0 if checks passed, non-zero if any checks failed).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     return call_handler(
         history_handler,
         state=ensure_state(ctx),
         job=job,
-        json_output=json_output,
+        since=since,
+        until=until,
+        status=status,
         limit=limit,
         raw=raw,
-        since=since,
-        status=status,
         table=table,
-        until=until,
+        json_output=json_output,
     )
