@@ -1,14 +1,14 @@
 """
 :mod:`tests.unit.cli.test_u_cli_options` module.
 
-Unit tests for :mod:`etlplus.cli._commands._options`.
+Unit tests for :mod:`etlplus.cli._commands._options.helpers`.
 """
 
 from __future__ import annotations
 
 import pytest
 
-import etlplus.cli._commands._options as cli_options
+import etlplus.cli._commands._options.helpers as cli_options
 
 # SECTION: PRAGMAS ========================================================== #
 

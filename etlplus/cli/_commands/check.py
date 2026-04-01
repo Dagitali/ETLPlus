@@ -8,19 +8,19 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handlers.check import check_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import fail_usage
 from ._helpers import require_value
-from ._options import CheckConfigOption
-from ._options import JobsOption
-from ._options import PipelinesOption
-from ._options import ReadinessOption
-from ._options import SourcesOption
-from ._options import SummaryOption
-from ._options import TargetsOption
-from ._options import TransformsOption
+from ._options.common import CheckConfigOption
+from ._options.specs import JobsOption
+from ._options.specs import PipelinesOption
+from ._options.specs import ReadinessOption
+from ._options.specs import SourcesOption
+from ._options.specs import SummaryOption
+from ._options.specs import TargetsOption
+from ._options.specs import TransformsOption
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
@@ -61,7 +61,7 @@ def check_cmd(
     ctx : typer.Context
         Typer context.
     config : CheckConfigOption, optional
-        Path to YAML/JSON config file.
+        Path to the YAML/JSON config file.
     jobs : JobsOption, optional
         Whether to inspect job definitions.
     pipelines : PipelinesOption, optional
@@ -71,7 +71,7 @@ def check_cmd(
     sources : SourcesOption, optional
         Whether to inspect source definitions.
     summary : SummaryOption, optional
-        Whether to print a summary of the configuration.
+        Whether to print a configuration summary.
     targets : TargetsOption, optional
         Whether to inspect target definitions.
     transforms : TransformsOption, optional
@@ -80,8 +80,7 @@ def check_cmd(
     Returns
     -------
     int
-        Exit code (0 if checks passed, non-zero if any checks failed).
-
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     inspection_requested = any(
         (jobs, pipelines, sources, summary, targets, transforms),
@@ -97,7 +96,7 @@ def check_cmd(
         )
 
     return call_handler(
-        handlers.check_handler,
+        check_handler,
         state=ensure_state(ctx),
         config=config,
         jobs=jobs,

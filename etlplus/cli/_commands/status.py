@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handlers.history import status_handler
 from ._app import app
 from ._helpers import call_handler
-from ._options import JobOption
-from ._options import RunIdOption
+from ._options.common import JobOption
+from ._options.history import RunIdOption
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
@@ -41,17 +41,17 @@ def status_cmd(
     ctx : typer.Context
         Typer context.
     job : JobOption, optional
-        Specific job to inspect (defaults to the latest job).
+        Specific job to inspect. Defaults to ``None`` for the latest job).
     run_id : RunIdOption, optional
-        Specific run ID to inspect (defaults to the latest run).
+        Specific run ID to inspect. Defaults to ``None`` for the latest run).
 
     Returns
     -------
     int
-        Exit code (0 if checks passed, non-zero if any checks failed).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     return call_handler(
-        handlers.status_handler,
+        status_handler,
         state=ensure_state(ctx),
         job=job,
         run_id=run_id,

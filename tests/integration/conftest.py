@@ -29,6 +29,7 @@ from etlplus.api import RateLimitConfig
 from etlplus.api import RateLimiter
 from etlplus.connector import ConnectorApi
 from etlplus.connector import ConnectorFile
+from etlplus.connector import DataConnectorType
 from etlplus.workflow import ExtractRef
 from etlplus.workflow import JobConfig
 from etlplus.workflow import LoadRef
@@ -219,13 +220,13 @@ def file_to_api_pipeline_factory_fixture(
 
         src = ConnectorFile(
             name='file_src',
-            type='file',
+            type=DataConnectorType.FILE,
             format='json',
             path=str(source_path),
         )
         tgt = ConnectorApi(
             name=target_name,
-            type='api',
+            type=DataConnectorType.API,
             api='svc',
             endpoint=endpoint_name,
             method=method,
@@ -304,11 +305,16 @@ def pipeline_cfg_factory_fixture(
             profiles={'default': prof},
             endpoints={'items': EndpointConfig(path='/items')},
         )
-        src = ConnectorApi(name='s', type='api', api='svc', endpoint='items')
+        src = ConnectorApi(
+            name='s',
+            type=DataConnectorType.API,
+            api='svc',
+            endpoint='items',
+        )
         out_path = tmp_path / 'out.json'
         tgt = ConnectorFile(
             name='t',
-            type='file',
+            type=DataConnectorType.FILE,
             format='json',
             path=str(out_path),
         )

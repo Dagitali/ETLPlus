@@ -17,7 +17,7 @@ from typing import overload
 import typer
 
 from ...file import FileFormat
-from .._io import parse_json_payload
+from ...utils._data import parse_json
 from ._constants import DATA_CONNECTORS
 from ._constants import FILE_FORMATS
 from ._state import CliState
@@ -240,7 +240,7 @@ def parse_json_option(
         When the JSON is invalid.
     """
     try:
-        return parse_json_payload(value)
+        return parse_json(value)
     except ValueError as exc:
         raise typer.BadParameter(f'Invalid JSON for {flag}: {exc}') from exc
 
@@ -337,7 +337,7 @@ def resolve_resource(
         provided).
     default_value : str, optional
         The default value to use when *value* is ``None`` (defaults to '-',
-        which is a common CLI convention for standard input/output).
+        which is a common CLI convention for STDIN/STDOUT).
 
     Returns
     -------

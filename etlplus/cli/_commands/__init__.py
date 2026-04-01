@@ -6,7 +6,6 @@ Typer application and subcommands for the ``etlplus`` command-line interface.
 
 from __future__ import annotations
 
-from .. import _handlers as handlers
 from . import _root  # noqa: F401  # Register root callback.
 from ._app import app
 from .check import check_cmd
@@ -28,7 +27,6 @@ __all__ = [
     # Functions
     'check_cmd',
     'extract_cmd',
-    'handlers',
     'history_cmd',
     'load_cmd',
     'log_cmd',

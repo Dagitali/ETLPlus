@@ -1,136 +1,38 @@
 """
-:mod:`etlplus.cli._io` module.
+:mod:`etlplus.cli._handlers._input` module.
 
-Shared I/O helpers for CLI handlers (STDIN/STDOUT, payload hydration).
+Input and payload-hydration helpers shared by CLI handlers.
 """
 
 from __future__ import annotations
 
 import csv
 import io as _io
-import json
 import os
 import sys
-from collections.abc import Mapping
-from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
 from typing import cast
 
-from ..file import File
-from ..file import FileFormat
-from ..utils import print_json
-from ..utils import serialize_json
-from ..utils._types import JSONData
+from ...file import File
+from ...file import FileFormat
+from ...utils._data import parse_json
+from ...utils._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
     # Functions
-    'emit_json',
-    'emit_markdown_table',
-    'emit_or_write',
     'infer_payload_format',
     'materialize_file_payload',
-    'parse_json_payload',
     'parse_text_payload',
     'read_csv_rows',
     'read_stdin_text',
     'resolve_cli_payload',
-    'write_json_output',
 ]
 
 
 # SECTION: FUNCTIONS ======================================================== #
-
-
-def emit_json(
-    data: Any,
-    *,
-    pretty: bool,
-) -> None:
-    """
-    Emit JSON honoring pretty/compact preference.
-
-    Parameters
-    ----------
-    data : Any
-        Data to serialize as JSON.
-    pretty : bool
-        Whether to pretty-print JSON output.
-    """
-    if pretty:
-        print_json(data)
-        return
-    print(serialize_json(data))
-
-
-def emit_markdown_table(
-    rows: Sequence[Mapping[str, Any]],
-    *,
-    columns: Sequence[str],
-) -> None:
-    """
-    Emit rows as a Markdown table.
-
-    Parameters
-    ----------
-    rows : Sequence[Mapping[str, Any]]
-        Table rows to emit.
-    columns : Sequence[str]
-        Ordered column names to include in the table.
-    """
-
-    def _format_cell(value: Any) -> str:
-        if value is None:
-            return ''
-        if isinstance(value, (dict, list)):
-            rendered = serialize_json(value, sort_keys=True)
-        else:
-            rendered = str(value)
-        return rendered.replace('|', '\\|').replace('\n', '<br>')
-
-    header = '| ' + ' | '.join(columns) + ' |'
-    separator = '| ' + ' | '.join('---' for _ in columns) + ' |'
-    print(header)
-    print(separator)
-    for row in rows:
-        print(
-            '| '
-            + ' | '.join(_format_cell(row.get(column)) for column in columns)
-            + ' |',
-        )
-
-
-def emit_or_write(
-    data: Any,
-    output_path: str | None,
-    *,
-    pretty: bool,
-    success_message: str,
-) -> None:
-    """
-    Emit JSON or persist to disk based on *output_path*.
-
-    Parameters
-    ----------
-    data : Any
-        The data to serialize.
-    output_path : str | None
-        Target file path; when falsy or ``'-'`` data is emitted to STDOUT.
-    pretty : bool
-        Whether to pretty-print JSON emission.
-    success_message : str
-        Message printed when writing to disk succeeds.
-    """
-    if write_json_output(
-        data,
-        output_path,
-        success_message=success_message,
-    ):
-        return
-    emit_json(data, pretty=pretty)
 
 
 def infer_payload_format(
@@ -216,33 +118,6 @@ def materialize_file_payload(
     return cast(JSONData, file.read())
 
 
-def parse_json_payload(text: str) -> JSONData:
-    """
-    Parse JSON text and surface a concise error when it fails.
-
-    Parameters
-    ----------
-    text : str
-        The JSON text to parse.
-
-    Returns
-    -------
-    JSONData
-        The parsed JSON data.
-
-    Raises
-    ------
-    ValueError
-        When the JSON text is invalid.
-    """
-    try:
-        return cast(JSONData, json.loads(text))
-    except json.JSONDecodeError as e:
-        raise ValueError(
-            f'Invalid JSON payload: {e.msg} (pos {e.pos})',
-        ) from e
-
-
 def parse_text_payload(
     text: str,
     fmt: str | None,
@@ -264,7 +139,7 @@ def parse_text_payload(
     """
     effective = (fmt or '').strip().lower() or infer_payload_format(text)
     if effective == 'json':
-        return parse_json_payload(text)
+        return parse_json(text)
     if effective == 'csv':
         reader = csv.DictReader(_io.StringIO(text))
         return [dict(row) for row in reader]
@@ -335,33 +210,3 @@ def resolve_cli_payload(
         format_hint=format_hint,
         format_explicit=format_explicit,
     )
-
-
-def write_json_output(
-    data: Any,
-    output_path: str | None,
-    *,
-    success_message: str,
-) -> bool:
-    """
-    Persist JSON data to disk when output path provided.
-
-    Parameters
-    ----------
-    data : Any
-        The data to serialize as JSON.
-    output_path : str | None
-        The output file path, or None/'-' to skip writing.
-    success_message : str
-        The message to print upon successful write.
-
-    Returns
-    -------
-    bool
-        True if data was written to disk; False if not.
-    """
-    if not output_path or output_path == '-':
-        return False
-    File(output_path, FileFormat.JSON).write(data)
-    print(f'{success_message} {output_path}')
-    return True

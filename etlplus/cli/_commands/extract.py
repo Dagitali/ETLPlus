@@ -8,14 +8,14 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handlers.dataops import extract_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import resolve_resource
-from ._options import SourceArg
-from ._options import SourceFormatOption
-from ._options import SourceTypeOption
-from ._options import StructuredEventFormatOption
+from ._options.common import StructuredEventFormatOption
+from ._options.resources import SourceArg
+from ._options.resources import SourceFormatOption
+from ._options.resources import SourceTypeOption
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
@@ -46,19 +46,18 @@ def extract_cmd(
     ctx : typer.Context
         Typer context.
     source : SourceArg, optional
-        Source to extract data from.
+        Source path, URI/URL, JSON payload, or ``-`` for STDIN.
     source_format : SourceFormatOption, optional
-        Format of the source data.
+        Source payload format override.
     source_type : SourceTypeOption, optional
-        Type of the source.
+        Source connector type override.
     event_format : StructuredEventFormatOption, optional
-        Format of structured events.
+        Structured event output format.
 
     Returns
     -------
     int
-        Exit code (0 if extraction succeeded, non-zero if any errors occurred).
-
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     state = ensure_state(ctx)
     resolved_source = resolve_resource(
@@ -72,11 +71,11 @@ def extract_cmd(
     assert resolved_source.resource_type is not None
 
     return call_handler(
-        handlers.extract_handler,
+        extract_handler,
         state=state,
-        source_type=resolved_source.resource_type,
         source=resolved_source.value,
+        source_type=resolved_source.resource_type,
+        source_format=resolved_source.format_hint,
         event_format=event_format,
-        format_hint=resolved_source.format_hint,
         format_explicit=resolved_source.format_hint is not None,
     )

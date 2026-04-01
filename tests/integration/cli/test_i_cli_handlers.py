@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from etlplus.cli import _handlers
+from etlplus.cli._handlers import dataops as dataops_mod
+from etlplus.cli._handlers import run as run_mod
 
 from ...conftest import CaptureHandler
 
@@ -60,12 +61,14 @@ def test_handler_smoke(
     """
     Test that CLI handlers accept kwargs and call underlying logic.
     """
+    module: object
+    attr: str
     if 'job' in kwargs:
-        module, attr = _handlers, 'run_handler'
+        module, attr = run_mod, 'run_handler'
     elif 'operations' in kwargs:
-        module, attr = _handlers, 'transform_handler'
+        module, attr = dataops_mod, 'transform_handler'
     elif 'rules' in kwargs:
-        module, attr = _handlers, 'validate_handler'
+        module, attr = dataops_mod, 'validate_handler'
     else:
         pytest.skip('Unknown handler')
         return

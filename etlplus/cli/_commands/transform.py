@@ -8,19 +8,19 @@ from __future__ import annotations
 
 import typer
 
-from .. import _handlers as handlers
+from .._handlers.dataops import transform_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import parse_json_option
 from ._helpers import resolve_resource
-from ._options import OperationsOption
-from ._options import SourceArg
-from ._options import SourceFormatOption
-from ._options import SourceTypeOption
-from ._options import StructuredEventFormatOption
-from ._options import TargetArg
-from ._options import TargetFormatOption
-from ._options import TargetTypeOption
+from ._options.common import StructuredEventFormatOption
+from ._options.resources import SourceArg
+from ._options.resources import SourceFormatOption
+from ._options.resources import SourceTypeOption
+from ._options.resources import TargetArg
+from ._options.resources import TargetFormatOption
+from ._options.resources import TargetTypeOption
+from ._options.specs import OperationsOption
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
@@ -38,13 +38,13 @@ __all__ = [
 @app.command('transform')
 def transform_cmd(
     ctx: typer.Context,
-    operations: OperationsOption = '{}',
     source: SourceArg = '-',
     source_format: SourceFormatOption = None,
     source_type: SourceTypeOption = None,
     target: TargetArg = '-',
     target_format: TargetFormatOption = None,
     target_type: TargetTypeOption = None,
+    operations: OperationsOption = '{}',
     event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
@@ -54,27 +54,27 @@ def transform_cmd(
     ----------
     ctx : typer.Context
         Typer context.
-    operations : OperationsOption, optional
-        JSON string describing the transformation operations (defaults to '{}').
     source : SourceArg, optional
-        Source resource (defaults to '-').
+        Source path, URI/URL, JSON payload, or ``-`` for STDIN.
     source_format : SourceFormatOption, optional
-        Format of the source resource (defaults to None).
+        Source payload format override.
     source_type : SourceTypeOption, optional
-        Type of the source resource (defaults to None).
+        Source connector type override.
     target : TargetArg, optional
-        Target resource (defaults to '-').
+        Target path, URI/URL, or ``-`` for standard output.
     target_format : TargetFormatOption, optional
-        Format of the target resource (defaults to None).
+        Target payload format override.
     target_type : TargetTypeOption, optional
-        Type of the target resource (defaults to None).
+        Target connector type override.
+    operations : OperationsOption, optional
+        JSON string describing the transformation operations.
     event_format : StructuredEventFormatOption, optional
-        Format for structured events (defaults to None).
+        Structured event output format.
 
     Returns
     -------
     int
-        Exit code (0 if checks passed, non-zero if any checks failed).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     state = ensure_state(ctx)
     resolved_source = resolve_resource(
@@ -95,14 +95,14 @@ def transform_cmd(
     assert resolved_target.resource_type is not None
 
     return call_handler(
-        handlers.transform_handler,
+        transform_handler,
         state=state,
         source=resolved_source.value,
-        operations=parse_json_option(operations, '--operations'),
+        source_format=resolved_source.format_hint,
         target=resolved_target.value,
+        operations=parse_json_option(operations, '--operations'),
+        target_format=resolved_target.format_hint,
         target_type=resolved_target.resource_type,
         event_format=event_format,
-        source_format=resolved_source.format_hint,
-        target_format=resolved_target.format_hint,
         format_explicit=resolved_target.format_hint is not None,
     )

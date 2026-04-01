@@ -31,9 +31,9 @@ from typing import Any
 import pytest
 
 import etlplus.api._request_manager as rm_mod
-import etlplus.cli._handlers as cli_handlers
 from etlplus import Config
 from etlplus.cli import main
+from etlplus.cli._handlers import dataops as dataops_mod
 
 from .conftest import FakeEndpointClientProtocol
 
@@ -308,7 +308,7 @@ def pipeline_cli_runner_fixture(
     ) -> str:
         """Run the CLI with the given pipeline YAML and patched extractors."""
         cfg_path = _write_pipeline(tmp_path, yaml_text)
-        monkeypatch.setattr(cli_handlers, 'extract', extract_func)
+        monkeypatch.setattr(dataops_mod, 'extract', extract_func)
         monkeypatch.setattr(extract_mod, 'extract', extract_func)
 
         def _default_request(
