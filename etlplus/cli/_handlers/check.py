@@ -68,7 +68,7 @@ def check_handler(
     Returns
     -------
     int
-        Exit code indicating success (``0``) or failure (non-zero).
+        CLI exit code indicating success (``0``) or failure (non-zero).
 
     Raises
     ------

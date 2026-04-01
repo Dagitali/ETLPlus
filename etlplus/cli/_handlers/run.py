@@ -57,7 +57,7 @@ def run_handler(
     Returns
     -------
     int
-        Exit code indicating success (``0``) or failure (non-zero).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     cfg = Config.from_yaml(config, substitute=True)
 

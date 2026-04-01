@@ -69,7 +69,7 @@ def load_history_records(
     Returns
     -------
     list[dict[str, Any]]
-        A list of history records matching the specified filters.
+        History records matching the specified filters.
     """
     load_kwargs: dict[str, Any] = {'raw': raw}
     load_kwargs.update(
@@ -122,7 +122,7 @@ def emit_follow_history(
     Returns
     -------
     int
-        Exit code indicating success (``0``) or failure (non-zero).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     seen: set[str] = set()
     try:
@@ -198,7 +198,7 @@ def history_handler(
     Returns
     -------
     int
-        Exit code ``0`` on success; non-zero on error.
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     if follow:
         return emit_follow_history(
@@ -264,7 +264,7 @@ def report_handler(
     Returns
     -------
     int
-        Exit code ``0`` on success; non-zero on error.
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     report = HistoryReportBuilder.build(
         load_history_records(
@@ -305,7 +305,7 @@ def status_handler(
     Returns
     -------
     int
-        Exit code ``0`` on success; non-zero on error.
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     records = load_history_records(
         job=job,

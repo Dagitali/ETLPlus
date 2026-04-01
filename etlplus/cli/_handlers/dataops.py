@@ -126,9 +126,9 @@ def extract_handler(
     Parameters
     ----------
     source : str
-        Source path/URI, connector reference, or ``-`` for stdin.
+        Source path/URI, connector reference, or ``-`` for STDIN.
     source_type : str
-        Source connector type such as ``file``, ``database``, or ``api``.
+        Source connector type, such as ``file``, ``database``, or ``api``.
     target : str | None, optional
         Optional target location for the extracted data. Default is ``None``.
     source_format : str | None, optional
@@ -146,7 +146,7 @@ def extract_handler(
     Returns
     -------
     int
-        Exit code indicating success (``0``) or failure (non-zero).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     explicit_format = source_format if format_explicit else None
     command_fields: dict[str, Any] = {
@@ -307,7 +307,7 @@ def transform_handler(
     Parameters
     ----------
     source : str
-        Source path, connector reference, or ``-`` for stdin.
+        Source path/URI, connector reference, or ``-`` for STDIN.
     operations : JSONData | str
         Transformation operations to apply to the source payload.
     target : str | None, optional
@@ -329,7 +329,7 @@ def transform_handler(
     Returns
     -------
     int
-        Exit code indicating success (``0``) or failure (non-zero).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     target_format_explicit = target_format is not None or format_explicit
     target_label = target or 'stdout'
@@ -408,7 +408,7 @@ def validate_handler(
     Parameters
     ----------
     source : str
-        Source path, connector reference, or ``-`` for stdin.
+        Source path/URI, connector reference, or ``-`` for STDIN.
     rules : JSONData | str
         Validation rules to apply to the source payload.
     target : str | None, optional
@@ -426,7 +426,7 @@ def validate_handler(
     Returns
     -------
     int
-        Exit code indicating success (``0``) or failure (non-zero).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     target_label = target or 'stdout'
     command_fields: dict[str, Any] = {

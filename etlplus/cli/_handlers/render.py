@@ -66,7 +66,7 @@ def render_handler(
     Returns
     -------
     int
-        Exit code indicating success (``0``) or failure (non-zero).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     template_key, file_override = _payload.resolve_render_template(
         template,
