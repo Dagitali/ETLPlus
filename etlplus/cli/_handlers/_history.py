@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._history` module.
+:mod:`etlplus.cli._handlers._history` module.
 
 Internal history and report helpers shared by CLI handlers.
 """
@@ -12,8 +12,8 @@ from typing import Any
 from typing import Literal
 from typing import cast
 
-from ..history import HistoryStore
-from ..utils import serialize_json
+from ...history import HistoryStore
+from ...utils import serialize_json
 
 # SECTION: TYPE ALIASES ===================================================== #
 
