@@ -13,10 +13,10 @@ from unittest.mock import Mock
 
 import pytest
 
-import etlplus.cli._parsing as parsing_mod
 from etlplus.cli._handlers import _input as input_mod
 from etlplus.cli._handlers import _output as output_mod
 from etlplus.file import FileFormat
+from etlplus.utils._data import parse_json
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -487,7 +487,7 @@ class TestParseTextPayload:
     def test_parse_json_payload_reports_decode_errors(self) -> None:
         """Test that invalid JSON raises a normalized :class:`ValueError`."""
         with pytest.raises(ValueError, match='Invalid JSON payload'):
-            parsing_mod.parse_json_payload('{broken')
+            parse_json('{broken')
 
 
 class TestReadCsvRows:
