@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .._handler_check import check_handler
+from .._handlers.check import check_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import fail_usage

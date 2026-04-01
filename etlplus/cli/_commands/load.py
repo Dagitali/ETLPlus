@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .._handler_dataops import load_handler
+from .._handlers.dataops import load_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import normalize_file_format

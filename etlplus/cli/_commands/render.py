@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .._handler_render import render_handler
+from .._handlers.render import render_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import require_any

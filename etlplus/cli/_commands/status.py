@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .._handler_history import status_handler
+from .._handlers.history import status_handler
 from ._app import app
 from ._helpers import call_handler
 from ._options import JobOption

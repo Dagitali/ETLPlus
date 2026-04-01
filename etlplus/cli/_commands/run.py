@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import typer
 
-from .._handler_run import run_handler
+from .._handlers.run import run_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import require_value
