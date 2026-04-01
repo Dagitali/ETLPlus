@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._handler_render` module.
+:mod:`etlplus.cli._handlers.render` module.
 
 SQL render helpers for the CLI facade.
 """
@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import sys
 
-from ..database import render_tables
-from ..utils._types import TemplateKey
-from . import _handler_output as _output
-from . import _handler_payload as _payload
-from . import _summary
+from ...database import render_tables
+from ...utils._types import TemplateKey
+from .. import _summary
+from . import output as _output
+from . import payload as _payload
 
 # SECTION: EXPORTS ========================================================== #
 
