@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._handler_lifecycle` module.
+:mod:`etlplus.cli._handlers.lifecycle` module.
 
 Lifecycle helpers shared by CLI handler implementations.
 """
@@ -13,10 +13,10 @@ from dataclasses import dataclass
 from time import perf_counter
 from typing import Any
 
-from ..history import RunCompletion
-from ..history import RunState
-from ..runtime import RuntimeEvents
-from ..utils._types import JSONData
+from ...history import RunCompletion
+from ...history import RunState
+from ...runtime import RuntimeEvents
+from ...utils._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -249,6 +249,12 @@ def failure_boundary(
         A callback to invoke with the exception if one is raised.
     **fields : Any
         Additional fields to include in the emitted event payload.
+
+    Raises
+    ------
+    Exception
+        Any exception raised inside the block will be re-raised after emitting
+        the failure event and invoking the callback.
     """
     try:
         yield
