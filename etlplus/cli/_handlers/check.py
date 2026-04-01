@@ -7,8 +7,8 @@ Config inspection helpers for the CLI facade.
 from __future__ import annotations
 
 from ... import Config
-from .. import _summary
 from . import _output
+from . import _summary
 
 # SECTION: EXPORTS ========================================================== #
 

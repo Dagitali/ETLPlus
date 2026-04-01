@@ -14,9 +14,9 @@ from ...history import HistoryStore
 from ...history import build_run_record
 from ...ops import run
 from ...utils._types import JSONData
-from .. import _summary
 from . import _lifecycle
 from . import _output
+from . import _summary
 
 # SECTION: EXPORTS ========================================================== #
 

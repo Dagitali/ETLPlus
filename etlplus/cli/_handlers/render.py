@@ -10,9 +10,9 @@ import sys
 
 from ...database import render_tables
 from ...utils._types import TemplateKey
-from .. import _summary
 from . import _output
 from . import _payload
+from . import _summary
 
 # SECTION: EXPORTS ========================================================== #
 
