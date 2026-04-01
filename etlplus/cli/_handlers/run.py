@@ -39,28 +39,25 @@ def run_handler(
     pretty: bool = True,
 ) -> int:
     """
-    Execute an ETL job end-to-end from a YAML configuration.
+    Execute a configured ETL job or pipeline.
 
     Parameters
     ----------
     config : str
-        Path to the YAML configuration file for the run.
+        Path to the YAML/JSON config file.
     job : str | None, optional
-        The name of the job to run, if the configuration defines multiple jobs.
+        Job name to run. Default is ``None``.
     pipeline : str | None, optional
-        The name of the pipeline to run, if the configuration defines multiple
-        pipelines. If both *job* and *pipeline* are provided, *job* takes
-        precedence.
+        Pipeline name to run when *job* is not provided. Default is ``None``.
     event_format : str | None, optional
-        The format of the events to emit during the run.
+        Structured event output format. Default is ``None``.
     pretty : bool, optional
-        Whether to pretty-print the output.
+        Whether to pretty-print JSON output. Default is ``True``.
 
     Returns
     -------
     int
-        The exit code for the command, typically 0 for success or non-zero for
-        failure.
+        Exit code indicating success (``0``) or failure (non-zero).
     """
     cfg = Config.from_yaml(config, substitute=True)
 
