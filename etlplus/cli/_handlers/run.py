@@ -15,8 +15,8 @@ from ...history import build_run_record
 from ...ops import run
 from ...utils._types import JSONData
 from .. import _summary
-from . import lifecycle as _lifecycle
-from . import output as _output
+from . import _lifecycle
+from . import _output
 
 # SECTION: EXPORTS ========================================================== #
 

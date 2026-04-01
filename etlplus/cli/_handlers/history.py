@@ -15,7 +15,7 @@ from .._history import HISTORY_TABLE_COLUMNS
 from .._history import REPORT_TABLE_COLUMNS
 from .._history import HistoryReportBuilder
 from .._history import HistoryView
-from . import output as _output
+from . import _output
 
 # SECTION: EXPORTS ========================================================== #
 

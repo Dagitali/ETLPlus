@@ -11,8 +11,8 @@ import sys
 from ...database import render_tables
 from ...utils._types import TemplateKey
 from .. import _summary
-from . import output as _output
-from . import payload as _payload
+from . import _output
+from . import _payload
 
 # SECTION: EXPORTS ========================================================== #
 

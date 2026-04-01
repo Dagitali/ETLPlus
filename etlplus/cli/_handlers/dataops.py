@@ -20,9 +20,9 @@ from ...ops._types import PipelineConfig
 from ...ops.validate import FieldRulesDict
 from ...utils._types import JSONData
 from .. import _io
-from . import lifecycle as _lifecycle
-from . import output as _output
-from . import payload as _payload
+from . import _lifecycle
+from . import _output
+from . import _payload
 
 # SECTION: EXPORTS ========================================================== #
 

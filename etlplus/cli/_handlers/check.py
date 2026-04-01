@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from ... import Config
 from .. import _summary
-from . import output as _output
+from . import _output
 
 # SECTION: EXPORTS ========================================================== #
 
