@@ -15,8 +15,8 @@ from typing import cast
 
 from ...file import File
 from ...file import FileFormat
+from ...utils._data import parse_json
 from ...utils._types import JSONData
-from .._parsing import parse_json_payload
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -139,7 +139,7 @@ def parse_text_payload(
     """
     effective = (fmt or '').strip().lower() or infer_payload_format(text)
     if effective == 'json':
-        return parse_json_payload(text)
+        return parse_json(text)
     if effective == 'csv':
         reader = csv.DictReader(_io.StringIO(text))
         return [dict(row) for row in reader]
