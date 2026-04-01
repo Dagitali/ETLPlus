@@ -1,12 +1,13 @@
 """
 :mod:`tests.unit.cli.test_u_cli_history` module.
 
-Unit tests for :mod:`etlplus.cli._handlers._history`.
+Unit tests for split history support modules under :mod:`etlplus.cli._handlers`.
 """
 
 from __future__ import annotations
 
-import etlplus.cli._handlers._history as history_mod
+from etlplus.cli._handlers._history_report import HistoryReportBuilder
+from etlplus.cli._handlers._history_view import HistoryView
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -16,15 +17,18 @@ import etlplus.cli._handlers._history as history_mod
 
 
 class TestHistoryReportBuilder:
-    """Unit tests for :class:`etlplus.cli._handlers._history.HistoryReportBuilder`."""
+    """
+    Unit tests for
+    :class:`etlplus.cli._handlers._history_report.HistoryReportBuilder`.
+    """
 
     def test_success_rate_pct_returns_none_without_runs(self) -> None:
         """Success rate is undefined when there are no runs."""
-        assert history_mod.HistoryReportBuilder.success_rate_pct(0, 0) is None
+        assert HistoryReportBuilder.success_rate_pct(0, 0) is None
 
     def test_build_counts_other_statuses_and_ignores_non_int_durations(self) -> None:
         """Report building should bucket unknown statuses under ``other``."""
-        report = history_mod.HistoryReportBuilder.build(
+        report = HistoryReportBuilder.build(
             [
                 {
                     'duration_ms': '1000',
@@ -69,18 +73,18 @@ class TestHistoryReportBuilder:
 
 
 class TestHistoryView:
-    """Unit tests for :class:`etlplus.cli._handlers._history.HistoryView`."""
+    """Unit tests for :class:`etlplus.cli._handlers._history_view.HistoryView`."""
 
     def test_matches_rejects_records_after_until(self) -> None:
         """Upper-bound timestamp filters should reject later records."""
         assert (
-            history_mod.HistoryView.matches(
+            HistoryView.matches(
                 {
                     'run_id': 'run-1',
                     'started_at': '2026-03-24T00:00:00Z',
                     'status': 'succeeded',
                 },
-                until=history_mod.HistoryView.parse_timestamp('2026-03-23T23:59:59Z'),
+                until=HistoryView.parse_timestamp('2026-03-23T23:59:59Z'),
             )
             is False
         )
@@ -88,7 +92,7 @@ class TestHistoryView:
     def test_matches_rejects_status_mismatch(self) -> None:
         """Status filters should reject records with a different status."""
         assert (
-            history_mod.HistoryView.matches(
+            HistoryView.matches(
                 {'status': 'failed'},
                 status='succeeded',
             )
@@ -97,4 +101,4 @@ class TestHistoryView:
 
     def test_parse_timestamp_returns_none_for_invalid_value(self) -> None:
         """Invalid ISO timestamps should be treated as missing."""
-        assert history_mod.HistoryView.parse_timestamp('not-a-timestamp') is None
+        assert HistoryView.parse_timestamp('not-a-timestamp') is None

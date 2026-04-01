@@ -16,7 +16,9 @@ from unittest.mock import ANY
 import pytest
 
 from etlplus import Config
-from etlplus.cli._handlers import _history as history_support_mod
+from etlplus.cli._handlers import _completion as completion_mod
+from etlplus.cli._handlers import _history_report as history_report_mod
+from etlplus.cli._handlers import _history_view as history_view_mod
 from etlplus.cli._handlers import _input as input_mod
 from etlplus.cli._handlers import _lifecycle as lifecycle_mod
 from etlplus.cli._handlers import _output as output_mod
@@ -47,16 +49,16 @@ from .conftest import assert_emit_or_write
 handlers: Any = SimpleNamespace(
     Config=Config,
     File=File,
-    HistoryReportBuilder=history_support_mod.HistoryReportBuilder,
+    HistoryReportBuilder=history_report_mod.HistoryReportBuilder,
     HistoryStore=HistoryStore,
-    HistoryView=history_support_mod.HistoryView,
+    HistoryView=history_view_mod.HistoryView,
     ReadinessReportBuilder=ReadinessReportBuilder,
     RunCompletion=RunCompletion,
     RunState=RunState,
     RuntimeEvents=RuntimeEvents,
     _CommandContext=lifecycle_mod.CommandContext,
     _check_sections=summary_mod.check_sections,
-    _complete_output=output_mod.complete_output,
+    _complete_output=completion_mod.complete_output,
     _failure_boundary=lifecycle_mod.failure_boundary,
     _input=input_mod,
     _output=output_mod,

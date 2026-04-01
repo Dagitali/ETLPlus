@@ -86,13 +86,13 @@ class TestCommandsInternalHelpers:
         Test that invalid JSON payloads raise :class:`typer.BadParameter`.
         """
 
-        def _parse_json_payload(_value: str) -> Any:
+        def _parse_json(_value: str) -> Any:
             raise ValueError('bad json')
 
         monkeypatch.setattr(
             helpers_mod,
-            'parse_json_payload',
-            _parse_json_payload,
+            'parse_json',
+            _parse_json,
         )
         with pytest.raises(typer.BadParameter, match='Invalid JSON for --ops'):
             helpers_mod.parse_json_option('not-json', '--ops')
