@@ -18,6 +18,7 @@ import pytest
 from etlplus import Config
 from etlplus.cli import _io
 from etlplus.cli import _summary
+from etlplus.cli._handlers import _history as history_support_mod
 from etlplus.cli._handlers import _lifecycle as lifecycle_mod
 from etlplus.cli._handlers import _output as output_mod
 from etlplus.cli._handlers import check as check_mod
@@ -25,8 +26,6 @@ from etlplus.cli._handlers import dataops as dataops_mod
 from etlplus.cli._handlers import history as history_mod
 from etlplus.cli._handlers import render as render_mod
 from etlplus.cli._handlers import run as run_mod
-from etlplus.cli._history import HistoryReportBuilder
-from etlplus.cli._history import HistoryView
 from etlplus.file import File
 from etlplus.history import HistoryStore
 from etlplus.history import RunCompletion
@@ -48,9 +47,9 @@ from .conftest import assert_emit_or_write
 handlers: Any = SimpleNamespace(
     Config=Config,
     File=File,
-    HistoryReportBuilder=HistoryReportBuilder,
+    HistoryReportBuilder=history_support_mod.HistoryReportBuilder,
     HistoryStore=HistoryStore,
-    HistoryView=HistoryView,
+    HistoryView=history_support_mod.HistoryView,
     ReadinessReportBuilder=ReadinessReportBuilder,
     RunCompletion=RunCompletion,
     RunState=RunState,

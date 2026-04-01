@@ -1,12 +1,12 @@
 """
 :mod:`tests.unit.cli.test_u_cli_history` module.
 
-Unit tests for :mod:`etlplus.cli._history`.
+Unit tests for :mod:`etlplus.cli._handlers._history`.
 """
 
 from __future__ import annotations
 
-import etlplus.cli._history as history_mod
+import etlplus.cli._handlers._history as history_mod
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -16,7 +16,7 @@ import etlplus.cli._history as history_mod
 
 
 class TestHistoryReportBuilder:
-    """Unit tests for :class:`etlplus.cli._history.HistoryReportBuilder`."""
+    """Unit tests for :class:`etlplus.cli._handlers._history.HistoryReportBuilder`."""
 
     def test_success_rate_pct_returns_none_without_runs(self) -> None:
         """Success rate is undefined when there are no runs."""
@@ -69,7 +69,7 @@ class TestHistoryReportBuilder:
 
 
 class TestHistoryView:
-    """Unit tests for :class:`etlplus.cli._history.HistoryView`."""
+    """Unit tests for :class:`etlplus.cli._handlers._history.HistoryView`."""
 
     def test_matches_rejects_records_after_until(self) -> None:
         """Upper-bound timestamp filters should reject later records."""
