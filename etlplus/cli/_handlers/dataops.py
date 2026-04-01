@@ -19,9 +19,9 @@ from ...ops import validate
 from ...ops._types import PipelineConfig
 from ...ops.validate import FieldRulesDict
 from ...utils._types import JSONData
+from . import _completion
 from . import _input
 from . import _lifecycle
-from . import _output
 from . import _payload
 
 # SECTION: EXPORTS ========================================================== #
@@ -69,7 +69,7 @@ def _complete_success(
     **fields: Any,
 ) -> int:
     """Complete a command using the shared successful-status fields."""
-    return _output.complete_output(
+    return _completion.complete_output(
         context,
         payload,
         mode=mode,

@@ -7,6 +7,7 @@ Config inspection helpers for the CLI facade.
 from __future__ import annotations
 
 from ... import Config
+from ...runtime import ReadinessReportBuilder
 from . import _output
 from . import _summary
 
@@ -76,7 +77,12 @@ def check_handler(
         If the config file is required but not provided.
     """
     if readiness:
-        return _output.emit_readiness_report(config=config, pretty=pretty)
+        report = ReadinessReportBuilder.build(config_path=config)
+        return _output.emit_json_payload(
+            report,
+            pretty=pretty,
+            exit_code=0 if report.get('status') == 'ok' else 1,
+        )
     if config is None:
         raise ValueError('config is required unless readiness-only mode is used')
 

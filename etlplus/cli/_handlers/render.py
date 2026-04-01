@@ -7,10 +7,10 @@ SQL render helpers for the CLI facade.
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 from ...database import render_tables
 from ...utils._types import TemplateKey
-from . import _output
 from . import _payload
 from . import _summary
 
@@ -21,6 +21,30 @@ __all__ = [
     # Functions
     'render_handler',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _emit_render_output(
+    rendered_chunks: list[str],
+    *,
+    output_path: str | None,
+    pretty: bool,
+    quiet: bool,
+    schema_count: int,
+) -> int:
+    """Write rendered SQL to a file or STDOUT."""
+    sql_text = '\n'.join(chunk.rstrip() for chunk in rendered_chunks).rstrip() + '\n'
+    rendered_output = sql_text if pretty else sql_text.rstrip('\n')
+    if output_path and output_path != '-':
+        Path(output_path).write_text(rendered_output, encoding='utf-8')
+        if not quiet:
+            print(f'Rendered {schema_count} schema(s) to {output_path}')
+        return 0
+
+    print(rendered_output, end='')
+    return 0
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -91,7 +115,7 @@ def render_handler(
         )
         return 1
 
-    return _output.emit_render_output(
+    return _emit_render_output(
         render_tables(
             specs,
             template=template_key,

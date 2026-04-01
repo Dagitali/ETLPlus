@@ -14,6 +14,7 @@ from ...history import HistoryStore
 from ...history import build_run_record
 from ...ops import run
 from ...utils._types import JSONData
+from . import _completion
 from . import _lifecycle
 from . import _output
 from . import _summary
@@ -106,7 +107,7 @@ def run_handler(
         result_summary=cast(JSONData | None, result),
     )
     result_status = result.get('status') if isinstance(result, dict) else None
-    return _output.complete_output(
+    return _completion.complete_output(
         context,
         {'run_id': context.run_id, 'status': 'ok', 'result': result},
         mode='json',

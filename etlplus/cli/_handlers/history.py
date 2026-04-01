@@ -12,10 +12,10 @@ from typing import Literal
 from typing import cast
 
 from . import _output
-from ._history import HISTORY_TABLE_COLUMNS
-from ._history import REPORT_TABLE_COLUMNS
-from ._history import HistoryReportBuilder
-from ._history import HistoryView
+from ._history_report import REPORT_TABLE_COLUMNS
+from ._history_report import HistoryReportBuilder
+from ._history_view import HISTORY_TABLE_COLUMNS
+from ._history_view import HistoryView
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -31,6 +31,53 @@ __all__ = [
 
 
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def _emit_history_payload(
+    payload: Any,
+    *,
+    columns: tuple[str, ...],
+    pretty: bool,
+    table: bool = False,
+    json_output: bool = False,
+    table_rows: list[dict[str, Any]] | None = None,
+    exit_code: int = 0,
+) -> int:
+    """
+    Emit history data as JSON or a Markdown table.
+
+    Parameters
+    ----------
+    payload : Any
+        The history data to emit.
+    columns : tuple[str, ...]
+        The columns to include in the Markdown table.
+    pretty : bool
+        Whether to pretty-print JSON output.
+    table : bool, optional
+        Whether to emit a Markdown table. Default is ``False``.
+    json_output : bool, optional
+        Whether to emit JSON output. Default is ``False``.
+    table_rows : list[dict[str, Any]] | None, optional
+        Optional precomputed table rows. Default is ``None``.
+    exit_code : int, optional
+        CLI exit code to return. Default is ``0``.
+
+    Returns
+    -------
+    int
+        CLI exit code indicating success (``0``) or failure (non-zero).
+    """
+    HistoryView.validate_output_mode(json_output=json_output, table=table)
+    if table:
+        _output.emit_markdown_table(
+            table_rows
+            if table_rows is not None
+            else cast(list[dict[str, Any]], payload),
+            columns=columns,
+        )
+        return exit_code
+    return _output.emit_json_payload(payload, pretty=pretty, exit_code=exit_code)
 
 
 def load_history_records(
@@ -210,7 +257,7 @@ def history_handler(
             status=status,
         )
 
-    return _output.emit_history_payload(
+    return _emit_history_payload(
         load_history_records(
             job=job,
             limit=limit,
@@ -274,7 +321,7 @@ def report_handler(
         ),
         group_by=group_by,
     )
-    return _output.emit_history_payload(
+    return _emit_history_payload(
         report,
         columns=REPORT_TABLE_COLUMNS,
         pretty=pretty,
