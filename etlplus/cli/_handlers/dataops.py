@@ -111,12 +111,12 @@ def _resolve_source_mapping_inputs(
 
 def extract_handler(
     *,
-    source_type: str,
     source: str,
-    event_format: str | None = None,
-    format_hint: str | None = None,
-    format_explicit: bool = False,
+    source_type: str,
     target: str | None = None,
+    source_format: str | None = None,
+    format_explicit: bool = False,
+    event_format: str | None = None,
     output: str | None = None,
     pretty: bool = True,
 ) -> int:
@@ -125,32 +125,30 @@ def extract_handler(
 
     Parameters
     ----------
-    source_type : str
-        The type of the source (e.g., "file", "database", or "api").
     source : str
-        The source location (e.g., a file path, a database connection string,
-        or an API endpoint).
-    event_format : str | None, optional
-        The requested event output format (e.g., "jsonl" or ``None`` for no
-        events).
-    format_hint : str | None, optional
-        An optional format hint for the source data  to assist with parsing
-        when the format is not explicit.
-    format_explicit : bool, optional
-        Whether the format hint is explicit (e.g., via a CLI option) and should
-        be used as-is without inference. Default is ``False``.
+        Source path/URI, connector reference, or ``-`` for stdin.
+    source_type : str
+        Source connector type such as ``file``, ``database``, or ``api``.
     target : str | None, optional
-        The target location for the extracted data. Default is ``None``.
+        Optional target location for the extracted data. Default is ``None``.
+    source_format : str | None, optional
+        Optional format hint for the source payload. Default is ``None``.
+    format_explicit : bool, optional
+        Whether *source_format* was explicitly provided and should not be
+        inferred. Default is ``False``.
+    event_format : str | None, optional
+        Structured event output format. Default is ``None``.
     output : str | None, optional
-        The output location for the extracted data. Default is ``None``.
+        Optional path to write the extracted payload. Default is ``None``.
     pretty : bool, optional
-        Whether to pretty-print the output. Default is ``True``.
+        Whether to pretty-print JSON output. Default is ``True``.
+
     Returns
     -------
     int
-        The CLI exit code.
+        Exit code indicating success (``0``) or failure (non-zero).
     """
-    explicit_format = format_hint if format_explicit else None
+    explicit_format = source_format if format_explicit else None
     command_fields: dict[str, Any] = {
         'source': source,
         'source_type': source_type,
@@ -162,7 +160,7 @@ def extract_handler(
         fields=command_fields,
     ) as context:
         if source == '-':
-            payload = _io.parse_text_payload(_io.read_stdin_text(), format_hint)
+            payload = _io.parse_text_payload(_io.read_stdin_text(), source_format)
             return _complete_success(
                 context,
                 payload,
@@ -193,10 +191,10 @@ def load_handler(
     source: str,
     target_type: str,
     target: str,
-    event_format: str | None = None,
     source_format: str | None = None,
     target_format: str | None = None,
     format_explicit: bool = False,
+    event_format: str | None = None,
     output: str | None = None,
     pretty: bool = True,
 ) -> int:
@@ -206,34 +204,29 @@ def load_handler(
     Parameters
     ----------
     source : str
-        The source location (e.g., a file path, a database connection string,
-        or an API endpoint).
+        Source path/URI, connector reference, or ``-`` for STDIN.
     target_type : str
-        The type of the target (e.g., "file", "database", or "api").
+        Target connector type such as ``file``, ``database``, or ``api``.
     target : str
-        The target location (e.g., a file path, a database connection string,
-        or an API endpoint).
-    event_format : str | None, optional
-        The requested event output format (e.g., "jsonl" or ``None`` for no
-        events).
+        Target path/URI, connector reference, or ``-`` for STDOUT.
     source_format : str | None, optional
-        An optional format hint for the source data to assist with parsing
-        when the format is not explicit.
+        Optional format hint for the source payload. Default is ``None``.
     target_format : str | None, optional
-        An optional format hint for the target data to assist with parsing
-        when the format is not explicit.
+        Optional format hint for the target payload. Default is ``None``.
     format_explicit : bool, optional
-        Whether the format hint is explicit (e.g., via a CLI option) and should
-        be used as-is without inference. Default is ``False``.
+        Whether *target_format* was explicitly provided and should not be
+        inferred. Default is ``False``.
+    event_format : str | None, optional
+        Structured event output format. Default is ``None``.
     output : str | None, optional
-        The output location for the loaded data. Default is ``None``.
+        Optional path to write the load result. Default is ``None``.
     pretty : bool, optional
-        Whether to pretty-print the output. Default is ``True``.
+        Whether to pretty-print JSON output. Default is ``True``.
 
     Returns
     -------
     int
-        The CLI exit code.
+        Eit code indicating success (``0``) or failure (non-zero).
     """
     source_format_explicit = source_format is not None
     target_format_explicit = target_format is not None or format_explicit
@@ -302,11 +295,11 @@ def transform_handler(
     operations: JSONData | str,
     target: str | None = None,
     target_type: str | None = None,
-    event_format: str | None = None,
     source_format: str | None = None,
     target_format: str | None = None,
-    pretty: bool = True,
     format_explicit: bool = False,
+    event_format: str | None = None,
+    pretty: bool = True,
 ) -> int:
     """
     Transform data from a source and optionally write the result.
@@ -314,33 +307,29 @@ def transform_handler(
     Parameters
     ----------
     source : str
-        The source location (e.g., a file path, a database connection string,
-        or an API endpoint).
+        Source path, connector reference, or ``-`` for stdin.
     operations : JSONData | str
-        The operations to apply to the source data.
+        Transformation operations to apply to the source payload.
     target : str | None, optional
-        The target location for the transformed data. Default is ``None``.
+        Optional destination for the transformed data. Default is ``None``.
     target_type : str | None, optional
-        The type of the target (e.g., "file", "database", or "api").
-    event_format : str | None, optional
-        The requested event output format (e.g., "jsonl" or ``None`` for no
-        events).
+        Optional destination connector type. Default is ``None``.
     source_format : str | None, optional
-        An optional format hint for the source data to assist with parsing
-        when the format is not explicit.
+        Optional format hint for the source payload. Default is ``None``.
     target_format : str | None, optional
-        An optional format hint for the target data to assist with parsing
-        when the format is not explicit.
-    pretty : bool, optional
-        Whether to pretty-print the output. Default is ``True``.
+        Optional format hint for the destination payload. Default is ``None``.
     format_explicit : bool, optional
-        Whether the format hints are explicit (e.g., via CLI options) and
-        should be used as-is without inference. Default is ``False``.
+        Whether the provided format hints were explicitly supplied and should
+        not be inferred. Default is ``False``.
+    event_format : str | None, optional
+        Structured event output format. Default is ``None``.
+    pretty : bool, optional
+        Whether to pretty-print JSON output. Default is ``True``.
 
     Returns
     -------
     int
-        The CLI exit code.
+        Exit code indicating success (``0``) or failure (non-zero).
     """
     target_format_explicit = target_format is not None or format_explicit
     target_label = target or 'stdout'
@@ -407,10 +396,10 @@ def validate_handler(
     *,
     source: str,
     rules: JSONData | str,
-    event_format: str | None = None,
-    source_format: str | None = None,
     target: str | None = None,
+    source_format: str | None = None,
     format_explicit: bool = False,
+    event_format: str | None = None,
     pretty: bool = True,
 ) -> int:
     """
@@ -419,28 +408,25 @@ def validate_handler(
     Parameters
     ----------
     source : str
-        The source location (e.g., a file path, a database connection string,
-        or an API endpoint).
+        Source path, connector reference, or ``-`` for stdin.
     rules : JSONData | str
-        The validation rules to apply to the source data.
-    event_format : str | None, optional
-        The requested event output format (e.g., "jsonl" or ``None`` for no
-        events).
-    source_format : str | None, optional
-        An optional format hint for the source data to assist with parsing
-        when the format is not explicit.
+        Validation rules to apply to the source payload.
     target : str | None, optional
-        The target location for the validation results. Default is ``None``.
+        Optional destination for validated output. Default is ``None``.
+    source_format : str | None, optional
+        Optional format hint for the source payload. Default is ``None``.
     format_explicit : bool, optional
-        Whether the format hints are explicit (e.g., via CLI options) and
-        should be used as-is without inference. Default is ``False``.
+        Whether *source_format* was explicitly provided and should not be
+        inferred. Default is ``False``.
+    event_format : str | None, optional
+        Structured event output format. Default is ``None``.
     pretty : bool, optional
-        Whether to pretty-print the output. Default is ``True``.
+        Whether to pretty-print JSON output. Default is ``True``.
 
     Returns
     -------
     int
-        The CLI exit code.
+        Exit code indicating success (``0``) or failure (non-zero).
     """
     target_label = target or 'stdout'
     command_fields: dict[str, Any] = {
