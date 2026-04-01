@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._handler_payload` module.
+:mod:`etlplus.cli._handlers.payload` module.
 
 Payload-resolution helpers shared by CLI handler implementations.
 """
@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
-from ..utils._types import TemplateKey
-from . import _io
+from ...utils._types import TemplateKey
+from .. import _io
 
 # SECTION: EXPORTS ========================================================== #
 
