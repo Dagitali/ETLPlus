@@ -45,6 +45,7 @@ def log_cmd(
     This command provides a real-time view of raw persisted events, with
     optional filtering. For a normalized view of persisted run history, use the
     'history' command instead.
+
     Parameters
     ----------
     ctx : typer.Context
