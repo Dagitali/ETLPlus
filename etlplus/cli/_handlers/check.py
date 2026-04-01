@@ -1,14 +1,14 @@
 """
-:mod:`etlplus.cli._handler_check` module.
+:mod:`etlplus.cli._handlers.check` module.
 
 Config inspection helpers for the CLI facade.
 """
 
 from __future__ import annotations
 
-from .. import Config
-from . import _handler_output as _output
-from . import _summary
+from ... import Config
+from .. import _summary
+from . import output as _output
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -63,12 +63,17 @@ def check_handler(
         Whether to perform variable substitution in the config. Default is
         ``True``.
     pretty : bool, optional
-         Whether to pretty-print the JSON output. Default is ``True``.
+        Whether to pretty-print the JSON output. Default is ``True``.
 
     Returns
     -------
     int
         Exit code indicating success (``0``) or failure (non-zero).
+
+    Raises
+    ------
+    ValueError
+        If the config file is required but not provided.
     """
     if readiness:
         return _output.emit_readiness_report(config=config, pretty=pretty)
