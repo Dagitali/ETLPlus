@@ -44,6 +44,6 @@ etlplus run --config configs/pipeline.yml --job file_to_file_customers
 ## See Also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
-- Handler implementations in [_handler_check.py](_handler_check.py), [_handler_dataops.py](_handler_dataops.py), [_handler_history.py](_handler_history.py), [_handler_render.py](_handler_render.py), and [_handler_run.py](_handler_run.py)
 - Command modules in [_commands](_commands)
 - Command options in [_options.py](_options.py)
+- Handler implementations in [_handlers](_handlers)
