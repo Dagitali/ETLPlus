@@ -16,8 +16,8 @@ from unittest.mock import ANY
 import pytest
 
 from etlplus import Config
-from etlplus.cli import _io
 from etlplus.cli._handlers import _history as history_support_mod
+from etlplus.cli._handlers import _input as input_mod
 from etlplus.cli._handlers import _lifecycle as lifecycle_mod
 from etlplus.cli._handlers import _output as output_mod
 from etlplus.cli._handlers import _summary as summary_mod
@@ -58,7 +58,8 @@ handlers: Any = SimpleNamespace(
     _check_sections=summary_mod.check_sections,
     _complete_output=output_mod.complete_output,
     _failure_boundary=lifecycle_mod.failure_boundary,
-    _io=_io,
+    _input=input_mod,
+    _output=output_mod,
     _pipeline_summary=summary_mod.pipeline_summary,
     _summary=summary_mod,
     check_handler=check_mod.check_handler,
@@ -465,12 +466,12 @@ class TestExtractHandler:
         Test that :func:`extract_handler` reads STDIN and emits parsed data.
         """
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'read_stdin_text',
             lambda: 'raw-text',
         )
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'parse_text_payload',
             lambda text, fmt: {'payload': text, 'fmt': fmt},
         )
@@ -997,7 +998,7 @@ class TestLoadHandler:
             return ['rows', src]
 
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'materialize_file_payload',
             fake_materialize,
         )
@@ -1038,7 +1039,7 @@ class TestLoadHandler:
             return 'stdin-payload'
 
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'read_stdin_text',
             fake_read_stdin,
         )
@@ -1050,7 +1051,7 @@ class TestLoadHandler:
             parse_calls['params'] = (text, fmt)
             return parsed_payload
 
-        monkeypatch.setattr(handlers._io, 'parse_text_payload', fake_parse)
+        monkeypatch.setattr(handlers._input, 'parse_text_payload', fake_parse)
 
         def fail_materialize(*_args: object, **_kwargs: object) -> None:
             raise AssertionError(
@@ -1058,7 +1059,7 @@ class TestLoadHandler:
             )
 
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'materialize_file_payload',
             fail_materialize,
         )
@@ -1897,7 +1898,7 @@ class TestTransformHandler:
             return {'select': ['id']}
 
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'resolve_cli_payload',
             fake_resolve,
         )
@@ -1934,7 +1935,7 @@ class TestTransformHandler:
     ) -> None:
         """Test that non-file targets delegate through :func:`load`."""
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'resolve_cli_payload',
             lambda source, **_kwargs: (
                 {'source': source} if source == 'data.json' else {'select': ['id']}
@@ -2005,7 +2006,7 @@ class TestTransformHandler:
             return [{'id': 1}]
 
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'resolve_cli_payload',
             _resolve_cli_payload,
         )
@@ -2025,7 +2026,7 @@ class TestTransformHandler:
     ) -> None:
         """Test that :func:`transform_handler` preserves remote URI targets."""
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'resolve_cli_payload',
             lambda source, **_kwargs: (
                 {'source': source} if source == 'data.json' else {'select': ['id']}
@@ -2072,7 +2073,7 @@ class TestTransformHandler:
     ) -> None:
         """Test that :func:`transform_handler` writes data to a target file."""
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'resolve_cli_payload',
             lambda source, **_kwargs: (
                 {'source': source} if source == 'data.json' else {'select': ['id']}
@@ -2121,7 +2122,7 @@ class TestValidateHandler:
     ) -> None:
         """Test that :func:`validate_handler` emits results with no target."""
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'resolve_cli_payload',
             lambda source, **_kwargs: (
                 {'source': source}
@@ -2159,7 +2160,7 @@ class TestValidateHandler:
     ) -> None:
         """Test that :func:`validate_handler` reports missing output data."""
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'resolve_cli_payload',
             lambda source, **_kwargs: (
                 {'source': source}
@@ -2204,7 +2205,7 @@ class TestValidateHandler:
             return [{'id': 1}]
 
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'resolve_cli_payload',
             _resolve_cli_payload,
         )
@@ -2236,7 +2237,7 @@ class TestValidateHandler:
                 return {'source': source}
             return {'id': {'required': True}}
 
-        monkeypatch.setattr(handlers._io, 'resolve_cli_payload', fake_resolve)
+        monkeypatch.setattr(handlers._input, 'resolve_cli_payload', fake_resolve)
         monkeypatch.setattr(
             dataops_mod,
             'validate',
@@ -2275,7 +2276,7 @@ class TestValidateHandler:
         Test that ``target='-'`` emits full validation output to STDOUT.
         """
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'resolve_cli_payload',
             lambda source, **_kwargs: (
                 {'source': source}
@@ -2320,7 +2321,7 @@ class TestValidateHandler:
     ) -> None:
         """Test that :func:`validate_handler` writes data to a target file."""
         monkeypatch.setattr(
-            handlers._io,
+            handlers._input,
             'resolve_cli_payload',
             lambda source, **_kwargs: (
                 {'source': source}
@@ -2344,7 +2345,7 @@ class TestValidateHandler:
             write_calls['params'] = (data, path, success_message)
             return True
 
-        monkeypatch.setattr(handlers._io, 'write_json_output', fake_write)
+        monkeypatch.setattr(handlers._output, 'write_json_output', fake_write)
 
         assert (
             handlers.validate_handler(
