@@ -289,7 +289,7 @@ def report_handler(
 
     Parameters
     ----------
-    group_by : {'day', 'job', 'status'}, optional
+    group_by : Literal['day', 'job', 'status'], optional
         The field by which to group the report. Default is 'job'.
     job : str | None, optional
         Optional job name filter. Default is ``None``.
