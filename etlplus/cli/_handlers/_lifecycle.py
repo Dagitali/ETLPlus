@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._handlers.lifecycle` module.
+:mod:`etlplus.cli._handlers._lifecycle` module.
 
 Lifecycle helpers shared by CLI handler implementations.
 """

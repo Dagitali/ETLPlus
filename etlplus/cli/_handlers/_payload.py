@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._handlers.payload` module.
+:mod:`etlplus.cli._handlers._payload` module.
 
 Payload-resolution helpers shared by CLI handler implementations.
 """

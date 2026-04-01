@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._handlers.output` module.
+:mod:`etlplus.cli._handlers._output` module.
 
 Output helpers shared by CLI handler implementations.
 """
@@ -16,7 +16,7 @@ from ...runtime import ReadinessReportBuilder
 from ...utils._types import JSONData
 from .. import _io
 from .._history import HistoryView
-from . import lifecycle as _lifecycle
+from . import _lifecycle
 
 # SECTION: EXPORTS ========================================================== #
 
