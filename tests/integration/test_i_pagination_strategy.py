@@ -32,8 +32,8 @@ import pytest
 
 import etlplus.api._request_manager as rm_mod
 from etlplus import Config
-from etlplus.cli import _handler_dataops as dataops_mod
 from etlplus.cli import main
+from etlplus.cli._handlers import dataops as dataops_mod
 
 from .conftest import FakeEndpointClientProtocol
 

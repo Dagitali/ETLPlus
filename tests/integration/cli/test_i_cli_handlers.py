@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from etlplus.cli import _handler_dataops as dataops_mod
-from etlplus.cli import _handler_run as run_mod
+from etlplus.cli._handlers import dataops as dataops_mod
+from etlplus.cli._handlers import run as run_mod
 
 from ...conftest import CaptureHandler
 
