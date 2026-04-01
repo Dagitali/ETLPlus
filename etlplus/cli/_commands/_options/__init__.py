@@ -26,6 +26,8 @@ from .history import HistoryTableOption
 from .history import HistoryUntilOption
 from .history import ReportGroupByOption
 from .history import RunIdOption
+from .init import InitDirectoryArgument
+from .init import InitForceOption
 from .resources import SourceArg
 from .resources import SourceFormatOption
 from .resources import SourceTypeOption
@@ -63,6 +65,8 @@ __all__ = [
     'HistoryStatusOption',
     'HistoryTableOption',
     'HistoryUntilOption',
+    'InitDirectoryArgument',
+    'InitForceOption',
     'JobOption',
     'JobsOption',
     'OperationsOption',
