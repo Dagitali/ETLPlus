@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._commands._option_history` module.
+:mod:`etlplus.cli._commands._options.history` module.
 
 History and report Typer option aliases for CLI command modules.
 """
@@ -11,14 +11,15 @@ from typing import Literal
 
 import typer
 
-from ._option_helpers import _typer_flag_option_kwargs
-from ._option_helpers import _typer_timestamp_option_kwargs
-from ._option_helpers import _typer_value_option_kwargs
+from .helpers import _typer_flag_option_kwargs
+from .helpers import _typer_timestamp_option_kwargs
+from .helpers import _typer_value_option_kwargs
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Types
     'HistoryFollowOption',
     'HistoryJsonOption',
     'HistoryLimitOption',

@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._commands._option_specs` module.
+:mod:`etlplus.cli._commands._options.specs` module.
 
 Inspection, render, and JSON-spec Typer option aliases for CLI commands.
 """
@@ -11,13 +11,14 @@ from typing import Literal
 
 import typer
 
-from ._option_helpers import _typer_flag_option_kwargs
-from ._option_helpers import _typer_value_option_kwargs
+from .helpers import _typer_flag_option_kwargs
+from .helpers import _typer_value_option_kwargs
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Types
     'JobsOption',
     'OperationsOption',
     'PipelinesOption',

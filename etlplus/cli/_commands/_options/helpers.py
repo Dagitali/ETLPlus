@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._commands._option_helpers` module.
+:mod:`etlplus.cli._commands._options.helpers` module.
 
 Shared Typer option helper functions for CLI command modules.
 """
@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from typing import Literal
 
-from ._types import DataConnectorContext
+from .._types import DataConnectorContext
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Functions
     '_typer_connector_option_kwargs',
     '_typer_flag_option_kwargs',
     '_typer_format_option_kwargs',

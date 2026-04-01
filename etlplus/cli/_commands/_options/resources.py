@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.cli._commands._option_resources` module.
+:mod:`etlplus.cli._commands._options.resources` module.
 
 Source and target Typer option aliases for CLI command modules.
 """
@@ -10,15 +10,16 @@ from typing import Annotated
 
 import typer
 
-from ...file import FileFormat
-from ._option_helpers import _typer_connector_option_kwargs
-from ._option_helpers import _typer_format_option_kwargs
-from ._option_helpers import _typer_resource_argument_kwargs
+from ....file import FileFormat
+from .helpers import _typer_connector_option_kwargs
+from .helpers import _typer_format_option_kwargs
+from .helpers import _typer_resource_argument_kwargs
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Types
     'SourceArg',
     'SourceFormatOption',
     'SourceTypeOption',
