@@ -11,11 +11,11 @@ from typing import Any
 from typing import Literal
 from typing import cast
 
-from .._history import HISTORY_TABLE_COLUMNS
-from .._history import REPORT_TABLE_COLUMNS
-from .._history import HistoryReportBuilder
-from .._history import HistoryView
 from . import _output
+from ._history import HISTORY_TABLE_COLUMNS
+from ._history import REPORT_TABLE_COLUMNS
+from ._history import HistoryReportBuilder
+from ._history import HistoryView
 
 # SECTION: EXPORTS ========================================================== #
 
