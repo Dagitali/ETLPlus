@@ -337,7 +337,7 @@ def resolve_resource(
         provided).
     default_value : str, optional
         The default value to use when *value* is ``None`` (defaults to '-',
-        which is a common CLI convention for standard input/output).
+        which is a common CLI convention for STDIN/STDOUT).
 
     Returns
     -------

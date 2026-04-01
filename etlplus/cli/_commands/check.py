@@ -61,7 +61,7 @@ def check_cmd(
     ctx : typer.Context
         Typer context.
     config : CheckConfigOption, optional
-        Path to YAML/JSON config file.
+        Path to the YAML/JSON config file.
     jobs : JobsOption, optional
         Whether to inspect job definitions.
     pipelines : PipelinesOption, optional
@@ -71,7 +71,7 @@ def check_cmd(
     sources : SourcesOption, optional
         Whether to inspect source definitions.
     summary : SummaryOption, optional
-        Whether to print a summary of the configuration.
+        Whether to print a configuration summary.
     targets : TargetsOption, optional
         Whether to inspect target definitions.
     transforms : TransformsOption, optional
@@ -80,8 +80,7 @@ def check_cmd(
     Returns
     -------
     int
-        Exit code (0 if checks passed, non-zero if any checks failed).
-
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     inspection_requested = any(
         (jobs, pipelines, sources, summary, targets, transforms),

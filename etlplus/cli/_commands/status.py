@@ -41,14 +41,14 @@ def status_cmd(
     ctx : typer.Context
         Typer context.
     job : JobOption, optional
-        Specific job to inspect (defaults to the latest job).
+        Specific job to inspect. Defaults to ``None`` for the latest job).
     run_id : RunIdOption, optional
-        Specific run ID to inspect (defaults to the latest run).
+        Specific run ID to inspect. Defaults to ``None`` for the latest run).
 
     Returns
     -------
     int
-        Exit code (0 if checks passed, non-zero if any checks failed).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     return call_handler(
         status_handler,

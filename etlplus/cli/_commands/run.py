@@ -46,18 +46,18 @@ def run_cmd(
     ctx : typer.Context
         Typer context.
     config : ConfigOption
-        Path to YAML/JSON config file.
+        Path to the YAML/JSON config file.
     job : JobOption, optional
-        Specific job to execute (defaults to all jobs in the config).
+        Job name to execute.
     pipeline : PipelineOption, optional
-        Specific pipeline to execute (defaults to all pipelines in the config).
+        Pipeline name to execute when *job* is not provided.
     event_format : StructuredEventFormatOption, optional
-        Format for structured events (defaults to None).
+        Structured event output format.
 
     Returns
     -------
     int
-        Exit code (0 if checks passed, non-zero if any checks failed).
+        CLI exit code indicating success (``0``) or failure (non-zero).
     """
     config = require_value(
         config,

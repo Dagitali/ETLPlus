@@ -126,7 +126,7 @@ def extract_handler(
     Parameters
     ----------
     source : str
-        Source path/URI, connector reference, or ``-`` for STDIN.
+        Source path, URI/URL, connector reference, or ``-`` for STDIN.
     source_type : str
         Source connector type, such as ``file``, ``database``, or ``api``.
     target : str | None, optional
@@ -204,11 +204,11 @@ def load_handler(
     Parameters
     ----------
     source : str
-        Source path/URI, connector reference, or ``-`` for STDIN.
+        Source path, URI/URL, connector reference, or ``-`` for STDIN.
     target_type : str
         Target connector type such as ``file``, ``database``, or ``api``.
     target : str
-        Target path/URI, connector reference, or ``-`` for STDOUT.
+        Target path, URI/URL, connector reference, or ``-`` for STDOUT.
     source_format : str | None, optional
         Optional format hint for the source payload. Default is ``None``.
     target_format : str | None, optional
@@ -307,7 +307,7 @@ def transform_handler(
     Parameters
     ----------
     source : str
-        Source path/URI, connector reference, or ``-`` for STDIN.
+        Source path, URI/URL, connector reference, or ``-`` for STDIN.
     operations : JSONData | str
         Transformation operations to apply to the source payload.
     target : str | None, optional
@@ -408,7 +408,7 @@ def validate_handler(
     Parameters
     ----------
     source : str
-        Source path/URI, connector reference, or ``-`` for STDIN.
+        Source path, URI/URL, connector reference, or ``-`` for STDIN.
     rules : JSONData | str
         Validation rules to apply to the source payload.
     target : str | None, optional

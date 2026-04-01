@@ -46,19 +46,18 @@ def extract_cmd(
     ctx : typer.Context
         Typer context.
     source : SourceArg, optional
-        Source to extract data from.
+        Source path, URI/URL, JSON payload, or ``-`` for STDIN.
     source_format : SourceFormatOption, optional
-        Format of the source data.
+        Source payload format override.
     source_type : SourceTypeOption, optional
-        Type of the source.
+        Source connector type override.
     event_format : StructuredEventFormatOption, optional
-        Format of structured events.
+        Structured event output format.
 
     Returns
     -------
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
-
     """
     state = ensure_state(ctx)
     resolved_source = resolve_resource(
@@ -77,6 +76,6 @@ def extract_cmd(
         source=resolved_source.value,
         source_type=resolved_source.resource_type,
         source_format=resolved_source.format_hint,
-        format_explicit=resolved_source.format_hint is not None,
         event_format=event_format,
+        format_explicit=resolved_source.format_hint is not None,
     )
