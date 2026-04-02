@@ -118,9 +118,12 @@ release.
   enum/mixin base abstractions are exported from `etlplus.utils`, while utility type aliases stay
   internal on an underscore-prefixed module.
 - The documented stable CLI surface keeps readiness under `check --readiness`.
+- The documented stable CLI surface now also includes the `init` starter-project scaffold command.
 - Runtime execution hygiene progress on the current branch includes:
   - Shared runtime logging policy and config precedence documentation
   - `check --readiness` runtime/config checks with optional dependency and connector-gap detection
+  - Opt-in strict config diagnostics via `check --strict` and `check --readiness --strict` for
+    malformed entries and broken references hidden by the tolerant loader
   - Stable `etlplus.event.v1` structured execution events on STDERR for supported execution
     commands: `extract`, `load`, `run`, `transform`, and `validate`
   - Local run-history persistence keyed by `run_id` for `etlplus run`, backed by SQLite by default
