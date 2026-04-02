@@ -7,7 +7,7 @@ Config inspection helpers for the CLI facade.
 from __future__ import annotations
 
 from ... import Config
-from ...runtime import ReadinessReportBuilder
+from ...runtime._readiness import ReadinessReportBuilder
 from . import _output
 from . import _summary
 
@@ -30,6 +30,7 @@ def check_handler(
     pipelines: bool = False,
     readiness: bool = False,
     sources: bool = False,
+    strict: bool = False,
     summary: bool = False,
     targets: bool = False,
     transforms: bool = False,
@@ -53,6 +54,8 @@ def check_handler(
         ``False``.
     sources : bool, optional
         Whether to print source specs. Default is ``False``.
+    strict : bool, optional
+        Whether to enable strict config diagnostics. Default is ``False``.
     summary : bool, optional
         Whether to print a summary of the configuration instead of spec
         sections. Default is ``False``.
@@ -77,7 +80,14 @@ def check_handler(
         If the config file is required but not provided.
     """
     if readiness:
-        report = ReadinessReportBuilder.build(config_path=config)
+        report = (
+            ReadinessReportBuilder.build(
+                config_path=config,
+                strict=True,
+            )
+            if strict
+            else ReadinessReportBuilder.build(config_path=config)
+        )
         return _output.emit_json_payload(
             report,
             pretty=pretty,
@@ -85,6 +95,15 @@ def check_handler(
         )
     if config is None:
         raise ValueError('config is required unless readiness-only mode is used')
+
+    if strict:
+        report = ReadinessReportBuilder.strict_config_report(config_path=config)
+        if report.get('status') == 'error':
+            return _output.emit_json_payload(
+                report,
+                pretty=pretty,
+                exit_code=1,
+            )
 
     cfg = Config.from_yaml(config, substitute=substitute)
     payload = (
