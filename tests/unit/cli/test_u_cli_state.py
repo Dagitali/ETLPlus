@@ -24,6 +24,7 @@ import etlplus.cli._commands.validate as validate_mod
 from ...conftest import CaptureHandler
 from .conftest import InvokeCli
 from .conftest import assert_mapping_contains
+from .conftest import strip_ansi
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -268,7 +269,7 @@ class TestCliHelp:
         """Test that the global ``--help`` flag builds the full command tree."""
         result = invoke_cli('--help')
         assert result.exit_code == 0
-        assert 'init' in result.stdout
+        assert 'init' in strip_ansi(result.stdout)
 
     def test_init_help_prints_path_argument_and_force_option(
         self,
@@ -276,15 +277,16 @@ class TestCliHelp:
     ) -> None:
         """Test that ``init --help`` preserves the documented CLI surface."""
         result = invoke_cli('init', '--help')
+        stdout = strip_ansi(result.stdout)
         assert result.exit_code == 0
-        assert 'PATH' in result.stdout
-        assert '--force' in result.stdout
+        assert 'PATH' in stdout
+        assert '--force' in stdout
 
     def test_no_args_prints_help(self, invoke_cli: InvokeCli) -> None:
         """Test that running with no arguments prints help text."""
         result = invoke_cli()
         assert result.exit_code == 0
-        assert 'ETLPlus' in result.stdout
+        assert 'ETLPlus' in strip_ansi(result.stdout)
 
 
 class TestCliVersionFlag:
@@ -294,7 +296,7 @@ class TestCliVersionFlag:
         """Test that command option ``--version`` exits successfully."""
         result = invoke_cli('--version')
         assert result.exit_code == 0
-        assert etlplus.__version__ in result.stdout
+        assert etlplus.__version__ in strip_ansi(result.stdout)
 
 
 class TestInferResourceType:

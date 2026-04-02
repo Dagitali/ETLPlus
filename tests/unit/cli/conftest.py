@@ -12,6 +12,7 @@ Notes
 from __future__ import annotations
 
 import json
+import re
 import types
 from collections.abc import Callable
 from collections.abc import Mapping
@@ -41,6 +42,7 @@ pytestmark = pytest.mark.unit
 
 
 CSV_TEXT: Final[str] = 'a,b\n1,2\n3,4\n'
+_ANSI_ESCAPE_PATTERN: Final[re.Pattern[str]] = re.compile(r'\x1b\[[0-9;]*m')
 
 type AssertCapturedText = Callable[[str], str]
 type CaptureIo = dict[str, list[tuple[tuple[object, ...], dict[str, object]]]]
@@ -128,6 +130,11 @@ def assert_mapping_contains(
     """
     for key, value in expected.items():
         assert actual[key] == value
+
+
+def strip_ansi(text: str) -> str:
+    """Return *text* with ANSI color/style escape sequences removed."""
+    return _ANSI_ESCAPE_PATTERN.sub('', text)
 
 
 # SECTION: HELPERS ========================================================= #
