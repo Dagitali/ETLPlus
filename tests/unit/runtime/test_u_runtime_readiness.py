@@ -6,6 +6,7 @@ Unit tests for :mod:`etlplus.runtime._readiness`.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -52,6 +53,50 @@ class TestReadinessReportBuilder:
         actual = readiness_mod.ReadinessReportBuilder.build(env={})
 
         assert actual == expected
+
+    def test_build_passes_strict_flag_through_to_config_checks(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Build should propagate strict mode into config checks."""
+        captured: dict[str, object] = {}
+
+        def _config_checks(
+            config_path: str,
+            *,
+            env: Mapping[str, str] | None,
+            strict: bool = False,
+            include_runtime_checks: bool = True,
+        ) -> list[dict[str, object]]:
+            captured.update(
+                {
+                    'config_path': config_path,
+                    'env': env,
+                    'strict': strict,
+                    'include_runtime_checks': include_runtime_checks,
+                },
+            )
+            return [{'name': 'config-file', 'status': 'ok'}]
+
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'config_checks',
+            _config_checks,
+        )
+
+        report = readiness_mod.ReadinessReportBuilder.build(
+            config_path='pipeline.yml',
+            env={'MODE': 'test'},
+            strict=True,
+        )
+
+        assert report['status'] == 'ok'
+        assert captured == {
+            'config_path': 'pipeline.yml',
+            'env': {'MODE': 'test'},
+            'strict': True,
+            'include_runtime_checks': True,
+        }
 
     def test_build_wraps_config_check_exceptions(
         self,
@@ -119,6 +164,56 @@ class TestReadinessReportBuilder:
             'SET_TOKEN',
             'TUPLE_TOKEN',
         }
+
+    def test_config_checks_can_skip_runtime_checks_without_strict_mode(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Config checks should return early when runtime checks are disabled."""
+        config_path = tmp_path / 'pipeline.yml'
+        config_path.write_text('name: pipeline\n', encoding='utf-8')
+        runtime_called = {'value': False}
+
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'load_raw_config',
+            lambda _path: {'name': 'pipeline'},
+        )
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'resolve_config_context',
+            lambda raw, env=None: readiness_mod._ResolvedConfigContext(
+                raw=raw,
+                effective_env={} if env is None else dict(env),
+                unresolved_tokens=[],
+                resolved_raw=raw,
+                resolved_cfg=cast(Any, _cfg()),
+            ),
+        )
+
+        def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
+            runtime_called['value'] = True
+            return [{'name': 'connector-readiness', 'status': 'ok'}]
+
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'connector_readiness_checks',
+            _connector_readiness_checks,
+        )
+
+        checks = readiness_mod.ReadinessReportBuilder.config_checks(
+            str(config_path),
+            env={},
+            include_runtime_checks=False,
+        )
+
+        assert runtime_called['value'] is False
+        assert [check['name'] for check in checks] == [
+            'config-file',
+            'config-parse',
+            'config-substitution',
+        ]
 
     def test_config_checks_returns_missing_file_error(
         self,
@@ -341,47 +436,65 @@ class TestReadinessReportBuilder:
             for issue in structure_check['issues']
         )
 
-    def test_strict_config_issue_rows_report_duplicates_and_unknown_refs(
+    def test_config_checks_strict_success_adds_config_structure_ok_row(
         self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
     ) -> None:
-        """Strict issue rows should surface hidden connector/job problems."""
-        issues = readiness_mod.ReadinessReportBuilder.strict_config_issue_rows(
-            raw={
-                'sources': [
-                    {
-                        'name': 'src',
-                        'type': 'file',
-                        'format': 'json',
-                        'path': 'input.json',
-                    },
-                    {'name': 'src', 'type': 'file'},
-                ],
-                'targets': [
-                    {
-                        'name': 'dest',
-                        'type': 'file',
-                        'format': 'json',
-                        'path': 'out.json',
-                    },
-                ],
-                'transforms': {},
-                'jobs': [
-                    {
-                        'name': 'publish',
-                        'extract': {'source': 'src'},
-                        'transform': {'pipeline': 'missing-pipeline'},
-                        'load': {'target': 'dest'},
-                    },
-                ],
-            },
+        """Strict config checks should emit an explicit ok row when clean."""
+        config_path = tmp_path / 'pipeline.yml'
+        config_path.write_text('name: pipeline\n', encoding='utf-8')
+        resolved_cfg = _cfg()
+
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'load_raw_config',
+            lambda _path: {'name': 'pipeline'},
+        )
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'resolve_config_context',
+            lambda raw, env=None: readiness_mod._ResolvedConfigContext(
+                raw=raw,
+                effective_env={} if env is None else dict(env),
+                unresolved_tokens=[],
+                resolved_raw=raw,
+                resolved_cfg=cast(Any, resolved_cfg),
+            ),
+        )
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'strict_config_issue_rows',
+            lambda *, raw: [],
+        )
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'connector_readiness_checks',
+            lambda _cfg: [{'name': 'connector-readiness', 'status': 'ok'}],
+        )
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'provider_environment_checks',
+            lambda *, cfg, env: [{'name': 'provider-environment', 'status': 'ok'}],
+        )
+
+        checks = readiness_mod.ReadinessReportBuilder.config_checks(
+            str(config_path),
+            env={},
+            strict=True,
         )
 
         assert any(
-            issue['issue'] == 'duplicate connector name: src' for issue in issues
-        )
-        assert any(
-            issue['issue'] == 'unknown transform reference: missing-pipeline'
-            for issue in issues
+            check
+            == {
+                'message': (
+                    'Strict config validation found no malformed or '
+                    'inconsistent configuration entries.'
+                ),
+                'name': 'config-structure',
+                'status': 'ok',
+            }
+            for check in checks
         )
 
     def test_connector_gap_rows_cover_missing_required_connector_fields(
@@ -513,7 +626,7 @@ class TestReadinessReportBuilder:
 
         rows = readiness_mod.ReadinessReportBuilder.connector_gap_rows(cast(Any, cfg))
 
-        assert rows == []
+        assert not rows
 
     def test_connector_gap_rows_tolerate_unexpected_coerced_type_values(
         self,
@@ -550,7 +663,7 @@ class TestReadinessReportBuilder:
 
         rows = readiness_mod.ReadinessReportBuilder.connector_gap_rows(cast(Any, cfg))
 
-        assert rows == []
+        assert not rows
 
     def test_connector_readiness_checks_report_all_ok_states(self) -> None:
         """Test readiness rows when gaps and optional dependency gaps are absent."""
@@ -825,7 +938,7 @@ class TestReadinessReportBuilder:
             cfg=cast(Any, cfg),
         )
 
-        assert rows == []
+        assert not rows
 
     @pytest.mark.parametrize(
         ('available_modules', 'expected'),
@@ -1020,7 +1133,7 @@ class TestReadinessReportBuilder:
             },
         )
 
-        assert rows == []
+        assert not rows
 
     def test_provider_environment_rows_skip_non_string_paths_and_warn_for_azure(
         self,
@@ -1086,7 +1199,407 @@ class TestReadinessReportBuilder:
             env={'AWS_PROFILE': 'default'},
         )
 
-        assert rows == []
+        assert not rows
+
+    def test_strict_config_issue_rows_report_duplicates_and_unknown_refs(
+        self,
+    ) -> None:
+        """Strict issue rows should surface hidden connector/job problems."""
+        issues = readiness_mod.ReadinessReportBuilder.strict_config_issue_rows(
+            raw={
+                'sources': [
+                    {
+                        'name': 'src',
+                        'type': 'file',
+                        'format': 'json',
+                        'path': 'input.json',
+                    },
+                    {'name': 'src', 'type': 'file'},
+                ],
+                'targets': [
+                    {
+                        'name': 'dest',
+                        'type': 'file',
+                        'format': 'json',
+                        'path': 'out.json',
+                    },
+                ],
+                'transforms': {},
+                'jobs': [
+                    {
+                        'name': 'publish',
+                        'extract': {'source': 'src'},
+                        'transform': {'pipeline': 'missing-pipeline'},
+                        'load': {'target': 'dest'},
+                    },
+                ],
+            },
+        )
+
+        assert any(
+            issue['issue'] == 'duplicate connector name: src' for issue in issues
+        )
+        assert any(
+            issue['issue'] == 'unknown transform reference: missing-pipeline'
+            for issue in issues
+        )
+
+    def test_strict_config_report_wraps_config_checks_without_runtime_rows(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Strict report wrapper should force strict mode and omit runtime checks."""
+        captured: dict[str, object] = {}
+
+        def _config_checks(
+            config_path: str,
+            *,
+            env: Mapping[str, str] | None,
+            strict: bool = False,
+            include_runtime_checks: bool = True,
+        ) -> list[dict[str, object]]:
+            captured.update(
+                {
+                    'config_path': config_path,
+                    'env': env,
+                    'strict': strict,
+                    'include_runtime_checks': include_runtime_checks,
+                },
+            )
+            return [{'name': 'config-structure', 'status': 'ok'}]
+
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'config_checks',
+            _config_checks,
+        )
+
+        report = readiness_mod.ReadinessReportBuilder.strict_config_report(
+            config_path='pipeline.yml',
+            env={'MODE': 'test'},
+        )
+
+        assert report == {
+            'checks': [{'name': 'config-structure', 'status': 'ok'}],
+            'etlplus_version': readiness_mod.__version__,
+            'status': 'ok',
+        }
+        assert captured == {
+            'config_path': 'pipeline.yml',
+            'env': {'MODE': 'test'},
+            'strict': True,
+            'include_runtime_checks': False,
+        }
+
+    def test_strict_connector_names_allow_absent_guidance_for_non_string_type_values(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Strict connector validation should allow non-string raw types through."""
+        issues: list[dict[str, Any]] = []
+
+        monkeypatch.setattr(
+            readiness_mod,
+            'parse_connector',
+            lambda entry: (_ for _ in ()).throw(TypeError('unsupported connector')),
+        )
+
+        names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
+            raw={'sources': [{'type': 1}]},
+            section='sources',
+            issues=issues,
+        )
+
+        assert names == set()
+        assert issues == [
+            {
+                'guidance': None,
+                'index': 0,
+                'issue': 'invalid connector entry',
+                'message': 'unsupported connector',
+                'section': 'sources',
+            },
+        ]
+
+    def test_strict_connector_names_report_invalid_section_type(
+        self,
+    ) -> None:
+        """Strict connector validation should reject non-list top-level sections."""
+        issues: list[dict[str, Any]] = []
+
+        names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
+            raw={'sources': {'name': 'not-a-list'}},
+            section='sources',
+            issues=issues,
+        )
+
+        assert names is None
+        assert issues == [
+            {
+                'expected': 'list',
+                'guidance': 'Define sources as a YAML list of connector mappings.',
+                'issue': 'invalid section type',
+                'observed_type': 'dict',
+                'section': 'sources',
+            },
+        ]
+
+    def test_strict_connector_names_report_missing_type_guidance_on_parse_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Strict connector validation should suggest valid types when missing."""
+        issues: list[dict[str, Any]] = []
+
+        monkeypatch.setattr(
+            readiness_mod,
+            'parse_connector',
+            lambda entry: (_ for _ in ()).throw(TypeError('missing connector type')),
+        )
+
+        names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
+            raw={'sources': [{}]},
+            section='sources',
+            issues=issues,
+        )
+
+        assert names == set()
+        assert issues == [
+            {
+                'guidance': 'Set "type" to one of: api, database, file.',
+                'index': 0,
+                'issue': 'invalid connector entry',
+                'message': 'missing connector type',
+                'section': 'sources',
+            },
+        ]
+
+    def test_strict_connector_names_report_parse_errors_and_blank_names(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Strict connector validation should surface parse errors and blanks."""
+        issues: list[dict[str, Any]] = []
+
+        def _parse_connector(entry: Mapping[str, object]) -> object:
+            if entry.get('type') == 'weird':
+                raise TypeError('bad connector')
+            return SimpleNamespace(name='   ')
+
+        monkeypatch.setattr(readiness_mod, 'parse_connector', _parse_connector)
+
+        names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
+            raw={
+                'sources': [
+                    {'type': 'weird'},
+                    {'type': 'file'},
+                ],
+            },
+            section='sources',
+            issues=issues,
+        )
+
+        assert names == set()
+        assert issues == [
+            {
+                'guidance': (
+                    'Use one of the supported connector types: api, database, file.'
+                ),
+                'index': 0,
+                'issue': 'invalid connector entry',
+                'message': 'bad connector',
+                'section': 'sources',
+            },
+            {
+                'guidance': 'Set "name" to a non-empty string.',
+                'index': 1,
+                'issue': 'blank connector name',
+                'section': 'sources',
+            },
+        ]
+
+    def test_strict_job_issue_rows_cover_non_list_invalid_entries_and_duplicates(
+        self,
+    ) -> None:
+        """Strict job validation should cover malformed top-level and entry cases."""
+        issues: list[dict[str, Any]] = []
+
+        readiness_mod.ReadinessReportBuilder.strict_job_issue_rows(
+            raw={
+                'jobs': [
+                    'not-a-mapping',
+                    {
+                        'name': 'dup',
+                        'extract': {'source': 'src'},
+                        'load': {'target': 'dst'},
+                    },
+                    {
+                        'name': 'dup',
+                        'extract': {'source': 'src'},
+                        'load': {'target': 'dst'},
+                    },
+                    {'extract': {'source': 'src'}, 'load': {'target': 'dst'}},
+                ],
+            },
+            issues=issues,
+            source_names={'src'},
+            target_names={'dst'},
+            transform_names=set(),
+            validation_names=set(),
+        )
+
+        assert any(issue['issue'] == 'invalid job entry' for issue in issues)
+        assert any(issue['issue'] == 'duplicate job name: dup' for issue in issues)
+        assert any(issue['issue'] == 'missing job name' for issue in issues)
+
+    def test_strict_job_issue_rows_reject_non_list_jobs_section(
+        self,
+    ) -> None:
+        """Strict job validation should reject non-list jobs sections."""
+        issues: list[dict[str, Any]] = []
+
+        readiness_mod.ReadinessReportBuilder.strict_job_issue_rows(
+            raw={'jobs': {'name': 'publish'}},
+            issues=issues,
+            source_names=set(),
+            target_names=set(),
+            transform_names=set(),
+            validation_names=set(),
+        )
+
+        assert issues == [
+            {
+                'expected': 'list',
+                'guidance': 'Define jobs as a YAML list of job mappings.',
+                'issue': 'invalid section type',
+                'observed_type': 'dict',
+                'section': 'jobs',
+            },
+        ]
+
+    def test_strict_job_issue_rows_return_when_jobs_section_is_missing(
+        self,
+    ) -> None:
+        """Strict job validation should do nothing when jobs are absent."""
+        issues: list[dict[str, Any]] = []
+
+        readiness_mod.ReadinessReportBuilder.strict_job_issue_rows(
+            raw={},
+            issues=issues,
+            source_names=set(),
+            target_names=set(),
+            transform_names=set(),
+            validation_names=set(),
+        )
+
+        assert not issues
+
+    def test_strict_job_ref_issue_reports_missing_required_section(
+        self,
+    ) -> None:
+        """Strict job refs should flag missing required extract/load sections."""
+        issues: list[dict[str, Any]] = []
+
+        readiness_mod.ReadinessReportBuilder.strict_job_ref_issue(
+            entry={},
+            field='extract',
+            index=0,
+            issues=issues,
+            job_name='publish',
+            required=True,
+            required_key='source',
+            section_names={'src'},
+            section_label='sources',
+        )
+
+        assert issues == [
+            {
+                'field': 'extract',
+                'guidance': (
+                    'Add a extract mapping with "source" set to a configured '
+                    'resource name.'
+                ),
+                'index': 0,
+                'issue': 'missing extract section',
+                'job': 'publish',
+                'section': 'jobs',
+            },
+        ]
+
+    def test_strict_job_ref_issue_reports_invalid_and_missing_reference_values(
+        self,
+    ) -> None:
+        """Strict job refs should flag bad section types and missing names."""
+        invalid_issues: list[dict[str, Any]] = []
+        missing_issues: list[dict[str, Any]] = []
+
+        readiness_mod.ReadinessReportBuilder.strict_job_ref_issue(
+            entry={'extract': 'src'},
+            field='extract',
+            index=1,
+            issues=invalid_issues,
+            job_name='publish',
+            required=True,
+            required_key='source',
+            section_names={'src'},
+            section_label='sources',
+        )
+        readiness_mod.ReadinessReportBuilder.strict_job_ref_issue(
+            entry={'transform': {'pipeline': '   '}},
+            field='transform',
+            index=2,
+            issues=missing_issues,
+            job_name=None,
+            required=False,
+            required_key='pipeline',
+            section_names={'trim'},
+            section_label='transforms',
+        )
+
+        assert invalid_issues == [
+            {
+                'field': 'extract',
+                'guidance': 'Define extract as a mapping with a "source" string field.',
+                'index': 1,
+                'issue': 'invalid extract section',
+                'job': 'publish',
+                'observed_type': 'str',
+                'section': 'jobs',
+            },
+        ]
+        assert missing_issues == [
+            {
+                'field': 'transform.pipeline',
+                'guidance': 'Set transform.pipeline to a configured resource name.',
+                'index': 2,
+                'issue': 'missing transform.pipeline',
+                'section': 'jobs',
+            },
+        ]
+
+    def test_strict_named_section_names_reject_non_mapping_sections(
+        self,
+    ) -> None:
+        """Strict named section validation should reject non-mapping values."""
+        issues: list[dict[str, Any]] = []
+
+        names = readiness_mod.ReadinessReportBuilder.strict_named_section_names(
+            raw={'transforms': ['trim']},
+            section='transforms',
+            issues=issues,
+            guidance='Define transforms as a mapping keyed by pipeline name.',
+        )
+
+        assert names is None
+        assert issues == [
+            {
+                'expected': 'mapping',
+                'guidance': 'Define transforms as a mapping keyed by pipeline name.',
+                'issue': 'invalid section type',
+                'observed_type': 'list',
+                'section': 'transforms',
+            },
+        ]
 
     def test_supported_python_check_reports_out_of_range_version(
         self,
