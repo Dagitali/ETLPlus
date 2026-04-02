@@ -45,10 +45,7 @@ def _next_steps(
         [
             'etlplus check --config pipeline.yml --jobs',
             'etlplus check --readiness --config pipeline.yml --strict',
-            (
-                'etlplus run --config pipeline.yml '
-                f'--job {_DEFAULT_JOB_NAME}'
-            ),
+            (f'etlplus run --config pipeline.yml --job {_DEFAULT_JOB_NAME}'),
         ],
     )
     return steps
@@ -56,8 +53,9 @@ def _next_steps(
 
 def _pipeline_text() -> str:
     """Return the starter pipeline YAML scaffold."""
-    return dedent(
-        f"""
+    return (
+        dedent(
+            f"""
         name: Starter Pipeline
         version: "1"
 
@@ -90,18 +88,23 @@ def _pipeline_text() -> str:
             load:
               target: customers_json
         """,
-    ).strip() + '\n'
+        ).strip()
+        + '\n'
+    )
 
 
 def _sample_csv_text() -> str:
     """Return starter CSV input content."""
-    return dedent(
-        """
+    return (
+        dedent(
+            """
         name,email,status
         Alice Example,alice@example.com,active
         Bob Example,bob@example.com,inactive
         """,
-    ).strip() + '\n'
+        ).strip()
+        + '\n'
+    )
 
 
 def _write_text_file(
