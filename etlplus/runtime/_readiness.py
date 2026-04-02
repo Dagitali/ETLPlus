@@ -1159,8 +1159,7 @@ class ReadinessReportBuilder:
         value = entry.get(field)
         base_issue: dict[str, Any] = {
             'field': (
-                field if field in {'extract', 'load'}
-                else f'{field}.{required_key}'
+                field if field in {'extract', 'load'} else f'{field}.{required_key}'
             ),
             'index': index,
             'section': 'jobs',
@@ -1203,8 +1202,7 @@ class ReadinessReportBuilder:
                 base_issue
                 | {
                     'guidance': (
-                        f'Set {field}.{required_key} to a configured '
-                        'resource name.'
+                        f'Set {field}.{required_key} to a configured resource name.'
                     ),
                     'issue': f'missing {field}.{required_key}',
                 },
@@ -1219,9 +1217,7 @@ class ReadinessReportBuilder:
                         f'Define "{ref_name}" under top-level "{section_label}" '
                         f'or update {field}.{required_key}.'
                     ),
-                    'issue': (
-                        f'unknown {section_label[:-1]} reference: {ref_name}'
-                    ),
+                    'issue': (f'unknown {section_label[:-1]} reference: {ref_name}'),
                 },
             )
 
