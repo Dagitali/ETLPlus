@@ -220,6 +220,35 @@ class TestCheckHandler:
             pretty=True,
         )
 
+    def test_strict_branch_falls_through_to_config_load_when_report_is_ok(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        dummy_cfg: Config,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Strict check mode should continue into config loading on success."""
+        monkeypatch.setattr(
+            handlers.ReadinessReportBuilder,
+            'strict_config_report',
+            lambda config_path: {
+                'checks': [{'name': 'config-structure', 'status': 'ok'}],
+                'status': 'ok',
+            },
+        )
+        monkeypatch.setattr(
+            handlers.Config,
+            'from_yaml',
+            lambda path, substitute: dummy_cfg,
+        )
+        monkeypatch.setattr(
+            check_mod._summary,
+            'check_sections',
+            lambda _cfg, **_kwargs: {'jobs': ['j1']},
+        )
+
+        assert handlers.check_handler(config='cfg.yml', strict=True) == 0
+        assert_emit_json(capture_io, {'jobs': ['j1']}, pretty=True)
+
     def test_summary_branch_uses_pipeline_summary_with_requested_pretty_flag(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -256,6 +285,71 @@ class TestCheckHandler:
 class TestInitHandler:
     """Unit tests for :func:`init_handler`."""
 
+    def test_overwrites_existing_scaffold_when_force_is_true(
+        self,
+        tmp_path: Path,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Init handler should overwrite scaffold files when force is enabled."""
+        project_dir = tmp_path / 'starter'
+        data_dir = project_dir / 'data'
+        data_dir.mkdir(parents=True)
+        (project_dir / 'pipeline.yml').write_text('name: old\n', encoding='utf-8')
+        (data_dir / 'customers.csv').write_text('old,data\n', encoding='utf-8')
+
+        assert handlers.init_handler(directory=str(project_dir), force=True) == 0
+        assert 'Starter Pipeline' in (project_dir / 'pipeline.yml').read_text(
+            encoding='utf-8',
+        )
+        assert 'Alice Example' in (data_dir / 'customers.csv').read_text(
+            encoding='utf-8',
+        )
+        assert_emit_json(
+            capture_io,
+            cast(dict[str, Any], capture_io['emit_json'][0][0][0]),
+            pretty=True,
+        )
+
+    def test_refuses_to_overwrite_existing_scaffold_without_force(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Init handler should require force before overwriting scaffold files."""
+        project_dir = tmp_path / 'starter'
+        project_dir.mkdir()
+        (project_dir / 'pipeline.yml').write_text('name: existing\n', encoding='utf-8')
+
+        with pytest.raises(ValueError, match='Scaffold file already exists'):
+            handlers.init_handler(directory=str(project_dir))
+
+    def test_rejects_target_path_when_directory_argument_is_a_file(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Init handler should reject a target path that already points to a file."""
+        file_path = tmp_path / 'starter'
+        file_path.write_text('not-a-directory\n', encoding='utf-8')
+
+        with pytest.raises(ValueError, match='Init target must be a directory'):
+            handlers.init_handler(directory=str(file_path))
+
+    @pytest.mark.parametrize('conflicting_dir', ['data', 'temp'])
+    def test_rejects_existing_file_where_scaffold_directory_is_required(
+        self,
+        tmp_path: Path,
+        conflicting_dir: str,
+    ) -> None:
+        """Init handler should reject files where scaffold directories are needed."""
+        project_dir = tmp_path / 'starter'
+        project_dir.mkdir()
+        (project_dir / conflicting_dir).write_text('conflict\n', encoding='utf-8')
+
+        with pytest.raises(
+            ValueError,
+            match='Init target requires a directory but found a file',
+        ):
+            handlers.init_handler(directory=str(project_dir))
+
     def test_scaffolds_starter_files(
         self,
         tmp_path: Path,
@@ -271,17 +365,43 @@ class TestInitHandler:
         assert payload['status'] == 'ok'
         assert payload['job'] == 'file_to_file_customers'
 
-    def test_refuses_to_overwrite_existing_scaffold_without_force(
+
+class TestInitHandlerInternalHelpers:
+    """Unit tests for internal helper functions in :mod:`etlplus.cli._handlers.init`."""
+
+    def test_next_steps_omits_cd_when_root_matches_current_working_directory(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Next-step suggestions should omit cd when already in the target root."""
+        monkeypatch.chdir(tmp_path)
+
+        steps = init_mod._next_steps(tmp_path)
+
+        assert steps == [
+            'etlplus check --config pipeline.yml --jobs',
+            'etlplus check --readiness --config pipeline.yml --strict',
+            'etlplus run --config pipeline.yml --job file_to_file_customers',
+        ]
+
+    def test_write_text_file_rejects_directory_targets(
         self,
         tmp_path: Path,
     ) -> None:
-        """Init handler should require force before overwriting scaffold files."""
-        project_dir = tmp_path / 'starter'
-        project_dir.mkdir()
-        (project_dir / 'pipeline.yml').write_text('name: existing\n', encoding='utf-8')
+        """Direct scaffold file writes should reject directory targets."""
+        target_dir = tmp_path / 'pipeline.yml'
+        target_dir.mkdir()
 
-        with pytest.raises(ValueError, match='Scaffold file already exists'):
-            handlers.init_handler(directory=str(project_dir))
+        with pytest.raises(
+            ValueError,
+            match='Cannot write scaffold file over directory',
+        ):
+            init_mod._write_text_file(
+                target_dir,
+                'payload\n',
+                force=False,
+            )
 
 
 class TestCliHandlersInternalHelpers:
