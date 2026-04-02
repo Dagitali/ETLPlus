@@ -16,6 +16,7 @@ import etlplus.cli._commands._helpers as helpers_mod
 import etlplus.cli._commands._state as state_mod
 import etlplus.cli._commands.check as check_mod
 import etlplus.cli._commands.history as history_mod
+import etlplus.cli._commands.init as init_mod
 import etlplus.cli._commands.log as log_mod
 import etlplus.cli._commands.report as report_mod
 import etlplus.cli._commands.status as status_mod
@@ -422,6 +423,44 @@ class TestHistoryCommand:
             'status': 'failed',
             'table': False,
             'until': '2026-03-24T00:00:00Z',
+        }
+
+
+class TestInitCommand:
+    """Unit tests for :func:`etlplus.cli._commands.init_cmd`."""
+
+    def test_delegates_to_handler(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+        stub_handler: StubHandler,
+    ) -> None:
+        """
+        Test dispatching to :func:`etlplus.cli._commands.init_handler` with CLI
+        state.
+        """
+        monkeypatch.setattr(
+            init_mod,
+            'ensure_state',
+            lambda _ctx: CliState(pretty=False),
+        )
+        captured = stub_handler(
+            init_mod,
+            'init_handler',
+            result=5,
+        )
+
+        result = commands_mod.init_cmd(
+            typer_ctx_factory(),
+            directory='demo',
+            force=True,
+        )
+
+        assert result == 5
+        assert captured == {
+            'directory': 'demo',
+            'force': True,
+            'pretty': False,
         }
 
 

@@ -163,6 +163,7 @@ class TestReadinessReportBuilder:
                 raw=raw,
                 effective_env={} if env is None else dict(env),
                 unresolved_tokens=[],
+                resolved_raw=raw,
                 resolved_cfg=cast(Any, resolved_cfg),
             ),
         )
@@ -272,6 +273,116 @@ class TestReadinessReportBuilder:
                 'unresolved_tokens': ['MISSING_TOKEN'],
             },
         ]
+
+    def test_config_checks_strict_structure_errors_short_circuit_runtime_checks(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Strict config issues should stop before runtime readiness checks."""
+        config_path = tmp_path / 'pipeline.yml'
+        config_path.write_text('name: pipeline\n', encoding='utf-8')
+        resolved_raw = {
+            'sources': ['bad-entry'],
+            'jobs': [
+                {
+                    'name': 'publish',
+                    'extract': {'source': 'missing-source'},
+                    'load': {'target': 'missing-target'},
+                },
+            ],
+        }
+
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'load_raw_config',
+            lambda _path: resolved_raw,
+        )
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'resolve_config_context',
+            lambda raw, env=None: readiness_mod._ResolvedConfigContext(
+                raw=raw,
+                effective_env={} if env is None else dict(env),
+                unresolved_tokens=[],
+                resolved_raw=resolved_raw,
+                resolved_cfg=cast(Any, _cfg()),
+            ),
+        )
+        runtime_called = {'value': False}
+
+        def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
+            runtime_called['value'] = True
+            return [{'name': 'connector-readiness', 'status': 'ok'}]
+
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'connector_readiness_checks',
+            _connector_readiness_checks,
+        )
+
+        checks = readiness_mod.ReadinessReportBuilder.config_checks(
+            str(config_path),
+            env={},
+            strict=True,
+        )
+
+        assert runtime_called['value'] is False
+        structure_check = next(
+            check for check in checks if check['name'] == 'config-structure'
+        )
+        assert structure_check['status'] == 'error'
+        assert any(
+            issue['issue'] == 'invalid connector entry'
+            for issue in structure_check['issues']
+        )
+        assert any(
+            issue['issue'] == 'unknown source reference: missing-source'
+            for issue in structure_check['issues']
+        )
+
+    def test_strict_config_issue_rows_report_duplicates_and_unknown_refs(
+        self,
+    ) -> None:
+        """Strict issue rows should surface hidden connector/job problems."""
+        issues = readiness_mod.ReadinessReportBuilder.strict_config_issue_rows(
+            raw={
+                'sources': [
+                    {
+                        'name': 'src',
+                        'type': 'file',
+                        'format': 'json',
+                        'path': 'input.json',
+                    },
+                    {'name': 'src', 'type': 'file'},
+                ],
+                'targets': [
+                    {
+                        'name': 'dest',
+                        'type': 'file',
+                        'format': 'json',
+                        'path': 'out.json',
+                    },
+                ],
+                'transforms': {},
+                'jobs': [
+                    {
+                        'name': 'publish',
+                        'extract': {'source': 'src'},
+                        'transform': {'pipeline': 'missing-pipeline'},
+                        'load': {'target': 'dest'},
+                    },
+                ],
+            },
+        )
+
+        assert any(
+            issue['issue'] == 'duplicate connector name: src' for issue in issues
+        )
+        assert any(
+            issue['issue'] == 'unknown transform reference: missing-pipeline'
+            for issue in issues
+        )
 
     def test_connector_gap_rows_cover_missing_required_connector_fields(
         self,

@@ -30,6 +30,7 @@ __all__ = [
     'RenderTemplateOption',
     'RenderTemplatePathOption',
     'RulesOption',
+    'StrictOption',
     'SourcesOption',
     'SummaryOption',
     'TargetsOption',
@@ -165,6 +166,19 @@ SourcesOption = Annotated[
     typer.Option(
         '--sources',
         **_typer_flag_option_kwargs('List data sources'),
+    ),
+]
+
+StrictOption = Annotated[
+    bool,
+    typer.Option(
+        '--strict',
+        **_typer_flag_option_kwargs(
+            (
+                'Enable stricter config diagnostics that surface malformed '
+                'entries normally ignored by the tolerant loader.'
+            ),
+        ),
     ),
 ]
 

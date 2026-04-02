@@ -18,6 +18,7 @@ from ._options.specs import JobsOption
 from ._options.specs import PipelinesOption
 from ._options.specs import ReadinessOption
 from ._options.specs import SourcesOption
+from ._options.specs import StrictOption
 from ._options.specs import SummaryOption
 from ._options.specs import TargetsOption
 from ._options.specs import TransformsOption
@@ -43,6 +44,7 @@ def check_cmd(
     pipelines: PipelinesOption = False,
     readiness: ReadinessOption = False,
     sources: SourcesOption = False,
+    strict: StrictOption = False,
     summary: SummaryOption = False,
     targets: TargetsOption = False,
     transforms: TransformsOption = False,
@@ -70,6 +72,8 @@ def check_cmd(
         Whether to perform a readiness check.
     sources : SourcesOption, optional
         Whether to inspect source definitions.
+    strict : StrictOption, optional
+        Whether to enable strict config diagnostics.
     summary : SummaryOption, optional
         Whether to print a configuration summary.
     targets : TargetsOption, optional
@@ -103,6 +107,7 @@ def check_cmd(
         pipelines=pipelines,
         readiness=readiness,
         sources=sources,
+        strict=strict,
         summary=summary,
         targets=targets,
         transforms=transforms,

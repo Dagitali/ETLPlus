@@ -13,20 +13,14 @@ from typing import Any
 
 import pytest
 
-# SECTION: PRAGMAS ========================================================== #
-
-# pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonOutputParser
     from tests.integration.cli.conftest import PipelineConfigFactory
 
-# SECTION: MARKS ============================================================ #
+# SECTION: PRAGMAS ========================================================== #
 
-
-pytestmark = [pytest.mark.integration, pytest.mark.smoke]
-
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 # SECTION: TESTS ============================================================ #
 
@@ -244,3 +238,53 @@ class TestCliCheck:
         payload = parse_json_output(out)
         assert payload['status'] == 'ok'
         assert any(check['name'] == 'python-version' for check in payload['checks'])
+
+    def test_readiness_strict_reports_malformed_entries(
+        self,
+        tmp_path: Path,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+    ) -> None:
+        """Strict readiness mode should surface malformed skipped config entries."""
+        config_path = tmp_path / 'check_readiness_strict.yml'
+        config_path.write_text(
+            dedent(
+                """
+                name: Strict Readiness Check
+                sources:
+                  - just-a-string
+                targets:
+                  - name: out
+                    type: file
+                    format: json
+                    path: "./temp/out.json"
+                jobs:
+                  - name: publish
+                    extract:
+                      source: missing-source
+                    load:
+                      target: out
+                """,
+            ).strip(),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            ('check', '--readiness', '--strict', '--config', str(config_path)),
+        )
+
+        assert code == 1
+        assert err == ''
+        payload = parse_json_output(out)
+        structure_check = next(
+            check for check in payload['checks'] if check['name'] == 'config-structure'
+        )
+        assert structure_check['status'] == 'error'
+        assert any(
+            issue['issue'] == 'invalid connector entry'
+            for issue in structure_check['issues']
+        )
+        assert any(
+            issue['issue'] == 'unknown source reference: missing-source'
+            for issue in structure_check['issues']
+        )
