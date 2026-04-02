@@ -115,8 +115,8 @@ they are not part of the supported public contract unless they are explicitly do
 
 The stable surface for the current `v1.x` releases is:
 
-- The documented CLI commands: `check`, `extract`, `history`, `load`, `log`, `render`, `report`,
-  `run`, `status`, `transform`, and `validate`
+- The documented CLI commands: `check`, `extract`, `history`, `init`, `load`, `log`, `render`,
+  `report`, `run`, `status`, `transform`, and `validate`
 - The documented Python ETL primitives in `etlplus.ops`, including the advanced step modules under
   `etlplus.ops.transformations`
 - The implemented file handlers listed as `implemented` in the handler matrix
@@ -133,9 +133,15 @@ Maintainers handling packaging, CI, versioned docs, or release gating should con
 
 ## Features
 
+- **Init** starter ETLPlus projects:
+  - Scaffold a runnable file-to-file starter pipeline with sample input data
+  - Get suggested next commands for checking and running the generated job
+
 - **Check** data pipeline definitions before running them:
   - Summarize jobs, sources, targets, and transforms
   - Run lightweight runtime and config readiness checks with `--readiness`
+  - Enable stricter diagnostics with `--strict` to catch malformed entries the tolerant loader
+    would otherwise skip
   - Confirm configuration changes by printing focused sections on demand
 
 - **Render** SQL DDL from shared table specs:
@@ -553,6 +559,17 @@ to explicit paths or URIs. When you omit them, ETLPlus falls back to standard st
 Use `--source-format`, `--target-format`, `--source-type`, and `--target-type` to override the
 usual inference rules when a filename, URI, or stream does not provide enough context.
 
+#### Initialize A Starter Project
+
+Use `etlplus init` to scaffold a minimal starter project with a sample pipeline and input data:
+
+```bash
+etlplus init demo-pipeline
+cd demo-pipeline
+etlplus check --config pipeline.yml --jobs
+etlplus run --config pipeline.yml --job file_to_file_customers
+```
+
 #### Check Pipelines
 
 Use `etlplus check` to explore pipeline YAML definitions without running them. The command can print
@@ -575,6 +592,7 @@ Run runtime and config readiness checks:
 ```bash
 etlplus check --readiness
 etlplus check --readiness --config examples/configs/pipeline.yml
+etlplus check --readiness --strict --config examples/configs/pipeline.yml
 ```
 
 #### Render SQL DDL
