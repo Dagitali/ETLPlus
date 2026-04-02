@@ -24,6 +24,7 @@ from .. import __version__
 from .._config import Config
 from ..connector import Connector
 from ..connector import DataConnectorType
+from ..connector import parse_connector
 from ..file import File
 from ..file import FileFormat
 from ..storage import StorageScheme
@@ -67,6 +68,7 @@ class _ResolvedConfigContext:
     raw: StrAnyMap
     effective_env: dict[str, str]
     unresolved_tokens: list[str]
+    resolved_raw: StrAnyMap
     resolved_cfg: Config | None
 
 
@@ -281,6 +283,7 @@ class ReadinessReportBuilder:
         *,
         config_path: str | None = None,
         env: Mapping[str, str] | None = None,
+        strict: bool = False,
     ) -> dict[str, Any]:
         """
         Build a runtime readiness report for the current ETLPlus environment.
@@ -291,6 +294,9 @@ class ReadinessReportBuilder:
             Optional pipeline configuration file to validate. Default is ``None``.
         env : Mapping[str, str] | None, optional
             Optional environment mapping used instead of :data:`os.environ`.
+        strict : bool, optional
+            Whether to enable stricter config diagnostics that surface
+            malformed entries normally ignored by the tolerant loader.
 
         Returns
         -------
@@ -301,7 +307,10 @@ class ReadinessReportBuilder:
 
         if config_path:
             try:
-                checks.extend(cls.config_checks(config_path, env=env))
+                config_kwargs: dict[str, Any] = {'env': env}
+                if strict:
+                    config_kwargs['strict'] = True
+                checks.extend(cls.config_checks(config_path, **config_kwargs))
             except (OSError, TypeError, ValueError) as exc:
                 checks.append(
                     cls.make_check(
@@ -336,6 +345,8 @@ class ReadinessReportBuilder:
         config_path: str,
         *,
         env: Mapping[str, str] | None,
+        strict: bool = False,
+        include_runtime_checks: bool = True,
     ) -> list[dict[str, Any]]:
         """Return readiness checks for one pipeline config path."""
         checks: list[dict[str, Any]] = []
@@ -388,6 +399,35 @@ class ReadinessReportBuilder:
             ),
         )
         resolved_cfg = cast(Config, context.resolved_cfg)
+        if strict:
+            strict_issues = cls.strict_config_issue_rows(raw=context.resolved_raw)
+            if strict_issues:
+                checks.append(
+                    cls.make_check(
+                        'config-structure',
+                        'error',
+                        (
+                            'Strict config validation found malformed or '
+                            'inconsistent configuration entries.'
+                        ),
+                        issues=strict_issues,
+                    ),
+                )
+                return checks
+            checks.append(
+                cls.make_check(
+                    'config-structure',
+                    'ok',
+                    (
+                        'Strict config validation found no malformed or '
+                        'inconsistent configuration entries.'
+                    ),
+                ),
+            )
+
+        if not include_runtime_checks:
+            return checks
+
         checks.extend(cls.connector_readiness_checks(resolved_cfg))
         checks.extend(
             cls.provider_environment_checks(
@@ -832,8 +872,384 @@ class ReadinessReportBuilder:
             raw=raw,
             effective_env=effective_env,
             unresolved_tokens=unresolved_tokens,
+            resolved_raw=resolved,
             resolved_cfg=(None if unresolved_tokens else Config.from_dict(resolved)),
         )
+
+    @classmethod
+    def strict_config_issue_rows(
+        cls,
+        *,
+        raw: StrAnyMap,
+    ) -> list[dict[str, Any]]:
+        """Return strict-mode config issues hidden by tolerant parsing."""
+        issues: list[dict[str, Any]] = []
+        source_names = cls.strict_connector_names(
+            raw=raw,
+            section='sources',
+            issues=issues,
+        )
+        target_names = cls.strict_connector_names(
+            raw=raw,
+            section='targets',
+            issues=issues,
+        )
+        transform_names = cls.strict_named_section_names(
+            raw=raw,
+            section='transforms',
+            issues=issues,
+            guidance='Define transforms as a mapping keyed by pipeline name.',
+        )
+        validation_names = cls.strict_named_section_names(
+            raw=raw,
+            section='validations',
+            issues=issues,
+            guidance='Define validations as a mapping keyed by ruleset name.',
+        )
+        cls.strict_job_issue_rows(
+            raw=raw,
+            issues=issues,
+            source_names=source_names,
+            target_names=target_names,
+            transform_names=transform_names,
+            validation_names=validation_names,
+        )
+        return issues
+
+    @classmethod
+    def strict_config_report(
+        cls,
+        *,
+        config_path: str,
+        env: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
+        """Return one strict config-validation report for ``check --strict``."""
+        checks = cls.config_checks(
+            config_path,
+            env=env,
+            strict=True,
+            include_runtime_checks=False,
+        )
+        return {
+            'status': cls.overall_status(checks),
+            'etlplus_version': __version__,
+            'checks': checks,
+        }
+
+    @classmethod
+    def strict_connector_names(
+        cls,
+        *,
+        raw: StrAnyMap,
+        section: str,
+        issues: list[dict[str, Any]],
+    ) -> set[str] | None:
+        """Validate connector entries in *section* and return known names."""
+        value = raw.get(section)
+        if value is None:
+            return set()
+        if not isinstance(value, list):
+            issues.append(
+                {
+                    'expected': 'list',
+                    'guidance': (
+                        f'Define {section} as a YAML list of connector mappings.'
+                    ),
+                    'issue': 'invalid section type',
+                    'observed_type': type(value).__name__,
+                    'section': section,
+                },
+            )
+            return None
+
+        names: set[str] = set()
+        seen: set[str] = set()
+        for index, entry in enumerate(value):
+            if not isinstance(entry, Mapping):
+                issues.append(
+                    {
+                        'guidance': (
+                            'Define each connector as a mapping with at least '
+                            '"name" and "type" fields.'
+                        ),
+                        'index': index,
+                        'issue': 'invalid connector entry',
+                        'observed_type': type(entry).__name__,
+                        'section': section,
+                    },
+                )
+                continue
+            try:
+                connector = parse_connector(entry)
+            except TypeError as exc:
+                raw_type = entry.get('type')
+                guidance = None
+                if isinstance(raw_type, str):
+                    guidance = cls.connector_type_guidance(raw_type)
+                elif raw_type is None:
+                    guidance = (
+                        'Set "type" to one of: '
+                        + ', '.join(cls.connector_type_choices())
+                        + '.'
+                    )
+                issues.append(
+                    {
+                        'guidance': guidance,
+                        'index': index,
+                        'issue': 'invalid connector entry',
+                        'message': str(exc),
+                        'section': section,
+                    },
+                )
+                continue
+
+            name = str(getattr(connector, 'name', '') or '').strip()
+            if not name:
+                issues.append(
+                    {
+                        'guidance': 'Set "name" to a non-empty string.',
+                        'index': index,
+                        'issue': 'blank connector name',
+                        'section': section,
+                    },
+                )
+                continue
+            if name in seen:
+                issues.append(
+                    {
+                        'guidance': f'Use unique connector names within {section}.',
+                        'index': index,
+                        'issue': f'duplicate connector name: {name}',
+                        'section': section,
+                    },
+                )
+            seen.add(name)
+            names.add(name)
+
+        return names
+
+    @classmethod
+    def strict_job_issue_rows(
+        cls,
+        *,
+        raw: StrAnyMap,
+        issues: list[dict[str, Any]],
+        source_names: set[str] | None,
+        target_names: set[str] | None,
+        transform_names: set[str] | None,
+        validation_names: set[str] | None,
+    ) -> None:
+        """Append strict-mode job diagnostics to *issues*."""
+        value = raw.get('jobs')
+        if value is None:
+            return
+        if not isinstance(value, list):
+            issues.append(
+                {
+                    'expected': 'list',
+                    'guidance': 'Define jobs as a YAML list of job mappings.',
+                    'issue': 'invalid section type',
+                    'observed_type': type(value).__name__,
+                    'section': 'jobs',
+                },
+            )
+            return
+
+        seen_jobs: set[str] = set()
+        for index, entry in enumerate(value):
+            if not isinstance(entry, Mapping):
+                issues.append(
+                    {
+                        'guidance': (
+                            'Define each job as a mapping with "name", '
+                            '"extract", and "load" sections.'
+                        ),
+                        'index': index,
+                        'issue': 'invalid job entry',
+                        'observed_type': type(entry).__name__,
+                        'section': 'jobs',
+                    },
+                )
+                continue
+
+            raw_name = entry.get('name')
+            job_name = raw_name.strip() if isinstance(raw_name, str) else None
+            if not job_name:
+                issues.append(
+                    {
+                        'guidance': 'Set "name" to a non-empty string.',
+                        'index': index,
+                        'issue': 'missing job name',
+                        'section': 'jobs',
+                    },
+                )
+            elif job_name in seen_jobs:
+                issues.append(
+                    {
+                        'guidance': 'Use unique job names within jobs.',
+                        'index': index,
+                        'issue': f'duplicate job name: {job_name}',
+                        'job': job_name,
+                        'section': 'jobs',
+                    },
+                )
+            elif job_name:
+                seen_jobs.add(job_name)
+
+            cls.strict_job_ref_issue(
+                entry=entry,
+                field='extract',
+                index=index,
+                issues=issues,
+                job_name=job_name,
+                required=True,
+                required_key='source',
+                section_names=source_names,
+                section_label='sources',
+            )
+            cls.strict_job_ref_issue(
+                entry=entry,
+                field='load',
+                index=index,
+                issues=issues,
+                job_name=job_name,
+                required=True,
+                required_key='target',
+                section_names=target_names,
+                section_label='targets',
+            )
+            cls.strict_job_ref_issue(
+                entry=entry,
+                field='transform',
+                index=index,
+                issues=issues,
+                job_name=job_name,
+                required=False,
+                required_key='pipeline',
+                section_names=transform_names,
+                section_label='transforms',
+            )
+            cls.strict_job_ref_issue(
+                entry=entry,
+                field='validate',
+                index=index,
+                issues=issues,
+                job_name=job_name,
+                required=False,
+                required_key='ruleset',
+                section_names=validation_names,
+                section_label='validations',
+            )
+
+    @classmethod
+    def strict_job_ref_issue(
+        cls,
+        *,
+        entry: Mapping[str, Any],
+        field: str,
+        index: int,
+        issues: list[dict[str, Any]],
+        job_name: str | None,
+        required: bool,
+        required_key: str,
+        section_names: set[str] | None,
+        section_label: str,
+    ) -> None:
+        """Append one strict-mode job reference issue when needed."""
+        value = entry.get(field)
+        base_issue: dict[str, Any] = {
+            'field': (
+                field if field in {'extract', 'load'}
+                else f'{field}.{required_key}'
+            ),
+            'index': index,
+            'section': 'jobs',
+        }
+        if job_name:
+            base_issue['job'] = job_name
+
+        if value is None:
+            if required:
+                issues.append(
+                    base_issue
+                    | {
+                        'guidance': (
+                            f'Add a {field} mapping with "{required_key}" '
+                            'set to a configured resource name.'
+                        ),
+                        'issue': f'missing {field} section',
+                    },
+                )
+            return
+
+        if not isinstance(value, Mapping):
+            issues.append(
+                base_issue
+                | {
+                    'guidance': (
+                        f'Define {field} as a mapping with a '
+                        f'"{required_key}" string field.'
+                    ),
+                    'issue': f'invalid {field} section',
+                    'observed_type': type(value).__name__,
+                },
+            )
+            return
+
+        ref_value = value.get(required_key)
+        ref_name = ref_value.strip() if isinstance(ref_value, str) else None
+        if not ref_name:
+            issues.append(
+                base_issue
+                | {
+                    'guidance': (
+                        f'Set {field}.{required_key} to a configured '
+                        'resource name.'
+                    ),
+                    'issue': f'missing {field}.{required_key}',
+                },
+            )
+            return
+
+        if section_names is not None and ref_name not in section_names:
+            issues.append(
+                base_issue
+                | {
+                    'guidance': (
+                        f'Define "{ref_name}" under top-level "{section_label}" '
+                        f'or update {field}.{required_key}.'
+                    ),
+                    'issue': (
+                        f'unknown {section_label[:-1]} reference: {ref_name}'
+                    ),
+                },
+            )
+
+    @classmethod
+    def strict_named_section_names(
+        cls,
+        *,
+        raw: StrAnyMap,
+        section: str,
+        issues: list[dict[str, Any]],
+        guidance: str,
+    ) -> set[str] | None:
+        """Validate one mapping-like top-level section and return its keys."""
+        value = raw.get(section)
+        if value is None:
+            return set()
+        if not isinstance(value, Mapping):
+            issues.append(
+                {
+                    'expected': 'mapping',
+                    'guidance': guidance,
+                    'issue': 'invalid section type',
+                    'observed_type': type(value).__name__,
+                    'section': section,
+                },
+            )
+            return None
+        return {str(name) for name in value}
 
     @classmethod
     def supported_python_check(
