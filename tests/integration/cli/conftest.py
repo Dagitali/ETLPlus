@@ -38,7 +38,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 
 # Directory-level marker for integration tests.
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 
 # SECTION: TYPES ============================================================ #

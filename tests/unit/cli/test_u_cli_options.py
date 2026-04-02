@@ -8,13 +8,36 @@ from __future__ import annotations
 
 import pytest
 
+import etlplus.cli._commands._options as cli_option_pkg
 import etlplus.cli._commands._options.helpers as cli_options
+import etlplus.cli._commands._options.init as init_options_mod
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 # SECTION: TESTS ============================================================ #
+
+
+@pytest.mark.parametrize(
+    ('context', 'expected_help'),
+    [
+        ('source', 'Override the inferred source type'),
+        ('target', 'Override the inferred target type'),
+    ],
+)
+def test_connector_option_kwargs_context_specific_help(
+    context: str,
+    expected_help: str,
+) -> None:
+    """Test that connector-type helper preserves source/target wording."""
+    kwargs = cli_options._typer_connector_option_kwargs(
+        context=context,  # type: ignore[arg-type]
+    )
+    assert kwargs['metavar'] == 'CONNECTOR'
+    assert kwargs['show_default'] is False
+    assert kwargs['rich_help_panel'] == 'I/O overrides'
+    assert expected_help in str(kwargs['help'])
 
 
 @pytest.mark.parametrize(
@@ -53,55 +76,22 @@ def test_flag_option_kwargs_include_is_eager_when_requested() -> None:
     }
 
 
-@pytest.mark.parametrize(
-    ('help_text', 'metavar', 'show_default'),
-    [
-        ('Path to YAML-formatted configuration file.', 'PATH', False),
-        ('Write rendered SQL to PATH (default: STDOUT).', 'OUT', None),
-        ('Name of the job to run', None, None),
-    ],
-)
-def test_value_option_kwargs_preserve_metavar_and_optional_show_default(
-    help_text: str,
-    metavar: str | None,
-    show_default: bool | None,
-) -> None:
-    """Test that shared scalar kwargs preserve common option metadata."""
-    kwargs = cli_options._typer_value_option_kwargs(
-        help_text,
-        metavar=metavar,
-        show_default=show_default,
-    )
-    assert kwargs['help'] == help_text
-    if metavar is None:
-        assert 'metavar' not in kwargs
-    else:
-        assert kwargs['metavar'] == metavar
-    if show_default is None:
-        assert 'show_default' not in kwargs
-    else:
-        assert kwargs['show_default'] is show_default
+def test_init_option_module_exports_expected_aliases() -> None:
+    """Init option module should expose only the intended alias types."""
+    assert init_options_mod.__all__ == [
+        'InitDirectoryArgument',
+        'InitForceOption',
+    ]
 
 
-@pytest.mark.parametrize(
-    ('context', 'expected_help'),
-    [
-        ('source', 'Override the inferred source type'),
-        ('target', 'Override the inferred target type'),
-    ],
-)
-def test_connector_option_kwargs_context_specific_help(
-    context: str,
-    expected_help: str,
-) -> None:
-    """Test that connector-type helper preserves source/target wording."""
-    kwargs = cli_options._typer_connector_option_kwargs(
-        context=context,  # type: ignore[arg-type]
+def test_option_package_reexports_init_aliases() -> None:
+    """CLI options package should re-export init command aliases."""
+    assert 'InitDirectoryArgument' in cli_option_pkg.__all__
+    assert 'InitForceOption' in cli_option_pkg.__all__
+    assert (
+        cli_option_pkg.InitDirectoryArgument is init_options_mod.InitDirectoryArgument
     )
-    assert kwargs['metavar'] == 'CONNECTOR'
-    assert kwargs['show_default'] is False
-    assert kwargs['rich_help_panel'] == 'I/O overrides'
-    assert expected_help in str(kwargs['help'])
+    assert cli_option_pkg.InitForceOption is init_options_mod.InitForceOption
 
 
 @pytest.mark.parametrize(
@@ -161,3 +151,33 @@ def test_typer_format_option_kwargs_context_specific_help(
     assert kwargs['metavar'] == 'FORMAT'
     assert kwargs['show_default'] is False
     assert expected_fragment in str(kwargs['help'])
+
+
+@pytest.mark.parametrize(
+    ('help_text', 'metavar', 'show_default'),
+    [
+        ('Path to YAML-formatted configuration file.', 'PATH', False),
+        ('Write rendered SQL to PATH (default: STDOUT).', 'OUT', None),
+        ('Name of the job to run', None, None),
+    ],
+)
+def test_value_option_kwargs_preserve_metavar_and_optional_show_default(
+    help_text: str,
+    metavar: str | None,
+    show_default: bool | None,
+) -> None:
+    """Test that shared scalar kwargs preserve common option metadata."""
+    kwargs = cli_options._typer_value_option_kwargs(
+        help_text,
+        metavar=metavar,
+        show_default=show_default,
+    )
+    assert kwargs['help'] == help_text
+    if metavar is None:
+        assert 'metavar' not in kwargs
+    else:
+        assert kwargs['metavar'] == metavar
+    if show_default is None:
+        assert 'show_default' not in kwargs
+    else:
+        assert kwargs['show_default'] is show_default

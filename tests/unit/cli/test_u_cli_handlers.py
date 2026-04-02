@@ -26,6 +26,7 @@ from etlplus.cli._handlers import _summary as summary_mod
 from etlplus.cli._handlers import check as check_mod
 from etlplus.cli._handlers import dataops as dataops_mod
 from etlplus.cli._handlers import history as history_mod
+from etlplus.cli._handlers import init as init_mod
 from etlplus.cli._handlers import render as render_mod
 from etlplus.cli._handlers import run as run_mod
 from etlplus.file import File
@@ -67,6 +68,7 @@ handlers: Any = SimpleNamespace(
     check_handler=check_mod.check_handler,
     extract_handler=dataops_mod.extract_handler,
     history_handler=history_mod.history_handler,
+    init_handler=init_mod.init_handler,
     load_handler=dataops_mod.load_handler,
     render_handler=render_mod.render_handler,
     report_handler=history_mod.report_handler,
@@ -182,6 +184,42 @@ class TestCheckHandler:
         ):
             handlers.check_handler(config=None, readiness=False)
 
+    def test_strict_branch_emits_report_and_skips_config_load_on_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """
+        Test that strict check mode should emit the strict report before config
+        load.
+        """
+        config_loaded = {'value': False}
+
+        monkeypatch.setattr(
+            handlers.ReadinessReportBuilder,
+            'strict_config_report',
+            lambda config_path: {
+                'checks': [{'name': 'config-structure', 'status': 'error'}],
+                'status': 'error',
+            },
+        )
+        monkeypatch.setattr(
+            handlers.Config,
+            'from_yaml',
+            lambda *_args, **_kwargs: config_loaded.__setitem__('value', True),
+        )
+
+        assert handlers.check_handler(config='cfg.yml', strict=True) == 1
+        assert config_loaded['value'] is False
+        assert_emit_json(
+            capture_io,
+            {
+                'checks': [{'name': 'config-structure', 'status': 'error'}],
+                'status': 'error',
+            },
+            pretty=True,
+        )
+
     def test_summary_branch_uses_pipeline_summary_with_requested_pretty_flag(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -213,6 +251,37 @@ class TestCheckHandler:
             {'name': 'p1', 'jobs': ['j1']},
             pretty=False,
         )
+
+
+class TestInitHandler:
+    """Unit tests for :func:`init_handler`."""
+
+    def test_scaffolds_starter_files(
+        self,
+        tmp_path: Path,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Init handler should create starter files and emit a JSON payload."""
+        project_dir = tmp_path / 'starter'
+
+        assert handlers.init_handler(directory=str(project_dir)) == 0
+        assert (project_dir / 'pipeline.yml').is_file()
+        assert (project_dir / 'data' / 'customers.csv').is_file()
+        payload = cast(dict[str, Any], capture_io['emit_json'][0][0][0])
+        assert payload['status'] == 'ok'
+        assert payload['job'] == 'file_to_file_customers'
+
+    def test_refuses_to_overwrite_existing_scaffold_without_force(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Init handler should require force before overwriting scaffold files."""
+        project_dir = tmp_path / 'starter'
+        project_dir.mkdir()
+        (project_dir / 'pipeline.yml').write_text('name: existing\n', encoding='utf-8')
+
+        with pytest.raises(ValueError, match='Scaffold file already exists'):
+            handlers.init_handler(directory=str(project_dir))
 
 
 class TestCliHandlersInternalHelpers:

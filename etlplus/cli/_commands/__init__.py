@@ -11,6 +11,7 @@ from ._app import app
 from .check import check_cmd
 from .extract import extract_cmd
 from .history import history_cmd
+from .init import init_cmd
 from .load import load_cmd
 from .log import log_cmd
 from .render import render_cmd
@@ -28,6 +29,7 @@ __all__ = [
     'check_cmd',
     'extract_cmd',
     'history_cmd',
+    'init_cmd',
     'load_cmd',
     'log_cmd',
     'render_cmd',

@@ -79,6 +79,7 @@ EXPECTED_CLI_COMMANDS = {
     'check',
     'extract',
     'history',
+    'init',
     'load',
     'log',
     'render',
