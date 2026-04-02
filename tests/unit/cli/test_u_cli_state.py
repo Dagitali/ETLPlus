@@ -264,6 +264,22 @@ class TestCliValidateState:
 class TestCliHelp:
     """Unit test suite of command-line state tests for help text."""
 
+    def test_help_flag_prints_help(self, invoke_cli: InvokeCli) -> None:
+        """Test that the global ``--help`` flag builds the full command tree."""
+        result = invoke_cli('--help')
+        assert result.exit_code == 0
+        assert 'init' in result.stdout
+
+    def test_init_help_prints_path_argument_and_force_option(
+        self,
+        invoke_cli: InvokeCli,
+    ) -> None:
+        """Test that ``init --help`` preserves the documented CLI surface."""
+        result = invoke_cli('init', '--help')
+        assert result.exit_code == 0
+        assert 'PATH' in result.stdout
+        assert '--force' in result.stdout
+
     def test_no_args_prints_help(self, invoke_cli: InvokeCli) -> None:
         """Test that running with no arguments prints help text."""
         result = invoke_cli()
