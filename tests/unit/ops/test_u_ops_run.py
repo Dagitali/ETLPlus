@@ -743,7 +743,7 @@ class TestRun:
 
         result = run_mod.run('job')
 
-        assert transform_calls == []
+        assert not transform_calls
         assert stages == ['before_transform', 'after_transform']
         assert result == {'ok': True}
 

@@ -294,4 +294,4 @@ class TestValidateInternalHelpers:
             )
             is None
         )
-        assert errors == []
+        assert not errors
