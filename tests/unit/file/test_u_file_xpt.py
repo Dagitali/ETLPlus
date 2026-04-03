@@ -76,7 +76,7 @@ class TestXpt(SingleDatasetWritableContract):
 
         assert result == [{'id': 1}]
         pyreadstat.assert_single_read_path(path)
-        assert pandas.read_calls == []
+        assert not pandas.read_calls
 
     def test_write_raises_when_pyreadstat_writer_missing(
         self,
