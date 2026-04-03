@@ -53,16 +53,39 @@ class TestEmitJson:
 class TestEmitOrWrite:
     """Unit tests for :func:`emit_or_write`."""
 
-    def test_falls_back_to_emit_when_write_is_skipped(
+    @pytest.mark.parametrize(
+        ('output_path', 'pretty', 'write_succeeds', 'expected_emitted'),
+        [
+            pytest.param(
+                None,
+                True,
+                False,
+                [({'ok': True}, True)],
+                id='emit-when-write-skipped',
+            ),
+            pytest.param(
+                'out.json',
+                False,
+                True,
+                [],
+                id='skip-emit-when-write-succeeds',
+            ),
+        ],
+    )
+    def test_respects_write_result(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        output_path: str | None,
+        pretty: bool,
+        write_succeeds: bool,
+        expected_emitted: list[tuple[object, bool]],
     ) -> None:
-        """Test that, when writes are skipped, payload emits to STDOUT."""
+        """JSON payloads should emit only when the write path does not handle them."""
         emitted: list[tuple[object, bool]] = []
         monkeypatch.setattr(
             output_mod,
             'write_json_output',
-            lambda data, output_path, *, success_message: False,
+            lambda data, output_path, *, success_message: write_succeeds,
         )
         monkeypatch.setattr(
             output_mod,
@@ -72,38 +95,12 @@ class TestEmitOrWrite:
 
         output_mod.emit_or_write(
             {'ok': True},
-            None,
-            pretty=True,
+            output_path,
+            pretty=pretty,
             success_message='written to',
         )
 
-        assert emitted == [({'ok': True}, True)]
-
-    def test_short_circuits_when_write_succeeds(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that successful writes skip STDOUT emission."""
-        emitted: list[tuple[object, bool]] = []
-        monkeypatch.setattr(
-            output_mod,
-            'write_json_output',
-            lambda data, output_path, *, success_message: True,
-        )
-        monkeypatch.setattr(
-            output_mod,
-            'emit_json',
-            lambda data, *, pretty: emitted.append((data, pretty)),
-        )
-
-        output_mod.emit_or_write(
-            {'ok': True},
-            'out.json',
-            pretty=False,
-            success_message='written to',
-        )
-
-        assert emitted == []
+        assert emitted == expected_emitted
 
 
 class TestEmitMarkdownTable:
@@ -138,10 +135,20 @@ class TestEmitMarkdownTable:
 class TestInferPayloadFormat:
     """Unit tests for :func:`infer_payload_format`."""
 
-    def test_inferring_payload_format(self) -> None:
-        """Test that inferring JSON vs CSV using the first significant byte."""
-        assert input_mod.infer_payload_format(' {"a":1}') == 'json'
-        assert input_mod.infer_payload_format('  col1,col2') == 'csv'
+    @pytest.mark.parametrize(
+        ('raw', 'expected'),
+        [
+            pytest.param(' {"a":1}', 'json', id='json'),
+            pytest.param('  col1,col2', 'csv', id='csv'),
+        ],
+    )
+    def test_inferring_payload_format(
+        self,
+        raw: str,
+        expected: str,
+    ) -> None:
+        """The first meaningful byte should distinguish JSON from CSV."""
+        assert input_mod.infer_payload_format(raw) == expected
 
 
 class TestMaterializeFilePayload:
