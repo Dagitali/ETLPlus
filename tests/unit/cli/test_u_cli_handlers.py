@@ -111,6 +111,30 @@ def _capture_file_write(
     return captured
 
 
+def _normalized_run(**overrides: object) -> dict[str, object]:
+    """Build one normalized run payload with stable default ``None`` fields."""
+    return {
+        'config_path': None,
+        'config_sha256': None,
+        'duration_ms': None,
+        'error_message': None,
+        'error_traceback': None,
+        'error_type': None,
+        'etlplus_version': None,
+        'finished_at': None,
+        'host': None,
+        'job_name': None,
+        'pid': None,
+        'pipeline_name': None,
+        'records_in': None,
+        'records_out': None,
+        'result_summary': None,
+        'run_id': None,
+        'started_at': None,
+        'status': None,
+    } | overrides
+
+
 def _patch_resolve_cli_payload_map(
     monkeypatch: pytest.MonkeyPatch,
     payloads: Mapping[object, object],
@@ -147,6 +171,32 @@ def _patch_history_store_records(
         'from_environment',
         lambda: _FakeHistoryStore(),
     )
+
+
+def _report_row(**overrides: object) -> dict[str, object]:
+    """Build one aggregated history report row with zero/``None`` defaults."""
+    return {
+        'avg_duration_ms': None,
+        'failed': 0,
+        'group': None,
+        'last_started_at': None,
+        'max_duration_ms': None,
+        'min_duration_ms': None,
+        'other': 0,
+        'running': 0,
+        'runs': 0,
+        'success_rate_pct': None,
+        'succeeded': 0,
+    } | overrides
+
+
+def _report_summary(**overrides: object) -> dict[str, object]:
+    """Build one aggregated history report summary payload."""
+    return {
+        key: value
+        for key, value in _report_row(**overrides).items()
+        if key != 'group' and key != 'last_started_at'
+    }
 
 
 # SECTION: TESTS ============================================================ #
@@ -822,26 +872,16 @@ class TestHistoryHandler:
         assert_emit_json(
             capture_io,
             [
-                {
-                    'config_path': 'pipeline.yml',
-                    'config_sha256': None,
-                    'duration_ms': 5000,
-                    'error_message': None,
-                    'error_traceback': None,
-                    'error_type': None,
-                    'etlplus_version': None,
-                    'finished_at': '2026-03-23T00:00:05Z',
-                    'host': None,
-                    'job_name': 'job-a',
-                    'pid': None,
-                    'pipeline_name': None,
-                    'records_in': None,
-                    'records_out': None,
-                    'result_summary': {'rows': 10},
-                    'run_id': 'run-123',
-                    'started_at': '2026-03-23T00:00:00Z',
-                    'status': 'succeeded',
-                },
+                _normalized_run(
+                    config_path='pipeline.yml',
+                    duration_ms=5000,
+                    finished_at='2026-03-23T00:00:05Z',
+                    job_name='job-a',
+                    result_summary={'rows': 10},
+                    run_id='run-123',
+                    started_at='2026-03-23T00:00:00Z',
+                    status='succeeded',
+                ),
             ],
             pretty=True,
         )
@@ -906,26 +946,13 @@ class TestHistoryHandler:
         assert_emit_json(
             capture_io,
             [
-                {
-                    'config_path': None,
-                    'config_sha256': None,
-                    'duration_ms': None,
-                    'error_message': None,
-                    'error_traceback': None,
-                    'error_type': None,
-                    'etlplus_version': None,
-                    'finished_at': '2026-03-23T00:00:05Z',
-                    'host': None,
-                    'job_name': 'job-a',
-                    'pid': None,
-                    'pipeline_name': None,
-                    'records_in': None,
-                    'records_out': None,
-                    'result_summary': None,
-                    'run_id': 'run-2',
-                    'started_at': '2026-03-23T00:00:00Z',
-                    'status': 'succeeded',
-                },
+                _normalized_run(
+                    finished_at='2026-03-23T00:00:05Z',
+                    job_name='job-a',
+                    run_id='run-2',
+                    started_at='2026-03-23T00:00:00Z',
+                    status='succeeded',
+                ),
             ],
             pretty=False,
         )
@@ -976,39 +1003,16 @@ class TestHistoryHandler:
             (
                 (
                     [
-                        {
-                            'config_path': None,
-                            'config_sha256': None,
-                            'duration_ms': None,
-                            'error_message': None,
-                            'error_traceback': None,
-                            'error_type': None,
-                            'etlplus_version': None,
-                            'finished_at': '2026-03-22T00:00:10Z',
-                            'host': None,
-                            'job_name': 'job-a',
-                            'pid': None,
-                            'pipeline_name': None,
-                            'records_in': None,
-                            'records_out': None,
-                            'result_summary': None,
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-22T00:00:00Z',
-                            'status': 'failed',
-                        },
+                        _normalized_run(
+                            finished_at='2026-03-22T00:00:10Z',
+                            job_name='job-a',
+                            run_id='run-1',
+                            started_at='2026-03-22T00:00:00Z',
+                            status='failed',
+                        ),
                     ],
                 ),
-                {
-                    'columns': (
-                        'run_id',
-                        'status',
-                        'job_name',
-                        'pipeline_name',
-                        'started_at',
-                        'finished_at',
-                        'duration_ms',
-                    ),
-                },
+                {'columns': history_view_mod.HISTORY_TABLE_COLUMNS},
             ),
         ]
 
@@ -1383,31 +1387,27 @@ class TestReportHandler:
             {
                 'group_by': 'job',
                 'rows': [
-                    {
-                        'avg_duration_ms': 2000,
-                        'failed': 1,
-                        'group': 'job-a',
-                        'last_started_at': '2026-03-24T00:00:00Z',
-                        'max_duration_ms': 3000,
-                        'min_duration_ms': 1000,
-                        'other': 0,
-                        'running': 0,
-                        'runs': 2,
-                        'success_rate_pct': 50.0,
-                        'succeeded': 1,
-                    },
+                    _report_row(
+                        avg_duration_ms=2000,
+                        failed=1,
+                        group='job-a',
+                        last_started_at='2026-03-24T00:00:00Z',
+                        max_duration_ms=3000,
+                        min_duration_ms=1000,
+                        runs=2,
+                        success_rate_pct=50.0,
+                        succeeded=1,
+                    ),
                 ],
-                'summary': {
-                    'avg_duration_ms': 2000,
-                    'failed': 1,
-                    'max_duration_ms': 3000,
-                    'min_duration_ms': 1000,
-                    'other': 0,
-                    'running': 0,
-                    'runs': 2,
-                    'success_rate_pct': 50.0,
-                    'succeeded': 1,
-                },
+                'summary': _report_summary(
+                    avg_duration_ms=2000,
+                    failed=1,
+                    max_duration_ms=3000,
+                    min_duration_ms=1000,
+                    runs=2,
+                    success_rate_pct=50.0,
+                    succeeded=1,
+                ),
             },
             pretty=False,
         )
@@ -1439,36 +1439,19 @@ class TestReportHandler:
             (
                 (
                     [
-                        {
-                            'avg_duration_ms': 3000,
-                            'failed': 0,
-                            'group': 'succeeded',
-                            'last_started_at': '2026-03-23T00:00:00Z',
-                            'max_duration_ms': 3000,
-                            'min_duration_ms': 3000,
-                            'other': 0,
-                            'running': 0,
-                            'runs': 1,
-                            'success_rate_pct': 100.0,
-                            'succeeded': 1,
-                        },
+                        _report_row(
+                            avg_duration_ms=3000,
+                            group='succeeded',
+                            last_started_at='2026-03-23T00:00:00Z',
+                            max_duration_ms=3000,
+                            min_duration_ms=3000,
+                            runs=1,
+                            success_rate_pct=100.0,
+                            succeeded=1,
+                        ),
                     ],
                 ),
-                {
-                    'columns': (
-                        'group',
-                        'runs',
-                        'succeeded',
-                        'failed',
-                        'running',
-                        'other',
-                        'success_rate_pct',
-                        'avg_duration_ms',
-                        'min_duration_ms',
-                        'max_duration_ms',
-                        'last_started_at',
-                    ),
-                },
+                {'columns': history_report_mod.REPORT_TABLE_COLUMNS},
             ),
         ]
 
@@ -1507,31 +1490,27 @@ class TestReportHandler:
             {
                 'group_by': 'day',
                 'rows': [
-                    {
-                        'avg_duration_ms': 2000,
-                        'failed': 1,
-                        'group': '2026-03-23',
-                        'last_started_at': '2026-03-23T01:00:00Z',
-                        'max_duration_ms': 3000,
-                        'min_duration_ms': 1000,
-                        'other': 0,
-                        'running': 0,
-                        'runs': 2,
-                        'success_rate_pct': 50.0,
-                        'succeeded': 1,
-                    },
+                    _report_row(
+                        avg_duration_ms=2000,
+                        failed=1,
+                        group='2026-03-23',
+                        last_started_at='2026-03-23T01:00:00Z',
+                        max_duration_ms=3000,
+                        min_duration_ms=1000,
+                        runs=2,
+                        success_rate_pct=50.0,
+                        succeeded=1,
+                    ),
                 ],
-                'summary': {
-                    'avg_duration_ms': 2000,
-                    'failed': 1,
-                    'max_duration_ms': 3000,
-                    'min_duration_ms': 1000,
-                    'other': 0,
-                    'running': 0,
-                    'runs': 2,
-                    'success_rate_pct': 50.0,
-                    'succeeded': 1,
-                },
+                'summary': _report_summary(
+                    avg_duration_ms=2000,
+                    failed=1,
+                    max_duration_ms=3000,
+                    min_duration_ms=1000,
+                    runs=2,
+                    success_rate_pct=50.0,
+                    succeeded=1,
+                ),
             },
             pretty=False,
         )
@@ -1926,26 +1905,13 @@ class TestStatusHandler:
 
         assert_emit_json(
             capture_io,
-            {
-                'config_path': None,
-                'config_sha256': None,
-                'duration_ms': None,
-                'error_message': None,
-                'error_traceback': None,
-                'error_type': None,
-                'etlplus_version': None,
-                'finished_at': '2026-03-23T00:00:05Z',
-                'host': None,
-                'job_name': 'job-a',
-                'pid': None,
-                'pipeline_name': None,
-                'records_in': None,
-                'records_out': None,
-                'result_summary': None,
-                'run_id': 'run-2',
-                'started_at': '2026-03-23T00:00:00Z',
-                'status': 'succeeded',
-            },
+            _normalized_run(
+                finished_at='2026-03-23T00:00:05Z',
+                job_name='job-a',
+                run_id='run-2',
+                started_at='2026-03-23T00:00:00Z',
+                status='succeeded',
+            ),
             pretty=True,
         )
 
