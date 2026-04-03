@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.runtime` package exports.
 
 from __future__ import annotations
 
+import pytest
+
 import etlplus.runtime as runtime_pkg
 from etlplus.runtime._events import EVENT_SCHEMA
 from etlplus.runtime._events import EVENT_SCHEMA_VERSION
@@ -21,19 +23,25 @@ from etlplus.runtime._readiness import ReadinessReportBuilder
 # SECTION: TESTS ============================================================ #
 
 
+RUNTIME_EXPORTS = [
+    ('ReadinessReportBuilder', ReadinessReportBuilder),
+    ('RuntimeEvents', RuntimeEvents),
+    ('EVENT_SCHEMA', EVENT_SCHEMA),
+    ('EVENT_SCHEMA_VERSION', EVENT_SCHEMA_VERSION),
+    ('configure_logging', configure_logging),
+    ('resolve_log_level', resolve_log_level),
+]
+
+
 def test_runtime_package_exports_expected_symbols() -> None:
     """Test that the runtime package facade exports the documented helpers."""
-    assert runtime_pkg.__all__ == [
-        'ReadinessReportBuilder',
-        'RuntimeEvents',
-        'EVENT_SCHEMA',
-        'EVENT_SCHEMA_VERSION',
-        'configure_logging',
-        'resolve_log_level',
-    ]
-    assert runtime_pkg.ReadinessReportBuilder is ReadinessReportBuilder
-    assert runtime_pkg.RuntimeEvents is RuntimeEvents
-    assert runtime_pkg.EVENT_SCHEMA == EVENT_SCHEMA
-    assert runtime_pkg.EVENT_SCHEMA_VERSION == EVENT_SCHEMA_VERSION
-    assert runtime_pkg.configure_logging is configure_logging
-    assert runtime_pkg.resolve_log_level is resolve_log_level
+    assert runtime_pkg.__all__ == [name for name, _value in RUNTIME_EXPORTS]
+
+
+@pytest.mark.parametrize(('name', 'expected'), RUNTIME_EXPORTS)
+def test_runtime_package_exports_bind_expected_symbols(
+    name: str,
+    expected: object,
+) -> None:
+    """Runtime package attributes should match the documented facade surface."""
+    assert getattr(runtime_pkg, name) is expected

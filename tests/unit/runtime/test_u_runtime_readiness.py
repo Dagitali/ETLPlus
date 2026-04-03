@@ -41,9 +41,51 @@ def _cfg(
     )
 
 
+def _connector_gap(
+    *,
+    connector: str,
+    issue: str,
+    role: str,
+    connector_type: str | None = None,
+    guidance: str | None = None,
+    supported_types: list[str] | None = None,
+) -> dict[str, object]:
+    """Build one connector-gap row for readiness assertions."""
+    row: dict[str, object] = {
+        'connector': connector,
+        'issue': issue,
+        'role': role,
+    }
+    if connector_type is not None:
+        row['type'] = connector_type
+    if guidance is not None:
+        row['guidance'] = guidance
+    if supported_types is not None:
+        row['supported_types'] = supported_types
+    return row
+
+
 def _issue(**fields: object) -> dict[str, object]:
     """Build one expected strict-validation issue row."""
     return dict(fields)
+
+
+def _missing_requirement(
+    *,
+    connector: str,
+    missing_package: str,
+    reason: str,
+    role: str,
+    extra: str,
+) -> dict[str, object]:
+    """Build one missing-optional-dependency row."""
+    return {
+        'connector': connector,
+        'extra': extra,
+        'missing_package': missing_package,
+        'reason': reason,
+        'role': role,
+    }
 
 
 def _patch_config_resolution(
@@ -90,6 +132,23 @@ def _patch_file_read(
             return payload
 
     monkeypatch.setattr(readiness_mod, 'File', _FakeFile)
+
+
+def _provider_check(
+    *,
+    status: str,
+    message: str,
+    rows: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
+    """Build one provider-environment check row."""
+    row: dict[str, object] = {
+        'message': message,
+        'name': 'provider-environment',
+        'status': status,
+    }
+    if rows is not None:
+        row['environment_gaps'] = rows
+    return row
 
 
 def _provider_gap(**fields: object) -> dict[str, object]:
@@ -586,30 +645,30 @@ class TestReadinessReportBuilder:
         rows = readiness_mod.ReadinessReportBuilder.connector_gap_rows(cast(Any, cfg))
 
         assert rows == [
-            {
-                'connector': 'file-source',
-                'issue': 'missing path',
-                'role': 'source',
-                'type': 'file',
-            },
-            {
-                'connector': 'api-source',
-                'issue': 'missing url or api reference',
-                'role': 'source',
-                'type': 'api',
-            },
-            {
-                'connector': 'api-ref-source',
-                'issue': 'unknown api reference: missing-api',
-                'role': 'source',
-                'type': 'api',
-            },
-            {
-                'connector': 'db-target',
-                'issue': 'missing connection_string',
-                'role': 'target',
-                'type': 'database',
-            },
+            _connector_gap(
+                connector='file-source',
+                issue='missing path',
+                role='source',
+                connector_type='file',
+            ),
+            _connector_gap(
+                connector='api-source',
+                issue='missing url or api reference',
+                role='source',
+                connector_type='api',
+            ),
+            _connector_gap(
+                connector='api-ref-source',
+                issue='unknown api reference: missing-api',
+                role='source',
+                connector_type='api',
+            ),
+            _connector_gap(
+                connector='db-target',
+                issue='missing connection_string',
+                role='target',
+                connector_type='database',
+            ),
         ]
 
     def test_connector_gap_rows_report_actionable_unsupported_type_details(
@@ -632,18 +691,18 @@ class TestReadinessReportBuilder:
         )
 
         assert rows == [
-            {
-                'connector': 'remote-source',
-                'guidance': (
+            _connector_gap(
+                connector='remote-source',
+                guidance=(
                     '"s3" is a storage scheme, not a connector type. '
                     'Use connector type "file" and keep the provider in '
                     'the path or URI scheme.'
                 ),
-                'issue': 'unsupported type',
-                'role': 'source',
-                'supported_types': ['api', 'database', 'file'],
-                'type': 's3',
-            },
+                issue='unsupported type',
+                role='source',
+                supported_types=['api', 'database', 'file'],
+                connector_type='s3',
+            ),
         ]
 
     def test_connector_gap_rows_return_empty_for_complete_connectors(
@@ -907,20 +966,20 @@ class TestReadinessReportBuilder:
         )
 
         assert rows == [
-            {
-                'connector': 'nc-source',
-                'extra': 'file',
-                'missing_package': 'xarray/netCDF4',
-                'reason': 'nc format requires xarray and netCDF4 or h5netcdf',
-                'role': 'source',
-            },
-            {
-                'connector': 'rda-source',
-                'extra': 'file',
-                'missing_package': 'pyreadr',
-                'reason': 'rda format requires pyreadr',
-                'role': 'source',
-            },
+            _missing_requirement(
+                connector='nc-source',
+                extra='file',
+                missing_package='xarray/netCDF4',
+                reason='nc format requires xarray and netCDF4 or h5netcdf',
+                role='source',
+            ),
+            _missing_requirement(
+                connector='rda-source',
+                extra='file',
+                missing_package='pyreadr',
+                reason='rda format requires pyreadr',
+                role='source',
+            ),
         ]
 
     def test_missing_requirement_rows_respects_package_available_seam(
@@ -951,13 +1010,13 @@ class TestReadinessReportBuilder:
         )
 
         assert rows == [
-            {
-                'connector': 's3-source',
-                'extra': 'storage',
-                'missing_package': 'boto3',
-                'reason': 's3 storage path requires boto3',
-                'role': 'source',
-            },
+            _missing_requirement(
+                connector='s3-source',
+                extra='storage',
+                missing_package='boto3',
+                reason='s3 storage path requires boto3',
+                role='source',
+            ),
         ]
 
     def test_missing_requirement_rows_return_empty_when_requirements_are_satisfied(
@@ -1077,8 +1136,9 @@ class TestReadinessReportBuilder:
                     ),
                 ],
                 [
-                    {
-                        'environment_gaps': [
+                    _provider_check(
+                        message='Provider environment gaps: 1 error(s), 0 warning(s).',
+                        rows=[
                             _provider_gap(
                                 connector='blob-source',
                                 guidance=(
@@ -1100,25 +1160,18 @@ class TestReadinessReportBuilder:
                                 severity='error',
                             ),
                         ],
-                        'message': (
-                            'Provider environment gaps: 1 error(s), 0 warning(s).'
-                        ),
-                        'name': 'provider-environment',
-                        'status': 'error',
-                    },
+                        status='error',
+                    ),
                 ],
                 id='error-rows',
             ),
             pytest.param(
                 [],
                 [
-                    {
-                        'message': (
-                            'No provider-specific environment gaps were detected.'
-                        ),
-                        'name': 'provider-environment',
-                        'status': 'ok',
-                    },
+                    _provider_check(
+                        message='No provider-specific environment gaps were detected.',
+                        status='ok',
+                    ),
                 ],
                 id='no-rows',
             ),
@@ -1153,8 +1206,9 @@ class TestReadinessReportBuilder:
                     ),
                 ],
                 [
-                    {
-                        'environment_gaps': [
+                    _provider_check(
+                        message='Provider environment warnings: 1.',
+                        rows=[
                             _provider_gap(
                                 connector='s3-source',
                                 guidance=(
@@ -1183,10 +1237,8 @@ class TestReadinessReportBuilder:
                                 severity='warn',
                             ),
                         ],
-                        'message': 'Provider environment warnings: 1.',
-                        'name': 'provider-environment',
-                        'status': 'warn',
-                    },
+                        status='warn',
+                    ),
                 ],
                 id='warn-rows',
             ),
@@ -1310,26 +1362,56 @@ class TestReadinessReportBuilder:
 
         assert rows == expected
 
-    def test_provider_environment_rows_return_empty_for_explicit_azure_auth(
-        self,
-    ) -> None:
-        """Test Azure provider rows when bootstrap and credential settings exist."""
-        cfg = _cfg(
-            sources=[
-                SimpleNamespace(
-                    name='blob-source',
-                    path='azure-blob://container/input.csv',
-                    type='file',
+    @pytest.mark.parametrize(
+        ('cfg', 'env'),
+        [
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            name='blob-source',
+                            path='azure-blob://container/input.csv',
+                            type='file',
+                        ),
+                    ],
                 ),
-            ],
-        )
-
+                {
+                    'AZURE_STORAGE_ACCOUNT_URL': (
+                        'https://account.blob.core.windows.net'
+                    ),
+                    'AZURE_STORAGE_CREDENTIAL': 'secret',
+                },
+                id='explicit-azure-auth',
+            ),
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            name='s3-source',
+                            path='s3://bucket/input.csv',
+                            type='file',
+                        ),
+                        SimpleNamespace(
+                            name='local-source',
+                            path='input.csv',
+                            type='file',
+                        ),
+                    ],
+                ),
+                {'AWS_PROFILE': 'default'},
+                id='s3-env-hint',
+            ),
+        ],
+    )
+    def test_provider_environment_rows_return_empty_when_auth_hints_exist(
+        self,
+        cfg: object,
+        env: dict[str, str],
+    ) -> None:
+        """Provider rows should stay empty when explicit auth hints are present."""
         rows = readiness_mod.ReadinessReportBuilder.provider_environment_rows(
             cfg=cast(Any, cfg),
-            env={
-                'AZURE_STORAGE_ACCOUNT_URL': 'https://account.blob.core.windows.net',
-                'AZURE_STORAGE_CREDENTIAL': 'secret',
-            },
+            env=env,
         )
 
         assert not rows
@@ -1373,32 +1455,6 @@ class TestReadinessReportBuilder:
                 'severity': 'warn',
             },
         ]
-
-    def test_provider_environment_rows_skip_s3_warning_when_env_hint_present(
-        self,
-    ) -> None:
-        """Test S3 warning suppression when AWS credential hints are present."""
-        cfg = _cfg(
-            sources=[
-                SimpleNamespace(
-                    name='s3-source',
-                    path='s3://bucket/input.csv',
-                    type='file',
-                ),
-                SimpleNamespace(
-                    name='local-source',
-                    path='input.csv',
-                    type='file',
-                ),
-            ],
-        )
-
-        rows = readiness_mod.ReadinessReportBuilder.provider_environment_rows(
-            cfg=cast(Any, cfg),
-            env={'AWS_PROFILE': 'default'},
-        )
-
-        assert not rows
 
     def test_strict_config_issue_rows_report_duplicates_and_unknown_refs(
         self,
@@ -1828,55 +1884,57 @@ class TestReadinessReportBuilder:
             ),
         ]
 
-    def test_supported_python_check_reports_out_of_range_version(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test the unsupported-Python branch of the readiness check."""
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'python_version',
-            classmethod(lambda cls: '3.12.9'),
-        )
-        monkeypatch.setattr(
-            readiness_mod,
-            'sys',
-            SimpleNamespace(version_info=(3, 12, 9)),
-        )
-
-        check = readiness_mod.ReadinessReportBuilder.supported_python_check()
-
-        assert check == {
-            'message': (
-                'Python 3.12.9 is outside the supported ETLPlus runtime range '
-                '(>=3.13,<3.15).'
+    @pytest.mark.parametrize(
+        ('version', 'version_info', 'expected'),
+        [
+            pytest.param(
+                '3.12.9',
+                (3, 12, 9),
+                {
+                    'message': (
+                        'Python 3.12.9 is outside the supported ETLPlus runtime '
+                        'range (>=3.13,<3.15).'
+                    ),
+                    'name': 'python-version',
+                    'status': 'error',
+                    'version': '3.12.9',
+                },
+                id='unsupported',
             ),
-            'name': 'python-version',
-            'status': 'error',
-            'version': '3.12.9',
-        }
-
-    def test_supported_python_check_reports_supported_version(
+            pytest.param(
+                '3.13.12',
+                (3, 13, 12),
+                {
+                    'message': (
+                        'Python 3.13.12 is within the supported ETLPlus runtime range.'
+                    ),
+                    'name': 'python-version',
+                    'status': 'ok',
+                    'version': '3.13.12',
+                },
+                id='supported',
+            ),
+        ],
+    )
+    def test_supported_python_check_reports_expected_status(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        version: str,
+        version_info: tuple[int, int, int],
+        expected: dict[str, str],
     ) -> None:
-        """Test the supported-Python branch of the readiness check."""
+        """Supported-Python readiness should reflect the active interpreter range."""
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
             'python_version',
-            classmethod(lambda cls: '3.13.12'),
+            classmethod(lambda cls: version),
         )
         monkeypatch.setattr(
             readiness_mod,
             'sys',
-            SimpleNamespace(version_info=(3, 13, 12)),
+            SimpleNamespace(version_info=version_info),
         )
 
         check = readiness_mod.ReadinessReportBuilder.supported_python_check()
 
-        assert check == {
-            'message': 'Python 3.13.12 is within the supported ETLPlus runtime range.',
-            'name': 'python-version',
-            'status': 'ok',
-            'version': '3.13.12',
-        }
+        assert check == expected
