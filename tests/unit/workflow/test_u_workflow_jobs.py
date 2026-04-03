@@ -3,70 +3,66 @@
 
 Unit tests for :mod:`etlplus.workflow._jobs`.
 
-Covers dataclass parsing, from_obj methods, and edge cases.
+Covers dataclass parsing and normalization behavior.
 """
 
 from __future__ import annotations
 
-import importlib
-from typing import Protocol
-from typing import TypeVar
+from collections.abc import Mapping
 
 import pytest
+
+from etlplus.workflow._jobs import ExtractRef
+from etlplus.workflow._jobs import JobConfig
+from etlplus.workflow._jobs import LoadRef
+from etlplus.workflow._jobs import TransformRef
+from etlplus.workflow._jobs import ValidationRef
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: MARKERS ========================================================== #
-
-
-pytestmark = pytest.mark.unit
-
 
 # SECTION: HELPERS ========================================================== #
 
 
-# Directory-level marker for unit tests.
-jobs = importlib.import_module('etlplus.workflow._jobs')
+type RefClass = (
+    type[ExtractRef] | type[LoadRef] | type[TransformRef] | type[ValidationRef]
+)
+
+
+def _assert_fields(actual: object, expected: Mapping[str, object]) -> None:
+    """Assert that *actual* exposes the expected field values."""
+    for field, value in expected.items():
+        assert getattr(actual, field) == value
 
 
 # SECTION: TESTS ============================================================ #
-
-T_co = TypeVar('T_co', covariant=True)
-
-
-class SupportsFromObj(Protocol[T_co]):
-    """Protocol for dataclasses exposing a ``from_obj`` constructor."""
-
-    @classmethod
-    def from_obj(cls, obj: dict[str, object] | None) -> T_co | None:
-        """Construct an instance from a dict or return None on failure."""
 
 
 @pytest.mark.parametrize(
     ('ref_cls', 'obj', 'expected'),
     [
         pytest.param(
-            jobs.ExtractRef,
+            ExtractRef,
             {'source': 'my_source', 'options': {'foo': 1}},
             {'source': 'my_source', 'options': {'foo': 1}},
             id='extract-ref',
         ),
         pytest.param(
-            jobs.LoadRef,
+            LoadRef,
             {'target': 'my_target', 'overrides': {'foo': 2}},
             {'target': 'my_target', 'overrides': {'foo': 2}},
             id='load-ref',
         ),
         pytest.param(
-            jobs.TransformRef,
+            TransformRef,
             {'pipeline': 'my_pipeline'},
             {'pipeline': 'my_pipeline'},
             id='transform-ref',
         ),
         pytest.param(
-            jobs.ValidationRef,
+            ValidationRef,
             {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'},
             {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'},
             id='validation-ref',
@@ -74,34 +70,33 @@ class SupportsFromObj(Protocol[T_co]):
     ],
 )
 def test_ref_from_obj_valid(
-    ref_cls: type[SupportsFromObj[object]],
+    ref_cls: RefClass,
     obj: dict[str, object],
     expected: dict[str, object],
 ) -> None:
     """Test that valid dict input yields the expected reference object."""
     ref = ref_cls.from_obj(obj)
     assert ref is not None
-    for field, value in expected.items():
-        assert getattr(ref, field) == value
+    _assert_fields(ref, expected)
 
 
 @pytest.mark.parametrize(
     ('ref_cls', 'obj'),
     [
-        pytest.param(jobs.ExtractRef, None, id='extract-none'),
-        pytest.param(jobs.ExtractRef, {'source': 123}, id='extract-bad'),
-        pytest.param(jobs.LoadRef, {'target': 123}, id='load-bad'),
-        pytest.param(jobs.TransformRef, {'pipeline': 123}, id='transform-bad'),
-        pytest.param(jobs.ValidationRef, None, id='validation-none'),
+        pytest.param(ExtractRef, None, id='extract-none'),
+        pytest.param(ExtractRef, {'source': 123}, id='extract-bad'),
+        pytest.param(LoadRef, {'target': 123}, id='load-bad'),
+        pytest.param(TransformRef, {'pipeline': 123}, id='transform-bad'),
+        pytest.param(ValidationRef, None, id='validation-none'),
         pytest.param(
-            jobs.ValidationRef,
+            ValidationRef,
             {'ruleset': 123},
             id='validation-bad',
         ),
     ],
 )
 def test_ref_from_obj_invalid(
-    ref_cls: type[SupportsFromObj[object]],
+    ref_cls: RefClass,
     obj: dict[str, object] | None,
 ) -> None:
     """Test that invalid dict input yields ``None`` for reference objects."""
@@ -120,10 +115,9 @@ def test_jobconfig_from_obj_valid() -> None:
         'transform': {'pipeline': 'p'},
         'load': {'target': 't'},
     }
-    cfg = jobs.JobConfig.from_obj(obj)
+    cfg = JobConfig.from_obj(obj)
     assert cfg is not None
-    assert cfg.name == 'job1'
-    assert cfg.description == 'desc'
+    _assert_fields(cfg, {'name': 'job1', 'description': 'desc'})
     assert cfg.extract is not None
     assert cfg.validate is not None
     assert cfg.transform is not None
@@ -134,6 +128,7 @@ def test_jobconfig_from_obj_valid() -> None:
     'obj',
     [
         pytest.param(None, id='none'),
+        pytest.param({}, id='empty-mapping'),
         pytest.param({'name': 123}, id='bad-name'),
     ],
 )
@@ -141,33 +136,34 @@ def test_jobconfig_from_obj_invalid(
     obj: dict[str, object] | None,
 ) -> None:
     """Test that invalid dict input yields ``None`` for :class:`JobConfig`."""
-    assert jobs.JobConfig.from_obj(obj) is None
+    assert JobConfig.from_obj(obj) is None
 
 
-def test_jobconfig_description_coercion() -> None:
-    """
-    Test that :class:`JobConfig` coerces description to a string.
-    """
-    cfg = jobs.JobConfig.from_obj({'name': 'x', 'description': 5})
+@pytest.mark.parametrize(
+    ('obj', 'expected'),
+    [
+        pytest.param(
+            {'name': 'x', 'description': 5},
+            {'name': 'x', 'description': '5', 'depends_on': []},
+            id='coerces-description',
+        ),
+        pytest.param(
+            {'name': 'x', 'depends_on': ['a', 1, None, 'b']},
+            {'name': 'x', 'description': None, 'depends_on': ['a', 'b']},
+            id='filters-non-string-dependencies',
+        ),
+        pytest.param(
+            {'name': 'x', 'depends_on': 'prepare'},
+            {'name': 'x', 'description': None, 'depends_on': ['prepare']},
+            id='wraps-string-dependency',
+        ),
+    ],
+)
+def test_jobconfig_from_obj_normalizes_optional_fields(
+    obj: dict[str, object],
+    expected: dict[str, object],
+) -> None:
+    """Job config parsing should normalize optional string and dependency fields."""
+    cfg = JobConfig.from_obj(obj)
     assert cfg is not None
-    assert cfg.name == 'x'
-    assert cfg.description == '5'
-
-
-def test_jobconfig_depends_on_filters_non_strings() -> None:
-    """Test that sequence dependencies keep only string entries."""
-    cfg = jobs.JobConfig.from_obj(
-        {
-            'name': 'x',
-            'depends_on': ['a', 1, None, 'b'],
-        },
-    )
-    assert cfg is not None
-    assert cfg.depends_on == ['a', 'b']
-
-
-def test_jobconfig_depends_on_string_is_wrapped() -> None:
-    """Test that single-string dependencies normalize to a one-item list."""
-    cfg = jobs.JobConfig.from_obj({'name': 'x', 'depends_on': 'prepare'})
-    assert cfg is not None
-    assert cfg.depends_on == ['prepare']
+    _assert_fields(cfg, expected)

@@ -34,6 +34,24 @@ class _FakeHistoryStore:
         self.completions.append(completion)
 
 
+def _command_context(
+    *,
+    command: str = 'run',
+    event_format: str | None = None,
+    run_id: str = 'run-123',
+    started_at: str = '2026-04-01T12:00:00Z',
+    started_perf: float = 1.0,
+) -> lifecycle_mod.CommandContext:
+    """Build one command context with stable defaults for test setup."""
+    return lifecycle_mod.CommandContext(
+        command=command,
+        event_format=event_format,
+        run_id=run_id,
+        started_at=started_at,
+        started_perf=started_perf,
+    )
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -44,7 +62,7 @@ class TestCommandContext:
 
     def test_stores_supplied_fields(self) -> None:
         """Test that the dataclass preserves the supplied runtime values."""
-        context = lifecycle_mod.CommandContext(
+        context = _command_context(
             command='run',
             event_format='jsonl',
             run_id='run-123',
@@ -70,7 +88,7 @@ class TestCompleteCommand:
     ) -> None:
         """Test that completed events forward context data and duration."""
         captured: dict[str, object] = {}
-        context = lifecycle_mod.CommandContext(
+        context = _command_context(
             command='validate',
             event_format='jsonl',
             run_id='run-987',
@@ -215,7 +233,7 @@ class TestFailCommand:
     ) -> None:
         """Test that fail command delegates to the shared failure emitter."""
         captured: dict[str, object] = {}
-        context = lifecycle_mod.CommandContext(
+        context = _command_context(
             command='extract',
             event_format=None,
             run_id='run-111',
@@ -256,7 +274,7 @@ class TestFailureBoundary:
     ) -> None:
         """Test that error callbacks run before the shared fail emission."""
         calls: list[tuple[str, object]] = []
-        context = lifecycle_mod.CommandContext(
+        context = _command_context(
             command='load',
             event_format='jsonl',
             run_id='run-222',
@@ -301,7 +319,7 @@ class TestFailureBoundary:
     ) -> None:
         """Test that the no-callback branch still emits failure and re-raises."""
         captured: list[tuple[object, Exception, dict[str, object]]] = []
-        context = lifecycle_mod.CommandContext(
+        context = _command_context(
             command='run',
             event_format=None,
             run_id='run-333',
@@ -339,7 +357,7 @@ class TestFailureBoundary:
         """Test that successful blocks do not call fail or error callbacks."""
         fail_calls: list[tuple[object, Exception, dict[str, object]]] = []
         on_error_calls: list[Exception] = []
-        context = lifecycle_mod.CommandContext(
+        context = _command_context(
             command='extract',
             event_format=None,
             run_id='run-123',
@@ -372,90 +390,99 @@ class TestRecordRunCompletion:
     Unit tests for :func:`etlplus.cli._handlers._lifecycle.record_run_completion`.
     """
 
-    def test_records_failure_completion(
+    @pytest.mark.parametrize(
+        (
+            'status',
+            'context',
+            'finished_at',
+            'duration_ms',
+            'result_summary',
+            'exc',
+            'expected_state',
+        ),
+        [
+            pytest.param(
+                'failed',
+                _command_context(
+                    run_id='run-555',
+                    started_at='2026-04-01T20:00:00Z',
+                    started_perf=4.0,
+                ),
+                '2026-04-01T20:45:00Z',
+                888,
+                None,
+                RuntimeError('pipeline failed'),
+                RunState(
+                    status='failed',
+                    finished_at='2026-04-01T20:45:00Z',
+                    duration_ms=888,
+                    result_summary=None,
+                    error_type='RuntimeError',
+                    error_message='pipeline failed',
+                ),
+                id='failure',
+            ),
+            pytest.param(
+                'succeeded',
+                _command_context(
+                    run_id='run-444',
+                    started_at='2026-04-01T19:00:00Z',
+                    started_perf=3.0,
+                ),
+                '2026-04-01T19:30:00Z',
+                777,
+                {'rows': 10},
+                None,
+                RunState(
+                    status='succeeded',
+                    finished_at='2026-04-01T19:30:00Z',
+                    duration_ms=777,
+                    result_summary={'rows': 10},
+                    error_type=None,
+                    error_message=None,
+                ),
+                id='success',
+            ),
+        ],
+    )
+    def test_records_completion(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        status: str,
+        context: lifecycle_mod.CommandContext,
+        finished_at: str,
+        duration_ms: int,
+        result_summary: dict[str, object] | list[dict[str, object]] | None,
+        exc: Exception | None,
+        expected_state: RunState,
     ) -> None:
-        """Test that failed completions persist the exception metadata."""
+        """Run completions should persist either success or failure metadata."""
         store = _FakeHistoryStore()
-        context = lifecycle_mod.CommandContext(
-            command='run',
-            event_format='jsonl',
-            run_id='run-555',
-            started_at='2026-04-01T20:00:00Z',
-            started_perf=4.0,
-        )
-        exc = RuntimeError('pipeline failed')
-
         monkeypatch.setattr(
             lifecycle_mod.RuntimeEvents,
             'utc_now_iso',
-            lambda: '2026-04-01T20:45:00Z',
+            lambda: finished_at,
         )
-        monkeypatch.setattr(lifecycle_mod, 'elapsed_ms', lambda _started_perf: 888)
+        monkeypatch.setattr(
+            lifecycle_mod,
+            'elapsed_ms',
+            lambda _started_perf: duration_ms,
+        )
 
         lifecycle_mod.record_run_completion(
             store,
             context,
-            status='failed',
+            status=status,
+            result_summary=result_summary,
             exc=exc,
         )
 
-        assert len(store.completions) == 1
-        completion = store.completions[0]
-        assert completion == RunCompletion(
-            run_id='run-555',
-            state=RunState(
-                status='failed',
-                finished_at='2026-04-01T20:45:00Z',
-                duration_ms=888,
-                result_summary=None,
-                error_type='RuntimeError',
-                error_message='pipeline failed',
+        assert store.completions == [
+            RunCompletion(
+                run_id=context.run_id,
+                state=expected_state,
             ),
-        )
-
-    def test_records_success_completion(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that successful completions omit error metadata."""
-        store = _FakeHistoryStore()
-        context = lifecycle_mod.CommandContext(
-            command='run',
-            event_format='jsonl',
-            run_id='run-444',
-            started_at='2026-04-01T19:00:00Z',
-            started_perf=3.0,
-        )
-
-        monkeypatch.setattr(
-            lifecycle_mod.RuntimeEvents,
-            'utc_now_iso',
-            lambda: '2026-04-01T19:30:00Z',
-        )
-        monkeypatch.setattr(lifecycle_mod, 'elapsed_ms', lambda _started_perf: 777)
-
-        lifecycle_mod.record_run_completion(
-            store,
-            context,
-            status='succeeded',
-            result_summary={'rows': 10},
-        )
-
-        assert len(store.completions) == 1
-        completion = store.completions[0]
-        assert completion == RunCompletion(
-            run_id='run-444',
-            state=RunState(
-                status='succeeded',
-                finished_at='2026-04-01T19:30:00Z',
-                duration_ms=777,
-                result_summary={'rows': 10},
-                error_type=None,
-                error_message=None,
-            ),
-        )
+        ]
 
 
 class TestStartCommand:
@@ -499,7 +526,7 @@ class TestStartCommand:
             source='input.csv',
         )
 
-        assert context == lifecycle_mod.CommandContext(
+        assert context == _command_context(
             command='transform',
             event_format='jsonl',
             run_id='run-789',

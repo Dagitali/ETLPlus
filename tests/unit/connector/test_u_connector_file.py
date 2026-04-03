@@ -11,6 +11,8 @@ import pytest
 from etlplus.connector._enums import DataConnectorType
 from etlplus.connector._file import ConnectorFile
 
+from .pytest_connector_support import assert_connector_fields
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -21,39 +23,67 @@ from etlplus.connector._file import ConnectorFile
 class TestConnectorFile:
     """Unit tests for :class:`ConnectorFile`."""
 
-    def test_from_obj_accepts_mapping_options(self) -> None:
-        """Test that mapping options are copied into plain dict form."""
-        connector = ConnectorFile.from_obj(
-            {
-                'name': 'input_json',
-                'type': 'file',
-                'options': {'encoding': 'utf-8'},
-            },
-        )
-        assert connector.options == {'encoding': 'utf-8'}
-
-    def test_from_obj_parses_file_fields_and_coerces_options(self) -> None:
+    @pytest.mark.parametrize(
+        ('payload', 'expected'),
+        [
+            pytest.param(
+                {
+                    'name': 'input_json',
+                    'type': 'file',
+                    'options': {'encoding': 'utf-8'},
+                },
+                {
+                    'type': DataConnectorType.FILE,
+                    'name': 'input_json',
+                    'format': None,
+                    'path': None,
+                    'options': {'encoding': 'utf-8'},
+                },
+                id='mapping-options',
+            ),
+            pytest.param(
+                {
+                    'name': 'input_csv',
+                    'type': 'file',
+                    'format': 'csv',
+                    'path': '/tmp/input.csv',
+                    'options': [('delimiter', ',')],
+                },
+                {
+                    'type': DataConnectorType.FILE,
+                    'name': 'input_csv',
+                    'format': 'csv',
+                    'path': '/tmp/input.csv',
+                    'options': {},
+                },
+                id='coerces-non-mapping-options',
+            ),
+        ],
+    )
+    def test_from_obj_normalizes_file_fields(
+        self,
+        payload: dict[str, object],
+        expected: dict[str, object],
+    ) -> None:
         """
-        Test that :meth:`from_obj` parses fields and coerces non-mapping
-        options.
+        Test that :meth:`from_obj` preserves fields and normalizes options.
         """
-        connector = ConnectorFile.from_obj(
-            {
-                'name': 'input_csv',
-                'type': 'file',
-                'format': 'csv',
-                'path': '/tmp/input.csv',
-                'options': [('delimiter', ',')],
-            },
-        )
+        connector = ConnectorFile.from_obj(payload)
+        assert_connector_fields(connector, expected)
 
-        assert connector.type is DataConnectorType.FILE
-        assert connector.name == 'input_csv'
-        assert connector.format == 'csv'
-        assert connector.path == '/tmp/input.csv'
-        assert not connector.options
-
-    def test_from_obj_requires_name(self) -> None:
-        """Test that :meth:`from_obj` rejects mappings without a valid name."""
+    @pytest.mark.parametrize(
+        'payload',
+        [
+            pytest.param({'type': 'file'}, id='missing-name'),
+            pytest.param({'name': None, 'type': 'file'}, id='non-string-name'),
+        ],
+    )
+    def test_from_obj_requires_name(
+        self,
+        payload: dict[str, object],
+    ) -> None:
+        """
+        Test that :meth:`from_obj` rejects mappings with missing or invalid names.
+        """
         with pytest.raises(TypeError, match='ConnectorFile requires a "name"'):
-            ConnectorFile.from_obj({'type': 'file'})
+            ConnectorFile.from_obj(payload)

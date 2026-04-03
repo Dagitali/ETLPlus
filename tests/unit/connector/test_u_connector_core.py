@@ -40,15 +40,21 @@ class TestConnectorCore:
         with pytest.raises(TypeError, match='ConnectorFile requires a "name"'):
             ConnectorBase._require_name(payload, kind='File')
 
-    def test_require_name_returns_name_when_valid(self) -> None:
+    @pytest.mark.parametrize(
+        ('payload', 'expected'),
+        [
+            pytest.param({'name': 'src_file'}, 'src_file', id='valid-name'),
+        ],
+    )
+    def test_require_name_returns_name_when_valid(
+        self,
+        payload: dict[str, object],
+        expected: str,
+    ) -> None:
         """Test that a valid connector name is returned unchanged."""
-        resolved = ConnectorBase._require_name(
-            {'name': 'src_file'},
-            kind='File',
-        )
-        assert resolved == 'src_file'
+        assert ConnectorBase._require_name(payload, kind='File') == expected
 
-    def test_runtime_protocol_check(self) -> None:
+    def test_concrete_connector_satisfies_runtime_protocol(self) -> None:
         """
         Test that concrete connector dataclasses satisfy the runtime protocol.
         """

@@ -1134,7 +1134,7 @@ class TestLocalStorageBackend:
         with backend.open(location, encoding='utf-8') as handle:
             assert handle.read() == 'payload'
 
-        assert created == []
+        assert not created
 
 
 class TestOtherStubStorageBackends:

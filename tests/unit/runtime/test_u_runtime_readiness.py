@@ -41,18 +41,192 @@ def _cfg(
     )
 
 
+def _connector_gap(
+    *,
+    connector: str,
+    issue: str,
+    role: str,
+    connector_type: str | None = None,
+    guidance: str | None = None,
+    supported_types: list[str] | None = None,
+) -> dict[str, object]:
+    """Build one connector-gap row for readiness assertions."""
+    row: dict[str, object] = {
+        'connector': connector,
+        'issue': issue,
+        'role': role,
+    }
+    if connector_type is not None:
+        row['type'] = connector_type
+    if guidance is not None:
+        row['guidance'] = guidance
+    if supported_types is not None:
+        row['supported_types'] = supported_types
+    return row
+
+
+def _issue(**fields: object) -> dict[str, object]:
+    """Build one expected strict-validation issue row."""
+    return dict(fields)
+
+
+def _missing_requirement(
+    *,
+    connector: str,
+    missing_package: str,
+    reason: str,
+    role: str,
+    extra: str,
+) -> dict[str, object]:
+    """Build one missing-optional-dependency row."""
+    return {
+        'connector': connector,
+        'extra': extra,
+        'missing_package': missing_package,
+        'reason': reason,
+        'role': role,
+    }
+
+
+def _patch_config_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    raw: Mapping[str, object],
+    resolved_cfg: object | None = None,
+    unresolved_tokens: list[str] | None = None,
+    resolved_raw: Mapping[str, object] | None = None,
+) -> None:
+    """Patch raw-config loading and context resolution for one test scenario."""
+    raw_config = dict(raw)
+    effective_resolved_raw = raw_config if resolved_raw is None else dict(resolved_raw)
+
+    monkeypatch.setattr(
+        readiness_mod.ReadinessReportBuilder,
+        'load_raw_config',
+        lambda _path: raw_config,
+    )
+    monkeypatch.setattr(
+        readiness_mod.ReadinessReportBuilder,
+        'resolve_config_context',
+        lambda raw, env=None: _resolved_config_context(
+            cast(Mapping[str, object], raw),
+            env=env,
+            unresolved_tokens=unresolved_tokens,
+            resolved_raw=effective_resolved_raw,
+            resolved_cfg=resolved_cfg,
+        ),
+    )
+
+
+def _patch_file_read(
+    monkeypatch: pytest.MonkeyPatch,
+    payload: object,
+) -> None:
+    """Patch :class:`File` to return one fixed payload from ``read()``."""
+
+    class _FakeFile:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def read(self) -> object:
+            return payload
+
+    monkeypatch.setattr(readiness_mod, 'File', _FakeFile)
+
+
+def _provider_check(
+    *,
+    status: str,
+    message: str,
+    rows: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
+    """Build one provider-environment check row."""
+    row: dict[str, object] = {
+        'message': message,
+        'name': 'provider-environment',
+        'status': status,
+    }
+    if rows is not None:
+        row['environment_gaps'] = rows
+    return row
+
+
+def _provider_gap(**fields: object) -> dict[str, object]:
+    """Build one provider-environment gap row for wrapper-level tests."""
+    return dict(fields)
+
+
+def _resolved_config_context(
+    raw: Mapping[str, object],
+    *,
+    env: Mapping[str, str] | None = None,
+    unresolved_tokens: list[str] | None = None,
+    resolved_raw: Mapping[str, object] | None = None,
+    resolved_cfg: object | None = None,
+) -> readiness_mod._ResolvedConfigContext:
+    """Build one resolved-config context with stable defaults."""
+    return readiness_mod._ResolvedConfigContext(
+        raw=raw,
+        effective_env={} if env is None else dict(env),
+        unresolved_tokens=[] if unresolved_tokens is None else list(unresolved_tokens),
+        resolved_raw=raw if resolved_raw is None else dict(resolved_raw),
+        resolved_cfg=cast(Any, _cfg() if resolved_cfg is None else resolved_cfg),
+    )
+
+
+def _write_pipeline_config(
+    tmp_path: Path,
+    *,
+    contents: str = 'name: pipeline\n',
+) -> Path:
+    """Write one minimal pipeline config and return its path."""
+    config_path = tmp_path / 'pipeline.yml'
+    config_path.write_text(contents, encoding='utf-8')
+    return config_path
+
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestReadinessReportBuilder:
     """Unit tests for :class:`ReadinessReportBuilder`."""
 
-    def test_build_matches_wrapper_runtime_only(self) -> None:
-        """Test that the class builder matches the function wrapper."""
-        expected = readiness_mod.ReadinessReportBuilder.build(env={})
-        actual = readiness_mod.ReadinessReportBuilder.build(env={})
+    def test_build_runtime_only_emits_python_and_skipped_config_checks(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that runtime-only builds emit the stable non-config readiness rows.
+        """
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'supported_python_check',
+            lambda: {'name': 'python-version', 'status': 'ok'},
+        )
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'python_version',
+            classmethod(lambda cls: '3.13.12'),
+        )
 
-        assert actual == expected
+        report = readiness_mod.ReadinessReportBuilder.build(env={})
+
+        assert report == {
+            'checks': [
+                {'name': 'python-version', 'status': 'ok'},
+                {
+                    'message': (
+                        'No configuration file provided; only runtime '
+                        'checks were performed.'
+                    ),
+                    'name': 'config-file',
+                    'status': 'skipped',
+                },
+            ],
+            'etlplus_version': readiness_mod.__version__,
+            'python_version': '3.13.12',
+            'status': 'ok',
+        }
 
     def test_build_passes_strict_flag_through_to_config_checks(
         self,
@@ -171,25 +345,11 @@ class TestReadinessReportBuilder:
         tmp_path: Path,
     ) -> None:
         """Config checks should return early when runtime checks are disabled."""
-        config_path = tmp_path / 'pipeline.yml'
-        config_path.write_text('name: pipeline\n', encoding='utf-8')
+        config_path = _write_pipeline_config(tmp_path)
         runtime_called = {'value': False}
-
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'load_raw_config',
-            lambda _path: {'name': 'pipeline'},
-        )
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'resolve_config_context',
-            lambda raw, env=None: readiness_mod._ResolvedConfigContext(
-                raw=raw,
-                effective_env={} if env is None else dict(env),
-                unresolved_tokens=[],
-                resolved_raw=raw,
-                resolved_cfg=cast(Any, _cfg()),
-            ),
+        _patch_config_resolution(
+            monkeypatch,
+            raw={'name': 'pipeline'},
         )
 
         def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
@@ -242,25 +402,12 @@ class TestReadinessReportBuilder:
         tmp_path: Path,
     ) -> None:
         """Test the resolved config path that appends connector/provider checks."""
-        config_path = tmp_path / 'pipeline.yml'
-        config_path.write_text('name: pipeline\n', encoding='utf-8')
+        config_path = _write_pipeline_config(tmp_path)
         resolved_cfg = _cfg()
-
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'load_raw_config',
-            lambda _path: {'name': 'pipeline'},
-        )
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'resolve_config_context',
-            lambda raw, env=None: readiness_mod._ResolvedConfigContext(
-                raw=raw,
-                effective_env={} if env is None else dict(env),
-                unresolved_tokens=[],
-                resolved_raw=raw,
-                resolved_cfg=cast(Any, resolved_cfg),
-            ),
+        _patch_config_resolution(
+            monkeypatch,
+            raw={'name': 'pipeline'},
+            resolved_cfg=resolved_cfg,
         )
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
@@ -305,8 +452,7 @@ class TestReadinessReportBuilder:
         tmp_path: Path,
     ) -> None:
         """Test that unresolved substitutions short-circuit connector checks."""
-        config_path = tmp_path / 'pipeline.yml'
-        config_path.write_text('name: pipeline\n', encoding='utf-8')
+        config_path = _write_pipeline_config(tmp_path)
 
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
@@ -375,8 +521,7 @@ class TestReadinessReportBuilder:
         tmp_path: Path,
     ) -> None:
         """Strict config issues should stop before runtime readiness checks."""
-        config_path = tmp_path / 'pipeline.yml'
-        config_path.write_text('name: pipeline\n', encoding='utf-8')
+        config_path = _write_pipeline_config(tmp_path)
         resolved_raw = {
             'sources': ['bad-entry'],
             'jobs': [
@@ -387,22 +532,10 @@ class TestReadinessReportBuilder:
                 },
             ],
         }
-
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'load_raw_config',
-            lambda _path: resolved_raw,
-        )
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'resolve_config_context',
-            lambda raw, env=None: readiness_mod._ResolvedConfigContext(
-                raw=raw,
-                effective_env={} if env is None else dict(env),
-                unresolved_tokens=[],
-                resolved_raw=resolved_raw,
-                resolved_cfg=cast(Any, _cfg()),
-            ),
+        _patch_config_resolution(
+            monkeypatch,
+            raw=resolved_raw,
+            resolved_raw=resolved_raw,
         )
         runtime_called = {'value': False}
 
@@ -442,25 +575,12 @@ class TestReadinessReportBuilder:
         tmp_path: Path,
     ) -> None:
         """Strict config checks should emit an explicit ok row when clean."""
-        config_path = tmp_path / 'pipeline.yml'
-        config_path.write_text('name: pipeline\n', encoding='utf-8')
+        config_path = _write_pipeline_config(tmp_path)
         resolved_cfg = _cfg()
-
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'load_raw_config',
-            lambda _path: {'name': 'pipeline'},
-        )
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'resolve_config_context',
-            lambda raw, env=None: readiness_mod._ResolvedConfigContext(
-                raw=raw,
-                effective_env={} if env is None else dict(env),
-                unresolved_tokens=[],
-                resolved_raw=raw,
-                resolved_cfg=cast(Any, resolved_cfg),
-            ),
+        _patch_config_resolution(
+            monkeypatch,
+            raw={'name': 'pipeline'},
+            resolved_cfg=resolved_cfg,
         )
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
@@ -525,30 +645,30 @@ class TestReadinessReportBuilder:
         rows = readiness_mod.ReadinessReportBuilder.connector_gap_rows(cast(Any, cfg))
 
         assert rows == [
-            {
-                'connector': 'file-source',
-                'issue': 'missing path',
-                'role': 'source',
-                'type': 'file',
-            },
-            {
-                'connector': 'api-source',
-                'issue': 'missing url or api reference',
-                'role': 'source',
-                'type': 'api',
-            },
-            {
-                'connector': 'api-ref-source',
-                'issue': 'unknown api reference: missing-api',
-                'role': 'source',
-                'type': 'api',
-            },
-            {
-                'connector': 'db-target',
-                'issue': 'missing connection_string',
-                'role': 'target',
-                'type': 'database',
-            },
+            _connector_gap(
+                connector='file-source',
+                issue='missing path',
+                role='source',
+                connector_type='file',
+            ),
+            _connector_gap(
+                connector='api-source',
+                issue='missing url or api reference',
+                role='source',
+                connector_type='api',
+            ),
+            _connector_gap(
+                connector='api-ref-source',
+                issue='unknown api reference: missing-api',
+                role='source',
+                connector_type='api',
+            ),
+            _connector_gap(
+                connector='db-target',
+                issue='missing connection_string',
+                role='target',
+                connector_type='database',
+            ),
         ]
 
     def test_connector_gap_rows_report_actionable_unsupported_type_details(
@@ -571,18 +691,18 @@ class TestReadinessReportBuilder:
         )
 
         assert rows == [
-            {
-                'connector': 'remote-source',
-                'guidance': (
+            _connector_gap(
+                connector='remote-source',
+                guidance=(
                     '"s3" is a storage scheme, not a connector type. '
                     'Use connector type "file" and keep the provider in '
                     'the path or URI scheme.'
                 ),
-                'issue': 'unsupported type',
-                'role': 'source',
-                'supported_types': ['api', 'database', 'file'],
-                'type': 's3',
-            },
+                issue='unsupported type',
+                role='source',
+                supported_types=['api', 'database', 'file'],
+                connector_type='s3',
+            ),
         ]
 
     def test_connector_gap_rows_return_empty_for_complete_connectors(
@@ -761,42 +881,46 @@ class TestReadinessReportBuilder:
 
         assert rows == [row, {**row, 'connector': 'source-b'}]
 
-    def test_load_raw_config_requires_mapping_root(
+    @pytest.mark.parametrize(
+        ('payload', 'expected', 'match'),
+        [
+            pytest.param(
+                ['not', 'a', 'mapping'],
+                None,
+                'mapping/object root',
+                id='rejects-non-mapping-root',
+            ),
+            pytest.param(
+                {'name': 'pipeline'},
+                {'name': 'pipeline'},
+                None,
+                id='returns-mapping-root',
+            ),
+        ],
+    )
+    def test_load_raw_config_validates_mapping_root(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        payload: object,
+        expected: dict[str, object] | None,
+        match: str | None,
     ) -> None:
-        """Test that raw config loading rejects non-mapping YAML roots."""
+        """Raw config loading should enforce a mapping/object root."""
+        _patch_file_read(monkeypatch, payload)
 
-        class _FakeFile:
-            def __init__(self, *_args: object, **_kwargs: object) -> None:
-                pass
+        if match is not None:
+            with pytest.raises(TypeError, match=match):
+                readiness_mod.ReadinessReportBuilder.load_raw_config(
+                    'pipeline.yml',
+                )
+            return
 
-            def read(self) -> object:
-                return ['not', 'a', 'mapping']
-
-        monkeypatch.setattr(readiness_mod, 'File', _FakeFile)
-
-        with pytest.raises(TypeError, match='mapping/object root'):
-            readiness_mod.ReadinessReportBuilder.load_raw_config('pipeline.yml')
-
-    def test_load_raw_config_returns_mapping_root(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that raw config loading returns a mapping root unchanged."""
-
-        class _FakeFile:
-            def __init__(self, *_args: object, **_kwargs: object) -> None:
-                pass
-
-            def read(self) -> object:
-                return {'name': 'pipeline'}
-
-        monkeypatch.setattr(readiness_mod, 'File', _FakeFile)
-
-        assert readiness_mod.ReadinessReportBuilder.load_raw_config('pipeline.yml') == {
-            'name': 'pipeline',
-        }
+        assert (
+            readiness_mod.ReadinessReportBuilder.load_raw_config(
+                'pipeline.yml',
+            )
+            == expected
+        )
 
     def test_missing_requirement_rows_cover_netcdf_and_format_specific_branches(
         self,
@@ -842,20 +966,20 @@ class TestReadinessReportBuilder:
         )
 
         assert rows == [
-            {
-                'connector': 'nc-source',
-                'extra': 'file',
-                'missing_package': 'xarray/netCDF4',
-                'reason': 'nc format requires xarray and netCDF4 or h5netcdf',
-                'role': 'source',
-            },
-            {
-                'connector': 'rda-source',
-                'extra': 'file',
-                'missing_package': 'pyreadr',
-                'reason': 'rda format requires pyreadr',
-                'role': 'source',
-            },
+            _missing_requirement(
+                connector='nc-source',
+                extra='file',
+                missing_package='xarray/netCDF4',
+                reason='nc format requires xarray and netCDF4 or h5netcdf',
+                role='source',
+            ),
+            _missing_requirement(
+                connector='rda-source',
+                extra='file',
+                missing_package='pyreadr',
+                reason='rda format requires pyreadr',
+                role='source',
+            ),
         ]
 
     def test_missing_requirement_rows_respects_package_available_seam(
@@ -886,13 +1010,13 @@ class TestReadinessReportBuilder:
         )
 
         assert rows == [
-            {
-                'connector': 's3-source',
-                'extra': 'storage',
-                'missing_package': 'boto3',
-                'reason': 's3 storage path requires boto3',
-                'role': 'source',
-            },
+            _missing_requirement(
+                connector='s3-source',
+                extra='storage',
+                missing_package='boto3',
+                reason='s3 storage path requires boto3',
+                role='source',
+            ),
         ]
 
     def test_missing_requirement_rows_return_empty_when_requirements_are_satisfied(
@@ -985,107 +1109,83 @@ class TestReadinessReportBuilder:
 
         assert readiness_mod.ReadinessReportBuilder.package_available('broken') is False
 
-    def test_provider_environment_checks_report_azure_bootstrap_gaps(
-        self,
-    ) -> None:
-        """Test that Azure storage paths report missing bootstrap env details."""
-        cfg = SimpleNamespace(
-            sources=[
-                SimpleNamespace(
-                    name='blob-source',
-                    format='csv',
-                    path='azure-blob://container/input.csv',
-                    type='file',
-                ),
-            ],
-            targets=[],
-            apis={},
-        )
-
-        checks = readiness_mod.ReadinessReportBuilder.provider_environment_checks(
-            cfg=cast(Any, cfg),
-            env={},
-        )
-
-        assert checks == [
-            {
-                'environment_gaps': [
-                    {
-                        'connector': 'blob-source',
-                        'guidance': (
+    @pytest.mark.parametrize(
+        ('rows', 'expected'),
+        [
+            pytest.param(
+                [
+                    _provider_gap(
+                        connector='blob-source',
+                        guidance=(
                             'Set AZURE_STORAGE_CONNECTION_STRING, set '
                             'AZURE_STORAGE_ACCOUNT_URL, or include the '
                             'account host in the path authority.'
                         ),
-                        'missing_env': [
+                        missing_env=[
                             'AZURE_STORAGE_CONNECTION_STRING',
                             'AZURE_STORAGE_ACCOUNT_URL',
                         ],
-                        'provider': 'azure-storage',
-                        'reason': (
+                        provider='azure-storage',
+                        reason=(
                             'azure-blob path does not provide an account host '
                             'and no Azure storage bootstrap settings were '
                             'found.'
                         ),
-                        'role': 'source',
-                        'severity': 'error',
-                    },
+                        role='source',
+                        severity='error',
+                    ),
                 ],
-                'message': 'Provider environment gaps: 1 error(s), 0 warning(s).',
-                'name': 'provider-environment',
-                'status': 'error',
-            },
-        ]
-
-    def test_provider_environment_checks_return_ok_when_no_rows(self) -> None:
-        """Test provider readiness check when no provider gaps exist."""
-        checks = readiness_mod.ReadinessReportBuilder.provider_environment_checks(
-            cfg=cast(Any, _cfg()),
-            env={},
-        )
-
-        assert checks == [
-            {
-                'message': 'No provider-specific environment gaps were detected.',
-                'name': 'provider-environment',
-                'status': 'ok',
-            },
-        ]
-
-    def test_provider_environment_checks_warn_for_implicit_s3_credentials(
-        self,
-    ) -> None:
-        """Test that S3 paths warn when no common credential hints are present."""
-        cfg = SimpleNamespace(
-            sources=[
-                SimpleNamespace(
-                    name='s3-source',
-                    format='csv',
-                    path='s3://bucket/input.csv',
-                    type='file',
-                ),
-            ],
-            targets=[],
-            apis={},
-        )
-
-        checks = readiness_mod.ReadinessReportBuilder.provider_environment_checks(
-            cfg=cast(Any, cfg),
-            env={},
-        )
-
-        assert checks == [
-            {
-                'environment_gaps': [
-                    {
-                        'connector': 's3-source',
-                        'guidance': (
+                [
+                    _provider_check(
+                        message='Provider environment gaps: 1 error(s), 0 warning(s).',
+                        rows=[
+                            _provider_gap(
+                                connector='blob-source',
+                                guidance=(
+                                    'Set AZURE_STORAGE_CONNECTION_STRING, set '
+                                    'AZURE_STORAGE_ACCOUNT_URL, or include the '
+                                    'account host in the path authority.'
+                                ),
+                                missing_env=[
+                                    'AZURE_STORAGE_CONNECTION_STRING',
+                                    'AZURE_STORAGE_ACCOUNT_URL',
+                                ],
+                                provider='azure-storage',
+                                reason=(
+                                    'azure-blob path does not provide an account host '
+                                    'and no Azure storage bootstrap settings were '
+                                    'found.'
+                                ),
+                                role='source',
+                                severity='error',
+                            ),
+                        ],
+                        status='error',
+                    ),
+                ],
+                id='error-rows',
+            ),
+            pytest.param(
+                [],
+                [
+                    _provider_check(
+                        message='No provider-specific environment gaps were detected.',
+                        status='ok',
+                    ),
+                ],
+                id='no-rows',
+            ),
+            pytest.param(
+                [
+                    _provider_gap(
+                        connector='s3-source',
+                        guidance=(
                             'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/'
                             'AWS_SECRET_ACCESS_KEY, or rely on shared config '
                             'files, container credentials, or instance '
                             'metadata.'
                         ),
-                        'missing_env': [
+                        missing_env=[
                             'AWS_ACCESS_KEY_ID',
                             'AWS_PROFILE',
                             'AWS_DEFAULT_PROFILE',
@@ -1096,41 +1196,222 @@ class TestReadinessReportBuilder:
                             'AWS_SHARED_CREDENTIALS_FILE',
                             'AWS_CONFIG_FILE',
                         ],
-                        'provider': 'aws-s3',
-                        'reason': (
+                        provider='aws-s3',
+                        reason=(
                             'No common AWS credential-chain environment hints '
                             'were detected for this S3 path.'
                         ),
-                        'role': 'source',
-                        'severity': 'warn',
-                    },
+                        role='source',
+                        severity='warn',
+                    ),
                 ],
-                'message': 'Provider environment warnings: 1.',
-                'name': 'provider-environment',
-                'status': 'warn',
-            },
-        ]
-
-    def test_provider_environment_rows_return_empty_for_explicit_azure_auth(
+                [
+                    _provider_check(
+                        message='Provider environment warnings: 1.',
+                        rows=[
+                            _provider_gap(
+                                connector='s3-source',
+                                guidance=(
+                                    'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/'
+                                    'AWS_SECRET_ACCESS_KEY, or rely on shared config '
+                                    'files, container credentials, or instance '
+                                    'metadata.'
+                                ),
+                                missing_env=[
+                                    'AWS_ACCESS_KEY_ID',
+                                    'AWS_PROFILE',
+                                    'AWS_DEFAULT_PROFILE',
+                                    'AWS_ROLE_ARN',
+                                    'AWS_WEB_IDENTITY_TOKEN_FILE',
+                                    'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI',
+                                    'AWS_CONTAINER_CREDENTIALS_FULL_URI',
+                                    'AWS_SHARED_CREDENTIALS_FILE',
+                                    'AWS_CONFIG_FILE',
+                                ],
+                                provider='aws-s3',
+                                reason=(
+                                    'No common AWS credential-chain environment hints '
+                                    'were detected for this S3 path.'
+                                ),
+                                role='source',
+                                severity='warn',
+                            ),
+                        ],
+                        status='warn',
+                    ),
+                ],
+                id='warn-rows',
+            ),
+        ],
+    )
+    def test_provider_environment_checks_wrap_rows_by_severity(
         self,
+        monkeypatch: pytest.MonkeyPatch,
+        rows: list[dict[str, object]],
+        expected: list[dict[str, object]],
     ) -> None:
-        """Test Azure provider rows when bootstrap and credential settings exist."""
-        cfg = _cfg(
-            sources=[
-                SimpleNamespace(
-                    name='blob-source',
-                    path='azure-blob://container/input.csv',
-                    type='file',
-                ),
-            ],
+        """Provider check wrappers should map row severities into report rows."""
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'provider_environment_rows',
+            lambda *, cfg, env: rows,
         )
 
+        checks = readiness_mod.ReadinessReportBuilder.provider_environment_checks(
+            cfg=cast(Any, _cfg()),
+            env={},
+        )
+
+        assert checks == expected
+
+    @pytest.mark.parametrize(
+        ('cfg', 'env', 'expected'),
+        [
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            name='blob-source',
+                            format='csv',
+                            path='azure-blob://container/input.csv',
+                            type='file',
+                        ),
+                    ],
+                ),
+                {},
+                [
+                    _provider_gap(
+                        connector='blob-source',
+                        guidance=(
+                            'Set AZURE_STORAGE_CONNECTION_STRING, set '
+                            'AZURE_STORAGE_ACCOUNT_URL, or include the '
+                            'account host in the path authority.'
+                        ),
+                        missing_env=[
+                            'AZURE_STORAGE_CONNECTION_STRING',
+                            'AZURE_STORAGE_ACCOUNT_URL',
+                        ],
+                        provider='azure-storage',
+                        reason=(
+                            'azure-blob path does not provide an account host '
+                            'and no Azure storage bootstrap settings were '
+                            'found.'
+                        ),
+                        role='source',
+                        severity='error',
+                    ),
+                ],
+                id='azure-bootstrap-error',
+            ),
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            name='s3-source',
+                            format='csv',
+                            path='s3://bucket/input.csv',
+                            type='file',
+                        ),
+                    ],
+                ),
+                {},
+                [
+                    _provider_gap(
+                        connector='s3-source',
+                        guidance=(
+                            'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/'
+                            'AWS_SECRET_ACCESS_KEY, or rely on shared config '
+                            'files, container credentials, or instance '
+                            'metadata.'
+                        ),
+                        missing_env=[
+                            'AWS_ACCESS_KEY_ID',
+                            'AWS_PROFILE',
+                            'AWS_DEFAULT_PROFILE',
+                            'AWS_ROLE_ARN',
+                            'AWS_WEB_IDENTITY_TOKEN_FILE',
+                            'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI',
+                            'AWS_CONTAINER_CREDENTIALS_FULL_URI',
+                            'AWS_SHARED_CREDENTIALS_FILE',
+                            'AWS_CONFIG_FILE',
+                        ],
+                        provider='aws-s3',
+                        reason=(
+                            'No common AWS credential-chain environment hints '
+                            'were detected for this S3 path.'
+                        ),
+                        role='source',
+                        severity='warn',
+                    ),
+                ],
+                id='s3-credential-warning',
+            ),
+        ],
+    )
+    def test_provider_environment_rows_report_expected_gaps(
+        self,
+        cfg: object,
+        env: dict[str, str],
+        expected: list[dict[str, object]],
+    ) -> None:
+        """Provider row generation should emit the expected Azure/S3 gaps."""
         rows = readiness_mod.ReadinessReportBuilder.provider_environment_rows(
             cfg=cast(Any, cfg),
-            env={
-                'AZURE_STORAGE_ACCOUNT_URL': 'https://account.blob.core.windows.net',
-                'AZURE_STORAGE_CREDENTIAL': 'secret',
-            },
+            env=env,
+        )
+
+        assert rows == expected
+
+    @pytest.mark.parametrize(
+        ('cfg', 'env'),
+        [
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            name='blob-source',
+                            path='azure-blob://container/input.csv',
+                            type='file',
+                        ),
+                    ],
+                ),
+                {
+                    'AZURE_STORAGE_ACCOUNT_URL': (
+                        'https://account.blob.core.windows.net'
+                    ),
+                    'AZURE_STORAGE_CREDENTIAL': 'secret',
+                },
+                id='explicit-azure-auth',
+            ),
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            name='s3-source',
+                            path='s3://bucket/input.csv',
+                            type='file',
+                        ),
+                        SimpleNamespace(
+                            name='local-source',
+                            path='input.csv',
+                            type='file',
+                        ),
+                    ],
+                ),
+                {'AWS_PROFILE': 'default'},
+                id='s3-env-hint',
+            ),
+        ],
+    )
+    def test_provider_environment_rows_return_empty_when_auth_hints_exist(
+        self,
+        cfg: object,
+        env: dict[str, str],
+    ) -> None:
+        """Provider rows should stay empty when explicit auth hints are present."""
+        rows = readiness_mod.ReadinessReportBuilder.provider_environment_rows(
+            cfg=cast(Any, cfg),
+            env=env,
         )
 
         assert not rows
@@ -1174,32 +1455,6 @@ class TestReadinessReportBuilder:
                 'severity': 'warn',
             },
         ]
-
-    def test_provider_environment_rows_skip_s3_warning_when_env_hint_present(
-        self,
-    ) -> None:
-        """Test S3 warning suppression when AWS credential hints are present."""
-        cfg = _cfg(
-            sources=[
-                SimpleNamespace(
-                    name='s3-source',
-                    path='s3://bucket/input.csv',
-                    type='file',
-                ),
-                SimpleNamespace(
-                    name='local-source',
-                    path='input.csv',
-                    type='file',
-                ),
-            ],
-        )
-
-        rows = readiness_mod.ReadinessReportBuilder.provider_environment_rows(
-            cfg=cast(Any, cfg),
-            env={'AWS_PROFILE': 'default'},
-        )
-
-        assert not rows
 
     def test_strict_config_issue_rows_report_duplicates_and_unknown_refs(
         self,
@@ -1291,88 +1546,85 @@ class TestReadinessReportBuilder:
             'include_runtime_checks': False,
         }
 
-    def test_strict_connector_names_allow_absent_guidance_for_non_string_type_values(
+    @pytest.mark.parametrize(
+        (
+            'parse_connector',
+            'raw',
+            'expected_names',
+            'expected_issues',
+        ),
+        [
+            pytest.param(
+                lambda entry: (_ for _ in ()).throw(TypeError('unsupported connector')),
+                {'sources': [{'type': 1}]},
+                set(),
+                [
+                    _issue(
+                        guidance=None,
+                        index=0,
+                        issue='invalid connector entry',
+                        message='unsupported connector',
+                        section='sources',
+                    ),
+                ],
+                id='non-string-type-guidance-omitted',
+            ),
+            pytest.param(
+                None,
+                {'sources': {'name': 'not-a-list'}},
+                None,
+                [
+                    _issue(
+                        expected='list',
+                        guidance='Define sources as a YAML list of connector mappings.',
+                        issue='invalid section type',
+                        observed_type='dict',
+                        section='sources',
+                    ),
+                ],
+                id='invalid-section-type',
+            ),
+            pytest.param(
+                lambda entry: (_ for _ in ()).throw(
+                    TypeError('missing connector type'),
+                ),
+                {'sources': [{}]},
+                set(),
+                [
+                    _issue(
+                        guidance='Set "type" to one of: api, database, file.',
+                        index=0,
+                        issue='invalid connector entry',
+                        message='missing connector type',
+                        section='sources',
+                    ),
+                ],
+                id='missing-type-guidance',
+            ),
+        ],
+    )
+    def test_strict_connector_names_single_issue_cases(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        parse_connector: object,
+        raw: dict[str, object],
+        expected_names: set[str] | None,
+        expected_issues: list[dict[str, object]],
     ) -> None:
-        """Strict connector validation should allow non-string raw types through."""
+        """Strict connector validation should emit the expected single-issue rows."""
         issues: list[dict[str, Any]] = []
 
-        monkeypatch.setattr(
-            readiness_mod,
-            'parse_connector',
-            lambda entry: (_ for _ in ()).throw(TypeError('unsupported connector')),
-        )
+        if parse_connector is not None:
+            monkeypatch.setattr(readiness_mod, 'parse_connector', parse_connector)
 
         names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
-            raw={'sources': [{'type': 1}]},
+            raw=raw,
             section='sources',
             issues=issues,
         )
 
-        assert names == set()
-        assert issues == [
-            {
-                'guidance': None,
-                'index': 0,
-                'issue': 'invalid connector entry',
-                'message': 'unsupported connector',
-                'section': 'sources',
-            },
-        ]
-
-    def test_strict_connector_names_report_invalid_section_type(
-        self,
-    ) -> None:
-        """Strict connector validation should reject non-list top-level sections."""
-        issues: list[dict[str, Any]] = []
-
-        names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
-            raw={'sources': {'name': 'not-a-list'}},
-            section='sources',
-            issues=issues,
-        )
-
-        assert names is None
-        assert issues == [
-            {
-                'expected': 'list',
-                'guidance': 'Define sources as a YAML list of connector mappings.',
-                'issue': 'invalid section type',
-                'observed_type': 'dict',
-                'section': 'sources',
-            },
-        ]
-
-    def test_strict_connector_names_report_missing_type_guidance_on_parse_error(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Strict connector validation should suggest valid types when missing."""
-        issues: list[dict[str, Any]] = []
-
-        monkeypatch.setattr(
-            readiness_mod,
-            'parse_connector',
-            lambda entry: (_ for _ in ()).throw(TypeError('missing connector type')),
-        )
-
-        names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
-            raw={'sources': [{}]},
-            section='sources',
-            issues=issues,
-        )
-
-        assert names == set()
-        assert issues == [
-            {
-                'guidance': 'Set "type" to one of: api, database, file.',
-                'index': 0,
-                'issue': 'invalid connector entry',
-                'message': 'missing connector type',
-                'section': 'sources',
-            },
-        ]
+        assert names == expected_names
+        assert cast(list[dict[str, object]], issues) == expected_issues
 
     def test_strict_connector_names_report_parse_errors_and_blank_names(
         self,
@@ -1401,21 +1653,21 @@ class TestReadinessReportBuilder:
 
         assert names == set()
         assert issues == [
-            {
-                'guidance': (
+            _issue(
+                guidance=(
                     'Use one of the supported connector types: api, database, file.'
                 ),
-                'index': 0,
-                'issue': 'invalid connector entry',
-                'message': 'bad connector',
-                'section': 'sources',
-            },
-            {
-                'guidance': 'Set "name" to a non-empty string.',
-                'index': 1,
-                'issue': 'blank connector name',
-                'section': 'sources',
-            },
+                index=0,
+                issue='invalid connector entry',
+                message='bad connector',
+                section='sources',
+            ),
+            _issue(
+                guidance='Set "name" to a non-empty string.',
+                index=1,
+                issue='blank connector name',
+                section='sources',
+            ),
         ]
 
     def test_strict_job_issue_rows_cover_non_list_invalid_entries_and_duplicates(
@@ -1468,13 +1720,13 @@ class TestReadinessReportBuilder:
         )
 
         assert issues == [
-            {
-                'expected': 'list',
-                'guidance': 'Define jobs as a YAML list of job mappings.',
-                'issue': 'invalid section type',
-                'observed_type': 'dict',
-                'section': 'jobs',
-            },
+            _issue(
+                expected='list',
+                guidance='Define jobs as a YAML list of job mappings.',
+                issue='invalid section type',
+                observed_type='dict',
+                section='jobs',
+            ),
         ]
 
     def test_strict_job_issue_rows_return_when_jobs_section_is_missing(
@@ -1494,88 +1746,119 @@ class TestReadinessReportBuilder:
 
         assert not issues
 
-    def test_strict_job_ref_issue_reports_missing_required_section(
+    @pytest.mark.parametrize(
+        (
+            'entry',
+            'field',
+            'index',
+            'job_name',
+            'required',
+            'required_key',
+            'section_names',
+            'section_label',
+            'expected',
+        ),
+        [
+            pytest.param(
+                {},
+                'extract',
+                0,
+                'publish',
+                True,
+                'source',
+                {'src'},
+                'sources',
+                [
+                    _issue(
+                        field='extract',
+                        guidance=(
+                            'Add a extract mapping with "source" set to a '
+                            'configured resource name.'
+                        ),
+                        index=0,
+                        issue='missing extract section',
+                        job='publish',
+                        section='jobs',
+                    ),
+                ],
+                id='missing-required-section',
+            ),
+            pytest.param(
+                {'extract': 'src'},
+                'extract',
+                1,
+                'publish',
+                True,
+                'source',
+                {'src'},
+                'sources',
+                [
+                    _issue(
+                        field='extract',
+                        guidance=(
+                            'Define extract as a mapping with a "source" string field.'
+                        ),
+                        index=1,
+                        issue='invalid extract section',
+                        job='publish',
+                        observed_type='str',
+                        section='jobs',
+                    ),
+                ],
+                id='invalid-extract-section',
+            ),
+            pytest.param(
+                {'transform': {'pipeline': '   '}},
+                'transform',
+                2,
+                None,
+                False,
+                'pipeline',
+                {'trim'},
+                'transforms',
+                [
+                    _issue(
+                        field='transform.pipeline',
+                        guidance=(
+                            'Set transform.pipeline to a configured resource name.'
+                        ),
+                        index=2,
+                        issue='missing transform.pipeline',
+                        section='jobs',
+                    ),
+                ],
+                id='missing-transform-pipeline',
+            ),
+        ],
+    )
+    def test_strict_job_ref_issue_reports_expected_issue(
         self,
+        entry: dict[str, object],
+        field: str,
+        index: int,
+        job_name: str | None,
+        required: bool,
+        required_key: str,
+        section_names: set[str] | None,
+        section_label: str,
+        expected: list[dict[str, object]],
     ) -> None:
-        """Strict job refs should flag missing required extract/load sections."""
+        """Strict job refs should emit the expected issue row for each case."""
         issues: list[dict[str, Any]] = []
 
         readiness_mod.ReadinessReportBuilder.strict_job_ref_issue(
-            entry={},
-            field='extract',
-            index=0,
+            entry=entry,
+            field=field,
+            index=index,
             issues=issues,
-            job_name='publish',
-            required=True,
-            required_key='source',
-            section_names={'src'},
-            section_label='sources',
+            job_name=job_name,
+            required=required,
+            required_key=required_key,
+            section_names=section_names,
+            section_label=section_label,
         )
 
-        assert issues == [
-            {
-                'field': 'extract',
-                'guidance': (
-                    'Add a extract mapping with "source" set to a configured '
-                    'resource name.'
-                ),
-                'index': 0,
-                'issue': 'missing extract section',
-                'job': 'publish',
-                'section': 'jobs',
-            },
-        ]
-
-    def test_strict_job_ref_issue_reports_invalid_and_missing_reference_values(
-        self,
-    ) -> None:
-        """Strict job refs should flag bad section types and missing names."""
-        invalid_issues: list[dict[str, Any]] = []
-        missing_issues: list[dict[str, Any]] = []
-
-        readiness_mod.ReadinessReportBuilder.strict_job_ref_issue(
-            entry={'extract': 'src'},
-            field='extract',
-            index=1,
-            issues=invalid_issues,
-            job_name='publish',
-            required=True,
-            required_key='source',
-            section_names={'src'},
-            section_label='sources',
-        )
-        readiness_mod.ReadinessReportBuilder.strict_job_ref_issue(
-            entry={'transform': {'pipeline': '   '}},
-            field='transform',
-            index=2,
-            issues=missing_issues,
-            job_name=None,
-            required=False,
-            required_key='pipeline',
-            section_names={'trim'},
-            section_label='transforms',
-        )
-
-        assert invalid_issues == [
-            {
-                'field': 'extract',
-                'guidance': 'Define extract as a mapping with a "source" string field.',
-                'index': 1,
-                'issue': 'invalid extract section',
-                'job': 'publish',
-                'observed_type': 'str',
-                'section': 'jobs',
-            },
-        ]
-        assert missing_issues == [
-            {
-                'field': 'transform.pipeline',
-                'guidance': 'Set transform.pipeline to a configured resource name.',
-                'index': 2,
-                'issue': 'missing transform.pipeline',
-                'section': 'jobs',
-            },
-        ]
+        assert cast(list[dict[str, object]], issues) == expected
 
     def test_strict_named_section_names_reject_non_mapping_sections(
         self,
@@ -1592,39 +1875,66 @@ class TestReadinessReportBuilder:
 
         assert names is None
         assert issues == [
-            {
-                'expected': 'mapping',
-                'guidance': 'Define transforms as a mapping keyed by pipeline name.',
-                'issue': 'invalid section type',
-                'observed_type': 'list',
-                'section': 'transforms',
-            },
+            _issue(
+                expected='mapping',
+                guidance='Define transforms as a mapping keyed by pipeline name.',
+                issue='invalid section type',
+                observed_type='list',
+                section='transforms',
+            ),
         ]
 
-    def test_supported_python_check_reports_out_of_range_version(
+    @pytest.mark.parametrize(
+        ('version', 'version_info', 'expected'),
+        [
+            pytest.param(
+                '3.12.9',
+                (3, 12, 9),
+                {
+                    'message': (
+                        'Python 3.12.9 is outside the supported ETLPlus runtime '
+                        'range (>=3.13,<3.15).'
+                    ),
+                    'name': 'python-version',
+                    'status': 'error',
+                    'version': '3.12.9',
+                },
+                id='unsupported',
+            ),
+            pytest.param(
+                '3.13.12',
+                (3, 13, 12),
+                {
+                    'message': (
+                        'Python 3.13.12 is within the supported ETLPlus runtime range.'
+                    ),
+                    'name': 'python-version',
+                    'status': 'ok',
+                    'version': '3.13.12',
+                },
+                id='supported',
+            ),
+        ],
+    )
+    def test_supported_python_check_reports_expected_status(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        version: str,
+        version_info: tuple[int, int, int],
+        expected: dict[str, str],
     ) -> None:
-        """Test the unsupported-Python branch of the readiness check."""
+        """Supported-Python readiness should reflect the active interpreter range."""
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
             'python_version',
-            classmethod(lambda cls: '3.12.9'),
+            classmethod(lambda cls: version),
         )
         monkeypatch.setattr(
             readiness_mod,
             'sys',
-            SimpleNamespace(version_info=(3, 12, 9)),
+            SimpleNamespace(version_info=version_info),
         )
 
         check = readiness_mod.ReadinessReportBuilder.supported_python_check()
 
-        assert check == {
-            'message': (
-                'Python 3.12.9 is outside the supported ETLPlus runtime range '
-                '(>=3.13,<3.15).'
-            ),
-            'name': 'python-version',
-            'status': 'error',
-            'version': '3.12.9',
-        }
+        assert check == expected

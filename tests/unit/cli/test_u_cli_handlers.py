@@ -95,6 +95,157 @@ class _ReadOnlyFakeHistoryStore(handlers.HistoryStore):
         _ = completion
 
 
+type _ResolveCliPayloadCall = tuple[object, str | None, bool]
+
+
+def _assert_emit_markdown_table(
+    calls: CaptureIo,
+    rows: list[dict[str, object]],
+    *,
+    columns: tuple[str, ...],
+) -> None:
+    """Assert that :func:`emit_markdown_table` was called once as expected."""
+    assert calls['emit_json'] == []
+    assert calls['emit_markdown_table'] == [((rows,), {'columns': columns})]
+
+
+def _capture_file_write(
+    monkeypatch: pytest.MonkeyPatch,
+) -> dict[str, tuple[str, object]]:
+    """Patch :meth:`File.write` and capture the written path plus payload."""
+    captured: dict[str, tuple[str, object]] = {}
+
+    def _write(self: File, data: object, **kwargs: object) -> None:
+        captured['params'] = (str(self.path), data)
+
+    monkeypatch.setattr(handlers.File, 'write', _write)
+    return captured
+
+
+def _normalized_run(**overrides: object) -> dict[str, object]:
+    """Build one normalized run payload with stable default ``None`` fields."""
+    return {
+        'config_path': None,
+        'config_sha256': None,
+        'duration_ms': None,
+        'error_message': None,
+        'error_traceback': None,
+        'error_type': None,
+        'etlplus_version': None,
+        'finished_at': None,
+        'host': None,
+        'job_name': None,
+        'pid': None,
+        'pipeline_name': None,
+        'records_in': None,
+        'records_out': None,
+        'result_summary': None,
+        'run_id': None,
+        'started_at': None,
+        'status': None,
+    } | overrides
+
+
+def _patch_config_from_yaml(
+    monkeypatch: pytest.MonkeyPatch,
+    config: Config,
+    *,
+    calls: list[tuple[str, bool]] | None = None,
+) -> None:
+    """Patch :meth:`Config.from_yaml` to return one fixed config object."""
+
+    def _from_yaml(path: str, substitute: bool) -> Config:
+        if calls is not None:
+            calls.append((path, substitute))
+        return config
+
+    monkeypatch.setattr(
+        handlers.Config,
+        'from_yaml',
+        _from_yaml,
+    )
+
+
+def _patch_history_store_records(
+    monkeypatch: pytest.MonkeyPatch,
+    records: list[dict[str, object]],
+) -> None:
+    """Patch :class:`HistoryStore` to yield one fixed record sequence."""
+
+    class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
+        def iter_records(self) -> Any:
+            return iter(records)
+
+    monkeypatch.setattr(
+        handlers.HistoryStore,
+        'from_environment',
+        lambda: _FakeHistoryStore(),
+    )
+
+
+def _patch_resolve_cli_payload_map(
+    monkeypatch: pytest.MonkeyPatch,
+    payloads: Mapping[object, object],
+    *,
+    calls: list[_ResolveCliPayloadCall] | None = None,
+) -> None:
+    """Patch :func:`resolve_cli_payload` with a fixed source-to-payload map."""
+
+    def _resolve(
+        source: object,
+        *,
+        format_hint: str | None,
+        format_explicit: bool,
+    ) -> object:
+        if calls is not None:
+            calls.append((source, format_hint, format_explicit))
+        return payloads[source]
+
+    monkeypatch.setattr(handlers._input, 'resolve_cli_payload', _resolve)
+
+
+def _report_row(**overrides: object) -> dict[str, object]:
+    """Build one aggregated history report row with zero/``None`` defaults."""
+    return {
+        'avg_duration_ms': None,
+        'failed': 0,
+        'group': None,
+        'last_started_at': None,
+        'max_duration_ms': None,
+        'min_duration_ms': None,
+        'other': 0,
+        'running': 0,
+        'runs': 0,
+        'success_rate_pct': None,
+        'succeeded': 0,
+    } | overrides
+
+
+def _report_summary(**overrides: object) -> dict[str, object]:
+    """Build one aggregated history report summary payload."""
+    return {
+        key: value
+        for key, value in _report_row(**overrides).items()
+        if key != 'group' and key != 'last_started_at'
+    }
+
+
+def _transform_payload_map() -> dict[object, object]:
+    """Build the default payload map used by transform handler tests."""
+    return {
+        'data.json': {'source': 'data.json'},
+        'ops.json': {'select': ['id']},
+    }
+
+
+def _validation_payload_map() -> dict[object, object]:
+    """Build the default payload map used by validate handler tests."""
+    return {
+        'data.json': {'source': 'data.json'},
+        'rules.json': {'id': {'required': True}},
+    }
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -111,19 +262,11 @@ class TestCheckHandler:
         Test that :func:`check_handler` forwards the substitute flag to config
         loader.
         """
-        recorded: dict[str, object] = {}
-
-        def fake_from_yaml(
-            path: str,
-            substitute: bool,
-        ) -> Config:
-            recorded['params'] = (path, substitute)
-            return dummy_cfg
-
-        monkeypatch.setattr(
-            handlers.Config,
-            'from_yaml',
-            fake_from_yaml,
+        load_calls: list[tuple[str, bool]] = []
+        _patch_config_from_yaml(
+            monkeypatch,
+            dummy_cfg,
+            calls=load_calls,
         )
         monkeypatch.setattr(
             check_mod._summary,
@@ -131,7 +274,7 @@ class TestCheckHandler:
             lambda _cfg, **_kwargs: {'pipelines': ['p1']},
         )
         assert handlers.check_handler(config='cfg.yml', substitute=True) == 0
-        assert recorded['params'] == ('cfg.yml', True)
+        assert load_calls == [('cfg.yml', True)]
         assert_emit_json(capture_io, {'pipelines': ['p1']}, pretty=True)
 
     def test_prints_sections(
@@ -141,11 +284,7 @@ class TestCheckHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`check_handler` prints requested sections."""
-        monkeypatch.setattr(
-            handlers.Config,
-            'from_yaml',
-            lambda path, substitute: dummy_cfg,
-        )
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
         monkeypatch.setattr(
             check_mod._summary,
             'check_sections',
@@ -235,11 +374,7 @@ class TestCheckHandler:
                 'status': 'ok',
             },
         )
-        monkeypatch.setattr(
-            handlers.Config,
-            'from_yaml',
-            lambda path, substitute: dummy_cfg,
-        )
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
         monkeypatch.setattr(
             check_mod._summary,
             'check_sections',
@@ -256,11 +391,7 @@ class TestCheckHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that summary mode preserves the caller's pretty setting."""
-        monkeypatch.setattr(
-            handlers.Config,
-            'from_yaml',
-            lambda path, substitute: dummy_cfg,
-        )
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
         monkeypatch.setattr(
             check_mod._summary,
             'pipeline_summary',
@@ -572,13 +703,23 @@ class TestCliHandlersInternalHelpers:
 class TestExtractHandler:
     """Unit tests for :func:`extract_handler`."""
 
-    def test_calls_extract_for_non_file_sources(
+    @pytest.mark.parametrize(
+        ('target', 'pretty'),
+        [
+            pytest.param(None, True, id='stdout'),
+            pytest.param('export.json', True, id='target-file'),
+        ],
+    )
+    def test_extracts_non_stdin_sources_and_emits_or_writes(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_io: CaptureIo,
+        target: str | None,
+        pretty: bool,
     ) -> None:
         """
-        Test that :func:`extract_handler` uses extract for non-STDIN sources.
+        Test that :func:`extract_handler` routes non-STDIN sources through
+        :func:`extract` and emits or writes the result.
         """
         observed: dict[str, object] = {}
 
@@ -598,9 +739,9 @@ class TestExtractHandler:
                 source_type='api',
                 source='endpoint',
                 source_format='json',
+                target=target,
                 format_explicit=True,
-                output=None,
-                pretty=True,
+                pretty=pretty,
             )
             == 0
         )
@@ -609,8 +750,8 @@ class TestExtractHandler:
         kwargs = assert_emit_or_write(
             capture_io,
             {'status': 'ok'},
-            None,
-            pretty=True,
+            target,
+            pretty=pretty,
         )
         assert kwargs['success_message'] == ANY
 
@@ -723,214 +864,109 @@ class TestExtractHandler:
             pretty=False,
         )
 
-    def test_writes_output_file_and_skips_emit(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """
-        Test that :func:`extract_handler` writes to a file and skips STDOUT
-        emission.
-        """
-        observed: dict[str, object] = {}
-
-        def fake_extract(
-            source_type: str,
-            source: str,
-            *,
-            file_format: str | None,
-        ) -> dict[str, object]:
-            observed['params'] = (source_type, source, file_format)
-            return {'status': 'ok'}
-
-        monkeypatch.setattr(dataops_mod, 'extract', fake_extract)
-
-        assert (
-            handlers.extract_handler(
-                source_type='api',
-                source='endpoint',
-                target='export.json',
-                source_format='json',
-                format_explicit=True,
-                pretty=True,
-            )
-            == 0
-        )
-        assert observed['params'] == ('api', 'endpoint', 'json')
-        kwargs = assert_emit_or_write(
-            capture_io,
-            {'status': 'ok'},
-            'export.json',
-            pretty=True,
-        )
-        assert isinstance(kwargs['success_message'], str)
-
 
 class TestHistoryHandler:
     """Unit tests for :func:`history_handler`."""
 
-    def test_emits_normalized_runs_by_default(
+    @pytest.mark.parametrize(
+        ('records', 'kwargs', 'pretty', 'expected'),
+        [
+            pytest.param(
+                [
+                    {
+                        'config_path': 'pipeline.yml',
+                        'job_name': 'job-a',
+                        'run_id': 'run-123',
+                        'started_at': '2026-03-23T00:00:00Z',
+                        'status': 'running',
+                    },
+                    {
+                        'duration_ms': 5000,
+                        'finished_at': '2026-03-23T00:00:05Z',
+                        'result_summary': {'rows': 10},
+                        'run_id': 'run-123',
+                        'status': 'succeeded',
+                    },
+                ],
+                {},
+                True,
+                [
+                    _normalized_run(
+                        config_path='pipeline.yml',
+                        duration_ms=5000,
+                        finished_at='2026-03-23T00:00:05Z',
+                        job_name='job-a',
+                        result_summary={'rows': 10},
+                        run_id='run-123',
+                        started_at='2026-03-23T00:00:00Z',
+                        status='succeeded',
+                    ),
+                ],
+                id='normalized-default',
+            ),
+            pytest.param(
+                [
+                    {
+                        'run_id': 'run-1',
+                        'started_at': '2026-03-23T00:00:00Z',
+                        'status': 'running',
+                    },
+                    {
+                        'finished_at': '2026-03-23T00:00:05Z',
+                        'run_id': 'run-2',
+                        'status': 'succeeded',
+                    },
+                ],
+                {'raw': True, 'limit': 1},
+                False,
+                [
+                    {
+                        'finished_at': '2026-03-23T00:00:05Z',
+                        'run_id': 'run-2',
+                        'status': 'succeeded',
+                    },
+                ],
+                id='raw-limit',
+            ),
+            pytest.param(
+                [
+                    {
+                        'finished_at': '2026-03-23T00:00:05Z',
+                        'job_name': 'job-a',
+                        'run_id': 'run-2',
+                        'started_at': '2026-03-23T00:00:00Z',
+                        'status': 'succeeded',
+                    },
+                ],
+                {'json_output': True},
+                False,
+                [
+                    _normalized_run(
+                        finished_at='2026-03-23T00:00:05Z',
+                        job_name='job-a',
+                        run_id='run-2',
+                        started_at='2026-03-23T00:00:00Z',
+                        status='succeeded',
+                    ),
+                ],
+                id='explicit-json',
+            ),
+        ],
+    )
+    def test_emits_json_payload_for_supported_history_modes(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_io: CaptureIo,
+        records: list[dict[str, object]],
+        kwargs: dict[str, object],
+        pretty: bool,
+        expected: list[dict[str, object]],
     ) -> None:
-        """Test that history emits merged runs by default."""
+        """History should emit JSON for default, raw, and explicit JSON modes."""
+        _patch_history_store_records(monkeypatch, records)
 
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'config_path': 'pipeline.yml',
-                            'job_name': 'job-a',
-                            'run_id': 'run-123',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'running',
-                        },
-                        {
-                            'duration_ms': 5000,
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'result_summary': {'rows': 10},
-                            'run_id': 'run-123',
-                            'status': 'succeeded',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
-        )
-
-        assert handlers.history_handler(pretty=True) == 0
-
-        assert_emit_json(
-            capture_io,
-            [
-                {
-                    'config_path': 'pipeline.yml',
-                    'config_sha256': None,
-                    'duration_ms': 5000,
-                    'error_message': None,
-                    'error_traceback': None,
-                    'error_type': None,
-                    'etlplus_version': None,
-                    'finished_at': '2026-03-23T00:00:05Z',
-                    'host': None,
-                    'job_name': 'job-a',
-                    'pid': None,
-                    'pipeline_name': None,
-                    'records_in': None,
-                    'records_out': None,
-                    'result_summary': {'rows': 10},
-                    'run_id': 'run-123',
-                    'started_at': '2026-03-23T00:00:00Z',
-                    'status': 'succeeded',
-                },
-            ],
-            pretty=True,
-        )
-
-    def test_emits_raw_records_with_limit(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """Test that raw history mode returns append events and applies limit."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'running',
-                        },
-                        {
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'run_id': 'run-2',
-                            'status': 'succeeded',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
-        )
-
-        assert handlers.history_handler(raw=True, limit=1, pretty=False) == 0
-
-        assert_emit_json(
-            capture_io,
-            [
-                {
-                    'finished_at': '2026-03-23T00:00:05Z',
-                    'run_id': 'run-2',
-                    'status': 'succeeded',
-                },
-            ],
-            pretty=False,
-        )
-
-    def test_explicit_json_output_uses_json_emitter(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """Test that the explicit JSON flag still routes through JSON output."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-2',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'succeeded',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
-        )
-
-        assert handlers.history_handler(json_output=True, pretty=False) == 0
-
-        assert_emit_json(
-            capture_io,
-            [
-                {
-                    'config_path': None,
-                    'config_sha256': None,
-                    'duration_ms': None,
-                    'error_message': None,
-                    'error_traceback': None,
-                    'error_type': None,
-                    'etlplus_version': None,
-                    'finished_at': '2026-03-23T00:00:05Z',
-                    'host': None,
-                    'job_name': 'job-a',
-                    'pid': None,
-                    'pipeline_name': None,
-                    'records_in': None,
-                    'records_out': None,
-                    'result_summary': None,
-                    'run_id': 'run-2',
-                    'started_at': '2026-03-23T00:00:00Z',
-                    'status': 'succeeded',
-                },
-            ],
-            pretty=False,
-        )
+        assert handlers.history_handler(pretty=pretty, **kwargs) == 0
+        assert_emit_json(capture_io, expected, pretty=pretty)
 
     def test_filters_normalized_runs_and_emits_markdown_table(
         self,
@@ -938,37 +974,29 @@ class TestHistoryHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that history filters normalized runs and can emit tables."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'job_name': 'job-a',
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-22T00:00:00Z',
-                            'status': 'running',
-                        },
-                        {
-                            'finished_at': '2026-03-22T00:00:10Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-1',
-                            'status': 'failed',
-                        },
-                        {
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'job_name': 'job-b',
-                            'run_id': 'run-2',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'succeeded',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'job_name': 'job-a',
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-22T00:00:00Z',
+                    'status': 'running',
+                },
+                {
+                    'finished_at': '2026-03-22T00:00:10Z',
+                    'job_name': 'job-a',
+                    'run_id': 'run-1',
+                    'status': 'failed',
+                },
+                {
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'job_name': 'job-b',
+                    'run_id': 'run-2',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ],
         )
 
         assert (
@@ -981,46 +1009,19 @@ class TestHistoryHandler:
             == 0
         )
 
-        assert capture_io['emit_json'] == []
-        assert capture_io['emit_markdown_table'] == [
-            (
-                (
-                    [
-                        {
-                            'config_path': None,
-                            'config_sha256': None,
-                            'duration_ms': None,
-                            'error_message': None,
-                            'error_traceback': None,
-                            'error_type': None,
-                            'etlplus_version': None,
-                            'finished_at': '2026-03-22T00:00:10Z',
-                            'host': None,
-                            'job_name': 'job-a',
-                            'pid': None,
-                            'pipeline_name': None,
-                            'records_in': None,
-                            'records_out': None,
-                            'result_summary': None,
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-22T00:00:00Z',
-                            'status': 'failed',
-                        },
-                    ],
+        _assert_emit_markdown_table(
+            capture_io,
+            [
+                _normalized_run(
+                    finished_at='2026-03-22T00:00:10Z',
+                    job_name='job-a',
+                    run_id='run-1',
+                    started_at='2026-03-22T00:00:00Z',
+                    status='failed',
                 ),
-                {
-                    'columns': (
-                        'run_id',
-                        'status',
-                        'job_name',
-                        'pipeline_name',
-                        'started_at',
-                        'finished_at',
-                        'duration_ms',
-                    ),
-                },
-            ),
-        ]
+            ],
+            columns=history_view_mod.HISTORY_TABLE_COLUMNS,
+        )
 
     def test_filters_raw_records_by_run_id_and_since(
         self,
@@ -1028,33 +1029,25 @@ class TestHistoryHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that raw history mode can filter by run identifier and time."""
-
-        class _FakeHistoryStore:
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-22T00:00:00Z',
-                            'status': 'running',
-                        },
-                        {
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'run_id': 'run-2',
-                            'status': 'succeeded',
-                        },
-                        {
-                            'finished_at': '2026-03-24T00:00:05Z',
-                            'run_id': 'run-2',
-                            'status': 'failed',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-22T00:00:00Z',
+                    'status': 'running',
+                },
+                {
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'run_id': 'run-2',
+                    'status': 'succeeded',
+                },
+                {
+                    'finished_at': '2026-03-24T00:00:05Z',
+                    'run_id': 'run-2',
+                    'status': 'failed',
+                },
+            ],
         )
 
         assert (
@@ -1153,16 +1146,7 @@ class TestHistoryHandler:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that JSON and table modes cannot be requested together."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter([])
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
-        )
+        _patch_history_store_records(monkeypatch, [])
 
         with pytest.raises(ValueError, match='choose either json output'):
             handlers.history_handler(json_output=True, table=True)
@@ -1357,86 +1341,125 @@ class TestLoadHandler:
 class TestReportHandler:
     """Unit tests for :func:`report_handler`."""
 
+    @pytest.mark.parametrize(
+        ('records', 'group_by', 'kwargs', 'expected'),
+        [
+            pytest.param(
+                [
+                    {
+                        'duration_ms': 3000,
+                        'finished_at': '2026-03-23T00:00:05Z',
+                        'job_name': 'job-a',
+                        'run_id': 'run-1',
+                        'started_at': '2026-03-23T00:00:00Z',
+                        'status': 'succeeded',
+                    },
+                    {
+                        'duration_ms': 1000,
+                        'finished_at': '2026-03-24T00:00:05Z',
+                        'job_name': 'job-a',
+                        'run_id': 'run-2',
+                        'started_at': '2026-03-24T00:00:00Z',
+                        'status': 'failed',
+                    },
+                ],
+                'job',
+                {
+                    'job': 'job-a',
+                    'since': '2026-03-23T00:00:00Z',
+                    'until': '2026-03-24T23:59:59Z',
+                },
+                {
+                    'group_by': 'job',
+                    'rows': [
+                        _report_row(
+                            avg_duration_ms=2000,
+                            failed=1,
+                            group='job-a',
+                            last_started_at='2026-03-24T00:00:00Z',
+                            max_duration_ms=3000,
+                            min_duration_ms=1000,
+                            runs=2,
+                            success_rate_pct=50.0,
+                            succeeded=1,
+                        ),
+                    ],
+                    'summary': _report_summary(
+                        avg_duration_ms=2000,
+                        failed=1,
+                        max_duration_ms=3000,
+                        min_duration_ms=1000,
+                        runs=2,
+                        success_rate_pct=50.0,
+                        succeeded=1,
+                    ),
+                },
+                id='group-by-job',
+            ),
+            pytest.param(
+                [
+                    {
+                        'duration_ms': 3000,
+                        'finished_at': '2026-03-23T00:00:05Z',
+                        'job_name': 'job-a',
+                        'run_id': 'run-1',
+                        'started_at': '2026-03-23T00:00:00Z',
+                        'status': 'succeeded',
+                    },
+                    {
+                        'duration_ms': 1000,
+                        'finished_at': '2026-03-23T01:00:05Z',
+                        'job_name': 'job-b',
+                        'run_id': 'run-2',
+                        'started_at': '2026-03-23T01:00:00Z',
+                        'status': 'failed',
+                    },
+                ],
+                'day',
+                {},
+                {
+                    'group_by': 'day',
+                    'rows': [
+                        _report_row(
+                            avg_duration_ms=2000,
+                            failed=1,
+                            group='2026-03-23',
+                            last_started_at='2026-03-23T01:00:00Z',
+                            max_duration_ms=3000,
+                            min_duration_ms=1000,
+                            runs=2,
+                            success_rate_pct=50.0,
+                            succeeded=1,
+                        ),
+                    ],
+                    'summary': _report_summary(
+                        avg_duration_ms=2000,
+                        failed=1,
+                        max_duration_ms=3000,
+                        min_duration_ms=1000,
+                        runs=2,
+                        success_rate_pct=50.0,
+                        succeeded=1,
+                    ),
+                },
+                id='group-by-day',
+            ),
+        ],
+    )
     def test_emits_grouped_report_as_json(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_io: CaptureIo,
+        records: list[dict[str, object]],
+        group_by: str,
+        kwargs: dict[str, object],
+        expected: dict[str, object],
     ) -> None:
         """Test that report aggregates normalized runs into JSON output."""
+        _patch_history_store_records(monkeypatch, records)
 
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'duration_ms': 3000,
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'succeeded',
-                        },
-                        {
-                            'duration_ms': 1000,
-                            'finished_at': '2026-03-24T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-2',
-                            'started_at': '2026-03-24T00:00:00Z',
-                            'status': 'failed',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
-        )
-
-        assert (
-            handlers.report_handler(
-                group_by='job',
-                job='job-a',
-                pretty=False,
-                since='2026-03-23T00:00:00Z',
-                until='2026-03-24T23:59:59Z',
-            )
-            == 0
-        )
-
-        assert_emit_json(
-            capture_io,
-            {
-                'group_by': 'job',
-                'rows': [
-                    {
-                        'avg_duration_ms': 2000,
-                        'failed': 1,
-                        'group': 'job-a',
-                        'last_started_at': '2026-03-24T00:00:00Z',
-                        'max_duration_ms': 3000,
-                        'min_duration_ms': 1000,
-                        'other': 0,
-                        'running': 0,
-                        'runs': 2,
-                        'success_rate_pct': 50.0,
-                        'succeeded': 1,
-                    },
-                ],
-                'summary': {
-                    'avg_duration_ms': 2000,
-                    'failed': 1,
-                    'max_duration_ms': 3000,
-                    'min_duration_ms': 1000,
-                    'other': 0,
-                    'running': 0,
-                    'runs': 2,
-                    'success_rate_pct': 50.0,
-                    'succeeded': 1,
-                },
-            },
-            pretty=False,
-        )
+        assert handlers.report_handler(group_by=group_by, pretty=False, **kwargs) == 0
+        assert_emit_json(capture_io, expected, pretty=False)
 
     def test_emits_grouped_report_as_markdown_table(
         self,
@@ -1444,138 +1467,37 @@ class TestReportHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that report can emit grouped rows as a Markdown table."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'duration_ms': 3000,
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'succeeded',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'duration_ms': 3000,
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'job_name': 'job-a',
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ],
         )
 
         assert handlers.report_handler(group_by='status', table=True) == 0
 
-        assert capture_io['emit_json'] == []
-        assert capture_io['emit_markdown_table'] == [
-            (
-                (
-                    [
-                        {
-                            'avg_duration_ms': 3000,
-                            'failed': 0,
-                            'group': 'succeeded',
-                            'last_started_at': '2026-03-23T00:00:00Z',
-                            'max_duration_ms': 3000,
-                            'min_duration_ms': 3000,
-                            'other': 0,
-                            'running': 0,
-                            'runs': 1,
-                            'success_rate_pct': 100.0,
-                            'succeeded': 1,
-                        },
-                    ],
-                ),
-                {
-                    'columns': (
-                        'group',
-                        'runs',
-                        'succeeded',
-                        'failed',
-                        'running',
-                        'other',
-                        'success_rate_pct',
-                        'avg_duration_ms',
-                        'min_duration_ms',
-                        'max_duration_ms',
-                        'last_started_at',
-                    ),
-                },
-            ),
-        ]
-
-    def test_emits_per_day_success_rate_when_grouped_by_day(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """Test that per-day grouping reports a day-level success rate."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'duration_ms': 3000,
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'succeeded',
-                        },
-                        {
-                            'duration_ms': 1000,
-                            'finished_at': '2026-03-23T01:00:05Z',
-                            'job_name': 'job-b',
-                            'run_id': 'run-2',
-                            'started_at': '2026-03-23T01:00:00Z',
-                            'status': 'failed',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
-        )
-
-        assert handlers.report_handler(group_by='day', pretty=False) == 0
-
-        assert_emit_json(
+        _assert_emit_markdown_table(
             capture_io,
-            {
-                'group_by': 'day',
-                'rows': [
-                    {
-                        'avg_duration_ms': 2000,
-                        'failed': 1,
-                        'group': '2026-03-23',
-                        'last_started_at': '2026-03-23T01:00:00Z',
-                        'max_duration_ms': 3000,
-                        'min_duration_ms': 1000,
-                        'other': 0,
-                        'running': 0,
-                        'runs': 2,
-                        'success_rate_pct': 50.0,
-                        'succeeded': 1,
-                    },
-                ],
-                'summary': {
-                    'avg_duration_ms': 2000,
-                    'failed': 1,
-                    'max_duration_ms': 3000,
-                    'min_duration_ms': 1000,
-                    'other': 0,
-                    'running': 0,
-                    'runs': 2,
-                    'success_rate_pct': 50.0,
-                    'succeeded': 1,
-                },
-            },
-            pretty=False,
+            [
+                _report_row(
+                    avg_duration_ms=3000,
+                    group='succeeded',
+                    last_started_at='2026-03-23T00:00:00Z',
+                    max_duration_ms=3000,
+                    min_duration_ms=3000,
+                    runs=1,
+                    success_rate_pct=100.0,
+                    succeeded=1,
+                ),
+            ],
+            columns=history_report_mod.REPORT_TABLE_COLUMNS,
         )
 
     def test_uses_history_view_and_report_builder_directly(
@@ -1821,11 +1743,7 @@ class TestRunHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`run_handler` emits a summary when no job set."""
-        monkeypatch.setattr(
-            handlers.Config,
-            'from_yaml',
-            lambda path, substitute: dummy_cfg,
-        )
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
 
         assert (
             handlers.run_handler(
@@ -1858,11 +1776,7 @@ class TestRunHandler:
         """
         Test that :func:`run_handler` executes a named job and emits status.
         """
-        monkeypatch.setattr(
-            handlers.Config,
-            'from_yaml',
-            lambda path, substitute: dummy_cfg,
-        )
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
         monkeypatch.setattr(
             handlers.RuntimeEvents,
             'create_run_id',
@@ -1938,87 +1852,63 @@ class TestRunHandler:
 class TestStatusHandler:
     """Unit tests for :func:`status_handler`."""
 
+    @pytest.mark.parametrize(
+        ('records', 'kwargs', 'pretty', 'expected_exit', 'expected_payload'),
+        [
+            pytest.param(
+                [
+                    {
+                        'finished_at': '2026-03-22T00:00:05Z',
+                        'job_name': 'job-a',
+                        'run_id': 'run-1',
+                        'started_at': '2026-03-22T00:00:00Z',
+                        'status': 'failed',
+                    },
+                    {
+                        'finished_at': '2026-03-23T00:00:05Z',
+                        'job_name': 'job-a',
+                        'run_id': 'run-2',
+                        'started_at': '2026-03-23T00:00:00Z',
+                        'status': 'succeeded',
+                    },
+                ],
+                {'job': 'job-a'},
+                True,
+                0,
+                _normalized_run(
+                    finished_at='2026-03-23T00:00:05Z',
+                    job_name='job-a',
+                    run_id='run-2',
+                    started_at='2026-03-23T00:00:00Z',
+                    status='succeeded',
+                ),
+                id='latest-match',
+            ),
+            pytest.param(
+                [],
+                {'run_id': 'missing'},
+                False,
+                1,
+                {},
+                id='missing-match',
+            ),
+        ],
+    )
     def test_emits_latest_matching_normalized_run(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_io: CaptureIo,
+        records: list[dict[str, object]],
+        kwargs: dict[str, object],
+        pretty: bool,
+        expected_exit: int,
+        expected_payload: dict[str, object],
     ) -> None:
-        """Test that status emits the newest normalized run."""
+        """Status should emit the latest match or an empty miss payload."""
+        _patch_history_store_records(monkeypatch, records)
 
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'finished_at': '2026-03-22T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-22T00:00:00Z',
-                            'status': 'failed',
-                        },
-                        {
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-2',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'succeeded',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
-        )
-
-        assert handlers.status_handler(job='job-a', pretty=True) == 0
-
-        assert_emit_json(
-            capture_io,
-            {
-                'config_path': None,
-                'config_sha256': None,
-                'duration_ms': None,
-                'error_message': None,
-                'error_traceback': None,
-                'error_type': None,
-                'etlplus_version': None,
-                'finished_at': '2026-03-23T00:00:05Z',
-                'host': None,
-                'job_name': 'job-a',
-                'pid': None,
-                'pipeline_name': None,
-                'records_in': None,
-                'records_out': None,
-                'result_summary': None,
-                'run_id': 'run-2',
-                'started_at': '2026-03-23T00:00:00Z',
-                'status': 'succeeded',
-            },
-            pretty=True,
-        )
-
-    def test_returns_one_when_no_matching_run_exists(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """Test that status returns 1 and emits an empty object on misses."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter([])
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
-        )
-
-        assert handlers.status_handler(run_id='missing', pretty=False) == 1
-
-        assert_emit_json(capture_io, {}, pretty=False)
+        assert handlers.status_handler(pretty=pretty, **kwargs) == expected_exit
+        assert_emit_json(capture_io, expected_payload, pretty=pretty)
 
     def test_uses_history_view_load_records_directly(
         self,
@@ -2066,6 +1956,55 @@ class TestStatusHandler:
         )
 
 
+class TestSourceMappingPayloadHandlers:
+    """Shared unit tests for handlers that require mapping side payloads."""
+
+    @pytest.mark.parametrize(
+        ('handler', 'mapping_name', 'mapping_arg', 'expected_error'),
+        [
+            pytest.param(
+                handlers.transform_handler,
+                'ops.json',
+                'operations',
+                'operations must resolve',
+                id='transform',
+            ),
+            pytest.param(
+                handlers.validate_handler,
+                'rules.json',
+                'rules',
+                'rules must resolve',
+                id='validate',
+            ),
+        ],
+    )
+    def test_requires_mapping_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        handler: Any,
+        mapping_name: str,
+        mapping_arg: str,
+        expected_error: str,
+    ) -> None:
+        """Non-mapping side payloads should raise :class:`ValueError`."""
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            {
+                'data.json': [{'id': 1}],
+                mapping_name: ['not-a-mapping'],
+            },
+        )
+
+        with pytest.raises(ValueError, match=expected_error):
+            handler(
+                source='data.json',
+                source_format='json',
+                target=None,
+                pretty=True,
+                **{mapping_arg: mapping_name},
+            )
+
+
 class TestTransformHandler:
     """Unit tests for :func:`transform_handler`."""
 
@@ -2076,22 +2015,10 @@ class TestTransformHandler:
     ) -> None:
         """Test that :func:`transform_handler` emits results with no target."""
         resolve_calls: list[tuple[object, str | None, bool]] = []
-
-        def fake_resolve(
-            source: object,
-            *,
-            format_hint: str | None,
-            format_explicit: bool,
-        ) -> object:
-            resolve_calls.append((source, format_hint, format_explicit))
-            if source == 'data.json':
-                return [{'id': 1}]
-            return {'select': ['id']}
-
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            fake_resolve,
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            {'data.json': [{'id': 1}], 'ops.json': {'select': ['id']}},
+            calls=resolve_calls,
         )
         monkeypatch.setattr(
             dataops_mod,
@@ -2125,12 +2052,9 @@ class TestTransformHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that non-file targets delegate through :func:`load`."""
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source} if source == 'data.json' else {'select': ['id']}
-            ),
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            _transform_payload_map(),
         )
         monkeypatch.setattr(
             dataops_mod,
@@ -2180,169 +2104,119 @@ class TestTransformHandler:
             pretty=False,
         )
 
-    def test_requires_mapping_operations_payload(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that non-mapping operations payloads raise :class:`ValueError`.
-        """
-
-        def _resolve_cli_payload(
-            source: object,
-            **kwargs: object,
-        ) -> object:
-            if source == 'ops.json':
-                return ['not-a-mapping']
-            return [{'id': 1}]
-
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            _resolve_cli_payload,
-        )
-        with pytest.raises(ValueError, match='operations must resolve'):
-            handlers.transform_handler(
-                source='data.json',
-                operations='ops.json',
-                source_format='json',
-                target=None,
-                pretty=True,
-            )
-
-    def test_writes_remote_target_file(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Test that :func:`transform_handler` preserves remote URI targets."""
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source} if source == 'data.json' else {'select': ['id']}
-            ),
-        )
-        monkeypatch.setattr(
-            dataops_mod,
-            'transform',
-            lambda payload, ops: {'payload': payload, 'ops': ops},
-        )
-        write_calls: dict[str, object] = {}
-
-        def fake_write(self, data, **kwargs):
-            write_calls['params'] = (self.path, data)
-
-        monkeypatch.setattr(handlers.File, 'write', fake_write)
-
-        assert (
-            handlers.transform_handler(
-                source='data.json',
-                operations='ops.json',
-                target='s3://bucket/out.json',
-                target_format='json',
-                pretty=True,
-            )
-            == 0
-        )
-        assert write_calls['params'] == (
-            's3://bucket/out.json',
-            {
-                'payload': {'source': 'data.json'},
-                'ops': {'select': ['id']},
-            },
-        )
-        assert (
-            'Data transformed and saved to s3://bucket/out.json'
-            in capsys.readouterr().out
-        )
-
+    @pytest.mark.parametrize(
+        'target',
+        [
+            pytest.param('s3://bucket/out.json', id='remote-uri'),
+            pytest.param('out.json', id='local-file'),
+        ],
+    )
     def test_writes_target_file(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
+        target: str,
     ) -> None:
-        """Test that :func:`transform_handler` writes data to a target file."""
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source} if source == 'data.json' else {'select': ['id']}
-            ),
+        """Test that :func:`transform_handler` writes data to file-like targets."""
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            _transform_payload_map(),
         )
         monkeypatch.setattr(
             dataops_mod,
             'transform',
             lambda payload, ops: {'payload': payload, 'ops': ops},
         )
-        write_calls: dict[str, object] = {}
-
-        def fake_write(self, data, **kwargs):
-            # Only capture path and data; ignore root_tag.
-            write_calls['params'] = (str(self.path), data)
-
-        monkeypatch.setattr(handlers.File, 'write', fake_write)
+        write_calls = _capture_file_write(monkeypatch)
 
         assert (
             handlers.transform_handler(
                 source='data.json',
                 operations='ops.json',
-                target='out.json',
+                target=target,
                 target_format='json',
                 pretty=True,
             )
             == 0
         )
         assert write_calls['params'] == (
-            'out.json',
+            target,
             {
                 'payload': {'source': 'data.json'},
                 'ops': {'select': ['id']},
             },
         )
-        assert 'Data transformed and saved to out.json' in capsys.readouterr().out
+        assert f'Data transformed and saved to {target}' in capsys.readouterr().out
 
 
 class TestValidateHandler:
     """Unit tests for :func:`validate_handler`."""
 
-    def test_emits_result_without_target(
+    @pytest.mark.parametrize(
+        ('target', 'pretty', 'result', 'expected'),
+        [
+            pytest.param(
+                None,
+                False,
+                {
+                    'data': {'source': 'data.json'},
+                    'rules': {'id': {'required': True}},
+                },
+                {
+                    'data': {'source': 'data.json'},
+                    'rules': {'id': {'required': True}},
+                },
+                id='no-target',
+            ),
+            pytest.param(
+                '-',
+                True,
+                {
+                    'data': {'source': 'data.json'},
+                    'field_errors': {},
+                    'rules': {'id': {'required': True}},
+                    'valid': True,
+                },
+                {
+                    'data': {'source': 'data.json'},
+                    'field_errors': {},
+                    'rules': {'id': {'required': True}},
+                    'valid': True,
+                },
+                id='stdout-target',
+            ),
+        ],
+    )
+    def test_emits_json_when_not_writing_a_file(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_io: CaptureIo,
+        target: str | None,
+        pretty: bool,
+        result: dict[str, object],
+        expected: dict[str, object],
     ) -> None:
-        """Test that :func:`validate_handler` emits results with no target."""
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source}
-                if source == 'data.json'
-                else {'id': {'required': True}}
-            ),
+        """Validation should emit JSON unless it is writing a target file."""
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            _validation_payload_map(),
         )
         monkeypatch.setattr(
             dataops_mod,
             'validate',
-            lambda payload, rules: {'data': payload, 'rules': rules},
+            lambda payload, rules: result,
         )
 
         assert (
             handlers.validate_handler(
                 source='data.json',
                 rules='rules.json',
-                pretty=False,
+                target=target,
+                pretty=pretty,
             )
             == 0
         )
-        assert_emit_json(
-            capture_io,
-            {
-                'data': {'source': 'data.json'},
-                'rules': {'id': {'required': True}},
-            },
-            pretty=False,
-        )
+        assert_emit_json(capture_io, expected, pretty=pretty)
 
     def test_reports_missing_data_for_target(
         self,
@@ -2350,14 +2224,9 @@ class TestValidateHandler:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test that :func:`validate_handler` reports missing output data."""
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source}
-                if source == 'data.json'
-                else {'id': {'required': True}}
-            ),
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            _validation_payload_map(),
         )
         monkeypatch.setattr(
             dataops_mod,
@@ -2379,36 +2248,6 @@ class TestValidateHandler:
             in capsys.readouterr().err
         )
 
-    def test_requires_mapping_rules_payload(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that non-mapping rules payloads raise :class:`ValueError`.
-        """
-
-        def _resolve_cli_payload(
-            source: object,
-            **kwargs: object,
-        ) -> object:
-            if source == 'rules.json':
-                return ['not-a-mapping']
-            return [{'id': 1}]
-
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            _resolve_cli_payload,
-        )
-        with pytest.raises(ValueError, match='rules must resolve'):
-            handlers.validate_handler(
-                source='data.json',
-                rules='rules.json',
-                source_format='json',
-                target=None,
-                pretty=True,
-            )
-
     def test_rules_payload_resolves_even_when_format_is_explicit_elsewhere(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -2416,19 +2255,11 @@ class TestValidateHandler:
     ) -> None:
         """Test that rules files still resolve when other format state is explicit."""
         resolve_calls: list[tuple[object, str | None, bool]] = []
-
-        def fake_resolve(
-            source: object,
-            *,
-            format_hint: str | None,
-            format_explicit: bool,
-        ) -> object:
-            resolve_calls.append((source, format_hint, format_explicit))
-            if source == 'data.json':
-                return {'source': source}
-            return {'id': {'required': True}}
-
-        monkeypatch.setattr(handlers._input, 'resolve_cli_payload', fake_resolve)
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            _validation_payload_map(),
+            calls=resolve_calls,
+        )
         monkeypatch.setattr(
             dataops_mod,
             'validate',
@@ -2458,67 +2289,14 @@ class TestValidateHandler:
             pretty=False,
         )
 
-    def test_target_stdout_emits_result_json(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """
-        Test that ``target='-'`` emits full validation output to STDOUT.
-        """
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source}
-                if source == 'data.json'
-                else {'id': {'required': True}}
-            ),
-        )
-        monkeypatch.setattr(
-            dataops_mod,
-            'validate',
-            lambda payload, rules: {
-                'data': payload,
-                'field_errors': {},
-                'rules': rules,
-                'valid': True,
-            },
-        )
-
-        assert (
-            handlers.validate_handler(
-                source='data.json',
-                rules='rules.json',
-                target='-',
-                pretty=True,
-            )
-            == 0
-        )
-        assert_emit_json(
-            capture_io,
-            {
-                'data': {'source': 'data.json'},
-                'field_errors': {},
-                'rules': {'id': {'required': True}},
-                'valid': True,
-            },
-            pretty=True,
-        )
-
     def test_writes_target_file(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that :func:`validate_handler` writes data to a target file."""
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source}
-                if source == 'data.json'
-                else {'id': {'required': True}}
-            ),
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            _validation_payload_map(),
         )
         monkeypatch.setattr(
             dataops_mod,
