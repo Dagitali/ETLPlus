@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.runtime.test_u_runtime_init` module.
 
-Unit tests for :mod:`etlplus.runtime` package exports.
+Unit tests for :mod:`etlplus.runtime` package facade exports.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from etlplus.runtime._readiness import ReadinessReportBuilder
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: TESTS ============================================================ #
+# SECTION: HELPERS ========================================================== #
 
 
 RUNTIME_EXPORTS = [
@@ -32,16 +32,24 @@ RUNTIME_EXPORTS = [
     ('resolve_log_level', resolve_log_level),
 ]
 
-
-def test_runtime_package_exports_expected_symbols() -> None:
-    """Test that the runtime package facade exports the documented helpers."""
-    assert runtime_pkg.__all__ == [name for name, _value in RUNTIME_EXPORTS]
+# SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.parametrize(('name', 'expected'), RUNTIME_EXPORTS)
-def test_runtime_package_exports_bind_expected_symbols(
-    name: str,
-    expected: object,
-) -> None:
-    """Runtime package attributes should match the documented facade surface."""
-    assert getattr(runtime_pkg, name) is expected
+class TestRuntimePackageExports:
+    """Unit tests for package-level exports."""
+
+    def test_expected_symbols(self) -> None:
+        """
+        Test that package facade preserves the documented export order of the
+        public API surface (i.e., ``__all__`` contract).
+        """
+        assert runtime_pkg.__all__ == [name for name, _value in RUNTIME_EXPORTS]
+
+    @pytest.mark.parametrize(('name', 'expected'), RUNTIME_EXPORTS)
+    def test_expected_symbol_bindings(
+        self,
+        name: str,
+        expected: object,
+    ) -> None:
+        """Test that package exports resolve to their canonical objects."""
+        assert getattr(runtime_pkg, name) == expected

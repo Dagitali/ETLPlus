@@ -1,14 +1,14 @@
 """
 :mod:`tests.unit.utils.test_u_utils_init` module.
 
-Unit tests for :mod:`etlplus.utils.__init__`.
+Unit tests for :mod:`etlplus.utils` package facade exports.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from etlplus import utils as mod
+from etlplus import utils as utils_pkg
 from etlplus.utils._data import count_records
 from etlplus.utils._data import print_json
 from etlplus.utils._data import serialize_json
@@ -72,7 +72,7 @@ class TestUtilsPackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert mod.__all__ == [name for name, _value in UTILS_EXPORTS]
+        assert utils_pkg.__all__ == [name for name, _value in UTILS_EXPORTS]
 
     @pytest.mark.parametrize(('name', 'expected'), UTILS_EXPORTS)
     def test_expected_symbol_bindings(
@@ -81,4 +81,4 @@ class TestUtilsPackageExports:
         expected: object,
     ) -> None:
         """Test that package exports resolve to their canonical objects."""
-        assert getattr(mod, name) == expected
+        assert getattr(utils_pkg, name) == expected

@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.connector.test_u_connector_init` module.
 
-Unit tests for :mod:`etlplus.connector` package exports.
+Unit tests for :mod:`etlplus.connector` package facade exports.
 """
 
 from __future__ import annotations

@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.workflow.test_u_workflow_init` module.
 
-Unit tests for :mod:`etlplus.workflow` package exports.
+Unit tests for :mod:`etlplus.workflow` package facade exports.
 """
 
 from __future__ import annotations
@@ -52,7 +52,6 @@ class TestWorkflowPackageExports:
     @pytest.mark.parametrize(('name', 'expected'), WORKFLOW_EXPORTS)
     def test_expected_symbol_bindings(
         self,
-
         name: str,
         expected: object,
     ) -> None:

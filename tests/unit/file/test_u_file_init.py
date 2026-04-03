@@ -1,12 +1,14 @@
 """
 :mod:`tests.unit.file.test_u_file_init` module.
 
-Unit tests for :mod:`etlplus.file.__init__`.
+Unit tests for :mod:`etlplus.file` package facade exports.
 """
 
 from __future__ import annotations
 
-from etlplus import file as mod
+import pytest
+
+from etlplus import file as file_pkg
 from etlplus.file._core import File
 from etlplus.file._enums import CompressionFormat
 from etlplus.file._enums import FileFormat
@@ -19,29 +21,37 @@ from etlplus.file.base import WriteOptions
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: HELPERS ========================================================== #
+
+
+FILE_EXPORTS = [
+    ('BoundFileHandler', BoundFileHandler),
+    ('File', File),
+    ('ReadOptions', ReadOptions),
+    ('WriteOptions', WriteOptions),
+    ('CompressionFormat', CompressionFormat),
+    ('FileFormat', FileFormat),
+    ('infer_file_format_and_compression', infer_file_format_and_compression),
+]
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestFilePackageExports:
-    """Unit tests for public package exports."""
+    """Unit tests for package-level exports."""
 
-    def test_all_exports_are_expected_and_importable(self) -> None:
-        """Test that ``__all__`` and top-level package symbol wiring."""
-        assert mod.__all__ == [
-            'BoundFileHandler',
-            'File',
-            'ReadOptions',
-            'WriteOptions',
-            'CompressionFormat',
-            'FileFormat',
-            'infer_file_format_and_compression',
-        ]
-        assert mod.File is File
-        assert mod.BoundFileHandler is BoundFileHandler
-        assert mod.CompressionFormat is CompressionFormat
-        assert mod.FileFormat is FileFormat
-        assert mod.ReadOptions is ReadOptions
-        assert mod.WriteOptions is WriteOptions
-        assert mod.infer_file_format_and_compression is (
-            infer_file_format_and_compression
-        )
+    def test_expected_symbols(self) -> None:
+        """
+        Test that package facade preserves the documented export order of the
+        public API surface (i.e., ``__all__`` contract).
+        """
+        assert file_pkg.__all__ == [name for name, _value in FILE_EXPORTS]
+
+    @pytest.mark.parametrize(('name', 'expected'), FILE_EXPORTS)
+    def test_expected_symbol_bindings(
+        self,
+        name: str,
+        expected: object,
+    ) -> None:
+        """Test that package exports resolve to their canonical objects."""
+        assert getattr(file_pkg, name) == expected

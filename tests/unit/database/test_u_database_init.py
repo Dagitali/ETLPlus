@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.database.test_u_database_init` module.
 
-Unit tests for :mod:`etlplus.database` package exports.
+Unit tests for :mod:`etlplus.database` package facade exports.
 """
 
 from __future__ import annotations

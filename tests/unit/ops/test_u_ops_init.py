@@ -1,14 +1,14 @@
 """
 :mod:`tests.unit.ops.test_u_ops_init` module.
 
-Unit tests for :mod:`etlplus.ops.__init__`.
+Unit tests for :mod:`etlplus.ops` package facade exports.
 """
 
 from __future__ import annotations
 
 import pytest
 
-import etlplus.ops as mod
+import etlplus.ops as ops_pkg
 from etlplus.ops._enums import AggregateName
 from etlplus.ops._enums import OperatorName
 from etlplus.ops._enums import PipelineStep
@@ -53,6 +53,7 @@ OPS_EXPORTS = [
 
 # SECTION: TESTS ============================================================ #
 
+
 class TestOpsPackageExports:
     """Unit tests for package-level exports."""
 
@@ -61,7 +62,7 @@ class TestOpsPackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert mod.__all__ == [name for name, _value in OPS_EXPORTS]
+        assert ops_pkg.__all__ == [name for name, _value in OPS_EXPORTS]
 
     @pytest.mark.parametrize(('name', 'expected'), OPS_EXPORTS)
     def test_expected_symbol_bindings(
@@ -70,4 +71,4 @@ class TestOpsPackageExports:
         expected: object,
     ) -> None:
         """Test that package exports resolve to their canonical objects."""
-        assert getattr(mod, name) == expected
+        assert getattr(ops_pkg, name) == expected

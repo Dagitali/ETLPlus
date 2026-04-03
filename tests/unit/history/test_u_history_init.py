@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.history.test_u_history_init` module.
 
-Unit tests for :mod:`etlplus.history` package exports.
+Unit tests for :mod:`etlplus.history` package facade exports.
 """
 
 from __future__ import annotations
