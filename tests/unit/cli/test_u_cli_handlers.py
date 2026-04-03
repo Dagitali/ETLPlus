@@ -98,6 +98,17 @@ class _ReadOnlyFakeHistoryStore(handlers.HistoryStore):
 type _ResolveCliPayloadCall = tuple[object, str | None, bool]
 
 
+def _assert_emit_markdown_table(
+    calls: CaptureIo,
+    rows: list[dict[str, object]],
+    *,
+    columns: tuple[str, ...],
+) -> None:
+    """Assert that :func:`emit_markdown_table` was called once as expected."""
+    assert calls['emit_json'] == []
+    assert calls['emit_markdown_table'] == [((rows,), {'columns': columns})]
+
+
 def _capture_file_write(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, tuple[str, object]]:
@@ -196,6 +207,22 @@ def _report_summary(**overrides: object) -> dict[str, object]:
         key: value
         for key, value in _report_row(**overrides).items()
         if key != 'group' and key != 'last_started_at'
+    }
+
+
+def _transform_payload_map() -> dict[object, object]:
+    """Build the default payload map used by transform handler tests."""
+    return {
+        'data.json': {'source': 'data.json'},
+        'ops.json': {'select': ['id']},
+    }
+
+
+def _validation_payload_map() -> dict[object, object]:
+    """Build the default payload map used by validate handler tests."""
+    return {
+        'data.json': {'source': 'data.json'},
+        'rules.json': {'id': {'required': True}},
     }
 
 
@@ -982,23 +1009,19 @@ class TestHistoryHandler:
             == 0
         )
 
-        assert capture_io['emit_json'] == []
-        assert capture_io['emit_markdown_table'] == [
-            (
-                (
-                    [
-                        _normalized_run(
-                            finished_at='2026-03-22T00:00:10Z',
-                            job_name='job-a',
-                            run_id='run-1',
-                            started_at='2026-03-22T00:00:00Z',
-                            status='failed',
-                        ),
-                    ],
+        _assert_emit_markdown_table(
+            capture_io,
+            [
+                _normalized_run(
+                    finished_at='2026-03-22T00:00:10Z',
+                    job_name='job-a',
+                    run_id='run-1',
+                    started_at='2026-03-22T00:00:00Z',
+                    status='failed',
                 ),
-                {'columns': history_view_mod.HISTORY_TABLE_COLUMNS},
-            ),
-        ]
+            ],
+            columns=history_view_mod.HISTORY_TABLE_COLUMNS,
+        )
 
     def test_filters_raw_records_by_run_id_and_since(
         self,
@@ -1123,16 +1146,7 @@ class TestHistoryHandler:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that JSON and table modes cannot be requested together."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter([])
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
-        )
+        _patch_history_store_records(monkeypatch, [])
 
         with pytest.raises(ValueError, match='choose either json output'):
             handlers.history_handler(json_output=True, table=True)
@@ -1469,26 +1483,22 @@ class TestReportHandler:
 
         assert handlers.report_handler(group_by='status', table=True) == 0
 
-        assert capture_io['emit_json'] == []
-        assert capture_io['emit_markdown_table'] == [
-            (
-                (
-                    [
-                        _report_row(
-                            avg_duration_ms=3000,
-                            group='succeeded',
-                            last_started_at='2026-03-23T00:00:00Z',
-                            max_duration_ms=3000,
-                            min_duration_ms=3000,
-                            runs=1,
-                            success_rate_pct=100.0,
-                            succeeded=1,
-                        ),
-                    ],
+        _assert_emit_markdown_table(
+            capture_io,
+            [
+                _report_row(
+                    avg_duration_ms=3000,
+                    group='succeeded',
+                    last_started_at='2026-03-23T00:00:00Z',
+                    max_duration_ms=3000,
+                    min_duration_ms=3000,
+                    runs=1,
+                    success_rate_pct=100.0,
+                    succeeded=1,
                 ),
-                {'columns': history_report_mod.REPORT_TABLE_COLUMNS},
-            ),
-        ]
+            ],
+            columns=history_report_mod.REPORT_TABLE_COLUMNS,
+        )
 
     def test_uses_history_view_and_report_builder_directly(
         self,
@@ -2015,10 +2025,7 @@ class TestTransformHandler:
         resolve_calls: list[tuple[object, str | None, bool]] = []
         _patch_resolve_cli_payload_map(
             monkeypatch,
-            {
-                'data.json': [{'id': 1}],
-                'ops.json': {'select': ['id']},
-            },
+            {'data.json': [{'id': 1}], 'ops.json': {'select': ['id']}},
             calls=resolve_calls,
         )
         monkeypatch.setattr(
@@ -2055,10 +2062,7 @@ class TestTransformHandler:
         """Test that non-file targets delegate through :func:`load`."""
         _patch_resolve_cli_payload_map(
             monkeypatch,
-            {
-                'data.json': {'source': 'data.json'},
-                'ops.json': {'select': ['id']},
-            },
+            _transform_payload_map(),
         )
         monkeypatch.setattr(
             dataops_mod,
@@ -2124,10 +2128,7 @@ class TestTransformHandler:
         """Test that :func:`transform_handler` writes data to file-like targets."""
         _patch_resolve_cli_payload_map(
             monkeypatch,
-            {
-                'data.json': {'source': 'data.json'},
-                'ops.json': {'select': ['id']},
-            },
+            _transform_payload_map(),
         )
         monkeypatch.setattr(
             dataops_mod,
@@ -2206,10 +2207,7 @@ class TestValidateHandler:
         """Validation should emit JSON unless it is writing a target file."""
         _patch_resolve_cli_payload_map(
             monkeypatch,
-            {
-                'data.json': {'source': 'data.json'},
-                'rules.json': {'id': {'required': True}},
-            },
+            _validation_payload_map(),
         )
         monkeypatch.setattr(
             dataops_mod,
@@ -2236,10 +2234,7 @@ class TestValidateHandler:
         """Test that :func:`validate_handler` reports missing output data."""
         _patch_resolve_cli_payload_map(
             monkeypatch,
-            {
-                'data.json': {'source': 'data.json'},
-                'rules.json': {'id': {'required': True}},
-            },
+            _validation_payload_map(),
         )
         monkeypatch.setattr(
             dataops_mod,
@@ -2268,19 +2263,11 @@ class TestValidateHandler:
     ) -> None:
         """Test that rules files still resolve when other format state is explicit."""
         resolve_calls: list[tuple[object, str | None, bool]] = []
-
-        def fake_resolve(
-            source: object,
-            *,
-            format_hint: str | None,
-            format_explicit: bool,
-        ) -> object:
-            resolve_calls.append((source, format_hint, format_explicit))
-            if source == 'data.json':
-                return {'source': source}
-            return {'id': {'required': True}}
-
-        monkeypatch.setattr(handlers._input, 'resolve_cli_payload', fake_resolve)
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            _validation_payload_map(),
+            calls=resolve_calls,
+        )
         monkeypatch.setattr(
             dataops_mod,
             'validate',
@@ -2317,10 +2304,7 @@ class TestValidateHandler:
         """Test that :func:`validate_handler` writes data to a target file."""
         _patch_resolve_cli_payload_map(
             monkeypatch,
-            {
-                'data.json': {'source': 'data.json'},
-                'rules.json': {'id': {'required': True}},
-            },
+            _validation_payload_map(),
         )
         monkeypatch.setattr(
             dataops_mod,
