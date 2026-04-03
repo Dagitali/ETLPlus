@@ -16,12 +16,6 @@ from etlplus import __main__
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
-
-
-# pylint: disable=protected-access
-# pylint: disable=unused-argument
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -41,9 +35,7 @@ def test_run_invokes_main(
     assert called['main']
 
 
-def test_main_guard_executes_run(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_main_guard_executes_run() -> None:
     """
     Test that the main guard executes :func:`_run` and raises
     :class:`SystemExit`.

@@ -23,6 +23,34 @@ import pytest
 # SECTION: HELPERS ========================================================== #
 
 
+def _patch_version_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+    metadata_version: str | None,
+) -> None:
+    """Patch :mod:`importlib.metadata` version lookup for one test case."""
+    if metadata_version is not None:
+        monkeypatch.setattr(
+            importlib.metadata,
+            'version',
+            lambda _pkg: metadata_version,
+        )
+        return
+
+    class FakePackageNotFoundError(Exception):
+        """Sentinel replacement for :class:`PackageNotFoundError`."""
+
+    monkeypatch.setattr(
+        importlib.metadata,
+        'PackageNotFoundError',
+        FakePackageNotFoundError,
+    )
+
+    def _raise(_pkg: str) -> str:
+        raise FakePackageNotFoundError()
+
+    monkeypatch.setattr(importlib.metadata, 'version', _raise)
+
+
 def _reload_version_module() -> ModuleType:
     """Reload and return the :mod:`etlplus.__version__` module."""
     version_mod = importlib.import_module('etlplus.__version__')
@@ -32,31 +60,19 @@ def _reload_version_module() -> ModuleType:
 # SECTION: TESTS ============================================================ #
 
 
-def test_version_metadata(
+@pytest.mark.parametrize(
+    ('metadata_version', 'expected_version'),
+    [
+        pytest.param('1.2.3', '1.2.3', id='metadata-version'),
+        pytest.param(None, '0.0.0', id='fallback-version'),
+    ],
+)
+def test_version_module_reports_expected_version(
     monkeypatch: pytest.MonkeyPatch,
+    metadata_version: str | None,
+    expected_version: str,
 ) -> None:
-    """Test that version is correctly retrieved from package metadata."""
-    # Simulate importlib.metadata.version returning a real version.
-    monkeypatch.setattr(importlib.metadata, 'version', lambda _pkg: '1.2.3')
+    """Version module should use installed metadata or fallback consistently."""
+    _patch_version_lookup(monkeypatch, metadata_version)
     version_mod = _reload_version_module()
-    assert version_mod.__version__ == '1.2.3'
-
-
-def test_version_fallback(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Test that fallback version is used when metadata is unavailable."""
-
-    # Simulate importlib.metadata.version raising PackageNotFoundError.
-    class FakeError(Exception):
-        """Fake :class:`PackageNotFoundError` exception."""
-
-    monkeypatch.setattr(importlib.metadata, 'PackageNotFoundError', FakeError)
-
-    def _raise(_pkg: str) -> str:
-        """Raise the sentinel package-not-found error."""
-        raise FakeError()
-
-    monkeypatch.setattr(importlib.metadata, 'version', _raise)
-    version_mod = _reload_version_module()
-    assert version_mod.__version__ == '0.0.0'
+    assert version_mod.__version__ == expected_version

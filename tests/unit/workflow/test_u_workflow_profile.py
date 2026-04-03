@@ -6,50 +6,57 @@ Unit tests for :mod:`etlplus.workflow._profile`.
 
 from __future__ import annotations
 
-import importlib
+from typing import Any
+from typing import cast
+
+import pytest
+
+from etlplus.workflow._profile import ProfileConfig
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
-
-
-profile = importlib.import_module('etlplus.workflow._profile')
-
-
 # SECTION: TESTS ============================================================ #
 
 
-def test_from_obj_coerces_env_values_to_strings() -> None:
-    """Test that environment values normalize to strings."""
-    cfg = profile.ProfileConfig.from_obj(
-        {
-            'default_target': 'warehouse',
-            'env': {'INT': 1, 'BOOL': False, 'TXT': 'x'},
-        },
-    )
+@pytest.mark.parametrize(
+    ('payload', 'expected_env'),
+    [
+        pytest.param(
+            {
+                'default_target': 'warehouse',
+                'env': {'INT': 1, 'BOOL': False, 'TXT': 'x'},
+            },
+            {'INT': '1', 'BOOL': 'False', 'TXT': 'x'},
+            id='coerces-env-values',
+        ),
+        pytest.param(
+            {'default_target': 'warehouse', 'env': ['bad']},
+            {},
+            id='ignores-non-mapping-env',
+        ),
+    ],
+)
+def test_from_obj_normalizes_env_payload(
+    payload: dict[str, object],
+    expected_env: dict[str, str],
+) -> None:
+    """Profile parsing should normalize environment payloads into string mappings."""
+    cfg = ProfileConfig.from_obj(payload)
     assert cfg.default_target == 'warehouse'
-    assert cfg.env == {'INT': '1', 'BOOL': 'False', 'TXT': 'x'}
+    assert cfg.env == expected_env
 
 
-def test_from_obj_ignores_non_mapping_env_values() -> None:
-    """Test that non-mapping env payloads normalize to an empty mapping."""
-    cfg = profile.ProfileConfig.from_obj(
-        {'default_target': 'warehouse', 'env': ['bad']},
-    )
-    assert cfg.default_target == 'warehouse'
-    assert cfg.env == {}
-
-
-def test_from_obj_returns_defaults_for_non_mappings() -> None:
-    """Test that non-mapping payloads produce a default profile config."""
-    cfg = profile.ProfileConfig.from_obj('not-a-mapping')
-    assert cfg.default_target is None
-    assert cfg.env == {}
-
-
-def test_from_obj_returns_defaults_for_none() -> None:
-    """Test that a ``None`` payload produces a default profile config."""
-    cfg = profile.ProfileConfig.from_obj(None)
-    assert cfg == profile.ProfileConfig()
+@pytest.mark.parametrize(
+    'payload',
+    [
+        pytest.param('not-a-mapping', id='non-mapping'),
+        pytest.param(None, id='none'),
+    ],
+)
+def test_from_obj_returns_defaults_for_non_mappings(
+    payload: object | None,
+) -> None:
+    """Non-mapping profile payloads should produce a default config."""
+    assert ProfileConfig.from_obj(cast(Any, payload)) == ProfileConfig()

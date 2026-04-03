@@ -21,7 +21,13 @@ from etlplus.workflow._jobs import JobConfig
 
 
 def _job(name: str, *depends_on: str) -> JobConfig:
+    """Build a minimal :class:`JobConfig` for DAG ordering tests."""
     return JobConfig(name=name, depends_on=list(depends_on))
+
+
+def _ordered_names(jobs: list[JobConfig]) -> list[str]:
+    """Return job names after topological sorting."""
+    return [job.name for job in topological_sort_jobs(jobs)]
 
 
 # SECTION: TESTS ============================================================ #
@@ -39,56 +45,58 @@ def test_ready_returns_sorted_zero_indegree_nodes() -> None:
     assert _ready({'b': 0, 'a': 0, 'c': 1}) == ['a', 'b']
 
 
-def test_topological_sort_dedupes_duplicate_dependency_edges() -> None:
-    """Test that duplicate dependency entries do not double-count indegrees."""
-    jobs = [
-        _job('a'),
-        _job('b', 'a', 'a'),
-    ]
-    ordered = topological_sort_jobs(jobs)
-    assert [job.name for job in ordered] == ['a', 'b']
+@pytest.mark.parametrize(
+    ('jobs', 'expected'),
+    [
+        pytest.param(
+            [_job('a'), _job('b', 'a', 'a')],
+            ['a', 'b'],
+            id='duplicate-edges',
+        ),
+        pytest.param(
+            [_job('b', 'a'), _job('c', 'b'), _job('a')],
+            ['a', 'b', 'c'],
+            id='dependency-chain',
+        ),
+        pytest.param(
+            [_job('a'), _job('b'), _job('c', 'a', 'b')],
+            ['a', 'b', 'c'],
+            id='multi-parent',
+        ),
+    ],
+)
+def test_topological_sort_orders_jobs_by_dependencies(
+    jobs: list[JobConfig],
+    expected: list[str],
+) -> None:
+    """Topological sorting should honor dependency ordering semantics."""
+    assert _ordered_names(jobs) == expected
 
 
-def test_topological_sort_detects_cycles() -> None:
-    """Test that cyclic dependencies raise :class:`DagError`."""
-    jobs = [_job('a', 'b'), _job('b', 'a')]
-    with pytest.raises(DagError, match='Dependency cycle detected'):
-        topological_sort_jobs(jobs)
-
-
-def test_topological_sort_handles_multi_parent_dependencies() -> None:
-    """
-    Test that nodes with multiple parents enqueue after all are resolved.
-    """
-    jobs = [
-        _job('a'),
-        _job('b'),
-        _job('c', 'a', 'b'),
-    ]
-    ordered = topological_sort_jobs(jobs)
-    assert ordered[-1].name == 'c'
-    assert {ordered[0].name, ordered[1].name} == {'a', 'b'}
-
-
-def test_topological_sort_orders_jobs_by_dependencies() -> None:
-    """Test that sorting places dependencies before their dependents."""
-    jobs = [
-        _job('b', 'a'),
-        _job('c', 'b'),
-        _job('a'),
-    ]
-    ordered = topological_sort_jobs(jobs)
-    assert [job.name for job in ordered] == ['a', 'b', 'c']
-
-
-def test_topological_sort_rejects_self_dependencies() -> None:
-    """Test that self-referential dependencies raise :class:`DagError`."""
-    with pytest.raises(DagError, match='depends on itself'):
-        topological_sort_jobs([_job('a', 'a')])
-
-
-def test_topological_sort_rejects_unknown_dependencies() -> None:
-    """Test that unknown dependency names raise :class:`DagError`."""
-    jobs = [_job('a'), _job('b', 'missing')]
-    with pytest.raises(DagError, match='Unknown dependency'):
+@pytest.mark.parametrize(
+    ('jobs', 'match'),
+    [
+        pytest.param(
+            [_job('a', 'b'), _job('b', 'a')],
+            'Dependency cycle detected',
+            id='cycle',
+        ),
+        pytest.param(
+            [_job('a', 'a')],
+            'depends on itself',
+            id='self-dependency',
+        ),
+        pytest.param(
+            [_job('a'), _job('b', 'missing')],
+            'Unknown dependency',
+            id='unknown-dependency',
+        ),
+    ],
+)
+def test_topological_sort_rejects_invalid_graphs(
+    jobs: list[JobConfig],
+    match: str,
+) -> None:
+    """Invalid dependency graphs should raise :class:`DagError`."""
+    with pytest.raises(DagError, match=match):
         topological_sort_jobs(jobs)
