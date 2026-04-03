@@ -92,6 +92,11 @@ def _patch_file_read(
     monkeypatch.setattr(readiness_mod, 'File', _FakeFile)
 
 
+def _provider_gap(**fields: object) -> dict[str, object]:
+    """Build one provider-environment gap row for wrapper-level tests."""
+    return dict(fields)
+
+
 def _resolved_config_context(
     raw: Mapping[str, object],
     *,
@@ -1045,107 +1050,89 @@ class TestReadinessReportBuilder:
 
         assert readiness_mod.ReadinessReportBuilder.package_available('broken') is False
 
-    def test_provider_environment_checks_report_azure_bootstrap_gaps(
-        self,
-    ) -> None:
-        """Test that Azure storage paths report missing bootstrap env details."""
-        cfg = SimpleNamespace(
-            sources=[
-                SimpleNamespace(
-                    name='blob-source',
-                    format='csv',
-                    path='azure-blob://container/input.csv',
-                    type='file',
-                ),
-            ],
-            targets=[],
-            apis={},
-        )
-
-        checks = readiness_mod.ReadinessReportBuilder.provider_environment_checks(
-            cfg=cast(Any, cfg),
-            env={},
-        )
-
-        assert checks == [
-            {
-                'environment_gaps': [
-                    {
-                        'connector': 'blob-source',
-                        'guidance': (
+    @pytest.mark.parametrize(
+        ('rows', 'expected'),
+        [
+            pytest.param(
+                [
+                    _provider_gap(
+                        connector='blob-source',
+                        guidance=(
                             'Set AZURE_STORAGE_CONNECTION_STRING, set '
                             'AZURE_STORAGE_ACCOUNT_URL, or include the '
                             'account host in the path authority.'
                         ),
-                        'missing_env': [
+                        missing_env=[
                             'AZURE_STORAGE_CONNECTION_STRING',
                             'AZURE_STORAGE_ACCOUNT_URL',
                         ],
-                        'provider': 'azure-storage',
-                        'reason': (
+                        provider='azure-storage',
+                        reason=(
                             'azure-blob path does not provide an account host '
                             'and no Azure storage bootstrap settings were '
                             'found.'
                         ),
-                        'role': 'source',
-                        'severity': 'error',
+                        role='source',
+                        severity='error',
+                    ),
+                ],
+                [
+                    {
+                        'environment_gaps': [
+                            _provider_gap(
+                                connector='blob-source',
+                                guidance=(
+                                    'Set AZURE_STORAGE_CONNECTION_STRING, set '
+                                    'AZURE_STORAGE_ACCOUNT_URL, or include the '
+                                    'account host in the path authority.'
+                                ),
+                                missing_env=[
+                                    'AZURE_STORAGE_CONNECTION_STRING',
+                                    'AZURE_STORAGE_ACCOUNT_URL',
+                                ],
+                                provider='azure-storage',
+                                reason=(
+                                    'azure-blob path does not provide an account host '
+                                    'and no Azure storage bootstrap settings were '
+                                    'found.'
+                                ),
+                                role='source',
+                                severity='error',
+                            ),
+                        ],
+                        'message': (
+                            'Provider environment gaps: 1 error(s), 0 warning(s).'
+                        ),
+                        'name': 'provider-environment',
+                        'status': 'error',
                     },
                 ],
-                'message': 'Provider environment gaps: 1 error(s), 0 warning(s).',
-                'name': 'provider-environment',
-                'status': 'error',
-            },
-        ]
-
-    def test_provider_environment_checks_return_ok_when_no_rows(self) -> None:
-        """Test provider readiness check when no provider gaps exist."""
-        checks = readiness_mod.ReadinessReportBuilder.provider_environment_checks(
-            cfg=cast(Any, _cfg()),
-            env={},
-        )
-
-        assert checks == [
-            {
-                'message': 'No provider-specific environment gaps were detected.',
-                'name': 'provider-environment',
-                'status': 'ok',
-            },
-        ]
-
-    def test_provider_environment_checks_warn_for_implicit_s3_credentials(
-        self,
-    ) -> None:
-        """Test that S3 paths warn when no common credential hints are present."""
-        cfg = SimpleNamespace(
-            sources=[
-                SimpleNamespace(
-                    name='s3-source',
-                    format='csv',
-                    path='s3://bucket/input.csv',
-                    type='file',
-                ),
-            ],
-            targets=[],
-            apis={},
-        )
-
-        checks = readiness_mod.ReadinessReportBuilder.provider_environment_checks(
-            cfg=cast(Any, cfg),
-            env={},
-        )
-
-        assert checks == [
-            {
-                'environment_gaps': [
+                id='error-rows',
+            ),
+            pytest.param(
+                [],
+                [
                     {
-                        'connector': 's3-source',
-                        'guidance': (
+                        'message': (
+                            'No provider-specific environment gaps were detected.'
+                        ),
+                        'name': 'provider-environment',
+                        'status': 'ok',
+                    },
+                ],
+                id='no-rows',
+            ),
+            pytest.param(
+                [
+                    _provider_gap(
+                        connector='s3-source',
+                        guidance=(
                             'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/'
                             'AWS_SECRET_ACCESS_KEY, or rely on shared config '
                             'files, container credentials, or instance '
                             'metadata.'
                         ),
-                        'missing_env': [
+                        missing_env=[
                             'AWS_ACCESS_KEY_ID',
                             'AWS_PROFILE',
                             'AWS_DEFAULT_PROFILE',
@@ -1156,20 +1143,172 @@ class TestReadinessReportBuilder:
                             'AWS_SHARED_CREDENTIALS_FILE',
                             'AWS_CONFIG_FILE',
                         ],
-                        'provider': 'aws-s3',
-                        'reason': (
+                        provider='aws-s3',
+                        reason=(
                             'No common AWS credential-chain environment hints '
                             'were detected for this S3 path.'
                         ),
-                        'role': 'source',
-                        'severity': 'warn',
+                        role='source',
+                        severity='warn',
+                    ),
+                ],
+                [
+                    {
+                        'environment_gaps': [
+                            _provider_gap(
+                                connector='s3-source',
+                                guidance=(
+                                    'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/'
+                                    'AWS_SECRET_ACCESS_KEY, or rely on shared config '
+                                    'files, container credentials, or instance '
+                                    'metadata.'
+                                ),
+                                missing_env=[
+                                    'AWS_ACCESS_KEY_ID',
+                                    'AWS_PROFILE',
+                                    'AWS_DEFAULT_PROFILE',
+                                    'AWS_ROLE_ARN',
+                                    'AWS_WEB_IDENTITY_TOKEN_FILE',
+                                    'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI',
+                                    'AWS_CONTAINER_CREDENTIALS_FULL_URI',
+                                    'AWS_SHARED_CREDENTIALS_FILE',
+                                    'AWS_CONFIG_FILE',
+                                ],
+                                provider='aws-s3',
+                                reason=(
+                                    'No common AWS credential-chain environment hints '
+                                    'were detected for this S3 path.'
+                                ),
+                                role='source',
+                                severity='warn',
+                            ),
+                        ],
+                        'message': 'Provider environment warnings: 1.',
+                        'name': 'provider-environment',
+                        'status': 'warn',
                     },
                 ],
-                'message': 'Provider environment warnings: 1.',
-                'name': 'provider-environment',
-                'status': 'warn',
-            },
-        ]
+                id='warn-rows',
+            ),
+        ],
+    )
+    def test_provider_environment_checks_wrap_rows_by_severity(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        rows: list[dict[str, object]],
+        expected: list[dict[str, object]],
+    ) -> None:
+        """Provider check wrappers should map row severities into report rows."""
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'provider_environment_rows',
+            lambda *, cfg, env: rows,
+        )
+
+        checks = readiness_mod.ReadinessReportBuilder.provider_environment_checks(
+            cfg=cast(Any, _cfg()),
+            env={},
+        )
+
+        assert checks == expected
+
+    @pytest.mark.parametrize(
+        ('cfg', 'env', 'expected'),
+        [
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            name='blob-source',
+                            format='csv',
+                            path='azure-blob://container/input.csv',
+                            type='file',
+                        ),
+                    ],
+                ),
+                {},
+                [
+                    _provider_gap(
+                        connector='blob-source',
+                        guidance=(
+                            'Set AZURE_STORAGE_CONNECTION_STRING, set '
+                            'AZURE_STORAGE_ACCOUNT_URL, or include the '
+                            'account host in the path authority.'
+                        ),
+                        missing_env=[
+                            'AZURE_STORAGE_CONNECTION_STRING',
+                            'AZURE_STORAGE_ACCOUNT_URL',
+                        ],
+                        provider='azure-storage',
+                        reason=(
+                            'azure-blob path does not provide an account host '
+                            'and no Azure storage bootstrap settings were '
+                            'found.'
+                        ),
+                        role='source',
+                        severity='error',
+                    ),
+                ],
+                id='azure-bootstrap-error',
+            ),
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            name='s3-source',
+                            format='csv',
+                            path='s3://bucket/input.csv',
+                            type='file',
+                        ),
+                    ],
+                ),
+                {},
+                [
+                    _provider_gap(
+                        connector='s3-source',
+                        guidance=(
+                            'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/'
+                            'AWS_SECRET_ACCESS_KEY, or rely on shared config '
+                            'files, container credentials, or instance '
+                            'metadata.'
+                        ),
+                        missing_env=[
+                            'AWS_ACCESS_KEY_ID',
+                            'AWS_PROFILE',
+                            'AWS_DEFAULT_PROFILE',
+                            'AWS_ROLE_ARN',
+                            'AWS_WEB_IDENTITY_TOKEN_FILE',
+                            'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI',
+                            'AWS_CONTAINER_CREDENTIALS_FULL_URI',
+                            'AWS_SHARED_CREDENTIALS_FILE',
+                            'AWS_CONFIG_FILE',
+                        ],
+                        provider='aws-s3',
+                        reason=(
+                            'No common AWS credential-chain environment hints '
+                            'were detected for this S3 path.'
+                        ),
+                        role='source',
+                        severity='warn',
+                    ),
+                ],
+                id='s3-credential-warning',
+            ),
+        ],
+    )
+    def test_provider_environment_rows_report_expected_gaps(
+        self,
+        cfg: object,
+        env: dict[str, str],
+        expected: list[dict[str, object]],
+    ) -> None:
+        """Provider row generation should emit the expected Azure/S3 gaps."""
+        rows = readiness_mod.ReadinessReportBuilder.provider_environment_rows(
+            cfg=cast(Any, cfg),
+            env=env,
+        )
+
+        assert rows == expected
 
     def test_provider_environment_rows_return_empty_for_explicit_azure_auth(
         self,
@@ -1715,4 +1854,29 @@ class TestReadinessReportBuilder:
             'name': 'python-version',
             'status': 'error',
             'version': '3.12.9',
+        }
+
+    def test_supported_python_check_reports_supported_version(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test the supported-Python branch of the readiness check."""
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'python_version',
+            classmethod(lambda cls: '3.13.12'),
+        )
+        monkeypatch.setattr(
+            readiness_mod,
+            'sys',
+            SimpleNamespace(version_info=(3, 13, 12)),
+        )
+
+        check = readiness_mod.ReadinessReportBuilder.supported_python_check()
+
+        assert check == {
+            'message': 'Python 3.13.12 is within the supported ETLPlus runtime range.',
+            'name': 'python-version',
+            'status': 'ok',
+            'version': '3.13.12',
         }
