@@ -41,6 +41,11 @@ def _cfg(
     )
 
 
+def _issue(**fields: object) -> dict[str, object]:
+    """Build one expected strict-validation issue row."""
+    return dict(fields)
+
+
 def _patch_config_resolution(
     monkeypatch: pytest.MonkeyPatch,
     *,
@@ -69,6 +74,22 @@ def _patch_config_resolution(
             resolved_cfg=resolved_cfg,
         ),
     )
+
+
+def _patch_file_read(
+    monkeypatch: pytest.MonkeyPatch,
+    payload: object,
+) -> None:
+    """Patch :class:`File` to return one fixed payload from ``read()``."""
+
+    class _FakeFile:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def read(self) -> object:
+            return payload
+
+    monkeypatch.setattr(readiness_mod, 'File', _FakeFile)
 
 
 def _resolved_config_context(
@@ -106,12 +127,42 @@ def _write_pipeline_config(
 class TestReadinessReportBuilder:
     """Unit tests for :class:`ReadinessReportBuilder`."""
 
-    def test_build_matches_wrapper_runtime_only(self) -> None:
-        """Test that the class builder matches the function wrapper."""
-        expected = readiness_mod.ReadinessReportBuilder.build(env={})
-        actual = readiness_mod.ReadinessReportBuilder.build(env={})
+    def test_build_runtime_only_emits_python_and_skipped_config_checks(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that runtime-only builds emit the stable non-config readiness rows.
+        """
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'supported_python_check',
+            lambda: {'name': 'python-version', 'status': 'ok'},
+        )
+        monkeypatch.setattr(
+            readiness_mod.ReadinessReportBuilder,
+            'python_version',
+            classmethod(lambda cls: '3.13.12'),
+        )
 
-        assert actual == expected
+        report = readiness_mod.ReadinessReportBuilder.build(env={})
+
+        assert report == {
+            'checks': [
+                {'name': 'python-version', 'status': 'ok'},
+                {
+                    'message': (
+                        'No configuration file provided; only runtime '
+                        'checks were performed.'
+                    ),
+                    'name': 'config-file',
+                    'status': 'skipped',
+                },
+            ],
+            'etlplus_version': readiness_mod.__version__,
+            'python_version': '3.13.12',
+            'status': 'ok',
+        }
 
     def test_build_passes_strict_flag_through_to_config_checks(
         self,
@@ -766,42 +817,46 @@ class TestReadinessReportBuilder:
 
         assert rows == [row, {**row, 'connector': 'source-b'}]
 
-    def test_load_raw_config_requires_mapping_root(
+    @pytest.mark.parametrize(
+        ('payload', 'expected', 'match'),
+        [
+            pytest.param(
+                ['not', 'a', 'mapping'],
+                None,
+                'mapping/object root',
+                id='rejects-non-mapping-root',
+            ),
+            pytest.param(
+                {'name': 'pipeline'},
+                {'name': 'pipeline'},
+                None,
+                id='returns-mapping-root',
+            ),
+        ],
+    )
+    def test_load_raw_config_validates_mapping_root(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        payload: object,
+        expected: dict[str, object] | None,
+        match: str | None,
     ) -> None:
-        """Test that raw config loading rejects non-mapping YAML roots."""
+        """Raw config loading should enforce a mapping/object root."""
+        _patch_file_read(monkeypatch, payload)
 
-        class _FakeFile:
-            def __init__(self, *_args: object, **_kwargs: object) -> None:
-                pass
+        if match is not None:
+            with pytest.raises(TypeError, match=match):
+                readiness_mod.ReadinessReportBuilder.load_raw_config(
+                    'pipeline.yml',
+                )
+            return
 
-            def read(self) -> object:
-                return ['not', 'a', 'mapping']
-
-        monkeypatch.setattr(readiness_mod, 'File', _FakeFile)
-
-        with pytest.raises(TypeError, match='mapping/object root'):
-            readiness_mod.ReadinessReportBuilder.load_raw_config('pipeline.yml')
-
-    def test_load_raw_config_returns_mapping_root(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that raw config loading returns a mapping root unchanged."""
-
-        class _FakeFile:
-            def __init__(self, *_args: object, **_kwargs: object) -> None:
-                pass
-
-            def read(self) -> object:
-                return {'name': 'pipeline'}
-
-        monkeypatch.setattr(readiness_mod, 'File', _FakeFile)
-
-        assert readiness_mod.ReadinessReportBuilder.load_raw_config('pipeline.yml') == {
-            'name': 'pipeline',
-        }
+        assert (
+            readiness_mod.ReadinessReportBuilder.load_raw_config(
+                'pipeline.yml',
+            )
+            == expected
+        )
 
     def test_missing_requirement_rows_cover_netcdf_and_format_specific_branches(
         self,
@@ -1296,88 +1351,85 @@ class TestReadinessReportBuilder:
             'include_runtime_checks': False,
         }
 
-    def test_strict_connector_names_allow_absent_guidance_for_non_string_type_values(
+    @pytest.mark.parametrize(
+        (
+            'parse_connector',
+            'raw',
+            'expected_names',
+            'expected_issues',
+        ),
+        [
+            pytest.param(
+                lambda entry: (_ for _ in ()).throw(TypeError('unsupported connector')),
+                {'sources': [{'type': 1}]},
+                set(),
+                [
+                    _issue(
+                        guidance=None,
+                        index=0,
+                        issue='invalid connector entry',
+                        message='unsupported connector',
+                        section='sources',
+                    ),
+                ],
+                id='non-string-type-guidance-omitted',
+            ),
+            pytest.param(
+                None,
+                {'sources': {'name': 'not-a-list'}},
+                None,
+                [
+                    _issue(
+                        expected='list',
+                        guidance='Define sources as a YAML list of connector mappings.',
+                        issue='invalid section type',
+                        observed_type='dict',
+                        section='sources',
+                    ),
+                ],
+                id='invalid-section-type',
+            ),
+            pytest.param(
+                lambda entry: (_ for _ in ()).throw(
+                    TypeError('missing connector type'),
+                ),
+                {'sources': [{}]},
+                set(),
+                [
+                    _issue(
+                        guidance='Set "type" to one of: api, database, file.',
+                        index=0,
+                        issue='invalid connector entry',
+                        message='missing connector type',
+                        section='sources',
+                    ),
+                ],
+                id='missing-type-guidance',
+            ),
+        ],
+    )
+    def test_strict_connector_names_single_issue_cases(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        parse_connector: object,
+        raw: dict[str, object],
+        expected_names: set[str] | None,
+        expected_issues: list[dict[str, object]],
     ) -> None:
-        """Strict connector validation should allow non-string raw types through."""
+        """Strict connector validation should emit the expected single-issue rows."""
         issues: list[dict[str, Any]] = []
 
-        monkeypatch.setattr(
-            readiness_mod,
-            'parse_connector',
-            lambda entry: (_ for _ in ()).throw(TypeError('unsupported connector')),
-        )
+        if parse_connector is not None:
+            monkeypatch.setattr(readiness_mod, 'parse_connector', parse_connector)
 
         names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
-            raw={'sources': [{'type': 1}]},
+            raw=raw,
             section='sources',
             issues=issues,
         )
 
-        assert names == set()
-        assert issues == [
-            {
-                'guidance': None,
-                'index': 0,
-                'issue': 'invalid connector entry',
-                'message': 'unsupported connector',
-                'section': 'sources',
-            },
-        ]
-
-    def test_strict_connector_names_report_invalid_section_type(
-        self,
-    ) -> None:
-        """Strict connector validation should reject non-list top-level sections."""
-        issues: list[dict[str, Any]] = []
-
-        names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
-            raw={'sources': {'name': 'not-a-list'}},
-            section='sources',
-            issues=issues,
-        )
-
-        assert names is None
-        assert issues == [
-            {
-                'expected': 'list',
-                'guidance': 'Define sources as a YAML list of connector mappings.',
-                'issue': 'invalid section type',
-                'observed_type': 'dict',
-                'section': 'sources',
-            },
-        ]
-
-    def test_strict_connector_names_report_missing_type_guidance_on_parse_error(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Strict connector validation should suggest valid types when missing."""
-        issues: list[dict[str, Any]] = []
-
-        monkeypatch.setattr(
-            readiness_mod,
-            'parse_connector',
-            lambda entry: (_ for _ in ()).throw(TypeError('missing connector type')),
-        )
-
-        names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
-            raw={'sources': [{}]},
-            section='sources',
-            issues=issues,
-        )
-
-        assert names == set()
-        assert issues == [
-            {
-                'guidance': 'Set "type" to one of: api, database, file.',
-                'index': 0,
-                'issue': 'invalid connector entry',
-                'message': 'missing connector type',
-                'section': 'sources',
-            },
-        ]
+        assert names == expected_names
+        assert cast(list[dict[str, object]], issues) == expected_issues
 
     def test_strict_connector_names_report_parse_errors_and_blank_names(
         self,
@@ -1406,21 +1458,21 @@ class TestReadinessReportBuilder:
 
         assert names == set()
         assert issues == [
-            {
-                'guidance': (
+            _issue(
+                guidance=(
                     'Use one of the supported connector types: api, database, file.'
                 ),
-                'index': 0,
-                'issue': 'invalid connector entry',
-                'message': 'bad connector',
-                'section': 'sources',
-            },
-            {
-                'guidance': 'Set "name" to a non-empty string.',
-                'index': 1,
-                'issue': 'blank connector name',
-                'section': 'sources',
-            },
+                index=0,
+                issue='invalid connector entry',
+                message='bad connector',
+                section='sources',
+            ),
+            _issue(
+                guidance='Set "name" to a non-empty string.',
+                index=1,
+                issue='blank connector name',
+                section='sources',
+            ),
         ]
 
     def test_strict_job_issue_rows_cover_non_list_invalid_entries_and_duplicates(
@@ -1473,13 +1525,13 @@ class TestReadinessReportBuilder:
         )
 
         assert issues == [
-            {
-                'expected': 'list',
-                'guidance': 'Define jobs as a YAML list of job mappings.',
-                'issue': 'invalid section type',
-                'observed_type': 'dict',
-                'section': 'jobs',
-            },
+            _issue(
+                expected='list',
+                guidance='Define jobs as a YAML list of job mappings.',
+                issue='invalid section type',
+                observed_type='dict',
+                section='jobs',
+            ),
         ]
 
     def test_strict_job_issue_rows_return_when_jobs_section_is_missing(
@@ -1499,88 +1551,119 @@ class TestReadinessReportBuilder:
 
         assert not issues
 
-    def test_strict_job_ref_issue_reports_missing_required_section(
+    @pytest.mark.parametrize(
+        (
+            'entry',
+            'field',
+            'index',
+            'job_name',
+            'required',
+            'required_key',
+            'section_names',
+            'section_label',
+            'expected',
+        ),
+        [
+            pytest.param(
+                {},
+                'extract',
+                0,
+                'publish',
+                True,
+                'source',
+                {'src'},
+                'sources',
+                [
+                    _issue(
+                        field='extract',
+                        guidance=(
+                            'Add a extract mapping with "source" set to a '
+                            'configured resource name.'
+                        ),
+                        index=0,
+                        issue='missing extract section',
+                        job='publish',
+                        section='jobs',
+                    ),
+                ],
+                id='missing-required-section',
+            ),
+            pytest.param(
+                {'extract': 'src'},
+                'extract',
+                1,
+                'publish',
+                True,
+                'source',
+                {'src'},
+                'sources',
+                [
+                    _issue(
+                        field='extract',
+                        guidance=(
+                            'Define extract as a mapping with a "source" string field.'
+                        ),
+                        index=1,
+                        issue='invalid extract section',
+                        job='publish',
+                        observed_type='str',
+                        section='jobs',
+                    ),
+                ],
+                id='invalid-extract-section',
+            ),
+            pytest.param(
+                {'transform': {'pipeline': '   '}},
+                'transform',
+                2,
+                None,
+                False,
+                'pipeline',
+                {'trim'},
+                'transforms',
+                [
+                    _issue(
+                        field='transform.pipeline',
+                        guidance=(
+                            'Set transform.pipeline to a configured resource name.'
+                        ),
+                        index=2,
+                        issue='missing transform.pipeline',
+                        section='jobs',
+                    ),
+                ],
+                id='missing-transform-pipeline',
+            ),
+        ],
+    )
+    def test_strict_job_ref_issue_reports_expected_issue(
         self,
+        entry: dict[str, object],
+        field: str,
+        index: int,
+        job_name: str | None,
+        required: bool,
+        required_key: str,
+        section_names: set[str] | None,
+        section_label: str,
+        expected: list[dict[str, object]],
     ) -> None:
-        """Strict job refs should flag missing required extract/load sections."""
+        """Strict job refs should emit the expected issue row for each case."""
         issues: list[dict[str, Any]] = []
 
         readiness_mod.ReadinessReportBuilder.strict_job_ref_issue(
-            entry={},
-            field='extract',
-            index=0,
+            entry=entry,
+            field=field,
+            index=index,
             issues=issues,
-            job_name='publish',
-            required=True,
-            required_key='source',
-            section_names={'src'},
-            section_label='sources',
+            job_name=job_name,
+            required=required,
+            required_key=required_key,
+            section_names=section_names,
+            section_label=section_label,
         )
 
-        assert issues == [
-            {
-                'field': 'extract',
-                'guidance': (
-                    'Add a extract mapping with "source" set to a configured '
-                    'resource name.'
-                ),
-                'index': 0,
-                'issue': 'missing extract section',
-                'job': 'publish',
-                'section': 'jobs',
-            },
-        ]
-
-    def test_strict_job_ref_issue_reports_invalid_and_missing_reference_values(
-        self,
-    ) -> None:
-        """Strict job refs should flag bad section types and missing names."""
-        invalid_issues: list[dict[str, Any]] = []
-        missing_issues: list[dict[str, Any]] = []
-
-        readiness_mod.ReadinessReportBuilder.strict_job_ref_issue(
-            entry={'extract': 'src'},
-            field='extract',
-            index=1,
-            issues=invalid_issues,
-            job_name='publish',
-            required=True,
-            required_key='source',
-            section_names={'src'},
-            section_label='sources',
-        )
-        readiness_mod.ReadinessReportBuilder.strict_job_ref_issue(
-            entry={'transform': {'pipeline': '   '}},
-            field='transform',
-            index=2,
-            issues=missing_issues,
-            job_name=None,
-            required=False,
-            required_key='pipeline',
-            section_names={'trim'},
-            section_label='transforms',
-        )
-
-        assert invalid_issues == [
-            {
-                'field': 'extract',
-                'guidance': 'Define extract as a mapping with a "source" string field.',
-                'index': 1,
-                'issue': 'invalid extract section',
-                'job': 'publish',
-                'observed_type': 'str',
-                'section': 'jobs',
-            },
-        ]
-        assert missing_issues == [
-            {
-                'field': 'transform.pipeline',
-                'guidance': 'Set transform.pipeline to a configured resource name.',
-                'index': 2,
-                'issue': 'missing transform.pipeline',
-                'section': 'jobs',
-            },
-        ]
+        assert cast(list[dict[str, object]], issues) == expected
 
     def test_strict_named_section_names_reject_non_mapping_sections(
         self,
@@ -1597,13 +1680,13 @@ class TestReadinessReportBuilder:
 
         assert names is None
         assert issues == [
-            {
-                'expected': 'mapping',
-                'guidance': 'Define transforms as a mapping keyed by pipeline name.',
-                'issue': 'invalid section type',
-                'observed_type': 'list',
-                'section': 'transforms',
-            },
+            _issue(
+                expected='mapping',
+                guidance='Define transforms as a mapping keyed by pipeline name.',
+                issue='invalid section type',
+                observed_type='list',
+                section='transforms',
+            ),
         ]
 
     def test_supported_python_check_reports_out_of_range_version(

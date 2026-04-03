@@ -86,7 +86,8 @@ class TestRuntimeEvents:
     ) -> None:
         """Test that event emission is disabled for non-jsonl formats."""
         events_mod.RuntimeEvents.emit(
-            {'event': 'run.started'}, event_format=event_format,
+            {'event': 'run.started'},
+            event_format=event_format,
         )
 
         captured = capsys.readouterr()
