@@ -124,7 +124,7 @@ class TestStatisticalHandlers:
 
         assert result is frame
         pyreadstat.assert_single_read_path(path)
-        assert pandas.read_calls == []
+        assert not pandas.read_calls
 
     def test_sas_fallback_uses_pandas_when_pyreadstat_reader_is_missing(
         self,

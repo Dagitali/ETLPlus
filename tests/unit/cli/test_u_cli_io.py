@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import io
 import types
+from collections.abc import Callable
 from pathlib import Path
-from unittest.mock import Mock
 
 import pytest
 
@@ -23,6 +23,69 @@ from etlplus.utils._data import parse_json
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 # SECTION: TESTS ============================================================ #
+
+
+type SourceBuilder = Callable[[Path], str | Path]
+
+
+def _string_missing_source(tmp_path: Path) -> str:
+    """Build one missing string path for file-materialization tests."""
+    return str(tmp_path / 'missing.json')
+
+
+def _path_missing_source(tmp_path: Path) -> Path:
+    """Build one missing pathlike source for file-materialization tests."""
+    return tmp_path / 'missing.json'
+
+
+def _build_readable_file_double(
+    *,
+    payload: object,
+    resolved_format: FileFormat,
+) -> tuple[type[object], dict[str, object]]:
+    """Build a ``File`` double that captures reads and returns one payload."""
+    captured: dict[str, object] = {}
+
+    class DummyFile:
+        """Capture file construction and return a fixed payload on read."""
+
+        file_format = resolved_format
+
+        def __init__(
+            self,
+            path_arg: object,
+            fmt_arg: FileFormat | None = None,
+        ) -> None:
+            captured['path'] = path_arg
+            captured['fmt'] = fmt_arg
+
+        def exists(self) -> bool:
+            """Report that the referenced file exists."""
+            return True
+
+        def read(self) -> object:
+            """Return the configured sentinel payload."""
+            return payload
+
+    return DummyFile, captured
+
+
+def _build_writable_file_double() -> tuple[type[object], dict[str, object]]:
+    """Build a ``File`` double that captures write-target construction."""
+    captured: dict[str, object] = {}
+
+    class DummyFile:
+        """Capture file construction and the payload written to it."""
+
+        def __init__(self, path_arg: object, fmt_arg: FileFormat) -> None:
+            captured['path'] = path_arg
+            captured['fmt'] = fmt_arg
+
+        def write(self, data: object) -> None:
+            """Capture the written payload."""
+            captured['data'] = data
+
+    return DummyFile, captured
 
 
 class TestEmitJson:
@@ -53,16 +116,39 @@ class TestEmitJson:
 class TestEmitOrWrite:
     """Unit tests for :func:`emit_or_write`."""
 
-    def test_falls_back_to_emit_when_write_is_skipped(
+    @pytest.mark.parametrize(
+        ('output_path', 'pretty', 'write_succeeds', 'expected_emitted'),
+        [
+            pytest.param(
+                None,
+                True,
+                False,
+                [({'ok': True}, True)],
+                id='emit-when-write-skipped',
+            ),
+            pytest.param(
+                'out.json',
+                False,
+                True,
+                [],
+                id='skip-emit-when-write-succeeds',
+            ),
+        ],
+    )
+    def test_respects_write_result(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        output_path: str | None,
+        pretty: bool,
+        write_succeeds: bool,
+        expected_emitted: list[tuple[object, bool]],
     ) -> None:
-        """Test that, when writes are skipped, payload emits to STDOUT."""
+        """JSON payloads should emit only when the write path does not handle them."""
         emitted: list[tuple[object, bool]] = []
         monkeypatch.setattr(
             output_mod,
             'write_json_output',
-            lambda data, output_path, *, success_message: False,
+            lambda data, output_path, *, success_message: write_succeeds,
         )
         monkeypatch.setattr(
             output_mod,
@@ -72,38 +158,12 @@ class TestEmitOrWrite:
 
         output_mod.emit_or_write(
             {'ok': True},
-            None,
-            pretty=True,
+            output_path,
+            pretty=pretty,
             success_message='written to',
         )
 
-        assert emitted == [({'ok': True}, True)]
-
-    def test_short_circuits_when_write_succeeds(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that successful writes skip STDOUT emission."""
-        emitted: list[tuple[object, bool]] = []
-        monkeypatch.setattr(
-            output_mod,
-            'write_json_output',
-            lambda data, output_path, *, success_message: True,
-        )
-        monkeypatch.setattr(
-            output_mod,
-            'emit_json',
-            lambda data, *, pretty: emitted.append((data, pretty)),
-        )
-
-        output_mod.emit_or_write(
-            {'ok': True},
-            'out.json',
-            pretty=False,
-            success_message='written to',
-        )
-
-        assert emitted == []
+        assert emitted == expected_emitted
 
 
 class TestEmitMarkdownTable:
@@ -138,29 +198,59 @@ class TestEmitMarkdownTable:
 class TestInferPayloadFormat:
     """Unit tests for :func:`infer_payload_format`."""
 
-    def test_inferring_payload_format(self) -> None:
-        """Test that inferring JSON vs CSV using the first significant byte."""
-        assert input_mod.infer_payload_format(' {"a":1}') == 'json'
-        assert input_mod.infer_payload_format('  col1,col2') == 'csv'
+    @pytest.mark.parametrize(
+        ('raw', 'expected'),
+        [
+            pytest.param(' {"a":1}', 'json', id='json'),
+            pytest.param('  col1,col2', 'csv', id='csv'),
+        ],
+    )
+    def test_inferring_payload_format(
+        self,
+        raw: str,
+        expected: str,
+    ) -> None:
+        """The first meaningful byte should distinguish JSON from CSV."""
+        assert input_mod.infer_payload_format(raw) == expected
 
 
 class TestMaterializeFilePayload:
     """Unit tests for :func:`materialize_file_payload`."""
 
-    def test_explicit_without_hint_still_allows_suffix_inference(
+    @pytest.mark.parametrize(
+        ('contents', 'expected', 'format_explicit'),
+        [
+            pytest.param(
+                '{"ok": true}',
+                {'ok': True},
+                True,
+                id='explicit-without-hint',
+            ),
+            pytest.param(
+                '{"alpha": 1}',
+                {'alpha': 1},
+                False,
+                id='implicit-json',
+            ),
+        ],
+    )
+    def test_parses_json_suffix_files_without_conflicting_hints(
         self,
         tmp_path: Path,
+        contents: str,
+        expected: object,
+        format_explicit: bool,
     ) -> None:
-        """Test that explicit mode without a hint still infers from suffix."""
+        """JSON suffix files should still parse when no conflicting hint exists."""
         file_path = tmp_path / 'payload.json'
-        file_path.write_text('{"ok": true}', encoding='utf-8')
+        file_path.write_text(contents, encoding='utf-8')
 
         payload = input_mod.materialize_file_payload(
             str(file_path),
             format_hint=None,
-            format_explicit=True,
+            format_explicit=format_explicit,
         )
-        assert payload == {'ok': True}
+        assert payload == expected
 
     def test_ignoring_hint_without_flag(
         self,
@@ -198,254 +288,215 @@ class TestMaterializeFilePayload:
         assert isinstance(rows, list)
         assert rows[0] == {'a': '1', 'b': '2'}
 
-    def test_inferring_json(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that JSON files are parsed when no format hint is provided."""
-        file_path = tmp_path / 'payload.json'
-        file_path.write_text('{"alpha": 1}')
-
-        payload = input_mod.materialize_file_payload(
-            str(file_path),
-            format_hint=None,
-            format_explicit=False,
-        )
-
-        assert payload == {'alpha': 1}
-
-    def test_inferring_xml(
+    @pytest.mark.parametrize(
+        ('source', 'resolved_format', 'expected'),
+        [
+            pytest.param(
+                'payload.xml',
+                FileFormat.XML,
+                {'xml': True},
+                id='local-xml',
+            ),
+            pytest.param(
+                's3://bucket/payload.json',
+                FileFormat.JSON,
+                {'remote': True},
+                id='remote-json-uri',
+            ),
+        ],
+    )
+    def test_reads_existing_structured_sources_via_file(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        source: str,
+        resolved_format: FileFormat,
+        expected: object,
     ) -> None:
-        """
-        Test that XML files are materialized via :class:`File` when inferred.
-        """
-        file_path = tmp_path / 'payload.xml'
-        file_path.write_text('<root><value>1</value></root>')
-
-        sentinel = {'xml': True}
-        captured: dict[str, object] = {}
-
-        class DummyFile:
-            """
-            Mock :class:`File` that captures init args and returns a sentinel
-            on read.
-            """
-
-            file_format = FileFormat.XML
-
-            def __init__(
-                self,
-                path_arg: object,
-                fmt_arg: FileFormat | None = None,
-            ) -> None:
-                captured['path'] = path_arg
-                captured['fmt'] = fmt_arg
-
-            def exists(self) -> bool:
-                """Report that the test file exists."""
-                return True
-
-            def read(self) -> object:
-                """Return the sentinel object."""
-                return sentinel
-
-        monkeypatch.setattr(input_mod, 'File', DummyFile)
+        """Existing file-like sources should hydrate through :class:`File`."""
+        actual_source = (
+            str(tmp_path / source) if not source.startswith('s3://') else source
+        )
+        if source.endswith('.xml'):
+            Path(actual_source).write_text(
+                '<root><value>1</value></root>',
+                encoding='utf-8',
+            )
+        dummy_file, captured = _build_readable_file_double(
+            payload=expected,
+            resolved_format=resolved_format,
+        )
+        monkeypatch.setattr(input_mod, 'File', dummy_file)
 
         payload = input_mod.materialize_file_payload(
-            str(file_path),
+            actual_source,
             format_hint=None,
             format_explicit=False,
         )
 
-        assert payload is sentinel
-        assert captured['path'] == str(file_path)
+        assert payload == expected
+        assert captured['path'] == actual_source
         assert captured['fmt'] is None
 
-    def test_inline_payload_with_hint(self) -> None:
-        """
-        Test that inline payloads parse when format hints are explicit.
-        """
+    @pytest.mark.parametrize(
+        ('source', 'expected'),
+        [
+            pytest.param('[{"ok": true}]', [{'ok': True}], id='list-json'),
+            pytest.param('{"inline": true}', {'inline': True}, id='dict-json'),
+        ],
+    )
+    def test_parses_inline_json_when_hint_is_explicit(
+        self,
+        source: str,
+        expected: object,
+    ) -> None:
+        """Inline JSON payloads should parse when the hint is explicit."""
         payload = input_mod.materialize_file_payload(
-            '[{"ok": true}]',
+            source,
             format_hint='json',
             format_explicit=True,
         )
-        assert payload == [{'ok': True}]
+        assert payload == expected
 
-    def test_invalid_explicit_hint_keeps_source_as_is(
+    @pytest.mark.parametrize(
+        ('source_builder', 'match'),
+        [
+            pytest.param(
+                _string_missing_source,
+                'File not found: ',
+                id='string-path',
+            ),
+            pytest.param(
+                _path_missing_source,
+                'File not found',
+                id='pathlike',
+            ),
+        ],
+    )
+    def test_missing_file_sources_raise_file_not_found(
         self,
         tmp_path: Path,
+        source_builder: SourceBuilder,
+        match: str,
     ) -> None:
-        """Test that invalid explicit hints do not force parsing."""
-        file_path = tmp_path / 'payload.json'
-        file_path.write_text('{"ok": true}', encoding='utf-8')
+        """Missing file sources should propagate :class:`FileNotFoundError`."""
+        missing_source = source_builder(tmp_path)
 
-        payload = input_mod.materialize_file_payload(
-            str(file_path),
-            format_hint='invalid-format',
-            format_explicit=True,
-        )
-        assert payload == str(file_path)
-
-    def test_missing_file_raises(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that missing input files propagate :class:`FileNotFoundError`.
-        """
-        file_path = tmp_path / 'missing.json'
-
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(FileNotFoundError, match=match):
             input_mod.materialize_file_payload(
-                str(file_path),
+                missing_source,
                 format_hint=None,
                 format_explicit=False,
             )
 
-    def test_missing_path_with_inline_json_is_parsed(self) -> None:
-        """Test that inline JSON parses when treated as a missing file path."""
-        payload = input_mod.materialize_file_payload(
-            '{"inline": true}',
-            format_hint='json',
-            format_explicit=True,
-        )
-        assert payload == {'inline': True}
-
-    def test_missing_pathlike_source_raises_file_not_found(
+    @pytest.mark.parametrize(
+        ('filename', 'contents', 'format_hint', 'format_explicit'),
+        [
+            pytest.param(
+                'payload.json',
+                '{"ok": true}',
+                'invalid-format',
+                True,
+                id='invalid-explicit-hint',
+            ),
+            pytest.param(
+                'payload',
+                'opaque',
+                None,
+                False,
+                id='no-suffix',
+            ),
+            pytest.param(
+                'payload.unknown',
+                'opaque',
+                None,
+                False,
+                id='unknown-suffix',
+            ),
+        ],
+    )
+    def test_keeps_unresolved_sources_as_original_path(
         self,
         tmp_path: Path,
+        filename: str,
+        contents: str,
+        format_hint: str | None,
+        format_explicit: bool,
     ) -> None:
-        """Test that path-like sources still raise when files are missing."""
-        missing = tmp_path / 'missing.json'
-        with pytest.raises(FileNotFoundError, match='File not found'):
-            input_mod.materialize_file_payload(
-                missing,
-                format_hint=None,
-                format_explicit=False,
-            )
-
-    def test_no_suffix_without_explicit_format_keeps_source_as_is(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that sources without suffix do not infer a file format."""
-        file_path = tmp_path / 'payload'
-        file_path.write_text('opaque', encoding='utf-8')
+        """Unresolved file sources should pass through unchanged."""
+        file_path = tmp_path / filename
+        file_path.write_text(contents, encoding='utf-8')
 
         payload = input_mod.materialize_file_payload(
             str(file_path),
-            format_hint=None,
-            format_explicit=False,
+            format_hint=format_hint,
+            format_explicit=format_explicit,
         )
         assert payload == str(file_path)
 
-    def test_non_path_payload_returns_unchanged(self) -> None:
-        """Test that non-pathlike payloads bypass file materialization."""
-        payload: object = 123
+    @pytest.mark.parametrize(
+        ('payload', 'format_hint', 'format_explicit'),
+        [
+            pytest.param(123, 'json', True, id='explicit-scalar'),
+            pytest.param({'foo': 1}, None, False, id='implicit-mapping'),
+        ],
+    )
+    def test_non_path_payloads_return_unchanged(
+        self,
+        payload: object,
+        format_hint: str | None,
+        format_explicit: bool,
+    ) -> None:
+        """Non-pathlike payloads should bypass file materialization."""
         assert (
             input_mod.materialize_file_payload(
                 payload,
-                format_hint='json',
-                format_explicit=True,
+                format_hint=format_hint,
+                format_explicit=format_explicit,
             )
             is payload
         )
 
-    def test_remote_uri_uses_file_reader(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that remote URIs are hydrated via :class:`File`."""
-        captured: dict[str, object] = {}
-
-        class DummyFile:
-            """Capture remote URI construction and reads."""
-
-            file_format = FileFormat.JSON
-
-            def __init__(
-                self,
-                path_arg: object,
-                fmt_arg: FileFormat | None = None,
-            ) -> None:
-                captured['path'] = path_arg
-                captured['fmt'] = fmt_arg
-
-            def exists(self) -> bool:
-                """Report that the remote object exists."""
-                return True
-
-            def read(self) -> object:
-                """Return a sentinel JSON payload."""
-                return {'remote': True}
-
-        monkeypatch.setattr(input_mod, 'File', DummyFile)
-
-        payload = input_mod.materialize_file_payload(
-            's3://bucket/payload.json',
-            format_hint=None,
-            format_explicit=False,
-        )
-
-        assert payload == {'remote': True}
-        assert captured['path'] == 's3://bucket/payload.json'
-        assert captured['fmt'] is None
-
-    def test_respects_hint(
+    @pytest.mark.parametrize(
+        ('filename', 'contents', 'format_hint', 'expected'),
+        [
+            pytest.param(
+                'data.txt',
+                'a,b\n1,2\n3,4\n',
+                'csv',
+                [
+                    {'a': '1', 'b': '2'},
+                    {'a': '3', 'b': '4'},
+                ],
+                id='csv-hint-overrides-text-suffix',
+            ),
+            pytest.param(
+                'mislabeled.csv',
+                '[{"ok": true}]',
+                'json',
+                [{'ok': True}],
+                id='json-hint-overrides-csv-suffix',
+            ),
+        ],
+    )
+    def test_respects_explicit_format_hints(
         self,
         tmp_path: Path,
-        csv_text: str,
+        filename: str,
+        contents: str,
+        format_hint: str,
+        expected: object,
     ) -> None:
-        """Test that explicit format hints override filename inference."""
-        file_path = tmp_path / 'data.txt'
-        file_path.write_text(csv_text)
-
-        rows = input_mod.materialize_file_payload(
-            str(file_path),
-            format_hint='csv',
-            format_explicit=True,
-        )
-        assert isinstance(rows, list)
-
-        json_path = tmp_path / 'mislabeled.csv'
-        json_path.write_text('[{"ok": true}]')
-        payload = input_mod.materialize_file_payload(
-            str(json_path),
-            format_hint='json',
-            format_explicit=True,
-        )
-        assert payload == [{'ok': True}]
-
-    def test_unknown_suffix_keeps_source_as_is(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that unknown file extensions keep raw source value."""
-        file_path = tmp_path / 'payload.unknown'
-        file_path.write_text('opaque', encoding='utf-8')
+        """Explicit format hints should override filename-based inference."""
+        file_path = tmp_path / filename
+        file_path.write_text(contents, encoding='utf-8')
 
         payload = input_mod.materialize_file_payload(
             str(file_path),
-            format_hint=None,
-            format_explicit=False,
+            format_hint=format_hint,
+            format_explicit=True,
         )
-        assert payload == str(file_path)
-
-    def test_with_non_file(self) -> None:
-        """Test that non-file payloads are returned unchanged."""
-        payload: object = {'foo': 1}
-        assert (
-            input_mod.materialize_file_payload(
-                payload,
-                format_hint=None,
-                format_explicit=False,
-            )
-            is payload
-        )
+        assert payload == expected
 
 
 class TestParseTextPayload:
@@ -562,21 +613,34 @@ class TestResolveCliPayload:
 class TestWriteJsonOutput:
     """Unit tests for :func:`write_json_output`."""
 
-    def test_writing_to_file(
+    @pytest.mark.parametrize(
+        'output_path',
+        [
+            pytest.param('out.json', id='local-file'),
+            pytest.param('s3://bucket/out.json', id='remote-uri'),
+        ],
+    )
+    def test_writing_to_file_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        output_path: str,
     ) -> None:
-        """
-        Test that, when a file path is provided, JSON is written via
-        :class:`File`.
-        """
+        """File-like output paths should write JSON through :class:`File`."""
         data = {'x': 1}
+        dummy_file, captured = _build_writable_file_double()
+        monkeypatch.setattr(output_mod, 'File', dummy_file)
 
-        dummy_file = Mock()
-        monkeypatch.setattr(output_mod, 'File', lambda _p, _f: dummy_file)
-
-        output_mod.write_json_output(data, 'out.json', success_message='msg')
-        dummy_file.write.assert_called_once_with(data)
+        assert (
+            output_mod.write_json_output(data, output_path, success_message='msg')
+            is True
+        )
+        assert captured == {
+            'path': output_path,
+            'fmt': FileFormat.JSON,
+            'data': data,
+        }
+        assert capsys.readouterr().out.strip() == f'msg {output_path}'
 
     def test_writing_to_stdout(self) -> None:
         """
@@ -591,37 +655,3 @@ class TestWriteJsonOutput:
             )
             is False
         )
-
-    def test_writing_to_remote_uri(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that remote JSON targets are written via :class:`File`."""
-        captured: dict[str, object] = {}
-
-        class DummyFile:
-            """Capture the remote URI passed to :class:`File`."""
-
-            def __init__(self, path_arg: object, fmt_arg: FileFormat) -> None:
-                captured['path'] = path_arg
-                captured['fmt'] = fmt_arg
-
-            def write(self, data: object) -> None:
-                """Capture the written JSON payload."""
-                captured['data'] = data
-
-        monkeypatch.setattr(output_mod, 'File', DummyFile)
-
-        assert (
-            output_mod.write_json_output(
-                {'remote': True},
-                's3://bucket/out.json',
-                success_message='msg',
-            )
-            is True
-        )
-        assert captured == {
-            'path': 's3://bucket/out.json',
-            'fmt': FileFormat.JSON,
-            'data': {'remote': True},
-        }

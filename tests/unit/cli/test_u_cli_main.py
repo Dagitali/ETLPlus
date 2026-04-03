@@ -7,7 +7,6 @@ Unit tests for :mod:`etlplus.cli._main`.
 from __future__ import annotations
 
 import importlib
-from collections.abc import Callable
 from typing import Final
 from unittest.mock import Mock
 
@@ -62,40 +61,6 @@ class TestMain:
         """
         assert main_mod._emit_context_help(None) is False
 
-    def test_handles_os_error(
-        self,
-        stub_command: StubCommand,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """
-        Test that any :class:`OSError` surfaces to STDERR and return 1.
-        """
-
-        def _action(**kwargs: object) -> object:  # noqa: ARG001
-            raise OSError('disk full')
-
-        stub_command(_action)
-
-        assert cli_main(['anything']) == 1
-        assert 'Error: disk full' in capsys.readouterr().err
-
-    def test_handles_system_exit_from_command(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that :func:`main` does not swallow `SystemExit` from the
-        dispatched command.
-        """
-        monkeypatch.setattr(
-            extract_mod,
-            'extract_handler',
-            Mock(side_effect=SystemExit(5)),
-        )
-        with pytest.raises(SystemExit) as exc_info:
-            cli_main(['extract', 'foo.csv'])
-        assert exc_info.value.code == 5
-
     def test_illegal_option_without_context_emits_root_help(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -131,36 +96,86 @@ class TestMain:
         assert 'No such option' in capsys.readouterr().err
 
     @pytest.mark.parametrize(
-        ('exception', 'expected_code', 'expected_err'),
+        (
+            'side_effect',
+            'expected_code',
+            'expected_raise_code',
+            'expected_err',
+        ),
         [
             pytest.param(
-                KeyboardInterrupt,
+                OSError('disk full'),
+                1,
+                None,
+                'Error: disk full',
+                id='os-error',
+            ),
+            pytest.param(
+                TypeError('bad call'),
+                1,
+                None,
+                'Error: bad call',
+                id='type-error',
+            ),
+            pytest.param(
+                ValueError('fail'),
+                1,
+                None,
+                'Error: fail',
+                id='value-error',
+            ),
+            pytest.param(
+                KeyboardInterrupt(),
                 130,
+                None,
                 None,
                 id='keyboard-interrupt',
             ),
-            pytest.param(ValueError('fail'), 1, 'Error:', id='value-error'),
+            pytest.param(
+                typer.Abort(),
+                1,
+                None,
+                None,
+                id='typer-abort',
+            ),
+            pytest.param(
+                typer.Exit(17),
+                17,
+                None,
+                None,
+                id='typer-exit',
+            ),
+            pytest.param(
+                SystemExit(5),
+                None,
+                5,
+                None,
+                id='system-exit',
+            ),
         ],
     )
-    def test_maps_common_exceptions(
+    def test_maps_handler_exceptions(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
-        exception: BaseException | type[BaseException],
-        expected_code: int,
+        side_effect: BaseException,
+        expected_code: int | None,
+        expected_raise_code: int | None,
         expected_err: str | None,
     ) -> None:
-        """
-        Test that common exceptions map to expected exit codes.
-        """
-        side_effect: BaseException = (
-            exception() if isinstance(exception, type) else exception
-        )
+        """Handler exceptions should map to the documented CLI outcomes."""
         monkeypatch.setattr(
             extract_mod,
             'extract_handler',
             Mock(side_effect=side_effect),
         )
+
+        if expected_raise_code is not None:
+            with pytest.raises(SystemExit) as exc_info:
+                cli_main(['extract', 'foo.csv'])
+            assert exc_info.value.code == expected_raise_code
+            return
+
         assert cli_main(['extract', 'foo.csv']) == expected_code
         stderr = capsys.readouterr().err
         if expected_err is not None:
@@ -179,37 +194,6 @@ class TestMain:
 
         stub_command(_action)
         assert cli_main(['extract']) == 9
-
-    @pytest.mark.parametrize(
-        ('setup', 'expected'),
-        [
-            (
-                lambda mp: mp.setattr(
-                    extract_mod,
-                    'extract_handler',
-                    Mock(side_effect=typer.Abort()),
-                ),
-                1,
-            ),
-            (
-                lambda mp: mp.setattr(
-                    extract_mod,
-                    'extract_handler',
-                    Mock(side_effect=typer.Exit(17)),
-                ),
-                17,
-            ),
-        ],
-    )
-    def test_maps_typer_exits(
-        self,
-        setup: Callable[[pytest.MonkeyPatch], None],
-        monkeypatch: pytest.MonkeyPatch,
-        expected: int,
-    ) -> None:
-        """Test that Typer exits map to CLI return codes."""
-        setup(monkeypatch)
-        assert cli_main(['extract', 'foo.csv']) == expected
 
     def test_no_args_exits_zero(self) -> None:
         """Test that no args prints help and exits with exit code 0."""

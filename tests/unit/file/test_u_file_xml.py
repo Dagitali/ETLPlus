@@ -37,7 +37,7 @@ class TestXml(RoundtripUnitModuleContract):
         element = mod._dict_to_element('node', None)
         assert element.tag == 'node'
         assert element.text is None
-        assert list(element) == []
+        assert not list(element)
 
     def test_dumps_defaults_to_root_tag_for_non_single_mapping(self) -> None:
         """
