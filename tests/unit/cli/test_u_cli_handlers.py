@@ -146,6 +146,43 @@ def _normalized_run(**overrides: object) -> dict[str, object]:
     } | overrides
 
 
+def _patch_config_from_yaml(
+    monkeypatch: pytest.MonkeyPatch,
+    config: Config,
+    *,
+    calls: list[tuple[str, bool]] | None = None,
+) -> None:
+    """Patch :meth:`Config.from_yaml` to return one fixed config object."""
+
+    def _from_yaml(path: str, substitute: bool) -> Config:
+        if calls is not None:
+            calls.append((path, substitute))
+        return config
+
+    monkeypatch.setattr(
+        handlers.Config,
+        'from_yaml',
+        _from_yaml,
+    )
+
+
+def _patch_history_store_records(
+    monkeypatch: pytest.MonkeyPatch,
+    records: list[dict[str, object]],
+) -> None:
+    """Patch :class:`HistoryStore` to yield one fixed record sequence."""
+
+    class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
+        def iter_records(self) -> Any:
+            return iter(records)
+
+    monkeypatch.setattr(
+        handlers.HistoryStore,
+        'from_environment',
+        lambda: _FakeHistoryStore(),
+    )
+
+
 def _patch_resolve_cli_payload_map(
     monkeypatch: pytest.MonkeyPatch,
     payloads: Mapping[object, object],
@@ -165,23 +202,6 @@ def _patch_resolve_cli_payload_map(
         return payloads[source]
 
     monkeypatch.setattr(handlers._input, 'resolve_cli_payload', _resolve)
-
-
-def _patch_history_store_records(
-    monkeypatch: pytest.MonkeyPatch,
-    records: list[dict[str, object]],
-) -> None:
-    """Patch :class:`HistoryStore` to yield one fixed record sequence."""
-
-    class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-        def iter_records(self) -> Any:
-            return iter(records)
-
-    monkeypatch.setattr(
-        handlers.HistoryStore,
-        'from_environment',
-        lambda: _FakeHistoryStore(),
-    )
 
 
 def _report_row(**overrides: object) -> dict[str, object]:
@@ -242,19 +262,11 @@ class TestCheckHandler:
         Test that :func:`check_handler` forwards the substitute flag to config
         loader.
         """
-        recorded: dict[str, object] = {}
-
-        def fake_from_yaml(
-            path: str,
-            substitute: bool,
-        ) -> Config:
-            recorded['params'] = (path, substitute)
-            return dummy_cfg
-
-        monkeypatch.setattr(
-            handlers.Config,
-            'from_yaml',
-            fake_from_yaml,
+        load_calls: list[tuple[str, bool]] = []
+        _patch_config_from_yaml(
+            monkeypatch,
+            dummy_cfg,
+            calls=load_calls,
         )
         monkeypatch.setattr(
             check_mod._summary,
@@ -262,7 +274,7 @@ class TestCheckHandler:
             lambda _cfg, **_kwargs: {'pipelines': ['p1']},
         )
         assert handlers.check_handler(config='cfg.yml', substitute=True) == 0
-        assert recorded['params'] == ('cfg.yml', True)
+        assert load_calls == [('cfg.yml', True)]
         assert_emit_json(capture_io, {'pipelines': ['p1']}, pretty=True)
 
     def test_prints_sections(
@@ -272,11 +284,7 @@ class TestCheckHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`check_handler` prints requested sections."""
-        monkeypatch.setattr(
-            handlers.Config,
-            'from_yaml',
-            lambda path, substitute: dummy_cfg,
-        )
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
         monkeypatch.setattr(
             check_mod._summary,
             'check_sections',
@@ -366,11 +374,7 @@ class TestCheckHandler:
                 'status': 'ok',
             },
         )
-        monkeypatch.setattr(
-            handlers.Config,
-            'from_yaml',
-            lambda path, substitute: dummy_cfg,
-        )
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
         monkeypatch.setattr(
             check_mod._summary,
             'check_sections',
@@ -387,11 +391,7 @@ class TestCheckHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that summary mode preserves the caller's pretty setting."""
-        monkeypatch.setattr(
-            handlers.Config,
-            'from_yaml',
-            lambda path, substitute: dummy_cfg,
-        )
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
         monkeypatch.setattr(
             check_mod._summary,
             'pipeline_summary',
@@ -1743,11 +1743,7 @@ class TestRunHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that :func:`run_handler` emits a summary when no job set."""
-        monkeypatch.setattr(
-            handlers.Config,
-            'from_yaml',
-            lambda path, substitute: dummy_cfg,
-        )
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
 
         assert (
             handlers.run_handler(
@@ -1780,11 +1776,7 @@ class TestRunHandler:
         """
         Test that :func:`run_handler` executes a named job and emits status.
         """
-        monkeypatch.setattr(
-            handlers.Config,
-            'from_yaml',
-            lambda path, substitute: dummy_cfg,
-        )
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
         monkeypatch.setattr(
             handlers.RuntimeEvents,
             'create_run_id',

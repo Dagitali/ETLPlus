@@ -154,20 +154,40 @@ class TestInferPayloadFormat:
 class TestMaterializeFilePayload:
     """Unit tests for :func:`materialize_file_payload`."""
 
-    def test_explicit_without_hint_still_allows_suffix_inference(
+    @pytest.mark.parametrize(
+        ('contents', 'expected', 'format_explicit'),
+        [
+            pytest.param(
+                '{"ok": true}',
+                {'ok': True},
+                True,
+                id='explicit-without-hint',
+            ),
+            pytest.param(
+                '{"alpha": 1}',
+                {'alpha': 1},
+                False,
+                id='implicit-json',
+            ),
+        ],
+    )
+    def test_parses_json_suffix_files_without_conflicting_hints(
         self,
         tmp_path: Path,
+        contents: str,
+        expected: object,
+        format_explicit: bool,
     ) -> None:
-        """Test that explicit mode without a hint still infers from suffix."""
+        """JSON suffix files should still parse when no conflicting hint exists."""
         file_path = tmp_path / 'payload.json'
-        file_path.write_text('{"ok": true}', encoding='utf-8')
+        file_path.write_text(contents, encoding='utf-8')
 
         payload = input_mod.materialize_file_payload(
             str(file_path),
             format_hint=None,
-            format_explicit=True,
+            format_explicit=format_explicit,
         )
-        assert payload == {'ok': True}
+        assert payload == expected
 
     def test_ignoring_hint_without_flag(
         self,
@@ -204,22 +224,6 @@ class TestMaterializeFilePayload:
 
         assert isinstance(rows, list)
         assert rows[0] == {'a': '1', 'b': '2'}
-
-    def test_inferring_json(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that JSON files are parsed when no format hint is provided."""
-        file_path = tmp_path / 'payload.json'
-        file_path.write_text('{"alpha": 1}')
-
-        payload = input_mod.materialize_file_payload(
-            str(file_path),
-            format_hint=None,
-            format_explicit=False,
-        )
-
-        assert payload == {'alpha': 1}
 
     def test_inferring_xml(
         self,
@@ -282,21 +286,6 @@ class TestMaterializeFilePayload:
         )
         assert payload == [{'ok': True}]
 
-    def test_invalid_explicit_hint_keeps_source_as_is(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that invalid explicit hints do not force parsing."""
-        file_path = tmp_path / 'payload.json'
-        file_path.write_text('{"ok": true}', encoding='utf-8')
-
-        payload = input_mod.materialize_file_payload(
-            str(file_path),
-            format_hint='invalid-format',
-            format_explicit=True,
-        )
-        assert payload == str(file_path)
-
     def test_missing_file_raises(
         self,
         tmp_path: Path,
@@ -335,29 +324,70 @@ class TestMaterializeFilePayload:
                 format_explicit=False,
             )
 
-    def test_no_suffix_without_explicit_format_keeps_source_as_is(
+    @pytest.mark.parametrize(
+        ('filename', 'contents', 'format_hint', 'format_explicit'),
+        [
+            pytest.param(
+                'payload.json',
+                '{"ok": true}',
+                'invalid-format',
+                True,
+                id='invalid-explicit-hint',
+            ),
+            pytest.param(
+                'payload',
+                'opaque',
+                None,
+                False,
+                id='no-suffix',
+            ),
+            pytest.param(
+                'payload.unknown',
+                'opaque',
+                None,
+                False,
+                id='unknown-suffix',
+            ),
+        ],
+    )
+    def test_keeps_unresolved_sources_as_original_path(
         self,
         tmp_path: Path,
+        filename: str,
+        contents: str,
+        format_hint: str | None,
+        format_explicit: bool,
     ) -> None:
-        """Test that sources without suffix do not infer a file format."""
-        file_path = tmp_path / 'payload'
-        file_path.write_text('opaque', encoding='utf-8')
+        """Unresolved file sources should pass through unchanged."""
+        file_path = tmp_path / filename
+        file_path.write_text(contents, encoding='utf-8')
 
         payload = input_mod.materialize_file_payload(
             str(file_path),
-            format_hint=None,
-            format_explicit=False,
+            format_hint=format_hint,
+            format_explicit=format_explicit,
         )
         assert payload == str(file_path)
 
-    def test_non_path_payload_returns_unchanged(self) -> None:
-        """Test that non-pathlike payloads bypass file materialization."""
-        payload: object = 123
+    @pytest.mark.parametrize(
+        ('payload', 'format_hint', 'format_explicit'),
+        [
+            pytest.param(123, 'json', True, id='explicit-scalar'),
+            pytest.param({'foo': 1}, None, False, id='implicit-mapping'),
+        ],
+    )
+    def test_non_path_payloads_return_unchanged(
+        self,
+        payload: object,
+        format_hint: str | None,
+        format_explicit: bool,
+    ) -> None:
+        """Non-pathlike payloads should bypass file materialization."""
         assert (
             input_mod.materialize_file_payload(
                 payload,
-                format_hint='json',
-                format_explicit=True,
+                format_hint=format_hint,
+                format_explicit=format_explicit,
             )
             is payload
         )
@@ -426,33 +456,6 @@ class TestMaterializeFilePayload:
             format_explicit=True,
         )
         assert payload == [{'ok': True}]
-
-    def test_unknown_suffix_keeps_source_as_is(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that unknown file extensions keep raw source value."""
-        file_path = tmp_path / 'payload.unknown'
-        file_path.write_text('opaque', encoding='utf-8')
-
-        payload = input_mod.materialize_file_payload(
-            str(file_path),
-            format_hint=None,
-            format_explicit=False,
-        )
-        assert payload == str(file_path)
-
-    def test_with_non_file(self) -> None:
-        """Test that non-file payloads are returned unchanged."""
-        payload: object = {'foo': 1}
-        assert (
-            input_mod.materialize_file_payload(
-                payload,
-                format_hint=None,
-                format_explicit=False,
-            )
-            is payload
-        )
 
 
 class TestParseTextPayload:
