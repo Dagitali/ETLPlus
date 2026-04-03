@@ -10,6 +10,8 @@ Notes
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any
 from typing import cast
 
 import pytest
@@ -18,12 +20,20 @@ import etlplus.connector._utils as connector_utils
 from etlplus.connector import ConnectorApi
 from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorFile
-from etlplus.connector import parse_connector
 from etlplus.connector._enums import DataConnectorType
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+def _assert_fields(actual: object, expected: Mapping[str, object]) -> None:
+    """Assert that *actual* exposes the expected field values."""
+    for field, value in expected.items():
+        assert getattr(actual, field) == value
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -37,24 +47,39 @@ class TestParseConnector:
     Tests error handling for unsupported connector types and missing fields.
     """
 
-    def test_missing_type_raises(self) -> None:
-        """
-        Test that connector payloads without ``type`` raise :class:`TypeError`.
-        """
-        with pytest.raises(TypeError, match='requires a "type"'):
-            parse_connector({'name': 'missing_type'})
-
     @pytest.mark.parametrize(
-        'payload',
-        [None, 123, 'not a mapping'],
+        ('payload', 'match'),
+        [
+            pytest.param(
+                {'name': 'missing_type'},
+                'requires a "type"',
+                id='missing-type',
+            ),
+            pytest.param(None, 'must be a mapping', id='none'),
+            pytest.param(123, 'must be a mapping', id='integer'),
+            pytest.param('not a mapping', 'must be a mapping', id='string'),
+            pytest.param(
+                {'name': 'x', 'type': 'unknown'},
+                'Unsupported connector type',
+                id='unsupported-type-with-name',
+            ),
+            pytest.param(
+                {'type': 'unknown'},
+                'Unsupported connector type',
+                id='unsupported-type-without-name',
+            ),
+        ],
     )
-    def test_non_mapping_raises(
+    def test_invalid_payloads_raise_type_error(
         self,
         payload: object,
+        match: str,
     ) -> None:
-        """Test that non-mapping payloads raise :class:`TypeError`."""
-        with pytest.raises(TypeError, match='must be a mapping'):
-            parse_connector(payload)  # type: ignore[arg-type]
+        """Invalid connector payloads should raise :class:`TypeError`."""
+        with pytest.raises(TypeError, match=match):
+            connector_utils.parse_connector(
+                cast(Mapping[str, Any], payload),
+            )
 
     @pytest.mark.parametrize(
         ('payload', 'expected_cls', 'expected_attrs'),
@@ -108,36 +133,9 @@ class TestParseConnector:
         Test that ``parse_connector`` instantiates supported connector types.
         """
 
-        connector = parse_connector(payload)
+        connector = connector_utils.parse_connector(payload)
         assert isinstance(connector, expected_cls)
-        for field, value in expected_attrs.items():
-            assert getattr(connector, field) == value
-
-    @pytest.mark.parametrize(
-        ('payload', 'expected_exception'),
-        [
-            ({'name': 'x', 'type': 'unknown'}, TypeError),
-            ({'type': 'unknown'}, TypeError),
-        ],
-        ids=['unsupported_type', 'missing_name'],
-    )
-    def test_unsupported_type_raises(
-        self,
-        payload: dict[str, object],
-        expected_exception: type[Exception],
-    ) -> None:
-        """
-        Test that unsupported connector types raise the expected exception.
-
-        Parameters
-        ----------
-        payload : dict[str, object]
-            Connector payload to test.
-        expected_exception : type[Exception]
-            Expected exception type.
-        """
-        with pytest.raises(expected_exception):
-            parse_connector(payload)
+        _assert_fields(connector, expected_attrs)
 
 
 class TestInternalLoadConnector:
