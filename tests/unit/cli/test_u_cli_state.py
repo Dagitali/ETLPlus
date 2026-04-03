@@ -6,13 +6,14 @@ Unit tests for :mod:`etlplus.cli._commands._state`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import TypedDict
 
 import pytest
 import typer
 
 import etlplus
-import etlplus.cli._commands as commands
 import etlplus.cli._commands._state as cli_state_mod
 import etlplus.cli._commands.extract as extract_mod
 import etlplus.cli._commands.load as load_mod
@@ -23,12 +24,27 @@ import etlplus.cli._commands.validate as validate_mod
 
 from ...conftest import CaptureHandler
 from .conftest import InvokeCli
+from .conftest import TyperContextFactory
 from .conftest import assert_mapping_contains
 from .conftest import strip_ansi
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+class _ResolveResourceTypeKwargs(TypedDict, total=False):
+    """Typed kwargs container for :func:`resolve_resource_type` test cases."""
+
+    explicit_type: str | None
+    override_type: str | None
+    value: str
+    label: str
+    conflict_error: str | None
+    legacy_file_error: str | None
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -340,13 +356,15 @@ class TestInferResourceType:
 class TestCliStateHelpers:
     """Unit tests for :mod:`etlplus.cli._commands._state` helper branches."""
 
-    def test_ensure_state_initializes_missing_context_state(self) -> None:
+    def test_ensure_state_initializes_missing_context_state(
+        self,
+        typer_ctx_factory: TyperContextFactory,
+    ) -> None:
         """
         Test that non-state ``ctx.obj`` values are replaced with
         :class:`CliState`.
         """
-        command = typer.main.get_command(commands.app)
-        ctx = typer.Context(command)
+        ctx = typer_ctx_factory()
         ctx.obj = {'unexpected': True}
 
         state = cli_state_mod.ensure_state(ctx)
@@ -354,10 +372,12 @@ class TestCliStateHelpers:
         assert isinstance(state, cli_state_mod.CliState)
         assert ctx.obj is state
 
-    def test_set_state_replaces_context_state(self) -> None:
+    def test_set_state_replaces_context_state(
+        self,
+        typer_ctx_factory: TyperContextFactory,
+    ) -> None:
         """Test that explicit root flags replace the stored CLI state."""
-        command = typer.main.get_command(commands.app)
-        ctx = typer.Context(command)
+        ctx = typer_ctx_factory()
         ctx.obj = {'unexpected': True}
 
         state = cli_state_mod._set_state(
@@ -374,21 +394,32 @@ class TestCliStateHelpers:
         )
         assert ctx.obj is state
 
-    def test_infer_resource_type_soft_none_returns_none(self) -> None:
-        """Test that soft inference returns ``None`` for missing values."""
-        assert cli_state_mod.infer_resource_type_soft(None) is None
-
-    def test_infer_resource_type_soft_swallows_inference_errors(
+    @pytest.mark.parametrize(
+        ('value', 'setup'),
+        [
+            pytest.param(None, None, id='missing-value'),
+            pytest.param(
+                'invalid',
+                lambda monkeypatch: monkeypatch.setattr(
+                    cli_state_mod,
+                    'infer_resource_type',
+                    lambda _value: (_ for _ in ()).throw(ValueError('bad')),
+                ),
+                id='invalid-resource',
+            ),
+        ],
+    )
+    def test_infer_resource_type_soft_returns_none_for_non_fatal_inputs(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        value: str | None,
+        setup: Callable[[pytest.MonkeyPatch], None] | None,
     ) -> None:
-        """Test that soft inference returns ``None`` for invalid resources."""
-        monkeypatch.setattr(
-            cli_state_mod,
-            'infer_resource_type',
-            lambda _value: (_ for _ in ()).throw(ValueError('bad')),
-        )
-        assert cli_state_mod.infer_resource_type_soft('invalid') is None
+        """Soft inference should preserve ``None`` and swallow bad inputs."""
+        if setup is not None:
+            setup(monkeypatch)
+
+        assert cli_state_mod.infer_resource_type_soft(value) is None
 
     def test_log_inferred_resource_prints_verbose_messages(
         self,
@@ -403,22 +434,68 @@ class TestCliStateHelpers:
         )
         assert 'Inferred source_type=file' in capsys.readouterr().err
 
-    def test_resolve_logged_resource_type_returns_none_when_soft_inference_fails(
+    @pytest.mark.parametrize(
+        (
+            'inferred',
+            'expected_resolved',
+            'expected_validated',
+            'expected_logged',
+        ),
+        [
+            pytest.param(
+                None,
+                None,
+                [],
+                {
+                    'role': 'source',
+                    'value': 'payload.json',
+                    'resource_type': None,
+                },
+                id='soft-inference-miss',
+            ),
+            pytest.param(
+                'file',
+                'file',
+                [('file', cli_state_mod.DATA_CONNECTORS, 'source_type')],
+                {
+                    'role': 'source',
+                    'value': 'payload.json',
+                    'resource_type': 'file',
+                },
+                id='soft-inference-hit',
+            ),
+        ],
+    )
+    def test_resolve_logged_resource_type_soft_inference(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        inferred: str | None,
+        expected_resolved: str | None,
+        expected_validated: list[tuple[object, object, str]],
+        expected_logged: dict[str, object],
     ) -> None:
-        """Soft inference should allow a ``None`` result without validation."""
+        """Soft inference should validate only resolved connector types."""
         logged: dict[str, object] = {}
-        validated: list[object] = []
+        validated: list[tuple[object, object, str]] = []
         monkeypatch.setattr(
             cli_state_mod,
             'infer_resource_type_soft',
-            lambda _value: None,
+            lambda _value: inferred,
         )
+
+        def validate_choice(
+            value: object,
+            choices: object,
+            *,
+            label: str,
+        ) -> str:
+            validated.append((value, choices, label))
+            return str(value)
+
         monkeypatch.setattr(
             cli_state_mod,
             'validate_choice',
-            lambda value, choices, *, label: validated.append((value, choices, label)),
+            validate_choice,
         )
         monkeypatch.setattr(
             cli_state_mod,
@@ -434,104 +511,88 @@ class TestCliStateHelpers:
             soft_inference=True,
         )
 
-        assert resolved is None
-        assert not validated
-        assert logged == {
-            'role': 'source',
-            'value': 'payload.json',
-            'resource_type': None,
-        }
+        assert resolved == expected_resolved
+        assert validated == expected_validated
+        assert logged == expected_logged
 
-    def test_resolve_logged_resource_type_uses_soft_inference(
+    @pytest.mark.parametrize(
+        ('kwargs', 'infer_result', 'expected', 'expected_error'),
+        [
+            pytest.param(
+                {
+                    'explicit_type': 'api',
+                    'override_type': 'file',
+                    'value': 'input',
+                    'label': 'source_type',
+                    'conflict_error': 'conflict',
+                },
+                None,
+                None,
+                'conflict',
+                id='conflict',
+            ),
+            pytest.param(
+                {
+                    'explicit_type': 'file',
+                    'override_type': None,
+                    'value': 'input',
+                    'label': 'source_type',
+                    'legacy_file_error': 'legacy',
+                },
+                None,
+                None,
+                'legacy',
+                id='legacy-file',
+            ),
+            pytest.param(
+                {
+                    'explicit_type': 'api',
+                    'override_type': None,
+                    'value': 'input',
+                    'label': 'source_type',
+                    'legacy_file_error': 'legacy',
+                },
+                None,
+                'api',
+                None,
+                id='explicit-non-file',
+            ),
+            pytest.param(
+                {
+                    'explicit_type': None,
+                    'override_type': None,
+                    'value': 'https://example.com/items',
+                    'label': 'source_type',
+                },
+                'api',
+                'api',
+                None,
+                id='inferred',
+            ),
+        ],
+    )
+    def test_resolve_resource_type(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        kwargs: _ResolveResourceTypeKwargs,
+        infer_result: str | None,
+        expected: str | None,
+        expected_error: str | None,
     ) -> None:
-        """Test the shared resolve/validate/log state helper."""
-        logged: dict[str, object] = {}
-        monkeypatch.setattr(
-            cli_state_mod,
-            'infer_resource_type_soft',
-            lambda _value: 'file',
-        )
-        monkeypatch.setattr(
-            cli_state_mod,
-            'log_inferred_resource',
-            lambda state, **kwargs: logged.update(kwargs),
-        )
-
-        resolved = cli_state_mod.resolve_logged_resource_type(
-            cli_state_mod.CliState(verbose=True),
-            role='source',
-            value='payload.json',
-            explicit_type=None,
-            soft_inference=True,
-        )
-
-        assert resolved == 'file'
-        assert logged == {
-            'role': 'source',
-            'value': 'payload.json',
-            'resource_type': 'file',
-        }
-
-    def test_resolve_resource_type_conflict_raises_bad_parameter(self) -> None:
-        """Test that conflicting explicit/override values raise errors."""
-        with pytest.raises(typer.BadParameter, match='conflict'):
-            cli_state_mod.resolve_resource_type(
-                explicit_type='api',
-                override_type='file',
-                value='input',
-                label='source_type',
-                conflict_error='conflict',
+        """Resource type resolution should honor precedence and validation rules."""
+        if infer_result is not None:
+            monkeypatch.setattr(
+                cli_state_mod,
+                'infer_resource_type_or_exit',
+                lambda _value: infer_result,
             )
 
-    def test_resolve_resource_type_legacy_file_raises_bad_parameter(
-        self,
-    ) -> None:
-        """
-        Test that legacy file-specific explicit type raises when disallowed.
-        """
-        with pytest.raises(typer.BadParameter, match='legacy'):
-            cli_state_mod.resolve_resource_type(
-                explicit_type='file',
-                override_type=None,
-                value='input',
-                label='source_type',
-                legacy_file_error='legacy',
-            )
+        if expected_error is not None:
+            with pytest.raises(typer.BadParameter, match=expected_error):
+                cli_state_mod.resolve_resource_type(**kwargs)
+            return
 
-    def test_resolve_resource_type_accepts_explicit_non_file_value(
-        self,
-    ) -> None:
-        """Test that explicit non-file values pass through validation."""
-        resolved = cli_state_mod.resolve_resource_type(
-            explicit_type='api',
-            override_type=None,
-            value='input',
-            label='source_type',
-            legacy_file_error='legacy',
-        )
-        assert resolved == 'api'
-
-    def test_resolve_resource_type_infers_when_no_explicit_or_override(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Resolver should infer a connector type when no preference is given."""
-        monkeypatch.setattr(
-            cli_state_mod,
-            'infer_resource_type_or_exit',
-            lambda _value: 'api',
-        )
-
-        resolved = cli_state_mod.resolve_resource_type(
-            explicit_type=None,
-            override_type=None,
-            value='https://example.com/items',
-            label='source_type',
-        )
-
-        assert resolved == 'api'
+        assert cli_state_mod.resolve_resource_type(**kwargs) == expected
 
     def test_resource_type_resolver_infer_soft_uses_function_seam(
         self,
@@ -551,20 +612,45 @@ class TestOptionalChoice:
     """Unit tests for :func:`optional_choice`."""
 
     @pytest.mark.parametrize(
-        ('choice', 'expected'),
-        [(None, None), ('json', 'json')],
+        ('resolver', 'choice', 'expected'),
+        [
+            pytest.param(
+                cli_state_mod.optional_choice,
+                None,
+                None,
+                id='function-none',
+            ),
+            pytest.param(
+                cli_state_mod.optional_choice,
+                'json',
+                'json',
+                id='function-valid',
+            ),
+            pytest.param(
+                cli_state_mod.ResourceTypeResolver.optional_choice,
+                None,
+                None,
+                id='class-none',
+            ),
+            pytest.param(
+                cli_state_mod.ResourceTypeResolver.optional_choice,
+                'json',
+                'json',
+                id='class-valid',
+            ),
+        ],
     )
     def test_passthrough_and_validation(
         self,
+        resolver: Callable[..., str | None],
         choice: str | None,
         expected: str | None,
     ) -> None:
         """
-        Test that :func:`optional_choice` preserves ``None`` and normalizes
-        valid values.
+        Optional choice helpers should preserve ``None`` and normalize values.
         """
         assert (
-            cli_state_mod.optional_choice(
+            resolver(
                 choice,
                 {'json', 'csv'},
                 label='format',
@@ -572,19 +658,36 @@ class TestOptionalChoice:
             == expected
         )
 
-    @pytest.mark.parametrize('invalid', ['yaml', 'parquet'])
-    def test_rejects_invalid(self, invalid: str) -> None:
-        """Test that invalid choices raise :class:`typer.BadParameter`."""
+    @pytest.mark.parametrize(
+        ('resolver', 'invalid'),
+        [
+            pytest.param(
+                cli_state_mod.optional_choice,
+                'yaml',
+                id='function-yaml',
+            ),
+            pytest.param(
+                cli_state_mod.optional_choice,
+                'parquet',
+                id='function-parquet',
+            ),
+            pytest.param(
+                cli_state_mod.ResourceTypeResolver.optional_choice,
+                'yaml',
+                id='class-yaml',
+            ),
+            pytest.param(
+                cli_state_mod.ResourceTypeResolver.optional_choice,
+                'parquet',
+                id='class-parquet',
+            ),
+        ],
+    )
+    def test_rejects_invalid(
+        self,
+        resolver: Callable[..., str | None],
+        invalid: str,
+    ) -> None:
+        """Invalid choices should raise :class:`typer.BadParameter`."""
         with pytest.raises(typer.BadParameter):
-            cli_state_mod.optional_choice(invalid, {'json'}, label='format')
-
-    def test_resource_type_resolver_optional_choice_preserves_none(self) -> None:
-        """Test that class-based optional choice preserves missing values."""
-        assert (
-            cli_state_mod.ResourceTypeResolver.optional_choice(
-                None,
-                {'json', 'csv'},
-                label='format',
-            )
-            is None
-        )
+            resolver(invalid, {'json'}, label='format')
