@@ -1093,7 +1093,7 @@ class ReadinessReportBuilder:
                         'section': 'jobs',
                     },
                 )
-            elif job_name:
+            else:
                 seen_jobs.add(job_name)
 
             cls.strict_job_ref_issue(
