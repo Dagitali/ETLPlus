@@ -6,6 +6,8 @@ Unit tests for split history support modules under :mod:`etlplus.cli._handlers`.
 
 from __future__ import annotations
 
+import pytest
+
 from etlplus.cli._handlers._history_report import HistoryReportBuilder
 from etlplus.cli._handlers._history_view import HistoryView
 
@@ -75,29 +77,32 @@ class TestHistoryReportBuilder:
 class TestHistoryView:
     """Unit tests for :class:`etlplus.cli._handlers._history_view.HistoryView`."""
 
-    def test_matches_rejects_records_after_until(self) -> None:
-        """Upper-bound timestamp filters should reject later records."""
-        assert (
-            HistoryView.matches(
+    @pytest.mark.parametrize(
+        ('record', 'filters'),
+        [
+            pytest.param(
                 {
                     'run_id': 'run-1',
                     'started_at': '2026-03-24T00:00:00Z',
                     'status': 'succeeded',
                 },
-                until=HistoryView.parse_timestamp('2026-03-23T23:59:59Z'),
-            )
-            is False
-        )
-
-    def test_matches_rejects_status_mismatch(self) -> None:
-        """Status filters should reject records with a different status."""
-        assert (
-            HistoryView.matches(
+                {'until': HistoryView.parse_timestamp('2026-03-23T23:59:59Z')},
+                id='after-until',
+            ),
+            pytest.param(
                 {'status': 'failed'},
-                status='succeeded',
-            )
-            is False
-        )
+                {'status': 'succeeded'},
+                id='status-mismatch',
+            ),
+        ],
+    )
+    def test_matches_rejects_filtered_records(
+        self,
+        record: dict[str, object],
+        filters: dict[str, object],
+    ) -> None:
+        """Filtering should reject records that fall outside the criteria."""
+        assert HistoryView.matches(record, **filters) is False  # type: ignore[arg-type]
 
     def test_parse_timestamp_returns_none_for_invalid_value(self) -> None:
         """Invalid ISO timestamps should be treated as missing."""
