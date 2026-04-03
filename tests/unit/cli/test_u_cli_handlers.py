@@ -95,6 +95,43 @@ class _ReadOnlyFakeHistoryStore(handlers.HistoryStore):
         _ = completion
 
 
+type _ResolveCliPayloadCall = tuple[object, str | None, bool]
+
+
+def _patch_resolve_cli_payload_map(
+    monkeypatch: pytest.MonkeyPatch,
+    payloads: Mapping[object, object],
+    *,
+    calls: list[_ResolveCliPayloadCall] | None = None,
+) -> None:
+    """Patch :func:`resolve_cli_payload` with a fixed source-to-payload map."""
+
+    def _resolve(
+        source: object,
+        *,
+        format_hint: str | None,
+        format_explicit: bool,
+    ) -> object:
+        if calls is not None:
+            calls.append((source, format_hint, format_explicit))
+        return payloads[source]
+
+    monkeypatch.setattr(handlers._input, 'resolve_cli_payload', _resolve)
+
+
+def _capture_file_write(
+    monkeypatch: pytest.MonkeyPatch,
+) -> dict[str, tuple[str, object]]:
+    """Patch :meth:`File.write` and capture the written path plus payload."""
+    captured: dict[str, tuple[str, object]] = {}
+
+    def _write(self: File, data: object, **kwargs: object) -> None:
+        captured['params'] = (str(self.path), data)
+
+    monkeypatch.setattr(handlers.File, 'write', _write)
+    return captured
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -572,13 +609,23 @@ class TestCliHandlersInternalHelpers:
 class TestExtractHandler:
     """Unit tests for :func:`extract_handler`."""
 
-    def test_calls_extract_for_non_file_sources(
+    @pytest.mark.parametrize(
+        ('target', 'pretty'),
+        [
+            pytest.param(None, True, id='stdout'),
+            pytest.param('export.json', True, id='target-file'),
+        ],
+    )
+    def test_extracts_non_stdin_sources_and_emits_or_writes(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_io: CaptureIo,
+        target: str | None,
+        pretty: bool,
     ) -> None:
         """
-        Test that :func:`extract_handler` uses extract for non-STDIN sources.
+        Test that :func:`extract_handler` routes non-STDIN sources through
+        :func:`extract` and emits or writes the result.
         """
         observed: dict[str, object] = {}
 
@@ -598,9 +645,9 @@ class TestExtractHandler:
                 source_type='api',
                 source='endpoint',
                 source_format='json',
+                target=target,
                 format_explicit=True,
-                output=None,
-                pretty=True,
+                pretty=pretty,
             )
             == 0
         )
@@ -609,8 +656,8 @@ class TestExtractHandler:
         kwargs = assert_emit_or_write(
             capture_io,
             {'status': 'ok'},
-            None,
-            pretty=True,
+            target,
+            pretty=pretty,
         )
         assert kwargs['success_message'] == ANY
 
@@ -722,48 +769,6 @@ class TestExtractHandler:
             'preferred.json',
             pretty=False,
         )
-
-    def test_writes_output_file_and_skips_emit(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """
-        Test that :func:`extract_handler` writes to a file and skips STDOUT
-        emission.
-        """
-        observed: dict[str, object] = {}
-
-        def fake_extract(
-            source_type: str,
-            source: str,
-            *,
-            file_format: str | None,
-        ) -> dict[str, object]:
-            observed['params'] = (source_type, source, file_format)
-            return {'status': 'ok'}
-
-        monkeypatch.setattr(dataops_mod, 'extract', fake_extract)
-
-        assert (
-            handlers.extract_handler(
-                source_type='api',
-                source='endpoint',
-                target='export.json',
-                source_format='json',
-                format_explicit=True,
-                pretty=True,
-            )
-            == 0
-        )
-        assert observed['params'] == ('api', 'endpoint', 'json')
-        kwargs = assert_emit_or_write(
-            capture_io,
-            {'status': 'ok'},
-            'export.json',
-            pretty=True,
-        )
-        assert isinstance(kwargs['success_message'], str)
 
 
 class TestHistoryHandler:
@@ -2066,6 +2071,55 @@ class TestStatusHandler:
         )
 
 
+class TestSourceMappingPayloadHandlers:
+    """Shared unit tests for handlers that require mapping side payloads."""
+
+    @pytest.mark.parametrize(
+        ('handler', 'mapping_name', 'mapping_arg', 'expected_error'),
+        [
+            pytest.param(
+                handlers.transform_handler,
+                'ops.json',
+                'operations',
+                'operations must resolve',
+                id='transform',
+            ),
+            pytest.param(
+                handlers.validate_handler,
+                'rules.json',
+                'rules',
+                'rules must resolve',
+                id='validate',
+            ),
+        ],
+    )
+    def test_requires_mapping_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        handler: Any,
+        mapping_name: str,
+        mapping_arg: str,
+        expected_error: str,
+    ) -> None:
+        """Non-mapping side payloads should raise :class:`ValueError`."""
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            {
+                'data.json': [{'id': 1}],
+                mapping_name: ['not-a-mapping'],
+            },
+        )
+
+        with pytest.raises(ValueError, match=expected_error):
+            handler(
+                source='data.json',
+                source_format='json',
+                target=None,
+                pretty=True,
+                **{mapping_arg: mapping_name},
+            )
+
+
 class TestTransformHandler:
     """Unit tests for :func:`transform_handler`."""
 
@@ -2076,22 +2130,13 @@ class TestTransformHandler:
     ) -> None:
         """Test that :func:`transform_handler` emits results with no target."""
         resolve_calls: list[tuple[object, str | None, bool]] = []
-
-        def fake_resolve(
-            source: object,
-            *,
-            format_hint: str | None,
-            format_explicit: bool,
-        ) -> object:
-            resolve_calls.append((source, format_hint, format_explicit))
-            if source == 'data.json':
-                return [{'id': 1}]
-            return {'select': ['id']}
-
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            fake_resolve,
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            {
+                'data.json': [{'id': 1}],
+                'ops.json': {'select': ['id']},
+            },
+            calls=resolve_calls,
         )
         monkeypatch.setattr(
             dataops_mod,
@@ -2125,12 +2170,12 @@ class TestTransformHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that non-file targets delegate through :func:`load`."""
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source} if source == 'data.json' else {'select': ['id']}
-            ),
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            {
+                'data.json': {'source': 'data.json'},
+                'ops.json': {'select': ['id']},
+            },
         )
         monkeypatch.setattr(
             dataops_mod,
@@ -2180,169 +2225,125 @@ class TestTransformHandler:
             pretty=False,
         )
 
-    def test_requires_mapping_operations_payload(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that non-mapping operations payloads raise :class:`ValueError`.
-        """
-
-        def _resolve_cli_payload(
-            source: object,
-            **kwargs: object,
-        ) -> object:
-            if source == 'ops.json':
-                return ['not-a-mapping']
-            return [{'id': 1}]
-
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            _resolve_cli_payload,
-        )
-        with pytest.raises(ValueError, match='operations must resolve'):
-            handlers.transform_handler(
-                source='data.json',
-                operations='ops.json',
-                source_format='json',
-                target=None,
-                pretty=True,
-            )
-
-    def test_writes_remote_target_file(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        """Test that :func:`transform_handler` preserves remote URI targets."""
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source} if source == 'data.json' else {'select': ['id']}
-            ),
-        )
-        monkeypatch.setattr(
-            dataops_mod,
-            'transform',
-            lambda payload, ops: {'payload': payload, 'ops': ops},
-        )
-        write_calls: dict[str, object] = {}
-
-        def fake_write(self, data, **kwargs):
-            write_calls['params'] = (self.path, data)
-
-        monkeypatch.setattr(handlers.File, 'write', fake_write)
-
-        assert (
-            handlers.transform_handler(
-                source='data.json',
-                operations='ops.json',
-                target='s3://bucket/out.json',
-                target_format='json',
-                pretty=True,
-            )
-            == 0
-        )
-        assert write_calls['params'] == (
-            's3://bucket/out.json',
-            {
-                'payload': {'source': 'data.json'},
-                'ops': {'select': ['id']},
-            },
-        )
-        assert (
-            'Data transformed and saved to s3://bucket/out.json'
-            in capsys.readouterr().out
-        )
-
+    @pytest.mark.parametrize(
+        'target',
+        [
+            pytest.param('s3://bucket/out.json', id='remote-uri'),
+            pytest.param('out.json', id='local-file'),
+        ],
+    )
     def test_writes_target_file(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
+        target: str,
     ) -> None:
-        """Test that :func:`transform_handler` writes data to a target file."""
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source} if source == 'data.json' else {'select': ['id']}
-            ),
+        """Test that :func:`transform_handler` writes data to file-like targets."""
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            {
+                'data.json': {'source': 'data.json'},
+                'ops.json': {'select': ['id']},
+            },
         )
         monkeypatch.setattr(
             dataops_mod,
             'transform',
             lambda payload, ops: {'payload': payload, 'ops': ops},
         )
-        write_calls: dict[str, object] = {}
-
-        def fake_write(self, data, **kwargs):
-            # Only capture path and data; ignore root_tag.
-            write_calls['params'] = (str(self.path), data)
-
-        monkeypatch.setattr(handlers.File, 'write', fake_write)
+        write_calls = _capture_file_write(monkeypatch)
 
         assert (
             handlers.transform_handler(
                 source='data.json',
                 operations='ops.json',
-                target='out.json',
+                target=target,
                 target_format='json',
                 pretty=True,
             )
             == 0
         )
         assert write_calls['params'] == (
-            'out.json',
+            target,
             {
                 'payload': {'source': 'data.json'},
                 'ops': {'select': ['id']},
             },
         )
-        assert 'Data transformed and saved to out.json' in capsys.readouterr().out
+        assert f'Data transformed and saved to {target}' in capsys.readouterr().out
 
 
 class TestValidateHandler:
     """Unit tests for :func:`validate_handler`."""
 
-    def test_emits_result_without_target(
+    @pytest.mark.parametrize(
+        ('target', 'pretty', 'result', 'expected'),
+        [
+            pytest.param(
+                None,
+                False,
+                {
+                    'data': {'source': 'data.json'},
+                    'rules': {'id': {'required': True}},
+                },
+                {
+                    'data': {'source': 'data.json'},
+                    'rules': {'id': {'required': True}},
+                },
+                id='no-target',
+            ),
+            pytest.param(
+                '-',
+                True,
+                {
+                    'data': {'source': 'data.json'},
+                    'field_errors': {},
+                    'rules': {'id': {'required': True}},
+                    'valid': True,
+                },
+                {
+                    'data': {'source': 'data.json'},
+                    'field_errors': {},
+                    'rules': {'id': {'required': True}},
+                    'valid': True,
+                },
+                id='stdout-target',
+            ),
+        ],
+    )
+    def test_emits_json_when_not_writing_a_file(
         self,
         monkeypatch: pytest.MonkeyPatch,
         capture_io: CaptureIo,
+        target: str | None,
+        pretty: bool,
+        result: dict[str, object],
+        expected: dict[str, object],
     ) -> None:
-        """Test that :func:`validate_handler` emits results with no target."""
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source}
-                if source == 'data.json'
-                else {'id': {'required': True}}
-            ),
+        """Validation should emit JSON unless it is writing a target file."""
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            {
+                'data.json': {'source': 'data.json'},
+                'rules.json': {'id': {'required': True}},
+            },
         )
         monkeypatch.setattr(
             dataops_mod,
             'validate',
-            lambda payload, rules: {'data': payload, 'rules': rules},
+            lambda payload, rules: result,
         )
 
         assert (
             handlers.validate_handler(
                 source='data.json',
                 rules='rules.json',
-                pretty=False,
+                target=target,
+                pretty=pretty,
             )
             == 0
         )
-        assert_emit_json(
-            capture_io,
-            {
-                'data': {'source': 'data.json'},
-                'rules': {'id': {'required': True}},
-            },
-            pretty=False,
-        )
+        assert_emit_json(capture_io, expected, pretty=pretty)
 
     def test_reports_missing_data_for_target(
         self,
@@ -2350,14 +2351,12 @@ class TestValidateHandler:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test that :func:`validate_handler` reports missing output data."""
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source}
-                if source == 'data.json'
-                else {'id': {'required': True}}
-            ),
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            {
+                'data.json': {'source': 'data.json'},
+                'rules.json': {'id': {'required': True}},
+            },
         )
         monkeypatch.setattr(
             dataops_mod,
@@ -2378,36 +2377,6 @@ class TestValidateHandler:
             'ValidationDict failed, no data to save for out.json'
             in capsys.readouterr().err
         )
-
-    def test_requires_mapping_rules_payload(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that non-mapping rules payloads raise :class:`ValueError`.
-        """
-
-        def _resolve_cli_payload(
-            source: object,
-            **kwargs: object,
-        ) -> object:
-            if source == 'rules.json':
-                return ['not-a-mapping']
-            return [{'id': 1}]
-
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            _resolve_cli_payload,
-        )
-        with pytest.raises(ValueError, match='rules must resolve'):
-            handlers.validate_handler(
-                source='data.json',
-                rules='rules.json',
-                source_format='json',
-                target=None,
-                pretty=True,
-            )
 
     def test_rules_payload_resolves_even_when_format_is_explicit_elsewhere(
         self,
@@ -2458,67 +2427,17 @@ class TestValidateHandler:
             pretty=False,
         )
 
-    def test_target_stdout_emits_result_json(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """
-        Test that ``target='-'`` emits full validation output to STDOUT.
-        """
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source}
-                if source == 'data.json'
-                else {'id': {'required': True}}
-            ),
-        )
-        monkeypatch.setattr(
-            dataops_mod,
-            'validate',
-            lambda payload, rules: {
-                'data': payload,
-                'field_errors': {},
-                'rules': rules,
-                'valid': True,
-            },
-        )
-
-        assert (
-            handlers.validate_handler(
-                source='data.json',
-                rules='rules.json',
-                target='-',
-                pretty=True,
-            )
-            == 0
-        )
-        assert_emit_json(
-            capture_io,
-            {
-                'data': {'source': 'data.json'},
-                'field_errors': {},
-                'rules': {'id': {'required': True}},
-                'valid': True,
-            },
-            pretty=True,
-        )
-
     def test_writes_target_file(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that :func:`validate_handler` writes data to a target file."""
-        monkeypatch.setattr(
-            handlers._input,
-            'resolve_cli_payload',
-            lambda source, **_kwargs: (
-                {'source': source}
-                if source == 'data.json'
-                else {'id': {'required': True}}
-            ),
+        _patch_resolve_cli_payload_map(
+            monkeypatch,
+            {
+                'data.json': {'source': 'data.json'},
+                'rules.json': {'id': {'required': True}},
+            },
         )
         monkeypatch.setattr(
             dataops_mod,
