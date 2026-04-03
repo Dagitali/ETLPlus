@@ -98,6 +98,19 @@ class _ReadOnlyFakeHistoryStore(handlers.HistoryStore):
 type _ResolveCliPayloadCall = tuple[object, str | None, bool]
 
 
+def _capture_file_write(
+    monkeypatch: pytest.MonkeyPatch,
+) -> dict[str, tuple[str, object]]:
+    """Patch :meth:`File.write` and capture the written path plus payload."""
+    captured: dict[str, tuple[str, object]] = {}
+
+    def _write(self: File, data: object, **kwargs: object) -> None:
+        captured['params'] = (str(self.path), data)
+
+    monkeypatch.setattr(handlers.File, 'write', _write)
+    return captured
+
+
 def _patch_resolve_cli_payload_map(
     monkeypatch: pytest.MonkeyPatch,
     payloads: Mapping[object, object],
@@ -119,17 +132,21 @@ def _patch_resolve_cli_payload_map(
     monkeypatch.setattr(handlers._input, 'resolve_cli_payload', _resolve)
 
 
-def _capture_file_write(
+def _patch_history_store_records(
     monkeypatch: pytest.MonkeyPatch,
-) -> dict[str, tuple[str, object]]:
-    """Patch :meth:`File.write` and capture the written path plus payload."""
-    captured: dict[str, tuple[str, object]] = {}
+    records: list[dict[str, object]],
+) -> None:
+    """Patch :class:`HistoryStore` to yield one fixed record sequence."""
 
-    def _write(self: File, data: object, **kwargs: object) -> None:
-        captured['params'] = (str(self.path), data)
+    class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
+        def iter_records(self) -> Any:
+            return iter(records)
 
-    monkeypatch.setattr(handlers.File, 'write', _write)
-    return captured
+    monkeypatch.setattr(
+        handlers.HistoryStore,
+        'from_environment',
+        lambda: _FakeHistoryStore(),
+    )
 
 
 # SECTION: TESTS ============================================================ #
@@ -780,32 +797,24 @@ class TestHistoryHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that history emits merged runs by default."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'config_path': 'pipeline.yml',
-                            'job_name': 'job-a',
-                            'run_id': 'run-123',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'running',
-                        },
-                        {
-                            'duration_ms': 5000,
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'result_summary': {'rows': 10},
-                            'run_id': 'run-123',
-                            'status': 'succeeded',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'config_path': 'pipeline.yml',
+                    'job_name': 'job-a',
+                    'run_id': 'run-123',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'running',
+                },
+                {
+                    'duration_ms': 5000,
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'result_summary': {'rows': 10},
+                    'run_id': 'run-123',
+                    'status': 'succeeded',
+                },
+            ],
         )
 
         assert handlers.history_handler(pretty=True) == 0
@@ -843,28 +852,20 @@ class TestHistoryHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that raw history mode returns append events and applies limit."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'running',
-                        },
-                        {
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'run_id': 'run-2',
-                            'status': 'succeeded',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'running',
+                },
+                {
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'run_id': 'run-2',
+                    'status': 'succeeded',
+                },
+            ],
         )
 
         assert handlers.history_handler(raw=True, limit=1, pretty=False) == 0
@@ -887,25 +888,17 @@ class TestHistoryHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that the explicit JSON flag still routes through JSON output."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-2',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'succeeded',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'job_name': 'job-a',
+                    'run_id': 'run-2',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ],
         )
 
         assert handlers.history_handler(json_output=True, pretty=False) == 0
@@ -943,37 +936,29 @@ class TestHistoryHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that history filters normalized runs and can emit tables."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'job_name': 'job-a',
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-22T00:00:00Z',
-                            'status': 'running',
-                        },
-                        {
-                            'finished_at': '2026-03-22T00:00:10Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-1',
-                            'status': 'failed',
-                        },
-                        {
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'job_name': 'job-b',
-                            'run_id': 'run-2',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'succeeded',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'job_name': 'job-a',
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-22T00:00:00Z',
+                    'status': 'running',
+                },
+                {
+                    'finished_at': '2026-03-22T00:00:10Z',
+                    'job_name': 'job-a',
+                    'run_id': 'run-1',
+                    'status': 'failed',
+                },
+                {
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'job_name': 'job-b',
+                    'run_id': 'run-2',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ],
         )
 
         assert (
@@ -1033,33 +1018,25 @@ class TestHistoryHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that raw history mode can filter by run identifier and time."""
-
-        class _FakeHistoryStore:
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-22T00:00:00Z',
-                            'status': 'running',
-                        },
-                        {
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'run_id': 'run-2',
-                            'status': 'succeeded',
-                        },
-                        {
-                            'finished_at': '2026-03-24T00:00:05Z',
-                            'run_id': 'run-2',
-                            'status': 'failed',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-22T00:00:00Z',
+                    'status': 'running',
+                },
+                {
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'run_id': 'run-2',
+                    'status': 'succeeded',
+                },
+                {
+                    'finished_at': '2026-03-24T00:00:05Z',
+                    'run_id': 'run-2',
+                    'status': 'failed',
+                },
+            ],
         )
 
         assert (
@@ -1368,34 +1345,26 @@ class TestReportHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that report aggregates normalized runs into JSON output."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'duration_ms': 3000,
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'succeeded',
-                        },
-                        {
-                            'duration_ms': 1000,
-                            'finished_at': '2026-03-24T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-2',
-                            'started_at': '2026-03-24T00:00:00Z',
-                            'status': 'failed',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'duration_ms': 3000,
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'job_name': 'job-a',
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+                {
+                    'duration_ms': 1000,
+                    'finished_at': '2026-03-24T00:00:05Z',
+                    'job_name': 'job-a',
+                    'run_id': 'run-2',
+                    'started_at': '2026-03-24T00:00:00Z',
+                    'status': 'failed',
+                },
+            ],
         )
 
         assert (
@@ -1449,26 +1418,18 @@ class TestReportHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that report can emit grouped rows as a Markdown table."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'duration_ms': 3000,
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'succeeded',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'duration_ms': 3000,
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'job_name': 'job-a',
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ],
         )
 
         assert handlers.report_handler(group_by='status', table=True) == 0
@@ -1517,34 +1478,26 @@ class TestReportHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that per-day grouping reports a day-level success rate."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'duration_ms': 3000,
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'succeeded',
-                        },
-                        {
-                            'duration_ms': 1000,
-                            'finished_at': '2026-03-23T01:00:05Z',
-                            'job_name': 'job-b',
-                            'run_id': 'run-2',
-                            'started_at': '2026-03-23T01:00:00Z',
-                            'status': 'failed',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'duration_ms': 3000,
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'job_name': 'job-a',
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+                {
+                    'duration_ms': 1000,
+                    'finished_at': '2026-03-23T01:00:05Z',
+                    'job_name': 'job-b',
+                    'run_id': 'run-2',
+                    'started_at': '2026-03-23T01:00:00Z',
+                    'status': 'failed',
+                },
+            ],
         )
 
         assert handlers.report_handler(group_by='day', pretty=False) == 0
@@ -1949,32 +1902,24 @@ class TestStatusHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that status emits the newest normalized run."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter(
-                    [
-                        {
-                            'finished_at': '2026-03-22T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-1',
-                            'started_at': '2026-03-22T00:00:00Z',
-                            'status': 'failed',
-                        },
-                        {
-                            'finished_at': '2026-03-23T00:00:05Z',
-                            'job_name': 'job-a',
-                            'run_id': 'run-2',
-                            'started_at': '2026-03-23T00:00:00Z',
-                            'status': 'succeeded',
-                        },
-                    ],
-                )
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'finished_at': '2026-03-22T00:00:05Z',
+                    'job_name': 'job-a',
+                    'run_id': 'run-1',
+                    'started_at': '2026-03-22T00:00:00Z',
+                    'status': 'failed',
+                },
+                {
+                    'finished_at': '2026-03-23T00:00:05Z',
+                    'job_name': 'job-a',
+                    'run_id': 'run-2',
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ],
         )
 
         assert handlers.status_handler(job='job-a', pretty=True) == 0
@@ -2010,16 +1955,7 @@ class TestStatusHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that status returns 1 and emits an empty object on misses."""
-
-        class _FakeHistoryStore(_ReadOnlyFakeHistoryStore):
-            def iter_records(self) -> Any:
-                return iter([])
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            lambda: _FakeHistoryStore(),
-        )
+        _patch_history_store_records(monkeypatch, [])
 
         assert handlers.status_handler(run_id='missing', pretty=False) == 1
 
