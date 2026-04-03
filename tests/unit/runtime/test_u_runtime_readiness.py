@@ -41,6 +41,65 @@ def _cfg(
     )
 
 
+def _patch_config_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    raw: Mapping[str, object],
+    resolved_cfg: object | None = None,
+    unresolved_tokens: list[str] | None = None,
+    resolved_raw: Mapping[str, object] | None = None,
+) -> None:
+    """Patch raw-config loading and context resolution for one test scenario."""
+    raw_config = dict(raw)
+    effective_resolved_raw = raw_config if resolved_raw is None else dict(resolved_raw)
+
+    monkeypatch.setattr(
+        readiness_mod.ReadinessReportBuilder,
+        'load_raw_config',
+        lambda _path: raw_config,
+    )
+    monkeypatch.setattr(
+        readiness_mod.ReadinessReportBuilder,
+        'resolve_config_context',
+        lambda raw, env=None: _resolved_config_context(
+            cast(Mapping[str, object], raw),
+            env=env,
+            unresolved_tokens=unresolved_tokens,
+            resolved_raw=effective_resolved_raw,
+            resolved_cfg=resolved_cfg,
+        ),
+    )
+
+
+def _resolved_config_context(
+    raw: Mapping[str, object],
+    *,
+    env: Mapping[str, str] | None = None,
+    unresolved_tokens: list[str] | None = None,
+    resolved_raw: Mapping[str, object] | None = None,
+    resolved_cfg: object | None = None,
+) -> readiness_mod._ResolvedConfigContext:
+    """Build one resolved-config context with stable defaults."""
+    return readiness_mod._ResolvedConfigContext(
+        raw=raw,
+        effective_env={} if env is None else dict(env),
+        unresolved_tokens=[] if unresolved_tokens is None else list(unresolved_tokens),
+        resolved_raw=raw if resolved_raw is None else dict(resolved_raw),
+        resolved_cfg=cast(Any, _cfg() if resolved_cfg is None else resolved_cfg),
+    )
+
+
+def _write_pipeline_config(
+    tmp_path: Path,
+    *,
+    contents: str = 'name: pipeline\n',
+) -> Path:
+    """Write one minimal pipeline config and return its path."""
+    config_path = tmp_path / 'pipeline.yml'
+    config_path.write_text(contents, encoding='utf-8')
+    return config_path
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -171,25 +230,11 @@ class TestReadinessReportBuilder:
         tmp_path: Path,
     ) -> None:
         """Config checks should return early when runtime checks are disabled."""
-        config_path = tmp_path / 'pipeline.yml'
-        config_path.write_text('name: pipeline\n', encoding='utf-8')
+        config_path = _write_pipeline_config(tmp_path)
         runtime_called = {'value': False}
-
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'load_raw_config',
-            lambda _path: {'name': 'pipeline'},
-        )
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'resolve_config_context',
-            lambda raw, env=None: readiness_mod._ResolvedConfigContext(
-                raw=raw,
-                effective_env={} if env is None else dict(env),
-                unresolved_tokens=[],
-                resolved_raw=raw,
-                resolved_cfg=cast(Any, _cfg()),
-            ),
+        _patch_config_resolution(
+            monkeypatch,
+            raw={'name': 'pipeline'},
         )
 
         def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
@@ -242,25 +287,12 @@ class TestReadinessReportBuilder:
         tmp_path: Path,
     ) -> None:
         """Test the resolved config path that appends connector/provider checks."""
-        config_path = tmp_path / 'pipeline.yml'
-        config_path.write_text('name: pipeline\n', encoding='utf-8')
+        config_path = _write_pipeline_config(tmp_path)
         resolved_cfg = _cfg()
-
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'load_raw_config',
-            lambda _path: {'name': 'pipeline'},
-        )
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'resolve_config_context',
-            lambda raw, env=None: readiness_mod._ResolvedConfigContext(
-                raw=raw,
-                effective_env={} if env is None else dict(env),
-                unresolved_tokens=[],
-                resolved_raw=raw,
-                resolved_cfg=cast(Any, resolved_cfg),
-            ),
+        _patch_config_resolution(
+            monkeypatch,
+            raw={'name': 'pipeline'},
+            resolved_cfg=resolved_cfg,
         )
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
@@ -305,8 +337,7 @@ class TestReadinessReportBuilder:
         tmp_path: Path,
     ) -> None:
         """Test that unresolved substitutions short-circuit connector checks."""
-        config_path = tmp_path / 'pipeline.yml'
-        config_path.write_text('name: pipeline\n', encoding='utf-8')
+        config_path = _write_pipeline_config(tmp_path)
 
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
@@ -375,8 +406,7 @@ class TestReadinessReportBuilder:
         tmp_path: Path,
     ) -> None:
         """Strict config issues should stop before runtime readiness checks."""
-        config_path = tmp_path / 'pipeline.yml'
-        config_path.write_text('name: pipeline\n', encoding='utf-8')
+        config_path = _write_pipeline_config(tmp_path)
         resolved_raw = {
             'sources': ['bad-entry'],
             'jobs': [
@@ -387,22 +417,10 @@ class TestReadinessReportBuilder:
                 },
             ],
         }
-
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'load_raw_config',
-            lambda _path: resolved_raw,
-        )
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'resolve_config_context',
-            lambda raw, env=None: readiness_mod._ResolvedConfigContext(
-                raw=raw,
-                effective_env={} if env is None else dict(env),
-                unresolved_tokens=[],
-                resolved_raw=resolved_raw,
-                resolved_cfg=cast(Any, _cfg()),
-            ),
+        _patch_config_resolution(
+            monkeypatch,
+            raw=resolved_raw,
+            resolved_raw=resolved_raw,
         )
         runtime_called = {'value': False}
 
@@ -442,25 +460,12 @@ class TestReadinessReportBuilder:
         tmp_path: Path,
     ) -> None:
         """Strict config checks should emit an explicit ok row when clean."""
-        config_path = tmp_path / 'pipeline.yml'
-        config_path.write_text('name: pipeline\n', encoding='utf-8')
+        config_path = _write_pipeline_config(tmp_path)
         resolved_cfg = _cfg()
-
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'load_raw_config',
-            lambda _path: {'name': 'pipeline'},
-        )
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'resolve_config_context',
-            lambda raw, env=None: readiness_mod._ResolvedConfigContext(
-                raw=raw,
-                effective_env={} if env is None else dict(env),
-                unresolved_tokens=[],
-                resolved_raw=raw,
-                resolved_cfg=cast(Any, resolved_cfg),
-            ),
+        _patch_config_resolution(
+            monkeypatch,
+            raw={'name': 'pipeline'},
+            resolved_cfg=resolved_cfg,
         )
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,

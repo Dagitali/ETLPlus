@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import logging
 import sys
+from collections.abc import Mapping
 from io import StringIO
+from typing import TypedDict
 from typing import cast
 
 import pytest
@@ -18,6 +20,35 @@ import etlplus.runtime._logging as logging_mod
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+class _ResolveLogLevelKwargs(TypedDict, total=False):
+    """Typed kwargs shape for :func:`resolve_log_level` parameter tables."""
+
+    env: Mapping[str, str]
+    quiet: bool
+    verbose: bool
+
+
+def _capture_logging_setup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> dict[str, object]:
+    """Patch logging setup hooks and return one mutable call capture."""
+    calls: dict[str, object] = {}
+    monkeypatch.setattr(
+        logging_mod.logging,
+        'basicConfig',
+        lambda **kwargs: calls.setdefault('basicConfig', kwargs),
+    )
+    monkeypatch.setattr(
+        logging_mod.logging,
+        'captureWarnings',
+        lambda enabled: calls.setdefault('captureWarnings', enabled),
+    )
+    return calls
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -30,18 +61,7 @@ class TestConfigureLogging:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that STDERR is used when no explicit stream is supplied."""
-        calls: dict[str, object] = {}
-
-        monkeypatch.setattr(
-            logging_mod.logging,
-            'basicConfig',
-            lambda **kwargs: calls.setdefault('basicConfig', kwargs),
-        )
-        monkeypatch.setattr(
-            logging_mod.logging,
-            'captureWarnings',
-            lambda enabled: calls.setdefault('captureWarnings', enabled),
-        )
+        calls = _capture_logging_setup(monkeypatch)
 
         logging_mod.configure_logging(env={})
 
@@ -53,19 +73,8 @@ class TestConfigureLogging:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that configuration forwards the resolved level and options."""
-        calls: dict[str, object] = {}
+        calls = _capture_logging_setup(monkeypatch)
         stream = StringIO()
-
-        monkeypatch.setattr(
-            logging_mod.logging,
-            'basicConfig',
-            lambda **kwargs: calls.setdefault('basicConfig', kwargs),
-        )
-        monkeypatch.setattr(
-            logging_mod.logging,
-            'captureWarnings',
-            lambda enabled: calls.setdefault('captureWarnings', enabled),
-        )
 
         level = logging_mod.configure_logging(
             stream=stream,
@@ -88,12 +97,6 @@ class TestConfigureLogging:
 class TestResolveLogLevel:
     """Unit tests for runtime log-level resolution."""
 
-    def test_default_level_is_used_for_invalid_explicit_level(self) -> None:
-        """Test fallback to the default level for unsupported env values."""
-        assert logging_mod.resolve_log_level(env={'ETLPLUS_LOG_LEVEL': 'trace'}) == (
-            logging.WARNING
-        )
-
     def test_env_defaults_to_os_environ_when_not_supplied(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -103,22 +106,39 @@ class TestResolveLogLevel:
 
         assert logging_mod.resolve_log_level() == logging.INFO
 
-    def test_explicit_env_level_overrides_quiet_and_verbose(self) -> None:
-        """Test that an explicit environment level wins over CLI flags."""
-        level = logging_mod.resolve_log_level(
-            quiet=True,
-            verbose=True,
-            env={'ETLPLUS_LOG_LEVEL': 'debug'},
-        )
-
-        assert level == logging.DEBUG
-
-    def test_quiet_level_takes_precedence_without_explicit_env(self) -> None:
-        """Test quiet-mode resolution without an explicit environment level."""
-        assert logging_mod.resolve_log_level(quiet=True, verbose=True, env={}) == (
-            logging.ERROR
-        )
-
-    def test_verbose_level_is_used_without_quiet_or_explicit_env(self) -> None:
-        """Test verbose-mode resolution without quiet mode or env override."""
-        assert logging_mod.resolve_log_level(verbose=True, env={}) == logging.INFO
+    @pytest.mark.parametrize(
+        ('kwargs', 'expected'),
+        [
+            pytest.param(
+                {'env': {'ETLPLUS_LOG_LEVEL': 'trace'}},
+                logging.WARNING,
+                id='invalid-explicit-level',
+            ),
+            pytest.param(
+                {
+                    'quiet': True,
+                    'verbose': True,
+                    'env': {'ETLPLUS_LOG_LEVEL': 'debug'},
+                },
+                logging.DEBUG,
+                id='explicit-env-overrides-flags',
+            ),
+            pytest.param(
+                {'quiet': True, 'verbose': True, 'env': {}},
+                logging.ERROR,
+                id='quiet-precedence',
+            ),
+            pytest.param(
+                {'verbose': True, 'env': {}},
+                logging.INFO,
+                id='verbose-without-quiet',
+            ),
+        ],
+    )
+    def test_resolve_log_level_precedence(
+        self,
+        kwargs: _ResolveLogLevelKwargs,
+        expected: int,
+    ) -> None:
+        """Log-level resolution should honor env overrides and CLI flags."""
+        assert logging_mod.resolve_log_level(**kwargs) == expected

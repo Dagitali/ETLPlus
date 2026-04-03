@@ -23,57 +23,71 @@ import etlplus.runtime._events as events_mod
 class TestRuntimeEvents:
     """Unit tests for structured runtime event helpers."""
 
-    def test_build_uses_explicit_timestamp_and_extra_fields(self) -> None:
-        """Test that build returns the stable envelope with extra fields merged."""
-        event = events_mod.RuntimeEvents.build(
-            command='run',
-            lifecycle='started',
-            run_id='run-123',
-            timestamp='2025-01-01T00:00:00+00:00',
-            job='daily',
-        )
-
-        assert event == {
-            'command': 'run',
-            'event': 'run.started',
-            'job': 'daily',
-            'lifecycle': 'started',
-            'run_id': 'run-123',
-            'schema': events_mod.EVENT_SCHEMA,
-            'schema_version': events_mod.EVENT_SCHEMA_VERSION,
-            'timestamp': '2025-01-01T00:00:00+00:00',
-        }
-
-    def test_build_uses_utc_timestamp_when_missing(
+    @pytest.mark.parametrize(
+        ('kwargs', 'expected_timestamp'),
+        [
+            pytest.param(
+                {
+                    'command': 'run',
+                    'lifecycle': 'started',
+                    'run_id': 'run-123',
+                    'timestamp': '2025-01-01T00:00:00+00:00',
+                    'job': 'daily',
+                },
+                '2025-01-01T00:00:00+00:00',
+                id='explicit-timestamp',
+            ),
+            pytest.param(
+                {
+                    'command': 'run',
+                    'lifecycle': 'completed',
+                    'run_id': 'run-123',
+                },
+                '2025-01-01T00:00:00+00:00',
+                id='implicit-utc-timestamp',
+            ),
+        ],
+    )
+    def test_build_returns_expected_event_envelope(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        kwargs: dict[str, str],
+        expected_timestamp: str,
     ) -> None:
-        """Test that build falls back to the shared UTC timestamp helper."""
+        """Build should emit the stable event envelope and resolve timestamps."""
         monkeypatch.setattr(
             events_mod.RuntimeEvents,
             'utc_now_iso',
             staticmethod(lambda: '2025-01-01T00:00:00+00:00'),
         )
 
-        event = events_mod.RuntimeEvents.build(
-            command='run',
-            lifecycle='completed',
-            run_id='run-123',
-        )
+        event = events_mod.RuntimeEvents.build(**kwargs)
 
-        assert event['timestamp'] == '2025-01-01T00:00:00+00:00'
+        assert event == {
+            'command': 'run',
+            'event': f'run.{kwargs["lifecycle"]}',
+            'lifecycle': kwargs['lifecycle'],
+            'run_id': 'run-123',
+            'schema': events_mod.EVENT_SCHEMA,
+            'schema_version': events_mod.EVENT_SCHEMA_VERSION,
+            'timestamp': expected_timestamp,
+            **({'job': 'daily'} if 'job' in kwargs else {}),
+        }
 
     def test_create_run_id_returns_uuid_text(self) -> None:
         """Test that run identifiers are emitted as UUID text."""
         UUID(events_mod.RuntimeEvents.create_run_id())
 
+    @pytest.mark.parametrize('event_format', [None, 'text'])
     def test_emit_skips_when_jsonl_is_not_requested(
         self,
         capsys: pytest.CaptureFixture[str],
+        event_format: str | None,
     ) -> None:
         """Test that event emission is disabled for non-jsonl formats."""
-        events_mod.RuntimeEvents.emit({'event': 'run.started'}, event_format=None)
-        events_mod.RuntimeEvents.emit({'event': 'run.started'}, event_format='text')
+        events_mod.RuntimeEvents.emit(
+            {'event': 'run.started'}, event_format=event_format,
+        )
 
         captured = capsys.readouterr()
         assert captured.err == ''
