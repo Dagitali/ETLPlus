@@ -6,6 +6,7 @@ Unit tests for :mod:`etlplus.cli._commands`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -28,6 +29,7 @@ from .conftest import AssertCapturedText
 from .conftest import InvokeCli
 from .conftest import StubHandler
 from .conftest import TyperContextFactory
+from .conftest import assert_mapping_contains
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -122,42 +124,184 @@ class TestCommandsInternalHelpers:
         assert resolved.format_hint is FileFormat.JSON
 
 
-class TestCheckCommand:
-    """Unit tests for :func:`etlplus.cli._commands.check_cmd`."""
+class TestDelegatingCommands:
+    """Unit tests for thin command wrappers that delegate to handlers."""
 
+    @pytest.mark.parametrize(
+        (
+            'module',
+            'command',
+            'handler_name',
+            'kwargs',
+            'expected',
+            'result',
+        ),
+        [
+            pytest.param(
+                check_mod,
+                commands_mod.check_cmd,
+                'check_handler',
+                {
+                    'config': 'pipeline.yml',
+                    'jobs': True,
+                    'pipelines': False,
+                    'sources': False,
+                    'summary': True,
+                    'targets': False,
+                    'transforms': False,
+                },
+                {
+                    'config': 'pipeline.yml',
+                    'jobs': True,
+                    'pipelines': False,
+                    'readiness': False,
+                    'sources': False,
+                    'strict': False,
+                    'summary': True,
+                    'targets': False,
+                    'transforms': False,
+                    'pretty': False,
+                },
+                3,
+                id='check',
+            ),
+            pytest.param(
+                history_mod,
+                commands_mod.history_cmd,
+                'history_handler',
+                {
+                    'job': 'job-a',
+                    'limit': 5,
+                    'raw': False,
+                    'json_output': True,
+                    'since': '2026-03-21T00:00:00Z',
+                    'status': 'failed',
+                    'table': False,
+                    'until': '2026-03-24T00:00:00Z',
+                },
+                {
+                    'job': 'job-a',
+                    'json_output': True,
+                    'limit': 5,
+                    'pretty': False,
+                    'raw': False,
+                    'since': '2026-03-21T00:00:00Z',
+                    'status': 'failed',
+                    'table': False,
+                    'until': '2026-03-24T00:00:00Z',
+                },
+                0,
+                id='history',
+            ),
+            pytest.param(
+                init_mod,
+                commands_mod.init_cmd,
+                'init_handler',
+                {
+                    'directory': 'demo',
+                    'force': True,
+                },
+                {
+                    'directory': 'demo',
+                    'force': True,
+                    'pretty': False,
+                },
+                5,
+                id='init',
+            ),
+            pytest.param(
+                log_mod,
+                commands_mod.log_cmd,
+                'history_handler',
+                {
+                    'follow': True,
+                    'limit': 7,
+                    'run_id': 'run-7',
+                    'since': '2026-03-23T00:00:00Z',
+                    'until': '2026-03-24T00:00:00Z',
+                },
+                {
+                    'follow': True,
+                    'limit': 7,
+                    'pretty': False,
+                    'raw': True,
+                    'run_id': 'run-7',
+                    'since': '2026-03-23T00:00:00Z',
+                    'until': '2026-03-24T00:00:00Z',
+                },
+                0,
+                id='log',
+            ),
+            pytest.param(
+                report_mod,
+                commands_mod.report_cmd,
+                'report_handler',
+                {
+                    'group_by': 'status',
+                    'job': 'job-a',
+                    'json_output': True,
+                    'since': '2026-03-01T00:00:00Z',
+                    'table': False,
+                    'until': '2026-03-31T23:59:59Z',
+                },
+                {
+                    'group_by': 'status',
+                    'job': 'job-a',
+                    'json_output': True,
+                    'pretty': False,
+                    'since': '2026-03-01T00:00:00Z',
+                    'table': False,
+                    'until': '2026-03-31T23:59:59Z',
+                },
+                0,
+                id='report',
+            ),
+            pytest.param(
+                status_mod,
+                commands_mod.status_cmd,
+                'status_handler',
+                {
+                    'job': 'job-a',
+                    'run_id': 'run-9',
+                },
+                {
+                    'job': 'job-a',
+                    'pretty': False,
+                    'run_id': 'run-9',
+                },
+                0,
+                id='status',
+            ),
+        ],
+    )
     def test_delegates_to_handler(
         self,
         monkeypatch: pytest.MonkeyPatch,
         typer_ctx_factory: TyperContextFactory,
         stub_handler: StubHandler,
+        module: object,
+        command: Callable[..., int],
+        handler_name: str,
+        kwargs: dict[str, object],
+        expected: dict[str, object],
+        result: int,
     ) -> None:
-        """Test that valid inputs dispatch to ``check_handler``."""
+        """
+        Test that thin command wrappers forward normalized kwargs verbatim.
+        """
         monkeypatch.setattr(
-            check_mod,
+            module,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
         captured = stub_handler(
-            check_mod,
-            'check_handler',
-            result=3,
+            module,
+            handler_name,
+            result=result,
         )
 
-        result = commands_mod.check_cmd(
-            typer_ctx_factory(),
-            config='pipeline.yml',
-            jobs=True,
-            pipelines=False,
-            sources=False,
-            summary=True,
-            targets=False,
-            transforms=False,
-        )
-
-        assert result == 3
-        assert captured['config'] == 'pipeline.yml'
-        assert captured['jobs'] is True
-        assert captured['pretty'] is False
+        assert command(typer_ctx_factory(), **kwargs) == result
+        assert captured == expected
 
     def test_rejects_readiness_with_inspection_flags(
         self,
@@ -186,99 +330,68 @@ class TestCheckCommand:
 class TestCliInvokeParsing:
     """Typer runner coverage for history/log/report option parsing."""
 
-    def test_history_until_reaches_handler(
+    @pytest.mark.parametrize(
+        ('argv', 'module', 'handler_name', 'expected'),
+        [
+            pytest.param(
+                ('history', '--until', '2026-03-24T00:00:00Z'),
+                history_mod,
+                'history_handler',
+                {'until': '2026-03-24T00:00:00Z'},
+                id='history-until',
+            ),
+            pytest.param(
+                ('log', '--until', '2026-03-24T00:00:00Z'),
+                log_mod,
+                'history_handler',
+                {
+                    'until': '2026-03-24T00:00:00Z',
+                    'raw': True,
+                },
+                id='log-until',
+            ),
+            pytest.param(
+                ('report', '--group-by', 'day'),
+                report_mod,
+                'report_handler',
+                {'group_by': 'day'},
+                id='report-group-by',
+            ),
+            pytest.param(
+                (
+                    'transform',
+                    '--target-type',
+                    'api',
+                    'https://example.com/items',
+                ),
+                transform_mod,
+                'transform_handler',
+                {'target_type': 'api'},
+                id='transform-target-type',
+            ),
+        ],
+    )
+    def test_parsed_options_reach_handler(
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
+        argv: tuple[str, ...],
+        module: object,
+        handler_name: str,
+        expected: dict[str, object],
     ) -> None:
-        """Test that ``history --until`` is parsed through the Typer runner."""
+        """Typer parsing should pass normalized option values to handlers."""
         captured: dict[str, object] = {}
 
         def _stub(**kwargs: object) -> int:
             captured.update(kwargs)
             return 0
 
-        monkeypatch.setattr(history_mod, 'history_handler', _stub)
+        monkeypatch.setattr(module, handler_name, _stub)
 
-        result = invoke_cli(
-            'history',
-            '--until',
-            '2026-03-24T00:00:00Z',
-        )
-
+        result = invoke_cli(*argv)
         assert result.exit_code == 0
-        assert captured['until'] == '2026-03-24T00:00:00Z'
-
-    def test_log_until_reaches_handler(
-        self,
-        invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that ``log --until`` is parsed through the Typer runner."""
-        captured: dict[str, object] = {}
-
-        def _stub(**kwargs: object) -> int:
-            captured.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(log_mod, 'history_handler', _stub)
-
-        result = invoke_cli(
-            'log',
-            '--until',
-            '2026-03-24T00:00:00Z',
-        )
-
-        assert result.exit_code == 0
-        assert captured['until'] == '2026-03-24T00:00:00Z'
-        assert captured['raw'] is True
-
-    def test_report_group_by_reaches_handler(
-        self,
-        invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that ``report --group-by`` is parsed through the Typer runner."""
-        captured: dict[str, object] = {}
-
-        def _stub(**kwargs: object) -> int:
-            captured.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(report_mod, 'report_handler', _stub)
-
-        result = invoke_cli(
-            'report',
-            '--group-by',
-            'day',
-        )
-
-        assert result.exit_code == 0
-        assert captured['group_by'] == 'day'
-
-    def test_transform_target_type_reaches_handler(
-        self,
-        invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that ``transform --target-type`` is parsed through Typer."""
-        captured: dict[str, object] = {}
-
-        def _stub(**kwargs: object) -> int:
-            captured.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(transform_mod, 'transform_handler', _stub)
-
-        result = invoke_cli(
-            'transform',
-            '--target-type',
-            'api',
-            'https://example.com/items',
-        )
-
-        assert result.exit_code == 0
-        assert captured['target_type'] == 'api'
+        assert_mapping_contains(captured, expected)
 
 
 class TestCommandsMissingInputs:
@@ -377,211 +490,6 @@ class TestCommandsMissingInputs:
             command(typer_ctx_factory(), **kwargs)
         assert exc.value.exit_code == 2
         assert_stderr_contains(expected_message)
-
-
-class TestHistoryCommand:
-    """Unit tests for :func:`etlplus.cli._commands.history_cmd`."""
-
-    def test_delegates_to_handler(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        typer_ctx_factory: TyperContextFactory,
-        stub_handler: StubHandler,
-    ) -> None:
-        """Test that history inputs dispatch to ``history_handler``."""
-        monkeypatch.setattr(
-            history_mod,
-            'ensure_state',
-            lambda _ctx: CliState(pretty=False),
-        )
-        captured = stub_handler(
-            history_mod,
-            'history_handler',
-            result=0,
-        )
-
-        result = commands_mod.history_cmd(
-            typer_ctx_factory(),
-            job='job-a',
-            limit=5,
-            raw=False,
-            json_output=True,
-            since='2026-03-21T00:00:00Z',
-            status='failed',
-            table=False,
-            until='2026-03-24T00:00:00Z',
-        )
-
-        assert result == 0
-        assert captured == {
-            'job': 'job-a',
-            'json_output': True,
-            'limit': 5,
-            'pretty': False,
-            'raw': False,
-            'since': '2026-03-21T00:00:00Z',
-            'status': 'failed',
-            'table': False,
-            'until': '2026-03-24T00:00:00Z',
-        }
-
-
-class TestInitCommand:
-    """Unit tests for :func:`etlplus.cli._commands.init_cmd`."""
-
-    def test_delegates_to_handler(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        typer_ctx_factory: TyperContextFactory,
-        stub_handler: StubHandler,
-    ) -> None:
-        """
-        Test dispatching to :func:`etlplus.cli._commands.init_handler` with CLI
-        state.
-        """
-        monkeypatch.setattr(
-            init_mod,
-            'ensure_state',
-            lambda _ctx: CliState(pretty=False),
-        )
-        captured = stub_handler(
-            init_mod,
-            'init_handler',
-            result=5,
-        )
-
-        result = commands_mod.init_cmd(
-            typer_ctx_factory(),
-            directory='demo',
-            force=True,
-        )
-
-        assert result == 5
-        assert captured == {
-            'directory': 'demo',
-            'force': True,
-            'pretty': False,
-        }
-
-
-class TestLogCommand:
-    """Unit tests for :func:`etlplus.cli._commands.log_cmd`."""
-
-    def test_delegates_to_raw_history_handler(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        typer_ctx_factory: TyperContextFactory,
-        stub_handler: StubHandler,
-    ) -> None:
-        """Test that log inputs dispatch to the raw history handler."""
-        monkeypatch.setattr(
-            log_mod,
-            'ensure_state',
-            lambda _ctx: CliState(pretty=False),
-        )
-        captured = stub_handler(
-            log_mod,
-            'history_handler',
-            result=0,
-        )
-
-        result = commands_mod.log_cmd(
-            typer_ctx_factory(),
-            follow=True,
-            limit=7,
-            run_id='run-7',
-            since='2026-03-23T00:00:00Z',
-            until='2026-03-24T00:00:00Z',
-        )
-
-        assert result == 0
-        assert captured == {
-            'follow': True,
-            'limit': 7,
-            'pretty': False,
-            'raw': True,
-            'run_id': 'run-7',
-            'since': '2026-03-23T00:00:00Z',
-            'until': '2026-03-24T00:00:00Z',
-        }
-
-
-class TestReportCommand:
-    """Unit tests for :func:`etlplus.cli._commands.report_cmd`."""
-
-    def test_delegates_to_report_handler(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        typer_ctx_factory: TyperContextFactory,
-        stub_handler: StubHandler,
-    ) -> None:
-        """Test that report inputs dispatch to ``report_handler``."""
-        monkeypatch.setattr(
-            report_mod,
-            'ensure_state',
-            lambda _ctx: CliState(pretty=False),
-        )
-        captured = stub_handler(
-            report_mod,
-            'report_handler',
-            result=0,
-        )
-
-        result = commands_mod.report_cmd(
-            typer_ctx_factory(),
-            group_by='status',
-            job='job-a',
-            json_output=True,
-            since='2026-03-01T00:00:00Z',
-            table=False,
-            until='2026-03-31T23:59:59Z',
-        )
-
-        assert result == 0
-        assert captured == {
-            'group_by': 'status',
-            'job': 'job-a',
-            'json_output': True,
-            'pretty': False,
-            'since': '2026-03-01T00:00:00Z',
-            'table': False,
-            'until': '2026-03-31T23:59:59Z',
-        }
-
-
-class TestStatusCommand:
-    """Unit tests for :func:`etlplus.cli._commands.status_cmd`."""
-
-    def test_delegates_to_status_handler(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        typer_ctx_factory: TyperContextFactory,
-        stub_handler: StubHandler,
-    ) -> None:
-        """Test that status inputs dispatch to ``status_handler``."""
-        monkeypatch.setattr(
-            status_mod,
-            'ensure_state',
-            lambda _ctx: CliState(pretty=False),
-        )
-        captured = stub_handler(
-            status_mod,
-            'status_handler',
-            result=0,
-        )
-
-        result = commands_mod.status_cmd(
-            typer_ctx_factory(),
-            job='job-a',
-            run_id='run-9',
-        )
-
-        assert result == 0
-        assert captured == {
-            'job': 'job-a',
-            'pretty': False,
-            'run_id': 'run-9',
-        }
 
 
 class TestTransformCommand:
