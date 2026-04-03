@@ -6,25 +6,16 @@ Unit tests for :mod:`etlplus.connector._database`.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-
 import pytest
 
 from etlplus.connector._database import ConnectorDb
 from etlplus.connector._enums import DataConnectorType
 
+from .pytest_connector_support import assert_connector_fields
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-def _assert_fields(actual: object, expected: Mapping[str, object]) -> None:
-    """Assert that *actual* exposes the expected field values."""
-    for field, value in expected.items():
-        assert getattr(actual, field) == value
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -32,10 +23,10 @@ def _assert_fields(actual: object, expected: Mapping[str, object]) -> None:
 class TestConnectorDb:
     """Unit tests for :class:`ConnectorDb`."""
 
-    def test_from_obj_parses_database_fields(self) -> None:
+    def test_from_obj_normalizes_database_fields(self) -> None:
         """
-        Test that :meth:`from_obj` parses standard database connector fields
-        correctly.
+        Test that :meth:`from_obj` preserves standard database connector
+        fields.
         """
         connector = ConnectorDb.from_obj(
             {
@@ -48,7 +39,7 @@ class TestConnectorDb:
             },
         )
 
-        _assert_fields(
+        assert_connector_fields(
             connector,
             {
                 'type': DataConnectorType.DATABASE,

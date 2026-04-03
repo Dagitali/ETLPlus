@@ -10,7 +10,6 @@ Notes
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Any
 from typing import cast
 
@@ -22,18 +21,11 @@ from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorFile
 from etlplus.connector._enums import DataConnectorType
 
+from .pytest_connector_support import assert_connector_fields
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-def _assert_fields(actual: object, expected: Mapping[str, object]) -> None:
-    """Assert that *actual* exposes the expected field values."""
-    for field, value in expected.items():
-        assert getattr(actual, field) == value
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -78,7 +70,7 @@ class TestParseConnector:
         """Invalid connector payloads should raise :class:`TypeError`."""
         with pytest.raises(TypeError, match=match):
             connector_utils.parse_connector(
-                cast(Mapping[str, Any], payload),
+                cast(dict[str, Any], payload),
             )
 
     @pytest.mark.parametrize(
@@ -130,12 +122,12 @@ class TestParseConnector:
         expected_attrs: dict[str, object],
     ) -> None:
         """
-        Test that ``parse_connector`` instantiates supported connector types.
+        Test that ``parse_connector`` dispatches to supported connector types.
         """
 
         connector = connector_utils.parse_connector(payload)
         assert isinstance(connector, expected_cls)
-        _assert_fields(connector, expected_attrs)
+        assert_connector_fields(connector, expected_attrs)
 
 
 class TestInternalLoadConnector:

@@ -6,25 +6,16 @@ Unit tests for :mod:`etlplus.connector._api`.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-
 import pytest
 
 from etlplus.connector._api import ConnectorApi
 from etlplus.connector._enums import DataConnectorType
 
+from .pytest_connector_support import assert_connector_fields
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-def _assert_fields(actual: object, expected: Mapping[str, object]) -> None:
-    """Assert that *actual* exposes the expected field values."""
-    for field, value in expected.items():
-        assert getattr(actual, field) == value
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -92,10 +83,13 @@ class TestConnectorApi:
         pagination_start_page: int | None,
         rate_limit_sleep_seconds: float | None,
     ) -> None:
-        """Test that :meth:`from_obj` normalizes aliases and nested configs."""
+        """
+        Test that :meth:`from_obj` normalizes connector fields, aliases, and
+        nested config payloads.
+        """
         connector = ConnectorApi.from_obj(payload)
 
-        _assert_fields(connector, expected)
+        assert_connector_fields(connector, expected)
         if pagination_start_page is None:
             assert connector.pagination is None
         else:

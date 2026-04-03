@@ -6,25 +6,16 @@ Unit tests for :mod:`etlplus.connector._file`.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-
 import pytest
 
 from etlplus.connector._enums import DataConnectorType
 from etlplus.connector._file import ConnectorFile
 
+from .pytest_connector_support import assert_connector_fields
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-def _assert_fields(actual: object, expected: Mapping[str, object]) -> None:
-    """Assert that *actual* exposes the expected field values."""
-    for field, value in expected.items():
-        assert getattr(actual, field) == value
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -78,7 +69,7 @@ class TestConnectorFile:
         Test that :meth:`from_obj` preserves fields and normalizes options.
         """
         connector = ConnectorFile.from_obj(payload)
-        _assert_fields(connector, expected)
+        assert_connector_fields(connector, expected)
 
     @pytest.mark.parametrize(
         'payload',
