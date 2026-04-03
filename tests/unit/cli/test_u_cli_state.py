@@ -265,11 +265,25 @@ class TestCliValidateState:
 class TestCliHelp:
     """Unit test suite of command-line state tests for help text."""
 
-    def test_help_flag_prints_help(self, invoke_cli: InvokeCli) -> None:
-        """Test that the global ``--help`` flag builds the full command tree."""
-        result = invoke_cli('--help')
+    @pytest.mark.parametrize(
+        ('argv', 'expected'),
+        [
+            pytest.param(('--help',), 'init', id='root-help'),
+            pytest.param((), 'ETLPlus', id='no-args'),
+            pytest.param(('--version',), etlplus.__version__, id='version'),
+        ],
+    )
+    def test_global_output_contains_expected_text(
+        self,
+        invoke_cli: InvokeCli,
+        argv: tuple[str, ...],
+        expected: str,
+    ) -> None:
+        """Global help-like entrypoints should emit stable plain-text content."""
+        result = invoke_cli(*argv)
+
         assert result.exit_code == 0
-        assert 'init' in strip_ansi(result.stdout)
+        assert expected in strip_ansi(result.stdout)
 
     def test_init_help_prints_path_argument_and_force_option(
         self,
@@ -281,22 +295,6 @@ class TestCliHelp:
         assert result.exit_code == 0
         assert 'PATH' in stdout
         assert '--force' in stdout
-
-    def test_no_args_prints_help(self, invoke_cli: InvokeCli) -> None:
-        """Test that running with no arguments prints help text."""
-        result = invoke_cli()
-        assert result.exit_code == 0
-        assert 'ETLPlus' in strip_ansi(result.stdout)
-
-
-class TestCliVersionFlag:
-    """Unit test suite of command-line state tests for global flags."""
-
-    def test_version_flag_exits_zero(self, invoke_cli: InvokeCli) -> None:
-        """Test that command option ``--version`` exits successfully."""
-        result = invoke_cli('--version')
-        assert result.exit_code == 0
-        assert etlplus.__version__ in strip_ansi(result.stdout)
 
 
 class TestInferResourceType:
@@ -437,7 +435,7 @@ class TestCliStateHelpers:
         )
 
         assert resolved is None
-        assert validated == []
+        assert not validated
         assert logged == {
             'role': 'source',
             'value': 'payload.json',
