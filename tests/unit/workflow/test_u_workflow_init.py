@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.workflow` package exports.
 
 from __future__ import annotations
 
+import pytest
+
 import etlplus.workflow as workflow_pkg
 from etlplus.workflow._dag import DagError
 from etlplus.workflow._dag import topological_sort_jobs
@@ -20,27 +22,39 @@ from etlplus.workflow._profile import ProfileConfig
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: HELPERS ========================================================== #
+
+
+WORKFLOW_EXPORTS = [
+    ('ExtractRef', ExtractRef),
+    ('JobConfig', JobConfig),
+    ('LoadRef', LoadRef),
+    ('ProfileConfig', ProfileConfig),
+    ('TransformRef', TransformRef),
+    ('ValidationRef', ValidationRef),
+    ('DagError', DagError),
+    ('topological_sort_jobs', topological_sort_jobs),
+]
+
 # SECTION: TESTS ============================================================ #
 
 
-def test_workflow_package_exports_expected_symbols() -> None:
-    """Test that package re-exports match documented ``__all__``."""
-    assert workflow_pkg.DagError is DagError
-    assert workflow_pkg.ExtractRef is ExtractRef
-    assert workflow_pkg.JobConfig is JobConfig
-    assert workflow_pkg.LoadRef is LoadRef
-    assert workflow_pkg.TransformRef is TransformRef
-    assert workflow_pkg.ValidationRef is ValidationRef
-    assert workflow_pkg.ProfileConfig is ProfileConfig
-    assert workflow_pkg.topological_sort_jobs is topological_sort_jobs
+class TestWorkflowPackageExports:
+    """Unit tests for package-level exports."""
 
-    assert set(workflow_pkg.__all__) == {
-        'DagError',
-        'ExtractRef',
-        'JobConfig',
-        'LoadRef',
-        'ProfileConfig',
-        'TransformRef',
-        'ValidationRef',
-        'topological_sort_jobs',
-    }
+    def test_expected_symbols(self) -> None:
+        """
+        Test that package facade preserves the documented export order of the
+        public API surface (i.e., ``__all__`` contract).
+        """
+        assert workflow_pkg.__all__ == [name for name, _value in WORKFLOW_EXPORTS]
+
+    @pytest.mark.parametrize(('name', 'expected'), WORKFLOW_EXPORTS)
+    def test_expected_symbol_bindings(
+        self,
+
+        name: str,
+        expected: object,
+    ) -> None:
+        """Test that package exports resolve to their canonical objects."""
+        assert getattr(workflow_pkg, name) == expected
