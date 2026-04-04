@@ -29,6 +29,7 @@ shared_mod = importlib.import_module('etlplus.ops._shared')
 
 
 @pytest.fixture(
+    name='option_case',
     params=[
         pytest.param(
             {
@@ -90,7 +91,7 @@ shared_mod = importlib.import_module('etlplus.ops._shared')
         ),
     ],
 )
-def option_case(request: pytest.FixtureRequest) -> dict[str, Any]:
+def option_case_fixture(request: pytest.FixtureRequest) -> dict[str, Any]:
     """Provide parametrized read/write option coercion cases."""
     return request.param
 
@@ -106,20 +107,22 @@ class TestSharedFileOptionHelpers:
         option_case: dict[str, Any],
     ) -> None:
         """Mapping inputs should be normalized into concrete option objects."""
-        options = option_case['coerce'](option_case['mapping'])
+        case = option_case
+        options = case['coerce'](case['mapping'])
 
-        assert isinstance(options, option_case['option_type'])
+        assert isinstance(options, case['option_type'])
         assert options is not None
-        for attr_name, expected_value in option_case['expected_attrs'].items():
+        for attr_name, expected_value in case['expected_attrs'].items():
             assert getattr(options, attr_name) == expected_value
-        assert options.extras == option_case['expected_extras']
+        assert options.extras == case['expected_extras']
 
     def test_coerce_file_options_passthrough(
         self,
         option_case: dict[str, Any],
     ) -> None:
         """Existing option objects should be returned unchanged."""
-        assert option_case['coerce'](option_case['instance']) is option_case['instance']
+        case = option_case
+        assert case['coerce'](case['instance']) is case['instance']
 
 
 class TestSharedCollectionHelpers:
