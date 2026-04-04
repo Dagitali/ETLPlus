@@ -217,6 +217,11 @@ sources:
     format: json
     path: "${data_dir}/customers.json"
 
+  - name: customers_clean_json
+    type: file
+    format: json
+    path: "${out_dir}/customers_clean.json"
+
   # 2) Database source (placeholder extract implementation in ETLPlus) -----
   - name: customers_db
     type: database
@@ -382,6 +387,11 @@ targets:
     format: csv
     path: "${out_dir}/customers_clean.csv"
 
+  - name: customers_summary_out
+    type: file
+    format: json
+    path: "${out_dir}/customers_summary.json"
+
   - name: db_customers_out
     type: database
     connection_string: >
@@ -444,5 +454,15 @@ jobs:
       pipeline: summarize_customers
     load:
       target: webhook_out
+
+  - name: summarize_clean_customers
+    description: "Use depends_on to summarize the cleaned customer export"
+    depends_on: [file_to_file_customers]
+    extract:
+      source: customers_clean_json
+    transform:
+      pipeline: summarize_customers
+    load:
+      target: customers_summary_out
 
 # End of file.
