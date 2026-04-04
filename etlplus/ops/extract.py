@@ -7,6 +7,7 @@ Helpers to extract data from files, databases, and REST APIs.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 from typing import cast
 from urllib.parse import urlsplit
@@ -27,6 +28,7 @@ from ..utils._types import StrPath
 from ..utils._types import Timeout
 from ._http import build_request_call
 from ._http import require_url
+from ._http import send_request
 from ._options import coerce_read_options as _coerce_read_options
 
 # SECTION: EXPORTS ========================================================== #
@@ -39,6 +41,19 @@ __all__ = [
     'extract_from_database',
     'extract_from_file',
 ]
+
+
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(frozen=True, slots=True)
+class _FileReadSource:
+    """Resolved file source details for one read operation."""
+
+    # -- Instance Attributes -- #
+
+    file: File
+    file_format: FileFormat | None
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -174,13 +189,7 @@ def _extract_from_api_env(
         error_message='API source missing URL',
         default_method=HttpMethod.GET,
     )
-    response = request.request_callable(
-        request.url,
-        timeout=request.timeout,
-        **request.kwargs,
-    )
-    response.raise_for_status()
-    return _parse_api_response(response)
+    return _parse_api_response(send_request(request))
 
 
 def _parse_api_response(
@@ -342,14 +351,31 @@ def extract_from_file(
         Parsed data as a mapping or a list of mappings.
     """
     resolved_options = _coerce_read_options(options)
-    file = File(file_path, file_format)
+    source = _resolve_file_read_source(file_path, file_format)
+    return (
+        source.file.read()
+        if resolved_options is None
+        else source.file.read(options=resolved_options)
+    )
 
-    # If no explicit format is provided, let File infer from extension.
-    if resolved_options is None:
-        return file.read()
 
-    # Let file module perform existence and format validation.
-    return file.read(options=resolved_options)
+def _resolve_file_read_source(
+    file_path: StrPath,
+    file_format: FileFormat | str | None,
+) -> _FileReadSource:
+    """Return one file source and its effective format."""
+    if file_format is None:
+        file = File(file_path)
+        return _FileReadSource(
+            file=file,
+            file_format=file.file_format,
+        )
+
+    resolved_format = FileFormat.coerce(file_format)
+    return _FileReadSource(
+        file=File(file_path, resolved_format),
+        file_format=resolved_format,
+    )
 
 
 # -- Orchestration -- #
