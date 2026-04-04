@@ -51,6 +51,49 @@ class _Response:
 # SECTION: TESTS ============================================================ #
 
 
+class TestBuildDirectRequestEnv:
+    """Unit tests for direct-request environment construction."""
+
+    def test_build_direct_request_env_splits_session_and_timeout(self) -> None:
+        """Session/timeout should be promoted out of request kwargs."""
+        env = http_mod.build_direct_request_env(
+            'https://example.test/api',
+            HttpMethod.PUT,
+            {
+                'session': 'session',
+                'timeout': 2.5,
+                'headers': {'X-Test': '1'},
+                'verify': False,
+            },
+        )
+
+        assert env == {
+            'url': 'https://example.test/api',
+            'method': HttpMethod.PUT,
+            'timeout': 2.5,
+            'session': 'session',
+            'request_kwargs': {
+                'headers': {'X-Test': '1'},
+                'verify': False,
+            },
+        }
+
+    def test_build_direct_request_env_defaults_optional_fields(self) -> None:
+        """Missing session/timeout should normalize to ``None``."""
+        env = http_mod.build_direct_request_env(
+            'https://example.test/api',
+            HttpMethod.GET,
+        )
+
+        assert env == {
+            'url': 'https://example.test/api',
+            'method': HttpMethod.GET,
+            'timeout': None,
+            'session': None,
+            'request_kwargs': {},
+        }
+
+
 class TestBuildRequestCall:
     """Unit tests for normalized request-call construction."""
 
