@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.ops.test_u_ops_options` module.
 
-Unit tests for :mod:`etlplus.ops._file_options`.
+Unit tests for :mod:`etlplus.ops._options`.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from etlplus.file.base import WriteOptions
 # SECTION: HELPERS ========================================================== #
 
 
-file_options_mod = importlib.import_module('etlplus.ops._file_options')
+options_mod = importlib.import_module('etlplus.ops._options')
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -32,7 +32,7 @@ file_options_mod = importlib.import_module('etlplus.ops._file_options')
     params=[
         pytest.param(
             {
-                'coerce': file_options_mod.coerce_read_options,
+                'coerce': options_mod.coerce_read_options,
                 'mapping': {
                     'encoding': 'utf-16',
                     'sheet': 2,
@@ -60,7 +60,7 @@ file_options_mod = importlib.import_module('etlplus.ops._file_options')
         ),
         pytest.param(
             {
-                'coerce': file_options_mod.coerce_write_options,
+                'coerce': options_mod.coerce_write_options,
                 'mapping': {
                     'encoding': 65001,
                     'root_tag': 7,
@@ -122,3 +122,13 @@ class TestFileOptionHelpers:
         """Existing option objects should be returned unchanged."""
         case = option_case
         assert case['coerce'](case['instance']) is case['instance']
+
+    def test_internal_coerce_file_options_rejects_invalid_object(self) -> None:
+        """Invalid non-mapping option objects should raise :class:`TypeError`."""
+        with pytest.raises(TypeError, match='options must be a mapping'):
+            options_mod._coerce_file_options(
+                object(),
+                option_type=ReadOptions,
+                factory=ReadOptions,
+                defaults={'encoding': 'utf-8'},
+            )
