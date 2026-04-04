@@ -26,6 +26,7 @@ from ..utils._types import JSONDict
 from ..utils._types import StrPath
 from ._http import build_request_call
 from ._http import response_json_or_text
+from ._http import send_request
 from ._options import coerce_write_options as _coerce_write_options
 
 # SECTION: EXPORTS ========================================================== #
@@ -126,12 +127,7 @@ def _load_to_api_env(
         default_method=HttpMethod.POST,
         json_data=data,
     )
-    response = request.request_callable(
-        request.url,
-        timeout=request.timeout,
-        **request.kwargs,
-    )
-    response.raise_for_status()
+    response = send_request(request)
 
     return {
         'status': 'success',
