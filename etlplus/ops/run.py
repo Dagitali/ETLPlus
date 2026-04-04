@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from dataclasses import field
+from pathlib import Path
 from time import perf_counter
 from typing import Any
 from typing import Final
@@ -26,12 +28,14 @@ from ..workflow import topological_sort_jobs
 from ._mappings import index_named_items
 from ._mappings import merge_mapping_options
 from ._types import PipelineConfig
+from ._validation import ValidationResultDict
 from ._validation import maybe_validate
 from .extract import extract
 from .extract import extract_from_api_source
 from .load import load
 from .load import load_to_api_target
 from .transform import transform
+from .validate import FieldRulesDict
 from .validate import validate
 
 # SECTION: EXPORTS ========================================================== #
@@ -91,6 +95,216 @@ class _RunContext:
                 label='target',
             ),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class _FileConnectorConfig:
+    """Resolved file connector settings for one extract/load step."""
+
+    # -- Instance Attributes -- #
+
+    path: StrPath
+    file_format: FileFormat | str | None
+    options: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class _JobValidationConfig:
+    """Normalized per-job validation settings."""
+
+    # -- Instance Attributes -- #
+
+    enabled: bool
+    rules: Mapping[str, Any]
+    severity: str
+    phase: str
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_job(
+        cls,
+        job_obj: Any,
+        cfg: Any,
+    ) -> Self:
+        """Build validation settings for one configured job."""
+        if (val_ref := getattr(job_obj, 'validate', None)) is None:
+            return cls(
+                enabled=False,
+                rules={},
+                severity='error',
+                phase='before_transform',
+            )
+
+        validations = getattr(cfg, 'validations', {}) or {}
+        rules = (
+            validations.get(val_ref.ruleset, {})
+            if isinstance(validations, Mapping)
+            else {}
+        )
+        if not isinstance(rules, Mapping):
+            rules = {}
+
+        return cls(
+            enabled=True,
+            rules=dict(rules),
+            severity=(val_ref.severity or 'error').lower(),
+            phase=(val_ref.phase or 'before_transform').lower(),
+        )
+
+    # -- Instance Methods -- #
+
+    def apply(
+        self,
+        data: JSONData,
+        *,
+        when: str,
+    ) -> JSONData:
+        """Validate one pipeline payload for the requested phase."""
+        return maybe_validate(
+            data,
+            when,
+            enabled=self.enabled,
+            rules=self.rules,
+            phase=self.phase,
+            severity=self.severity,
+            validate_fn=_validate_payload,
+            print_json_fn=print_json,
+        )
+
+
+@dataclass(slots=True)
+class _RunPlanTracker:
+    """Accumulate execution state for one DAG-style run."""
+
+    # -- Instance Attributes -- #
+
+    ordered_job_names: list[str]
+    requested_job: str | None
+    continue_on_fail: bool
+    mode: str
+    failed_job_names: list[str] = field(default_factory=list)
+    skipped_job_names: list[str] = field(default_factory=list)
+    succeeded_job_names: list[str] = field(default_factory=list)
+    executed_jobs: list[dict[str, Any]] = field(default_factory=list)
+    final_job_name: str | None = None
+    final_result: JSONDict | None = None
+    final_result_status: str | None = None
+    _failed_lookup: set[str] = field(default_factory=set, repr=False)
+    _skipped_lookup: set[str] = field(default_factory=set, repr=False)
+
+    # -- Instance Methods -- #
+
+    def blocked_dependencies(
+        self,
+        job_obj: Any,
+    ) -> list[str]:
+        """Return failed/skipped upstream dependencies for one job."""
+        return [
+            dep
+            for dep in _job_dependencies(job_obj)
+            if dep in self._failed_lookup or dep in self._skipped_lookup
+        ]
+
+    def record_skipped(
+        self,
+        job_name: str,
+        *,
+        blocked_by: list[str],
+    ) -> None:
+        """Record a skipped job caused by failed upstream dependencies."""
+        self.skipped_job_names.append(job_name)
+        self._skipped_lookup.add(job_name)
+        self.executed_jobs.append(
+            {
+                'job': job_name,
+                'reason': 'upstream_failed',
+                'skipped_due_to': blocked_by,
+                'status': 'skipped',
+            },
+        )
+        self.final_job_name = job_name
+        self.final_result = None
+        self.final_result_status = None
+
+    def record_failure(
+        self,
+        job_name: str,
+        *,
+        exc: Exception,
+        duration_ms: int,
+    ) -> None:
+        """Record a failed job execution."""
+        self.failed_job_names.append(job_name)
+        self._failed_lookup.add(job_name)
+        self.executed_jobs.append(
+            {
+                'duration_ms': duration_ms,
+                'error_message': str(exc),
+                'error_type': type(exc).__name__,
+                'job': job_name,
+                'status': 'failed',
+            },
+        )
+        self.final_job_name = job_name
+        self.final_result = None
+        self.final_result_status = None
+
+    def record_success(
+        self,
+        job_name: str,
+        *,
+        result: JSONDict,
+        duration_ms: int,
+    ) -> None:
+        """Record a successful job execution."""
+        result_status = result.get('status')
+        self.succeeded_job_names.append(job_name)
+        self.executed_jobs.append(
+            {
+                'duration_ms': duration_ms,
+                'job': job_name,
+                'result': result,
+                'result_status': result_status,
+                'status': 'succeeded',
+            },
+        )
+        self.final_job_name = job_name
+        self.final_result = result
+        self.final_result_status = (
+            result_status if isinstance(result_status, str) else None
+        )
+
+    def result(self) -> JSONDict:
+        """Return the stable summary payload for the run."""
+        summary_status = (
+            'success'
+            if not self.failed_job_names and not self.skipped_job_names
+            else 'partial_success'
+            if self.continue_on_fail and self.succeeded_job_names
+            else 'failed'
+        )
+
+        return {
+            'continue_on_fail': self.continue_on_fail,
+            'executed_job_count': len(self.failed_job_names)
+            + len(self.succeeded_job_names),
+            'executed_jobs': self.executed_jobs,
+            'failed_job_count': len(self.failed_job_names),
+            'failed_jobs': self.failed_job_names,
+            'final_job': self.final_job_name,
+            'final_result': self.final_result,
+            'final_result_status': self.final_result_status,
+            'job_count': len(self.ordered_job_names),
+            'mode': self.mode,
+            'ordered_jobs': self.ordered_job_names,
+            'requested_job': self.requested_job,
+            'skipped_job_count': len(self.skipped_job_names),
+            'skipped_jobs': self.skipped_job_names,
+            'status': summary_status,
+            'succeeded_job_count': len(self.succeeded_job_names),
+            'succeeded_jobs': self.succeeded_job_names,
+        }
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -161,7 +375,7 @@ def _job_dependencies(
     depends_on = getattr(job_obj, 'depends_on', [])
     if isinstance(depends_on, str):
         return [depends_on]
-    if not isinstance(depends_on, list):
+    if not isinstance(depends_on, (list, tuple, set, frozenset)):
         return []
     return [dep for dep in depends_on if isinstance(dep, str)]
 
@@ -182,13 +396,13 @@ def _ordered_job_names(
     """Return job names in topological order."""
     dag_jobs = [
         _DagJobRef(
-            name=cast(str, job.name),
+            name=name,
             depends_on=_job_dependencies(job),
         )
         for job in jobs
-        if isinstance(getattr(job, 'name', None), str) and job.name
+        if isinstance(name := getattr(job, 'name', None), str) and name
     ]
-    ordered = topological_sort_jobs(cast(Any, dag_jobs))
+    ordered = topological_sort_jobs(dag_jobs)  # type: ignore[arg-type]
     return [job.name for job in ordered]
 
 
@@ -262,22 +476,13 @@ def _run_job_config(
 ) -> JSONDict:
     """Execute one configured job object against an already-loaded config."""
     data = _extract_job_data(context, job_obj)
-    validation_kwargs = _validation_kwargs(job_obj, context.cfg)
-
-    data = _maybe_validate_job_data(
-        data,
-        when='before_transform',
-        validation_kwargs=validation_kwargs,
-    )
+    validation = _JobValidationConfig.from_job(job_obj, context.cfg)
+    data = validation.apply(data, when='before_transform')
 
     if (ops := _resolve_transform_ops(context.cfg, job_obj)) is not None:
         data = transform(data, ops)
 
-    data = _maybe_validate_job_data(
-        data,
-        when='after_transform',
-        validation_kwargs=validation_kwargs,
-    )
+    data = validation.apply(data, when='after_transform')
     return _load_job_result(context, job_obj, data)
 
 
@@ -298,18 +503,16 @@ def _extract_job_data(
 
     match DataConnectorType.coerce(getattr(source_obj, 'type', '') or ''):
         case DataConnectorType.FILE:
-            path = overrides.get('path') or getattr(source_obj, 'path', None)
-            fmt = overrides.get('format') or getattr(source_obj, 'format', 'json')
-            if not path:
-                raise ValueError('File source missing "path"')
+            file_cfg = _resolve_file_connector_config(
+                source_obj,
+                overrides,
+                missing_path_message='File source missing "path"',
+            )
             return extract(
                 'file',
-                path,
-                file_format=fmt,
-                **_merge_file_options(
-                    getattr(source_obj, 'options', None),
-                    overrides,
-                ),
+                file_cfg.path,
+                file_format=file_cfg.file_format,
+                **file_cfg.options,
             )
         case DataConnectorType.DATABASE:
             return extract(
@@ -346,19 +549,17 @@ def _load_job_result(
 
     match DataConnectorType.coerce(getattr(target_obj, 'type', '') or ''):
         case DataConnectorType.FILE:
-            path = overrides.get('path') or getattr(target_obj, 'path', None)
-            fmt = overrides.get('format') or getattr(target_obj, 'format', 'json')
-            if not path:
-                raise ValueError('File target missing "path"')
+            file_cfg = _resolve_file_connector_config(
+                target_obj,
+                overrides,
+                missing_path_message='File target missing "path"',
+            )
             result = load(
                 data,
                 'file',
-                path,
-                file_format=fmt,
-                **_merge_file_options(
-                    getattr(target_obj, 'options', None),
-                    overrides,
-                ),
+                file_cfg.path,
+                file_format=file_cfg.file_format,
+                **file_cfg.options,
             )
         case DataConnectorType.API:
             result = load_to_api_target(
@@ -381,7 +582,37 @@ def _load_job_result(
                 f'Unsupported target type: {getattr(target_obj, "type", None)}',
             )
 
-    return cast(JSONDict, result)
+    if not isinstance(result, dict):
+        raise TypeError('load result must be a mapping')
+    return result
+
+
+def _resolve_file_connector_config(
+    connector_obj: Any,
+    overrides: Mapping[str, Any],
+    *,
+    missing_path_message: str,
+) -> _FileConnectorConfig:
+    """Resolve path, format, and merged options for one file connector."""
+    path = overrides.get('path') or getattr(connector_obj, 'path', None)
+    if not path:
+        raise ValueError(missing_path_message)
+
+    return _FileConnectorConfig(
+        path=_require_path_like(
+            path,
+            message=missing_path_message,
+        ),
+        file_format=overrides.get('format') or getattr(
+            connector_obj,
+            'format',
+            'json',
+        ),
+        options=_merge_file_options(
+            getattr(connector_obj, 'options', None),
+            overrides,
+        ),
+    )
 
 
 def _resolve_transform_ops(
@@ -398,39 +629,6 @@ def _resolve_transform_ops(
     return transforms.get(getattr(transform_cfg, 'pipeline', None), {})
 
 
-def _validation_kwargs(
-    job_obj: Any,
-    cfg: Any,
-) -> dict[str, Any]:
-    """Build the keyword arguments shared by both validation phases."""
-    enabled, rules, severity, phase = _resolve_validation_config(job_obj, cfg)
-    return {
-        'enabled': enabled,
-        'phase': phase,
-        'print_json_fn': print_json,
-        'rules': rules,
-        'severity': severity,
-        'validate_fn': validate,
-    }
-
-
-def _maybe_validate_job_data(
-    data: JSONData,
-    *,
-    when: str,
-    validation_kwargs: Mapping[str, Any],
-) -> JSONData:
-    """Apply conditional validation for one pipeline phase."""
-    return cast(
-        JSONData,
-        maybe_validate(
-            data,
-            when,
-            **validation_kwargs,
-        ),
-    )
-
-
 def _run_job_plan(
     context: _RunContext,
     jobs: list[Any],
@@ -440,38 +638,18 @@ def _run_job_plan(
     mode: str,
 ) -> JSONDict:
     """Execute multiple jobs in DAG order and return a stable summary."""
-    ordered_job_names = [cast(str, job.name) for job in jobs]
-    failed_job_names: list[str] = []
-    failed_lookup: set[str] = set()
-    skipped_job_names: list[str] = []
-    skipped_lookup: set[str] = set()
-    succeeded_job_names: list[str] = []
-    executed_jobs: list[dict[str, Any]] = []
-    final_job_name: str | None = None
-    final_result: JSONDict | None = None
-    final_result_status: str | None = None
+    tracker = _RunPlanTracker(
+        ordered_job_names=[_require_job_name(job) for job in jobs],
+        requested_job=requested_job,
+        continue_on_fail=continue_on_fail,
+        mode=mode,
+    )
 
     for job_obj in jobs:
-        job_name = cast(str, job_obj.name)
-        blocked_by = [
-            dep
-            for dep in _job_dependencies(job_obj)
-            if dep in failed_lookup or dep in skipped_lookup
-        ]
+        job_name = _require_job_name(job_obj)
+        blocked_by = tracker.blocked_dependencies(job_obj)
         if blocked_by:
-            skipped_job_names.append(job_name)
-            skipped_lookup.add(job_name)
-            executed_jobs.append(
-                {
-                    'job': job_name,
-                    'status': 'skipped',
-                    'reason': 'upstream_failed',
-                    'skipped_due_to': blocked_by,
-                },
-            )
-            final_job_name = job_name
-            final_result = None
-            final_result_status = None
+            tracker.record_skipped(job_name, blocked_by=blocked_by)
             continue
 
         started_perf = perf_counter()
@@ -481,72 +659,25 @@ def _run_job_plan(
                 job_obj,
             )
         except (KeyError, OSError, RuntimeError, ValueError) as exc:
-            failed_job_names.append(job_name)
-            failed_lookup.add(job_name)
-            executed_jobs.append(
-                {
-                    'duration_ms': int((perf_counter() - started_perf) * 1000),
-                    'error_message': str(exc),
-                    'error_type': type(exc).__name__,
-                    'job': job_name,
-                    'status': 'failed',
-                },
+            tracker.record_failure(
+                job_name,
+                exc=exc,
+                duration_ms=_duration_ms(started_perf),
             )
-            final_job_name = job_name
-            final_result = None
-            final_result_status = None
             if not continue_on_fail:
                 break
             continue
 
-        result_status = result.get('status') if isinstance(result, Mapping) else None
-        succeeded_job_names.append(job_name)
-        executed_jobs.append(
-            {
-                'duration_ms': int((perf_counter() - started_perf) * 1000),
-                'job': job_name,
-                'result': result,
-                'result_status': result_status,
-                'status': 'succeeded',
-            },
+        tracker.record_success(
+            job_name,
+            result=result,
+            duration_ms=_duration_ms(started_perf),
         )
-        final_job_name = job_name
-        final_result = result
-        final_result_status = cast(str | None, result_status)
-
-    summary_status = (
-        'success'
-        if not failed_job_names and not skipped_job_names
-        else 'partial_success'
-        if continue_on_fail and succeeded_job_names
-        else 'failed'
-    )
-
-    return {
-        'continue_on_fail': continue_on_fail,
-        'executed_job_count': sum(
-            1 for item in executed_jobs if item.get('status') in {'succeeded', 'failed'}
-        ),
-        'executed_jobs': executed_jobs,
-        'failed_job_count': len(failed_job_names),
-        'failed_jobs': failed_job_names,
-        'final_job': final_job_name,
-        'final_result': final_result,
-        'final_result_status': final_result_status,
-        'job_count': len(ordered_job_names),
-        'mode': mode,
-        'ordered_jobs': ordered_job_names,
-        'requested_job': requested_job,
-        'skipped_job_count': len(skipped_job_names),
-        'skipped_jobs': skipped_job_names,
-        'status': summary_status,
-        'succeeded_job_count': len(succeeded_job_names),
-        'succeeded_jobs': succeeded_job_names,
-    }
+    return tracker.result()
 
 
 def _require_named_connector(
-    connectors: dict[str, Any],
+    connectors: Mapping[str, Any],
     name: str,
     *,
     label: str,
@@ -578,36 +709,52 @@ def _require_named_connector(
     return connectors[name]
 
 
-def _resolve_validation_config(
+def _require_job_name(
     job_obj: Any,
-    cfg: Any,
-) -> tuple[bool, dict[str, Any], str, str]:
+) -> str:
+    """Return a required non-empty job name."""
+    if isinstance(name := getattr(job_obj, 'name', None), str) and name:
+        return name
+    raise ValueError('Configured job missing "name"')
+
+
+def _require_path_like(
+    value: object,
+    *,
+    message: str,
+) -> StrPath:
+    """Return a path/URI string or :class:`Path`, else raise :class:`TypeError`."""
+    if isinstance(value, (str, Path)):
+        return value
+    raise TypeError(message)
+
+
+def _duration_ms(
+    started_perf: float,
+) -> int:
+    """Convert a perf-counter start time into elapsed milliseconds."""
+    return int((perf_counter() - started_perf) * 1000)
+
+
+def _validate_payload(
+    payload: Any,
+    rules: Mapping[str, Any],
+) -> ValidationResultDict:
     """
-    Resolve validation settings for a job with safe defaults.
+    Adapt :func:`etlplus.ops.validate.validate` to the generic callback shape.
 
-    Parameters
-    ----------
-    job_obj : Any
-        Job configuration object.
-    cfg : Any
-        Pipeline configuration object with validations.
-
-    Returns
-    -------
-    tuple[bool, dict[str, Any], str, str]
-        Tuple of (enabled, rules, severity, phase).
+    The orchestration layer carries validation rules as loose mappings, while
+    :func:`validate` expects field-rule mappings. This adapter localizes that
+    type narrowing for static analysis without weakening the public validator
+    contract.
     """
-    val_ref = job_obj.validate
-    if val_ref is None:
-        return False, {}, 'error', 'before_transform'
-
-    validations = getattr(cfg, 'validations', {}) or {}
-    if not isinstance(validations, Mapping):
-        validations = {}
-    rules = validations.get(val_ref.ruleset, {})
-    severity = (val_ref.severity or 'error').lower()
-    phase = (val_ref.phase or 'before_transform').lower()
-    return True, rules, severity, phase
+    return cast(
+        ValidationResultDict,
+        validate(
+            payload,
+            cast(Mapping[str, FieldRulesDict], rules),
+        ),
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -728,7 +875,13 @@ def run_pipeline(
             raise ValueError('source is required when source_type is set')
         data = extract(
             source_type,
-            cast(StrPath, source),
+            _require_path_like(
+                source,
+                message=(
+                    'source must be a path-like string or Path '
+                    'when source_type is set'
+                ),
+            ),
             file_format=file_format,
             **kwargs,
         )
