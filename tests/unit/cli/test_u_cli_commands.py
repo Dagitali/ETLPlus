@@ -20,6 +20,7 @@ import etlplus.cli._commands.history as history_mod
 import etlplus.cli._commands.init as init_mod
 import etlplus.cli._commands.log as log_mod
 import etlplus.cli._commands.report as report_mod
+import etlplus.cli._commands.run as run_mod
 import etlplus.cli._commands.status as status_mod
 import etlplus.cli._commands.transform as transform_mod
 from etlplus.cli._commands._state import CliState
@@ -143,6 +144,7 @@ class TestDelegatingCommands:
                 'check_handler',
                 {
                     'config': 'pipeline.yml',
+                    'graph': False,
                     'jobs': True,
                     'pipelines': False,
                     'sources': False,
@@ -152,6 +154,7 @@ class TestDelegatingCommands:
                 },
                 {
                     'config': 'pipeline.yml',
+                    'graph': False,
                     'jobs': True,
                     'pipelines': False,
                     'readiness': False,
@@ -164,6 +167,30 @@ class TestDelegatingCommands:
                 },
                 3,
                 id='check',
+            ),
+            pytest.param(
+                run_mod,
+                commands_mod.run_cmd,
+                'run_handler',
+                {
+                    'config': 'pipeline.yml',
+                    'job': 'job-a',
+                    'pipeline': None,
+                    'run_all': False,
+                    'continue_on_fail': True,
+                    'event_format': 'jsonl',
+                },
+                {
+                    'config': 'pipeline.yml',
+                    'job': 'job-a',
+                    'pipeline': None,
+                    'run_all': False,
+                    'continue_on_fail': True,
+                    'event_format': 'jsonl',
+                    'pretty': False,
+                },
+                0,
+                id='run',
             ),
             pytest.param(
                 history_mod,
@@ -303,6 +330,29 @@ class TestDelegatingCommands:
         assert command(typer_ctx_factory(), **kwargs) == result
         assert captured == expected
 
+    def test_rejects_graph_with_inspection_flags(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+    ) -> None:
+        """Graph mode should reject section-inspection flag combinations."""
+        monkeypatch.setattr(
+            check_mod,
+            'fail_usage',
+            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
+        )
+
+        with pytest.raises(
+            typer.BadParameter,
+            match='--graph cannot be combined with inspection flags',
+        ):
+            commands_mod.check_cmd(
+                typer_ctx_factory(),
+                config='pipeline.yml',
+                graph=True,
+                jobs=True,
+            )
+
     def test_rejects_readiness_with_inspection_flags(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -326,6 +376,29 @@ class TestDelegatingCommands:
                 readiness=True,
             )
 
+    def test_rejects_run_all_with_job_selection(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+    ) -> None:
+        """Run mode should reject ``--all`` combined with job selection."""
+        monkeypatch.setattr(
+            run_mod,
+            'fail_usage',
+            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
+        )
+
+        with pytest.raises(
+            typer.BadParameter,
+            match='--all cannot be combined with --job or --pipeline',
+        ):
+            commands_mod.run_cmd(
+                typer_ctx_factory(),
+                config='pipeline.yml',
+                job='job-a',
+                run_all=True,
+            )
+
 
 class TestCliInvokeParsing:
     """Typer runner coverage for history/log/report option parsing."""
@@ -333,6 +406,13 @@ class TestCliInvokeParsing:
     @pytest.mark.parametrize(
         ('argv', 'module', 'handler_name', 'expected'),
         [
+            pytest.param(
+                ('check', '--config', 'pipeline.yml', '--graph'),
+                check_mod,
+                'check_handler',
+                {'graph': True},
+                id='check-graph',
+            ),
             pytest.param(
                 ('history', '--until', '2026-03-24T00:00:00Z'),
                 history_mod,
@@ -349,6 +429,23 @@ class TestCliInvokeParsing:
                     'raw': True,
                 },
                 id='log-until',
+            ),
+            pytest.param(
+                (
+                    'run',
+                    '--config',
+                    'pipeline.yml',
+                    '--all',
+                    '--continue-on-fail',
+                ),
+                run_mod,
+                'run_handler',
+                {
+                    'config': 'pipeline.yml',
+                    'continue_on_fail': True,
+                    'run_all': True,
+                },
+                id='run-all',
             ),
             pytest.param(
                 ('report', '--group-by', 'day'),

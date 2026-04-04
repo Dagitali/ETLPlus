@@ -12,13 +12,16 @@ from typing import Any
 
 from ... import Config
 from ...database import load_table_spec
+from ...workflow import topological_sort_jobs
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Functins
     'check_sections',
     'collect_table_specs',
+    'graph_summary',
     'pipeline_summary',
 ]
 
@@ -141,4 +144,43 @@ def pipeline_summary(
         'sources': [src.name for src in cfg.sources],
         'targets': [tgt.name for tgt in cfg.targets],
         'jobs': [job.name for job in cfg.jobs],
+    }
+
+
+def graph_summary(
+    cfg: Config,
+) -> dict[str, Any]:
+    """
+    Return one dependency-graph summary for configured jobs.
+
+    Parameters
+    ----------
+    cfg : Config
+        The pipeline configuration object.
+
+    Returns
+    -------
+    dict[str, Any]
+        JSON-serializable DAG summary including ordered jobs and dependencies.
+    """
+    seen: set[str] = set()
+    for job in cfg.jobs:
+        if job.name in seen:
+            raise ValueError(f'Duplicate job name: {job.name}')
+        seen.add(job.name)
+
+    ordered_jobs = topological_sort_jobs(cfg.jobs)
+    return {
+        'job_count': len(ordered_jobs),
+        'name': cfg.name,
+        'ordered_jobs': [job.name for job in ordered_jobs],
+        'status': 'ok',
+        'version': cfg.version,
+        'jobs': [
+            {
+                'depends_on': list(job.depends_on),
+                'name': job.name,
+            }
+            for job in ordered_jobs
+        ],
     }

@@ -28,6 +28,119 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 class TestCliCheck:
     """Smoke tests for the ``etlplus check`` CLI command."""
 
+    def test_graph_reports_topological_order(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        tmp_path: Path,
+    ) -> None:
+        """``check --graph`` should validate dependencies and print DAG order."""
+        config_path = tmp_path / 'check_graph_ok.yml'
+        config_path.write_text(
+            dedent(
+                """
+                name: Graph Check
+                sources:
+                  - name: seed_src
+                    type: file
+                    format: json
+                    path: "./seed.json"
+                  - name: publish_src
+                    type: file
+                    format: json
+                    path: "./publish.json"
+                targets:
+                  - name: seed_out
+                    type: file
+                    format: json
+                    path: "./seed-out.json"
+                  - name: publish_out
+                    type: file
+                    format: json
+                    path: "./publish-out.json"
+                jobs:
+                  - name: publish
+                    depends_on: [seed]
+                    extract:
+                      source: publish_src
+                    load:
+                      target: publish_out
+                  - name: seed
+                    extract:
+                      source: seed_src
+                    load:
+                      target: seed_out
+                """,
+            ).strip(),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            ('check', '--config', str(config_path), '--graph'),
+        )
+
+        assert code == 0
+        assert err == ''
+        payload = parse_json_output(out)
+        assert payload['status'] == 'ok'
+        assert payload['ordered_jobs'] == ['seed', 'publish']
+        assert payload['jobs'] == [
+            {'depends_on': [], 'name': 'seed'},
+            {'depends_on': ['seed'], 'name': 'publish'},
+        ]
+
+    def test_graph_reports_invalid_dependency_cycles(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        tmp_path: Path,
+    ) -> None:
+        """``check --graph`` should fail invalid dependency graphs."""
+        config_path = tmp_path / 'check_graph_invalid.yml'
+        config_path.write_text(
+            dedent(
+                """
+                name: Graph Check
+                sources:
+                  - name: src
+                    type: file
+                    format: json
+                    path: "./in.json"
+                targets:
+                  - name: out
+                    type: file
+                    format: json
+                    path: "./out.json"
+                jobs:
+                  - name: alpha
+                    depends_on: [beta]
+                    extract:
+                      source: src
+                    load:
+                      target: out
+                  - name: beta
+                    depends_on: [alpha]
+                    extract:
+                      source: src
+                    load:
+                      target: out
+                """,
+            ).strip(),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            ('check', '--config', str(config_path), '--graph'),
+        )
+
+        assert code == 1
+        assert err == ''
+        payload = parse_json_output(out)
+        assert payload == {
+            'message': 'Dependency cycle detected',
+            'status': 'error',
+        }
+
     def test_jobs_lists_job(
         self,
         cli_invoke: CliInvoke,

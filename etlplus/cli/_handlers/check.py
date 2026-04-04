@@ -26,6 +26,7 @@ __all__ = [
 def check_handler(
     *,
     config: str | None = None,
+    graph: bool = False,
     jobs: bool = False,
     pipelines: bool = False,
     readiness: bool = False,
@@ -45,6 +46,9 @@ def check_handler(
     ----------
     config : str | None, optional
         Optional path to the config file. Default is ``None``.
+    graph : bool, optional
+        Whether to validate job dependencies and print DAG execution order.
+        Default is ``False``.
     jobs : bool, optional
         Whether to print job specs. Default is ``False``.
     pipelines : bool, optional
@@ -106,6 +110,18 @@ def check_handler(
             )
 
     cfg = Config.from_yaml(config, substitute=substitute)
+    if graph:
+        try:
+            return _output.emit_json_payload(
+                _summary.graph_summary(cfg),
+                pretty=pretty,
+            )
+        except ValueError as exc:
+            return _output.emit_json_payload(
+                {'message': str(exc), 'status': 'error'},
+                pretty=pretty,
+                exit_code=1,
+            )
     payload = (
         _summary.pipeline_summary(cfg)
         if summary

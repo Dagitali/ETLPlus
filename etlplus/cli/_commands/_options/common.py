@@ -21,11 +21,13 @@ __all__ = [
     # Types
     'CheckConfigOption',
     'ConfigOption',
+    'ContinueOnFailOption',
     'JobOption',
     'OutputOption',
     'PipelineOption',
     'PrettyOption',
     'QuietOption',
+    'RunAllOption',
     'StructuredEventFormatOption',
     'VerboseOption',
     'VersionOption',
@@ -55,6 +57,19 @@ ConfigOption = Annotated[
             'Path to YAML-formatted configuration file.',
             metavar='PATH',
             show_default=None,
+        ),
+    ),
+]
+
+ContinueOnFailOption = Annotated[
+    bool,
+    typer.Option(
+        '--continue-on-fail',
+        **_typer_flag_option_kwargs(
+            (
+                'Continue running independent jobs after a failure and skip '
+                'only blocked downstream jobs.'
+            ),
         ),
     ),
 ]
@@ -113,6 +128,16 @@ QuietOption = Annotated[
         '-q',
         **_typer_flag_option_kwargs(
             'Suppress warnings and non-essential output.',
+        ),
+    ),
+]
+
+RunAllOption = Annotated[
+    bool,
+    typer.Option(
+        '--all',
+        **_typer_flag_option_kwargs(
+            'Run all configured jobs in DAG order.',
         ),
     ),
 ]

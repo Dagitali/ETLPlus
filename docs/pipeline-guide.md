@@ -465,6 +465,8 @@ Notes:
 
 - `depends_on` is optional and can be a string or list of job names.
 - Jobs without dependencies run first when ordered as a DAG.
+- `etlplus run --job <name>` executes the selected job plus its dependency closure.
+- `etlplus run --all` executes every configured job in DAG order.
 
 ## Running Pipelines (CLI and Python)
 
@@ -478,6 +480,7 @@ List jobs or show a summary from a pipeline file:
 ```bash
 etlplus check --config examples/configs/pipeline.yml --jobs
 etlplus check --config examples/configs/pipeline.yml --summary
+etlplus check --config examples/configs/pipeline.yml --graph
 ```
 
 Run a specific job end-to-end (extract → validate → transform → load):
@@ -486,9 +489,16 @@ Run a specific job end-to-end (extract → validate → transform → load):
 etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
 ```
 
+Run all configured jobs in DAG order:
+
+```bash
+etlplus run --config examples/configs/pipeline.yml --all
+```
+
 Notes:
 
 - These commands read the same YAML schema described in this guide.
+- `check --graph` validates cycles and missing dependencies without executing jobs.
 - Environment-variable substitution (e.g. `${GITHUB_TOKEN}`) is applied the same way as when loading
   configs via the Python API.
 - For more details on the orchestration implementation, see the `etlplus.ops.run` docstrings.

@@ -9,6 +9,8 @@ read/query commands in the CLI.
 - Start and finish metadata are persisted to the configured local history backend.
 - The default backend is SQLite at `${ETLPLUS_STATE_DIR:-~/.etlplus}/history.sqlite`.
 - A JSONL backend is also available through `ETLPLUS_HISTORY_BACKEND=jsonl`.
+- DAG-style `run --job` / `run --all` executions persist an execution summary in `result_summary`,
+  including ordered jobs and succeeded/failed/skipped job lists.
 
 Today, the persisted history is written by `etlplus run`. The read/query commands below inspect that
 local store; they do not require external services.
@@ -76,6 +78,8 @@ etlplus report --group-by day --since 2026-03-01T00:00:00Z --table
 - `log` returns raw backend-native records.
 - `status` returns a single normalized record.
 - `report` returns grouped rows plus a top-level summary in JSON mode.
+- The top-level normalized run shape is the stable `v1.x` contract; nested `result_summary` keys may
+  grow additively over time for richer DAG summaries.
 
 ## Related documentation
 

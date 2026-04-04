@@ -8,11 +8,13 @@ from __future__ import annotations
 
 from .common import CheckConfigOption
 from .common import ConfigOption
+from .common import ContinueOnFailOption
 from .common import JobOption
 from .common import OutputOption
 from .common import PipelineOption
 from .common import PrettyOption
 from .common import QuietOption
+from .common import RunAllOption
 from .common import StructuredEventFormatOption
 from .common import VerboseOption
 from .common import VersionOption
@@ -34,6 +36,7 @@ from .resources import SourceTypeOption
 from .resources import TargetArg
 from .resources import TargetFormatOption
 from .resources import TargetTypeOption
+from .specs import GraphOption
 from .specs import JobsOption
 from .specs import OperationsOption
 from .specs import PipelinesOption
@@ -56,7 +59,9 @@ from .specs import TransformsOption
 __all__ = [
     # Types
     'CheckConfigOption',
+    'ContinueOnFailOption',
     'ConfigOption',
+    'GraphOption',
     'HistoryFollowOption',
     'HistoryJsonOption',
     'HistoryLimitOption',
@@ -84,6 +89,7 @@ __all__ = [
     'RenderTemplatePathOption',
     'ReportGroupByOption',
     'RulesOption',
+    'RunAllOption',
     'RunIdOption',
     'SourceArg',
     'SourceFormatOption',
