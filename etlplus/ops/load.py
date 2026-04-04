@@ -24,6 +24,7 @@ from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import StrPath
 from ._files import resolve_file
+from ._http import build_direct_request_env
 from ._http import build_request_call
 from ._http import response_json_or_text
 from ._http import send_request
@@ -229,14 +230,7 @@ def load_to_api(
     JSONDict
         Result dictionary including response payload or text.
     """
-    # Apply a conservative timeout to guard against hanging requests.
-    env = {
-        'url': url,
-        'method': method,
-        'timeout': kwargs.pop('timeout', 10.0),
-        'session': kwargs.pop('session', None),
-        'request_kwargs': kwargs,
-    }
+    env = build_direct_request_env(url, method, kwargs)
     return _load_to_api_env(data, env)
 
 
