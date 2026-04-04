@@ -329,16 +329,8 @@ def _index_connectors(
     -------
     dict[str, Any]
         Mapping of connector names to connector objects.
-
-    Raises
-    ------
-    ValueError
-        If duplicate connector names are found.
     """
-    return index_named_items(
-        connectors,
-        item_label=f'{label} connector',
-    )
+    return index_named_items(connectors, item_label=f'{label} connector')
 
 
 def _index_jobs(
@@ -356,16 +348,8 @@ def _index_jobs(
     -------
     dict[str, Any]
         Mapping of job name to job object.
-
-    Raises
-    ------
-    ValueError
-        If duplicate job names are found.
     """
-    return index_named_items(
-        jobs,
-        item_label='job',
-    )
+    return index_named_items(jobs, item_label='job')
 
 
 def _job_dependencies(
@@ -688,7 +672,7 @@ def _require_named_connector(
 
     Parameters
     ----------
-    connectors : dict[str, Any]
+    connectors : Mapping[str, Any]
         Mapping of connector names to connector objects.
     name : str
         Connector name to retrieve.
@@ -846,7 +830,7 @@ def run_pipeline(
         transformed data is returned.
     target : StrPath | None, optional
         Target for loading (file path, connection string, or API URL).
-    file_format : FileFormat | str | None, optional
+    file_format : FileFormatArg, optional
         File format for file sources/targets (forwarded to extract/load).
     method : HttpMethod | str | None, optional
         HTTP method for API loads (forwarded to :func:`etlplus.ops.load`).
