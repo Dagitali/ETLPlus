@@ -36,6 +36,7 @@ from ._http import build_request_call
 from ._http import require_url
 from ._http import send_request
 from ._options import coerce_read_options as _coerce_read_options
+from ._types import ConnectorTypeArg
 from ._types import FileOptionsArg
 
 # SECTION: EXPORTS ========================================================== #
@@ -359,7 +360,7 @@ def extract_from_file(
 
 
 def extract(
-    source_type: DataConnectorType | str,
+    source_type: ConnectorTypeArg,
     source: StrPath,
     file_format: FileFormatArg = None,
     **kwargs: Any,
