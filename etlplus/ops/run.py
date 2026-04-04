@@ -484,35 +484,29 @@ def _extract_job_data(
         label='source',
     )
     overrides = getattr(extract_cfg, 'options', None) or {}
+    source_type = getattr(source_obj, 'type', None)
 
-    match DataConnectorType.coerce(getattr(source_obj, 'type', '') or ''):
-        case DataConnectorType.FILE:
-            file_cfg = _resolve_file_connector_config(
-                source_obj,
-                overrides,
-                missing_path_message='File source missing "path"',
-            )
-            return extract(
-                'file',
-                file_cfg.path,
-                file_format=file_cfg.file_format,
-                **file_cfg.options,
-            )
-        case DataConnectorType.DATABASE:
-            return extract(
-                'database',
-                getattr(source_obj, 'connection_string', ''),
-            )
-        case DataConnectorType.API:
-            return extract_from_api_source(
-                context.cfg,
-                source_obj,
-                overrides,
-            )
-        case _:
-            raise ValueError(
-                f'Unsupported source type: {getattr(source_obj, "type", None)}',
-            )
+    if source_type == DataConnectorType.FILE or source_type == 'file':
+        file_cfg = _resolve_file_connector_config(
+            source_obj,
+            overrides,
+            missing_path_message='File source missing "path"',
+        )
+        return _dispatch_extract(
+            source_type,
+            file_cfg.path,
+            file_format=file_cfg.file_format,
+            options=file_cfg.options,
+        )
+
+    source_value = str(getattr(source_obj, 'connection_string', ''))
+    return _dispatch_extract(
+        source_type,
+        source_value,
+        options=overrides,
+        cfg=context.cfg,
+        connector_obj=source_obj,
+    )
 
 
 def _load_job_result(
@@ -530,45 +524,127 @@ def _load_job_result(
         label='target',
     )
     overrides = getattr(load_cfg, 'overrides', None) or {}
+    target_type = getattr(target_obj, 'type', None)
 
-    match DataConnectorType.coerce(getattr(target_obj, 'type', '') or ''):
-        case DataConnectorType.FILE:
-            file_cfg = _resolve_file_connector_config(
-                target_obj,
-                overrides,
-                missing_path_message='File target missing "path"',
-            )
-            result = load(
-                data,
-                'file',
-                file_cfg.path,
-                file_format=file_cfg.file_format,
-                **file_cfg.options,
-            )
-        case DataConnectorType.API:
-            result = load_to_api_target(
-                context.cfg,
-                target_obj,
-                overrides,
-                data,
-            )
-        case DataConnectorType.DATABASE:
-            result = load(
-                data,
-                'database',
-                str(
-                    overrides.get('connection_string')
-                    or getattr(target_obj, 'connection_string', ''),
-                ),
-            )
-        case _:
-            raise ValueError(
-                f'Unsupported target type: {getattr(target_obj, "type", None)}',
-            )
+    if target_type == DataConnectorType.FILE or target_type == 'file':
+        file_cfg = _resolve_file_connector_config(
+            target_obj,
+            overrides,
+            missing_path_message='File target missing "path"',
+        )
+        result = _dispatch_load(
+            data,
+            target_type,
+            file_cfg.path,
+            file_format=file_cfg.file_format,
+            options=file_cfg.options,
+        )
+    else:
+        target_value = str(
+            overrides.get('connection_string')
+            or getattr(target_obj, 'connection_string', ''),
+        )
+        result = _dispatch_load(
+            data,
+            target_type,
+            target_value,
+            options=overrides,
+            cfg=context.cfg,
+            connector_obj=target_obj,
+        )
 
     if not isinstance(result, dict):
         raise TypeError('load result must be a mapping')
     return result
+
+
+def _dispatch_extract(
+    source_type: DataConnectorType | str | None,
+    source: StrPath,
+    *,
+    file_format: FileFormatArg = None,
+    options: Mapping[str, Any] | None = None,
+    cfg: Any | None = None,
+    connector_obj: Any | None = None,
+) -> JSONData:
+    """Dispatch one extract request through the extract module boundary."""
+    resolved_options = dict(options or {})
+
+    match DataConnectorType.coerce(source_type or ''):
+        case DataConnectorType.FILE:
+            return extract(
+                DataConnectorType.FILE,
+                source,
+                file_format=file_format,
+                **resolved_options,
+            )
+        case DataConnectorType.DATABASE:
+            return extract(
+                DataConnectorType.DATABASE,
+                str(source),
+            )
+        case DataConnectorType.API:
+            if cfg is not None and connector_obj is not None:
+                return extract_from_api_source(
+                    cfg,
+                    connector_obj,
+                    resolved_options,
+                )
+            return extract(
+                DataConnectorType.API,
+                str(source),
+                **resolved_options,
+            )
+        case _:
+            raise ValueError(f'Unsupported source type: {source_type}')
+
+
+def _dispatch_load(
+    data: StrPath | JSONData,
+    target_type: DataConnectorType | str | None,
+    target: StrPath,
+    *,
+    file_format: FileFormatArg = None,
+    method: HttpMethod | str | None = None,
+    options: Mapping[str, Any] | None = None,
+    cfg: Any | None = None,
+    connector_obj: Any | None = None,
+) -> JSONData:
+    """Dispatch one load request through the load module boundary."""
+    resolved_options = dict(options or {})
+
+    match DataConnectorType.coerce(target_type or ''):
+        case DataConnectorType.FILE:
+            return load(
+                data,
+                DataConnectorType.FILE,
+                target,
+                file_format=file_format,
+                **resolved_options,
+            )
+        case DataConnectorType.DATABASE:
+            return load(
+                data,
+                DataConnectorType.DATABASE,
+                str(target),
+            )
+        case DataConnectorType.API:
+            if cfg is not None and connector_obj is not None:
+                return load_to_api_target(
+                    cfg,
+                    connector_obj,
+                    resolved_options,
+                    cast(JSONData, data),
+                )
+            return load(
+                data,
+                DataConnectorType.API,
+                target,
+                method=method,
+                **resolved_options,
+            )
+        case _:
+            raise ValueError(f'Unsupported target type: {target_type}')
 
 
 def _resolve_file_connector_config(
@@ -858,7 +934,7 @@ def run_pipeline(
     else:
         if source is None:
             raise ValueError('source is required when source_type is set')
-        data = extract(
+        data = _dispatch_extract(
             source_type,
             _require_path_like(
                 source,
@@ -867,7 +943,7 @@ def run_pipeline(
                 ),
             ),
             file_format=file_format,
-            **kwargs,
+            options=kwargs,
         )
 
     if operations:
@@ -882,11 +958,11 @@ def run_pipeline(
     if target is None:
         raise ValueError('target is required when target_type is set')
 
-    return load(
+    return _dispatch_load(
         data,
         target_type,
         target,
         file_format=file_format,
         method=method,
-        **kwargs,
+        options=kwargs,
     )
