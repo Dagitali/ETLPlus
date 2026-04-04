@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 import sys
 from collections.abc import Mapping
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +23,7 @@ from ..utils import count_records
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import StrPath
+from ._files import resolve_file
 from ._http import build_request_call
 from ._http import response_json_or_text
 from ._http import send_request
@@ -40,19 +40,6 @@ __all__ = [
     'load_to_database',
     'load_to_file',
 ]
-
-
-# SECTION: DATA CLASSES ===================================================== #
-
-
-@dataclass(frozen=True, slots=True)
-class _FileWriteTarget:
-    """Resolved file target details for one write operation."""
-
-    # -- Instance Attributes -- #
-
-    file: File
-    file_format: FileFormat
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -115,11 +102,6 @@ def _load_to_api_env(
     -------
     JSONDict
         Load result payload.
-
-    Raises
-    ------
-    ValueError
-        If required parameters are missing.
     """
     request = build_request_call(
         env,
@@ -351,7 +333,12 @@ def load_to_file(
     """
     resolved_options = _coerce_write_options(options)
     target_label = str(file_path)
-    target = _resolve_file_write_target(file_path, file_format)
+    target = resolve_file(
+        file_path,
+        file_format,
+        inferred_default=FileFormat.JSON,
+        file_cls=File,
+    )
     records = (
         target.file.write(data)
         if resolved_options is None
@@ -368,25 +355,6 @@ def load_to_file(
         'message': message,
         'records': records,
     }
-
-
-def _resolve_file_write_target(
-    file_path: StrPath,
-    file_format: FileFormat | str | None,
-) -> _FileWriteTarget:
-    """Return one file target and its effective format."""
-    if file_format is None:
-        file = File(file_path)
-        return _FileWriteTarget(
-            file=file,
-            file_format=file.file_format or FileFormat.JSON,
-        )
-
-    resolved_format = FileFormat.coerce(file_format)
-    return _FileWriteTarget(
-        file=File(file_path, resolved_format),
-        file_format=resolved_format,
-    )
 
 
 # -- Orchestration -- #
