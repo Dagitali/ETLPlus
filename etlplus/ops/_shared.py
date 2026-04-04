@@ -117,7 +117,32 @@ def _coerce_file_options[OptionsT](
 def coerce_read_options(
     options: ReadOptions | Mapping[str, Any] | None,
 ) -> ReadOptions | None:
-    """Normalize mapping-based read options into :class:`ReadOptions`."""
+    """
+    Normalize mapping-based read options into :class:`ReadOptions`.
+
+    Parameters
+    ----------
+    options : ReadOptions | Mapping[str, Any] | None
+        Read options to normalize. If already a :class:`ReadOptions` instance
+        or ``None``, this is returned unchanged. Otherwise, if a mapping, the
+        following keys are extracted and normalized with the specified
+        defaults:
+        - ``dataset``: The dataset name for structured files (default:
+            ``None``).
+        - ``encoding``: The text encoding to use (default: ``'utf-8'``).
+        - ``inner_name``: The inner name for nested structures (default:
+            ``None``).
+        - ``sheet``: The sheet name or index for spreadsheet files (default:
+            ``None``).
+        - ``table``: The table name for database or structured files (default:
+            ``None``).
+
+    Returns
+    -------
+    ReadOptions | None
+        A normalized :class:`ReadOptions` instance or ``None`` if the input was
+        ``None``.
+    """
     return _coerce_file_options(
         options,
         option_type=ReadOptions,
@@ -129,7 +154,33 @@ def coerce_read_options(
 def coerce_write_options(
     options: WriteOptions | Mapping[str, Any] | None,
 ) -> WriteOptions | None:
-    """Normalize mapping-based write options into :class:`WriteOptions`."""
+    """
+    Normalize mapping-based write options into :class:`WriteOptions`.
+
+    Parameters
+    ----------
+    options : WriteOptions | Mapping[str, Any] | None
+        Write options to normalize. If already a :class:`WriteOptions` instance
+        or ``None``, this is returned unchanged. Otherwise, if a mapping, the
+        following keys are extracted and normalized with the specified
+        defaults:
+        - ``dataset``: The dataset name for structured files (default:
+            ``None``).
+        - ``encoding``: The text encoding to use (default: ``'utf-8'``).
+        - ``inner_name``: The inner name for nested structures (default:
+            ``None``).
+        - ``sheet``: The sheet name or index for spreadsheet files (default:
+            ``None``).
+        - ``table``: The table name for database or structured files (default:
+            ``None``).
+        - ``root_tag``: The root tag name for XML files (default: ``'root'``).
+
+    Returns
+    -------
+    WriteOptions | None
+        A normalized :class:`WriteOptions` instance or ``None`` if the input
+        was ``None``.
+    """
     return _coerce_file_options(
         options,
         option_type=WriteOptions,
@@ -147,6 +198,27 @@ def index_named_items[ItemT](
     Index named items and reject duplicates with a descriptive error.
 
     Items without a non-empty string ``name`` attribute are ignored.
+
+    Parameters
+    ----------
+    items : Iterable[ItemT]
+        An iterable of items to index. Each item must have a ``name`` attribute
+        that is a non-empty string to be included in the index.
+    item_label : str
+        A label for the type of items being indexed, used in error messages.
+
+    Returns
+    -------
+    dict[str, ItemT]
+        A dictionary mapping item names to their corresponding items. Only
+        items with a valid non-empty string ``name`` attribute are included. If
+        duplicate names are found, a ValueError is raised indicating the
+        duplicate name and item type.
+
+    Raises
+    ------
+    ValueError
+        If duplicate names are found.
     """
     indexed: dict[str, ItemT] = {}
     for item in items:
@@ -162,7 +234,23 @@ def merge_mapping_options(
     *option_sets: object,
     excluded_keys: frozenset[str] = frozenset(),
 ) -> dict[str, Any]:
-    """Merge mapping-like option sets with later mappings taking precedence."""
+    """
+    Merge mapping-like option sets with later mappings taking precedence.
+
+    Parameters
+    ----------
+    *option_sets : object
+        Option sets to merge. Each option set can be a mapping or any other
+        object. Only mappings are considered for merging.
+    excluded_keys : frozenset[str], optional
+        Keys to exclude from the merged result (default: empty frozenset).
+
+    Returns
+    -------
+    dict[str, Any]
+        A dictionary containing the merged options, with later mappings
+        taking precedence and excluded keys removed.
+    """
     merged: dict[str, Any] = {}
     for option_set in option_sets:
         if isinstance(option_set, Mapping):
