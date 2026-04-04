@@ -28,7 +28,7 @@ from ..utils._types import JSONDict
 from ..utils._types import JSONList
 from ..utils._types import StrPath
 from ..utils._types import Timeout
-from ._shared import coerce_read_options as _coerce_read_options
+from ._options import coerce_read_options as _coerce_read_options
 
 # SECTION: EXPORTS ========================================================== #
 
