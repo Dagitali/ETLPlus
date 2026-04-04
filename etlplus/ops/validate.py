@@ -356,13 +356,9 @@ def _validate_loaded_data(
     rules: RulesMap,
 ) -> tuple[list[str], FieldErrors]:
     """Validate one loaded payload against the provided rules."""
-    match data:
-        case dict():
-            return _validate_record(data, rules)
-        case list():
-            return _validate_sequence(data, rules)
-        case _:
-            return [], {}
+    if isinstance(data, dict):
+        return _validate_record(data, rules)
+    return _validate_sequence(data, rules)
 
 
 def _validation_result(
