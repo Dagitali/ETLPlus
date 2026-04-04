@@ -28,6 +28,7 @@ from ..utils._types import JSONDict
 from ..utils._types import JSONList
 from ..utils._types import StrPath
 from ..utils._types import Timeout
+from ._shared import coerce_read_options as _coerce_read_options
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -84,39 +85,6 @@ def _build_client(
         retry=retry,
         retry_network_errors=retry_network_errors,
         session=session,
-    )
-
-
-def _coerce_optional_str(
-    value: object,
-) -> str | None:
-    """Normalize optional string-like option values."""
-    if value is None:
-        return None
-    return value if isinstance(value, str) else str(value)
-
-
-def _coerce_read_options(
-    options: ReadOptions | Mapping[str, Any] | None,
-) -> ReadOptions | None:
-    """Normalize file-read option mappings into :class:`ReadOptions`."""
-    if options is None or isinstance(options, ReadOptions):
-        return options
-
-    extras = dict(options)
-    encoding = extras.pop('encoding', 'utf-8')
-    sheet = extras.pop('sheet', None)
-    table = extras.pop('table', None)
-    dataset = extras.pop('dataset', None)
-    inner_name = extras.pop('inner_name', None)
-
-    return ReadOptions(
-        encoding=encoding if isinstance(encoding, str) else str(encoding),
-        sheet=sheet,
-        table=_coerce_optional_str(table),
-        dataset=_coerce_optional_str(dataset),
-        inner_name=_coerce_optional_str(inner_name),
-        extras=cast(JSONDict, extras),
     )
 
 
