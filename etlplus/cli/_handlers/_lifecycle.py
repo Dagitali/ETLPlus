@@ -309,12 +309,16 @@ def record_run_completion(
                 error_type=(
                     error_type
                     if error_type is not None
-                    else None if exc is None else type(exc).__name__
+                    else None
+                    if exc is None
+                    else type(exc).__name__
                 ),
                 error_message=(
                     error_message
                     if error_message is not None
-                    else None if exc is None else str(exc)
+                    else None
+                    if exc is None
+                    else str(exc)
                 ),
                 error_traceback=error_traceback,
             ),

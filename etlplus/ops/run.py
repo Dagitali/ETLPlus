@@ -449,9 +449,7 @@ def _run_job_plan(
     return {
         'continue_on_fail': continue_on_fail,
         'executed_job_count': sum(
-            1
-            for item in executed_jobs
-            if item.get('status') in {'succeeded', 'failed'}
+            1 for item in executed_jobs if item.get('status') in {'succeeded', 'failed'}
         ),
         'executed_jobs': executed_jobs,
         'failed_job_count': len(failed_job_names),

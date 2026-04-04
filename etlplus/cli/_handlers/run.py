@@ -188,7 +188,7 @@ def _result_failed(
     result: Mapping[str, object] | object,
 ) -> bool:
     """Return whether one run result represents a handled execution failure."""
-    return (
-        isinstance(result, Mapping)
-        and result.get('status') in {'failed', 'partial_success'}
-    )
+    return isinstance(result, Mapping) and result.get('status') in {
+        'failed',
+        'partial_success',
+    }
