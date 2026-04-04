@@ -33,6 +33,8 @@ from ._http import build_request_call
 from ._http import response_json_or_text
 from ._http import send_request
 from ._options import coerce_write_options as _coerce_write_options
+from ._types import ConnectorTypeArg
+from ._types import DataSourceArg
 from ._types import FileOptionsArg
 
 # SECTION: EXPORTS ========================================================== #
@@ -175,7 +177,7 @@ def _parse_json_string(
 
 
 def load_data(
-    source: StrPath | JSONData,
+    source: DataSourceArg,
 ) -> JSONData:
     """
     Load data from a file path, JSON string, or direct object.
@@ -360,8 +362,8 @@ def load_to_file(
 
 
 def load(
-    source: StrPath | JSONData,
-    target_type: DataConnectorType | str,
+    source: DataSourceArg,
+    target_type: ConnectorTypeArg,
     target: StrPath,
     file_format: FileFormatArg = None,
     method: HttpMethod | str | None = None,
