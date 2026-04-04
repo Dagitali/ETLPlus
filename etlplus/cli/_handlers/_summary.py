@@ -162,6 +162,11 @@ def graph_summary(
     -------
     dict[str, Any]
         JSON-serializable DAG summary including ordered jobs and dependencies.
+
+    Raises
+    ------
+    ValueError
+        If duplicate job names are found in the configuration.
     """
     seen: set[str] = set()
     for job in cfg.jobs:
