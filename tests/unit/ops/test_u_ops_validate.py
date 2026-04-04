@@ -268,3 +268,25 @@ class TestValidateInternalHelpers:
             is None
         )
         assert not errors
+
+    @pytest.mark.parametrize(
+        ('value', 'expected_type', 'expected'),
+        [
+            ('name', 'string', True),
+            (7, 'number', True),
+            (7, 'integer', True),
+            (True, 'integer', False),
+            (True, 'boolean', True),
+            ([{'id': 1}], 'array', True),
+            ({'id': 1}, 'object', True),
+            ('name', 'unknown', False),
+        ],
+    )
+    def test_type_matches_matrix(
+        self,
+        value: Any,
+        expected_type: str,
+        expected: bool,
+    ) -> None:
+        """Type matching should respect the repo's JSON-like type rules."""
+        assert validate_mod._type_matches(value, expected_type) is expected
