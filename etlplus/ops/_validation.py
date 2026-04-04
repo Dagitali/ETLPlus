@@ -12,6 +12,7 @@ offloading ancillary concerns to composable helpers.
 from __future__ import annotations
 
 from collections.abc import Callable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
@@ -56,6 +57,7 @@ type Ruleset = StrAnyMap
 type ValidationPhase = Literal['before_transform', 'after_transform']
 type ValidationWindow = Literal['before_transform', 'after_transform', 'both']
 type ValidationSeverity = Literal['warn', 'error']
+type ValidationChoice = ValidationPhase | ValidationWindow | ValidationSeverity
 
 type ValidateFn = Callable[[Any, Ruleset], ValidationResultDict]
 type PrintFn = Callable[[Any], None]
@@ -214,6 +216,23 @@ def _log_failure(
     )
 
 
+def _normalize_choice[T: ValidationChoice](
+    value: str | None,
+    *,
+    mapping: Mapping[str, str],
+    default: T,
+) -> T:
+    """Normalize arbitrary text into one of the allowed literal choices."""
+    return cast(
+        T,
+        normalize_choice(
+            value,
+            mapping=mapping,
+            default=default,
+        ),
+    )
+
+
 def _normalize_phase(
     value: str | None,
 ) -> ValidationPhase:
@@ -231,13 +250,10 @@ def _normalize_phase(
         Normalized validation phase. Defaults to ``"before_transform"`` when
         unspecified.
     """
-    return cast(
-        ValidationPhase,
-        normalize_choice(
-            value,
-            mapping=_PHASE_CHOICES,
-            default='before_transform',
-        ),
+    return _normalize_choice(
+        value,
+        mapping=_PHASE_CHOICES,
+        default='before_transform',
     )
 
 
@@ -257,13 +273,10 @@ def _normalize_severity(
     ValidationSeverity
         Normalized severity. Defaults to ``"error"`` when unspecified.
     """
-    return cast(
-        ValidationSeverity,
-        normalize_choice(
-            value,
-            mapping=_SEVERITY_CHOICES,
-            default='error',
-        ),
+    return _normalize_choice(
+        value,
+        mapping=_SEVERITY_CHOICES,
+        default='error',
     )
 
 
@@ -283,13 +296,10 @@ def _normalize_window(
     ValidationWindow
         Normalized validation window. Defaults to ``"both"`` when unspecified.
     """
-    return cast(
-        ValidationWindow,
-        normalize_choice(
-            value,
-            mapping=_WINDOW_CHOICES,
-            default='both',
-        ),
+    return _normalize_choice(
+        value,
+        mapping=_WINDOW_CHOICES,
+        default='both',
     )
 
 
