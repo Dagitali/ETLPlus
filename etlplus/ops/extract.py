@@ -7,7 +7,6 @@ Helpers to extract data from files, databases, and REST APIs.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
 from typing import Any
 from typing import cast
 from urllib.parse import urlsplit
@@ -26,6 +25,7 @@ from ..utils._types import JSONData
 from ..utils._types import JSONList
 from ..utils._types import StrPath
 from ..utils._types import Timeout
+from ._files import resolve_file
 from ._http import build_request_call
 from ._http import require_url
 from ._http import send_request
@@ -41,19 +41,6 @@ __all__ = [
     'extract_from_database',
     'extract_from_file',
 ]
-
-
-# SECTION: DATA CLASSES ===================================================== #
-
-
-@dataclass(frozen=True, slots=True)
-class _FileReadSource:
-    """Resolved file source details for one read operation."""
-
-    # -- Instance Attributes -- #
-
-    file: File
-    file_format: FileFormat | None
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -351,30 +338,15 @@ def extract_from_file(
         Parsed data as a mapping or a list of mappings.
     """
     resolved_options = _coerce_read_options(options)
-    source = _resolve_file_read_source(file_path, file_format)
+    source = resolve_file(
+        file_path,
+        file_format,
+        file_cls=File,
+    )
     return (
         source.file.read()
         if resolved_options is None
         else source.file.read(options=resolved_options)
-    )
-
-
-def _resolve_file_read_source(
-    file_path: StrPath,
-    file_format: FileFormat | str | None,
-) -> _FileReadSource:
-    """Return one file source and its effective format."""
-    if file_format is None:
-        file = File(file_path)
-        return _FileReadSource(
-            file=file,
-            file_format=file.file_format,
-        )
-
-    resolved_format = FileFormat.coerce(file_format)
-    return _FileReadSource(
-        file=File(file_path, resolved_format),
-        file_format=resolved_format,
     )
 
 
