@@ -14,6 +14,7 @@ from ._helpers import call_handler
 from ._helpers import fail_usage
 from ._helpers import require_value
 from ._options.common import CheckConfigOption
+from ._options.specs import GraphOption
 from ._options.specs import JobsOption
 from ._options.specs import PipelinesOption
 from ._options.specs import ReadinessOption
@@ -40,6 +41,7 @@ __all__ = [
 def check_cmd(
     ctx: typer.Context,
     config: CheckConfigOption = None,
+    graph: GraphOption = False,
     jobs: JobsOption = False,
     pipelines: PipelinesOption = False,
     readiness: ReadinessOption = False,
@@ -64,6 +66,8 @@ def check_cmd(
         Typer context.
     config : CheckConfigOption, optional
         Path to the YAML/JSON config file.
+    graph : GraphOption, optional
+        Whether to validate job dependencies and print DAG execution order.
     jobs : JobsOption, optional
         Whether to inspect job definitions.
     pipelines : PipelinesOption, optional
@@ -87,11 +91,16 @@ def check_cmd(
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
     inspection_requested = any(
+        (graph, jobs, pipelines, sources, summary, targets, transforms),
+    )
+    section_inspection_requested = any(
         (jobs, pipelines, sources, summary, targets, transforms),
     )
 
     if readiness and inspection_requested:
         fail_usage('--readiness cannot be combined with inspection flags.')
+    if graph and section_inspection_requested:
+        fail_usage('--graph cannot be combined with inspection flags.')
 
     if not readiness and not config:
         require_value(
@@ -103,6 +112,7 @@ def check_cmd(
         check_handler,
         state=ensure_state(ctx),
         config=config,
+        graph=graph,
         jobs=jobs,
         pipelines=pipelines,
         readiness=readiness,
