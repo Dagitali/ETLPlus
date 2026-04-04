@@ -23,10 +23,10 @@ from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import StrPath
 from ..workflow import topological_sort_jobs
-from ._shared import index_named_items
-from ._shared import merge_mapping_options
+from ._mappings import index_named_items
+from ._mappings import merge_mapping_options
 from ._types import PipelineConfig
-from ._utils import maybe_validate
+from ._validation import maybe_validate
 from .extract import extract
 from .extract import extract_from_api_source
 from .load import load
