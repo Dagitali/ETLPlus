@@ -1551,6 +1551,86 @@ class TestRunInternals:
 
         assert indexed == {'valid': connectors[0]}
 
+    @pytest.mark.parametrize(
+        ('connector_type', 'expected'),
+        [
+            ('file', True),
+            (run_mod.DataConnectorType.FILE, True),
+            ('api', False),
+            (None, False),
+        ],
+    )
+    def test_is_file_connector_type(
+        self,
+        connector_type: Any,
+        expected: bool,
+    ) -> None:
+        """File-connector detection should accept both enum and string forms."""
+        assert run_mod._is_file_connector_type(connector_type) is expected
+
+    def test_resolve_job_connector_for_file_connector(
+        self,
+    ) -> None:
+        """File connectors should resolve merged path, format, and options."""
+        connector = SimpleNamespace(
+            name='src',
+            type='file',
+            path='/tmp/default.json',
+            format='json',
+            options={'compression': 'gzip', 'path': '/ignored'},
+        )
+
+        result = run_mod._resolve_job_connector(
+            {'src': connector},
+            ref_name='src',
+            label='source',
+            overrides={
+                'path': '/tmp/override.csv',
+                'format': 'csv',
+                'delimiter': ';',
+            },
+            missing_path_message='missing path',
+        )
+
+        assert result.connector_type == 'file'
+        assert result.value == '/tmp/override.csv'
+        assert result.file_format == 'csv'
+        assert result.options == {
+            'compression': 'gzip',
+            'delimiter': ';',
+        }
+        assert result.connector_obj is connector
+
+    def test_resolve_job_connector_for_non_file_connector(
+        self,
+    ) -> None:
+        """Non-file connectors should preserve overrides and connection value."""
+        connector = SimpleNamespace(
+            name='api_src',
+            type='api',
+            connection_string='https://default.test/items',
+        )
+
+        result = run_mod._resolve_job_connector(
+            {'api_src': connector},
+            ref_name='api_src',
+            label='source',
+            overrides={
+                'connection_string': 'https://override.test/items',
+                'timeout': 5.0,
+            },
+            missing_path_message='missing path',
+        )
+
+        assert result.connector_type == 'api'
+        assert result.value == 'https://override.test/items'
+        assert result.file_format is None
+        assert result.options == {
+            'connection_string': 'https://override.test/items',
+            'timeout': 5.0,
+        }
+        assert result.connector_obj is connector
+
     def test_run_treats_missing_transform_registry_as_noop(
         self,
         monkeypatch: pytest.MonkeyPatch,
