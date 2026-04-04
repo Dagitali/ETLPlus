@@ -17,20 +17,26 @@ from ..api import HttpMethod
 from ..api import RequestOptions
 from ..api import compose_api_request_env
 from ..api import paginate_with_client
+from ..api._utils import ApiRequestEnvDict
 from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
+from ..file._core import FileFormatArg
 from ..file.base import ReadOptions
 from ..utils._types import JSONData
 from ..utils._types import JSONList
 from ..utils._types import StrPath
 from ..utils._types import Timeout
+from ._database import DATABASE_DRIVER_NOTE
+from ._database import DATABASE_EXTRACT_NOT_IMPLEMENTED
 from ._files import resolve_file
+from ._http import DirectRequestEnvDict
 from ._http import build_direct_request_env
 from ._http import build_request_call
 from ._http import require_url
 from ._http import send_request
 from ._options import coerce_read_options as _coerce_read_options
+from ._types import FileOptionsArg
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -91,7 +97,7 @@ def _build_client(
 
 
 def _extract_from_api_env(
-    env: Mapping[str, Any],
+    env: ApiRequestEnvDict | DirectRequestEnvDict,
     *,
     use_client: bool,
 ) -> JSONData:
@@ -115,38 +121,45 @@ def _extract_from_api_env(
     ValueError
         If required parameters are missing.
     """
+    if use_client:
+        request_env = cast(ApiRequestEnvDict, env)
+    else:
+        request_env = None
+
     if (
-        use_client
-        and env.get('use_endpoints')
-        and env.get('base_url')
-        and env.get('endpoints_map')
-        and env.get('endpoint_key')
+        request_env is not None
+        and request_env.get('use_endpoints')
+        and request_env.get('base_url')
+        and request_env.get('endpoints_map')
+        and request_env.get('endpoint_key')
     ):
         client = _build_client(
-            base_url=str(env['base_url']),
+            base_url=str(request_env['base_url']),
             base_path=(
                 base_path
-                if isinstance(base_path := env.get('base_path'), str)
+                if isinstance(base_path := request_env.get('base_path'), str)
                 else None
             ),
-            endpoints=dict(env.get('endpoints_map', {})),
-            retry=env.get('retry'),
-            retry_network_errors=bool(env.get('retry_network_errors', False)),
-            session=env.get('session'),
+            endpoints=dict(request_env.get('endpoints_map') or {}),
+            retry=request_env.get('retry'),
+            retry_network_errors=bool(
+                request_env.get('retry_network_errors', False),
+            ),
+            session=request_env.get('session'),
         )
         return paginate_with_client(
             client,
-            str(env['endpoint_key']),
-            env.get('params'),
-            env.get('headers'),
-            env.get('timeout'),
-            env.get('pagination'),
-            env.get('sleep_seconds'),
+            str(request_env['endpoint_key']),
+            request_env.get('params'),
+            request_env.get('headers'),
+            request_env.get('timeout'),
+            request_env.get('pagination'),
+            request_env.get('sleep_seconds'),
         )
 
-    if use_client:
+    if request_env is not None:
         url = require_url(
-            env,
+            request_env,
             error_message='API source missing URL',
         )
         parts = urlsplit(url)
@@ -155,21 +168,23 @@ def _extract_from_api_env(
             base_url=base,
             base_path=None,
             endpoints={},
-            retry=env.get('retry'),
-            retry_network_errors=bool(env.get('retry_network_errors', False)),
-            session=env.get('session'),
+            retry=request_env.get('retry'),
+            retry_network_errors=bool(
+                request_env.get('retry_network_errors', False),
+            ),
+            session=request_env.get('session'),
         )
         request_options = RequestOptions(
-            params=cast(Mapping[str, Any] | None, env.get('params')),
-            headers=cast(Mapping[str, str] | None, env.get('headers')),
-            timeout=cast(Timeout | None, env.get('timeout')),
+            params=cast(Mapping[str, Any] | None, request_env.get('params')),
+            headers=cast(Mapping[str, str] | None, request_env.get('headers')),
+            timeout=cast(Timeout | None, request_env.get('timeout')),
         )
 
         return client.paginate_url(
             url,
-            env.get('pagination'),
+            request_env.get('pagination'),
             request=request_options,
-            sleep_seconds=float(env.get('sleep_seconds', 0.0)),
+            sleep_seconds=float(request_env.get('sleep_seconds', 0.0)),
         )
 
     request = build_request_call(
@@ -300,17 +315,17 @@ def extract_from_database(
     """
     return [
         {
-            'message': 'Database extraction not yet implemented',
+            'message': DATABASE_EXTRACT_NOT_IMPLEMENTED,
             'connection_string': connection_string,
-            'note': 'Install database-specific drivers to enable this feature',
+            'note': DATABASE_DRIVER_NOTE,
         },
     ]
 
 
 def extract_from_file(
     file_path: StrPath,
-    file_format: FileFormat | str | None = FileFormat.JSON,
-    options: ReadOptions | Mapping[str, Any] | None = None,
+    file_format: FileFormatArg = FileFormat.JSON,
+    options: FileOptionsArg[ReadOptions] = None,
 ) -> JSONData:
     """
     Extract (semi-)structured data from a local file path or remote URI.
@@ -351,7 +366,7 @@ def extract_from_file(
 def extract(
     source_type: DataConnectorType | str,
     source: StrPath,
-    file_format: FileFormat | str | None = None,
+    file_format: FileFormatArg = None,
     **kwargs: Any,
 ) -> JSONData:
     """

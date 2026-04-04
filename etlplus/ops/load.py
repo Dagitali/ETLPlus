@@ -8,27 +8,32 @@ from __future__ import annotations
 
 import json
 import sys
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 from ..api import HttpMethod
 from ..api import compose_api_target_env
+from ..api._utils import ApiTargetEnvDict
 from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
+from ..file._core import FileFormatArg
 from ..file.base import WriteOptions
 from ..storage import StorageLocation
 from ..utils import count_records
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import StrPath
+from ._database import DATABASE_DRIVER_NOTE
+from ._database import DATABASE_LOAD_NOT_IMPLEMENTED
 from ._files import resolve_file
+from ._http import DirectRequestEnvDict
 from ._http import build_direct_request_env
 from ._http import build_request_call
 from ._http import response_json_or_text
 from ._http import send_request
 from ._options import coerce_write_options as _coerce_write_options
+from ._types import FileOptionsArg
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -87,7 +92,7 @@ def _load_data_from_str(
 
 def _load_to_api_env(
     data: JSONData,
-    env: Mapping[str, Any],
+    env: ApiTargetEnvDict | DirectRequestEnvDict,
 ) -> JSONDict:
     """
     Load data to an API target using a normalized environment.
@@ -291,18 +296,18 @@ def load_to_database(
 
     return {
         'status': 'not_implemented',
-        'message': 'Database loading not yet implemented',
+        'message': DATABASE_LOAD_NOT_IMPLEMENTED,
         'connection_string': connection_string,
         'records': records,
-        'note': 'Install database-specific drivers to enable this feature',
+        'note': DATABASE_DRIVER_NOTE,
     }
 
 
 def load_to_file(
     data: JSONData,
     file_path: StrPath,
-    file_format: FileFormat | str | None = None,
-    options: WriteOptions | Mapping[str, Any] | None = None,
+    file_format: FileFormatArg = None,
+    options: FileOptionsArg[WriteOptions] = None,
 ) -> JSONDict:
     """
     Persist data to a local file path or remote URI.
@@ -358,7 +363,7 @@ def load(
     source: StrPath | JSONData,
     target_type: DataConnectorType | str,
     target: StrPath,
-    file_format: FileFormat | str | None = None,
+    file_format: FileFormatArg = None,
     method: HttpMethod | str | None = None,
     **kwargs: Any,
 ) -> JSONData:

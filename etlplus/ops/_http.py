@@ -10,10 +10,15 @@ from collections.abc import Callable
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
+from typing import TypedDict
+from typing import cast
 
 from ..api import HttpMethod
+from ..api._utils import ApiRequestEnvDict
+from ..api._utils import ApiTargetEnvDict
 from ..api._utils import resolve_request
 from ..utils._types import JSONData
+from ..utils._types import Timeout
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -27,6 +32,10 @@ __all__ = [
     'require_url',
     'send_request',
     'response_json_or_text',
+    # Type Aliases
+    'HttpRequestEnv',
+    # Typed Dicts
+    'DirectRequestEnvDict',
 ]
 
 
@@ -46,6 +55,26 @@ class ResolvedRequest:
     kwargs: dict[str, Any]
 
 
+# SECTION: TYPED DICTS ====================================================== #
+
+
+class DirectRequestEnvDict(TypedDict, total=False):
+    """Normalized environment for one direct HTTP request."""
+
+    url: str | None
+    headers: dict[str, str]
+    timeout: Timeout
+    session: Any | None
+    method: HttpMethod | str | None
+    request_kwargs: dict[str, Any]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type HttpRequestEnv = ApiRequestEnvDict | ApiTargetEnvDict | DirectRequestEnvDict
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -53,7 +82,7 @@ def build_direct_request_env(
     url: str,
     method: HttpMethod | str,
     kwargs: Mapping[str, Any] | None = None,
-) -> dict[str, Any]:
+) -> DirectRequestEnvDict:
     """
     Build one normalized environment for a direct HTTP request.
 
@@ -87,7 +116,7 @@ def build_direct_request_env(
 
 
 def require_url(
-    env: Mapping[str, Any],
+    env: HttpRequestEnv,
     *,
     error_message: str,
 ) -> str:
@@ -115,14 +144,15 @@ def require_url(
         not a non-empty string. The error message will include the provided
         `error_message` for context.
     """
-    url = env.get('url')
+    env_map = cast(Mapping[str, Any], env)
+    url = env_map.get('url')
     if not isinstance(url, str) or not url:
         raise ValueError(error_message)
     return url
 
 
 def build_request_call(
-    env: Mapping[str, Any],
+    env: HttpRequestEnv,
     *,
     error_message: str,
     default_method: HttpMethod | str,
@@ -150,15 +180,16 @@ def build_request_call(
     ResolvedRequest
         A dataclass instance containing the normalized request call details.
     """
-    kwargs = dict(env.get('request_kwargs') or {})
-    headers = env.get('headers')
+    env_map = cast(Mapping[str, Any], env)
+    kwargs = dict(cast(Mapping[str, Any] | None, env_map.get('request_kwargs')) or {})
+    headers = env_map.get('headers')
     if isinstance(headers, Mapping):
         kwargs.setdefault('headers', headers)
 
     request_callable, timeout, http_method = resolve_request(
-        env.get('method') or default_method,
-        session=env.get('session'),
-        timeout=env.get('timeout'),
+        env_map.get('method') or default_method,
+        session=env_map.get('session'),
+        timeout=env_map.get('timeout'),
     )
     if json_data is not None:
         kwargs['json'] = json_data

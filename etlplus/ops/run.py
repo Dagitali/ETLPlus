@@ -19,7 +19,7 @@ from typing import cast
 from .._config import Config
 from ..api import HttpMethod
 from ..connector import DataConnectorType
-from ..file import FileFormat
+from ..file._core import FileFormatArg
 from ..utils import print_json
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
@@ -104,7 +104,7 @@ class _FileConnectorConfig:
     # -- Instance Attributes -- #
 
     path: StrPath
-    file_format: FileFormat | str | None
+    file_format: FileFormatArg
     options: dict[str, Any]
 
 
@@ -824,7 +824,7 @@ def run_pipeline(
     operations: PipelineConfig | None = None,
     target_type: DataConnectorType | str | None = None,
     target: StrPath | None = None,
-    file_format: FileFormat | str | None = None,
+    file_format: FileFormatArg = None,
     method: HttpMethod | str | None = None,
     **kwargs: Any,
 ) -> JSONData:
