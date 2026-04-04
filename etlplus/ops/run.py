@@ -211,6 +211,11 @@ def _planned_jobs(
     -------
     list[Any]
         Ordered list of job-like objects to execute.
+
+    Raises
+    ------
+    ValueError
+        If the requested job is not found or if there are configuration issues.
     """
     jobs_by_name = _index_jobs(list(getattr(cfg, 'jobs', [])))
     if not jobs_by_name:
@@ -405,7 +410,7 @@ def _run_job_plan(
                 sources_by_name=sources_by_name,
                 targets_by_name=targets_by_name,
             )
-        except Exception as exc:
+        except (KeyError, OSError, RuntimeError, ValueError) as exc:
             failed_job_names.append(job_name)
             executed_jobs.append(
                 {
@@ -568,12 +573,6 @@ def run(
     JSONDict
         Result dictionary. Single independent jobs return their terminal load
         result directly; DAG-style runs return an execution summary.
-
-    Raises
-    ------
-    ValueError
-        If the requested job is not found or if there are configuration
-        issues.
     """
     cfg_path = config_path or DEFAULT_CONFIG_PATH
     cfg = Config.from_yaml(cfg_path, substitute=True)
