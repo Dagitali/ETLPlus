@@ -176,6 +176,19 @@ class _JobValidationConfig:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class _ResolvedJobConnector:
+    """Resolved connector dispatch settings for one job edge."""
+
+    # -- Instance Attributes -- #
+
+    connector_type: OptionalConnectorTypeArg
+    value: StrPath
+    file_format: FileFormatArg
+    options: dict[str, Any]
+    connector_obj: Any
+
+
 @dataclass(slots=True)
 class _RunPlanTracker:
     """Accumulate execution state for one DAG-style run."""
@@ -481,34 +494,20 @@ def _extract_job_data(
     if not (extract_cfg := getattr(job_obj, 'extract', None)):
         raise ValueError('Job missing "extract" section')
 
-    source_obj = _require_named_connector(
+    source = _resolve_job_connector(
         context.sources_by_name,
-        extract_cfg.source,
+        ref_name=extract_cfg.source,
         label='source',
+        overrides=getattr(extract_cfg, 'options', None),
+        missing_path_message='File source missing "path"',
     )
-    overrides = getattr(extract_cfg, 'options', None) or {}
-    source_type = getattr(source_obj, 'type', None)
-
-    if source_type == DataConnectorType.FILE or source_type == 'file':
-        file_cfg = _resolve_file_connector_config(
-            source_obj,
-            overrides,
-            missing_path_message='File source missing "path"',
-        )
-        return _dispatch_extract(
-            source_type,
-            file_cfg.path,
-            file_format=file_cfg.file_format,
-            options=file_cfg.options,
-        )
-
-    source_value = str(getattr(source_obj, 'connection_string', ''))
     return _dispatch_extract(
-        source_type,
-        source_value,
-        options=overrides,
+        source.connector_type,
+        source.value,
+        file_format=source.file_format,
+        options=source.options,
         cfg=context.cfg,
-        connector_obj=source_obj,
+        connector_obj=source.connector_obj,
     )
 
 
@@ -521,40 +520,22 @@ def _load_job_result(
     if not (load_cfg := getattr(job_obj, 'load', None)):
         raise ValueError('Job missing "load" section')
 
-    target_obj = _require_named_connector(
+    target = _resolve_job_connector(
         context.targets_by_name,
-        load_cfg.target,
+        ref_name=load_cfg.target,
         label='target',
+        overrides=getattr(load_cfg, 'overrides', None),
+        missing_path_message='File target missing "path"',
     )
-    overrides = getattr(load_cfg, 'overrides', None) or {}
-    target_type = getattr(target_obj, 'type', None)
-
-    if target_type == DataConnectorType.FILE or target_type == 'file':
-        file_cfg = _resolve_file_connector_config(
-            target_obj,
-            overrides,
-            missing_path_message='File target missing "path"',
-        )
-        result = _dispatch_load(
-            data,
-            target_type,
-            file_cfg.path,
-            file_format=file_cfg.file_format,
-            options=file_cfg.options,
-        )
-    else:
-        target_value = str(
-            overrides.get('connection_string')
-            or getattr(target_obj, 'connection_string', ''),
-        )
-        result = _dispatch_load(
-            data,
-            target_type,
-            target_value,
-            options=overrides,
-            cfg=context.cfg,
-            connector_obj=target_obj,
-        )
+    result = _dispatch_load(
+        data,
+        target.connector_type,
+        target.value,
+        file_format=target.file_format,
+        options=target.options,
+        cfg=context.cfg,
+        connector_obj=target.connector_obj,
+    )
 
     if not isinstance(result, dict):
         raise TypeError('load result must be a mapping')
@@ -650,6 +631,13 @@ def _dispatch_load(
             raise ValueError(f'Unsupported target type: {target_type}')
 
 
+def _is_file_connector_type(
+    connector_type: object,
+) -> bool:
+    """Return True when a connector type represents file-based IO."""
+    return connector_type in {DataConnectorType.FILE, DataConnectorType.FILE.value}
+
+
 def _resolve_file_connector_config(
     connector_obj: Any,
     overrides: Mapping[str, Any],
@@ -676,6 +664,49 @@ def _resolve_file_connector_config(
             getattr(connector_obj, 'options', None),
             overrides,
         ),
+    )
+
+
+def _resolve_job_connector(
+    connectors: Mapping[str, Any],
+    *,
+    ref_name: str,
+    label: str,
+    overrides: Mapping[str, Any] | None,
+    missing_path_message: str,
+) -> _ResolvedJobConnector:
+    """Resolve dispatch-ready connector settings for one named job edge."""
+    connector_obj = _require_named_connector(
+        connectors,
+        ref_name,
+        label=label,
+    )
+    connector_type = getattr(connector_obj, 'type', None)
+    resolved_overrides = dict(overrides or {})
+
+    if _is_file_connector_type(connector_type):
+        file_cfg = _resolve_file_connector_config(
+            connector_obj,
+            resolved_overrides,
+            missing_path_message=missing_path_message,
+        )
+        return _ResolvedJobConnector(
+            connector_type=connector_type,
+            value=file_cfg.path,
+            file_format=file_cfg.file_format,
+            options=file_cfg.options,
+            connector_obj=connector_obj,
+        )
+
+    return _ResolvedJobConnector(
+        connector_type=connector_type,
+        value=str(
+            resolved_overrides.get('connection_string')
+            or getattr(connector_obj, 'connection_string', ''),
+        ),
+        file_format=None,
+        options=resolved_overrides,
+        connector_obj=connector_obj,
     )
 
 
