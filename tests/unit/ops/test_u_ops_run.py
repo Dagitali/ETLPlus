@@ -846,6 +846,119 @@ class TestRun:
         }
         assert load_calls == ['/tmp/seed-out.json', '/tmp/main-out.json']
 
+    def test_run_accepts_tuple_dependencies_in_dag_planning(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Tuple-based dependencies should be treated like configured lists."""
+        seed_job = _make_job(
+            name='seed',
+            source='seed_src',
+            target='seed_tgt',
+        )
+        main_job = _make_job(
+            name='main',
+            source='main_src',
+            target='main_tgt',
+        )
+        main_job.depends_on = ('seed',)
+        cfg = SimpleNamespace(
+            jobs=[main_job, seed_job],
+            sources=[
+                SimpleNamespace(
+                    name='seed_src',
+                    type='file',
+                    path='/tmp/seed.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='main_src',
+                    type='file',
+                    path='/tmp/main.json',
+                    format='json',
+                ),
+            ],
+            targets=[
+                SimpleNamespace(
+                    name='seed_tgt',
+                    type='file',
+                    path='/tmp/seed-out.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='main_tgt',
+                    type='file',
+                    path='/tmp/main-out.json',
+                    format='json',
+                ),
+            ],
+            transforms={'noop': {}},
+            validations={},
+        )
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'extract',
+            lambda _stype, source, **_kwargs: [{'source': source}],
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'maybe_validate',
+            lambda data, *_args, **_kwargs: data,
+        )
+        monkeypatch.setattr(run_mod, 'transform', lambda data, _ops: data)
+        monkeypatch.setattr(
+            run_mod,
+            'load',
+            lambda *_args, **_kwargs: {'status': 'success'},
+        )
+
+        result = run_mod.run('main')
+
+        assert result['ordered_jobs'] == ['seed', 'main']
+
+    def test_run_raises_when_load_result_is_not_mapping(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Run should reject non-mapping terminal load results."""
+        job = _make_job(name='job', source='src', target='tgt')
+        cfg = _base_config(
+            job,
+            SimpleNamespace(
+                name='src',
+                type='file',
+                path='/tmp/in.json',
+                format='json',
+            ),
+            SimpleNamespace(
+                name='tgt',
+                type='file',
+                path='/tmp/out.json',
+                format='json',
+            ),
+        )
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+        monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: {'id': 1})
+        monkeypatch.setattr(
+            run_mod,
+            'maybe_validate',
+            lambda data, *_a, **_k: data,
+        )
+        monkeypatch.setattr(run_mod, 'transform', lambda data, _ops: data)
+        monkeypatch.setattr(run_mod, 'load', lambda *_a, **_k: ['bad-result'])
+
+        with pytest.raises(TypeError, match='load result must be a mapping'):
+            run_mod.run('job')
+
     @pytest.mark.parametrize(
         ('cfg', 'expected_message'),
         [
@@ -1513,6 +1626,14 @@ class TestRunPipeline:
         """
         with pytest.raises(ValueError, match='source is required'):
             run_mod.run_pipeline(source_type='file', source=None)
+
+    def test_requires_path_like_source_when_source_type_is_set(self) -> None:
+        """Non-path payloads should be rejected before extract dispatch."""
+        with pytest.raises(TypeError, match='source must be a path-like'):
+            run_mod.run_pipeline(
+                source_type='file',
+                source=cast(Any, {'id': 1}),
+            )
 
     def test_requires_target_when_target_type_is_set(self) -> None:
         """
