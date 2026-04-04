@@ -1,0 +1,173 @@
+"""
+:mod:`tests.unit.ops.test_u_ops_http` module.
+
+Unit tests for :mod:`etlplus.ops._http`.
+"""
+
+from __future__ import annotations
+
+import importlib
+from typing import Any
+
+import pytest
+
+from etlplus.api import HttpMethod
+
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=protected-access
+
+# SECTION: HELPERS ========================================================== #
+
+
+http_mod = importlib.import_module('etlplus.ops._http')
+
+
+class _Response:
+    """Minimal response stub for payload parsing tests."""
+
+    def __init__(
+        self,
+        payload: object,
+        *,
+        text: str = 'fallback',
+        json_error: bool = False,
+    ) -> None:
+        self._payload = payload
+        self.text = text
+        self._json_error = json_error
+
+    def json(self) -> object:
+        """Return the preset payload or raise a decode error."""
+        if self._json_error:
+            raise ValueError('bad json')
+        return self._payload
+
+
+# SECTION: TESTS ============================================================ #
+
+
+class TestBuildRequestCall:
+    """Unit tests for normalized request-call construction."""
+
+    def test_build_request_call_keeps_explicit_request_headers(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that explicit request kwargs headers win over env headers."""
+        monkeypatch.setattr(
+            http_mod,
+            'resolve_request',
+            lambda method, session, timeout: (
+                lambda url, **kwargs: None,
+                timeout,
+                HttpMethod.POST,
+            ),
+        )
+
+        result = http_mod.build_request_call(
+            {
+                'url': 'https://example.test/api',
+                'headers': {'X-Env': 'env'},
+                'request_kwargs': {'headers': {'X-Request': 'request'}},
+            },
+            error_message='missing',
+            default_method=HttpMethod.POST,
+        )
+
+        assert result.kwargs['headers'] == {'X-Request': 'request'}
+
+    def test_build_request_call_merges_headers_and_json_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that headers, JSON payload, and resolved method details survive.
+        """
+        captured: dict[str, Any] = {}
+
+        def _callable(url: str, **kwargs: Any) -> None:
+            captured['url'] = url
+            captured['kwargs'] = kwargs
+
+        monkeypatch.setattr(
+            http_mod,
+            'resolve_request',
+            lambda method, session, timeout: (
+                _callable,
+                9.5,
+                HttpMethod.PUT,
+            ),
+        )
+
+        result = http_mod.build_request_call(
+            {
+                'url': 'https://example.test/api',
+                'headers': {'X-Test': '1'},
+                'method': 'put',
+                'request_kwargs': {'verify': False},
+                'session': 'session',
+                'timeout': 2.0,
+            },
+            error_message='missing',
+            default_method=HttpMethod.POST,
+            json_data={'ok': True},
+        )
+
+        assert result.url == 'https://example.test/api'
+        assert result.timeout == 9.5
+        assert result.http_method is HttpMethod.PUT
+        assert result.kwargs == {
+            'headers': {'X-Test': '1'},
+            'json': {'ok': True},
+            'verify': False,
+        }
+
+
+class TestRequireUrl:
+    """Unit tests for required URL extraction."""
+
+    @pytest.mark.parametrize(
+        'env',
+        [{}, {'url': ''}, {'url': None}, {'url': 7}],
+    )
+    def test_require_url_rejects_missing_or_invalid_values(
+        self,
+        env: dict[str, object],
+    ) -> None:
+        """Test that missing or non-string URLs raise :class:`ValueError`."""
+        with pytest.raises(ValueError, match='missing'):
+            http_mod.require_url(env, error_message='missing')
+
+    @pytest.mark.parametrize(
+        ('env', 'expected'),
+        [
+            ({'url': 'https://example.test'}, 'https://example.test'),
+        ],
+    )
+    def test_require_url_returns_string(
+        self,
+        env: dict[str, object],
+        expected: str,
+    ) -> None:
+        """Test that string URL values are returned unchanged."""
+        assert http_mod.require_url(env, error_message='missing') == expected
+
+
+class TestResponseJsonOrText:
+    """Unit tests for response payload parsing."""
+
+    def test_response_json_or_text_falls_back_to_text(self) -> None:
+        """Test that JSON decode failures return raw response text."""
+        assert (
+            http_mod.response_json_or_text(
+                _Response({'ok': True}, text='fallback', json_error=True),
+            )
+            == 'fallback'
+        )
+
+    def test_response_json_or_text_prefers_json_payload(self) -> None:
+        """JSON-capable responses should return their parsed payload."""
+        assert http_mod.response_json_or_text(_Response({'ok': True})) == {
+            'ok': True,
+        }
