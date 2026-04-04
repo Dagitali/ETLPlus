@@ -28,12 +28,6 @@ __all__ = [
 ]
 
 
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type _OptionsFactory[OptionsT] = Callable[..., OptionsT]
-
-
 # SECTION: CONSTANTS ======================================================== #
 
 
@@ -82,7 +76,7 @@ def _coerce_file_options[OptionsT](
     options: OptionsT | Mapping[str, Any] | None,
     *,
     option_type: type[OptionsT],
-    factory: _OptionsFactory[OptionsT],
+    factory: Callable[..., OptionsT],
     defaults: Mapping[str, object],
 ) -> OptionsT | None:
     """Normalize mapping-based file options into a concrete options object."""
