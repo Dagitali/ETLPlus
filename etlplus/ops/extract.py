@@ -26,6 +26,7 @@ from ..utils._types import JSONList
 from ..utils._types import StrPath
 from ..utils._types import Timeout
 from ._files import resolve_file
+from ._http import build_direct_request_env
 from ._http import build_request_call
 from ._http import require_url
 from ._http import send_request
@@ -246,13 +247,7 @@ def extract_from_api(
     JSONData
         Parsed JSON payload, or a fallback object with raw text.
     """
-    env = {
-        'url': url,
-        'method': method,
-        'timeout': kwargs.pop('timeout', None),
-        'session': kwargs.pop('session', None),
-        'request_kwargs': kwargs,
-    }
+    env = build_direct_request_env(url, method, kwargs)
     return _extract_from_api_env(env, use_client=False)
 
 
