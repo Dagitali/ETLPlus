@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from time import perf_counter
 from typing import Any
 from typing import Final
+from typing import Self
 from typing import cast
 
 from .._config import Config
@@ -22,6 +23,8 @@ from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import StrPath
 from ..workflow import topological_sort_jobs
+from ._shared import index_named_items
+from ._shared import merge_mapping_options
 from ._types import PipelineConfig
 from ._utils import maybe_validate
 from .extract import extract
@@ -59,6 +62,37 @@ class _DagJobRef:
     depends_on: list[str]
 
 
+@dataclass(frozen=True, slots=True)
+class _RunContext:
+    """Resolved config and connector indexes used across one run."""
+
+    # -- Instance Attributes -- #
+
+    cfg: Any
+    sources_by_name: dict[str, Any]
+    targets_by_name: dict[str, Any]
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_config(
+        cls,
+        cfg: Any,
+    ) -> Self:
+        """Build a context with indexed sources and targets."""
+        return cls(
+            cfg=cfg,
+            sources_by_name=_index_connectors(
+                list(getattr(cfg, 'sources', []) or []),
+                label='source',
+            ),
+            targets_by_name=_index_connectors(
+                list(getattr(cfg, 'targets', []) or []),
+                label='target',
+            ),
+        )
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
@@ -87,15 +121,10 @@ def _index_connectors(
     ValueError
         If duplicate connector names are found.
     """
-    indexed: dict[str, Any] = {}
-    for connector in connectors:
-        name = getattr(connector, 'name', None)
-        if not isinstance(name, str) or not name:
-            continue
-        if name in indexed:
-            raise ValueError(f'Duplicate {label} connector name: {name}')
-        indexed[name] = connector
-    return indexed
+    return index_named_items(
+        connectors,
+        item_label=f'{label} connector',
+    )
 
 
 def _index_jobs(
@@ -119,15 +148,10 @@ def _index_jobs(
     ValueError
         If duplicate job names are found.
     """
-    indexed: dict[str, Any] = {}
-    for job in jobs:
-        name = getattr(job, 'name', None)
-        if not isinstance(name, str) or not name:
-            continue
-        if name in indexed:
-            raise ValueError(f'Duplicate job name: {name}')
-        indexed[name] = job
-    return indexed
+    return index_named_items(
+        jobs,
+        item_label='job',
+    )
 
 
 def _job_dependencies(
@@ -146,13 +170,10 @@ def _merge_file_options(
     *option_sets: object,
 ) -> dict[str, Any]:
     """Merge connector-level and job-level file options with later wins."""
-    merged: dict[str, Any] = {}
-    for option_set in option_sets:
-        if isinstance(option_set, Mapping):
-            merged.update(option_set)
-    merged.pop('path', None)
-    merged.pop('format', None)
-    return merged
+    return merge_mapping_options(
+        *option_sets,
+        excluded_keys=frozenset({'path', 'format'}),
+    )
 
 
 def _ordered_job_names(
@@ -217,11 +238,12 @@ def _planned_jobs(
     ValueError
         If the requested job is not found or if there are configuration issues.
     """
-    jobs_by_name = _index_jobs(list(getattr(cfg, 'jobs', [])))
+    jobs = list(getattr(cfg, 'jobs', []) or [])
+    jobs_by_name = _index_jobs(jobs)
     if not jobs_by_name:
         raise ValueError('No jobs configured')
 
-    ordered_names = _ordered_job_names(list(getattr(cfg, 'jobs', [])))
+    ordered_names = _ordered_job_names(jobs)
 
     if run_all:
         return [jobs_by_name[name] for name in ordered_names]
@@ -235,103 +257,97 @@ def _planned_jobs(
 
 
 def _run_job_config(
-    cfg: Any,
+    context: _RunContext,
     job_obj: Any,
-    *,
-    sources_by_name: dict[str, Any],
-    targets_by_name: dict[str, Any],
 ) -> JSONDict:
     """Execute one configured job object against an already-loaded config."""
-    # Extract.
-    if not job_obj.extract:
+    data = _extract_job_data(context, job_obj)
+    validation_kwargs = _validation_kwargs(job_obj, context.cfg)
+
+    data = _maybe_validate_job_data(
+        data,
+        when='before_transform',
+        validation_kwargs=validation_kwargs,
+    )
+
+    if (ops := _resolve_transform_ops(context.cfg, job_obj)) is not None:
+        data = transform(data, ops)
+
+    data = _maybe_validate_job_data(
+        data,
+        when='after_transform',
+        validation_kwargs=validation_kwargs,
+    )
+    return _load_job_result(context, job_obj, data)
+
+
+def _extract_job_data(
+    context: _RunContext,
+    job_obj: Any,
+) -> JSONData:
+    """Extract the source payload for one configured job."""
+    if not (extract_cfg := getattr(job_obj, 'extract', None)):
         raise ValueError('Job missing "extract" section')
-    source_name = job_obj.extract.source
+
     source_obj = _require_named_connector(
-        sources_by_name,
-        source_name,
+        context.sources_by_name,
+        extract_cfg.source,
         label='source',
     )
-    ex_opts: dict[str, Any] = job_obj.extract.options or {}
+    overrides = getattr(extract_cfg, 'options', None) or {}
 
-    data: Any
-    stype_raw = getattr(source_obj, 'type', None)
-    match DataConnectorType.coerce(stype_raw or ''):
+    match DataConnectorType.coerce(getattr(source_obj, 'type', '') or ''):
         case DataConnectorType.FILE:
-            path = ex_opts.get('path') or getattr(source_obj, 'path', None)
-            fmt = ex_opts.get('format') or getattr(
-                source_obj,
-                'format',
-                'json',
-            )
+            path = overrides.get('path') or getattr(source_obj, 'path', None)
+            fmt = overrides.get('format') or getattr(source_obj, 'format', 'json')
             if not path:
                 raise ValueError('File source missing "path"')
-            data = extract(
+            return extract(
                 'file',
                 path,
                 file_format=fmt,
                 **_merge_file_options(
                     getattr(source_obj, 'options', None),
-                    ex_opts,
+                    overrides,
                 ),
             )
         case DataConnectorType.DATABASE:
-            conn = getattr(source_obj, 'connection_string', '')
-            data = extract('database', conn)
+            return extract(
+                'database',
+                getattr(source_obj, 'connection_string', ''),
+            )
         case DataConnectorType.API:
-            data = extract_from_api_source(cfg, source_obj, ex_opts)
+            return extract_from_api_source(
+                context.cfg,
+                source_obj,
+                overrides,
+            )
         case _:
-            raise ValueError(f'Unsupported source type: {stype_raw}')
+            raise ValueError(
+                f'Unsupported source type: {getattr(source_obj, "type", None)}',
+            )
 
-    enabled_validation, rules, severity, phase = _resolve_validation_config(
-        job_obj,
-        cfg,
-    )
 
-    data = maybe_validate(
-        data,
-        'before_transform',
-        enabled=enabled_validation,
-        rules=rules,
-        phase=phase,
-        severity=severity,
-        validate_fn=validate,  # type: ignore[arg-type]
-        print_json_fn=print_json,
-    )
-
-    if job_obj.transform:
-        ops: Any = cfg.transforms.get(job_obj.transform.pipeline, {})
-        data = transform(data, ops)
-
-    data = maybe_validate(
-        data,
-        'after_transform',
-        enabled=enabled_validation,
-        rules=rules,
-        phase=phase,
-        severity=severity,
-        validate_fn=validate,  # type: ignore[arg-type]
-        print_json_fn=print_json,
-    )
-
-    if not job_obj.load:
+def _load_job_result(
+    context: _RunContext,
+    job_obj: Any,
+    data: JSONData,
+) -> JSONDict:
+    """Load one job payload into its configured target."""
+    if not (load_cfg := getattr(job_obj, 'load', None)):
         raise ValueError('Job missing "load" section')
-    target_name = job_obj.load.target
+
     target_obj = _require_named_connector(
-        targets_by_name,
-        target_name,
+        context.targets_by_name,
+        load_cfg.target,
         label='target',
     )
-    overrides = job_obj.load.overrides or {}
+    overrides = getattr(load_cfg, 'overrides', None) or {}
 
-    ttype_raw = getattr(target_obj, 'type', None)
-    match DataConnectorType.coerce(ttype_raw or ''):
+    match DataConnectorType.coerce(getattr(target_obj, 'type', '') or ''):
         case DataConnectorType.FILE:
             path = overrides.get('path') or getattr(target_obj, 'path', None)
-            fmt = overrides.get('format') or getattr(
-                target_obj,
-                'format',
-                'json',
-            )
+            fmt = overrides.get('format') or getattr(target_obj, 'format', 'json')
             if not path:
                 raise ValueError('File target missing "path"')
             result = load(
@@ -345,22 +361,78 @@ def _run_job_config(
                 ),
             )
         case DataConnectorType.API:
-            result = load_to_api_target(cfg, target_obj, overrides, data)
-        case DataConnectorType.DATABASE:
-            conn = overrides.get('connection_string') or getattr(
+            result = load_to_api_target(
+                context.cfg,
                 target_obj,
-                'connection_string',
-                '',
+                overrides,
+                data,
             )
-            result = load(data, 'database', str(conn))
+        case DataConnectorType.DATABASE:
+            result = load(
+                data,
+                'database',
+                str(
+                    overrides.get('connection_string')
+                    or getattr(target_obj, 'connection_string', ''),
+                ),
+            )
         case _:
-            raise ValueError(f'Unsupported target type: {ttype_raw}')
+            raise ValueError(
+                f'Unsupported target type: {getattr(target_obj, "type", None)}',
+            )
 
     return cast(JSONDict, result)
 
 
-def _run_job_plan(
+def _resolve_transform_ops(
     cfg: Any,
+    job_obj: Any,
+) -> Any | None:
+    """Return transform operations for a job when a transform registry exists."""
+    if not (transform_cfg := getattr(job_obj, 'transform', None)):
+        return None
+
+    transforms = getattr(cfg, 'transforms', {})
+    if transforms is None or not isinstance(transforms, Mapping):
+        return None
+    return transforms.get(getattr(transform_cfg, 'pipeline', None), {})
+
+
+def _validation_kwargs(
+    job_obj: Any,
+    cfg: Any,
+) -> dict[str, Any]:
+    """Build the keyword arguments shared by both validation phases."""
+    enabled, rules, severity, phase = _resolve_validation_config(job_obj, cfg)
+    return {
+        'enabled': enabled,
+        'phase': phase,
+        'print_json_fn': print_json,
+        'rules': rules,
+        'severity': severity,
+        'validate_fn': validate,
+    }
+
+
+def _maybe_validate_job_data(
+    data: JSONData,
+    *,
+    when: str,
+    validation_kwargs: Mapping[str, Any],
+) -> JSONData:
+    """Apply conditional validation for one pipeline phase."""
+    return cast(
+        JSONData,
+        maybe_validate(
+            data,
+            when,
+            **validation_kwargs,
+        ),
+    )
+
+
+def _run_job_plan(
+    context: _RunContext,
     jobs: list[Any],
     *,
     requested_job: str | None,
@@ -368,12 +440,11 @@ def _run_job_plan(
     mode: str,
 ) -> JSONDict:
     """Execute multiple jobs in DAG order and return a stable summary."""
-    sources_by_name = _index_connectors(cfg.sources, label='source')
-    targets_by_name = _index_connectors(cfg.targets, label='target')
-
     ordered_job_names = [cast(str, job.name) for job in jobs]
     failed_job_names: list[str] = []
+    failed_lookup: set[str] = set()
     skipped_job_names: list[str] = []
+    skipped_lookup: set[str] = set()
     succeeded_job_names: list[str] = []
     executed_jobs: list[dict[str, Any]] = []
     final_job_name: str | None = None
@@ -385,10 +456,11 @@ def _run_job_plan(
         blocked_by = [
             dep
             for dep in _job_dependencies(job_obj)
-            if dep in failed_job_names or dep in skipped_job_names
+            if dep in failed_lookup or dep in skipped_lookup
         ]
         if blocked_by:
             skipped_job_names.append(job_name)
+            skipped_lookup.add(job_name)
             executed_jobs.append(
                 {
                     'job': job_name,
@@ -405,13 +477,12 @@ def _run_job_plan(
         started_perf = perf_counter()
         try:
             result = _run_job_config(
-                cfg,
+                context,
                 job_obj,
-                sources_by_name=sources_by_name,
-                targets_by_name=targets_by_name,
             )
         except (KeyError, OSError, RuntimeError, ValueError) as exc:
             failed_job_names.append(job_name)
+            failed_lookup.add(job_name)
             executed_jobs.append(
                 {
                     'duration_ms': int((perf_counter() - started_perf) * 1000),
@@ -530,7 +601,10 @@ def _resolve_validation_config(
     if val_ref is None:
         return False, {}, 'error', 'before_transform'
 
-    rules = cfg.validations.get(val_ref.ruleset, {})
+    validations = getattr(cfg, 'validations', {}) or {}
+    if not isinstance(validations, Mapping):
+        validations = {}
+    rules = validations.get(val_ref.ruleset, {})
     severity = (val_ref.severity or 'error').lower()
     phase = (val_ref.phase or 'before_transform').lower()
     return True, rules, severity, phase
@@ -581,25 +655,18 @@ def run(
         job_name=job,
         run_all=run_all,
     )
+    context = _RunContext.from_config(cfg)
 
     if len(planned_jobs) > 1 or run_all:
         return _run_job_plan(
-            cfg,
+            context,
             planned_jobs,
             requested_job=job,
             continue_on_fail=continue_on_fail,
             mode='all' if run_all else 'job',
         )
 
-    # Index sources/targets by name.
-    sources_by_name = _index_connectors(cfg.sources, label='source')
-    targets_by_name = _index_connectors(cfg.targets, label='target')
-    return _run_job_config(
-        cfg,
-        planned_jobs[0],
-        sources_by_name=sources_by_name,
-        targets_by_name=targets_by_name,
-    )
+    return _run_job_config(context, planned_jobs[0])
 
 
 def run_pipeline(
