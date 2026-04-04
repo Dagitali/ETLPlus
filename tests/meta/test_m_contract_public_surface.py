@@ -91,6 +91,7 @@ EXPECTED_CLI_COMMANDS = {
 }
 
 EXPECTED_OPS_EXPORTS = [
+    'ValidationSettings',
     'AggregateName',
     'OperatorName',
     'PipelineStep',
@@ -105,7 +106,6 @@ EXPECTED_OPS_EXPORTS = [
     'FieldValidationDict',
     'ValidationDict',
     'ValidationResultDict',
-    'ValidationSettings',
 ]
 
 

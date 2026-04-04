@@ -1,17 +1,18 @@
 """
-:mod:`etlplus.ops._utils` module.
+:mod:`etlplus.ops._validation` module.
 
 Utility helpers for conditional data ops orchestration.
 
 The helpers defined here embrace a "high cohesion, low coupling" design by
 isolating normalization, configuration, and logging responsibilities. The
-resulting surface keeps ``maybe_validate`` focused on orchestration while
+resulting surface keeps :func:`maybe_validate` focused on orchestration while
 offloading ancillary concerns to composable helpers.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
@@ -22,6 +23,19 @@ from typing import cast
 
 from ..utils import normalize_choice
 from ..utils._types import StrAnyMap
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    # Data Classes
+    'ValidationSettings',
+    # Functions
+    'maybe_validate',
+    # Typed Dicts
+    'ValidationResultDict',
+]
+
 
 # SECTION: TYPED DICTIONARIES =============================================== #
 
@@ -43,6 +57,7 @@ type Ruleset = StrAnyMap
 type ValidationPhase = Literal['before_transform', 'after_transform']
 type ValidationWindow = Literal['before_transform', 'after_transform', 'both']
 type ValidationSeverity = Literal['warn', 'error']
+type ValidationChoice = ValidationPhase | ValidationWindow | ValidationSeverity
 
 type ValidateFn = Callable[[Any, Ruleset], ValidationResultDict]
 type PrintFn = Callable[[Any], None]
@@ -163,6 +178,178 @@ class ValidationSettings:
         return _should_validate(self.window, self.phase)
 
 
+# SECTION: INTERNAL FUNCTIONS ============================================== #
+
+
+def _log_failure(
+    printer: PrintFn,
+    *,
+    phase: ValidationPhase,
+    window: ValidationWindow,
+    ruleset_name: str | None,
+    result: ValidationResultDict,
+) -> None:
+    """
+    Emit a structured message describing the failed validation.
+
+    Parameters
+    ----------
+    printer : PrintFn
+        Structured logger invoked when validation fails.
+    phase : ValidationPhase
+        Current pipeline phase requesting validation.
+    window : ValidationWindow
+        Configured validation window.
+    ruleset_name : str | None
+        Name of the validation ruleset.
+    result : ValidationResultDict
+        Result of the failed validation.
+    """
+    printer(
+        {
+            'status': 'validation_failed',
+            'phase': phase,
+            'when': window,
+            'ruleset': ruleset_name,
+            'result': result,
+        },
+    )
+
+
+def _normalize_choice[T: ValidationChoice](
+    value: str | None,
+    *,
+    mapping: Mapping[str, str],
+    default: T,
+) -> T:
+    """Normalize arbitrary text into one of the allowed literal choices."""
+    return cast(
+        T,
+        normalize_choice(
+            value,
+            mapping=mapping,
+            default=default,
+        ),
+    )
+
+
+def _normalize_phase(
+    value: str | None,
+) -> ValidationPhase:
+    """
+    Normalize arbitrary text into a known validation phase.
+
+    Parameters
+    ----------
+    value : str | None
+        Untrusted text to normalize.
+
+    Returns
+    -------
+    ValidationPhase
+        Normalized validation phase. Defaults to ``"before_transform"`` when
+        unspecified.
+    """
+    return _normalize_choice(
+        value,
+        mapping=_PHASE_CHOICES,
+        default='before_transform',
+    )
+
+
+def _normalize_severity(
+    value: str | None,
+) -> ValidationSeverity:
+    """
+    Normalize severity, defaulting to ``"error"`` when unspecified.
+
+    Parameters
+    ----------
+    value : str | None
+        Untrusted text to normalize.
+
+    Returns
+    -------
+    ValidationSeverity
+        Normalized severity. Defaults to ``"error"`` when unspecified.
+    """
+    return _normalize_choice(
+        value,
+        mapping=_SEVERITY_CHOICES,
+        default='error',
+    )
+
+
+def _normalize_window(
+    value: str | None,
+) -> ValidationWindow:
+    """
+    Normalize the configured validation window.
+
+    Parameters
+    ----------
+    value : str | None
+        Untrusted text to normalize.
+
+    Returns
+    -------
+    ValidationWindow
+        Normalized validation window. Defaults to ``"both"`` when unspecified.
+    """
+    return _normalize_choice(
+        value,
+        mapping=_WINDOW_CHOICES,
+        default='both',
+    )
+
+
+def _rule_name(
+    rules: Ruleset,
+) -> str | None:
+    """
+    Best-effort extraction of a ruleset identifier.
+
+    Parameters
+    ----------
+    rules : Ruleset
+        Untrusted ruleset configuration.
+
+    Returns
+    -------
+    str | None
+        Name of the ruleset when available. Returns ``None`` when the ruleset
+        lacks a name or when the ruleset is not a mapping.
+    """
+    getter = getattr(rules, 'get', None)
+    if callable(getter):
+        return getter('name')
+    return None
+
+
+def _should_validate(
+    window: ValidationWindow,
+    phase: ValidationPhase,
+) -> bool:
+    """
+    Return ``True`` when the validation window matches the phase.
+
+    Parameters
+    ----------
+    window : ValidationWindow
+        Configured validation window. Accepts ``"before_transform"``,
+        ``"after_transform"``, or ``"both"``.
+    phase : ValidationPhase
+        Current pipeline phase requesting validation. Accepts
+        ``"before_transform"`` or ``"after_transform"``.
+
+    Returns
+    -------
+    bool
+        ``True`` when the validation window matches the phase.
+    """
+    return window == 'both' or window == phase
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -258,167 +445,3 @@ def maybe_validate(
         return payload
 
     raise ValueError('Validation failed')
-
-
-# SECTION: INTERNAL FUNCTIONS ============================================== #
-
-
-def _log_failure(
-    printer: PrintFn,
-    *,
-    phase: ValidationPhase,
-    window: ValidationWindow,
-    ruleset_name: str | None,
-    result: ValidationResultDict,
-) -> None:
-    """
-    Emit a structured message describing the failed validation.
-
-    Parameters
-    ----------
-    printer : PrintFn
-        Structured logger invoked when validation fails.
-    phase : ValidationPhase
-        Current pipeline phase requesting validation.
-    window : ValidationWindow
-        Configured validation window.
-    ruleset_name : str | None
-        Name of the validation ruleset.
-    result : ValidationResultDict
-        Result of the failed validation.
-    """
-    printer(
-        {
-            'status': 'validation_failed',
-            'phase': phase,
-            'when': window,
-            'ruleset': ruleset_name,
-            'result': result,
-        },
-    )
-
-
-def _normalize_phase(
-    value: str | None,
-) -> ValidationPhase:
-    """
-    Normalize arbitrary text into a known validation phase.
-
-    Parameters
-    ----------
-    value : str | None
-        Untrusted text to normalize.
-
-    Returns
-    -------
-    ValidationPhase
-        Normalized validation phase. Defaults to ``"before_transform"`` when
-        unspecified.
-    """
-    return cast(
-        ValidationPhase,
-        normalize_choice(
-            value,
-            mapping=_PHASE_CHOICES,
-            default='before_transform',
-        ),
-    )
-
-
-def _normalize_severity(
-    value: str | None,
-) -> ValidationSeverity:
-    """
-    Normalize severity, defaulting to ``"error"`` when unspecified.
-
-    Parameters
-    ----------
-    value : str | None
-        Untrusted text to normalize.
-
-    Returns
-    -------
-    ValidationSeverity
-        Normalized severity. Defaults to ``"error"`` when unspecified.
-    """
-    return cast(
-        ValidationSeverity,
-        normalize_choice(
-            value,
-            mapping=_SEVERITY_CHOICES,
-            default='error',
-        ),
-    )
-
-
-def _normalize_window(
-    value: str | None,
-) -> ValidationWindow:
-    """
-    Normalize the configured validation window.
-
-    Parameters
-    ----------
-    value : str | None
-        Untrusted text to normalize.
-
-    Returns
-    -------
-    ValidationWindow
-        Normalized validation window. Defaults to ``"both"`` when unspecified.
-    """
-    return cast(
-        ValidationWindow,
-        normalize_choice(
-            value,
-            mapping=_WINDOW_CHOICES,
-            default='both',
-        ),
-    )
-
-
-def _rule_name(
-    rules: Ruleset,
-) -> str | None:
-    """
-    Best-effort extraction of a ruleset identifier.
-
-    Parameters
-    ----------
-    rules : Ruleset
-        Untrusted ruleset configuration.
-
-    Returns
-    -------
-    str | None
-        Name of the ruleset when available. Returns ``None`` when the ruleset
-        lacks a name or when the ruleset is not a mapping.
-    """
-    getter = getattr(rules, 'get', None)
-    if callable(getter):
-        return getter('name')
-    return None
-
-
-def _should_validate(
-    window: ValidationWindow,
-    phase: ValidationPhase,
-) -> bool:
-    """
-    Return ``True`` when the validation window matches the phase.
-
-    Parameters
-    ----------
-    window : ValidationWindow
-        Configured validation window. Accepts ``"before_transform"``,
-        ``"after_transform"``, or ``"both"``.
-    phase : ValidationPhase
-        Current pipeline phase requesting validation. Accepts
-        ``"before_transform"`` or ``"after_transform"``.
-
-    Returns
-    -------
-    bool
-        ``True`` when the validation window matches the phase.
-    """
-    return window == 'both' or window == phase

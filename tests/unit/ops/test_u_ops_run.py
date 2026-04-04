@@ -846,6 +846,119 @@ class TestRun:
         }
         assert load_calls == ['/tmp/seed-out.json', '/tmp/main-out.json']
 
+    def test_run_accepts_tuple_dependencies_in_dag_planning(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Tuple-based dependencies should be treated like configured lists."""
+        seed_job = _make_job(
+            name='seed',
+            source='seed_src',
+            target='seed_tgt',
+        )
+        main_job = _make_job(
+            name='main',
+            source='main_src',
+            target='main_tgt',
+        )
+        main_job.depends_on = ('seed',)
+        cfg = SimpleNamespace(
+            jobs=[main_job, seed_job],
+            sources=[
+                SimpleNamespace(
+                    name='seed_src',
+                    type='file',
+                    path='/tmp/seed.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='main_src',
+                    type='file',
+                    path='/tmp/main.json',
+                    format='json',
+                ),
+            ],
+            targets=[
+                SimpleNamespace(
+                    name='seed_tgt',
+                    type='file',
+                    path='/tmp/seed-out.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='main_tgt',
+                    type='file',
+                    path='/tmp/main-out.json',
+                    format='json',
+                ),
+            ],
+            transforms={'noop': {}},
+            validations={},
+        )
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'extract',
+            lambda _stype, source, **_kwargs: [{'source': source}],
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'maybe_validate',
+            lambda data, *_args, **_kwargs: data,
+        )
+        monkeypatch.setattr(run_mod, 'transform', lambda data, _ops: data)
+        monkeypatch.setattr(
+            run_mod,
+            'load',
+            lambda *_args, **_kwargs: {'status': 'success'},
+        )
+
+        result = run_mod.run('main')
+
+        assert result['ordered_jobs'] == ['seed', 'main']
+
+    def test_run_raises_when_load_result_is_not_mapping(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Run should reject non-mapping terminal load results."""
+        job = _make_job(name='job', source='src', target='tgt')
+        cfg = _base_config(
+            job,
+            SimpleNamespace(
+                name='src',
+                type='file',
+                path='/tmp/in.json',
+                format='json',
+            ),
+            SimpleNamespace(
+                name='tgt',
+                type='file',
+                path='/tmp/out.json',
+                format='json',
+            ),
+        )
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+        monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: {'id': 1})
+        monkeypatch.setattr(
+            run_mod,
+            'maybe_validate',
+            lambda data, *_a, **_k: data,
+        )
+        monkeypatch.setattr(run_mod, 'transform', lambda data, _ops: data)
+        monkeypatch.setattr(run_mod, 'load', lambda *_a, **_k: ['bad-result'])
+
+        with pytest.raises(TypeError, match='load result must be a mapping'):
+            run_mod.run('job')
+
     @pytest.mark.parametrize(
         ('cfg', 'expected_message'),
         [
@@ -1293,6 +1406,77 @@ class TestRunInternals:
         assert result == {'status': 'ok'}
         assert load_calls == [({'id': 1}, 'file', '/tmp/out.json')]
 
+    def test_dispatch_extract_uses_api_source_connector_loader(self) -> None:
+        """API source dispatch should prefer connector-aware extraction."""
+        calls: list[tuple[Any, Any, dict[str, Any]]] = []
+
+        def _extract_from_api_source(
+            cfg: Any,
+            connector_obj: Any,
+            overrides: dict[str, Any],
+        ) -> dict[str, bool]:
+            calls.append((cfg, connector_obj, overrides))
+            return {'ok': True}
+
+        cfg = SimpleNamespace(name='cfg')
+        connector = SimpleNamespace(name='api_src')
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            run_mod,
+            'extract_from_api_source',
+            _extract_from_api_source,
+        )
+        try:
+            result = run_mod._dispatch_extract(
+                'api',
+                'https://example.test/items',
+                options={'timeout': 2.0},
+                cfg=cfg,
+                connector_obj=connector,
+            )
+        finally:
+            monkeypatch.undo()
+
+        assert result == {'ok': True}
+        assert calls == [(cfg, connector, {'timeout': 2.0})]
+
+    def test_dispatch_load_uses_api_target_connector_loader(self) -> None:
+        """API target dispatch should prefer connector-aware loading."""
+        calls: list[tuple[Any, Any, dict[str, Any], Any]] = []
+
+        def _load_to_api_target(
+            cfg: Any,
+            connector_obj: Any,
+            overrides: dict[str, Any],
+            data: Any,
+        ) -> dict[str, bool]:
+            calls.append((cfg, connector_obj, overrides, data))
+            return {'ok': True}
+
+        cfg = SimpleNamespace(name='cfg')
+        connector = SimpleNamespace(name='api_tgt')
+        payload = {'id': 1}
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            run_mod,
+            'load_to_api_target',
+            _load_to_api_target,
+        )
+        try:
+            result = run_mod._dispatch_load(
+                payload,
+                'api',
+                'https://example.test/items',
+                options={'timeout': 3.0},
+                cfg=cfg,
+                connector_obj=connector,
+            )
+        finally:
+            monkeypatch.undo()
+
+        assert result == {'ok': True}
+        assert calls == [(cfg, connector, {'timeout': 3.0}, payload)]
+
     def test_extract_transform_then_return_when_no_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -1367,6 +1551,199 @@ class TestRunInternals:
 
         assert indexed == {'valid': connectors[0]}
 
+    @pytest.mark.parametrize(
+        ('connector_type', 'expected'),
+        [
+            ('file', True),
+            (run_mod.DataConnectorType.FILE, True),
+            ('api', False),
+            (None, False),
+        ],
+    )
+    def test_is_file_connector_type(
+        self,
+        connector_type: Any,
+        expected: bool,
+    ) -> None:
+        """File-connector detection should accept both enum and string forms."""
+        assert run_mod._is_file_connector_type(connector_type) is expected
+
+    def test_resolve_job_connector_for_file_connector(
+        self,
+    ) -> None:
+        """File connectors should resolve merged path, format, and options."""
+        connector = SimpleNamespace(
+            name='src',
+            type='file',
+            path='/tmp/default.json',
+            format='json',
+            options={'compression': 'gzip', 'path': '/ignored'},
+        )
+
+        result = run_mod._resolve_job_connector(
+            {'src': connector},
+            ref_name='src',
+            label='source',
+            overrides={
+                'path': '/tmp/override.csv',
+                'format': 'csv',
+                'delimiter': ';',
+            },
+            missing_path_message='missing path',
+        )
+
+        assert result.connector_type == 'file'
+        assert result.value == '/tmp/override.csv'
+        assert result.file_format == 'csv'
+        assert result.options == {
+            'compression': 'gzip',
+            'delimiter': ';',
+        }
+        assert result.connector_obj is connector
+
+    def test_resolve_job_connector_for_non_file_connector(
+        self,
+    ) -> None:
+        """Non-file connectors should preserve overrides and connection value."""
+        connector = SimpleNamespace(
+            name='api_src',
+            type='api',
+            connection_string='https://default.test/items',
+        )
+
+        result = run_mod._resolve_job_connector(
+            {'api_src': connector},
+            ref_name='api_src',
+            label='source',
+            overrides={
+                'connection_string': 'https://override.test/items',
+                'timeout': 5.0,
+            },
+            missing_path_message='missing path',
+        )
+
+        assert result.connector_type == 'api'
+        assert result.value == 'https://override.test/items'
+        assert result.file_format is None
+        assert result.options == {
+            'connection_string': 'https://override.test/items',
+            'timeout': 5.0,
+        }
+        assert result.connector_obj is connector
+
+    def test_run_treats_missing_transform_registry_as_noop(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that missing transform registries do not break job runs."""
+        job = _make_job(name='job', source='src', target='tgt')
+        cfg = SimpleNamespace(
+            jobs=[job],
+            sources=[
+                SimpleNamespace(
+                    name='src',
+                    type='file',
+                    path='/tmp/in.json',
+                    format='json',
+                ),
+            ],
+            targets=[
+                SimpleNamespace(
+                    name='tgt',
+                    type='file',
+                    path='/tmp/out.json',
+                    format='json',
+                ),
+            ],
+            transforms=None,
+            validations={},
+        )
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+        monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: {'id': 1})
+        monkeypatch.setattr(
+            run_mod,
+            'maybe_validate',
+            lambda data, *_a, **_k: data,
+        )
+        transform_calls: list[Any] = []
+
+        def _transform(data: Any, ops: Any) -> Any:
+            transform_calls.append(ops)
+            return data
+
+        monkeypatch.setattr(run_mod, 'transform', _transform)
+        monkeypatch.setattr(run_mod, 'load', lambda *_a, **_k: {'status': 'ok'})
+
+        result = run_mod.run('job')
+
+        assert result == {'status': 'ok'}
+        assert transform_calls == []
+
+    def test_run_uses_empty_rules_when_validation_registry_is_not_mapping(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that invalid validation registries degrade to empty rules."""
+        job = _make_job(name='job', source='src', target='tgt')
+        job.validate = SimpleNamespace(
+            ruleset='default',
+            severity='warn',
+            phase='after_transform',
+        )
+        cfg = _base_config(
+            job,
+            SimpleNamespace(
+                name='src',
+                type='file',
+                path='/tmp/in.json',
+                format='json',
+            ),
+            SimpleNamespace(
+                name='tgt',
+                type='file',
+                path='/tmp/out.json',
+                format='json',
+            ),
+        )
+        cfg.validations = ['invalid']
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+        monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: {'id': 1})
+        validation_calls: list[tuple[str, dict[str, Any]]] = []
+
+        def _maybe_validate(
+            data: Any,
+            when: str,
+            **kwargs: Any,
+        ) -> Any:
+            validation_calls.append((when, kwargs))
+            return data
+
+        monkeypatch.setattr(run_mod, 'maybe_validate', _maybe_validate)
+        monkeypatch.setattr(run_mod, 'transform', lambda data, _ops: data)
+        monkeypatch.setattr(run_mod, 'load', lambda *_a, **_k: {'status': 'ok'})
+
+        result = run_mod.run('job')
+
+        assert result == {'status': 'ok'}
+        assert [when for when, _ in validation_calls] == [
+            'before_transform',
+            'after_transform',
+        ]
+        assert all(kwargs['enabled'] is True for _, kwargs in validation_calls)
+        assert all(kwargs['rules'] == {} for _, kwargs in validation_calls)
+        assert all(
+            kwargs['phase'] == 'after_transform' for _, kwargs in validation_calls
+        )
+        assert all(kwargs['severity'] == 'warn' for _, kwargs in validation_calls)
+
 
 class TestRunPipeline:
     """Unit tests for :func:`etlplus.ops.run.run_pipeline`."""
@@ -1400,6 +1777,14 @@ class TestRunPipeline:
         """
         with pytest.raises(ValueError, match='source is required'):
             run_mod.run_pipeline(source_type='file', source=None)
+
+    def test_requires_path_like_source_when_source_type_is_set(self) -> None:
+        """Non-path payloads should be rejected before extract dispatch."""
+        with pytest.raises(TypeError, match='source must be a path-like'):
+            run_mod.run_pipeline(
+                source_type='file',
+                source=cast(Any, {'id': 1}),
+            )
 
     def test_requires_target_when_target_type_is_set(self) -> None:
         """

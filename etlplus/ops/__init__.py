@@ -45,9 +45,9 @@ See Also
 from ._enums import AggregateName
 from ._enums import OperatorName
 from ._enums import PipelineStep
-from ._utils import ValidationResultDict
-from ._utils import ValidationSettings
-from ._utils import maybe_validate
+from ._validation import ValidationResultDict
+from ._validation import ValidationSettings
+from ._validation import maybe_validate
 from .extract import extract
 from .load import load
 from .run import run
@@ -62,6 +62,8 @@ from .validate import validate
 
 
 __all__ = [
+    # Data Classes
+    'ValidationSettings',
     # Enums
     'AggregateName',
     'OperatorName',
@@ -74,10 +76,9 @@ __all__ = [
     'run_pipeline',
     'transform',
     'validate',
-    # Typed dicts / data classes
+    # Typed Dicts
     'FieldRulesDict',
     'FieldValidationDict',
     'ValidationDict',
     'ValidationResultDict',
-    'ValidationSettings',
 ]

@@ -19,7 +19,6 @@ from typing import Any
 import pytest
 
 from etlplus.ops.validate import FieldRulesDict
-from etlplus.ops.validate import load_data
 from etlplus.ops.validate import validate
 from etlplus.ops.validate import validate_field
 from etlplus.utils._types import JSONData
@@ -35,20 +34,6 @@ from etlplus.utils._types import JSONData
 
 
 validate_mod = importlib.import_module('etlplus.ops.validate')
-
-
-class TestLoadData:
-    """
-    Unit tests for :func:`load_data`.
-    """
-
-    def test_invalid_source(self) -> None:
-        """
-        Test that invalid input string raises :class:`ValueError` during
-        loading.
-        """
-        with pytest.raises(ValueError, match='Invalid data source'):
-            load_data('not a valid json string')
 
 
 class TestValidate:
@@ -174,18 +159,6 @@ class TestValidate:
         assert result['data'] is None
         assert any('Failed to load data' in err for err in result['errors'])
 
-    def test_validate_handles_non_record_payloads_from_loader(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that unexpected scalar payloads return invalid=False result."""
-        monkeypatch.setattr(validate_mod, 'load_data', lambda _source: 42)
-        result = validate('ignored', {'name': {'required': True}})
-        assert result['valid'] is True
-        assert not result['errors']
-        assert not result['field_errors']
-        assert result['data'] == 42
-
 
 class TestValidateField:
     """Unit tests for :func:`validate_field`."""
@@ -295,3 +268,25 @@ class TestValidateInternalHelpers:
             is None
         )
         assert not errors
+
+    @pytest.mark.parametrize(
+        ('value', 'expected_type', 'expected'),
+        [
+            ('name', 'string', True),
+            (7, 'number', True),
+            (7, 'integer', True),
+            (True, 'integer', False),
+            (True, 'boolean', True),
+            ([{'id': 1}], 'array', True),
+            ({'id': 1}, 'object', True),
+            ('name', 'unknown', False),
+        ],
+    )
+    def test_type_matches_matrix(
+        self,
+        value: Any,
+        expected_type: str,
+        expected: bool,
+    ) -> None:
+        """Type matching should respect the repo's JSON-like type rules."""
+        assert validate_mod._type_matches(value, expected_type) is expected

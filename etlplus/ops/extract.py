@@ -14,20 +14,30 @@ from urllib.parse import urlunsplit
 
 from ..api import EndpointClient
 from ..api import HttpMethod
-from ..api import PaginationConfigDict
 from ..api import RequestOptions
 from ..api import compose_api_request_env
 from ..api import paginate_with_client
-from ..api._utils import resolve_request
+from ..api._utils import ApiRequestEnvDict
 from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
+from ..file._core import FileFormatArg
 from ..file.base import ReadOptions
 from ..utils._types import JSONData
-from ..utils._types import JSONDict
 from ..utils._types import JSONList
 from ..utils._types import StrPath
 from ..utils._types import Timeout
+from ._database import DATABASE_DRIVER_NOTE
+from ._database import DATABASE_EXTRACT_NOT_IMPLEMENTED
+from ._files import resolve_file
+from ._http import DirectRequestEnvDict
+from ._http import build_direct_request_env
+from ._http import build_request_call
+from ._http import require_url
+from ._http import send_request
+from ._options import coerce_read_options as _coerce_read_options
+from ._types import ConnectorTypeArg
+from ._types import FileOptionsArg
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -87,41 +97,8 @@ def _build_client(
     )
 
 
-def _coerce_optional_str(
-    value: object,
-) -> str | None:
-    """Normalize optional string-like option values."""
-    if value is None:
-        return None
-    return value if isinstance(value, str) else str(value)
-
-
-def _coerce_read_options(
-    options: ReadOptions | Mapping[str, Any] | None,
-) -> ReadOptions | None:
-    """Normalize file-read option mappings into :class:`ReadOptions`."""
-    if options is None or isinstance(options, ReadOptions):
-        return options
-
-    extras = dict(options)
-    encoding = extras.pop('encoding', 'utf-8')
-    sheet = extras.pop('sheet', None)
-    table = extras.pop('table', None)
-    dataset = extras.pop('dataset', None)
-    inner_name = extras.pop('inner_name', None)
-
-    return ReadOptions(
-        encoding=encoding if isinstance(encoding, str) else str(encoding),
-        sheet=sheet,
-        table=_coerce_optional_str(table),
-        dataset=_coerce_optional_str(dataset),
-        inner_name=_coerce_optional_str(inner_name),
-        extras=cast(JSONDict, extras),
-    )
-
-
 def _extract_from_api_env(
-    env: Mapping[str, Any],
+    env: ApiRequestEnvDict | DirectRequestEnvDict,
     *,
     use_client: bool,
 ) -> JSONData:
@@ -130,7 +107,7 @@ def _extract_from_api_env(
 
     Parameters
     ----------
-    env : Mapping[str, Any]
+    env : ApiRequestEnvDict | DirectRequestEnvDict
         Normalized environment describing API request parameters.
     use_client : bool
         Whether to use the endpoint client/pagination machinery.
@@ -139,81 +116,79 @@ def _extract_from_api_env(
     -------
     JSONData
         Extracted payload.
-
-    Raises
-    ------
-    ValueError
-        If required parameters are missing.
     """
+    if use_client:
+        request_env = cast(ApiRequestEnvDict, env)
+    else:
+        request_env = None
+
     if (
-        use_client
-        and env.get('use_endpoints')
-        and env.get('base_url')
-        and env.get('endpoints_map')
-        and env.get('endpoint_key')
+        request_env is not None
+        and request_env.get('use_endpoints')
+        and request_env.get('base_url')
+        and request_env.get('endpoints_map')
+        and request_env.get('endpoint_key')
     ):
         client = _build_client(
-            base_url=cast(str, env.get('base_url')),
-            base_path=cast(str | None, env.get('base_path')),
-            endpoints=cast(dict[str, str], env.get('endpoints_map', {})),
-            retry=env.get('retry'),
-            retry_network_errors=bool(env.get('retry_network_errors', False)),
-            session=env.get('session'),
+            base_url=str(request_env['base_url']),
+            base_path=(
+                base_path
+                if isinstance(base_path := request_env.get('base_path'), str)
+                else None
+            ),
+            endpoints=dict(request_env.get('endpoints_map') or {}),
+            retry=request_env.get('retry'),
+            retry_network_errors=bool(
+                request_env.get('retry_network_errors', False),
+            ),
+            session=request_env.get('session'),
         )
         return paginate_with_client(
             client,
-            cast(str, env.get('endpoint_key')),
-            env.get('params'),
-            env.get('headers'),
-            env.get('timeout'),
-            env.get('pagination'),
-            cast(float | None, env.get('sleep_seconds')),
+            str(request_env['endpoint_key']),
+            request_env.get('params'),
+            request_env.get('headers'),
+            request_env.get('timeout'),
+            request_env.get('pagination'),
+            request_env.get('sleep_seconds'),
         )
 
-    url = env.get('url')
-    if not url:
-        raise ValueError('API source missing URL')
-
-    if use_client:
-        parts = urlsplit(cast(str, url))
+    if request_env is not None:
+        url = require_url(
+            request_env,
+            error_message='API source missing URL',
+        )
+        parts = urlsplit(url)
         base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
         client = _build_client(
             base_url=base,
             base_path=None,
             endpoints={},
-            retry=env.get('retry'),
-            retry_network_errors=bool(env.get('retry_network_errors', False)),
-            session=env.get('session'),
+            retry=request_env.get('retry'),
+            retry_network_errors=bool(
+                request_env.get('retry_network_errors', False),
+            ),
+            session=request_env.get('session'),
         )
         request_options = RequestOptions(
-            params=cast(Mapping[str, Any] | None, env.get('params')),
-            headers=cast(Mapping[str, str] | None, env.get('headers')),
-            timeout=cast(Timeout | None, env.get('timeout')),
+            params=cast(Mapping[str, Any] | None, request_env.get('params')),
+            headers=cast(Mapping[str, str] | None, request_env.get('headers')),
+            timeout=cast(Timeout | None, request_env.get('timeout')),
         )
 
         return client.paginate_url(
-            cast(str, url),
-            cast(PaginationConfigDict | None, env.get('pagination')),
+            url,
+            request_env.get('pagination'),
             request=request_options,
-            sleep_seconds=cast(float, env.get('sleep_seconds', 0.0)),
+            sleep_seconds=float(request_env.get('sleep_seconds', 0.0)),
         )
 
-    method = env.get('method', HttpMethod.GET)
-    timeout = env.get('timeout', None)
-    session = env.get('session', None)
-    request_kwargs = dict(env.get('request_kwargs') or {})
-    request_callable, timeout, _ = resolve_request(
-        method,
-        session=session,
-        timeout=timeout,
+    request = build_request_call(
+        env,
+        error_message='API source missing URL',
+        default_method=HttpMethod.GET,
     )
-    response = request_callable(
-        cast(str, url),
-        timeout=timeout,
-        **request_kwargs,
-    )
-    response.raise_for_status()
-    return _parse_api_response(response)
+    return _parse_api_response(send_request(request))
 
 
 def _parse_api_response(
@@ -242,15 +217,15 @@ def _parse_api_response(
                 'content': response.text,
                 'content_type': content_type,
             }
-        if isinstance(payload, dict):
-            return cast(JSONDict, payload)
-        if isinstance(payload, list):
-            if all(isinstance(x, dict) for x in payload):
-                return cast(JSONList, payload)
-            # Coerce non-dict array items into objects for consistency
-            return [{'value': x} for x in payload]
-        # Fallback: wrap scalar JSON
-        return {'value': payload}
+        match payload:
+            case dict():
+                return payload
+            case list():
+                if all(isinstance(item, dict) for item in payload):
+                    return payload
+                return [{'value': item} for item in payload]
+            case _:
+                return {'value': payload}
 
     return {'content': response.text, 'content_type': content_type}
 
@@ -283,13 +258,7 @@ def extract_from_api(
     JSONData
         Parsed JSON payload, or a fallback object with raw text.
     """
-    env = {
-        'url': url,
-        'method': method,
-        'timeout': kwargs.pop('timeout', None),
-        'session': kwargs.pop('session', None),
-        'request_kwargs': kwargs,
-    }
+    env = build_direct_request_env(url, method, kwargs)
     return _extract_from_api_env(env, use_client=False)
 
 
@@ -342,17 +311,17 @@ def extract_from_database(
     """
     return [
         {
-            'message': 'Database extraction not yet implemented',
+            'message': DATABASE_EXTRACT_NOT_IMPLEMENTED,
             'connection_string': connection_string,
-            'note': 'Install database-specific drivers to enable this feature',
+            'note': DATABASE_DRIVER_NOTE,
         },
     ]
 
 
 def extract_from_file(
     file_path: StrPath,
-    file_format: FileFormat | str | None = FileFormat.JSON,
-    options: ReadOptions | Mapping[str, Any] | None = None,
+    file_format: FileFormatArg = FileFormat.JSON,
+    options: FileOptionsArg[ReadOptions] = None,
 ) -> JSONData:
     """
     Extract (semi-)structured data from a local file path or remote URI.
@@ -361,11 +330,11 @@ def extract_from_file(
     ----------
     file_path : StrPath
         Source local file path or remote URI.
-    file_format : FileFormat | str | None, optional
+    file_format : FileFormatArg, optional
         File format to parse. If ``None``, infer from the filename
         extension. Defaults to `'json'` for backward compatibility when
         explicitly provided.
-    options : ReadOptions | Mapping[str, Any] | None, optional
+    options : FileOptionsArg[ReadOptions], optional
         Optional file-read options such as ``encoding`` plus format-specific
         extras like ``delimiter``.
 
@@ -375,23 +344,25 @@ def extract_from_file(
         Parsed data as a mapping or a list of mappings.
     """
     resolved_options = _coerce_read_options(options)
-    file = File(file_path, file_format)
-
-    # If no explicit format is provided, let File infer from extension.
-    if resolved_options is None:
-        return file.read()
-
-    # Let file module perform existence and format validation.
-    return file.read(options=resolved_options)
+    source = resolve_file(
+        file_path,
+        file_format,
+        file_cls=File,
+    )
+    return (
+        source.file.read()
+        if resolved_options is None
+        else source.file.read(options=resolved_options)
+    )
 
 
 # -- Orchestration -- #
 
 
 def extract(
-    source_type: DataConnectorType | str,
+    source_type: ConnectorTypeArg,
     source: StrPath,
-    file_format: FileFormat | str | None = None,
+    file_format: FileFormatArg = None,
     **kwargs: Any,
 ) -> JSONData:
     """
@@ -403,7 +374,7 @@ def extract(
         Type of data source.
     source : StrPath
         Source location (file path, connection string, or API URL).
-    file_format : FileFormat | str | None, optional
+    file_format : FileFormatArg, optional
         File format, inferred from filename extension if omitted.
     **kwargs : Any
         Additional arguments forwarded to source-specific extractors.
