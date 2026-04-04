@@ -28,22 +28,6 @@ extract_mod = importlib.import_module('etlplus.ops.extract')
 load_mod = importlib.import_module('etlplus.ops.load')
 
 
-def _make_job(
-    *,
-    name: str,
-    source: str,
-    target: str,
-    options: dict[str, Any] | None = None,
-) -> SimpleNamespace:
-    return SimpleNamespace(
-        name=name,
-        extract=SimpleNamespace(source=source, options=options or {}),
-        transform=SimpleNamespace(pipeline='noop'),
-        load=SimpleNamespace(target=target, overrides=None),
-        validate=None,
-    )
-
-
 def _base_config(
     job: SimpleNamespace,
     source: SimpleNamespace,
@@ -55,6 +39,24 @@ def _base_config(
         targets=[target],
         transforms={'noop': {}},
         validations={},
+    )
+
+
+def _make_job(
+    *,
+    name: str,
+    source: str,
+    target: str,
+    depends_on: list[str] | None = None,
+    options: dict[str, Any] | None = None,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        depends_on=[] if depends_on is None else list(depends_on),
+        name=name,
+        extract=SimpleNamespace(source=source, options=options or {}),
+        transform=SimpleNamespace(pipeline='noop'),
+        load=SimpleNamespace(target=target, overrides=None),
+        validate=None,
     )
 
 
@@ -526,30 +528,354 @@ class TestRun:
         assert load_calls[0][2] == '/tmp/output.json'
         assert result == {'status': 'ok'}
 
+    def test_run_all_executes_jobs_in_topological_order(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """``run_all`` should execute every configured job in DAG order."""
+        seed_job = _make_job(
+            name='seed',
+            source='seed_src',
+            target='seed_tgt',
+        )
+        clean_job = _make_job(
+            name='clean',
+            source='clean_src',
+            target='clean_tgt',
+            depends_on=['seed'],
+        )
+        publish_job = _make_job(
+            name='publish',
+            source='publish_src',
+            target='publish_tgt',
+            depends_on=['clean'],
+        )
+        cfg = SimpleNamespace(
+            jobs=[publish_job, clean_job, seed_job],
+            sources=[
+                SimpleNamespace(
+                    name='seed_src',
+                    type='file',
+                    path='/tmp/seed.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='clean_src',
+                    type='file',
+                    path='/tmp/clean.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='publish_src',
+                    type='file',
+                    path='/tmp/publish.json',
+                    format='json',
+                ),
+            ],
+            targets=[
+                SimpleNamespace(
+                    name='seed_tgt',
+                    type='file',
+                    path='/tmp/seed-out.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='clean_tgt',
+                    type='file',
+                    path='/tmp/clean-out.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='publish_tgt',
+                    type='file',
+                    path='/tmp/publish-out.json',
+                    format='json',
+                ),
+            ],
+            transforms={'noop': {}},
+            validations={},
+        )
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'extract',
+            lambda _stype, source, **_kwargs: [{'source': source}],
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'maybe_validate',
+            lambda data, *_args, **_kwargs: data,
+        )
+        monkeypatch.setattr(run_mod, 'transform', lambda data, _ops: data)
+        monkeypatch.setattr(
+            run_mod,
+            'load',
+            lambda *_args, **kwargs: {
+                'status': 'success',
+                'target': kwargs.get('file_format'),
+            },
+        )
+
+        result = run_mod.run(run_all=True)
+
+        assert result['status'] == 'success'
+        assert result['mode'] == 'all'
+        assert result['ordered_jobs'] == ['seed', 'clean', 'publish']
+        assert [job['job'] for job in result['executed_jobs']] == [
+            'seed',
+            'clean',
+            'publish',
+        ]
+
+    def test_run_all_continue_on_fail_skips_blocked_downstream_jobs(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Continue-on-fail should run independent jobs and skip blocked ones."""
+        seed_job = _make_job(
+            name='alpha_seed',
+            source='seed_src',
+            target='seed_tgt',
+        )
+        report_job = _make_job(
+            name='beta_report',
+            source='report_src',
+            target='report_tgt',
+        )
+        main_job = _make_job(
+            name='gamma_main',
+            source='main_src',
+            target='main_tgt',
+            depends_on=['alpha_seed'],
+        )
+        cfg = SimpleNamespace(
+            jobs=[main_job, report_job, seed_job],
+            sources=[
+                SimpleNamespace(
+                    name='seed_src',
+                    type='file',
+                    path='/tmp/seed.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='report_src',
+                    type='file',
+                    path='/tmp/report.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='main_src',
+                    type='file',
+                    path='/tmp/main.json',
+                    format='json',
+                ),
+            ],
+            targets=[
+                SimpleNamespace(
+                    name='seed_tgt',
+                    type='file',
+                    path='/tmp/seed-out.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='report_tgt',
+                    type='file',
+                    path='/tmp/report-out.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='main_tgt',
+                    type='file',
+                    path='/tmp/main-out.json',
+                    format='json',
+                ),
+            ],
+            transforms={'noop': {}},
+            validations={},
+        )
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+
+        def _extract(
+            _stype: str,
+            source: str,
+            **kwargs: Any,
+        ) -> list[dict[str, str]]:
+            del kwargs
+            if source == '/tmp/seed.json':
+                raise ValueError('seed boom')
+            return [{'source': source}]
+
+        monkeypatch.setattr(run_mod, 'extract', _extract)
+        monkeypatch.setattr(
+            run_mod,
+            'maybe_validate',
+            lambda data, *_args, **_kwargs: data,
+        )
+        monkeypatch.setattr(run_mod, 'transform', lambda data, _ops: data)
+        monkeypatch.setattr(
+            run_mod,
+            'load',
+            lambda *_args, **_kwargs: {'status': 'success'},
+        )
+
+        result = run_mod.run(
+            run_all=True,
+            continue_on_fail=True,
+        )
+
+        assert result['status'] == 'partial_success'
+        assert result['ordered_jobs'] == ['alpha_seed', 'beta_report', 'gamma_main']
+        assert result['failed_jobs'] == ['alpha_seed']
+        assert result['skipped_jobs'] == ['gamma_main']
+        assert result['succeeded_jobs'] == ['beta_report']
+        assert result['failed_job_count'] == 1
+        assert result['skipped_job_count'] == 1
+        assert result['succeeded_job_count'] == 1
+        assert result['executed_job_count'] == 2
+        assert result['executed_jobs'][0]['status'] == 'failed'
+        assert result['executed_jobs'][1]['status'] == 'succeeded'
+        assert result['executed_jobs'][2] == {
+            'job': 'gamma_main',
+            'reason': 'upstream_failed',
+            'skipped_due_to': ['alpha_seed'],
+            'status': 'skipped',
+        }
+
+    def test_run_executes_dependency_closure_in_dag_order(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Dependency-aware runs should execute prerequisites before the job."""
+        seed_job = _make_job(
+            name='seed',
+            source='seed_src',
+            target='seed_tgt',
+        )
+        main_job = _make_job(
+            name='main',
+            source='main_src',
+            target='main_tgt',
+            depends_on=['seed'],
+        )
+        cfg = SimpleNamespace(
+            jobs=[main_job, seed_job],
+            sources=[
+                SimpleNamespace(
+                    name='seed_src',
+                    type='file',
+                    path='/tmp/seed.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='main_src',
+                    type='file',
+                    path='/tmp/main.json',
+                    format='json',
+                ),
+            ],
+            targets=[
+                SimpleNamespace(
+                    name='seed_tgt',
+                    type='file',
+                    path='/tmp/seed-out.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='main_tgt',
+                    type='file',
+                    path='/tmp/main-out.json',
+                    format='json',
+                ),
+            ],
+            transforms={'noop': {}},
+            validations={},
+        )
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'extract',
+            lambda _stype, source, **_kwargs: [{'source': source}],
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'maybe_validate',
+            lambda data, *_args, **_kwargs: data,
+        )
+        monkeypatch.setattr(run_mod, 'transform', lambda data, _ops: data)
+
+        load_calls: list[str] = []
+
+        def _capture_load(
+            data: Any,
+            connector: str,
+            target: str,
+            **kwargs: Any,
+        ) -> dict[str, Any]:
+            del data, connector, kwargs
+            load_calls.append(target)
+            return {'status': 'success', 'target': target}
+
+        monkeypatch.setattr(run_mod, 'load', _capture_load)
+
+        result = run_mod.run('main')
+
+        assert result['status'] == 'success'
+        assert result['mode'] == 'job'
+        assert result['requested_job'] == 'main'
+        assert result['ordered_jobs'] == ['seed', 'main']
+        assert [job['job'] for job in result['executed_jobs']] == ['seed', 'main']
+        assert result['succeeded_jobs'] == ['seed', 'main']
+        assert result['failed_jobs'] == []
+        assert result['skipped_jobs'] == []
+        assert result['final_job'] == 'main'
+        assert result['final_result'] == {
+            'status': 'success',
+            'target': '/tmp/main-out.json',
+        }
+        assert load_calls == ['/tmp/seed-out.json', '/tmp/main-out.json']
+
     @pytest.mark.parametrize(
-        'cfg',
+        ('cfg', 'expected_message'),
         [
-            SimpleNamespace(
-                jobs=[],
-                sources=[],
-                targets=[],
-                transforms={},
-                validations={},
+            (
+                SimpleNamespace(
+                    jobs=[],
+                    sources=[],
+                    targets=[],
+                    transforms={},
+                    validations={},
+                ),
+                'No jobs configured',
             ),
-            _base_config(
-                _make_job(name='other', source='src', target='tgt'),
-                SimpleNamespace(
-                    name='src',
-                    type='file',
-                    path='/tmp/in.json',
-                    format='json',
+            (
+                _base_config(
+                    _make_job(name='other', source='src', target='tgt'),
+                    SimpleNamespace(
+                        name='src',
+                        type='file',
+                        path='/tmp/in.json',
+                        format='json',
+                    ),
+                    SimpleNamespace(
+                        name='tgt',
+                        type='file',
+                        path='/tmp/out.json',
+                        format='json',
+                    ),
                 ),
-                SimpleNamespace(
-                    name='tgt',
-                    type='file',
-                    path='/tmp/out.json',
-                    format='json',
-                ),
+                'Job not found',
             ),
         ],
         ids=['no-jobs', 'different-job'],
@@ -558,6 +884,7 @@ class TestRun:
         self,
         monkeypatch: pytest.MonkeyPatch,
         cfg: Any,
+        expected_message: str,
     ) -> None:
         """Test that requesting a missing job raises :class:`ValueError`."""
         monkeypatch.setattr(
@@ -566,7 +893,7 @@ class TestRun:
             lambda path, substitute=True: cfg,
         )
 
-        with pytest.raises(ValueError, match='Job not found'):
+        with pytest.raises(ValueError, match=expected_message):
             run_mod.run('missing')
 
     def test_load_missing_section_raises(
