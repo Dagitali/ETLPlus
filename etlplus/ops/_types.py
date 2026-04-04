@@ -25,8 +25,11 @@ from collections.abc import Sequence
 from typing import Any
 from typing import Literal
 
+from ..connector import DataConnectorType
+from ..utils._types import JSONData
 from ..utils._types import JSONList
 from ..utils._types import StrAnyMap
+from ..utils._types import StrPath
 from ..utils._types import StrSeqMap
 from ..utils._types import StrStrMap
 
@@ -36,6 +39,10 @@ from ..utils._types import StrStrMap
 __all__ = [
     # Type Aliases (File IO)
     'FileOptionsArg',
+    # Type Aliases (Connectors & Sources)
+    'ConnectorTypeArg',
+    'DataSourceArg',
+    'OptionalConnectorTypeArg',
     # Type Aliases (Functions)
     'AggregateFunc',
     'OperatorFunc',
@@ -61,6 +68,17 @@ __all__ = [
 
 
 # SECTION: TYPE ALIASES ===================================================== #
+
+# -- Connectors & Sources -- #
+
+# Connector type accepted as enum or coercible string.
+type ConnectorTypeArg = DataConnectorType | str
+
+# Source argument accepted by load/transform facades.
+type DataSourceArg = StrPath | JSONData
+
+# Optional connector type accepted as enum, coercible string, or None.
+type OptionalConnectorTypeArg = ConnectorTypeArg | None
 
 
 # -- Functions -- #
