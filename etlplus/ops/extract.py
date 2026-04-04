@@ -106,7 +106,7 @@ def _extract_from_api_env(
 
     Parameters
     ----------
-    env : Mapping[str, Any]
+    env : ApiRequestEnvDict | DirectRequestEnvDict
         Normalized environment describing API request parameters.
     use_client : bool
         Whether to use the endpoint client/pagination machinery.
@@ -115,11 +115,6 @@ def _extract_from_api_env(
     -------
     JSONData
         Extracted payload.
-
-    Raises
-    ------
-    ValueError
-        If required parameters are missing.
     """
     if use_client:
         request_env = cast(ApiRequestEnvDict, env)
@@ -334,11 +329,11 @@ def extract_from_file(
     ----------
     file_path : StrPath
         Source local file path or remote URI.
-    file_format : FileFormat | str | None, optional
+    file_format : FileFormatArg, optional
         File format to parse. If ``None``, infer from the filename
         extension. Defaults to `'json'` for backward compatibility when
         explicitly provided.
-    options : ReadOptions | Mapping[str, Any] | None, optional
+    options : FileOptionsArg[ReadOptions], optional
         Optional file-read options such as ``encoding`` plus format-specific
         extras like ``delimiter``.
 
@@ -378,7 +373,7 @@ def extract(
         Type of data source.
     source : StrPath
         Source location (file path, connection string, or API URL).
-    file_format : FileFormat | str | None, optional
+    file_format : FileFormatArg, optional
         File format, inferred from filename extension if omitted.
     **kwargs : Any
         Additional arguments forwarded to source-specific extractors.
