@@ -8,13 +8,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from collections.abc import Mapping
-from typing import Any
 from typing import Final
 from typing import cast
 
 from ..file.base import ReadOptions
 from ..file.base import WriteOptions
 from ..utils._types import JSONDict
+from ._types import FileOptionsArg
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -70,7 +70,7 @@ def _coerce_required_text(
 
 
 def _coerce_file_options[OptionsT](
-    options: OptionsT | Mapping[str, Any] | None,
+    options: FileOptionsArg[OptionsT],
     *,
     option_type: type[OptionsT],
     factory: Callable[..., OptionsT],
@@ -109,7 +109,7 @@ def _coerce_file_options[OptionsT](
 
 
 def coerce_read_options(
-    options: ReadOptions | Mapping[str, Any] | None,
+    options: FileOptionsArg[ReadOptions],
 ) -> ReadOptions | None:
     """
     Normalize mapping-based read options into :class:`ReadOptions`.
@@ -134,7 +134,7 @@ def coerce_read_options(
 
 
 def coerce_write_options(
-    options: WriteOptions | Mapping[str, Any] | None,
+    options: FileOptionsArg[WriteOptions],
 ) -> WriteOptions | None:
     """
     Normalize mapping-based write options into :class:`WriteOptions`.
