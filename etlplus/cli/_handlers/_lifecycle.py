@@ -272,6 +272,9 @@ def record_run_completion(
     status: str,
     result_summary: JSONData | None = None,
     exc: Exception | None = None,
+    error_message: str | None = None,
+    error_traceback: str | None = None,
+    error_type: str | None = None,
 ) -> None:
     """
     Persist the terminal state for one tracked CLI run.
@@ -288,6 +291,12 @@ def record_run_completion(
         A summary of the run's result, if available.
     exc : Exception | None, optional
         The exception that caused the failure, if any.
+    error_message : str | None, optional
+        Explicit error message for handled failures without an exception.
+    error_traceback : str | None, optional
+        Explicit error traceback for handled failures without an exception.
+    error_type : str | None, optional
+        Explicit error type for handled failures without an exception.
     """
     history_store.record_run_finished(
         RunCompletion(
@@ -297,8 +306,17 @@ def record_run_completion(
                 finished_at=RuntimeEvents.utc_now_iso(),
                 duration_ms=elapsed_ms(context.started_perf),
                 result_summary=result_summary,
-                error_type=None if exc is None else type(exc).__name__,
-                error_message=None if exc is None else str(exc),
+                error_type=(
+                    error_type
+                    if error_type is not None
+                    else None if exc is None else type(exc).__name__
+                ),
+                error_message=(
+                    error_message
+                    if error_message is not None
+                    else None if exc is None else str(exc)
+                ),
+                error_traceback=error_traceback,
             ),
         ),
     )
