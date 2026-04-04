@@ -14,20 +14,19 @@ from urllib.parse import urlunsplit
 
 from ..api import EndpointClient
 from ..api import HttpMethod
-from ..api import PaginationConfigDict
 from ..api import RequestOptions
 from ..api import compose_api_request_env
 from ..api import paginate_with_client
-from ..api._utils import resolve_request
 from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
 from ..file.base import ReadOptions
 from ..utils._types import JSONData
-from ..utils._types import JSONDict
 from ..utils._types import JSONList
 from ..utils._types import StrPath
 from ..utils._types import Timeout
+from ._http import build_request_call
+from ._http import require_url
 from ._options import coerce_read_options as _coerce_read_options
 
 # SECTION: EXPORTS ========================================================== #
@@ -121,29 +120,33 @@ def _extract_from_api_env(
         and env.get('endpoint_key')
     ):
         client = _build_client(
-            base_url=cast(str, env.get('base_url')),
-            base_path=cast(str | None, env.get('base_path')),
-            endpoints=cast(dict[str, str], env.get('endpoints_map', {})),
+            base_url=str(env['base_url']),
+            base_path=(
+                base_path
+                if isinstance(base_path := env.get('base_path'), str)
+                else None
+            ),
+            endpoints=dict(env.get('endpoints_map', {})),
             retry=env.get('retry'),
             retry_network_errors=bool(env.get('retry_network_errors', False)),
             session=env.get('session'),
         )
         return paginate_with_client(
             client,
-            cast(str, env.get('endpoint_key')),
+            str(env['endpoint_key']),
             env.get('params'),
             env.get('headers'),
             env.get('timeout'),
             env.get('pagination'),
-            cast(float | None, env.get('sleep_seconds')),
+            env.get('sleep_seconds'),
         )
 
-    url = env.get('url')
-    if not url:
-        raise ValueError('API source missing URL')
-
     if use_client:
-        parts = urlsplit(cast(str, url))
+        url = require_url(
+            env,
+            error_message='API source missing URL',
+        )
+        parts = urlsplit(url)
         base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
         client = _build_client(
             base_url=base,
@@ -160,25 +163,21 @@ def _extract_from_api_env(
         )
 
         return client.paginate_url(
-            cast(str, url),
-            cast(PaginationConfigDict | None, env.get('pagination')),
+            url,
+            env.get('pagination'),
             request=request_options,
-            sleep_seconds=cast(float, env.get('sleep_seconds', 0.0)),
+            sleep_seconds=float(env.get('sleep_seconds', 0.0)),
         )
 
-    method = env.get('method', HttpMethod.GET)
-    timeout = env.get('timeout', None)
-    session = env.get('session', None)
-    request_kwargs = dict(env.get('request_kwargs') or {})
-    request_callable, timeout, _ = resolve_request(
-        method,
-        session=session,
-        timeout=timeout,
+    request = build_request_call(
+        env,
+        error_message='API source missing URL',
+        default_method=HttpMethod.GET,
     )
-    response = request_callable(
-        cast(str, url),
-        timeout=timeout,
-        **request_kwargs,
+    response = request.request_callable(
+        request.url,
+        timeout=request.timeout,
+        **request.kwargs,
     )
     response.raise_for_status()
     return _parse_api_response(response)
@@ -210,15 +209,15 @@ def _parse_api_response(
                 'content': response.text,
                 'content_type': content_type,
             }
-        if isinstance(payload, dict):
-            return cast(JSONDict, payload)
-        if isinstance(payload, list):
-            if all(isinstance(x, dict) for x in payload):
-                return cast(JSONList, payload)
-            # Coerce non-dict array items into objects for consistency
-            return [{'value': x} for x in payload]
-        # Fallback: wrap scalar JSON
-        return {'value': payload}
+        match payload:
+            case dict():
+                return payload
+            case list():
+                if all(isinstance(item, dict) for item in payload):
+                    return payload
+                return [{'value': item} for item in payload]
+            case _:
+                return {'value': payload}
 
     return {'content': response.text, 'content_type': content_type}
 
