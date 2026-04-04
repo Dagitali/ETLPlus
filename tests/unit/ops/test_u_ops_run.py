@@ -1367,6 +1367,119 @@ class TestRunInternals:
 
         assert indexed == {'valid': connectors[0]}
 
+    def test_run_treats_missing_transform_registry_as_noop(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that missing transform registries do not break job runs."""
+        job = _make_job(name='job', source='src', target='tgt')
+        cfg = SimpleNamespace(
+            jobs=[job],
+            sources=[
+                SimpleNamespace(
+                    name='src',
+                    type='file',
+                    path='/tmp/in.json',
+                    format='json',
+                ),
+            ],
+            targets=[
+                SimpleNamespace(
+                    name='tgt',
+                    type='file',
+                    path='/tmp/out.json',
+                    format='json',
+                ),
+            ],
+            transforms=None,
+            validations={},
+        )
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+        monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: {'id': 1})
+        monkeypatch.setattr(
+            run_mod,
+            'maybe_validate',
+            lambda data, *_a, **_k: data,
+        )
+        transform_calls: list[Any] = []
+
+        def _transform(data: Any, ops: Any) -> Any:
+            transform_calls.append(ops)
+            return data
+
+        monkeypatch.setattr(run_mod, 'transform', _transform)
+        monkeypatch.setattr(run_mod, 'load', lambda *_a, **_k: {'status': 'ok'})
+
+        result = run_mod.run('job')
+
+        assert result == {'status': 'ok'}
+        assert transform_calls == []
+
+    def test_run_uses_empty_rules_when_validation_registry_is_not_mapping(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that invalid validation registries degrade to empty rules."""
+        job = _make_job(name='job', source='src', target='tgt')
+        job.validate = SimpleNamespace(
+            ruleset='default',
+            severity='warn',
+            phase='after_transform',
+        )
+        cfg = _base_config(
+            job,
+            SimpleNamespace(
+                name='src',
+                type='file',
+                path='/tmp/in.json',
+                format='json',
+            ),
+            SimpleNamespace(
+                name='tgt',
+                type='file',
+                path='/tmp/out.json',
+                format='json',
+            ),
+        )
+        cfg.validations = ['invalid']
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+        monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: {'id': 1})
+        validation_calls: list[tuple[str, dict[str, Any]]] = []
+
+        def _maybe_validate(
+            data: Any,
+            when: str,
+            **kwargs: Any,
+        ) -> Any:
+            validation_calls.append((when, kwargs))
+            return data
+
+        monkeypatch.setattr(run_mod, 'maybe_validate', _maybe_validate)
+        monkeypatch.setattr(run_mod, 'transform', lambda data, _ops: data)
+        monkeypatch.setattr(run_mod, 'load', lambda *_a, **_k: {'status': 'ok'})
+
+        result = run_mod.run('job')
+
+        assert result == {'status': 'ok'}
+        assert [when for when, _ in validation_calls] == [
+            'before_transform',
+            'after_transform',
+        ]
+        assert all(kwargs['enabled'] is True for _, kwargs in validation_calls)
+        assert all(kwargs['rules'] == {} for _, kwargs in validation_calls)
+        assert all(
+            kwargs['phase'] == 'after_transform' for _, kwargs in validation_calls
+        )
+        assert all(kwargs['severity'] == 'warn' for _, kwargs in validation_calls)
+
 
 class TestRunPipeline:
     """Unit tests for :func:`etlplus.ops.run.run_pipeline`."""
