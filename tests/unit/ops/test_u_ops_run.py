@@ -1406,6 +1406,77 @@ class TestRunInternals:
         assert result == {'status': 'ok'}
         assert load_calls == [({'id': 1}, 'file', '/tmp/out.json')]
 
+    def test_dispatch_extract_uses_api_source_connector_loader(self) -> None:
+        """API source dispatch should prefer connector-aware extraction."""
+        calls: list[tuple[Any, Any, dict[str, Any]]] = []
+
+        def _extract_from_api_source(
+            cfg: Any,
+            connector_obj: Any,
+            overrides: dict[str, Any],
+        ) -> dict[str, bool]:
+            calls.append((cfg, connector_obj, overrides))
+            return {'ok': True}
+
+        cfg = SimpleNamespace(name='cfg')
+        connector = SimpleNamespace(name='api_src')
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            run_mod,
+            'extract_from_api_source',
+            _extract_from_api_source,
+        )
+        try:
+            result = run_mod._dispatch_extract(
+                'api',
+                'https://example.test/items',
+                options={'timeout': 2.0},
+                cfg=cfg,
+                connector_obj=connector,
+            )
+        finally:
+            monkeypatch.undo()
+
+        assert result == {'ok': True}
+        assert calls == [(cfg, connector, {'timeout': 2.0})]
+
+    def test_dispatch_load_uses_api_target_connector_loader(self) -> None:
+        """API target dispatch should prefer connector-aware loading."""
+        calls: list[tuple[Any, Any, dict[str, Any], Any]] = []
+
+        def _load_to_api_target(
+            cfg: Any,
+            connector_obj: Any,
+            overrides: dict[str, Any],
+            data: Any,
+        ) -> dict[str, bool]:
+            calls.append((cfg, connector_obj, overrides, data))
+            return {'ok': True}
+
+        cfg = SimpleNamespace(name='cfg')
+        connector = SimpleNamespace(name='api_tgt')
+        payload = {'id': 1}
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            run_mod,
+            'load_to_api_target',
+            _load_to_api_target,
+        )
+        try:
+            result = run_mod._dispatch_load(
+                payload,
+                'api',
+                'https://example.test/items',
+                options={'timeout': 3.0},
+                cfg=cfg,
+                connector_obj=connector,
+            )
+        finally:
+            monkeypatch.undo()
+
+        assert result == {'ok': True}
+        assert calls == [(cfg, connector, {'timeout': 3.0}, payload)]
+
     def test_extract_transform_then_return_when_no_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
