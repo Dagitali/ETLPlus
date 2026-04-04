@@ -18,6 +18,8 @@
   - `run_id` TEXT PRIMARY KEY (uuid4)
   - `pipeline_name` TEXT NULL
   - `job_name` TEXT NULL
+    - Selected job for dependency-aware `run --job` executions
+    - `NULL` for `run --all`
   - `config_path` TEXT NOT NULL
   - `config_sha256` TEXT NULL
   - `status` TEXT NOT NULL (queued|running|succeeded|failed|canceled)
@@ -58,9 +60,10 @@
   - On success: update `status=succeeded`, `finished_at`, `duration_ms`,
     `result_summary`.
   - On failure: update `status=failed`, set error fields.
+  - DAG-aware `run --job` and `run --all` executions persist their execution summary in
+    `result_summary`, including ordered jobs plus succeeded/failed/skipped job lists.
 - Remaining work:
   - capture traceback conditionally
-  - publish compatibility guidance for persisted record fields and future event-schema reuse
 
 **CLI Commands**
 - `etlplus history`
@@ -91,6 +94,8 @@
 **CLI Output Conventions**
 - `etlplus run` emits a `run_id` in the output envelope:
   - `{ "status": "ok", "run_id": "...", "result": {...} }`
+  - DAG-style runs return a stable summary object in `result`, including `mode`, `ordered_jobs`,
+    `executed_jobs`, and aggregate counts.
 - `etlplus history` returns an array of normalized run objects by default.
 - `etlplus history --json` explicitly requests JSON output.
 - `etlplus history --table` returns a Markdown table of normalized run objects.
@@ -102,6 +107,15 @@
   including duration extrema and success-rate metrics, or a Markdown table when
   `--table` is used.
 - All commands accept `--pretty` and respect `--quiet`.
+
+**Compatibility Guidance**
+- The top-level persisted run fields in `runs` are the stable local-history contract for `v1.x`.
+- `result_summary` is extensible: DAG-aware runs may add new nested keys without a schema-version
+  bump as long as existing keys keep their meaning.
+- Backend differences (SQLite row vs JSONL append records) should normalize to the same stable
+  top-level run shape for `history`, `status`, and `report`.
+- Any breaking change to the top-level persisted run shape or the meaning/type of existing stable
+  fields should increment `HISTORY_SCHEMA_VERSION`.
 
 **Config Integration**
 - Add optional `history` block to pipeline config:

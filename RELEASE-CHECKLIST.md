@@ -119,6 +119,8 @@ release.
   internal on an underscore-prefixed module.
 - The documented stable CLI surface keeps readiness under `check --readiness`.
 - The documented stable CLI surface now also includes the `init` starter-project scaffold command.
+- The documented stable CLI surface now also includes DAG validation under `check --graph` plus
+  DAG-aware execution via `run --all` and dependency-aware `run --job`.
 - Runtime execution hygiene progress on the current branch includes:
   - Shared runtime logging policy and config precedence documentation
   - `check --readiness` runtime/config checks with optional dependency and connector-gap detection
@@ -128,6 +130,8 @@ release.
     commands: `extract`, `load`, `run`, `transform`, and `validate`
   - Local run-history persistence keyed by `run_id` for `etlplus run`, backed by SQLite by default
     with JSONL fallback support
+  - DAG execution summaries for `run --all` and dependency-aware `run --job`, including skipped
+    downstream jobs when an upstream dependency fails
 
 ## Current Stable-Line Maintenance Checklist
 
@@ -149,9 +153,11 @@ These are the active follow-up items for the `v1.x` line.
 - [x] Decide when the local run-history work becomes part of the documented stable CLI surface.
   - `history`, `log`, `status`, and `report` are now documented as stable `v1.x` CLI commands.
   - Contract coverage exists in the public-surface meta tests.
-- [ ] Review the stable event-schema contract before the next minor release.
-  - Confirm whether `etlplus.event.v1` remains sufficient for the supported execution commands.
-  - Add explicit compatibility guidance before introducing schema-affecting changes.
+- [x] Review the stable event-schema contract before the next minor release.
+  - `RUNTIME-CONFIG-AND-LOGGING.md` now documents the `etlplus.event.v1` compatibility rules and
+    clarifies how handled DAG execution failures surface as `run.failed` lifecycle events.
+  - `docs/run-history.md` now documents the persisted local-history compatibility posture for the
+    stable top-level run shape and additive DAG summary growth under `result_summary`.
 
 ## Archived `v1.0.0` Readiness Closeout
 

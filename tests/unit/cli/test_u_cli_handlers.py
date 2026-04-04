@@ -252,6 +252,59 @@ def _validation_payload_map() -> dict[object, object]:
 class TestCheckHandler:
     """Unit tests for :func:`check_handler`."""
 
+    def test_graph_branch_emits_dag_summary(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        dummy_cfg: Config,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Graph mode should emit the ordered job graph summary."""
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
+        monkeypatch.setattr(
+            check_mod._summary,
+            'graph_summary',
+            lambda _cfg: {
+                'jobs': [{'depends_on': [], 'name': 'j1'}],
+                'ordered_jobs': ['j1'],
+                'status': 'ok',
+            },
+        )
+
+        assert handlers.check_handler(config='cfg.yml', graph=True) == 0
+        assert_emit_json(
+            capture_io,
+            {
+                'jobs': [{'depends_on': [], 'name': 'j1'}],
+                'ordered_jobs': ['j1'],
+                'status': 'ok',
+            },
+            pretty=True,
+        )
+
+    def test_graph_branch_returns_error_payload_for_invalid_graph(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        dummy_cfg: Config,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Graph mode should surface graph validation errors as JSON."""
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
+        monkeypatch.setattr(
+            check_mod._summary,
+            'graph_summary',
+            lambda _cfg: (_ for _ in ()).throw(ValueError('Dependency cycle detected')),
+        )
+
+        assert handlers.check_handler(config='cfg.yml', graph=True) == 1
+        assert_emit_json(
+            capture_io,
+            {
+                'message': 'Dependency cycle detected',
+                'status': 'error',
+            },
+            pretty=True,
+        )
+
     def test_passes_substitute_flag(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -1812,8 +1865,14 @@ class TestRunHandler:
         )
         run_calls: dict[str, object] = {}
 
-        def fake_run(*, job: str, config_path: str) -> dict[str, object]:
-            run_calls['params'] = (job, config_path)
+        def fake_run(
+            *,
+            job: str,
+            config_path: str,
+            run_all: bool = False,
+            continue_on_fail: bool = False,
+        ) -> dict[str, object]:
+            run_calls['params'] = (job, config_path, run_all, continue_on_fail)
             return {'job': job, 'ok': True}
 
         monkeypatch.setattr(run_mod, 'run', fake_run)
@@ -1826,7 +1885,7 @@ class TestRunHandler:
             )
             == 0
         )
-        assert run_calls['params'] == ('job1', 'pipeline.yml')
+        assert run_calls['params'] == ('job1', 'pipeline.yml', False, False)
         assert cast(Any, history_calls['started']).run_id == 'run-123'
         assert history_calls['finished'] == {
             'duration_ms': ANY,
@@ -1844,6 +1903,112 @@ class TestRunHandler:
                 'run_id': 'run-123',
                 'status': 'ok',
                 'result': {'job': 'job1', 'ok': True},
+            },
+            pretty=False,
+        )
+
+    def test_run_all_failure_summary_returns_nonzero_and_records_failure(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        dummy_cfg: Config,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Handled DAG failures should emit JSON, record failure, and return 1."""
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
+        monkeypatch.setattr(
+            handlers.RuntimeEvents,
+            'create_run_id',
+            lambda: 'run-all-1',
+        )
+
+        history_calls: dict[str, object] = {}
+
+        class _FakeHistoryStore:
+            def record_run_started(self, record: object) -> None:
+                history_calls['started'] = record
+
+            def record_run_finished(
+                self,
+                completion: object,
+            ) -> None:
+                completion_obj = cast(handlers.RunCompletion, completion)
+                history_calls['finished'] = completion_obj.state
+
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
+        lifecycle_calls: list[dict[str, object]] = []
+        monkeypatch.setattr(
+            run_mod._lifecycle,
+            'emit_lifecycle_event',
+            lambda **kwargs: lifecycle_calls.append(kwargs),
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'run',
+            lambda **kwargs: {
+                'continue_on_fail': True,
+                'executed_jobs': [
+                    {'job': 'seed', 'status': 'failed'},
+                    {
+                        'job': 'publish',
+                        'reason': 'upstream_failed',
+                        'skipped_due_to': ['seed'],
+                        'status': 'skipped',
+                    },
+                ],
+                'failed_jobs': ['seed'],
+                'mode': 'all',
+                'ordered_jobs': ['seed', 'publish'],
+                'skipped_jobs': ['publish'],
+                'status': 'failed',
+                'succeeded_jobs': [],
+            },
+        )
+
+        assert (
+            handlers.run_handler(
+                config='pipeline.yml',
+                run_all=True,
+                continue_on_fail=True,
+                pretty=False,
+            )
+            == 1
+        )
+        assert cast(Any, history_calls['started']).job_name is None
+        finished = cast(handlers.RunState, history_calls['finished'])
+        assert finished.status == 'failed'
+        assert finished.error_type == 'RunExecutionFailed'
+        assert 'DAG execution' in cast(str, finished.error_message)
+        assert [call['lifecycle'] for call in lifecycle_calls] == [
+            'started',
+            'failed',
+        ]
+        assert_emit_json(
+            capture_io,
+            {
+                'run_id': 'run-all-1',
+                'status': 'error',
+                'result': {
+                    'continue_on_fail': True,
+                    'executed_jobs': [
+                        {'job': 'seed', 'status': 'failed'},
+                        {
+                            'job': 'publish',
+                            'reason': 'upstream_failed',
+                            'skipped_due_to': ['seed'],
+                            'status': 'skipped',
+                        },
+                    ],
+                    'failed_jobs': ['seed'],
+                    'mode': 'all',
+                    'ordered_jobs': ['seed', 'publish'],
+                    'skipped_jobs': ['publish'],
+                    'status': 'failed',
+                    'succeeded_jobs': [],
+                },
             },
             pretty=False,
         )

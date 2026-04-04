@@ -11,10 +11,13 @@ import typer
 from .._handlers.run import run_handler
 from ._app import app
 from ._helpers import call_handler
+from ._helpers import fail_usage
 from ._helpers import require_value
 from ._options.common import ConfigOption
+from ._options.common import ContinueOnFailOption
 from ._options.common import JobOption
 from ._options.common import PipelineOption
+from ._options.common import RunAllOption
 from ._options.common import StructuredEventFormatOption
 from ._state import ensure_state
 
@@ -36,6 +39,8 @@ def run_cmd(
     config: ConfigOption,
     job: JobOption = None,
     pipeline: PipelineOption = None,
+    run_all: RunAllOption = False,
+    continue_on_fail: ContinueOnFailOption = False,
     event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
@@ -51,6 +56,11 @@ def run_cmd(
         Job name to execute.
     pipeline : PipelineOption, optional
         Pipeline name to execute when *job* is not provided.
+    run_all : RunAllOption, optional
+        Whether to run all configured jobs in DAG order.
+    continue_on_fail : ContinueOnFailOption, optional
+        Whether to continue past failed jobs and skip only blocked downstream
+        jobs.
     event_format : StructuredEventFormatOption, optional
         Structured event output format.
 
@@ -63,6 +73,8 @@ def run_cmd(
         config,
         message="Missing required option '--config'.",
     )
+    if run_all and (job or pipeline):
+        fail_usage('--all cannot be combined with --job or --pipeline.')
 
     return call_handler(
         run_handler,
@@ -70,5 +82,7 @@ def run_cmd(
         config=config,
         job=job,
         pipeline=pipeline,
+        run_all=run_all,
+        continue_on_fail=continue_on_fail,
         event_format=event_format,
     )

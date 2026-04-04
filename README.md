@@ -139,6 +139,7 @@ Maintainers handling packaging, CI, versioned docs, or release gating should con
 
 - **Check** data pipeline definitions before running them:
   - Summarize jobs, sources, targets, and transforms
+  - Validate dependency graphs and print DAG order with `--graph`
   - Run lightweight runtime and config readiness checks with `--readiness`
   - Enable stricter diagnostics with `--strict` to catch malformed entries the tolerant loader
     would otherwise skip
@@ -595,6 +596,11 @@ etlplus check --readiness --config examples/configs/pipeline.yml
 etlplus check --readiness --strict --config examples/configs/pipeline.yml
 ```
 
+Validate dependency order before executing a DAG-shaped pipeline:
+```bash
+etlplus check --config examples/configs/pipeline.yml --graph
+```
+
 #### Render SQL DDL
 
 Use `etlplus render` to turn table schema specs into ready-to-run SQL. Render from a pipeline config
@@ -806,13 +812,20 @@ CLI quick reference for pipelines:
 # List jobs or show a pipeline summary
 etlplus check --config examples/configs/pipeline.yml --jobs
 etlplus check --config examples/configs/pipeline.yml --summary
+etlplus check --config examples/configs/pipeline.yml --graph
 
 # Run a job
 etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
 
+# Run every configured job in DAG order
+etlplus run --config examples/configs/pipeline.yml --all
+
 # Run a job and emit structured events to STDERR
 etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers --event-format jsonl
 ```
+
+Structured events use the stable `etlplus.event.v1` envelope. Additive fields may appear over time,
+but breaking field/lifecycle changes require a schema version bump.
 
 ### Complete ETL Pipeline Example
 
