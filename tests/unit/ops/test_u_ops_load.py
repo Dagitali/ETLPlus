@@ -20,6 +20,7 @@ import json as js
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from typing import cast
 
@@ -539,8 +540,18 @@ class TestLoadToApi:
 
         monkeypatch.setattr(
             load_mod,
-            'resolve_request',
-            lambda method, session, timeout: (_request, 9.5, HttpMethod.PUT),
+            'build_request_call',
+            lambda env, error_message, default_method, json_data=None: SimpleNamespace(
+                url=env['url'],
+                request_callable=_request,
+                timeout=9.5,
+                http_method=HttpMethod.PUT,
+                kwargs={
+                    'headers': {'X-Test': '1'},
+                    'json': json_data,
+                    'verify': False,
+                },
+            ),
         )
         result = load_mod._load_to_api_env(
             [{'id': 1}],
@@ -584,8 +595,14 @@ class TestLoadToApi:
 
         monkeypatch.setattr(
             load_mod,
-            'resolve_request',
-            lambda method, session, timeout: (_request, 10.0, HttpMethod.POST),
+            'build_request_call',
+            lambda env, error_message, default_method, json_data=None: SimpleNamespace(
+                url=env['url'],
+                request_callable=_request,
+                timeout=10.0,
+                http_method=HttpMethod.POST,
+                kwargs={'json': json_data},
+            ),
         )
         result = load_mod._load_to_api_env(
             {'x': 1},
