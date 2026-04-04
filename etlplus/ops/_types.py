@@ -34,6 +34,8 @@ from ..utils._types import StrStrMap
 
 
 __all__ = [
+    # Type Aliases (File IO)
+    'FileOptionsArg',
     # Type Aliases (Functions)
     'AggregateFunc',
     'OperatorFunc',
@@ -73,6 +75,11 @@ type AggregateFunc = Callable[[list[float], int], Any]
 
 # Binary predicate consumed by filter operations.
 type OperatorFunc = Callable[[Any, Any], bool]
+
+# -- File IO -- #
+
+# File options accepted as a concrete options object, a mapping, or None.
+type FileOptionsArg[OptionsT] = OptionsT | Mapping[str, Any] | None
 
 # -- Records & Fields -- #
 
