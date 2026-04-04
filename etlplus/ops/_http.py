@@ -24,6 +24,7 @@ __all__ = [
     # Functions
     'build_request_call',
     'require_url',
+    'send_request',
     'response_json_or_text',
 ]
 
@@ -155,3 +156,28 @@ def response_json_or_text(
         return response.json()
     except ValueError:
         return response.text
+
+
+def send_request(
+    request: ResolvedRequest,
+) -> Any:
+    """
+    Execute one normalized HTTP request and raise for bad status codes.
+
+    Parameters
+    ----------
+    request : ResolvedRequest
+        Normalized request details produced by :func:`build_request_call`.
+
+    Returns
+    -------
+    Any
+        The HTTP response object returned by the request callable.
+    """
+    response = request.request_callable(
+        request.url,
+        timeout=request.timeout,
+        **request.kwargs,
+    )
+    response.raise_for_status()
+    return response
