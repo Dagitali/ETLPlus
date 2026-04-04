@@ -15,6 +15,7 @@ from typing import Any
 from typing import Final
 from typing import Self
 from typing import cast
+from typing import overload
 
 from .._config import Config
 from ..api import HttpMethod
@@ -27,6 +28,8 @@ from ..utils._types import StrPath
 from ..workflow import topological_sort_jobs
 from ._mappings import index_named_items
 from ._mappings import merge_mapping_options
+from ._types import DataSourceArg
+from ._types import OptionalConnectorTypeArg
 from ._types import PipelineConfig
 from ._validation import ValidationResultDict
 from ._validation import maybe_validate
@@ -462,10 +465,10 @@ def _run_job_config(
     data = _extract_job_data(context, job_obj)
     validation = _JobValidationConfig.from_job(job_obj, context.cfg)
     data = validation.apply(data, when='before_transform')
-
-    if (ops := _resolve_transform_ops(context.cfg, job_obj)) is not None:
-        data = transform(data, ops)
-
+    data = _apply_operations(
+        data,
+        _resolve_transform_ops(context.cfg, job_obj),
+    )
     data = validation.apply(data, when='after_transform')
     return _load_job_result(context, job_obj, data)
 
@@ -559,7 +562,7 @@ def _load_job_result(
 
 
 def _dispatch_extract(
-    source_type: DataConnectorType | str | None,
+    source_type: OptionalConnectorTypeArg,
     source: StrPath,
     *,
     file_format: FileFormatArg = None,
@@ -600,8 +603,8 @@ def _dispatch_extract(
 
 
 def _dispatch_load(
-    data: StrPath | JSONData,
-    target_type: DataConnectorType | str | None,
+    data: DataSourceArg,
+    target_type: OptionalConnectorTypeArg,
     target: StrPath,
     *,
     file_format: FileFormatArg = None,
@@ -688,6 +691,43 @@ def _resolve_transform_ops(
     if transforms is None or not isinstance(transforms, Mapping):
         return None
     return transforms.get(getattr(transform_cfg, 'pipeline', None), {})
+
+
+@overload
+def _apply_operations(
+    data: JSONData,
+    operations: PipelineConfig | None,
+) -> JSONData:
+    ...
+
+
+@overload
+def _apply_operations(
+    data: DataSourceArg,
+    operations: PipelineConfig | None,
+) -> DataSourceArg:
+    ...
+
+
+def _apply_operations(
+    data: DataSourceArg,
+    operations: PipelineConfig | None,
+) -> DataSourceArg:
+    """Apply configured transform operations, preserving absent transforms."""
+    if operations is None:
+        return data
+    return transform(data, operations)
+
+
+def _require_record_payload(
+    data: DataSourceArg,
+) -> JSONData:
+    """Require a dict/list JSON payload for target-less pipeline runs."""
+    if not isinstance(data, (dict, list)):
+        raise TypeError(
+            f'Expected data to be dict or list of dicts, got {type(data).__name__}',
+        )
+    return data
 
 
 def _run_job_plan(
@@ -877,12 +917,13 @@ def run(
     return _run_job_config(context, planned_jobs[0])
 
 
+# TODO: Define a global type alias to replace StrPath | None.
 def run_pipeline(
     *,
-    source_type: DataConnectorType | str | None = None,
-    source: StrPath | JSONData | None = None,
+    source_type: OptionalConnectorTypeArg = None,
+    source: DataSourceArg | None = None,
     operations: PipelineConfig | None = None,
-    target_type: DataConnectorType | str | None = None,
+    target_type: OptionalConnectorTypeArg = None,
     target: StrPath | None = None,
     file_format: FileFormatArg = None,
     method: HttpMethod | str | None = None,
@@ -893,15 +934,15 @@ def run_pipeline(
 
     Parameters
     ----------
-    source_type : DataConnectorType | str | None, optional
+    source_type : OptionalConnectorTypeArg, optional
         Connector type for extraction. When ``None``, *source* is assumed
         to be pre-loaded data and extraction is skipped.
-    source : StrPath | JSONData | None, optional
+    source : DataSourceArg | None, optional
         Data source for extraction or the pre-loaded payload when
         *source_type* is ``None``.
     operations : PipelineConfig | None, optional
         Transform configuration passed to :func:`etlplus.ops.transform`.
-    target_type : DataConnectorType | str | None, optional
+    target_type : OptionalConnectorTypeArg, optional
         Connector type for loading. When ``None``, load is skipped and the
         transformed data is returned.
     target : StrPath | None, optional
@@ -921,9 +962,6 @@ def run_pipeline(
 
     Raises
     ------
-    TypeError
-        Raised when extracted data is not a dict or list of dicts and no
-        target is specified.
     ValueError
         Raised when required source/target inputs are missing.
     """
@@ -946,15 +984,10 @@ def run_pipeline(
             options=kwargs,
         )
 
-    if operations:
-        data = transform(data, operations)
+    data = _apply_operations(data, operations)
 
     if target_type is None:
-        if not isinstance(data, (dict, list)):
-            raise TypeError(
-                f'Expected data to be dict or list of dicts, got {type(data).__name__}',
-            )
-        return data
+        return _require_record_payload(data)
     if target is None:
         raise ValueError('target is required when target_type is set')
 
