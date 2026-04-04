@@ -697,16 +697,14 @@ def _resolve_transform_ops(
 def _apply_operations(
     data: JSONData,
     operations: PipelineConfig | None,
-) -> JSONData:
-    ...
+) -> JSONData: ...
 
 
 @overload
 def _apply_operations(
     data: DataSourceArg,
     operations: PipelineConfig | None,
-) -> DataSourceArg:
-    ...
+) -> DataSourceArg: ...
 
 
 def _apply_operations(
