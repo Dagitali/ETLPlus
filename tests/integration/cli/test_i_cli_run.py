@@ -226,6 +226,75 @@ class TestRun:
         assert payload['result'].get('status') == 'success'
         assert payload['result'].get('message') == f'Data loaded to {target.uri}'
 
+    def test_run_all_executes_dependency_order_and_returns_summary(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        sample_records: list[dict[str, object]],
+        tmp_path: Path,
+    ) -> None:
+        """``run --all`` should execute jobs in DAG order and emit a summary."""
+        source_path = tmp_path / 'source.json'
+        intermediate_path = tmp_path / 'intermediate.json'
+        final_path = tmp_path / 'final.json'
+        File(source_path, FileFormat.JSON).write(sample_records)
+        config_path = tmp_path / 'pipeline_all.yml'
+        config_path.write_text(
+            dedent(
+                f"""
+                name: DAG Smoke Test
+                sources:
+                  - name: source_in
+                    type: file
+                    format: json
+                    path: "{source_path}"
+                  - name: intermediate_in
+                    type: file
+                    format: json
+                    path: "{intermediate_path}"
+                targets:
+                  - name: intermediate_out
+                    type: file
+                    format: json
+                    path: "{intermediate_path}"
+                  - name: final_out
+                    type: file
+                    format: json
+                    path: "{final_path}"
+                jobs:
+                  - name: publish
+                    depends_on: [seed]
+                    extract:
+                      source: intermediate_in
+                    load:
+                      target: final_out
+                  - name: seed
+                    extract:
+                      source: source_in
+                    load:
+                      target: intermediate_out
+                """,
+            ).strip(),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            ('run', '--config', str(config_path), '--all'),
+        )
+
+        assert code == 0
+        assert err == ''
+        payload = parse_json_output(out)
+        assert payload['status'] == 'ok'
+        assert payload['result']['status'] == 'success'
+        assert payload['result']['mode'] == 'all'
+        assert payload['result']['ordered_jobs'] == ['seed', 'publish']
+        assert [job['job'] for job in payload['result']['executed_jobs']] == [
+            'seed',
+            'publish',
+        ]
+        assert File(final_path, FileFormat.JSON).read() == sample_records
+
     def test_run_emits_jsonl_events_to_stderr(
         self,
         cli_invoke: CliInvoke,
