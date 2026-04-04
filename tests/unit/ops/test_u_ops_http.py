@@ -43,6 +43,10 @@ class _Response:
             raise ValueError('bad json')
         return self._payload
 
+    def raise_for_status(self) -> None:
+        """No-op status check for request execution tests."""
+        return None
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -170,4 +174,36 @@ class TestResponseJsonOrText:
         """JSON-capable responses should return their parsed payload."""
         assert http_mod.response_json_or_text(_Response({'ok': True})) == {
             'ok': True,
+        }
+
+
+class TestSendRequest:
+    """Unit tests for normalized request execution."""
+
+    def test_send_request_executes_normalized_call(self) -> None:
+        """Test that request execution preserves URL, timeout, and kwargs."""
+        captured: dict[str, Any] = {}
+
+        def _request_callable(url: str, **kwargs: Any) -> _Response:
+            captured['url'] = url
+            captured['kwargs'] = kwargs
+            return _Response({'ok': True})
+
+        response = http_mod.send_request(
+            http_mod.ResolvedRequest(
+                url='https://example.test/api',
+                request_callable=_request_callable,
+                timeout=4.5,
+                http_method=HttpMethod.POST,
+                kwargs={'headers': {'X-Test': '1'}},
+            ),
+        )
+
+        assert response.json() == {'ok': True}
+        assert captured == {
+            'url': 'https://example.test/api',
+            'kwargs': {
+                'headers': {'X-Test': '1'},
+                'timeout': 4.5,
+            },
         }
