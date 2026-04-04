@@ -603,7 +603,8 @@ def _resolve_file_connector_config(
             path,
             message=missing_path_message,
         ),
-        file_format=overrides.get('format') or getattr(
+        file_format=overrides.get('format')
+        or getattr(
             connector_obj,
             'format',
             'json',
@@ -878,8 +879,7 @@ def run_pipeline(
             _require_path_like(
                 source,
                 message=(
-                    'source must be a path-like string or Path '
-                    'when source_type is set'
+                    'source must be a path-like string or Path when source_type is set'
                 ),
             ),
             file_format=file_format,
