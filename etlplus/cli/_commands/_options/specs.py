@@ -19,6 +19,7 @@ from .helpers import _typer_value_option_kwargs
 
 __all__ = [
     # Types
+    'GraphOption',
     'JobsOption',
     'OperationsOption',
     'PipelinesOption',
@@ -40,6 +41,16 @@ __all__ = [
 
 # SECTION: TYPES ============================================================ #
 
+
+GraphOption = Annotated[
+    bool,
+    typer.Option(
+        '--graph',
+        **_typer_flag_option_kwargs(
+            'Validate job dependencies and print DAG execution order.',
+        ),
+    ),
+]
 
 JobsOption = Annotated[
     bool,
