@@ -26,6 +26,7 @@ from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import JSONList
 from ..utils._types import StrPath
+from ._shared import coerce_write_options as _coerce_write_options
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -41,41 +42,6 @@ __all__ = [
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
-
-
-def _coerce_optional_str(
-    value: object,
-) -> str | None:
-    """Normalize optional string-like option values."""
-    if value is None:
-        return None
-    return value if isinstance(value, str) else str(value)
-
-
-def _coerce_write_options(
-    options: WriteOptions | Mapping[str, Any] | None,
-) -> WriteOptions | None:
-    """Normalize file-write option mappings into :class:`WriteOptions`."""
-    if options is None or isinstance(options, WriteOptions):
-        return options
-
-    extras = dict(options)
-    encoding = extras.pop('encoding', 'utf-8')
-    root_tag = extras.pop('root_tag', 'root')
-    sheet = extras.pop('sheet', None)
-    table = extras.pop('table', None)
-    dataset = extras.pop('dataset', None)
-    inner_name = extras.pop('inner_name', None)
-
-    return WriteOptions(
-        encoding=encoding if isinstance(encoding, str) else str(encoding),
-        root_tag=root_tag if isinstance(root_tag, str) else str(root_tag),
-        sheet=sheet,
-        table=_coerce_optional_str(table),
-        dataset=_coerce_optional_str(dataset),
-        inner_name=_coerce_optional_str(inner_name),
-        extras=cast(JSONDict, extras),
-    )
 
 
 def _load_data_from_str(
