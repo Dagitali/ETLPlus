@@ -22,6 +22,7 @@ __all__ = [
     # Data Classes
     'ResolvedRequest',
     # Functions
+    'build_direct_request_env',
     'build_request_call',
     'require_url',
     'send_request',
@@ -46,6 +47,43 @@ class ResolvedRequest:
 
 
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def build_direct_request_env(
+    url: str,
+    method: HttpMethod | str,
+    kwargs: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """
+    Build one normalized environment for a direct HTTP request.
+
+    Parameters
+    ----------
+    url : str
+        Request URL.
+    method : HttpMethod | str
+        HTTP method for the request.
+    kwargs : Mapping[str, Any] | None, optional
+        Request keyword arguments supplied by the caller. ``timeout`` and
+        ``session`` are promoted to top-level environment fields; remaining
+        values are preserved under ``request_kwargs``.
+
+    Returns
+    -------
+    dict[str, Any]
+        Normalized request environment compatible with
+        :func:`build_request_call`.
+    """
+    request_kwargs = dict(kwargs or {})
+    timeout = request_kwargs.pop('timeout', None)
+    session = request_kwargs.pop('session', None)
+    return {
+        'url': url,
+        'method': method,
+        'timeout': timeout,
+        'session': session,
+        'request_kwargs': request_kwargs,
+    }
 
 
 def require_url(
