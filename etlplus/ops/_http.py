@@ -99,7 +99,7 @@ def build_direct_request_env(
 
     Returns
     -------
-    dict[str, Any]
+    DirectRequestEnvDict
         Normalized request environment compatible with
         :func:`build_request_call`.
     """
@@ -125,7 +125,7 @@ def require_url(
 
     Parameters
     ----------
-    env : Mapping[str, Any]
+    env : HttpRequestEnv
         A normalized request environment mapping, expected to contain a 'url'
         key with a non-empty string value representing the request URL.
     error_message : str
@@ -163,7 +163,7 @@ def build_request_call(
 
     Parameters
     ----------
-    env : Mapping[str, Any]
+    env : HttpRequestEnv
         A normalized request environment mapping, expected to contain keys such
         as 'url', 'method', 'headers', 'request_kwargs', 'session', and
         'timeout'.
