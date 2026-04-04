@@ -11,8 +11,7 @@ Highlights
 ----------
 - Centralized type map and helpers for clarity and reuse.
 - Consistent error wording; field and item paths like ``[2].email``.
-- Small, focused public API with :func:`load_data`, :func:`validate_field`,
-    :func:`validate`.
+- Small, focused public API with :func:`validate_field` and :func:`validate`.
 
 Examples
 --------
@@ -37,8 +36,8 @@ from typing import TypedDict
 from ..utils._types import JSONData
 from ..utils._types import Record
 from ..utils._types import StrAnyMap
-from ..utils._types import StrPath
-from .load import load_data
+from ._types import DataSourceArg
+from .load import load_data as _load_data
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -134,6 +133,7 @@ class ValidationDict(TypedDict):
 # SECTION: TYPE ALIASES ===================================================== #
 
 
+type FieldErrors = dict[str, list[str]]
 type RulesMap = Mapping[str, FieldRulesDict]
 
 
@@ -294,7 +294,7 @@ def _validate_record(
     record: Record,
     rules: RulesMap,
     idx: int | None = None,
-) -> tuple[list[str], dict[str, list[str]]]:
+) -> tuple[list[str], FieldErrors]:
     """
     Validate a single record against rules and return aggregated errors.
 
@@ -313,11 +313,11 @@ def _validate_record(
 
     Returns
     -------
-    tuple[list[str], dict[str, list[str]]]
+    tuple[list[str], FieldErrors]
         A tuple of (errors, field_errors).
     """
     errors: list[str] = []
-    field_errors: dict[str, list[str]] = {}
+    field_errors: FieldErrors = {}
 
     for field, field_rules in rules.items():
         value = record.get(field)
@@ -329,6 +329,57 @@ def _validate_record(
         errors.extend(f'{field_key}: {err}' for err in result['errors'])
 
     return errors, field_errors
+
+
+def _validate_sequence(
+    data: list[Any],
+    rules: RulesMap,
+) -> tuple[list[str], FieldErrors]:
+    """Validate a list payload against field rules."""
+    errors: list[str] = []
+    field_errors: FieldErrors = {}
+    for i, item in enumerate(data):
+        if not isinstance(item, dict):
+            key = f'[{i}]'
+            msg = 'Item is not an object (expected dict)'
+            errors.append(f'{key}: {msg}')
+            field_errors.setdefault(key, []).append(msg)
+            continue
+        rec_errors, rec_field_errors = _validate_record(item, rules, i)
+        errors.extend(rec_errors)
+        field_errors.update(rec_field_errors)
+    return errors, field_errors
+
+
+def _validate_loaded_data(
+    data: JSONData,
+    rules: RulesMap,
+) -> tuple[list[str], FieldErrors]:
+    """Validate one loaded payload against the provided rules."""
+    match data:
+        case dict():
+            return _validate_record(data, rules)
+        case list():
+            return _validate_sequence(data, rules)
+        case _:
+            return [], {}
+
+
+def _validation_result(
+    *,
+    data: JSONData | None,
+    errors: list[str] | None = None,
+    field_errors: FieldErrors | None = None,
+) -> ValidationDict:
+    """Build a stable validation result payload."""
+    resolved_errors = list(errors or [])
+    resolved_field_errors = dict(field_errors or {})
+    return {
+        'valid': not resolved_errors,
+        'errors': resolved_errors,
+        'field_errors': resolved_field_errors,
+        'data': data,
+    }
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -436,7 +487,7 @@ def validate_field(
 
 
 def validate(
-    source: StrPath | JSONData,
+    source: DataSourceArg,
     rules: RulesMap | None = None,
 ) -> ValidationDict:
     """
@@ -444,7 +495,7 @@ def validate(
 
     Parameters
     ----------
-    source : StrPath | JSONData
+    source : DataSourceArg
         Data source to validate.
     rules : RulesMap | None, optional
         Field rules keyed by field name. If ``None``, data is considered
@@ -458,46 +509,19 @@ def validate(
         reported in ``errors``.
     """
     try:
-        data = load_data(source)
-    except ValueError as e:
-        return {
-            'valid': False,
-            'errors': [f'Failed to load data: {e}'],
-            'field_errors': {},
-            'data': None,
-        }
+        data = _load_data(source)
+    except (TypeError, ValueError) as exc:
+        return _validation_result(
+            data=None,
+            errors=[f'Failed to load data: {exc}'],
+        )
 
     if not rules:
-        return {
-            'valid': True,
-            'errors': [],
-            'field_errors': {},
-            'data': data,
-        }
+        return _validation_result(data=data)
 
-    errors: list[str] = []
-    field_errors: dict[str, list[str]] = {}
-
-    if isinstance(data, dict):
-        rec_errors, rec_field_errors = _validate_record(data, rules)
-        errors.extend(rec_errors)
-        field_errors.update(rec_field_errors)
-
-    elif isinstance(data, list):
-        for i, item in enumerate(data):
-            if not isinstance(item, dict):
-                key = f'[{i}]'
-                msg = 'Item is not an object (expected dict)'
-                errors.append(f'{key}: {msg}')
-                field_errors.setdefault(key, []).append(msg)
-                continue
-            rec_errors, rec_field_errors = _validate_record(item, rules, i)
-            errors.extend(rec_errors)
-            field_errors.update(rec_field_errors)
-
-    return {
-        'valid': len(errors) == 0,
-        'errors': errors,
-        'field_errors': field_errors,
-        'data': data,
-    }
+    errors, field_errors = _validate_loaded_data(data, rules)
+    return _validation_result(
+        data=data,
+        errors=errors,
+        field_errors=field_errors,
+    )
