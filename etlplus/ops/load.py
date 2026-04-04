@@ -26,7 +26,7 @@ from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import JSONList
 from ..utils._types import StrPath
-from ._shared import coerce_write_options as _coerce_write_options
+from ._options import coerce_write_options as _coerce_write_options
 
 # SECTION: EXPORTS ========================================================== #
 
