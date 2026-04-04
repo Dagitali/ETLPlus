@@ -88,10 +88,7 @@ def _coerce_file_options[OptionsT](
         )
 
     extras = {key: value for key, value in options.items()}
-    normalized = {
-        key: extras.pop(key, default)
-        for key, default in defaults.items()
-    }
+    normalized = {key: extras.pop(key, default) for key, default in defaults.items()}
 
     normalized['encoding'] = _coerce_required_text(
         normalized.get('encoding'),
