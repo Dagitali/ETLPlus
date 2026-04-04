@@ -30,7 +30,7 @@ class TestResolveFile:
 
     def test_infers_format_without_default(self, tmp_path: Path) -> None:
         """Inference should preserve ``None`` when no format is detected."""
-        resolved = files_mod._resolve_file(tmp_path / 'payload', None)
+        resolved = files_mod.resolve_file(tmp_path / 'payload', None)
 
         assert resolved.file.path == tmp_path / 'payload'
         assert resolved.file_format is None
@@ -40,7 +40,7 @@ class TestResolveFile:
         tmp_path: Path,
     ) -> None:
         """Inference should fall back to the supplied default format."""
-        resolved = files_mod._resolve_file(
+        resolved = files_mod.resolve_file(
             tmp_path / 'payload',
             None,
             inferred_default=FileFormat.JSON,
@@ -60,7 +60,7 @@ class TestResolveFile:
                 captured['path'] = path
                 captured['file_format'] = file_format
 
-        resolved = files_mod._resolve_file(
+        resolved = files_mod.resolve_file(
             's3://bucket/data.csv',
             'csv',
             file_cls=_FakeFile,
