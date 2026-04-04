@@ -11,6 +11,7 @@ from typing import overload
 
 from ..file import File
 from ..file import FileFormat
+from ..file._core import FileFormatArg
 from ..utils._types import StrPath
 
 # SECTION: EXPORTS ========================================================== #
@@ -43,7 +44,7 @@ class _ResolvedFile[FormatT]:
 @overload
 def resolve_file(
     file_path: StrPath,
-    file_format: FileFormat | str | None,
+    file_format: FileFormatArg,
     *,
     inferred_default: None = None,
     file_cls: type[File] = File,
@@ -53,7 +54,7 @@ def resolve_file(
 @overload
 def resolve_file(
     file_path: StrPath,
-    file_format: FileFormat | str | None,
+    file_format: FileFormatArg,
     *,
     inferred_default: FileFormat,
     file_cls: type[File] = File,
@@ -62,7 +63,7 @@ def resolve_file(
 
 def resolve_file(
     file_path: StrPath,
-    file_format: FileFormat | str | None,
+    file_format: FileFormatArg,
     *,
     inferred_default: FileFormat | None = None,
     file_cls: type[File] = File,
