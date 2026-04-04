@@ -9,13 +9,12 @@ from __future__ import annotations
 import json
 import sys
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from typing import cast
 
 from ..api import HttpMethod
 from ..api import compose_api_target_env
-from ..api._utils import resolve_request
 from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
@@ -24,8 +23,9 @@ from ..storage import StorageLocation
 from ..utils import count_records
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
-from ..utils._types import JSONList
 from ..utils._types import StrPath
+from ._http import build_request_call
+from ._http import response_json_or_text
 from ._options import coerce_write_options as _coerce_write_options
 
 # SECTION: EXPORTS ========================================================== #
@@ -41,7 +41,20 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS ============================================== #
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(frozen=True, slots=True)
+class _FileWriteTarget:
+    """Resolved file target details for one write operation."""
+
+    # -- Instance Attributes -- #
+
+    file: File
+    file_format: FileFormat
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _load_data_from_str(
@@ -107,50 +120,26 @@ def _load_to_api_env(
     ValueError
         If required parameters are missing.
     """
-    url = env.get('url')
-    if not url:
-        raise ValueError('API target missing "url"')
-    method = env.get('method') or 'post'
-    kwargs: dict[str, Any] = {}
-    headers = env.get('headers')
-    if headers:
-        kwargs['headers'] = cast(dict[str, str], headers)
-    if env.get('timeout') is not None:
-        kwargs['timeout'] = env.get('timeout')
-    session = env.get('session')
-    if session is not None:
-        kwargs['session'] = session
-    extra_kwargs = env.get('request_kwargs')
-    if isinstance(extra_kwargs, Mapping):
-        kwargs.update(extra_kwargs)
-    timeout = kwargs.pop('timeout', 10.0)
-    session = kwargs.pop('session', None)
-    request_callable, timeout, http_method = resolve_request(
-        method,
-        session=session,
-        timeout=timeout,
+    request = build_request_call(
+        env,
+        error_message='API target missing "url"',
+        default_method=HttpMethod.POST,
+        json_data=data,
     )
-    response = request_callable(
-        cast(str, url),
-        json=data,
-        timeout=timeout,
-        **kwargs,
+    response = request.request_callable(
+        request.url,
+        timeout=request.timeout,
+        **request.kwargs,
     )
     response.raise_for_status()
-
-    # Try JSON first, fall back to text.
-    try:
-        payload: Any = response.json()
-    except ValueError:
-        payload = response.text
 
     return {
         'status': 'success',
         'status_code': response.status_code,
-        'message': f'Data loaded to {url}',
-        'response': payload,
+        'message': f'Data loaded to {request.url}',
+        'response': response_json_or_text(response),
         'records': count_records(data),
-        'method': http_method.value.upper(),
+        'method': request.http_method.value.upper(),
     }
 
 
@@ -180,17 +169,19 @@ def _parse_json_string(
     except json.JSONDecodeError as exc:
         raise ValueError(f'Invalid data source: {raw}') from exc
 
-    if isinstance(loaded, dict):
-        return cast(JSONDict, loaded)
-    if isinstance(loaded, list):
-        if all(isinstance(item, dict) for item in loaded):
-            return cast(JSONList, loaded)
-        raise ValueError(
-            'JSON array must contain only objects (dicts) when parsing string',
-        )
-    raise ValueError(
-        'JSON root must be an object or array when parsing string',
-    )
+    match loaded:
+        case dict():
+            return loaded
+        case list():
+            if all(isinstance(item, dict) for item in loaded):
+                return loaded
+            raise ValueError(
+                'JSON array must contain only objects (dicts) when parsing string',
+            )
+        case _:
+            raise ValueError(
+                'JSON root must be an object or array when parsing string',
+            )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -221,18 +212,17 @@ def load_data(
     TypeError
         If `source` is not a string, path, or JSON-like object.
     """
-    if isinstance(source, (dict, list)):
-        return cast(JSONData, source)
-
-    if isinstance(source, Path):
-        return File(source, FileFormat.JSON).read()
-
-    if isinstance(source, str):
-        return _load_data_from_str(source)
-
-    raise TypeError(
-        'source must be a mapping, sequence of mappings, path, or JSON string',
-    )
+    match source:
+        case dict() | list():
+            return source
+        case Path():
+            return File(source, FileFormat.JSON).read()
+        case str():
+            return _load_data_from_str(source)
+        case _:
+            raise TypeError(
+                'source must be a mapping, sequence of mappings, path, or JSON string',
+            )
 
 
 def load_to_api(
@@ -365,23 +355,14 @@ def load_to_file(
     """
     resolved_options = _coerce_write_options(options)
     target_label = str(file_path)
+    target = _resolve_file_write_target(file_path, file_format)
+    records = (
+        target.file.write(data)
+        if resolved_options is None
+        else target.file.write(data, options=resolved_options)
+    )
 
-    # If no explicit format is provided, let File infer from extension.
-    if file_format is None:
-        file = File(file_path)
-        if resolved_options is None:
-            records = file.write(data)
-        else:
-            records = file.write(data, options=resolved_options)
-        fmt = file.file_format or FileFormat.JSON
-    else:
-        fmt = FileFormat.coerce(file_format)
-        file = File(file_path, fmt)
-        if resolved_options is None:
-            records = file.write(data)
-        else:
-            records = file.write(data, options=resolved_options)
-    if fmt is FileFormat.CSV and records == 0:
+    if target.file_format is FileFormat.CSV and records == 0:
         message = 'No data to write'
     else:
         message = f'Data loaded to {target_label}'
@@ -391,6 +372,25 @@ def load_to_file(
         'message': message,
         'records': records,
     }
+
+
+def _resolve_file_write_target(
+    file_path: StrPath,
+    file_format: FileFormat | str | None,
+) -> _FileWriteTarget:
+    """Return one file target and its effective format."""
+    if file_format is None:
+        file = File(file_path)
+        return _FileWriteTarget(
+            file=file,
+            file_format=file.file_format or FileFormat.JSON,
+        )
+
+    resolved_format = FileFormat.coerce(file_format)
+    return _FileWriteTarget(
+        file=File(file_path, resolved_format),
+        file_format=resolved_format,
+    )
 
 
 # -- Orchestration -- #
