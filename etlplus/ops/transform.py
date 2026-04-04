@@ -49,8 +49,9 @@ from typing import cast
 
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
-from ..utils._types import StrPath
+from ..utils._types import JSONList
 from ._enums import PipelineStep
+from ._types import DataSourceArg
 from ._types import PipelineConfig
 from ._types import PipelineStepName
 from ._types import StepApplier
@@ -104,6 +105,45 @@ _STEP_APPLIERS: dict[PipelineStepName, StepApplier] = {
 }
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
+
+
+def _aggregate_specs(
+    data: JSONList,
+    specs: list[StepSpec],
+) -> JSONDict | None:
+    """Apply aggregate specs and merge the resulting single-row payloads."""
+    combined: JSONDict = {}
+    for spec in specs:
+        if not isinstance(spec, Mapping):
+            continue
+        out_rows = apply_aggregate_step(data, spec)
+        if out_rows and isinstance(out_rows[0], Mapping):
+            combined.update(cast(JSONDict, out_rows[0]))
+    return combined or None
+
+
+def _apply_row_step(
+    data: JSONList,
+    *,
+    step: PipelineStepName,
+    raw_spec: Any,
+) -> JSONList:
+    """Apply one non-aggregate pipeline step to a record batch."""
+    specs = _normalize_specs(raw_spec)
+    if not specs:
+        return data
+
+    if step == 'select' and is_plain_fields_list(raw_spec):
+        specs = [cast(StepSpec, raw_spec)]
+
+    applier = _STEP_APPLIERS.get(step)
+    if applier is None:
+        return data
+
+    result = data
+    for spec in specs:
+        result = applier(result, spec)
+    return result
 
 
 def _normalize_specs(
@@ -163,11 +203,39 @@ def _normalize_operation_keys(ops: Mapping[Any, Any]) -> dict[str, Any]:
     return normalized
 
 
+def _transform_records(
+    data: JSONList,
+    ops: Mapping[str, Any],
+) -> JSONData:
+    """Apply normalized pipeline operations to a record batch."""
+    for step in _PIPELINE_STEPS:
+        raw_spec = ops.get(step)
+        if raw_spec is None:
+            continue
+
+        specs = _normalize_specs(raw_spec)
+        if not specs:
+            continue
+
+        if step == 'aggregate':
+            if combined := _aggregate_specs(data, specs):
+                return combined
+            continue
+
+        data = _apply_row_step(
+            data,
+            step=step,
+            raw_spec=raw_spec,
+        )
+
+    return data
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
 def transform(
-    source: StrPath | JSONData,
+    source: DataSourceArg,
     operations: PipelineConfig | None = None,
 ) -> JSONData:
     """
@@ -175,7 +243,7 @@ def transform(
 
     Parameters
     ----------
-    source : StrPath | JSONData
+    source : DataSourceArg
         Data source to transform.
     operations : PipelineConfig | None, optional
         Operation dictionary that may contain the keys ``filter``, ``map``,
@@ -246,40 +314,7 @@ def transform(
 
     # All record-wise ops require a list of dicts.
     if isinstance(data, list):
-        for step in _PIPELINE_STEPS:
-            raw_spec = ops.get(step)
-            if raw_spec is None:
-                continue
-
-            specs = _normalize_specs(raw_spec)
-            if not specs:
-                continue
-
-            if step == 'aggregate':
-                combined: JSONDict = {}
-                for spec in specs:
-                    if not isinstance(spec, Mapping):
-                        continue
-                    # Use enum-based applier that returns a single-row list
-                    # like: [{alias: value}]
-                    out_rows = apply_aggregate_step(data, spec)
-                    if out_rows and isinstance(out_rows[0], Mapping):
-                        combined.update(cast(JSONDict, out_rows[0]))
-                if combined:
-                    return combined
-                continue
-
-            # Special-case: plain list/tuple of field names for 'select'.
-            if step == 'select' and is_plain_fields_list(raw_spec):
-                # Keep the whole fields list as a single spec.
-                specs = [cast(StepSpec, raw_spec)]
-
-            applier: StepApplier | None = _STEP_APPLIERS.get(step)
-            if applier is None:
-                continue
-
-            for spec in specs:
-                data = applier(data, spec)
+        data = _transform_records(cast(JSONList, data), ops)
 
     # Convert back to single dict if input was single dict.
     if is_single_dict and isinstance(data, list) and len(data) == 1:

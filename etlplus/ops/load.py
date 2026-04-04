@@ -8,24 +8,34 @@ from __future__ import annotations
 
 import json
 import sys
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
-from typing import cast
 
 from ..api import HttpMethod
 from ..api import compose_api_target_env
-from ..api._utils import resolve_request
+from ..api._utils import ApiTargetEnvDict
 from ..connector import DataConnectorType
 from ..file import File
 from ..file import FileFormat
+from ..file._core import FileFormatArg
 from ..file.base import WriteOptions
 from ..storage import StorageLocation
 from ..utils import count_records
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
-from ..utils._types import JSONList
 from ..utils._types import StrPath
+from ._database import DATABASE_DRIVER_NOTE
+from ._database import DATABASE_LOAD_NOT_IMPLEMENTED
+from ._files import resolve_file
+from ._http import DirectRequestEnvDict
+from ._http import build_direct_request_env
+from ._http import build_request_call
+from ._http import response_json_or_text
+from ._http import send_request
+from ._options import coerce_write_options as _coerce_write_options
+from ._types import ConnectorTypeArg
+from ._types import DataSourceArg
+from ._types import FileOptionsArg
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -40,42 +50,7 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS ============================================== #
-
-
-def _coerce_optional_str(
-    value: object,
-) -> str | None:
-    """Normalize optional string-like option values."""
-    if value is None:
-        return None
-    return value if isinstance(value, str) else str(value)
-
-
-def _coerce_write_options(
-    options: WriteOptions | Mapping[str, Any] | None,
-) -> WriteOptions | None:
-    """Normalize file-write option mappings into :class:`WriteOptions`."""
-    if options is None or isinstance(options, WriteOptions):
-        return options
-
-    extras = dict(options)
-    encoding = extras.pop('encoding', 'utf-8')
-    root_tag = extras.pop('root_tag', 'root')
-    sheet = extras.pop('sheet', None)
-    table = extras.pop('table', None)
-    dataset = extras.pop('dataset', None)
-    inner_name = extras.pop('inner_name', None)
-
-    return WriteOptions(
-        encoding=encoding if isinstance(encoding, str) else str(encoding),
-        root_tag=root_tag if isinstance(root_tag, str) else str(root_tag),
-        sheet=sheet,
-        table=_coerce_optional_str(table),
-        dataset=_coerce_optional_str(dataset),
-        inner_name=_coerce_optional_str(inner_name),
-        extras=cast(JSONDict, extras),
-    )
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _load_data_from_str(
@@ -119,7 +94,7 @@ def _load_data_from_str(
 
 def _load_to_api_env(
     data: JSONData,
-    env: Mapping[str, Any],
+    env: ApiTargetEnvDict | DirectRequestEnvDict,
 ) -> JSONDict:
     """
     Load data to an API target using a normalized environment.
@@ -135,56 +110,22 @@ def _load_to_api_env(
     -------
     JSONDict
         Load result payload.
-
-    Raises
-    ------
-    ValueError
-        If required parameters are missing.
     """
-    url = env.get('url')
-    if not url:
-        raise ValueError('API target missing "url"')
-    method = env.get('method') or 'post'
-    kwargs: dict[str, Any] = {}
-    headers = env.get('headers')
-    if headers:
-        kwargs['headers'] = cast(dict[str, str], headers)
-    if env.get('timeout') is not None:
-        kwargs['timeout'] = env.get('timeout')
-    session = env.get('session')
-    if session is not None:
-        kwargs['session'] = session
-    extra_kwargs = env.get('request_kwargs')
-    if isinstance(extra_kwargs, Mapping):
-        kwargs.update(extra_kwargs)
-    timeout = kwargs.pop('timeout', 10.0)
-    session = kwargs.pop('session', None)
-    request_callable, timeout, http_method = resolve_request(
-        method,
-        session=session,
-        timeout=timeout,
+    request = build_request_call(
+        env,
+        error_message='API target missing "url"',
+        default_method=HttpMethod.POST,
+        json_data=data,
     )
-    response = request_callable(
-        cast(str, url),
-        json=data,
-        timeout=timeout,
-        **kwargs,
-    )
-    response.raise_for_status()
-
-    # Try JSON first, fall back to text.
-    try:
-        payload: Any = response.json()
-    except ValueError:
-        payload = response.text
+    response = send_request(request)
 
     return {
         'status': 'success',
         'status_code': response.status_code,
-        'message': f'Data loaded to {url}',
-        'response': payload,
+        'message': f'Data loaded to {request.url}',
+        'response': response_json_or_text(response),
         'records': count_records(data),
-        'method': http_method.value.upper(),
+        'method': request.http_method.value.upper(),
     }
 
 
@@ -214,17 +155,19 @@ def _parse_json_string(
     except json.JSONDecodeError as exc:
         raise ValueError(f'Invalid data source: {raw}') from exc
 
-    if isinstance(loaded, dict):
-        return cast(JSONDict, loaded)
-    if isinstance(loaded, list):
-        if all(isinstance(item, dict) for item in loaded):
-            return cast(JSONList, loaded)
-        raise ValueError(
-            'JSON array must contain only objects (dicts) when parsing string',
-        )
-    raise ValueError(
-        'JSON root must be an object or array when parsing string',
-    )
+    match loaded:
+        case dict():
+            return loaded
+        case list():
+            if all(isinstance(item, dict) for item in loaded):
+                return loaded
+            raise ValueError(
+                'JSON array must contain only objects (dicts) when parsing string',
+            )
+        case _:
+            raise ValueError(
+                'JSON root must be an object or array when parsing string',
+            )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -234,7 +177,7 @@ def _parse_json_string(
 
 
 def load_data(
-    source: StrPath | JSONData,
+    source: DataSourceArg,
 ) -> JSONData:
     """
     Load data from a file path, JSON string, or direct object.
@@ -255,18 +198,17 @@ def load_data(
     TypeError
         If `source` is not a string, path, or JSON-like object.
     """
-    if isinstance(source, (dict, list)):
-        return cast(JSONData, source)
-
-    if isinstance(source, Path):
-        return File(source, FileFormat.JSON).read()
-
-    if isinstance(source, str):
-        return _load_data_from_str(source)
-
-    raise TypeError(
-        'source must be a mapping, sequence of mappings, path, or JSON string',
-    )
+    match source:
+        case dict() | list():
+            return source
+        case Path():
+            return File(source, FileFormat.JSON).read()
+        case str():
+            return _load_data_from_str(source)
+        case _:
+            raise TypeError(
+                'source must be a mapping, sequence of mappings, path, or JSON string',
+            )
 
 
 def load_to_api(
@@ -295,14 +237,7 @@ def load_to_api(
     JSONDict
         Result dictionary including response payload or text.
     """
-    # Apply a conservative timeout to guard against hanging requests.
-    env = {
-        'url': url,
-        'method': method,
-        'timeout': kwargs.pop('timeout', 10.0),
-        'session': kwargs.pop('session', None),
-        'request_kwargs': kwargs,
-    }
+    env = build_direct_request_env(url, method, kwargs)
     return _load_to_api_env(data, env)
 
 
@@ -363,18 +298,18 @@ def load_to_database(
 
     return {
         'status': 'not_implemented',
-        'message': 'Database loading not yet implemented',
+        'message': DATABASE_LOAD_NOT_IMPLEMENTED,
         'connection_string': connection_string,
         'records': records,
-        'note': 'Install database-specific drivers to enable this feature',
+        'note': DATABASE_DRIVER_NOTE,
     }
 
 
 def load_to_file(
     data: JSONData,
     file_path: StrPath,
-    file_format: FileFormat | str | None = None,
-    options: WriteOptions | Mapping[str, Any] | None = None,
+    file_format: FileFormatArg = None,
+    options: FileOptionsArg[WriteOptions] = None,
 ) -> JSONDict:
     """
     Persist data to a local file path or remote URI.
@@ -399,23 +334,19 @@ def load_to_file(
     """
     resolved_options = _coerce_write_options(options)
     target_label = str(file_path)
+    target = resolve_file(
+        file_path,
+        file_format,
+        inferred_default=FileFormat.JSON,
+        file_cls=File,
+    )
+    records = (
+        target.file.write(data)
+        if resolved_options is None
+        else target.file.write(data, options=resolved_options)
+    )
 
-    # If no explicit format is provided, let File infer from extension.
-    if file_format is None:
-        file = File(file_path)
-        if resolved_options is None:
-            records = file.write(data)
-        else:
-            records = file.write(data, options=resolved_options)
-        fmt = file.file_format or FileFormat.JSON
-    else:
-        fmt = FileFormat.coerce(file_format)
-        file = File(file_path, fmt)
-        if resolved_options is None:
-            records = file.write(data)
-        else:
-            records = file.write(data, options=resolved_options)
-    if fmt is FileFormat.CSV and records == 0:
+    if target.file_format is FileFormat.CSV and records == 0:
         message = 'No data to write'
     else:
         message = f'Data loaded to {target_label}'
@@ -431,10 +362,10 @@ def load_to_file(
 
 
 def load(
-    source: StrPath | JSONData,
-    target_type: DataConnectorType | str,
+    source: DataSourceArg,
+    target_type: ConnectorTypeArg,
     target: StrPath,
-    file_format: FileFormat | str | None = None,
+    file_format: FileFormatArg = None,
     method: HttpMethod | str | None = None,
     **kwargs: Any,
 ) -> JSONData:

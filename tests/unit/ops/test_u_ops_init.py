@@ -12,9 +12,9 @@ import etlplus.ops as ops_pkg
 from etlplus.ops._enums import AggregateName
 from etlplus.ops._enums import OperatorName
 from etlplus.ops._enums import PipelineStep
-from etlplus.ops._utils import ValidationResultDict
-from etlplus.ops._utils import ValidationSettings
-from etlplus.ops._utils import maybe_validate
+from etlplus.ops._validation import ValidationResultDict
+from etlplus.ops._validation import ValidationSettings
+from etlplus.ops._validation import maybe_validate
 from etlplus.ops.extract import extract
 from etlplus.ops.load import load
 from etlplus.ops.run import run
@@ -33,9 +33,13 @@ from etlplus.ops.validate import validate
 
 
 OPS_EXPORTS = [
+    # Data Classes
+    ('ValidationSettings', ValidationSettings),
+    # Enums
     ('AggregateName', AggregateName),
     ('OperatorName', OperatorName),
     ('PipelineStep', PipelineStep),
+    # Functions
     ('extract', extract),
     ('load', load),
     ('maybe_validate', maybe_validate),
@@ -43,11 +47,11 @@ OPS_EXPORTS = [
     ('run_pipeline', run_pipeline),
     ('transform', transform),
     ('validate', validate),
+    # Typed Dicts
     ('FieldRulesDict', FieldRulesDict),
     ('FieldValidationDict', FieldValidationDict),
     ('ValidationDict', ValidationDict),
     ('ValidationResultDict', ValidationResultDict),
-    ('ValidationSettings', ValidationSettings),
 ]
 
 
