@@ -594,6 +594,55 @@ class TestHistoryHandler:
             history_mod.history_handler(json_output=True, table=True)
 
 
+class TestHistoryHelperFunctions:
+    """Unit tests for direct history helper seams."""
+
+    def test_load_history_records_delegates_through_query_loader(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Top-level history loading should delegate through ``_HistoryQuery``."""
+        recorded: dict[str, object] = {}
+
+        def fake_load(
+            self: history_mod._HistoryQuery,
+            *,
+            raw: bool = False,
+            limit: int | None = None,
+        ) -> list[dict[str, object]]:
+            recorded['query'] = self
+            recorded['raw'] = raw
+            recorded['limit'] = limit
+            return [{'run_id': 'run-1'}]
+
+        monkeypatch.setattr(history_mod._HistoryQuery, 'load', fake_load)
+
+        assert history_mod.load_history_records(
+            level='job',
+            job='seed',
+            pipeline='pipeline-a',
+            run_id='run-1',
+            since='2026-03-23T00:00:00Z',
+            until='2026-03-24T00:00:00Z',
+            status='skipped',
+            limit=3,
+            raw=True,
+        ) == [{'run_id': 'run-1'}]
+        query = recorded['query']
+        assert isinstance(query, history_mod._HistoryQuery)
+        assert query == history_mod._HistoryQuery(
+            level='job',
+            job='seed',
+            pipeline='pipeline-a',
+            run_id='run-1',
+            since='2026-03-23T00:00:00Z',
+            until='2026-03-24T00:00:00Z',
+            status='skipped',
+        )
+        assert recorded['raw'] is True
+        assert recorded['limit'] == 3
+
+
 class TestReportHandler:
     """Unit tests for :func:`report_handler`."""
 
