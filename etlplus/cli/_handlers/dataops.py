@@ -36,6 +36,12 @@ __all__ = [
 ]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type _ResolvedSourcePayload = JSONData | str
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
@@ -80,6 +86,25 @@ def _complete_success(
     )
 
 
+def _display_target(
+    target: str | None,
+) -> str:
+    """Return a human-readable target label for lifecycle events."""
+    if target in (None, '-'):
+        return 'stdout'
+    assert target is not None
+    return target
+
+
+def _is_explicit_format(
+    *,
+    format_hint: str | None,
+    explicit: bool,
+) -> bool:
+    """Return True when a format hint should be treated as explicit."""
+    return format_hint is not None or explicit
+
+
 def _resolve_source_mapping_inputs(
     *,
     source: str,
@@ -89,14 +114,14 @@ def _resolve_source_mapping_inputs(
     error_message: str,
 ) -> tuple[JSONData | str, dict[str, Any]]:
     """Resolve a source payload plus a required mapping-style side payload."""
-    source_format_explicit = source_format is not None or format_explicit
-    payload = cast(
-        JSONData | str,
-        _payload.resolve_payload(
-            source,
-            format_hint=source_format,
-            format_explicit=source_format_explicit,
-        ),
+    source_format_explicit = _is_explicit_format(
+        format_hint=source_format,
+        explicit=format_explicit,
+    )
+    payload = _resolve_source_payload(
+        source,
+        source_format=source_format,
+        format_explicit=source_format_explicit,
     )
     mapping = _payload.resolve_mapping_payload(
         mapping_payload,
@@ -104,6 +129,37 @@ def _resolve_source_mapping_inputs(
         error_message=error_message,
     )
     return payload, mapping
+
+
+def _resolve_source_payload(
+    source: str,
+    *,
+    source_format: str | None,
+    format_explicit: bool,
+    hydrate_files: bool = True,
+) -> _ResolvedSourcePayload:
+    """Resolve one CLI source argument into a loadable payload."""
+    return cast(
+        _ResolvedSourcePayload,
+        _payload.resolve_payload(
+            source,
+            format_hint=source_format,
+            format_explicit=format_explicit,
+            hydrate_files=hydrate_files,
+        ),
+    )
+
+
+def _result_status(
+    result: object,
+    *,
+    default: str = 'ok',
+) -> str:
+    """Extract a string status field from one result payload."""
+    if not isinstance(result, dict):
+        return default
+    status = result.get('status')
+    return cast(str, status) if isinstance(status, str) else default
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -229,13 +285,19 @@ def load_handler(
     Returns
     -------
     int
-        Eit code indicating success (``0``) or failure (non-zero).
+        Exit code indicating success (``0``) or failure (non-zero).
     """
-    source_format_explicit = source_format is not None
-    target_format_explicit = target_format is not None or format_explicit
+    source_format_explicit = _is_explicit_format(
+        format_hint=source_format,
+        explicit=False,
+    )
+    target_format_explicit = _is_explicit_format(
+        format_hint=target_format,
+        explicit=format_explicit,
+    )
     command_fields: dict[str, Any] = {
         'source': source,
-        'target': target,
+        'target': _display_target(target),
         'target_type': target_type,
     }
 
@@ -244,14 +306,11 @@ def load_handler(
         event_format=event_format,
         fields=command_fields,
     ) as context:
-        source_value = cast(
-            str | JSONData,
-            _payload.resolve_payload(
-                source,
-                format_hint=source_format,
-                format_explicit=source_format_explicit,
-                hydrate_files=False,
-            ),
+        source_value = _resolve_source_payload(
+            source,
+            source_format=source_format,
+            format_explicit=source_format_explicit,
+            hydrate_files=False,
         )
 
         if target_type == 'file' and target == '-':
@@ -273,11 +332,6 @@ def load_handler(
             target,
             file_format=target_format if target_format_explicit else None,
         )
-        result_status = (
-            cast(str, result.get('status') or 'ok')
-            if isinstance(result, dict)
-            else 'ok'
-        )
 
         return _complete_success(
             context,
@@ -287,7 +341,7 @@ def load_handler(
             pretty=pretty,
             success_message='Load result saved to',
             destination=output or 'stdout',
-            result_status=result_status,
+            result_status=_result_status(result),
             **command_fields,
         )
 
@@ -335,10 +389,9 @@ def transform_handler(
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
     target_format_explicit = target_format is not None or format_explicit
-    target_label = target or 'stdout'
     command_fields: dict[str, Any] = {
         'source': source,
-        'target': target_label,
+        'target': _display_target(target),
         'target_type': target_type,
     }
 
@@ -431,10 +484,9 @@ def validate_handler(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    target_label = target or 'stdout'
     command_fields: dict[str, Any] = {
         'source': source,
-        'target': target_label,
+        'target': _display_target(target),
     }
 
     with _command_scope(
