@@ -10,6 +10,7 @@ from collections.abc import Callable
 from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any
+from typing import Final
 from typing import Literal
 from typing import NoReturn
 from typing import overload
@@ -31,6 +32,7 @@ from ._types import DataConnectorContext
 __all__ = [
     # Functions
     'call_handler',
+    'call_history_handler',
     'fail_usage',
     'normalize_file_format',
     'parse_json_option',
@@ -44,6 +46,12 @@ __all__ = [
 
 
 type _StateField = Literal['pretty', 'quiet', 'verbose']
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_MISSING: Final[object] = object()
 
 
 # SECTION: INTERNAL DATA CLASSES ============================================ #
@@ -160,6 +168,83 @@ def call_handler(
         field: getattr(state, field) for field in state_fields
     }
     return handler(**kwargs, **state_kwargs)
+
+
+def call_history_handler(
+    handler: Callable[..., int],
+    /,
+    *,
+    state: CliState,
+    level: str | object = _MISSING,
+    job: str | None | object = _MISSING,
+    pipeline: str | None | object = _MISSING,
+    run_id: str | None | object = _MISSING,
+    since: str | None | object = _MISSING,
+    until: str | None | object = _MISSING,
+    status: str | None | object = _MISSING,
+    limit: int | None | object = _MISSING,
+    **kwargs: Any,
+) -> int:
+    """
+    Invoke one persisted-history handler with shared query filters.
+
+    Parameters
+    ----------
+    handler : Callable[..., int]
+        The handler function to invoke.
+    state : CliState
+        The CLI state to pull keyword arguments from.
+    level : str | object, optional
+        History level filter (defaults to missing, which means the handler's
+        default will be used).
+    job : str | None | object, optional
+        Job name filter (defaults to missing, which means the handler's default
+        will be used).
+    pipeline : str | None | object, optional
+        Pipeline name filter (defaults to missing, which means the handler's
+        default will be used).
+    run_id : str | None | object, optional
+        Run ID filter (defaults to missing, which means the handler's default
+        will be used).
+    since : str | None | object, optional
+        Start time filter (defaults to missing, which means the handler's default
+        will be used).
+    until : str | None | object, optional
+        End time filter (defaults to missing, which means the handler's default
+        will be used).
+    status : str | None | object, optional
+        Status filter (defaults to missing, which means the handler's default
+        will be used).
+    limit : int | None | object, optional
+        Result limit (defaults to missing, which means the handler's default
+        will be used).
+    **kwargs : Any
+        Additional keyword arguments to pass to *handler*.
+
+    Returns
+    -------
+    int
+        The exit code returned by *handler*.
+    """
+    history_kwargs = {
+        key: value
+        for key, value in {
+            'level': level,
+            'job': job,
+            'limit': limit,
+            'pipeline': pipeline,
+            'run_id': run_id,
+            'since': since,
+            'status': status,
+            'until': until,
+        }.items()
+        if value is not _MISSING
+    }
+    return handler(
+        pretty=state.pretty,
+        **history_kwargs,
+        **kwargs,
+    )
 
 
 def fail_usage(
