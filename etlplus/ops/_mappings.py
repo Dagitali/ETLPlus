@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from collections.abc import Mapping
 from typing import Any
+from typing import TypeVar
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -19,10 +20,16 @@ __all__ = [
 ]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+ItemT = TypeVar('ItemT')
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def index_named_items[ItemT](
+def index_named_items(  # noqa: UP047
     items: Iterable[ItemT],
     *,
     item_label: str,
