@@ -70,7 +70,7 @@ class HistoryReportBuilder:
     def report_group_key(
         record: Mapping[str, Any],
         *,
-        group_by: Literal['day', 'job', 'status'],
+        group_by: Literal['day', 'job', 'pipeline', 'run', 'status'],
     ) -> str:
         """
         Return the grouping key for one normalized history record.
@@ -79,7 +79,7 @@ class HistoryReportBuilder:
         ----------
         record : Mapping[str, Any]
             The normalized history record.
-        group_by : Literal['day', 'job', 'status']
+        group_by : Literal['day', 'job', 'pipeline', 'run', 'status']
             The grouping criterion.
 
         Returns
@@ -89,6 +89,10 @@ class HistoryReportBuilder:
         """
         if group_by == 'job':
             return cast(str, record.get('job_name') or '(no job)')
+        if group_by == 'pipeline':
+            return cast(str, record.get('pipeline_name') or '(no pipeline)')
+        if group_by == 'run':
+            return cast(str, record.get('run_id') or '(unknown run)')
         if group_by == 'status':
             return cast(str, record.get('status') or '(unknown)')
         timestamp = cast(
@@ -126,7 +130,7 @@ class HistoryReportBuilder:
         cls,
         records: list[dict[str, Any]],
         *,
-        group_by: Literal['day', 'job', 'status'],
+        group_by: Literal['day', 'job', 'pipeline', 'run', 'status'],
     ) -> dict[str, Any]:
         """
         Aggregate normalized history records into a grouped report.
@@ -135,7 +139,7 @@ class HistoryReportBuilder:
         ----------
         records : list[dict[str, Any]]
             The list of normalized history records.
-        group_by : Literal['day', 'job', 'status']
+        group_by : Literal['day', 'job', 'pipeline', 'run', 'status']
             The grouping criterion.
 
         Returns

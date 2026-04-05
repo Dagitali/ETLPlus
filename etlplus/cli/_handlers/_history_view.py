@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
+from typing import Literal
 from typing import cast
 
 from ...history import HistoryStore
@@ -20,6 +21,7 @@ from ...utils import serialize_json
 __all__ = [
     # Constants
     'HISTORY_TABLE_COLUMNS',
+    'JOB_HISTORY_TABLE_COLUMNS',
     # Classes
     'HistoryView',
 ]
@@ -28,6 +30,7 @@ __all__ = [
 # SECTION: TYPE ALIASES ===================================================== #
 
 
+type HistoryLevel = Literal['run', 'job']
 type HistoryRecord = Mapping[str, Any]
 
 
@@ -38,6 +41,18 @@ HISTORY_TABLE_COLUMNS = (
     'run_id',
     'status',
     'job_name',
+    'pipeline_name',
+    'started_at',
+    'finished_at',
+    'duration_ms',
+)
+
+JOB_HISTORY_TABLE_COLUMNS = (
+    'run_id',
+    'sequence_index',
+    'job_name',
+    'status',
+    'result_status',
     'pipeline_name',
     'started_at',
     'finished_at',
@@ -135,7 +150,7 @@ class HistoryView:
     @staticmethod
     def sort_key(
         record: HistoryRecord,
-    ) -> tuple[str, str]:
+    ) -> tuple[str, str, int, str]:
         """
         Return a reverse-sortable key for history records.
 
@@ -152,15 +167,22 @@ class HistoryView:
 
         Returns
         -------
-        tuple[str, str]
-            A tuple containing the timestamp and run_id for sorting.
+        tuple[str, str, int, str]
+            A tuple containing the timestamp, run_id, sequence index, and job
+            name for sorting.
         """
         timestamp = cast(
             str,
             record.get('started_at') or record.get('finished_at') or '',
         )
         run_id = cast(str, record.get('run_id') or '')
-        return (timestamp, run_id)
+        sequence_index = (
+            int(record['sequence_index'])
+            if isinstance(record.get('sequence_index'), int)
+            else -1
+        )
+        job_name = cast(str, record.get('job_name') or '')
+        return (timestamp, run_id, sequence_index, job_name)
 
     @staticmethod
     def validate_output_mode(
@@ -197,8 +219,10 @@ class HistoryView:
         cls,
         *,
         raw: bool,
+        level: HistoryLevel = 'run',
         job: str | None = None,
         limit: int | None = None,
+        pipeline: str | None = None,
         run_id: str | None = None,
         since: str | None = None,
         until: str | None = None,
@@ -211,10 +235,14 @@ class HistoryView:
         ----------
         raw : bool
             Whether to load raw history records.
+        level : HistoryLevel, optional
+            Whether to load run-level or job-level history entries.
         job : str | None, optional
             Filter records by job name.
         limit : int | None, optional
             Limit the number of records returned.
+        pipeline : str | None, optional
+            Filter records by pipeline name.
         run_id : str | None, optional
             Filter records by run ID.
         since : str | None, optional
@@ -232,7 +260,9 @@ class HistoryView:
         records = sorted(
             cls._matching_records(
                 raw=raw,
+                level=level,
                 job=job,
+                pipeline=pipeline,
                 run_id=run_id,
                 since=cls.parse_timestamp(since),
                 until=cls.parse_timestamp(until),
@@ -250,7 +280,9 @@ class HistoryView:
         cls,
         record: HistoryRecord,
         *,
+        level: HistoryLevel = 'run',
         job: str | None = None,
+        pipeline: str | None = None,
         run_id: str | None = None,
         since: datetime | None = None,
         until: datetime | None = None,
@@ -263,8 +295,12 @@ class HistoryView:
         ----------
         record : HistoryRecord
             The history record to check.
+        level : HistoryLevel, optional
+            Filter by run-level or job-level record scope.
         job : str | None, optional
             Filter by job name.
+        pipeline : str | None, optional
+            Filter by pipeline name.
         run_id : str | None, optional
             Filter by run ID.
         since : datetime | None, optional
@@ -279,7 +315,12 @@ class HistoryView:
         bool
             True if the record matches the filters, False otherwise.
         """
+        record_level = cast(str, record.get('record_level') or 'run')
+        if record_level != level:
+            return False
         if job is not None and record.get('job_name') != job:
+            return False
+        if pipeline is not None and record.get('pipeline_name') != pipeline:
             return False
         if run_id is not None and record.get('run_id') != run_id:
             return False
@@ -299,7 +340,9 @@ class HistoryView:
         cls,
         *,
         raw: bool,
+        level: HistoryLevel,
         job: str | None,
+        pipeline: str | None,
         run_id: str | None,
         since: datetime | None,
         until: datetime | None,
@@ -312,8 +355,12 @@ class HistoryView:
         ----------
         raw : bool
             Whether to load raw history records.
+        level : HistoryLevel
+            Whether to load run-level or job-level records.
         job : str | None, optional
             Filter records by job name.
+        pipeline : str | None, optional
+            Filter records by pipeline name.
         run_id : str | None, optional
             Filter records by run ID.
         since : datetime | None, optional
@@ -330,17 +377,28 @@ class HistoryView:
         """
         history_store = HistoryStore.from_environment()
         records_iter = (
-            history_store.iter_records() if raw else history_store.iter_runs()
+            history_store.iter_records()
+            if raw
+            else history_store.iter_job_runs()
+            if level == 'job'
+            else history_store.iter_runs()
         )
-        return [
-            dict(record)
-            for record in records_iter
-            if cls.matches(
-                record,
+        matching: list[dict[str, Any]] = []
+        for record in records_iter:
+            payload = dict(record)
+            payload.setdefault('record_level', level if not raw else 'run')
+            if not cls.matches(
+                payload,
+                level=level,
                 job=job,
+                pipeline=pipeline,
                 run_id=run_id,
                 since=since,
                 until=until,
                 status=status,
+            ):
+                continue
+            matching.append(
+                {key: value for key, value in payload.items() if key != 'record_level'},
             )
-        ]
+        return matching

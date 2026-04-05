@@ -15,6 +15,7 @@ from . import _output
 from ._history_report import REPORT_TABLE_COLUMNS
 from ._history_report import HistoryReportBuilder
 from ._history_view import HISTORY_TABLE_COLUMNS
+from ._history_view import JOB_HISTORY_TABLE_COLUMNS
 from ._history_view import HistoryView
 
 # SECTION: EXPORTS ========================================================== #
@@ -83,7 +84,9 @@ def _emit_history_payload(
 def _history_load_kwargs(
     *,
     raw: bool,
+    level: Literal['run', 'job'] = 'run',
     job: str | None = None,
+    pipeline: str | None = None,
     run_id: str | None = None,
     since: str | None = None,
     until: str | None = None,
@@ -93,11 +96,12 @@ def _history_load_kwargs(
     """
     Build :class:`HistoryView` query kwargs while omitting unset CLI filters.
     """
-    return {'raw': raw} | {
+    return {'level': level, 'raw': raw} | {
         key: value
         for key, value in {
             'job': job,
             'limit': limit,
+            'pipeline': pipeline,
             'run_id': run_id,
             'since': since,
             'until': until,
@@ -112,7 +116,9 @@ def _history_load_kwargs(
 
 def load_history_records(
     *,
+    level: Literal['run', 'job'] = 'run',
     job: str | None = None,
+    pipeline: str | None = None,
     run_id: str | None = None,
     since: str | None = None,
     until: str | None = None,
@@ -125,8 +131,13 @@ def load_history_records(
 
     Parameters
     ----------
+    level : Literal['run', 'job'], optional
+        Whether to load run-level or job-level history rows. Default is
+        ``'run'``.
     job : str | None, optional
         Optional job name to filter records. Default is ``None``.
+    pipeline : str | None, optional
+        Optional pipeline name to filter records. Default is ``None``.
     run_id : str | None, optional
         Optional run ID to filter records. Default is ``None``.
     since : str | None, optional
@@ -150,8 +161,10 @@ def load_history_records(
     """
     return HistoryView.load_records(
         **_history_load_kwargs(
+            level=level,
             job=job,
             limit=limit,
+            pipeline=pipeline,
             raw=raw,
             run_id=run_id,
             since=since,
@@ -163,7 +176,9 @@ def load_history_records(
 
 def emit_follow_history(
     *,
+    level: Literal['run', 'job'] = 'run',
     job: str | None = None,
+    pipeline: str | None = None,
     run_id: str | None = None,
     since: str | None = None,
     until: str | None = None,
@@ -175,8 +190,13 @@ def emit_follow_history(
 
     Parameters
     ----------
+    level : Literal['run', 'job'], optional
+        Whether to stream run-level or job-level raw records. Default is
+        ``'run'``.
     job : str | None, optional
         Optional job name filter. Default is ``None``.
+    pipeline : str | None, optional
+        Optional pipeline name filter. Default is ``None``.
     run_id : str | None, optional
         Optional run ID filter. Default is ``None``.
     since : str | None, optional
@@ -200,8 +220,10 @@ def emit_follow_history(
     try:
         while True:
             records = load_history_records(
+                level=level,
                 job=job,
                 limit=limit,
+                pipeline=pipeline,
                 raw=True,
                 run_id=run_id,
                 since=since,
@@ -221,7 +243,9 @@ def emit_follow_history(
 
 def history_handler(
     *,
+    level: Literal['run', 'job'] = 'run',
     job: str | None = None,
+    pipeline: str | None = None,
     run_id: str | None = None,
     since: str | None = None,
     until: str | None = None,
@@ -238,8 +262,13 @@ def history_handler(
 
     Parameters
     ----------
+    level : Literal['run', 'job'], optional
+        Whether to inspect run-level or job-level history rows. Default is
+        ``'run'``.
     job : str | None, optional
         Optional job name filter. Default is ``None``.
+    pipeline : str | None, optional
+        Optional pipeline name filter. Default is ``None``.
     run_id : str | None, optional
         Optional run ID filter. Default is ``None``.
     since : str | None, optional
@@ -274,8 +303,10 @@ def history_handler(
     """
     if follow:
         return emit_follow_history(
+            level=level,
             job=job,
             limit=limit,
+            pipeline=pipeline,
             run_id=run_id,
             since=since,
             until=until,
@@ -284,15 +315,17 @@ def history_handler(
 
     return _emit_history_payload(
         load_history_records(
+            level=level,
             job=job,
             limit=limit,
+            pipeline=pipeline,
             raw=raw,
             run_id=run_id,
             since=since,
             until=until,
             status=status,
         ),
-        columns=HISTORY_TABLE_COLUMNS,
+        columns=JOB_HISTORY_TABLE_COLUMNS if level == 'job' else HISTORY_TABLE_COLUMNS,
         pretty=pretty,
         table=table,
         json_output=json_output,
@@ -301,9 +334,13 @@ def history_handler(
 
 def report_handler(
     *,
-    group_by: Literal['day', 'job', 'status'] = 'job',
+    level: Literal['run', 'job'] = 'run',
+    group_by: Literal['day', 'job', 'pipeline', 'run', 'status'] = 'job',
     job: str | None = None,
+    pipeline: str | None = None,
+    run_id: str | None = None,
     since: str | None = None,
+    status: str | None = None,
     until: str | None = None,
     table: bool = False,
     json_output: bool = False,
@@ -314,13 +351,22 @@ def report_handler(
 
     Parameters
     ----------
-    group_by : Literal['day', 'job', 'status'], optional
+    level : Literal['run', 'job'], optional
+        Whether to aggregate run-level or job-level history rows. Default is
+        ``'run'``.
+    group_by : Literal['day', 'job', 'pipeline', 'run', 'status'], optional
         The field by which to group the report. Default is 'job'.
     job : str | None, optional
         Optional job name filter. Default is ``None``.
+    pipeline : str | None, optional
+        Optional pipeline name filter. Default is ``None``.
+    run_id : str | None, optional
+        Optional run ID filter. Default is ``None``.
     since : str | None, optional
         Optional ISO 8601 timestamp filter to load records created after the
         given time.  Default is ``None``.
+    status : str | None, optional
+        Optional status filter. Default is ``None``.
     until : str | None, optional
         Optional ISO 8601 timestamp filter to load records created before the
         given time.  Default is ``None``.
@@ -340,8 +386,12 @@ def report_handler(
     """
     report = HistoryReportBuilder.build(
         load_history_records(
+            level=level,
             job=job,
+            pipeline=pipeline,
+            run_id=run_id,
             since=since,
+            status=status,
             until=until,
         ),
         group_by=group_by,
@@ -358,7 +408,9 @@ def report_handler(
 
 def status_handler(
     *,
+    level: Literal['run', 'job'] = 'run',
     job: str | None = None,
+    pipeline: str | None = None,
     run_id: str | None = None,
     pretty: bool = True,
 ) -> int:
@@ -367,8 +419,13 @@ def status_handler(
 
     Parameters
     ----------
+    level : Literal['run', 'job'], optional
+        Whether to inspect run-level or job-level history rows. Default is
+        ``'run'``.
     job : str | None, optional
         Optional job name filter. Default is ``None``.
+    pipeline : str | None, optional
+        Optional pipeline name filter. Default is ``None``.
     run_id : str | None, optional
         Optional run ID filter. Default is ``None``.
     pretty : bool, optional
@@ -380,8 +437,10 @@ def status_handler(
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
     records = load_history_records(
+        level=level,
         job=job,
         limit=1,
+        pipeline=pipeline,
         run_id=run_id,
     )
     if not records:

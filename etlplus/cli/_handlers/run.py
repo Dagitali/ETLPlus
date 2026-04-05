@@ -7,12 +7,14 @@ Run-command implementation for the CLI facade.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Any
 from typing import cast
 
 from ... import Config
 from ... import __version__
 from ...history import HistoryStore
 from ...history import build_run_record
+from ...history._store import JobRunRecord
 from ...ops import run
 from ...utils._types import JSONData
 from . import _completion
@@ -27,6 +29,124 @@ __all__ = [
     # Functions
     'run_handler',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _coerce_job_result_summary(
+    item: Mapping[str, object],
+) -> JSONData | None:
+    """Return one JSON-serializable per-job result summary when available."""
+    result = item.get('result')
+    if isinstance(result, (dict, list, str, int, float, bool)) or result is None:
+        if result is not None:
+            return cast(JSONData, result)
+
+    reason = item.get('reason')
+    skipped_due_to = item.get('skipped_due_to')
+    if isinstance(reason, str) or isinstance(skipped_due_to, list):
+        summary: dict[str, object] = {}
+        if isinstance(reason, str):
+            summary['reason'] = reason
+        if isinstance(skipped_due_to, list):
+            summary['skipped_due_to'] = [
+                value for value in skipped_due_to if isinstance(value, str)
+            ]
+        return cast(JSONData, summary)
+    return None
+
+
+def _job_run_record(
+    *,
+    fallback_index: int,
+    item: Mapping[str, object],
+    pipeline_name: str | None,
+    run_id: str,
+) -> JobRunRecord | None:
+    """Build one persisted job-run record from a DAG execution summary entry."""
+    job_name = item.get('job')
+    status = item.get('status')
+    if not isinstance(job_name, str) or not job_name:
+        return None
+    if not isinstance(status, str) or not status:
+        return None
+
+    raw_sequence_index = item.get('sequence_index')
+    raw_started_at = item.get('started_at')
+    raw_finished_at = item.get('finished_at')
+    raw_duration_ms = item.get('duration_ms')
+    raw_result_status = item.get('result_status')
+    raw_error_type = item.get('error_type')
+    raw_error_message = item.get('error_message')
+    skipped_due_to = item.get('skipped_due_to')
+    sequence_index = (
+        raw_sequence_index if isinstance(raw_sequence_index, int) else fallback_index
+    )
+    started_at = raw_started_at if isinstance(raw_started_at, str) else None
+    finished_at = raw_finished_at if isinstance(raw_finished_at, str) else None
+    duration_ms = raw_duration_ms if isinstance(raw_duration_ms, int) else None
+    result_status = raw_result_status if isinstance(raw_result_status, str) else None
+    error_type = raw_error_type if isinstance(raw_error_type, str) else None
+    error_message = raw_error_message if isinstance(raw_error_message, str) else None
+    return JobRunRecord(
+        run_id=run_id,
+        job_name=job_name,
+        pipeline_name=pipeline_name,
+        sequence_index=sequence_index,
+        started_at=started_at,
+        finished_at=finished_at,
+        duration_ms=duration_ms,
+        records_in=None,
+        records_out=None,
+        status=status,
+        result_status=result_status,
+        error_type=error_type,
+        error_message=error_message,
+        skipped_due_to=(
+            [value for value in skipped_due_to if isinstance(value, str)]
+            if isinstance(skipped_due_to, list)
+            else None
+        ),
+        result_summary=_coerce_job_result_summary(item),
+    )
+
+
+def _persist_job_runs(
+    history_store: Any,
+    *,
+    pipeline_name: str | None,
+    result: Mapping[str, object] | object,
+    run_id: str,
+) -> None:
+    """Persist per-job DAG records when the run result carries execution rows."""
+    if not isinstance(result, Mapping):
+        return
+    executed_jobs = result.get('executed_jobs')
+    if not isinstance(executed_jobs, list):
+        return
+
+    for fallback_index, item in enumerate(executed_jobs):
+        if not isinstance(item, Mapping):
+            continue
+        job_run = _job_run_record(
+            fallback_index=fallback_index,
+            item=item,
+            pipeline_name=pipeline_name,
+            run_id=run_id,
+        )
+        if job_run is not None:
+            history_store.record_job_run(job_run)
+
+
+def _result_failed(
+    result: Mapping[str, object] | object,
+) -> bool:
+    """Return whether one run result represents a handled execution failure."""
+    return isinstance(result, Mapping) and result.get('status') in {
+        'failed',
+        'partial_success',
+    }
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -115,6 +235,12 @@ def run_handler(
             continue_on_fail=continue_on_fail,
         )
 
+    _persist_job_runs(
+        history_store,
+        run_id=context.run_id,
+        pipeline_name=cfg.name,
+        result=result,
+    )
     _lifecycle.record_run_completion(
         history_store,
         context,
@@ -182,13 +308,3 @@ def _failure_message(
             'skipped during DAG execution'
         )
     return 'DAG execution failed'
-
-
-def _result_failed(
-    result: Mapping[str, object] | object,
-) -> bool:
-    """Return whether one run result represents a handled execution failure."""
-    return isinstance(result, Mapping) and result.get('status') in {
-        'failed',
-        'partial_success',
-    }

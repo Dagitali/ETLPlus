@@ -35,6 +35,7 @@ from ..utils._types import JSONData
 __all__ = [
     # Classes
     'HistoryStore',
+    'JobRunRecord',
     'JsonlHistoryStore',
     'RunCompletion',
     'RunRecord',
@@ -57,6 +58,18 @@ def _deserialize_result_summary(
     if result_summary is None:
         return None
     return json.loads(result_summary)
+
+
+def _deserialize_string_list(
+    payload: str | None,
+) -> list[str] | None:
+    """Deserialize one optional JSON string list."""
+    if payload is None:
+        return None
+    values = json.loads(payload)
+    if not isinstance(values, list):
+        return None
+    return [value for value in values if isinstance(value, str)]
 
 
 def _file_sha256(
@@ -82,6 +95,25 @@ def _serialize_result_summary(
     return serialize_json(result_summary)
 
 
+def _serialize_string_list(
+    values: list[str] | None,
+) -> str | None:
+    """Serialize one optional string list for persistence."""
+    if values is None:
+        return None
+    return serialize_json(values)
+
+
+def _sqlite_job_run_payload(
+    record: JobRunRecord,
+) -> dict[str, Any]:
+    """Return one SQLite-ready payload for a persisted job-run record."""
+    payload = record.to_payload()
+    payload['result_summary'] = _serialize_result_summary(record.result_summary)
+    payload['skipped_due_to'] = _serialize_string_list(record.skipped_due_to)
+    return payload
+
+
 def _sqlite_record_payload(
     record: RunRecord,
 ) -> dict[str, Any]:
@@ -96,7 +128,14 @@ def _sqlite_row_payload(
 ) -> dict[str, Any]:
     """Return one SQLite row decoded into a history payload."""
     payload = dict(row)
-    payload['result_summary'] = _deserialize_result_summary(payload['result_summary'])
+    if 'result_summary' in payload:
+        payload['result_summary'] = _deserialize_result_summary(
+            cast(str | None, payload['result_summary']),
+        )
+    if 'skipped_due_to' in payload:
+        payload['skipped_due_to'] = _deserialize_string_list(
+            cast(str | None, payload['skipped_due_to']),
+        )
     return payload
 
 
@@ -104,65 +143,82 @@ def _sqlite_row_payload(
 
 
 @dataclass(slots=True, frozen=True)
-class RunState:
+class JobRunRecord:
     """
-    Shared terminal state for persisted run metadata.
+    Persisted metadata for one executed job inside a DAG-style run.
 
     Attributes
     ----------
-    status : str
-        Final run status, e.g. ``success`` or ``failure``.
+    run_id : str
+        Stable parent run identifier.
+    job_name : str
+        Executed job name.
+    pipeline_name : str | None
+        Optional pipeline name from the config.
+    sequence_index : int
+        Zero-based execution-plan position for the job.
+    started_at : str | None
+        Job start timestamp in UTC ISO-8601 form.
     finished_at : str | None
-        Optional run finish timestamp in UTC ISO-8601 form.
+        Job finish timestamp in UTC ISO-8601 form.
     duration_ms : int | None
-        Optional run duration in milliseconds.
-    result_summary : JSONData | None
-        Optional JSON-serializable summary of the run result.
+        Job duration in milliseconds.
+    records_in : int | None
+        Optional number of records read by the job.
+    records_out : int | None
+        Optional number of records written by the job.
+    status : str
+        Persisted terminal status for the job.
+    result_status : str | None
+        Optional downstream operation status returned by the job result.
     error_type : str | None
-        Optional error type if the run failed.
+        Optional error type if the job failed.
     error_message : str | None
-        Optional error message if the run failed.
-    error_traceback : str | None
-        Optional error traceback if the run failed.
+        Optional error message if the job failed.
+    skipped_due_to : list[str] | None
+        Optional list of upstream job names that blocked this job.
+    result_summary : JSONData | None
+        Optional JSON-serializable summary of the job result.
     """
 
     # -- Instance Attributes -- #
 
-    status: str
+    run_id: str
+    job_name: str
+    pipeline_name: str | None
+    sequence_index: int
+    started_at: str | None
     finished_at: str | None
     duration_ms: int | None
-    result_summary: JSONData | None = None
+    records_in: int | None
+    records_out: int | None
+    status: str
+    result_status: str | None = None
     error_type: str | None = None
     error_message: str | None = None
-    error_traceback: str | None = None
-
-    # -- Class Methods -- #
-
-    @classmethod
-    def running(
-        cls,
-        *,
-        status: str = 'running',
-    ) -> Self:
-        """Return the default in-flight state for a run."""
-        return cls(
-            status=status,
-            finished_at=None,
-            duration_ms=None,
-        )
+    skipped_due_to: list[str] | None = None
+    result_summary: JSONData | None = None
 
     # -- Instance Methods -- #
 
     def to_payload(self) -> dict[str, Any]:
-        """Return the flat persisted representation of the outcome."""
+        """Return the flat persisted representation of the job run."""
         return {
-            'status': self.status,
+            'run_id': self.run_id,
+            'job_name': self.job_name,
+            'pipeline_name': self.pipeline_name,
+            'sequence_index': self.sequence_index,
+            'started_at': self.started_at,
             'finished_at': self.finished_at,
             'duration_ms': self.duration_ms,
-            'result_summary': self.result_summary,
+            'records_in': self.records_in,
+            'records_out': self.records_out,
+            'status': self.status,
+            'result_status': self.result_status,
             'error_type': self.error_type,
             'error_message': self.error_message,
-            'error_traceback': self.error_traceback,
+            'skipped_due_to': self.skipped_due_to,
+            'result_summary': self.result_summary,
         }
 
 
@@ -287,6 +343,69 @@ class RunRecord:
         )
 
 
+@dataclass(slots=True, frozen=True)
+class RunState:
+    """
+    Shared terminal state for persisted run metadata.
+
+    Attributes
+    ----------
+    status : str
+        Final run status, e.g. ``success`` or ``failure``.
+    finished_at : str | None
+        Optional run finish timestamp in UTC ISO-8601 form.
+    duration_ms : int | None
+        Optional run duration in milliseconds.
+    result_summary : JSONData | None
+        Optional JSON-serializable summary of the run result.
+    error_type : str | None
+        Optional error type if the run failed.
+    error_message : str | None
+        Optional error message if the run failed.
+    error_traceback : str | None
+        Optional error traceback if the run failed.
+    """
+
+    # -- Instance Attributes -- #
+
+    status: str
+    finished_at: str | None
+    duration_ms: int | None
+    result_summary: JSONData | None = None
+    error_type: str | None = None
+    error_message: str | None = None
+    error_traceback: str | None = None
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def running(
+        cls,
+        *,
+        status: str = 'running',
+    ) -> Self:
+        """Return the default in-flight state for a run."""
+        return cls(
+            status=status,
+            finished_at=None,
+            duration_ms=None,
+        )
+
+    # -- Instance Methods -- #
+
+    def to_payload(self) -> dict[str, Any]:
+        """Return the flat persisted representation of the outcome."""
+        return {
+            'status': self.status,
+            'finished_at': self.finished_at,
+            'duration_ms': self.duration_ms,
+            'result_summary': self.result_summary,
+            'error_type': self.error_type,
+            'error_message': self.error_message,
+            'error_traceback': self.error_traceback,
+        }
+
+
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
@@ -298,6 +417,7 @@ _RUN_RECORD_FIELDS = (
     *(field.name for field in fields(RunRecord) if field.name != 'state'),
     *_RUN_STATE_FIELDS,
 )
+_JOB_RUN_RECORD_FIELDS = tuple(field.name for field in fields(JobRunRecord))
 _RUN_DB_COLUMNS = (
     'run_id',
     'pipeline_name',
@@ -320,12 +440,15 @@ _RUN_DB_COLUMNS = (
 )
 _RUN_DB_COLUMNS_SQL = ',\n                    '.join(_RUN_DB_COLUMNS)
 _RUN_DB_PLACEHOLDERS = ', '.join('?' for _ in _RUN_DB_COLUMNS)
+_JOB_RUN_DB_COLUMNS = _JOB_RUN_RECORD_FIELDS
+_JOB_RUN_DB_COLUMNS_SQL = ',\n                    '.join(_JOB_RUN_DB_COLUMNS)
+_JOB_RUN_DB_PLACEHOLDERS = ', '.join('?' for _ in _JOB_RUN_DB_COLUMNS)
 
 
 # SECTION: CONSTANTS ======================================================== #
 
 
-HISTORY_SCHEMA_VERSION = 1
+HISTORY_SCHEMA_VERSION = 2
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -404,6 +527,8 @@ class HistoryStore(ABC):
         run_order: list[str] = []
 
         for record in self.iter_records():
+            if self._record_level(record) != 'run':
+                continue
             run_id = record.get('run_id')
             if not isinstance(run_id, str) or not run_id:
                 continue
@@ -416,6 +541,30 @@ class HistoryStore(ABC):
             merged = merged_by_run_id[run_id]
             yield {field: merged.get(field) for field in _RUN_RECORD_FIELDS}
 
+    def iter_job_runs(self) -> Iterator[dict[str, Any]]:
+        """Yield one normalized job-run record per ``(run_id, job_name)`` key."""
+        merged_by_job_key: dict[tuple[str, str], dict[str, Any]] = {}
+        job_order: list[tuple[str, str]] = []
+
+        for record in self.iter_records():
+            if self._record_level(record) != 'job':
+                continue
+            run_id = record.get('run_id')
+            job_name = record.get('job_name')
+            if not isinstance(run_id, str) or not run_id:
+                continue
+            if not isinstance(job_name, str) or not job_name:
+                continue
+            key = (run_id, job_name)
+            if key not in merged_by_job_key:
+                merged_by_job_key[key] = {}
+                job_order.append(key)
+            self._merge_record(merged_by_job_key[key], record)
+
+        for key in job_order:
+            merged = merged_by_job_key[key]
+            yield {field: merged.get(field) for field in _JOB_RUN_RECORD_FIELDS}
+
     # -- Static Methods -- #
 
     @staticmethod
@@ -427,6 +576,16 @@ class HistoryStore(ABC):
         if not raw:
             return _DEFAULT_STATE_DIR
         return Path(raw).expanduser()
+
+    @staticmethod
+    def _record_level(
+        record: Mapping[str, Any],
+    ) -> str:
+        """Return the persisted history level for one raw record."""
+        level = record.get('record_level')
+        if level == 'job':
+            return 'job'
+        return 'run'
 
     @staticmethod
     def _merge_record(
@@ -497,6 +656,26 @@ class HistoryStore(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def record_job_run(
+        self,
+        record: JobRunRecord,
+    ) -> None:
+        """
+        Persist one completed job-run record for a DAG-style execution.
+
+        Parameters
+        ----------
+        record : JobRunRecord
+            Persistable job-run record to store.
+
+        Raises
+        ------
+        NotImplementedError
+            If the method is not implemented by a subclass.
+        """
+        raise NotImplementedError
+
 
 # SECTION: CLASSES ========================================================== #
 
@@ -556,7 +735,9 @@ class JsonlHistoryStore(HistoryStore):
         record : RunRecord
             Initial run record to persist.
         """
-        self._append_record(record.to_payload())
+        payload = record.to_payload()
+        payload['record_level'] = 'run'
+        self._append_record(payload)
 
     def record_run_finished(
         self,
@@ -572,6 +753,24 @@ class JsonlHistoryStore(HistoryStore):
             Stable completion details for the run.
         """
         payload = completion.to_payload()
+        payload['record_level'] = 'run'
+        payload['schema_version'] = HISTORY_SCHEMA_VERSION
+        self._append_record(payload)
+
+    def record_job_run(
+        self,
+        record: JobRunRecord,
+    ) -> None:
+        """
+        Persist one completed job-run record by appending it to the log.
+
+        Parameters
+        ----------
+        record : JobRunRecord
+            Persistable job-run record.
+        """
+        payload = record.to_payload()
+        payload['record_level'] = 'job'
         payload['schema_version'] = HISTORY_SCHEMA_VERSION
         self._append_record(payload)
 
@@ -633,6 +832,28 @@ class SQLiteHistoryStore(HistoryStore):
             )
             conn.execute(
                 """
+                CREATE TABLE IF NOT EXISTS job_runs (
+                    run_id TEXT NOT NULL,
+                    job_name TEXT NOT NULL,
+                    pipeline_name TEXT,
+                    sequence_index INTEGER NOT NULL,
+                    started_at TEXT,
+                    finished_at TEXT,
+                    duration_ms INTEGER,
+                    records_in INTEGER,
+                    records_out INTEGER,
+                    status TEXT NOT NULL,
+                    result_status TEXT,
+                    error_type TEXT,
+                    error_message TEXT,
+                    skipped_due_to TEXT,
+                    result_summary TEXT,
+                    PRIMARY KEY (run_id, job_name)
+                )
+                """,
+            )
+            conn.execute(
+                """
                 INSERT INTO meta (key, value)
                 VALUES ('schema_version', ?)
                 ON CONFLICT(key) DO UPDATE SET value = excluded.value
@@ -647,11 +868,57 @@ class SQLiteHistoryStore(HistoryStore):
         with closing(self._connect()) as conn, conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
-                f"""
+                """
                 SELECT
-                    {_RUN_DB_COLUMNS_SQL}
+                    run_id,
+                    pipeline_name,
+                    job_name,
+                    NULL AS sequence_index,
+                    config_path,
+                    config_sha256,
+                    status,
+                    started_at,
+                    finished_at,
+                    duration_ms,
+                    records_in,
+                    records_out,
+                    error_type,
+                    error_message,
+                    error_traceback,
+                    result_summary,
+                    NULL AS result_status,
+                    NULL AS skipped_due_to,
+                    host,
+                    pid,
+                    etlplus_version,
+                    'run' AS record_level
                 FROM runs
-                ORDER BY started_at ASC, run_id ASC
+                UNION ALL
+                SELECT
+                    run_id,
+                    pipeline_name,
+                    job_name,
+                    sequence_index,
+                    NULL AS config_path,
+                    NULL AS config_sha256,
+                    status,
+                    started_at,
+                    finished_at,
+                    duration_ms,
+                    records_in,
+                    records_out,
+                    error_type,
+                    error_message,
+                    NULL AS error_traceback,
+                    result_summary,
+                    result_status,
+                    skipped_due_to,
+                    NULL AS host,
+                    NULL AS pid,
+                    NULL AS etlplus_version,
+                    'job' AS record_level
+                FROM job_runs
+                ORDER BY started_at ASC, run_id ASC, sequence_index ASC, job_name ASC
                 """,
             )
             for row in rows:
@@ -717,4 +984,27 @@ class SQLiteHistoryStore(HistoryStore):
                 ) VALUES ({_RUN_DB_PLACEHOLDERS})
                 """,
                 tuple(payload[column] for column in _RUN_DB_COLUMNS),
+            )
+
+    def record_job_run(
+        self,
+        record: JobRunRecord,
+    ) -> None:
+        """
+        Persist one completed job-run record in the SQLite history store.
+
+        Parameters
+        ----------
+        record : JobRunRecord
+            Persistable job-run record.
+        """
+        payload = _sqlite_job_run_payload(record)
+        with closing(self._connect()) as conn, conn:
+            conn.execute(
+                f"""
+                INSERT OR REPLACE INTO job_runs (
+                    {_JOB_RUN_DB_COLUMNS_SQL}
+                ) VALUES ({_JOB_RUN_DB_PLACEHOLDERS})
+                """,
+                tuple(payload[column] for column in _JOB_RUN_DB_COLUMNS),
             )
