@@ -550,6 +550,19 @@ def test_sqlite_history_store_initializes_schema_and_meta(tmp_path: Path) -> Non
     assert schema_version[0] == str(mod.HISTORY_SCHEMA_VERSION)
 
 
+def test_sqlite_history_store_persists_job_run_records(tmp_path: Path) -> None:
+    """
+    Test that :class:`SQLiteHistoryStore` persists and reads back job-run
+    records.
+    """
+    store = mod.SQLiteHistoryStore(tmp_path / 'history.sqlite')
+    job_record = build_sample_job_run_record()
+
+    store.record_job_run(job_record)
+
+    assert list(store.iter_job_runs()) == [job_record.to_payload()]
+
+
 def test_sqlite_history_store_round_trips_started_record(tmp_path: Path) -> None:
     """SQLiteHistoryStore should persist and read back started run records."""
     store = mod.SQLiteHistoryStore(tmp_path / 'history.sqlite')
@@ -603,16 +616,3 @@ def test_sqlite_history_store_updates_finished_record(tmp_path: Path) -> None:
             'skipped_due_to': None,
         },
     ]
-
-
-def test_sqlite_history_store_persists_job_run_records(tmp_path: Path) -> None:
-    """
-    Test that :class:`SQLiteHistoryStore` persists and reads back job-run
-    records.
-    """
-    store = mod.SQLiteHistoryStore(tmp_path / 'history.sqlite')
-    job_record = build_sample_job_run_record()
-
-    store.record_job_run(job_record)
-
-    assert list(store.iter_job_runs()) == [job_record.to_payload()]
