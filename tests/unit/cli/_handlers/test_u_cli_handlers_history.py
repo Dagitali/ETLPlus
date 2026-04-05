@@ -346,6 +346,77 @@ class TestHistoryHandler:
             columns=history_view_mod.HISTORY_TABLE_COLUMNS,
         )
 
+    def test_filters_raw_job_level_records_by_pipeline_and_status(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """
+        Test that raw history mode can target job-level records explicitly.
+        """
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'job_name': 'seed',
+                    'pipeline_name': 'pipeline-a',
+                    'record_level': 'job',
+                    'run_id': 'run-1',
+                    'sequence_index': 0,
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+                {
+                    'job_name': 'publish',
+                    'pipeline_name': 'pipeline-a',
+                    'reason': 'upstream_failed',
+                    'record_level': 'job',
+                    'run_id': 'run-1',
+                    'sequence_index': 1,
+                    'skipped_due_to': ['seed'],
+                    'started_at': '2026-03-23T00:00:01Z',
+                    'status': 'skipped',
+                },
+                {
+                    'job_name': 'notify',
+                    'pipeline_name': 'pipeline-b',
+                    'record_level': 'job',
+                    'run_id': 'run-2',
+                    'sequence_index': 0,
+                    'started_at': '2026-03-23T00:00:02Z',
+                    'status': 'skipped',
+                },
+            ],
+        )
+
+        assert (
+            history_mod.history_handler(
+                raw=True,
+                level='job',
+                pipeline='pipeline-a',
+                status='skipped',
+                pretty=False,
+            )
+            == 0
+        )
+
+        assert_emit_json(
+            capture_io,
+            [
+                {
+                    'job_name': 'publish',
+                    'pipeline_name': 'pipeline-a',
+                    'reason': 'upstream_failed',
+                    'run_id': 'run-1',
+                    'sequence_index': 1,
+                    'skipped_due_to': ['seed'],
+                    'started_at': '2026-03-23T00:00:01Z',
+                    'status': 'skipped',
+                },
+            ],
+            pretty=False,
+        )
+
     def test_filters_raw_records_by_run_id_and_since(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -466,6 +537,50 @@ class TestHistoryHandler:
                 ),
                 {'pretty': False},
             ),
+        ]
+
+    def test_follow_passes_job_level_filters_to_raw_history_loader(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that follow mode forwards job-level raw-history filters.
+        """
+        recorded_calls: list[dict[str, object]] = []
+
+        def fake_load_history_records(**kwargs: object) -> list[dict[str, object]]:
+            recorded_calls.append(dict(kwargs))
+            raise KeyboardInterrupt
+
+        monkeypatch.setattr(
+            history_mod,
+            'load_history_records',
+            fake_load_history_records,
+        )
+
+        assert (
+            history_mod.history_handler(
+                follow=True,
+                raw=True,
+                level='job',
+                pipeline='pipeline-a',
+                status='skipped',
+                pretty=False,
+            )
+            == 0
+        )
+        assert recorded_calls == [
+            {
+                'level': 'job',
+                'job': None,
+                'limit': None,
+                'pipeline': 'pipeline-a',
+                'raw': True,
+                'run_id': None,
+                'since': None,
+                'status': 'skipped',
+                'until': None,
+            },
         ]
 
     def test_rejects_conflicting_output_modes(
