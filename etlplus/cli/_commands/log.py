@@ -11,9 +11,13 @@ import typer
 from .._handlers.history import history_handler
 from ._app import app
 from ._helpers import call_handler
+from ._options.common import JobOption
 from ._options.history import HistoryFollowOption
+from ._options.history import HistoryLevelOption
 from ._options.history import HistoryLimitOption
+from ._options.history import HistoryPipelineOption
 from ._options.history import HistorySinceOption
+from ._options.history import HistoryStatusOption
 from ._options.history import HistoryUntilOption
 from ._options.history import RunIdOption
 from ._state import ensure_state
@@ -33,7 +37,11 @@ __all__ = [
 @app.command('log')
 def log_cmd(
     ctx: typer.Context,
+    level: HistoryLevelOption = 'run',
+    job: JobOption = None,
+    pipeline: HistoryPipelineOption = None,
     run_id: RunIdOption = None,
+    status: HistoryStatusOption = None,
     since: HistorySinceOption = None,
     until: HistoryUntilOption = None,
     limit: HistoryLimitOption = None,
@@ -50,8 +58,16 @@ def log_cmd(
     ----------
     ctx : typer.Context
         Typer context.
+    level : HistoryLevelOption, optional
+        Whether to inspect raw run-level or job-level persisted events.
+    job : JobOption, optional
+        Job name for filtering raw log entries.
+    pipeline : HistoryPipelineOption, optional
+        Pipeline name for filtering raw log entries.
     run_id : RunIdOption, optional
         Run ID for filtering log entries.
+    status : HistoryStatusOption, optional
+        Status for filtering raw log entries.
     since : HistorySinceOption, optional
         Lower timestamp bound for emitted records.
     until : HistoryUntilOption, optional
@@ -69,7 +85,11 @@ def log_cmd(
     return call_handler(
         history_handler,
         state=ensure_state(ctx),
+        level=level,
+        job=job,
+        pipeline=pipeline,
         run_id=run_id,
+        status=status,
         since=since,
         until=until,
         limit=limit,
