@@ -6,6 +6,7 @@ History-query helpers shared by CLI history handlers.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
@@ -59,12 +60,19 @@ JOB_HISTORY_TABLE_COLUMNS = (
     'duration_ms',
 )
 
+_TABLE_COLUMNS_BY_LEVEL: dict[HistoryLevel, tuple[str, ...]] = {
+    'job': JOB_HISTORY_TABLE_COLUMNS,
+    'run': HISTORY_TABLE_COLUMNS,
+}
+
 
 # SECTION: CLASSES ========================================================== #
 
 
 class HistoryView:
     """Shared query helpers for persisted history records."""
+
+    # -- Static Methods -- #
 
     @staticmethod
     def fingerprint(
@@ -185,6 +193,32 @@ class HistoryView:
         return (timestamp, run_id, sequence_index, job_name)
 
     @staticmethod
+    def table_columns(
+        level: HistoryLevel,
+    ) -> tuple[str, ...]:
+        """
+        Return the Markdown table columns for one history level.
+
+        The columns are determined by the history level, which can be either
+        'run' or 'job'. The function looks up the appropriate column set from a
+        predefined mapping and returns it as a tuple of strings. This allows
+        for consistent formatting of CLI output based on the type of history
+        records being displayed.
+
+        Parameters
+        ----------
+        level : HistoryLevel
+            The history level for which to retrieve the table columns. Valid
+            values are 'run' and 'job'.
+
+        Returns
+        -------
+        tuple[str, ...]
+            A tuple of column names to be used for Markdown table output.
+        """
+        return _TABLE_COLUMNS_BY_LEVEL[level]
+
+    @staticmethod
     def validate_output_mode(
         *,
         json_output: bool,
@@ -213,6 +247,8 @@ class HistoryView:
         """
         if json_output and table:
             raise ValueError('choose either json output or table output, not both')
+
+    # -- Class Methods -- #
 
     @classmethod
     def load_records(
@@ -335,6 +371,8 @@ class HistoryView:
                 return False
         return True
 
+    # -- Internal Class Methods -- #
+
     @classmethod
     def _matching_records(
         cls,
@@ -376,15 +414,12 @@ class HistoryView:
             A list of filtered history records.
         """
         history_store = HistoryStore.from_environment()
-        records_iter = (
-            history_store.iter_records()
-            if raw
-            else history_store.iter_job_runs()
-            if level == 'job'
-            else history_store.iter_runs()
-        )
         matching: list[dict[str, Any]] = []
-        for record in records_iter:
+        for record in cls._records_iter(
+            history_store,
+            raw=raw,
+            level=level,
+        ):
             payload = dict(record)
             payload.setdefault('record_level', level if not raw else 'run')
             if not cls.matches(
@@ -402,3 +437,17 @@ class HistoryView:
                 {key: value for key, value in payload.items() if key != 'record_level'},
             )
         return matching
+
+    @staticmethod
+    def _records_iter(
+        history_store: HistoryStore,
+        *,
+        raw: bool,
+        level: HistoryLevel,
+    ) -> Iterator[dict[str, Any]]:
+        """Return the appropriate record iterator for the requested view mode."""
+        if raw:
+            return history_store.iter_records()
+        if level == 'job':
+            return history_store.iter_job_runs()
+        return history_store.iter_runs()
