@@ -48,6 +48,27 @@ def build_sample_record() -> mod.RunRecord:
     )
 
 
+def build_sample_job_run_record() -> mod.JobRunRecord:
+    """Build a minimal persisted job-run record for store tests."""
+    return mod.JobRunRecord(
+        run_id='run-123',
+        job_name='job-a',
+        pipeline_name='pipeline-a',
+        sequence_index=0,
+        started_at='2026-03-23T00:00:00Z',
+        finished_at='2026-03-23T00:00:05Z',
+        duration_ms=5000,
+        records_in=None,
+        records_out=None,
+        status='succeeded',
+        result_status='ok',
+        error_type=None,
+        error_message=None,
+        skipped_due_to=None,
+        result_summary={'rows': 10},
+    )
+
+
 @contextmanager
 def sqlite_row(result_summary: str | None) -> Iterator[sqlite3.Row]:
     """Yield one sqlite row containing a ``result_summary`` column."""
@@ -114,6 +135,7 @@ def test_history_store_coerce_state_dir_defaults_without_environment(
 def test_history_store_abstract_methods_raise_not_implemented() -> None:
     """Abstract base methods should raise NotImplementedError from their bodies."""
     record = build_sample_record()
+    job_record = build_sample_job_run_record()
     completion = mod.RunCompletion(run_id='run-123', state=record.state)
     history_store = cast(mod.HistoryStore, object())
 
@@ -123,6 +145,8 @@ def test_history_store_abstract_methods_raise_not_implemented() -> None:
         mod.HistoryStore.record_run_started(history_store, record)
     with pytest.raises(NotImplementedError):
         mod.HistoryStore.record_run_finished(history_store, completion)
+    with pytest.raises(NotImplementedError):
+        mod.HistoryStore.record_job_run(history_store, job_record)
 
 
 def test_history_store_from_environment_selects_jsonl_backend(
@@ -181,6 +205,9 @@ def test_history_store_iter_runs_skips_missing_run_ids() -> None:
         def record_run_finished(self, completion: mod.RunCompletion) -> None:
             del completion
 
+        def record_job_run(self, record: mod.JobRunRecord) -> None:
+            del record
+
     runs = list(FakeStore().iter_runs())
 
     assert runs == [
@@ -203,6 +230,38 @@ def test_history_store_iter_runs_skips_missing_run_ids() -> None:
             'run_id': 'run-123',
             'started_at': None,
             'status': 'running',
+        },
+    ]
+
+
+def test_iter_job_runs_merges_jsonl_job_records_by_run_and_job(
+    tmp_path: Path,
+) -> None:
+    """
+    Test that :meth:`HistoryStore.iter_job_runs` yields one normalized
+    persisted job row.
+    """
+    path = tmp_path / 'history.jsonl'
+    store = mod.JsonlHistoryStore(path)
+    store.record_job_run(build_sample_job_run_record())
+
+    assert list(store.iter_job_runs()) == [
+        {
+            'run_id': 'run-123',
+            'job_name': 'job-a',
+            'pipeline_name': 'pipeline-a',
+            'sequence_index': 0,
+            'started_at': '2026-03-23T00:00:00Z',
+            'finished_at': '2026-03-23T00:00:05Z',
+            'duration_ms': 5000,
+            'records_in': None,
+            'records_out': None,
+            'status': 'succeeded',
+            'result_status': 'ok',
+            'error_type': None,
+            'error_message': None,
+            'skipped_due_to': None,
+            'result_summary': {'rows': 10},
         },
     ]
 
@@ -280,10 +339,44 @@ def test_jsonl_history_store_appends_finished_records_as_ndjson(
         'error_traceback': None,
         'error_type': None,
         'finished_at': '2026-03-23T00:00:05Z',
+        'record_level': 'run',
         'result_summary': {'rows': 10},
         'run_id': 'run-123',
         'schema_version': mod.HISTORY_SCHEMA_VERSION,
         'status': 'success',
+    }
+
+
+def test_jsonl_history_store_appends_job_run_records_as_ndjson(
+    tmp_path: Path,
+) -> None:
+    """Test that job-run persistence appends one complete NDJSON line."""
+    path = tmp_path / 'history.jsonl'
+    store = mod.JsonlHistoryStore(path)
+
+    store.record_job_run(build_sample_job_run_record())
+
+    lines = path.read_text(encoding='utf-8').splitlines()
+
+    assert len(lines) == 1
+    assert json.loads(lines[0]) == {
+        'duration_ms': 5000,
+        'error_message': None,
+        'error_type': None,
+        'finished_at': '2026-03-23T00:00:05Z',
+        'job_name': 'job-a',
+        'pipeline_name': 'pipeline-a',
+        'record_level': 'job',
+        'records_in': None,
+        'records_out': None,
+        'result_status': 'ok',
+        'result_summary': {'rows': 10},
+        'run_id': 'run-123',
+        'schema_version': mod.HISTORY_SCHEMA_VERSION,
+        'sequence_index': 0,
+        'skipped_due_to': None,
+        'started_at': '2026-03-23T00:00:00Z',
+        'status': 'succeeded',
     }
 
 
@@ -397,6 +490,7 @@ def test_jsonl_history_store_serializes_started_records_with_ndjson(
         'job_name': 'job-a',
         'pid': 123,
         'pipeline_name': 'pipeline-a',
+        'record_level': 'run',
         'records_in': None,
         'records_out': None,
         'result_summary': None,
@@ -451,6 +545,7 @@ def test_sqlite_history_store_initializes_schema_and_meta(tmp_path: Path) -> Non
         conn.close()
 
     assert {'meta', 'runs'} <= tables
+    assert 'job_runs' in tables
     assert schema_version is not None
     assert schema_version[0] == str(mod.HISTORY_SCHEMA_VERSION)
 
@@ -462,7 +557,20 @@ def test_sqlite_history_store_round_trips_started_record(tmp_path: Path) -> None
 
     store.record_run_started(record)
 
-    assert list(store.iter_records()) == [record.to_payload()]
+    assert list(store.iter_records()) == [
+        {
+            **record.to_payload(),
+            'config_path': 'pipeline.yml',
+            'config_sha256': 'sha256',
+            'host': 'host-a',
+            'pid': 123,
+            'etlplus_version': '1.0.3',
+            'record_level': 'run',
+            'result_status': None,
+            'sequence_index': None,
+            'skipped_due_to': None,
+        },
+    ]
 
 
 def test_sqlite_history_store_updates_finished_record(tmp_path: Path) -> None:
@@ -489,5 +597,22 @@ def test_sqlite_history_store_updates_finished_record(tmp_path: Path) -> None:
             'finished_at': '2026-03-23T00:00:05Z',
             'duration_ms': 5000,
             'result_summary': {'rows': 10},
+            'record_level': 'run',
+            'result_status': None,
+            'sequence_index': None,
+            'skipped_due_to': None,
         },
     ]
+
+
+def test_sqlite_history_store_persists_job_run_records(tmp_path: Path) -> None:
+    """
+    Test that :class:`SQLiteHistoryStore` persists and reads back job-run
+    records.
+    """
+    store = mod.SQLiteHistoryStore(tmp_path / 'history.sqlite')
+    job_record = build_sample_job_run_record()
+
+    store.record_job_run(job_record)
+
+    assert list(store.iter_job_runs()) == [job_record.to_payload()]
