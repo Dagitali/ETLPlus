@@ -75,7 +75,7 @@ def resolve_file(
     ----------
     file_path : StrPath
         Local path or remote URI for the file.
-    file_format : FileFormatArg | None
+    file_format : FileFormatArg
         Explicit format override. When omitted, use the file object's inferred
         format and optionally fall back to ``inferred_default``.
     inferred_default : FileFormat | None, optional
