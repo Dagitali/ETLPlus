@@ -1188,10 +1188,14 @@ class TestRunHandler:
         )
 
         history_calls: dict[str, object] = {}
+        job_runs: list[object] = []
 
         class _FakeHistoryStore:
             def record_run_started(self, record: object) -> None:
                 history_calls['started'] = record
+
+            def record_job_run(self, record: object) -> None:
+                job_runs.append(record)
 
             def record_run_finished(
                 self,
@@ -1273,10 +1277,14 @@ class TestRunHandler:
         )
 
         history_calls: dict[str, object] = {}
+        job_runs: list[object] = []
 
         class _FakeHistoryStore:
             def record_run_started(self, record: object) -> None:
                 history_calls['started'] = record
+
+            def record_job_run(self, record: object) -> None:
+                job_runs.append(record)
 
             def record_run_finished(
                 self,
