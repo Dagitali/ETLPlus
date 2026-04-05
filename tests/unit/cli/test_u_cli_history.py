@@ -73,9 +73,40 @@ class TestHistoryReportBuilder:
             },
         }
 
+    def test_report_group_key_supports_pipeline_and_run_dimensions(self) -> None:
+        """Grouping should expose the pipeline and run identifier dimensions."""
+        record = {
+            'pipeline_name': 'pipeline-a',
+            'run_id': 'run-123',
+        }
+
+        assert HistoryReportBuilder.report_group_key(record, group_by='pipeline') == (
+            'pipeline-a'
+        )
+        assert HistoryReportBuilder.report_group_key(record, group_by='run') == (
+            'run-123'
+        )
+
 
 class TestHistoryView:
     """Unit tests for :class:`etlplus.cli._handlers._history_view.HistoryView`."""
+
+    def test_matches_accepts_job_level_pipeline_record(self) -> None:
+        """
+        Test that job-level records match level and pipeline filters directly.
+        """
+        assert HistoryView.matches(
+            {
+                'job_name': 'seed',
+                'pipeline_name': 'pipeline-a',
+                'record_level': 'job',
+                'run_id': 'run-1',
+                'started_at': '2026-03-24T00:00:00Z',
+                'status': 'succeeded',
+            },
+            level='job',
+            pipeline='pipeline-a',
+        )
 
     @pytest.mark.parametrize(
         ('record', 'filters'),
@@ -101,9 +132,11 @@ class TestHistoryView:
         record: dict[str, object],
         filters: dict[str, object],
     ) -> None:
-        """Filtering should reject records that fall outside the criteria."""
+        """
+        Test that filtering rejects records that fall outside the criteria.
+        """
         assert HistoryView.matches(record, **filters) is False  # type: ignore[arg-type]
 
     def test_parse_timestamp_returns_none_for_invalid_value(self) -> None:
-        """Invalid ISO timestamps should be treated as missing."""
+        """Test that invalid ISO timestamps are treated as missing."""
         assert HistoryView.parse_timestamp('not-a-timestamp') is None
