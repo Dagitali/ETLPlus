@@ -9,8 +9,8 @@ read/query commands in the CLI.
 - Start and finish metadata are persisted to the configured local history backend.
 - The default backend is SQLite at `${ETLPLUS_STATE_DIR:-~/.etlplus}/history.sqlite`.
 - A JSONL backend is also available through `ETLPLUS_HISTORY_BACKEND=jsonl`.
-- DAG-style `run --job` / `run --all` executions persist an execution summary in `result_summary`,
-  including ordered jobs and succeeded/failed/skipped job lists.
+- DAG-style `run --job` / `run --all` executions also persist one per-job history row for each
+  executed/succeeded/failed/skipped job, including plan order and timing metadata.
 
 Today, the persisted history is written by `etlplus run`. The read/query commands below inspect that
 local store; they do not require external services.
@@ -19,15 +19,22 @@ local store; they do not require external services.
 
 ### `etlplus history`
 
-Inspect normalized runs, one record per `run_id`.
+Inspect normalized persisted history.
 
-- Filters: `--job`, `--status`, `--since`, `--until`, `--limit`
+- Scope: `--level run|job`
+- Filters: `--job`, `--pipeline`, `--run-id`, `--status`, `--since`, `--until`, `--limit`
 - Output: JSON by default, explicit JSON with `--json`, or a Markdown table with `--table`
 
 Example:
 
 ```bash
 etlplus history --job file_to_file_customers --status succeeded --limit 10 --table
+```
+
+Inspect per-job DAG history:
+
+```bash
+etlplus history --level job --pipeline customer_sync --status skipped --table
 ```
 
 ### `etlplus log`
@@ -46,10 +53,11 @@ etlplus log --run-id 8e4a33d7 --follow
 
 ### `etlplus status`
 
-Show the latest normalized run overall or for a selected job or run id.
+Show the latest normalized run or job row.
 
-- Filters: `--job`, `--run-id`
-- Output: one normalized run object as JSON, or `{}` with exit code `1` when no match exists
+- Scope: `--level run|job`
+- Filters: `--job`, `--pipeline`, `--run-id`
+- Output: one normalized run/job object as JSON, or `{}` with exit code `1` when no match exists
 
 Example:
 
@@ -57,12 +65,17 @@ Example:
 etlplus status --job file_to_file_customers
 ```
 
+```bash
+etlplus status --level job --job file_to_file_customers
+```
+
 ### `etlplus report`
 
-Aggregate normalized run history by `job`, `status`, or `day`.
+Aggregate normalized run or job history.
 
-- Filters: `--job`, `--since`, `--until`
-- Grouping: `--group-by job|status|day`
+- Scope: `--level run|job`
+- Filters: `--job`, `--pipeline`, `--run-id`, `--status`, `--since`, `--until`
+- Grouping: `--group-by job|pipeline|run|status|day`
 - Output: grouped JSON by default or a Markdown table with `--table`
 - Metrics include run counts, success-rate percentage, and average/minimum/maximum duration
 
@@ -72,14 +85,20 @@ Example:
 etlplus report --group-by day --since 2026-03-01T00:00:00Z --table
 ```
 
+Aggregate per-job history by pipeline:
+
+```bash
+etlplus report --level job --group-by pipeline --since 2026-03-01T00:00:00Z --table
+```
+
 ## Output conventions
 
 - `history` returns normalized records.
 - `log` returns raw backend-native records.
 - `status` returns a single normalized record.
 - `report` returns grouped rows plus a top-level summary in JSON mode.
-- The top-level normalized run shape is the stable `v1.x` contract; nested `result_summary` keys may
-  grow additively over time for richer DAG summaries.
+- The top-level normalized run and job shapes are the stable `v1.x` contract; nested
+  `result_summary` keys may grow additively over time for richer DAG summaries.
 
 ## Related documentation
 
