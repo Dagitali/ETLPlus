@@ -87,12 +87,14 @@
     - `etlplus history --level job --pipeline customer_sync --status skipped --table`
 - `etlplus log`
   - Purpose: inspect raw append events from the local history backend without normalization
-  - Initial options: `--limit`, `--run-id`, `--since`, `--until`, `--follow`
+  - Options: `--level run|job`, `--job`, `--pipeline`, `--run-id`, `--status`, `--since`, `--until`,
+    `--limit`, `--follow`
   - `--follow` keeps polling for newly observed matching raw records until interrupted
     and emits compact one-record-per-line JSON regardless of `--pretty`
   - Reserved future room: backend-debug-oriented output
   - Example:
     - `etlplus log --run-id 8e4a33d7 --since 2026-03-20T00:00:00Z --until 2026-03-21T00:00:00Z --follow`
+    - `etlplus log --level job --pipeline customer_sync --status skipped --follow`
 - `etlplus status`
   - Show the latest normalized run or job row
   - Options: `--level run|job`, `--job`, `--pipeline`, `--run-id`
@@ -114,9 +116,9 @@
   when `--level job` is used.
 - `etlplus history --json` explicitly requests JSON output.
 - `etlplus history --table` returns a Markdown table of normalized run/job objects.
-- `etlplus log` returns an array of raw history events.
-- `etlplus log --follow` streams matching raw history records until interrupted
-  using compact line-oriented JSON.
+- `etlplus log` returns an array of raw run/job history events.
+- `etlplus log --follow` streams matching raw run/job history records until interrupted using
+  compact line-oriented JSON.
 - `etlplus status` returns one normalized run/job object or `{}` when no match exists.
 - `etlplus report` returns grouped JSON with a top-level summary and grouped rows,
   including duration extrema and success-rate metrics, or a Markdown table when

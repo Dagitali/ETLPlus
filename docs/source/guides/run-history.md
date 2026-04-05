@@ -41,7 +41,8 @@ etlplus history --level job --pipeline customer_sync --status skipped --table
 
 Inspect raw persisted history events without normalization.
 
-- Filters: `--run-id`, `--since`, `--until`, `--limit`
+- Scope: `--level run|job`
+- Filters: `--job`, `--pipeline`, `--run-id`, `--status`, `--since`, `--until`, `--limit`
 - Streaming: `--follow` polls for newly observed matching raw records until interrupted
 - Follow-mode output is compact line-oriented JSON regardless of `--pretty`
 
@@ -49,6 +50,10 @@ Example:
 
 ```bash
 etlplus log --run-id 8e4a33d7 --follow
+```
+
+```bash
+etlplus log --level job --pipeline customer_sync --status skipped --follow
 ```
 
 ### `etlplus status`
