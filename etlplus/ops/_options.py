@@ -116,7 +116,7 @@ def coerce_read_options(
 
     Parameters
     ----------
-    options : ReadOptions | Mapping[str, Any] | None
+    options : FileOptionsArg[ReadOptions]
         Read options to normalize. Can be a :class:`ReadOptions` instance, a
         mapping of option values, or ``None``.
 
@@ -141,7 +141,7 @@ def coerce_write_options(
 
     Parameters
     ----------
-    options : WriteOptions | Mapping[str, Any] | None
+    options : FileOptionsArg[WriteOptions]
         Write options to normalize. Can be a :class:`WriteOptions` instance, a
         mapping of option values, or ``None``.
 
