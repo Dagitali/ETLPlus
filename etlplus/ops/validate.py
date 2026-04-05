@@ -533,7 +533,7 @@ def validate_field(
     ----------
     value : Any
         The value to validate. ``None`` is treated as missing.
-    rules : StrAnyMap | FieldRulesDict
+    rules : FieldRuleInput
         Rule dictionary. Supported keys include ``required``, ``type``,
         ``min``, ``max``, ``minLength``, ``maxLength``, ``pattern``, and
         ``enum``.
