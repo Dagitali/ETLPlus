@@ -64,10 +64,69 @@ class TestJobRunPersistence:
     """Unit tests for per-job DAG history persistence helpers."""
 
     @pytest.mark.parametrize(
+        ('item', 'expected'),
+        [
+            pytest.param(
+                {'result': None},
+                None,
+                id='missing-summary',
+            ),
+            pytest.param(
+                {
+                    'reason': 'upstream_failed',
+                    'result': object(),
+                },
+                {'reason': 'upstream_failed'},
+                id='unsupported-result-falls-back',
+            ),
+            pytest.param(
+                {'reason': 'upstream_failed'},
+                {'reason': 'upstream_failed'},
+                id='reason-only',
+            ),
+            pytest.param(
+                {'skipped_due_to': ['seed', 3]},
+                {'skipped_due_to': ['seed']},
+                id='skipped-only',
+            ),
+        ],
+    )
+    def test_coerce_job_result_summary_handles_fallback_variants(
+        self,
+        item: dict[str, object],
+        expected: object,
+    ) -> None:
+        """Fallback job summaries should normalize only supported payloads."""
+        assert run_mod._coerce_job_result_summary(item) == expected
+
+    @pytest.mark.parametrize(
+        'item',
+        [
+            pytest.param({'status': 'succeeded'}, id='missing-job'),
+            pytest.param({'job': 'seed'}, id='missing-status'),
+        ],
+    )
+    def test_job_run_record_rejects_missing_required_fields(
+        self,
+        item: dict[str, object],
+    ) -> None:
+        """Job-run records require both non-empty job names and statuses."""
+        assert (
+            run_mod._job_run_record(
+                fallback_index=0,
+                item=item,
+                pipeline_name='pipeline-a',
+                run_id='run-123',
+            )
+            is None
+        )
+
+    @pytest.mark.parametrize(
         'result',
         [
             pytest.param(None, id='missing-result'),
             pytest.param({'executed_jobs': 'bad-shape'}, id='invalid-executed-jobs'),
+            pytest.param({'executed_jobs': ['bad-row']}, id='non-mapping-item'),
         ],
     )
     def test_persist_job_runs_ignores_unsupported_result_shapes(

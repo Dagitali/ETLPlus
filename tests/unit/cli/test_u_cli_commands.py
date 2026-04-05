@@ -76,6 +76,34 @@ class TestCommandsInternalHelpers:
             'value': 'payload',
         }
 
+    def test_call_history_handler_omits_unset_filters_and_preserves_explicit_none(
+        self,
+    ) -> None:
+        """History dispatch should forward only explicit filters plus ``pretty``."""
+        captured: dict[str, object] = {}
+
+        def _handler(**kwargs: object) -> int:
+            captured.update(kwargs)
+            return 11
+
+        result = helpers_mod.call_history_handler(
+            _handler,
+            state=CliState(pretty=False),
+            level='job',
+            job='seed',
+            pipeline=None,
+            follow=True,
+        )
+
+        assert result == 11
+        assert captured == {
+            'follow': True,
+            'job': 'seed',
+            'level': 'job',
+            'pipeline': None,
+            'pretty': False,
+        }
+
     def test_normalize_file_format_returns_enum_member(self) -> None:
         """Shared format normalization should preserve ``FileFormat`` typing."""
         assert helpers_mod.normalize_file_format('json', label='source') is (
