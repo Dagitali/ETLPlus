@@ -81,20 +81,14 @@ def _job_run_record(
     raw_error_message = item.get('error_message')
     skipped_due_to = item.get('skipped_due_to')
     sequence_index = (
-        raw_sequence_index
-        if isinstance(raw_sequence_index, int)
-        else fallback_index
+        raw_sequence_index if isinstance(raw_sequence_index, int) else fallback_index
     )
     started_at = raw_started_at if isinstance(raw_started_at, str) else None
     finished_at = raw_finished_at if isinstance(raw_finished_at, str) else None
     duration_ms = raw_duration_ms if isinstance(raw_duration_ms, int) else None
-    result_status = (
-        raw_result_status if isinstance(raw_result_status, str) else None
-    )
+    result_status = raw_result_status if isinstance(raw_result_status, str) else None
     error_type = raw_error_type if isinstance(raw_error_type, str) else None
-    error_message = (
-        raw_error_message if isinstance(raw_error_message, str) else None
-    )
+    error_message = raw_error_message if isinstance(raw_error_message, str) else None
     return JobRunRecord(
         run_id=run_id,
         job_name=job_name,
