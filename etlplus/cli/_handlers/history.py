@@ -30,7 +30,7 @@ __all__ = [
 ]
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _emit_history_payload(
@@ -80,6 +80,36 @@ def _emit_history_payload(
     return _output.emit_json_payload(payload, pretty=pretty, exit_code=exit_code)
 
 
+def _history_load_kwargs(
+    *,
+    raw: bool,
+    job: str | None = None,
+    run_id: str | None = None,
+    since: str | None = None,
+    until: str | None = None,
+    status: str | None = None,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    """
+    Build :class:`HistoryView` query kwargs while omitting unset CLI filters.
+    """
+    return {'raw': raw} | {
+        key: value
+        for key, value in {
+            'job': job,
+            'limit': limit,
+            'run_id': run_id,
+            'since': since,
+            'until': until,
+            'status': status,
+        }.items()
+        if value is not None
+    }
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
 def load_history_records(
     *,
     job: str | None = None,
@@ -118,22 +148,17 @@ def load_history_records(
     list[dict[str, Any]]
         History records matching the specified filters.
     """
-    load_kwargs: dict[str, Any] = {'raw': raw}
-    load_kwargs.update(
-        {
-            key: value
-            for key, value in {
-                'job': job,
-                'limit': limit,
-                'run_id': run_id,
-                'since': since,
-                'until': until,
-                'status': status,
-            }.items()
-            if value is not None
-        },
+    return HistoryView.load_records(
+        **_history_load_kwargs(
+            job=job,
+            limit=limit,
+            raw=raw,
+            run_id=run_id,
+            since=since,
+            status=status,
+            until=until,
+        ),
     )
-    return HistoryView.load_records(**load_kwargs)
 
 
 def emit_follow_history(
