@@ -6,6 +6,7 @@ History-query helpers shared by CLI history handlers.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
@@ -59,12 +60,19 @@ JOB_HISTORY_TABLE_COLUMNS = (
     'duration_ms',
 )
 
+_TABLE_COLUMNS_BY_LEVEL: dict[HistoryLevel, tuple[str, ...]] = {
+    'job': JOB_HISTORY_TABLE_COLUMNS,
+    'run': HISTORY_TABLE_COLUMNS,
+}
+
 
 # SECTION: CLASSES ========================================================== #
 
 
 class HistoryView:
     """Shared query helpers for persisted history records."""
+
+    # -- Static Methods -- #
 
     @staticmethod
     def fingerprint(
@@ -185,6 +193,32 @@ class HistoryView:
         return (timestamp, run_id, sequence_index, job_name)
 
     @staticmethod
+    def table_columns(
+        level: HistoryLevel,
+    ) -> tuple[str, ...]:
+        """
+        Return the Markdown table columns for one history level.
+
+        The columns are determined by the history level, which can be either
+        'run' or 'job'. The function looks up the appropriate column set from a
+        predefined mapping and returns it as a tuple of strings. This allows
+        for consistent formatting of CLI output based on the type of history
+        records being displayed.
+
+        Parameters
+        ----------
+        level : HistoryLevel
+            The history level for which to retrieve the table columns. Valid
+            values are 'run' and 'job'.
+
+        Returns
+        -------
+        tuple[str, ...]
+            A tuple of column names to be used for Markdown table output.
+        """
+        return _TABLE_COLUMNS_BY_LEVEL[level]
+
+    @staticmethod
     def validate_output_mode(
         *,
         json_output: bool,
@@ -213,6 +247,89 @@ class HistoryView:
         """
         if json_output and table:
             raise ValueError('choose either json output or table output, not both')
+
+    # -- Internal Class Methods -- #
+
+    @classmethod
+    def _matching_records(
+        cls,
+        *,
+        raw: bool,
+        level: HistoryLevel,
+        job: str | None,
+        pipeline: str | None,
+        run_id: str | None,
+        since: datetime | None,
+        until: datetime | None,
+        status: str | None,
+    ) -> list[dict[str, Any]]:
+        """
+        Return materialized history records that match the given filters.
+
+        Parameters
+        ----------
+        raw : bool
+            Whether to load raw history records.
+        level : HistoryLevel
+            Whether to load run-level or job-level records.
+        job : str | None, optional
+            Filter records by job name.
+        pipeline : str | None, optional
+            Filter records by pipeline name.
+        run_id : str | None, optional
+            Filter records by run ID.
+        since : datetime | None, optional
+            Filter records starting from this timestamp.
+        until : datetime | None, optional
+            Filter records up to this timestamp.
+        status : str | None, optional
+            Filter records by status.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            A list of filtered history records.
+        """
+        history_store = HistoryStore.from_environment()
+        matching: list[dict[str, Any]] = []
+        for record in cls._records_iter(
+            history_store,
+            raw=raw,
+            level=level,
+        ):
+            payload = dict(record)
+            payload.setdefault('record_level', level if not raw else 'run')
+            if not cls.matches(
+                payload,
+                level=level,
+                job=job,
+                pipeline=pipeline,
+                run_id=run_id,
+                since=since,
+                until=until,
+                status=status,
+            ):
+                continue
+            matching.append(
+                {key: value for key, value in payload.items() if key != 'record_level'},
+            )
+        return matching
+
+    @staticmethod
+    def _records_iter(
+        history_store: HistoryStore,
+        *,
+        raw: bool,
+        level: HistoryLevel,
+    ) -> Iterator[dict[str, Any]]:
+        """Return the appropriate record iterator for the requested view mode."""
+        if raw:
+            return history_store.iter_records()
+        if level == 'job':
+            return history_store.iter_job_runs()
+        return history_store.iter_runs()
+
+    # -- Class Methods -- #
 
     @classmethod
     def load_records(
@@ -334,71 +451,3 @@ class HistoryView:
             if record_timestamp is None or record_timestamp > until:
                 return False
         return True
-
-    @classmethod
-    def _matching_records(
-        cls,
-        *,
-        raw: bool,
-        level: HistoryLevel,
-        job: str | None,
-        pipeline: str | None,
-        run_id: str | None,
-        since: datetime | None,
-        until: datetime | None,
-        status: str | None,
-    ) -> list[dict[str, Any]]:
-        """
-        Return materialized history records that match the given filters.
-
-        Parameters
-        ----------
-        raw : bool
-            Whether to load raw history records.
-        level : HistoryLevel
-            Whether to load run-level or job-level records.
-        job : str | None, optional
-            Filter records by job name.
-        pipeline : str | None, optional
-            Filter records by pipeline name.
-        run_id : str | None, optional
-            Filter records by run ID.
-        since : datetime | None, optional
-            Filter records starting from this timestamp.
-        until : datetime | None, optional
-            Filter records up to this timestamp.
-        status : str | None, optional
-            Filter records by status.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            A list of filtered history records.
-        """
-        history_store = HistoryStore.from_environment()
-        records_iter = (
-            history_store.iter_records()
-            if raw
-            else history_store.iter_job_runs()
-            if level == 'job'
-            else history_store.iter_runs()
-        )
-        matching: list[dict[str, Any]] = []
-        for record in records_iter:
-            payload = dict(record)
-            payload.setdefault('record_level', level if not raw else 'run')
-            if not cls.matches(
-                payload,
-                level=level,
-                job=job,
-                pipeline=pipeline,
-                run_id=run_id,
-                since=since,
-                until=until,
-                status=status,
-            ):
-                continue
-            matching.append(
-                {key: value for key, value in payload.items() if key != 'record_level'},
-            )
-        return matching

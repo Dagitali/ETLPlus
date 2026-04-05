@@ -6,9 +6,13 @@ Unit tests for split history support modules under :mod:`etlplus.cli._handlers`.
 
 from __future__ import annotations
 
+from typing import Literal
+
 import pytest
 
 from etlplus.cli._handlers._history_report import HistoryReportBuilder
+from etlplus.cli._handlers._history_view import HISTORY_TABLE_COLUMNS
+from etlplus.cli._handlers._history_view import JOB_HISTORY_TABLE_COLUMNS
 from etlplus.cli._handlers._history_view import HistoryView
 
 # SECTION: PRAGMAS ========================================================== #
@@ -91,6 +95,21 @@ class TestHistoryReportBuilder:
 class TestHistoryView:
     """Unit tests for :class:`etlplus.cli._handlers._history_view.HistoryView`."""
 
+    @pytest.mark.parametrize(
+        ('level', 'expected'),
+        [
+            pytest.param('run', HISTORY_TABLE_COLUMNS, id='run'),
+            pytest.param('job', JOB_HISTORY_TABLE_COLUMNS, id='job'),
+        ],
+    )
+    def test_table_columns_returns_expected_columns(
+        self,
+        level: Literal['run', 'job'],
+        expected: tuple[str, ...],
+    ) -> None:
+        """Table-column lookup should follow the requested history level."""
+        assert HistoryView.table_columns(level) == expected
+
     def test_matches_accepts_job_level_pipeline_record(self) -> None:
         """
         Test that job-level records match level and pipeline filters directly.
@@ -124,6 +143,11 @@ class TestHistoryView:
                 {'status': 'failed'},
                 {'status': 'succeeded'},
                 id='status-mismatch',
+            ),
+            pytest.param(
+                {'record_level': 'job', 'status': 'succeeded'},
+                {'level': 'run'},
+                id='level-mismatch',
             ),
         ],
     )

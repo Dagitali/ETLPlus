@@ -6,6 +6,7 @@ History, report, and status handler implementations for the CLI facade.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from time import sleep
 from typing import Any
 from typing import Literal
@@ -14,8 +15,6 @@ from typing import cast
 from . import _output
 from ._history_report import REPORT_TABLE_COLUMNS
 from ._history_report import HistoryReportBuilder
-from ._history_view import HISTORY_TABLE_COLUMNS
-from ._history_view import JOB_HISTORY_TABLE_COLUMNS
 from ._history_view import HistoryView
 
 # SECTION: EXPORTS ========================================================== #
@@ -29,6 +28,55 @@ __all__ = [
     'report_handler',
     'status_handler',
 ]
+
+
+# SECTION: INTERNAL DATA CLASSES ============================================ #
+
+
+@dataclass(frozen=True, slots=True)
+class _HistoryQuery:
+    """Normalized persisted-history query filters shared by handler paths."""
+
+    # -- Instance Methods -- #
+
+    level: Literal['run', 'job'] = 'run'
+    job: str | None = None
+    pipeline: str | None = None
+    run_id: str | None = None
+    since: str | None = None
+    until: str | None = None
+    status: str | None = None
+
+    # -- Instance Methods -- #
+
+    def load(
+        self,
+        *,
+        raw: bool = False,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """Load persisted history records for this query."""
+        load_kwargs: dict[str, Any] = {
+            'level': self.level,
+            'raw': raw,
+        }
+        if limit is not None:
+            load_kwargs['limit'] = limit
+        for key, value in {
+            'job': self.job,
+            'pipeline': self.pipeline,
+            'run_id': self.run_id,
+            'since': self.since,
+            'status': self.status,
+            'until': self.until,
+        }.items():
+            if value is not None:
+                load_kwargs[key] = value
+        return HistoryView.load_records(**load_kwargs)
+
+    def table_columns(self) -> tuple[str, ...]:
+        """Return the table columns for this query level."""
+        return HistoryView.table_columns(self.level)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -81,36 +129,6 @@ def _emit_history_payload(
     return _output.emit_json_payload(payload, pretty=pretty, exit_code=exit_code)
 
 
-def _history_load_kwargs(
-    *,
-    raw: bool,
-    level: Literal['run', 'job'] = 'run',
-    job: str | None = None,
-    pipeline: str | None = None,
-    run_id: str | None = None,
-    since: str | None = None,
-    until: str | None = None,
-    status: str | None = None,
-    limit: int | None = None,
-) -> dict[str, Any]:
-    """
-    Build :class:`HistoryView` query kwargs while omitting unset CLI filters.
-    """
-    return {'level': level, 'raw': raw} | {
-        key: value
-        for key, value in {
-            'job': job,
-            'limit': limit,
-            'pipeline': pipeline,
-            'run_id': run_id,
-            'since': since,
-            'until': until,
-            'status': status,
-        }.items()
-        if value is not None
-    }
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -159,18 +177,17 @@ def load_history_records(
     list[dict[str, Any]]
         History records matching the specified filters.
     """
-    return HistoryView.load_records(
-        **_history_load_kwargs(
-            level=level,
-            job=job,
-            limit=limit,
-            pipeline=pipeline,
-            raw=raw,
-            run_id=run_id,
-            since=since,
-            status=status,
-            until=until,
-        ),
+    return _HistoryQuery(
+        level=level,
+        job=job,
+        pipeline=pipeline,
+        run_id=run_id,
+        since=since,
+        until=until,
+        status=status,
+    ).load(
+        raw=raw,
+        limit=limit,
     )
 
 
@@ -216,19 +233,28 @@ def emit_follow_history(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
+    query = _HistoryQuery(
+        level=level,
+        job=job,
+        pipeline=pipeline,
+        run_id=run_id,
+        since=since,
+        until=until,
+        status=status,
+    )
     seen: set[str] = set()
     try:
         while True:
             records = load_history_records(
-                level=level,
-                job=job,
-                limit=limit,
-                pipeline=pipeline,
+                level=query.level,
+                job=query.job,
                 raw=True,
-                run_id=run_id,
-                since=since,
-                until=until,
-                status=status,
+                limit=limit,
+                pipeline=query.pipeline,
+                run_id=query.run_id,
+                since=query.since,
+                status=query.status,
+                until=query.until,
             )
             for record in reversed(records):
                 fingerprint = HistoryView.fingerprint(record)
@@ -301,31 +327,33 @@ def history_handler(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
+    query = _HistoryQuery(
+        level=level,
+        job=job,
+        pipeline=pipeline,
+        run_id=run_id,
+        since=since,
+        until=until,
+        status=status,
+    )
     if follow:
         return emit_follow_history(
-            level=level,
-            job=job,
+            level=query.level,
+            job=query.job,
             limit=limit,
-            pipeline=pipeline,
-            run_id=run_id,
-            since=since,
-            until=until,
-            status=status,
+            pipeline=query.pipeline,
+            run_id=query.run_id,
+            since=query.since,
+            until=query.until,
+            status=query.status,
         )
 
     return _emit_history_payload(
-        load_history_records(
-            level=level,
-            job=job,
-            limit=limit,
-            pipeline=pipeline,
+        query.load(
             raw=raw,
-            run_id=run_id,
-            since=since,
-            until=until,
-            status=status,
+            limit=limit,
         ),
-        columns=JOB_HISTORY_TABLE_COLUMNS if level == 'job' else HISTORY_TABLE_COLUMNS,
+        columns=query.table_columns(),
         pretty=pretty,
         table=table,
         json_output=json_output,
@@ -384,16 +412,17 @@ def report_handler(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
+    query = _HistoryQuery(
+        level=level,
+        job=job,
+        pipeline=pipeline,
+        run_id=run_id,
+        since=since,
+        until=until,
+        status=status,
+    )
     report = HistoryReportBuilder.build(
-        load_history_records(
-            level=level,
-            job=job,
-            pipeline=pipeline,
-            run_id=run_id,
-            since=since,
-            status=status,
-            until=until,
-        ),
+        query.load(),
         group_by=group_by,
     )
     return _emit_history_payload(
@@ -436,12 +465,13 @@ def status_handler(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    records = load_history_records(
+    records = _HistoryQuery(
         level=level,
         job=job,
-        limit=1,
         pipeline=pipeline,
         run_id=run_id,
+    ).load(
+        limit=1,
     )
     if not records:
         return _output.emit_json_payload({}, pretty=pretty, exit_code=1)

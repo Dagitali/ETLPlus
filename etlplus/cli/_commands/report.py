@@ -10,7 +10,7 @@ import typer
 
 from .._handlers.history import report_handler
 from ._app import app
-from ._helpers import call_handler
+from ._helpers import call_history_handler
 from ._options.common import JobOption
 from ._options.history import HistoryJsonOption
 from ._options.history import HistoryLevelOption
@@ -82,17 +82,17 @@ def report_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    return call_handler(
+    return call_history_handler(
         report_handler,
         state=ensure_state(ctx),
         level=level,
         group_by=group_by,
         job=job,
-        json_output=json_output,
         pipeline=pipeline,
         run_id=run_id,
         since=since,
         status=status,
+        json_output=json_output,
         table=table,
         until=until,
     )
