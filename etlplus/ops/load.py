@@ -103,7 +103,7 @@ def _load_to_api_env(
     ----------
     data : JSONData
         Payload to load.
-    env : Mapping[str, Any]
+    env : ApiTargetEnvDict | DirectRequestEnvDict
         Normalized request environment.
 
     Returns
@@ -184,7 +184,7 @@ def load_data(
 
     Parameters
     ----------
-    source : StrPath | JSONData
+    source : DataSourceArg
         Data source to load. If a path is provided and exists, JSON will be
         read from it. Otherwise, a JSON string will be parsed.
 
@@ -320,10 +320,10 @@ def load_to_file(
         Data to write.
     file_path : StrPath
         Target local file path or remote URI.
-    file_format : FileFormat | str | None, optional
+    file_format : FileFormatArg, optional
         Output format. If omitted (None), the format is inferred from the
         filename extension.
-    options : WriteOptions | Mapping[str, Any] | None, optional
+    options : FileOptionsArg[WriteOptions], optional
         Optional file-write options such as ``encoding`` plus format-specific
         extras like ``delimiter``.
 
@@ -374,13 +374,13 @@ def load(
 
     Parameters
     ----------
-    source : StrPath | JSONData
+    source : DataSourceArg
         Data source to load.
-    target_type : DataConnectorType | str
+    target_type : ConnectorTypeArg
         Type of data target.
     target : StrPath
         Target location (file path, connection string, or API URL).
-    file_format : FileFormat | str | None, optional
+    file_format : FileFormatArg, optional
         File format, inferred from filename extension if omitted.
     method : HttpMethod | str | None, optional
         HTTP method for API targets. Defaults to POST if omitted.

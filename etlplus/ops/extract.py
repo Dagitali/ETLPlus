@@ -370,7 +370,7 @@ def extract(
 
     Parameters
     ----------
-    source_type : DataConnectorType | str
+    source_type : ConnectorTypeArg
         Type of data source.
     source : StrPath
         Source location (file path, connection string, or API URL).
