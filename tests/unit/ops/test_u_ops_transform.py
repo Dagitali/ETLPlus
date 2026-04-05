@@ -715,6 +715,19 @@ class TestTransformInternalHelpers:
         rows = [{'a': 1}]
         assert apply_map_step(rows, 123) == rows
 
+    def test_apply_row_step_returns_original_rows_for_empty_specs(self) -> None:
+        """Test that empty normalized specs leave row batches unchanged."""
+        rows = [{'id': 1}]
+
+        assert (
+            transform_mod._apply_row_step(
+                rows,
+                step='filter',
+                raw_spec=[],
+            )
+            is rows
+        )
+
     @pytest.mark.parametrize(
         ('spec', 'expected'),
         [

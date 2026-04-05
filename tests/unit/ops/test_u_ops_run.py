@@ -1372,6 +1372,24 @@ class TestRun:
 class TestRunInternals:
     """Unit tests for internal run() helpers."""
 
+    def test_selected_job_names_skips_already_visited_nodes(self) -> None:
+        """Test that dependency-closure expansion tolerates self-referential jobs."""
+        jobs_by_name = {'seed': SimpleNamespace(depends_on='seed')}
+
+        assert run_mod._selected_job_names(jobs_by_name, 'seed') == {'seed'}
+
+    def test_planned_jobs_requires_job_name_when_not_running_all(self) -> None:
+        """Test that planned-job selection requires a job unless run-all is enabled."""
+        cfg = SimpleNamespace(
+            jobs=[_make_job(name='job-a', source='src', target='tgt')],
+        )
+
+        with pytest.raises(
+            ValueError,
+            match='job is required unless run_all is True',
+        ):
+            run_mod._planned_jobs(cfg, job_name=None, run_all=False)
+
     def test_delegates_to_load_when_target_is_provided(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -1406,6 +1424,32 @@ class TestRunInternals:
         assert result == {'status': 'ok'}
         assert load_calls == [({'id': 1}, 'file', '/tmp/out.json')]
 
+    def test_dispatch_extract_falls_back_to_extract_for_plain_api_sources(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """API source dispatch should use plain extract() without connector context."""
+        calls: list[tuple[Any, Any, dict[str, Any]]] = []
+
+        def _extract(
+            source_type: Any,
+            source: Any,
+            **kwargs: Any,
+        ) -> dict[str, bool]:
+            calls.append((source_type, source, kwargs))
+            return {'ok': True}
+
+        monkeypatch.setattr(run_mod, 'extract', _extract)
+
+        result = run_mod._dispatch_extract(
+            'api',
+            'https://example.test/items',
+            options={'timeout': 2.0},
+        )
+
+        assert result == {'ok': True}
+        assert calls == [('api', 'https://example.test/items', {'timeout': 2.0})]
+
     def test_dispatch_extract_uses_api_source_connector_loader(self) -> None:
         """API source dispatch should prefer connector-aware extraction."""
         calls: list[tuple[Any, Any, dict[str, Any]]] = []
@@ -1439,6 +1483,45 @@ class TestRunInternals:
 
         assert result == {'ok': True}
         assert calls == [(cfg, connector, {'timeout': 2.0})]
+
+    def test_dispatch_load_falls_back_to_load_for_plain_api_targets(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that API target dispatch uses plain load() without connector context.
+        """
+        calls: list[tuple[Any, Any, Any, dict[str, Any]]] = []
+        payload = {'id': 1}
+
+        def _load(
+            data: Any,
+            target_type: Any,
+            target: Any,
+            **kwargs: Any,
+        ) -> dict[str, bool]:
+            calls.append((data, target_type, target, kwargs))
+            return {'ok': True}
+
+        monkeypatch.setattr(run_mod, 'load', _load)
+
+        result = run_mod._dispatch_load(
+            payload,
+            'api',
+            'https://example.test/items',
+            method='patch',
+            options={'timeout': 3.0},
+        )
+
+        assert result == {'ok': True}
+        assert calls == [
+            (
+                payload,
+                'api',
+                'https://example.test/items',
+                {'method': 'patch', 'timeout': 3.0},
+            ),
+        ]
 
     def test_dispatch_load_uses_api_target_connector_loader(self) -> None:
         """API target dispatch should prefer connector-aware loading."""
@@ -1568,6 +1651,33 @@ class TestRunInternals:
         """File-connector detection should accept both enum and string forms."""
         assert run_mod._is_file_connector_type(connector_type) is expected
 
+    @pytest.mark.parametrize(
+        ('depends_on', 'expected'),
+        [
+            pytest.param('seed', ['seed'], id='string'),
+            pytest.param(123, [], id='invalid-scalar'),
+            pytest.param(('seed', 'publish', 1), ['seed', 'publish'], id='mixed-seq'),
+        ],
+    )
+    def test_job_dependencies_normalizes_supported_shapes(
+        self,
+        depends_on: object,
+        expected: list[str],
+    ) -> None:
+        """
+        Test that dependency normalization accepts strings and filters out
+        invalid items.
+        """
+        assert (
+            run_mod._job_dependencies(SimpleNamespace(depends_on=depends_on))
+            == expected
+        )
+
+    def test_require_job_name_rejects_missing_names(self) -> None:
+        """Test that job-name extraction requires a non-empty string name."""
+        with pytest.raises(ValueError, match='Configured job missing "name"'):
+            run_mod._require_job_name(SimpleNamespace(name=None))
+
     def test_resolve_job_connector_for_file_connector(
         self,
     ) -> None:
@@ -1630,6 +1740,50 @@ class TestRunInternals:
             'timeout': 5.0,
         }
         assert result.connector_obj is connector
+
+    def test_run_job_plan_stops_after_first_failure_when_not_continuing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that job-plan execution stops immediately on failure by default.
+        """
+        jobs = [
+            _make_job(name='seed', source='src', target='tgt'),
+            _make_job(name='publish', source='src', target='tgt'),
+        ]
+        call_order: list[str] = []
+
+        def _run_job_config(_context: Any, job_obj: Any) -> dict[str, Any]:
+            name = cast(str, job_obj.name)
+            call_order.append(name)
+            if name == 'seed':
+                raise ValueError('boom')
+            return {'status': 'ok'}
+
+        monkeypatch.setattr(run_mod, '_run_job_config', _run_job_config)
+        monkeypatch.setattr(run_mod, '_duration_ms', lambda _started_perf: 5)
+
+        result = run_mod._run_job_plan(
+            cast(Any, SimpleNamespace()),
+            jobs,
+            requested_job=None,
+            continue_on_fail=False,
+            mode='all',
+        )
+
+        assert call_order == ['seed']
+        assert result['status'] == 'failed'
+        assert result['failed_jobs'] == ['seed']
+        assert result['executed_jobs'] == [
+            {
+                'duration_ms': 5,
+                'error_message': 'boom',
+                'error_type': 'ValueError',
+                'job': 'seed',
+                'status': 'failed',
+            },
+        ]
 
     def test_run_treats_missing_transform_registry_as_noop(
         self,
@@ -1743,6 +1897,49 @@ class TestRunInternals:
             kwargs['phase'] == 'after_transform' for _, kwargs in validation_calls
         )
         assert all(kwargs['severity'] == 'warn' for _, kwargs in validation_calls)
+
+    def test_validate_payload_adapts_validator_call(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Validation adapter should pass payload and rules through to validate()."""
+        captured: dict[str, Any] = {}
+
+        def _validate(payload: Any, rules: Any) -> dict[str, Any]:
+            captured['payload'] = payload
+            captured['rules'] = rules
+            return {'status': 'ok', 'valid': True}
+
+        monkeypatch.setattr(run_mod, 'validate', _validate)
+
+        result = run_mod._validate_payload(
+            {'id': 1},
+            {'id': {'required': True}},
+        )
+
+        assert result == {'status': 'ok', 'valid': True}
+        assert captured == {
+            'payload': {'id': 1},
+            'rules': {'id': {'required': True}},
+        }
+
+    def test_validation_config_ignores_non_mapping_rulesets(self) -> None:
+        """Job validation config should degrade cleanly for invalid ruleset shapes."""
+        job = SimpleNamespace(
+            validate=SimpleNamespace(
+                ruleset='customer_rules',
+                severity=None,
+                phase=None,
+            ),
+        )
+        cfg = SimpleNamespace(validations={'customer_rules': ['bad', 'shape']})
+
+        settings = run_mod._JobValidationConfig.from_job(job, cfg)
+
+        assert settings.enabled is True
+        assert settings.rules == {}
+        assert settings.severity == 'error'
+        assert settings.phase == 'before_transform'
 
 
 class TestRunPipeline:
