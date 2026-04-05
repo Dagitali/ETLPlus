@@ -42,6 +42,7 @@ package and command-line interface for data extraction, validation, transformati
   - [Usage](#usage)
     - [Command Line Interface](#command-line-interface-1)
       - [Command Shapes](#command-shapes)
+      - [Initialize A Starter Project](#initialize-a-starter-project)
       - [Check Pipelines](#check-pipelines)
       - [Render SQL DDL](#render-sql-ddl)
       - [Extract Data](#extract-data)
@@ -726,12 +727,18 @@ still a documented placeholder.
 
 #### Inspect Run History
 
-`etlplus run` persists local run history keyed by `run_id`. Use the read/query commands to inspect
-that history without opening the backend directly.
+`etlplus run` persists local run history keyed by `run_id`. DAG-aware runs also persist one per-job
+history row for each executed job. Use the read/query commands to inspect that history without
+opening the backend directly.
 
 List recent normalized runs:
 ```bash
 etlplus history --job file_to_file_customers --status succeeded --limit 10 --table
+```
+
+List recent normalized job rows from DAG-aware runs:
+```bash
+etlplus history --level job --pipeline customer_sync --limit 10 --table
 ```
 
 Show the latest matching run:
@@ -739,14 +746,29 @@ Show the latest matching run:
 etlplus status --job file_to_file_customers
 ```
 
-Stream raw history events:
+Show the latest matching job row:
+```bash
+etlplus status --level job --job file_to_file_customers
+```
+
+Stream raw run-level history events:
 ```bash
 etlplus log --run-id 8e4a33d7 --follow
+```
+
+Stream raw job-level history events:
+```bash
+etlplus log --level job --pipeline customer_sync --status skipped --follow
 ```
 
 Aggregate grouped history metrics:
 ```bash
 etlplus report --group-by day --since 2026-03-01T00:00:00Z --table
+```
+
+Aggregate per-job history by pipeline:
+```bash
+etlplus report --level job --group-by pipeline --since 2026-03-01T00:00:00Z --table
 ```
 
 #### Load Data

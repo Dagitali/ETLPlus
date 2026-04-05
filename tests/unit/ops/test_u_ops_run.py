@@ -742,12 +742,15 @@ class TestRun:
         assert result['executed_job_count'] == 2
         assert result['executed_jobs'][0]['status'] == 'failed'
         assert result['executed_jobs'][1]['status'] == 'succeeded'
-        assert result['executed_jobs'][2] == {
-            'job': 'gamma_main',
-            'reason': 'upstream_failed',
-            'skipped_due_to': ['alpha_seed'],
-            'status': 'skipped',
-        }
+        skipped_job = result['executed_jobs'][2]
+        assert skipped_job['duration_ms'] == 0
+        assert skipped_job['job'] == 'gamma_main'
+        assert skipped_job['reason'] == 'upstream_failed'
+        assert skipped_job['sequence_index'] == 2
+        assert skipped_job['skipped_due_to'] == ['alpha_seed']
+        assert skipped_job['status'] == 'skipped'
+        assert isinstance(skipped_job['started_at'], str)
+        assert isinstance(skipped_job['finished_at'], str)
 
     def test_run_executes_dependency_closure_in_dag_order(
         self,
@@ -1775,15 +1778,16 @@ class TestRunInternals:
         assert call_order == ['seed']
         assert result['status'] == 'failed'
         assert result['failed_jobs'] == ['seed']
-        assert result['executed_jobs'] == [
-            {
-                'duration_ms': 5,
-                'error_message': 'boom',
-                'error_type': 'ValueError',
-                'job': 'seed',
-                'status': 'failed',
-            },
-        ]
+        assert len(result['executed_jobs']) == 1
+        failed_job = result['executed_jobs'][0]
+        assert failed_job['duration_ms'] == 5
+        assert failed_job['error_message'] == 'boom'
+        assert failed_job['error_type'] == 'ValueError'
+        assert failed_job['job'] == 'seed'
+        assert failed_job['sequence_index'] == 0
+        assert failed_job['status'] == 'failed'
+        assert isinstance(failed_job['started_at'], str)
+        assert isinstance(failed_job['finished_at'], str)
 
     def test_run_treats_missing_transform_registry_as_noop(
         self,

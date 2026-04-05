@@ -22,7 +22,9 @@ __all__ = [
     # Types
     'HistoryFollowOption',
     'HistoryJsonOption',
+    'HistoryLevelOption',
     'HistoryLimitOption',
+    'HistoryPipelineOption',
     'HistoryRawOption',
     'HistorySinceOption',
     'HistoryStatusOption',
@@ -54,6 +56,17 @@ HistoryJsonOption = Annotated[
     ),
 ]
 
+HistoryLevelOption = Annotated[
+    Literal['run', 'job'],
+    typer.Option(
+        '--level',
+        **_typer_value_option_kwargs(
+            'Query run-level or job-level persisted history.',
+            show_default=True,
+        ),
+    ),
+]
+
 HistoryLimitOption = Annotated[
     int | None,
     typer.Option(
@@ -62,6 +75,14 @@ HistoryLimitOption = Annotated[
         **_typer_value_option_kwargs(
             'Maximum number of history records to emit.',
         ),
+    ),
+]
+
+HistoryPipelineOption = Annotated[
+    str | None,
+    typer.Option(
+        '--pipeline',
+        **_typer_value_option_kwargs('Filter persisted history by pipeline name.'),
     ),
 ]
 
@@ -110,7 +131,7 @@ HistoryUntilOption = Annotated[
 ]
 
 ReportGroupByOption = Annotated[
-    Literal['day', 'job', 'status'],
+    Literal['day', 'job', 'pipeline', 'run', 'status'],
     typer.Option(
         '--group-by',
         **_typer_value_option_kwargs(

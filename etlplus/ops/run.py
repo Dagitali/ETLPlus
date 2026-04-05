@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
+from datetime import UTC
+from datetime import datetime
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -227,15 +229,21 @@ class _RunPlanTracker:
         job_name: str,
         *,
         blocked_by: list[str],
+        sequence_index: int,
+        timestamp: str,
     ) -> None:
         """Record a skipped job caused by failed upstream dependencies."""
         self.skipped_job_names.append(job_name)
         self._skipped_lookup.add(job_name)
         self.executed_jobs.append(
             {
+                'duration_ms': 0,
+                'finished_at': timestamp,
                 'job': job_name,
                 'reason': 'upstream_failed',
+                'sequence_index': sequence_index,
                 'skipped_due_to': blocked_by,
+                'started_at': timestamp,
                 'status': 'skipped',
             },
         )
@@ -249,6 +257,9 @@ class _RunPlanTracker:
         *,
         exc: Exception,
         duration_ms: int,
+        finished_at: str,
+        sequence_index: int,
+        started_at: str,
     ) -> None:
         """Record a failed job execution."""
         self.failed_job_names.append(job_name)
@@ -258,7 +269,10 @@ class _RunPlanTracker:
                 'duration_ms': duration_ms,
                 'error_message': str(exc),
                 'error_type': type(exc).__name__,
+                'finished_at': finished_at,
                 'job': job_name,
+                'sequence_index': sequence_index,
+                'started_at': started_at,
                 'status': 'failed',
             },
         )
@@ -272,6 +286,9 @@ class _RunPlanTracker:
         *,
         result: JSONDict,
         duration_ms: int,
+        finished_at: str,
+        sequence_index: int,
+        started_at: str,
     ) -> None:
         """Record a successful job execution."""
         result_status = result.get('status')
@@ -279,9 +296,12 @@ class _RunPlanTracker:
         self.executed_jobs.append(
             {
                 'duration_ms': duration_ms,
+                'finished_at': finished_at,
                 'job': job_name,
                 'result': result,
                 'result_status': result_status,
+                'sequence_index': sequence_index,
+                'started_at': started_at,
                 'status': 'succeeded',
             },
         )
@@ -748,6 +768,13 @@ def _apply_operations(
     return transform(data, operations)
 
 
+def _duration_ms(
+    started_perf: float,
+) -> int:
+    """Convert a perf-counter start time into elapsed milliseconds."""
+    return int((perf_counter() - started_perf) * 1000)
+
+
 def _require_record_payload(
     data: DataSourceArg,
 ) -> JSONData:
@@ -777,11 +804,18 @@ def _run_job_plan(
 
     for job_obj in jobs:
         job_name = _require_job_name(job_obj)
+        sequence_index = tracker.ordered_job_names.index(job_name)
         blocked_by = tracker.blocked_dependencies(job_obj)
         if blocked_by:
-            tracker.record_skipped(job_name, blocked_by=blocked_by)
+            tracker.record_skipped(
+                job_name,
+                blocked_by=blocked_by,
+                sequence_index=sequence_index,
+                timestamp=_utc_now_iso(),
+            )
             continue
 
+        started_at = _utc_now_iso()
         started_perf = perf_counter()
         try:
             result = _run_job_config(
@@ -793,6 +827,9 @@ def _run_job_plan(
                 job_name,
                 exc=exc,
                 duration_ms=_duration_ms(started_perf),
+                finished_at=_utc_now_iso(),
+                sequence_index=sequence_index,
+                started_at=started_at,
             )
             if not continue_on_fail:
                 break
@@ -802,6 +839,9 @@ def _run_job_plan(
             job_name,
             result=result,
             duration_ms=_duration_ms(started_perf),
+            finished_at=_utc_now_iso(),
+            sequence_index=sequence_index,
+            started_at=started_at,
         )
     return tracker.result()
 
@@ -859,11 +899,9 @@ def _require_path_like(
     raise TypeError(message)
 
 
-def _duration_ms(
-    started_perf: float,
-) -> int:
-    """Convert a perf-counter start time into elapsed milliseconds."""
-    return int((perf_counter() - started_perf) * 1000)
+def _utc_now_iso() -> str:
+    """Return the current UTC timestamp in ``Z``-suffixed ISO-8601 form."""
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
 
 
 def _validate_payload(
