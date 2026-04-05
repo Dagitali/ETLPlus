@@ -58,3 +58,126 @@ class TestFailureMessage:
         cases.
         """
         assert run_mod._failure_message(result) == expected
+
+
+class TestJobRunPersistence:
+    """Unit tests for per-job DAG history persistence helpers."""
+
+    @pytest.mark.parametrize(
+        'result',
+        [
+            pytest.param(None, id='missing-result'),
+            pytest.param({'executed_jobs': 'bad-shape'}, id='invalid-executed-jobs'),
+        ],
+    )
+    def test_persist_job_runs_ignores_unsupported_result_shapes(
+        self,
+        result: object,
+    ) -> None:
+        """
+        Test that unsupported result shapes do not emit any job-run records.
+        """
+
+        class _FakeHistoryStore:
+            def __init__(self) -> None:
+                self.records: list[object] = []
+
+            def record_job_run(self, record: object) -> None:
+                self.records.append(record)
+
+        history_store = _FakeHistoryStore()
+
+        run_mod._persist_job_runs(
+            history_store,
+            pipeline_name='pipeline-a',
+            result=result,
+            run_id='run-123',
+        )
+
+        assert history_store.records == []
+
+    def test_persist_job_runs_records_supported_dag_entries(self) -> None:
+        """
+        Test that DAG execution summaries persist one job record per valid row.
+        """
+
+        class _FakeHistoryStore:
+            def __init__(self) -> None:
+                self.records: list[object] = []
+
+            def record_job_run(self, record: object) -> None:
+                self.records.append(record)
+
+        history_store = _FakeHistoryStore()
+
+        run_mod._persist_job_runs(
+            history_store,
+            pipeline_name='pipeline-a',
+            result={
+                'executed_jobs': [
+                    {
+                        'duration_ms': 25,
+                        'job': 'seed',
+                        'result': {'status': 'success', 'rows': 10},
+                        'result_status': 'success',
+                        'sequence_index': 0,
+                        'started_at': '2026-03-23T00:00:00Z',
+                        'finished_at': '2026-03-23T00:00:01Z',
+                        'status': 'succeeded',
+                    },
+                    {
+                        'job': 'publish',
+                        'reason': 'upstream_failed',
+                        'skipped_due_to': ['seed'],
+                        'started_at': '2026-03-23T00:00:01Z',
+                        'finished_at': '2026-03-23T00:00:01Z',
+                        'status': 'skipped',
+                    },
+                    {
+                        'job': '',
+                        'status': 'succeeded',
+                    },
+                ],
+            },
+            run_id='run-123',
+        )
+
+        assert history_store.records == [
+            run_mod.JobRunRecord(
+                run_id='run-123',
+                job_name='seed',
+                pipeline_name='pipeline-a',
+                sequence_index=0,
+                started_at='2026-03-23T00:00:00Z',
+                finished_at='2026-03-23T00:00:01Z',
+                duration_ms=25,
+                records_in=None,
+                records_out=None,
+                status='succeeded',
+                result_status='success',
+                error_type=None,
+                error_message=None,
+                skipped_due_to=None,
+                result_summary={'status': 'success', 'rows': 10},
+            ),
+            run_mod.JobRunRecord(
+                run_id='run-123',
+                job_name='publish',
+                pipeline_name='pipeline-a',
+                sequence_index=1,
+                started_at='2026-03-23T00:00:01Z',
+                finished_at='2026-03-23T00:00:01Z',
+                duration_ms=None,
+                records_in=None,
+                records_out=None,
+                status='skipped',
+                result_status=None,
+                error_type=None,
+                error_message=None,
+                skipped_due_to=['seed'],
+                result_summary={
+                    'reason': 'upstream_failed',
+                    'skipped_due_to': ['seed'],
+                },
+            ),
+        ]
