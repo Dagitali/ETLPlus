@@ -13,6 +13,8 @@ import socket
 import sqlite3
 from abc import ABC
 from abc import abstractmethod
+from collections.abc import Callable
+from collections.abc import Hashable
 from collections.abc import Iterator
 from collections.abc import Mapping
 from contextlib import closing
@@ -51,6 +53,13 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _non_empty_text(
+    value: object,
+) -> str | None:
+    """Return one non-empty string value or ``None``."""
+    return value if isinstance(value, str) and value else None
+
+
 def _deserialize_result_summary(
     result_summary: str | None,
 ) -> JSONData | None:
@@ -66,8 +75,7 @@ def _deserialize_string_list(
     """Deserialize one optional JSON string list."""
     if payload is None:
         return None
-    values = json.loads(payload)
-    if not isinstance(values, list):
+    if not isinstance(values := json.loads(payload), list):
         return None
     return [value for value in values if isinstance(value, str)]
 
@@ -86,6 +94,24 @@ def _file_sha256(
     return digest.hexdigest()
 
 
+def _job_run_record_key(
+    record: Mapping[str, Any],
+) -> tuple[str, str] | None:
+    """Return the merge key for one persisted job-level record."""
+    if (run_id := _non_empty_text(record.get('run_id'))) is None:
+        return None
+    if (job_name := _non_empty_text(record.get('job_name'))) is None:
+        return None
+    return (run_id, job_name)
+
+
+def _run_record_key(
+    record: Mapping[str, Any],
+) -> str | None:
+    """Return the merge key for one persisted run-level record."""
+    return _non_empty_text(record.get('run_id'))
+
+
 def _serialize_result_summary(
     result_summary: JSONData | None,
 ) -> str | None:
@@ -99,9 +125,7 @@ def _serialize_string_list(
     values: list[str] | None,
 ) -> str | None:
     """Serialize one optional string list for persistence."""
-    if values is None:
-        return None
-    return serialize_json(values)
+    return None if values is None else serialize_json(values)
 
 
 def _sqlite_job_run_payload(
@@ -137,6 +161,19 @@ def _sqlite_row_payload(
             cast(str | None, payload['skipped_due_to']),
         )
     return payload
+
+
+def _with_record_metadata(
+    payload: Mapping[str, Any],
+    *,
+    record_level: str,
+    schema_version: int | None = None,
+) -> dict[str, Any]:
+    """Return one persisted payload with history metadata fields applied."""
+    metadata: dict[str, Any] = {'record_level': record_level}
+    if schema_version is not None:
+        metadata['schema_version'] = schema_version
+    return dict(payload) | metadata
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -519,51 +556,50 @@ class HistoryStore(ABC):
                     'ETLPLUS_HISTORY_BACKEND must be one of: sqlite, jsonl',
                 )
 
+    # -- Internal Instance Methods -- #
+
+    def _iter_merged_records(
+        self,
+        *,
+        record_level: str,
+        key_fn: Callable[[Mapping[str, Any]], Hashable | None],
+        field_names: tuple[str, ...],
+    ) -> Iterator[dict[str, Any]]:
+        """Yield merged history records for one persisted record level."""
+        merged_by_key: dict[Hashable, dict[str, Any]] = {}
+        key_order: list[Hashable] = []
+
+        for record in self.iter_records():
+            if self._record_level(record) != record_level:
+                continue
+            if (key := key_fn(record)) is None:
+                continue
+            if key not in merged_by_key:
+                merged_by_key[key] = {}
+                key_order.append(key)
+            self._merge_record(merged_by_key[key], record)
+
+        for key in key_order:
+            merged = merged_by_key[key]
+            yield {field: merged.get(field) for field in field_names}
+
     # -- Instance Methods -- #
 
     def iter_runs(self) -> Iterator[dict[str, Any]]:
         """Yield one normalized run record per ``run_id`` from a history backend."""
-        merged_by_run_id: dict[str, dict[str, Any]] = {}
-        run_order: list[str] = []
-
-        for record in self.iter_records():
-            if self._record_level(record) != 'run':
-                continue
-            run_id = record.get('run_id')
-            if not isinstance(run_id, str) or not run_id:
-                continue
-            if run_id not in merged_by_run_id:
-                merged_by_run_id[run_id] = {}
-                run_order.append(run_id)
-            self._merge_record(merged_by_run_id[run_id], record)
-
-        for run_id in run_order:
-            merged = merged_by_run_id[run_id]
-            yield {field: merged.get(field) for field in _RUN_RECORD_FIELDS}
+        yield from self._iter_merged_records(
+            record_level='run',
+            key_fn=_run_record_key,
+            field_names=_RUN_RECORD_FIELDS,
+        )
 
     def iter_job_runs(self) -> Iterator[dict[str, Any]]:
         """Yield one normalized job-run record per ``(run_id, job_name)`` key."""
-        merged_by_job_key: dict[tuple[str, str], dict[str, Any]] = {}
-        job_order: list[tuple[str, str]] = []
-
-        for record in self.iter_records():
-            if self._record_level(record) != 'job':
-                continue
-            run_id = record.get('run_id')
-            job_name = record.get('job_name')
-            if not isinstance(run_id, str) or not run_id:
-                continue
-            if not isinstance(job_name, str) or not job_name:
-                continue
-            key = (run_id, job_name)
-            if key not in merged_by_job_key:
-                merged_by_job_key[key] = {}
-                job_order.append(key)
-            self._merge_record(merged_by_job_key[key], record)
-
-        for key in job_order:
-            merged = merged_by_job_key[key]
-            yield {field: merged.get(field) for field in _JOB_RUN_RECORD_FIELDS}
+        yield from self._iter_merged_records(
+            record_level='job',
+            key_fn=_job_run_record_key,
+            field_names=_JOB_RUN_RECORD_FIELDS,
+        )
 
     # -- Static Methods -- #
 
@@ -735,9 +771,12 @@ class JsonlHistoryStore(HistoryStore):
         record : RunRecord
             Initial run record to persist.
         """
-        payload = record.to_payload()
-        payload['record_level'] = 'run'
-        self._append_record(payload)
+        self._append_record(
+            _with_record_metadata(
+                record.to_payload(),
+                record_level='run',
+            ),
+        )
 
     def record_run_finished(
         self,
@@ -752,10 +791,13 @@ class JsonlHistoryStore(HistoryStore):
         completion : RunCompletion
             Stable completion details for the run.
         """
-        payload = completion.to_payload()
-        payload['record_level'] = 'run'
-        payload['schema_version'] = HISTORY_SCHEMA_VERSION
-        self._append_record(payload)
+        self._append_record(
+            _with_record_metadata(
+                completion.to_payload(),
+                record_level='run',
+                schema_version=HISTORY_SCHEMA_VERSION,
+            ),
+        )
 
     def record_job_run(
         self,
@@ -769,10 +811,13 @@ class JsonlHistoryStore(HistoryStore):
         record : JobRunRecord
             Persistable job-run record.
         """
-        payload = record.to_payload()
-        payload['record_level'] = 'job'
-        payload['schema_version'] = HISTORY_SCHEMA_VERSION
-        self._append_record(payload)
+        self._append_record(
+            _with_record_metadata(
+                record.to_payload(),
+                record_level='job',
+                schema_version=HISTORY_SCHEMA_VERSION,
+            ),
+        )
 
 
 class SQLiteHistoryStore(HistoryStore):
