@@ -105,7 +105,9 @@ class TestFileOptionHelpers:
         self,
         option_case: dict[str, Any],
     ) -> None:
-        """Mapping inputs should be normalized into concrete option objects."""
+        """
+        Test that mapping inputs are normalized into concrete option objects.
+        """
         case = option_case
         options = case['coerce'](case['mapping'])
 
@@ -119,12 +121,33 @@ class TestFileOptionHelpers:
         self,
         option_case: dict[str, Any],
     ) -> None:
-        """Existing option objects should be returned unchanged."""
+        """Test that existing option objects are returned unchanged."""
         case = option_case
         assert case['coerce'](case['instance']) is case['instance']
 
+    @pytest.mark.parametrize(
+        ('value', 'default', 'expected'),
+        [
+            pytest.param(None, 'utf-8', 'utf-8', id='default'),
+            pytest.param('utf-16', 'utf-8', 'utf-16', id='string'),
+            pytest.param(65001, 'utf-8', '65001', id='stringify'),
+        ],
+    )
+    def test_coerce_required_text(
+        self,
+        value: object,
+        default: str,
+        expected: str,
+    ) -> None:
+        """
+        Test that required text coercion preserves, defaults, or stringifies values.
+        """
+        assert options_mod._coerce_required_text(value, default=default) == expected
+
     def test_internal_coerce_file_options_rejects_invalid_object(self) -> None:
-        """Invalid non-mapping option objects should raise :class:`TypeError`."""
+        """
+        Test that invalid non-mapping option objects raise :class:`TypeError`.
+        """
         with pytest.raises(TypeError, match='options must be a mapping'):
             options_mod._coerce_file_options(
                 object(),
