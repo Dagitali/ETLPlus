@@ -196,14 +196,17 @@ These are the active follow-up items for the `v1.x` line.
 ### Next Patch Releases
 
 - Keep release docs, release automation, and the published version snippets aligned.
-- Preserve the current supported CLI/runtime contract while tightening quality incrementally.
+- Preserve the current supported CLI/runtime contract while tightening quality incrementally. This
+  now includes the documented run-history surface at both run and job levels: local `job_runs`
+  persistence plus the additive `history/status/report --level` and `--pipeline` query affordances.
 - Prefer low-risk follow-up that reduces support load without narrowing the stable surface by
   accident.
 
 ### Next Minor Release
 
-- Decide which observability and run-history capabilities graduate from implementation work to
-  documented stable surface.
+- Treat the run/job history query surface as stable and decide which additional observability
+  capabilities graduate next: traceback capture, raw job-level log inspection, UI affordances, and
+  OpenTelemetry adapters.
 - Review dependency-group ergonomics and installation footprint with actual user feedback.
 - Expand confidence coverage where the stable line has shown friction on platforms, large-file
   workflows, or optional backends.
