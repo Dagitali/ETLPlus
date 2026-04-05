@@ -751,9 +751,14 @@ Show the latest matching job row:
 etlplus status --level job --job file_to_file_customers
 ```
 
-Stream raw history events:
+Stream raw run-level history events:
 ```bash
 etlplus log --run-id 8e4a33d7 --follow
+```
+
+Stream raw job-level history events:
+```bash
+etlplus log --level job --pipeline customer_sync --status skipped --follow
 ```
 
 Aggregate grouped history metrics:
