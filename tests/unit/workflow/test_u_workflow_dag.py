@@ -51,7 +51,9 @@ class TestDagHelpers:
         ('jobs', 'expected'),
         [
             pytest.param(
-                [_job('a'), _job('b', 'a', 'a')], ['a', 'b'], id='duplicate-edges',
+                [_job('a'), _job('b', 'a', 'a')],
+                ['a', 'b'],
+                id='duplicate-edges',
             ),
             pytest.param(
                 [_job('b', 'a'), _job('c', 'b'), _job('a')],

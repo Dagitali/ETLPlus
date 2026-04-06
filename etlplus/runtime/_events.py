@@ -10,6 +10,8 @@ import sys
 from datetime import UTC
 from datetime import datetime
 from typing import Any
+from typing import TypedDict
+from typing import cast
 from uuid import uuid4
 
 from ..utils import serialize_json
@@ -31,6 +33,43 @@ __all__ = [
 
 EVENT_SCHEMA = 'etlplus.event.v1'
 EVENT_SCHEMA_VERSION = 1
+
+
+# SECTION: INTERNAL TYPED DICTS ============================================= #
+
+
+class _RuntimeEventBaseDict(TypedDict):
+    """Stable base envelope for one structured runtime event."""
+
+    command: str
+    event: str
+    lifecycle: str
+    run_id: str
+    schema: str
+    schema_version: int
+    timestamp: str
+
+
+class _RuntimeEventDict(_RuntimeEventBaseDict, total=False):
+    """Private internal event shape for known stable/additive event fields."""
+
+    config_path: str
+    continue_on_fail: bool
+    destination: str
+    duration_ms: int
+    error_message: str
+    error_type: str
+    etlplus_version: str
+    job: str | None
+    pipeline_name: str | None
+    result_status: str
+    run_all: bool
+    source: str
+    source_type: str
+    status: str
+    target: str
+    target_type: str | None
+    valid: bool
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -71,7 +110,7 @@ class RuntimeEvents:
         dict[str, Any]
             Structured event payload.
         """
-        return {
+        event: _RuntimeEventBaseDict = {
             'command': command,
             'event': f'{command}.{lifecycle}',
             'lifecycle': lifecycle,
@@ -79,7 +118,8 @@ class RuntimeEvents:
             'schema': EVENT_SCHEMA,
             'schema_version': EVENT_SCHEMA_VERSION,
             'timestamp': timestamp or RuntimeEvents.utc_now_iso(),
-        } | fields
+        }
+        return dict(cast(_RuntimeEventDict, dict(event) | fields))
 
     @staticmethod
     def create_run_id() -> str:

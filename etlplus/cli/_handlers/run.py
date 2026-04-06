@@ -218,10 +218,14 @@ def _persisted_run_summary(
     skipped_jobs = _coerce_string_list(result.get('skipped_jobs'))
     succeeded_jobs = _coerce_string_list(result.get('succeeded_jobs'))
     raw_continue_on_fail = result.get('continue_on_fail')
-    continue_on_fail = raw_continue_on_fail if isinstance(
-        raw_continue_on_fail,
-        bool,
-    ) else False
+    continue_on_fail = (
+        raw_continue_on_fail
+        if isinstance(
+            raw_continue_on_fail,
+            bool,
+        )
+        else False
+    )
 
     return cast(
         JSONData,
@@ -254,9 +258,7 @@ def _persisted_run_summary(
                 else len(ordered_jobs)
             ),
             'mode': (
-                result.get('mode')
-                if isinstance(result.get('mode'), str)
-                else 'all'
+                result.get('mode') if isinstance(result.get('mode'), str) else 'all'
             ),
             'ordered_jobs': ordered_jobs,
             'requested_job': (
@@ -372,9 +374,12 @@ def run_handler(
             status='failed',
             exc=exc,
         ),
+        continue_on_fail=continue_on_fail,
         config_path=config,
+        etlplus_version=__version__,
         job=job_name,
         pipeline_name=cfg.name,
+        run_all=run_all,
     ):
         result = run(
             job=job_name,
@@ -410,9 +415,11 @@ def run_handler(
             run_id=context.run_id,
             event_format=context.event_format,
             continue_on_fail=continue_on_fail,
+            config_path=config,
             duration_ms=_lifecycle.elapsed_ms(context.started_perf),
             error_message=_failure_message(result),
             error_type='RunExecutionFailed',
+            etlplus_version=__version__,
             job=job_name,
             pipeline_name=cfg.name,
             result_status=result_status,
@@ -427,6 +434,7 @@ def run_handler(
         pretty=pretty,
         config_path=config,
         continue_on_fail=continue_on_fail,
+        etlplus_version=__version__,
         job=job_name,
         pipeline_name=cfg.name,
         result_status=result_status,

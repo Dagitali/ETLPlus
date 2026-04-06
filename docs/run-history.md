@@ -113,8 +113,8 @@
 **CLI Output Conventions**
 - `etlplus run` emits a `run_id` in the output envelope:
   - `{ "status": "ok", "run_id": "...", "result": {...} }`
-  - DAG-style runs return a stable summary object in `result`, including `mode`, `ordered_jobs`,
-    `executed_jobs`, and aggregate counts.
+- DAG-style runs return a stable summary object in `result`, including `mode`, `ordered_jobs`,
+  `executed_jobs`, and aggregate counts.
 - `etlplus history` returns an array of normalized run objects by default and normalized job objects
   when `--level job` is used.
 - `etlplus history --json` explicitly requests JSON output.
@@ -129,6 +129,85 @@
 - DAG-aware persisted run summaries are intentionally compact at the run level; use `--level job`
   when you need per-job status, timing, skip reasons, or per-job result summaries.
 - All commands accept `--pretty` and respect `--quiet`.
+
+**Stable Normalized History Fields**
+
+- Normalized run records are the stable `v1.x` run-history shape and include:
+  - `run_id`
+  - `pipeline_name`
+  - `job_name`
+  - `config_path`
+  - `config_sha256`
+  - `status`
+  - `started_at`
+  - `finished_at`
+  - `duration_ms`
+  - `records_in`
+  - `records_out`
+  - `error_type`
+  - `error_message`
+  - `error_traceback`
+  - `result_summary`
+  - `host`
+  - `pid`
+  - `etlplus_version`
+- Normalized job records are the stable `v1.x` DAG job-history shape and include:
+  - `run_id`
+  - `job_name`
+  - `pipeline_name`
+  - `sequence_index`
+  - `started_at`
+  - `finished_at`
+  - `duration_ms`
+  - `records_in`
+  - `records_out`
+  - `status`
+  - `result_status`
+  - `error_type`
+  - `error_message`
+  - `skipped_due_to`
+  - `result_summary`
+- These normalized run/job shapes are what `history`, `status`, and `report` consume and return
+  across both SQLite and JSONL backends.
+- Raw backend append records are intentionally lower-level and backend-oriented:
+  - JSONL raw records may be partial updates and include backend metadata such as `record_level`
+    and `schema_version`
+  - SQLite storage layout is an implementation detail behind the normalized read shape
+
+**Event-To-History Mapping For `etlplus run`**
+
+| Event stream field | Persisted history field(s) | Notes |
+| --- | --- | --- |
+| `run_id` | `runs.run_id`, `job_runs.run_id` | Stable join key across STDERR events, STDOUT payloads, and persisted history. |
+| `run.started.timestamp` | `runs.started_at` | Same command invocation start time in ISO-8601 UTC form. |
+| `run.completed.duration_ms`, `run.failed.duration_ms` | `runs.duration_ms` | Semantically the same elapsed run duration. |
+| `run.completed.status`, `run.failed.status` | `runs.status` | Event statuses use command-output semantics (`ok`/`error`); persisted statuses use terminal run-state semantics (`succeeded`/`failed`). |
+| `run.failed.error_type` | `runs.error_type` | Stable failure type when present. |
+| `run.failed.error_message` | `runs.error_message` | Stable failure message when present. |
+| `run.result_status` | `runs.result_summary.final_result_status` | Present on completed/handled-failed `run` events when a run result exposes one. |
+| `job`, `pipeline_name`, `config_path`, `run_all`, `continue_on_fail`, `etlplus_version` | `runs.job_name`, `runs.pipeline_name`, `runs.config_path`, `runs.etlplus_version`, `runs.result_summary` | Stable run context is shared across the event stream and persisted run metadata. |
+
+Fields with no direct persisted counterpart today:
+
+- `event`
+- `command`
+- `lifecycle`
+- `timestamp`
+
+Stable persisted fields with no direct event-stream counterpart today:
+
+- `config_sha256`
+- `records_in`
+- `records_out`
+- `error_traceback`
+- `host`
+- `pid`
+- full run/job `result_summary`
+- `job_runs.sequence_index`
+- `job_runs.skipped_due_to`
+
+DAG job detail is intentionally persisted in `job_runs`; ETLPlus does not currently promise a
+one-event-per-job stream contract.
 
 **Compatibility Guidance**
 - The normalized persisted fields in `runs` and `job_runs` are the stable local-history contract for

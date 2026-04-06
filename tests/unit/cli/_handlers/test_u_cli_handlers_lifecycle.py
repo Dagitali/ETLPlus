@@ -456,7 +456,9 @@ class TestRecordRunCompletion:
         exc: Exception | None,
         expected_state: RunState,
     ) -> None:
-        """Run completions should persist either success or failure metadata."""
+        """
+        Test that run completions persist either success or failure metadata.
+        """
         store = _FakeHistoryStore()
         monkeypatch.setattr(
             lifecycle_mod.RuntimeEvents,
@@ -481,6 +483,53 @@ class TestRecordRunCompletion:
             RunCompletion(
                 run_id=context.run_id,
                 state=expected_state,
+            ),
+        ]
+
+    def test_records_handled_failure_without_exception_from_explicit_fields(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that handled failures persist explicit error fields without an
+        exception object.
+        """
+        store = _FakeHistoryStore()
+        context = _command_context(
+            run_id='run-handled-1',
+            started_perf=5.0,
+        )
+        monkeypatch.setattr(
+            lifecycle_mod.RuntimeEvents,
+            'utc_now_iso',
+            lambda: '2026-04-01T21:00:00Z',
+        )
+        monkeypatch.setattr(
+            lifecycle_mod,
+            'elapsed_ms',
+            lambda _started_perf: 999,
+        )
+
+        lifecycle_mod.record_run_completion(
+            store,
+            context,
+            status='failed',
+            error_message='DAG execution failed',
+            error_type='RunExecutionFailed',
+            result_summary={'status': 'failed'},
+        )
+
+        assert store.completions == [
+            RunCompletion(
+                run_id='run-handled-1',
+                state=RunState(
+                    status='failed',
+                    finished_at='2026-04-01T21:00:00Z',
+                    duration_ms=999,
+                    result_summary={'status': 'failed'},
+                    error_type='RunExecutionFailed',
+                    error_message='DAG execution failed',
+                ),
             ),
         ]
 

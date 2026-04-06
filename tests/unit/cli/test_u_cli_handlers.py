@@ -155,7 +155,9 @@ class TestCheckHandler:
         dummy_cfg: Config,
         capture_io: CaptureIo,
     ) -> None:
-        """Graph mode should emit the ordered job graph summary."""
+        """
+        Test that graph mode emits the ordered job graph summary.
+        """
         _patch_config_from_yaml(monkeypatch, dummy_cfg)
         monkeypatch.setattr(
             check_mod._summary,
@@ -184,7 +186,9 @@ class TestCheckHandler:
         dummy_cfg: Config,
         capture_io: CaptureIo,
     ) -> None:
-        """Graph mode should surface graph validation errors as JSON."""
+        """
+        Test that graph mode surfaces graph validation errors as JSON.
+        """
         _patch_config_from_yaml(monkeypatch, dummy_cfg)
         monkeypatch.setattr(
             check_mod._summary,
@@ -266,7 +270,9 @@ class TestCheckHandler:
         )
 
     def test_requires_config_when_not_in_readiness_mode(self) -> None:
-        """Non-readiness check mode should require a config path."""
+        """
+        Test that non-readiness check mode requires a config path.
+        """
         with pytest.raises(
             ValueError,
             match='config is required unless readiness-only mode is used',
@@ -279,7 +285,7 @@ class TestCheckHandler:
         capture_io: CaptureIo,
     ) -> None:
         """
-        Test that strict check mode should emit the strict report before config
+        Test that strict check mode emits the strict report before config
         load.
         """
         config_loaded = {'value': False}
@@ -315,7 +321,9 @@ class TestCheckHandler:
         dummy_cfg: Config,
         capture_io: CaptureIo,
     ) -> None:
-        """Strict check mode should continue into config loading on success."""
+        """
+        Test that strict check mode continues into config loading on success.
+        """
         monkeypatch.setattr(
             handlers.ReadinessReportBuilder,
             'strict_config_report',
@@ -371,7 +379,9 @@ class TestInitHandler:
         tmp_path: Path,
         capture_io: CaptureIo,
     ) -> None:
-        """Init handler should overwrite scaffold files when force is enabled."""
+        """
+        Test that init handler overwrites scaffold files when force is enabled.
+        """
         project_dir = tmp_path / 'starter'
         data_dir = project_dir / 'data'
         data_dir.mkdir(parents=True)
@@ -395,7 +405,9 @@ class TestInitHandler:
         self,
         tmp_path: Path,
     ) -> None:
-        """Init handler should require force before overwriting scaffold files."""
+        """
+        Test that init handler requires force before overwriting scaffold files.
+        """
         project_dir = tmp_path / 'starter'
         project_dir.mkdir()
         (project_dir / 'pipeline.yml').write_text('name: existing\n', encoding='utf-8')
@@ -407,7 +419,9 @@ class TestInitHandler:
         self,
         tmp_path: Path,
     ) -> None:
-        """Init handler should reject a target path that already points to a file."""
+        """
+        Test that init handler rejects a target path that already points to a file.
+        """
         file_path = tmp_path / 'starter'
         file_path.write_text('not-a-directory\n', encoding='utf-8')
 
@@ -420,7 +434,9 @@ class TestInitHandler:
         tmp_path: Path,
         conflicting_dir: str,
     ) -> None:
-        """Init handler should reject files where scaffold directories are needed."""
+        """
+        Test that init handler rejects files where scaffold directories are needed.
+        """
         project_dir = tmp_path / 'starter'
         project_dir.mkdir()
         (project_dir / conflicting_dir).write_text('conflict\n', encoding='utf-8')
@@ -436,7 +452,9 @@ class TestInitHandler:
         tmp_path: Path,
         capture_io: CaptureIo,
     ) -> None:
-        """Init handler should create starter files and emit a JSON payload."""
+        """
+        Test that init handler creates starter files and emits a JSON payload.
+        """
         project_dir = tmp_path / 'starter'
 
         assert handlers.init_handler(directory=str(project_dir)) == 0
@@ -455,7 +473,10 @@ class TestInitHandlerInternalHelpers:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Next-step suggestions should omit cd when already in the target root."""
+        """
+        Test that next-step suggestions omit cd when already in the target
+        root.
+        """
         monkeypatch.chdir(tmp_path)
 
         steps = init_mod._next_steps(tmp_path)
@@ -470,7 +491,9 @@ class TestInitHandlerInternalHelpers:
         self,
         tmp_path: Path,
     ) -> None:
-        """Direct scaffold file writes should reject directory targets."""
+        """
+        Test that direct scaffold file writes reject directory targets.
+        """
         target_dir = tmp_path / 'pipeline.yml'
         target_dir.mkdir()
 
@@ -545,7 +568,9 @@ class TestCliHandlersInternalHelpers:
         assert result['transforms'] == ['trim', 'dedupe']
 
     def test_complete_output_rejects_unknown_modes(self) -> None:
-        """Unknown completion modes should fail fast with an assertion."""
+        """
+        Test that unknown completion modes fail fast with an assertion.
+        """
         context = handlers._CommandContext(
             command='extract',
             event_format=None,
@@ -568,7 +593,9 @@ class TestCliHandlersInternalHelpers:
                 )
 
     def test_failure_boundary_invokes_on_error_callback(self) -> None:
-        """The failure boundary should call its optional error callback."""
+        """
+        Test that the failure boundary calls its optional error callback.
+        """
         captured: dict[str, object] = {}
 
         def on_error(exc: Exception) -> None:
@@ -1363,6 +1390,23 @@ class TestRunHandler:
             'started',
             'failed',
         ]
+        assert lifecycle_calls[1] == {
+            'command': 'run',
+            'lifecycle': 'failed',
+            'run_id': 'run-all-1',
+            'event_format': None,
+            'continue_on_fail': True,
+            'config_path': 'pipeline.yml',
+            'duration_ms': ANY,
+            'error_message': 'Job "seed" failed during DAG execution',
+            'error_type': 'RunExecutionFailed',
+            'etlplus_version': run_mod.__version__,
+            'job': None,
+            'pipeline_name': dummy_cfg.name,
+            'result_status': 'failed',
+            'run_all': True,
+            'status': 'error',
+        }
         assert_emit_json(
             capture_io,
             {
@@ -1389,6 +1433,77 @@ class TestRunHandler:
             },
             pretty=False,
         )
+
+    def test_run_exception_emits_failed_event_with_stable_context(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        dummy_cfg: Config,
+    ) -> None:
+        """
+        Test that unhandled run exceptions still emit the stable failed event
+        context.
+        """
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
+        monkeypatch.setattr(
+            handlers.RuntimeEvents,
+            'create_run_id',
+            lambda: 'run-exc-1',
+        )
+
+        class _FakeHistoryStore:
+            def record_run_started(self, record: object) -> None:
+                _ = record
+
+            def record_job_run(self, record: object) -> None:
+                _ = record
+
+            def record_run_finished(self, completion: object) -> None:
+                _ = completion
+
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: _FakeHistoryStore(),
+        )
+        lifecycle_calls: list[dict[str, object]] = []
+        monkeypatch.setattr(
+            run_mod._lifecycle,
+            'emit_lifecycle_event',
+            lambda **kwargs: lifecycle_calls.append(kwargs),
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'run',
+            lambda **kwargs: (_ for _ in ()).throw(TypeError('bad connector path')),
+        )
+
+        with pytest.raises(TypeError, match='bad connector path'):
+            handlers.run_handler(
+                config='pipeline.yml',
+                job='job1',
+                pretty=False,
+            )
+
+        assert [call['lifecycle'] for call in lifecycle_calls] == [
+            'started',
+            'failed',
+        ]
+        assert lifecycle_calls[1] == {
+            'command': 'run',
+            'lifecycle': 'failed',
+            'run_id': 'run-exc-1',
+            'event_format': None,
+            'config_path': 'pipeline.yml',
+            'continue_on_fail': False,
+            'duration_ms': ANY,
+            'error_message': 'bad connector path',
+            'error_type': 'TypeError',
+            'etlplus_version': run_mod.__version__,
+            'job': 'job1',
+            'pipeline_name': dummy_cfg.name,
+            'run_all': False,
+            'status': 'error',
+        }
 
 
 class TestSourceMappingPayloadHandlers:
@@ -1421,7 +1536,8 @@ class TestSourceMappingPayloadHandlers:
         mapping_arg: str,
         expected_error: str,
     ) -> None:
-        """Non-mapping side payloads should raise :class:`ValueError`."""
+        """
+        Test that non-mapping side payloads raise :class:`ValueError`."""
         _patch_resolve_cli_payload_map(
             monkeypatch,
             {
@@ -1631,7 +1747,8 @@ class TestValidateHandler:
         result: dict[str, object],
         expected: dict[str, object],
     ) -> None:
-        """Validation should emit JSON unless it is writing a target file."""
+        """
+        Test that validation emits JSON unless it is writing a target file."""
         _patch_resolve_cli_payload_map(
             monkeypatch,
             _validation_payload_map(),
