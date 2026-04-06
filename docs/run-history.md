@@ -70,9 +70,12 @@
     `result_summary`.
   - On failure: update `status=failed`, set error fields.
   - DAG-aware `run --job` and `run --all` executions persist both:
-    - a top-level run summary in `runs.result_summary`
+    - a concise top-level run summary in `runs.result_summary` with aggregate DAG outcome fields
+      such as `mode`, `ordered_jobs`, counts, final job/result status, and succeeded/failed/skipped
+      job-name lists
     - one per-job row in `job_runs` (SQLite) or one `record_level=job` event sequence (JSONL) for
-      each executed/succeeded/failed/skipped job, including plan order and timing
+      each executed/succeeded/failed/skipped job, including plan order, timing, terminal status,
+      and per-job `result_summary`
 - Remaining work:
   - capture traceback conditionally
 
@@ -123,13 +126,17 @@
 - `etlplus report` returns grouped JSON with a top-level summary and grouped rows,
   including duration extrema and success-rate metrics, or a Markdown table when
   `--table` is used.
+- DAG-aware persisted run summaries are intentionally compact at the run level; use `--level job`
+  when you need per-job status, timing, skip reasons, or per-job result summaries.
 - All commands accept `--pretty` and respect `--quiet`.
 
 **Compatibility Guidance**
 - The normalized persisted fields in `runs` and `job_runs` are the stable local-history contract for
   `v1.x`.
-- `result_summary` is extensible at both run and job levels: DAG-aware runs may add new nested keys
-  without a schema-version bump as long as existing keys keep their meaning.
+- `result_summary` is extensible at both run and job levels: DAG-aware run-level summaries stay
+  compact and aggregate-oriented, while detailed per-job execution data lives in `job_runs`.
+  Additive nested keys may still be introduced without a schema-version bump as long as existing
+  keys keep their meaning.
 - Backend differences (SQLite rows vs JSONL append records) should normalize to the same stable
   run/job shapes for `history`, `status`, and `report`.
 - Any breaking change to the top-level persisted run/job shapes or the meaning/type of existing
