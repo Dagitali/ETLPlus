@@ -46,6 +46,7 @@ class TestCommandsInternalHelpers:
         """Command helpers should expose only the intended public surface."""
         assert helpers_mod.__all__ == [
             'call_handler',
+            'call_history_handler',
             'fail_usage',
             'normalize_file_format',
             'parse_json_option',
