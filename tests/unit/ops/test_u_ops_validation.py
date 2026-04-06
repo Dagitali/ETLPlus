@@ -70,7 +70,10 @@ class TestNormalizationHelpers:
                 id='phase-valid',
             ),
             pytest.param(
-                '_normalize_phase', 'unknown', 'before_transform', id='phase-invalid',
+                '_normalize_phase',
+                'unknown',
+                'before_transform',
+                id='phase-invalid',
             ),
             pytest.param('_normalize_window', None, 'both', id='window-none'),
             pytest.param(
@@ -83,7 +86,10 @@ class TestNormalizationHelpers:
             pytest.param('_normalize_severity', None, 'error', id='severity-none'),
             pytest.param('_normalize_severity', 'warn', 'warn', id='severity-valid'),
             pytest.param(
-                '_normalize_severity', 'unknown', 'error', id='severity-invalid',
+                '_normalize_severity',
+                'unknown',
+                'error',
+                id='severity-invalid',
             ),
         ],
     )
@@ -102,7 +108,9 @@ class TestNormalizationHelpers:
         ('rules', 'expected'),
         [
             pytest.param(
-                {'name': 'customer_rules'}, 'customer_rules', id='named-ruleset',
+                {'name': 'customer_rules'},
+                'customer_rules',
+                id='named-ruleset',
             ),
             pytest.param({}, None, id='missing-name'),
             pytest.param(cast(Any, object()), None, id='non-mapping'),
@@ -167,7 +175,13 @@ class TestValidationSettings:
                 id='missing-rules',
             ),
             pytest.param(
-                True, {}, 'before_transform', 'both', 'warn', False, id='empty-rules',
+                True,
+                {},
+                'before_transform',
+                'both',
+                'warn',
+                False,
+                id='empty-rules',
             ),
             pytest.param(
                 True,
@@ -216,14 +230,23 @@ class TestValidationSettings:
             pytest.param('both', 'before_transform', True, id='both-before'),
             pytest.param('both', 'after_transform', True, id='both-after'),
             pytest.param(
-                'before_transform', 'before_transform', True, id='before-before',
+                'before_transform',
+                'before_transform',
+                True,
+                id='before-before',
             ),
             pytest.param('after_transform', 'after_transform', True, id='after-after'),
             pytest.param(
-                'before_transform', 'after_transform', False, id='before-after',
+                'before_transform',
+                'after_transform',
+                False,
+                id='before-after',
             ),
             pytest.param(
-                'after_transform', 'before_transform', False, id='after-before',
+                'after_transform',
+                'before_transform',
+                False,
+                id='after-before',
             ),
         ],
     )
