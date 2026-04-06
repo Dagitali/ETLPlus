@@ -61,6 +61,27 @@ def _normalized_run(**overrides: object) -> dict[str, object]:
     } | overrides
 
 
+def _normalized_job(**overrides: object) -> dict[str, object]:
+    """Build one normalized job payload with stable default ``None`` fields."""
+    return {
+        'duration_ms': None,
+        'error_message': None,
+        'error_type': None,
+        'finished_at': None,
+        'job_name': None,
+        'pipeline_name': None,
+        'records_in': None,
+        'records_out': None,
+        'result_status': None,
+        'result_summary': None,
+        'run_id': None,
+        'sequence_index': None,
+        'skipped_due_to': None,
+        'started_at': None,
+        'status': None,
+    } | overrides
+
+
 def _patch_history_store_records(
     monkeypatch: pytest.MonkeyPatch,
     records: list[dict[str, object]],
@@ -601,7 +622,10 @@ class TestHistoryHelperFunctions:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Top-level history loading should delegate through ``_HistoryQuery``."""
+        """
+        Test that top-level history loading delegates through
+        :class:`_HistoryQuery`.
+        """
         recorded: dict[str, object] = {}
 
         def fake_load(
@@ -978,6 +1002,53 @@ class TestReportHandler:
 
 class TestStatusHandler:
     """Unit tests for :func:`status_handler`."""
+
+    def test_emits_latest_matching_normalized_job_for_job_level_status(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """
+        Test that job-level status emits the full normalized DAG job record
+        shape.
+        """
+        _patch_history_store_records(
+            monkeypatch,
+            [
+                {
+                    'duration_ms': 1000,
+                    'finished_at': '2026-03-23T00:00:01Z',
+                    'job_name': 'seed',
+                    'pipeline_name': 'pipeline-a',
+                    'record_level': 'job',
+                    'result_status': 'success',
+                    'run_id': 'run-1',
+                    'sequence_index': 0,
+                    'started_at': '2026-03-23T00:00:00Z',
+                    'status': 'succeeded',
+                },
+            ],
+        )
+
+        assert (
+            history_mod.status_handler(level='job', pretty=False, run_id='run-1')
+            == 0
+        )
+        assert_emit_json(
+            capture_io,
+            _normalized_job(
+                duration_ms=1000,
+                finished_at='2026-03-23T00:00:01Z',
+                job_name='seed',
+                pipeline_name='pipeline-a',
+                result_status='success',
+                run_id='run-1',
+                sequence_index=0,
+                started_at='2026-03-23T00:00:00Z',
+                status='succeeded',
+            ),
+            pretty=False,
+        )
 
     @pytest.mark.parametrize(
         ('records', 'kwargs', 'pretty', 'expected_exit', 'expected_payload'),
