@@ -371,18 +371,7 @@ class TestModuleHelpers:
 class TestHistoryStoreBase:
     """Unit tests for the `HistoryStore` base class and merge helpers."""
 
-    def test_history_store_coerce_state_dir_defaults_without_environment(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that state directory coercion falls back to the package default.
-        """
-        monkeypatch.delenv('ETLPLUS_STATE_DIR', raising=False)
-
-        assert mod.HistoryStore._coerce_state_dir() == Path('~/.etlplus').expanduser()
-
-    def test_history_store_abstract_methods_raise_not_implemented(
+    def test_abstract_methods_raise_not_implemented(
         self,
         sample_job_run_record: mod.JobRunRecord,
         sample_record: mod.RunRecord,
@@ -404,6 +393,78 @@ class TestHistoryStoreBase:
             mod.HistoryStore.record_job_run(history_store, sample_job_run_record)
 
     @pytest.mark.parametrize(
+        ('backend', 'path_name'),
+        [
+            pytest.param('jsonl', 'history.jsonl', id='jsonl'),
+            pytest.param('sqlite', 'history.sqlite', id='sqlite'),
+        ],
+    )
+    def test_backends_normalize_to_same_documented_run_and_job_shapes(
+        self,
+        tmp_path: Path,
+        sample_job_run_record: mod.JobRunRecord,
+        sample_record: mod.RunRecord,
+        backend: str,
+        path_name: str,
+    ) -> None:
+        """
+        Both backends should normalize persisted run and job data to the same
+        documented shapes.
+        """
+        path = tmp_path / path_name
+        store: mod.HistoryStore = (
+            mod.JsonlHistoryStore(path)
+            if backend == 'jsonl'
+            else mod.SQLiteHistoryStore(path)
+        )
+        completion = mod.RunCompletion(
+            run_id=sample_record.run_id,
+            state=mod.RunState(
+                status='succeeded',
+                finished_at='2026-03-23T00:00:05Z',
+                duration_ms=5000,
+                result_summary={'rows': 10},
+            ),
+        )
+        expected_run = sample_record.to_payload() | {
+            'duration_ms': 5000,
+            'finished_at': '2026-03-23T00:00:05Z',
+            'result_summary': {'rows': 10},
+            'status': 'succeeded',
+        }
+        expected_job_run = sample_job_run_record.to_payload()
+
+        store.record_run_started(sample_record)
+        store.record_run_finished(completion)
+        store.record_job_run(sample_job_run_record)
+
+        assert list(store.iter_runs()) == [expected_run]
+        assert list(store.iter_job_runs()) == [expected_job_run]
+
+    def test_coerce_state_dir_defaults_without_environment(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that state directory coercion falls back to the package default.
+        """
+        monkeypatch.delenv('ETLPLUS_STATE_DIR', raising=False)
+
+        assert mod.HistoryStore._coerce_state_dir() == Path('~/.etlplus').expanduser()
+
+    def test_from_environment_rejects_invalid_backend(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that unknown persisted-history backends fail fast."""
+        monkeypatch.setenv('ETLPLUS_HISTORY_BACKEND', 'csv')
+        monkeypatch.setenv('ETLPLUS_STATE_DIR', str(tmp_path))
+
+        with pytest.raises(ValueError, match='sqlite, jsonl'):
+            mod.HistoryStore.from_environment()
+
+    @pytest.mark.parametrize(
         ('backend', 'expected_type', 'path_attr', 'path_name'),
         [
             pytest.param(
@@ -422,7 +483,7 @@ class TestHistoryStoreBase:
             ),
         ],
     )
-    def test_history_store_from_environment_selects_supported_backend(
+    def test_from_environment_selects_supported_backend(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -446,73 +507,7 @@ class TestHistoryStoreBase:
         assert isinstance(store, expected_type)
         assert getattr(store, path_attr) == tmp_path / path_name
 
-    def test_history_store_from_environment_rejects_invalid_backend(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that unknown persisted-history backends fail fast."""
-        monkeypatch.setenv('ETLPLUS_HISTORY_BACKEND', 'csv')
-        monkeypatch.setenv('ETLPLUS_STATE_DIR', str(tmp_path))
-
-        with pytest.raises(ValueError, match='sqlite, jsonl'):
-            mod.HistoryStore.from_environment()
-
-    def test_history_store_iter_runs_skips_missing_run_ids(
-        self,
-        history_store_factory: Callable[[list[dict[str, object]]], _MemoryHistoryStore],
-    ) -> None:
-        """Test that run iteration ignores records without valid run identifiers."""
-        runs = list(
-            history_store_factory(
-                [
-                    {'run_id': None, 'status': 'ignored'},
-                    {'run_id': '', 'status': 'ignored'},
-                    {'run_id': 'run-123', 'status': 'running'},
-                    {'run_id': 'run-123', 'finished_at': None},
-                ],
-            ).iter_runs(),
-        )
-
-        assert runs == [
-            _normalized_run_payload(
-                run_id='run-123',
-                status='running',
-            ),
-        ]
-
-    def test_history_store_iter_runs_skips_non_run_records(
-        self,
-        history_store_factory: Callable[[list[dict[str, object]]], _MemoryHistoryStore],
-    ) -> None:
-        """
-        Test that run iteration ignores persisted job-level records entirely.
-        """
-        runs = list(
-            history_store_factory(
-                [
-                    {
-                        'record_level': 'job',
-                        'run_id': 'run-ignored',
-                        'status': 'succeeded',
-                    },
-                    {
-                        'record_level': 'run',
-                        'run_id': 'run-123',
-                        'status': 'running',
-                    },
-                ],
-            ).iter_runs(),
-        )
-
-        assert runs == [
-            _normalized_run_payload(
-                run_id='run-123',
-                status='running',
-            ),
-        ]
-
-    def test_history_store_iter_job_runs_skips_invalid_or_incomplete_keys(
+    def test_iter_job_runs_skips_invalid_or_incomplete_keys(
         self,
         history_store_factory: Callable[[list[dict[str, object]]], _MemoryHistoryStore],
     ) -> None:
@@ -566,6 +561,60 @@ class TestHistoryStoreBase:
                 sequence_index=0,
                 status='succeeded',
                 result_status='ok',
+            ),
+        ]
+
+    def test_iter_runs_skips_missing_run_ids(
+        self,
+        history_store_factory: Callable[[list[dict[str, object]]], _MemoryHistoryStore],
+    ) -> None:
+        """Test that run iteration ignores records without valid run identifiers."""
+        runs = list(
+            history_store_factory(
+                [
+                    {'run_id': None, 'status': 'ignored'},
+                    {'run_id': '', 'status': 'ignored'},
+                    {'run_id': 'run-123', 'status': 'running'},
+                    {'run_id': 'run-123', 'finished_at': None},
+                ],
+            ).iter_runs(),
+        )
+
+        assert runs == [
+            _normalized_run_payload(
+                run_id='run-123',
+                status='running',
+            ),
+        ]
+
+    def test_iter_runs_skips_non_run_records(
+        self,
+        history_store_factory: Callable[[list[dict[str, object]]], _MemoryHistoryStore],
+    ) -> None:
+        """
+        Test that run iteration ignores persisted job-level records entirely.
+        """
+        runs = list(
+            history_store_factory(
+                [
+                    {
+                        'record_level': 'job',
+                        'run_id': 'run-ignored',
+                        'status': 'succeeded',
+                    },
+                    {
+                        'record_level': 'run',
+                        'run_id': 'run-123',
+                        'status': 'running',
+                    },
+                ],
+            ).iter_runs(),
+        )
+
+        assert runs == [
+            _normalized_run_payload(
+                run_id='run-123',
+                status='running',
             ),
         ]
 

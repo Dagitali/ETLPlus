@@ -7,6 +7,8 @@ Unit tests for :mod:`etlplus.runtime._events`.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
+from typing import cast
 from uuid import UUID
 
 import pytest
@@ -18,6 +20,17 @@ import etlplus.runtime._events as events_mod
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 # SECTION: HELPERS ========================================================== #
+
+
+EXPECTED_BASE_EVENT_FIELDS = {
+    'command',
+    'event',
+    'lifecycle',
+    'run_id',
+    'schema',
+    'schema_version',
+    'timestamp',
+}
 
 
 @pytest.fixture
@@ -39,6 +52,29 @@ def frozen_runtime_timestamp(
 
 class TestRuntimeEvents:
     """Unit tests for structured runtime event helpers."""
+
+    def test_build_preserves_additive_command_specific_fields(self) -> None:
+        """
+        Test that stable base fields coexist with additive command-specific
+        context.
+        """
+        event = events_mod.RuntimeEvents.build(
+            command='run',
+            lifecycle='completed',
+            run_id='run-123',
+            config_path='pipeline.yml',
+            continue_on_fail=False,
+            pipeline_name='customer-sync',
+            result_status='success',
+            run_all=True,
+        )
+
+        assert EXPECTED_BASE_EVENT_FIELDS.issubset(event)
+        assert event['config_path'] == 'pipeline.yml'
+        assert event['continue_on_fail'] is False
+        assert event['pipeline_name'] == 'customer-sync'
+        assert event['result_status'] == 'success'
+        assert event['run_all'] is True
 
     @pytest.mark.parametrize(
         ('kwargs', 'expected_timestamp'),
@@ -63,17 +99,33 @@ class TestRuntimeEvents:
                 '2025-01-01T00:00:00+00:00',
                 id='implicit-utc-timestamp',
             ),
+            pytest.param(
+                {
+                    'command': 'run',
+                    'lifecycle': 'failed',
+                    'run_id': 'run-123',
+                    'error_type': 'RuntimeError',
+                    'error_message': 'boom',
+                    'status': 'error',
+                },
+                '2025-01-01T00:00:00+00:00',
+                id='failed-with-shared-fields',
+            ),
         ],
     )
     def test_build_returns_expected_event_envelope(
         self,
-        kwargs: dict[str, str],
+        kwargs: dict[str, object],
         frozen_runtime_timestamp: str,
         expected_timestamp: str,
     ) -> None:
-        """Build should emit the stable event envelope and resolve timestamps."""
-        event = events_mod.RuntimeEvents.build(**kwargs)
+        """
+        Test that build emits the stable event envelope and resolves
+        timestamps.
+        """
+        event = events_mod.RuntimeEvents.build(**cast(dict[str, Any], kwargs))
 
+        assert EXPECTED_BASE_EVENT_FIELDS.issubset(event)
         assert event == {
             'command': 'run',
             'event': f'run.{kwargs["lifecycle"]}',
@@ -87,6 +139,15 @@ class TestRuntimeEvents:
                 else expected_timestamp
             ),
             **({'job': 'daily'} if 'job' in kwargs else {}),
+            **(
+                {
+                    'error_type': 'RuntimeError',
+                    'error_message': 'boom',
+                    'status': 'error',
+                }
+                if kwargs['lifecycle'] == 'failed'
+                else {}
+            ),
         }
 
     def test_create_run_id_returns_uuid_text(self) -> None:
@@ -108,7 +169,9 @@ class TestRuntimeEvents:
         event_format: str | None,
         expected_err: str,
     ) -> None:
-        """Runtime events should only emit serialized output for ``jsonl``."""
+        """
+        Test that runtime events only emit serialized output for ``jsonl``.
+        """
         monkeypatch.setattr(events_mod, 'serialize_json', lambda event: 'SERIALIZED')
 
         events_mod.RuntimeEvents.emit(
