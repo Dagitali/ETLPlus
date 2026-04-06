@@ -204,8 +204,8 @@ class TestRateLimiterBasics:
         expected_sleep: float,
     ) -> None:
         """
-        Test that ``fixed()`` converts inputs to non-negative floats with a
-        default of 0.0.
+        Test that :meth:`RateLimiter.fixed` converts inputs to non-negative
+        floats with a default of 0.0.
         """
         limiter = RateLimiter.fixed(seconds)  # type: ignore[arg-type]
         assert limiter.sleep_seconds == pytest.approx(expected_sleep)

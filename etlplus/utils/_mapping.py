@@ -39,7 +39,7 @@ def cast_str_dict(
     Returns
     -------
     dict[str, str]
-        Dictionary of the original key/value pairs converted via ``str()``.
+        Dictionary of the original key/value pairs converted via :func:`str`.
     """
     if not mapping:
         return {}

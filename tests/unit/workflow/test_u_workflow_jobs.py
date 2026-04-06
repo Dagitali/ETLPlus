@@ -2,8 +2,6 @@
 :mod:`tests.unit.workflow.test_u_workflow_jobs` module.
 
 Unit tests for :mod:`etlplus.workflow._jobs`.
-
-Covers dataclass parsing and normalization behavior.
 """
 
 from __future__ import annotations
@@ -40,130 +38,140 @@ def _assert_fields(actual: object, expected: Mapping[str, object]) -> None:
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.parametrize(
-    ('ref_cls', 'obj', 'expected'),
-    [
-        pytest.param(
-            ExtractRef,
-            {'source': 'my_source', 'options': {'foo': 1}},
-            {'source': 'my_source', 'options': {'foo': 1}},
-            id='extract-ref',
-        ),
-        pytest.param(
-            LoadRef,
-            {'target': 'my_target', 'overrides': {'foo': 2}},
-            {'target': 'my_target', 'overrides': {'foo': 2}},
-            id='load-ref',
-        ),
-        pytest.param(
-            TransformRef,
-            {'pipeline': 'my_pipeline'},
-            {'pipeline': 'my_pipeline'},
-            id='transform-ref',
-        ),
-        pytest.param(
-            ValidationRef,
-            {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'},
-            {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'},
-            id='validation-ref',
-        ),
-    ],
-)
-def test_ref_from_obj_valid(
-    ref_cls: RefClass,
-    obj: dict[str, object],
-    expected: dict[str, object],
-) -> None:
-    """Test that valid dict input yields the expected reference object."""
-    ref = ref_cls.from_obj(obj)
-    assert ref is not None
-    _assert_fields(ref, expected)
+class TestReferenceParsing:
+    """Unit tests for reference dataclass parsing."""
+
+    @pytest.mark.parametrize(
+        ('ref_cls', 'obj', 'expected'),
+        [
+            pytest.param(
+                ExtractRef,
+                {'source': 'my_source', 'options': {'foo': 1}},
+                {'source': 'my_source', 'options': {'foo': 1}},
+                id='extract-ref',
+            ),
+            pytest.param(
+                LoadRef,
+                {'target': 'my_target', 'overrides': {'foo': 2}},
+                {'target': 'my_target', 'overrides': {'foo': 2}},
+                id='load-ref',
+            ),
+            pytest.param(
+                TransformRef,
+                {'pipeline': 'my_pipeline'},
+                {'pipeline': 'my_pipeline'},
+                id='transform-ref',
+            ),
+            pytest.param(
+                ValidationRef,
+                {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'},
+                {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'},
+                id='validation-ref',
+            ),
+        ],
+    )
+    def test_ref_from_obj_valid(
+        self,
+        ref_cls: RefClass,
+        obj: dict[str, object],
+        expected: dict[str, object],
+    ) -> None:
+        """
+        Test that valid reference payloads produce the expected dataclasses.
+        """
+        ref = ref_cls.from_obj(obj)
+        assert ref is not None
+        _assert_fields(ref, expected)
+
+    @pytest.mark.parametrize(
+        ('ref_cls', 'obj'),
+        [
+            pytest.param(ExtractRef, None, id='extract-none'),
+            pytest.param(ExtractRef, {'source': 123}, id='extract-bad'),
+            pytest.param(LoadRef, {'target': 123}, id='load-bad'),
+            pytest.param(TransformRef, {'pipeline': 123}, id='transform-bad'),
+            pytest.param(ValidationRef, None, id='validation-none'),
+            pytest.param(ValidationRef, {'ruleset': 123}, id='validation-bad'),
+        ],
+    )
+    def test_ref_from_obj_invalid(
+        self,
+        ref_cls: RefClass,
+        obj: dict[str, object] | None,
+    ) -> None:
+        """Test that invalid reference payloads yield `None`."""
+        assert ref_cls.from_obj(obj) is None
 
 
-@pytest.mark.parametrize(
-    ('ref_cls', 'obj'),
-    [
-        pytest.param(ExtractRef, None, id='extract-none'),
-        pytest.param(ExtractRef, {'source': 123}, id='extract-bad'),
-        pytest.param(LoadRef, {'target': 123}, id='load-bad'),
-        pytest.param(TransformRef, {'pipeline': 123}, id='transform-bad'),
-        pytest.param(ValidationRef, None, id='validation-none'),
-        pytest.param(
-            ValidationRef,
-            {'ruleset': 123},
-            id='validation-bad',
-        ),
-    ],
-)
-def test_ref_from_obj_invalid(
-    ref_cls: RefClass,
-    obj: dict[str, object] | None,
-) -> None:
-    """Test that invalid dict input yields ``None`` for reference objects."""
-    assert ref_cls.from_obj(obj) is None
+class TestJobConfigParsing:
+    """Unit tests for job configuration parsing."""
 
+    def test_jobconfig_from_obj_valid(self) -> None:
+        """
+        Test that valid job payloads produce populated :class:`JobConfig`
+        instances.
+        """
+        cfg = JobConfig.from_obj(
+            {
+                'name': 'job1',
+                'description': 'desc',
+                'extract': {'source': 'src'},
+                'validate': {'ruleset': 'rs'},
+                'transform': {'pipeline': 'p'},
+                'load': {'target': 't'},
+            },
+        )
 
-def test_jobconfig_from_obj_valid() -> None:
-    """
-    Test that valid dict input yields expected :class:`JobConfig` instance.
-    """
-    obj = {
-        'name': 'job1',
-        'description': 'desc',
-        'extract': {'source': 'src'},
-        'validate': {'ruleset': 'rs'},
-        'transform': {'pipeline': 'p'},
-        'load': {'target': 't'},
-    }
-    cfg = JobConfig.from_obj(obj)
-    assert cfg is not None
-    _assert_fields(cfg, {'name': 'job1', 'description': 'desc'})
-    assert cfg.extract is not None
-    assert cfg.validate is not None
-    assert cfg.transform is not None
-    assert cfg.load is not None
+        assert cfg is not None
+        _assert_fields(cfg, {'name': 'job1', 'description': 'desc'})
+        assert cfg.extract is not None
+        assert cfg.validate is not None
+        assert cfg.transform is not None
+        assert cfg.load is not None
 
+    @pytest.mark.parametrize(
+        'obj',
+        [
+            pytest.param(None, id='none'),
+            pytest.param({}, id='empty-mapping'),
+            pytest.param({'name': 123}, id='bad-name'),
+        ],
+    )
+    def test_jobconfig_from_obj_invalid(
+        self,
+        obj: dict[str, object] | None,
+    ) -> None:
+        """Test that invalid job payloads yield ``None``."""
+        assert JobConfig.from_obj(obj) is None
 
-@pytest.mark.parametrize(
-    'obj',
-    [
-        pytest.param(None, id='none'),
-        pytest.param({}, id='empty-mapping'),
-        pytest.param({'name': 123}, id='bad-name'),
-    ],
-)
-def test_jobconfig_from_obj_invalid(
-    obj: dict[str, object] | None,
-) -> None:
-    """Test that invalid dict input yields ``None`` for :class:`JobConfig`."""
-    assert JobConfig.from_obj(obj) is None
-
-
-@pytest.mark.parametrize(
-    ('obj', 'expected'),
-    [
-        pytest.param(
-            {'name': 'x', 'description': 5},
-            {'name': 'x', 'description': '5', 'depends_on': []},
-            id='coerces-description',
-        ),
-        pytest.param(
-            {'name': 'x', 'depends_on': ['a', 1, None, 'b']},
-            {'name': 'x', 'description': None, 'depends_on': ['a', 'b']},
-            id='filters-non-string-dependencies',
-        ),
-        pytest.param(
-            {'name': 'x', 'depends_on': 'prepare'},
-            {'name': 'x', 'description': None, 'depends_on': ['prepare']},
-            id='wraps-string-dependency',
-        ),
-    ],
-)
-def test_jobconfig_from_obj_normalizes_optional_fields(
-    obj: dict[str, object],
-    expected: dict[str, object],
-) -> None:
-    """Job config parsing should normalize optional string and dependency fields."""
-    cfg = JobConfig.from_obj(obj)
-    assert cfg is not None
-    _assert_fields(cfg, expected)
+    @pytest.mark.parametrize(
+        ('obj', 'expected'),
+        [
+            pytest.param(
+                {'name': 'x', 'description': 5},
+                {'name': 'x', 'description': '5', 'depends_on': []},
+                id='coerces-description',
+            ),
+            pytest.param(
+                {'name': 'x', 'depends_on': ['a', 1, None, 'b']},
+                {'name': 'x', 'description': None, 'depends_on': ['a', 'b']},
+                id='filters-non-string-dependencies',
+            ),
+            pytest.param(
+                {'name': 'x', 'depends_on': 'prepare'},
+                {'name': 'x', 'description': None, 'depends_on': ['prepare']},
+                id='wraps-string-dependency',
+            ),
+        ],
+    )
+    def test_jobconfig_from_obj_normalizes_optional_fields(
+        self,
+        obj: dict[str, object],
+        expected: dict[str, object],
+    ) -> None:
+        """
+        Test that job config parsing normalizes optional fields consistently.
+        """
+        cfg = JobConfig.from_obj(obj)
+        assert cfg is not None
+        _assert_fields(cfg, expected)

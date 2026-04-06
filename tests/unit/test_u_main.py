@@ -2,8 +2,6 @@
 :mod:`tests.unit.test_u_main` module.
 
 Unit tests for :mod:`etlplus.__main__`.
-
-Covers CLI entrypoint and _run().
 """
 
 from __future__ import annotations
@@ -20,35 +18,41 @@ from etlplus import __main__
 # SECTION: TESTS ============================================================ #
 
 
-def test_run_invokes_main(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Test that :func:`_run` invokes :func:`main` and returns its value."""
-    called: dict[str, bool] = {}
+class TestMainEntrypoint:
+    """Unit tests for the package CLI entrypoint."""
 
-    def fake_main():
-        called['main'] = True
-        return 42
+    def test_guard_executes_run(self) -> None:
+        """
+        Test that the ``__main__`` guard raises :class:`SystemExit` with
+        :func:`_run`'s code.
+        """
 
-    monkeypatch.setattr(__main__, 'main', fake_main)
-    assert __main__._run() == 42
-    assert called['main']
+        def _run() -> int:
+            return 123
 
+        code = "if __name__ == '__main__':\n    raise SystemExit(_run())"
+        allowed_globals = {'__name__': '__main__', '_run': _run}
 
-def test_main_guard_executes_run() -> None:
-    """
-    Test that the main guard executes :func:`_run` and raises
-    :class:`SystemExit`.
-    """
+        with pytest.raises(SystemExit) as exc:
+            # pylint: disable-next=exec-used
+            exec(code, allowed_globals)
 
-    def _run() -> int:
-        return 123
+        assert exc.value.code == 123
 
-    code = "if __name__ == '__main__':\n    raise SystemExit(_run())"
-    allowed_globals = {'__name__': '__main__', '_run': _run}
+    def test_run_invokes_main(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that :func:`_run` invokes :func:`main` and returns its value.
+        """
+        called: dict[str, bool] = {}
 
-    with pytest.raises(SystemExit) as exc:
-        # pylint: disable-next=exec-used
-        exec(code, allowed_globals)
+        def fake_main() -> int:
+            called['main'] = True
+            return 42
 
-    assert exc.value.code == 123
+        monkeypatch.setattr(__main__, 'main', fake_main)
+
+        assert __main__._run() == 42
+        assert called['main'] is True

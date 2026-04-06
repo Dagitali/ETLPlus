@@ -293,7 +293,7 @@ class FileHandlerABC(FileHandlerOption, ABC):
         Returns
         -------
         BoundFileHandler
-            Facade exposing ``read()`` and ``write(data)`` without a *path*
+            Facade exposing :meth:`read` and :meth:`write` without a *path*
             argument.
         """
         location = StorageLocation.from_value(path)
