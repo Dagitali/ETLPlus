@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
+from typing import Final
 from typing import cast
 
 from ... import Config
@@ -29,6 +30,16 @@ __all__ = [
     # Functions
     'run_handler',
 ]
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+_DAG_SUMMARY_STATUS_FALLBACK: Final[tuple[str, str, str]] = (
+    'success',
+    'partial_success',
+    'failed',
+)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -55,6 +66,35 @@ def _coerce_job_result_summary(
             ]
         return cast(JSONData, summary)
     return None
+
+
+def _coerce_string_list(
+    value: object,
+) -> list[str]:
+    """Return one filtered string list for persisted summary fields."""
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]
+
+
+def _dag_run_status(
+    result: Mapping[str, object],
+    *,
+    continue_on_fail: bool,
+    failed_jobs: list[str],
+    skipped_jobs: list[str],
+    succeeded_jobs: list[str],
+) -> str:
+    """Return one normalized persisted status for a DAG-style run summary."""
+    if isinstance(status := result.get('status'), str) and status:
+        return status
+    if failed_jobs or skipped_jobs:
+        return (
+            _DAG_SUMMARY_STATUS_FALLBACK[1]
+            if continue_on_fail and succeeded_jobs
+            else _DAG_SUMMARY_STATUS_FALLBACK[2]
+        )
+    return _DAG_SUMMARY_STATUS_FALLBACK[0]
 
 
 def _job_run_record(
@@ -112,6 +152,22 @@ def _job_run_record(
     )
 
 
+def _last_job_field(
+    executed_jobs: list[object],
+    *,
+    field_name: str,
+) -> str | None:
+    """Return one trailing string field from the executed-job rows when present."""
+    for item in reversed(executed_jobs):
+        if not isinstance(item, Mapping):
+            continue
+        value = item.get(field_name)
+        if isinstance(value, str) and value:
+            return value
+        return None
+    return None
+
+
 def _persist_job_runs(
     history_store: Any,
     *,
@@ -137,6 +193,98 @@ def _persist_job_runs(
         )
         if job_run is not None:
             history_store.record_job_run(job_run)
+
+
+def _persisted_run_summary(
+    result: Mapping[str, object] | object,
+) -> JSONData | None:
+    """
+    Return the persisted run summary shape for one CLI run result.
+
+    DAG-style results persist a concise aggregate summary at the run level and
+    leave per-job detail to ``job_runs``.
+    """
+    if result is None:
+        return None
+    if not isinstance(result, Mapping):
+        return cast(JSONData, result)
+
+    executed_jobs = result.get('executed_jobs')
+    if not isinstance(executed_jobs, list):
+        return cast(JSONData, result)
+
+    ordered_jobs = _coerce_string_list(result.get('ordered_jobs'))
+    failed_jobs = _coerce_string_list(result.get('failed_jobs'))
+    skipped_jobs = _coerce_string_list(result.get('skipped_jobs'))
+    succeeded_jobs = _coerce_string_list(result.get('succeeded_jobs'))
+    raw_continue_on_fail = result.get('continue_on_fail')
+    continue_on_fail = raw_continue_on_fail if isinstance(
+        raw_continue_on_fail,
+        bool,
+    ) else False
+
+    return cast(
+        JSONData,
+        {
+            'continue_on_fail': continue_on_fail,
+            'executed_job_count': (
+                result.get('executed_job_count')
+                if isinstance(result.get('executed_job_count'), int)
+                else len(failed_jobs) + len(succeeded_jobs)
+            ),
+            'failed_job_count': (
+                result.get('failed_job_count')
+                if isinstance(result.get('failed_job_count'), int)
+                else len(failed_jobs)
+            ),
+            'failed_jobs': failed_jobs,
+            'final_job': (
+                result.get('final_job')
+                if isinstance(result.get('final_job'), str)
+                else _last_job_field(executed_jobs, field_name='job')
+            ),
+            'final_result_status': (
+                result.get('final_result_status')
+                if isinstance(result.get('final_result_status'), str)
+                else _last_job_field(executed_jobs, field_name='result_status')
+            ),
+            'job_count': (
+                result.get('job_count')
+                if isinstance(result.get('job_count'), int)
+                else len(ordered_jobs)
+            ),
+            'mode': (
+                result.get('mode')
+                if isinstance(result.get('mode'), str)
+                else 'all'
+            ),
+            'ordered_jobs': ordered_jobs,
+            'requested_job': (
+                result.get('requested_job')
+                if isinstance(result.get('requested_job'), str)
+                else None
+            ),
+            'skipped_job_count': (
+                result.get('skipped_job_count')
+                if isinstance(result.get('skipped_job_count'), int)
+                else len(skipped_jobs)
+            ),
+            'skipped_jobs': skipped_jobs,
+            'status': _dag_run_status(
+                result,
+                continue_on_fail=continue_on_fail,
+                failed_jobs=failed_jobs,
+                skipped_jobs=skipped_jobs,
+                succeeded_jobs=succeeded_jobs,
+            ),
+            'succeeded_job_count': (
+                result.get('succeeded_job_count')
+                if isinstance(result.get('succeeded_job_count'), int)
+                else len(succeeded_jobs)
+            ),
+            'succeeded_jobs': succeeded_jobs,
+        },
+    )
 
 
 def _result_failed(
@@ -245,7 +393,7 @@ def run_handler(
         history_store,
         context,
         status='failed' if _result_failed(result) else 'succeeded',
-        result_summary=cast(JSONData | None, result),
+        result_summary=_persisted_run_summary(result),
         error_message=_failure_message(result),
         error_type='RunExecutionFailed' if _result_failed(result) else None,
     )

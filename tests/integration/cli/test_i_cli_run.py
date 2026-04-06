@@ -44,6 +44,60 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
+# SECTION: HELPERS ========================================================== #
+
+
+def _write_dag_pipeline_config(
+    tmp_path: Path,
+    sample_records: list[dict[str, object]],
+) -> tuple[Path, Path]:
+    """Materialize one two-job DAG pipeline config and return config/output paths."""
+    source_path = tmp_path / 'source.json'
+    intermediate_path = tmp_path / 'intermediate.json'
+    final_path = tmp_path / 'final.json'
+    File(source_path, FileFormat.JSON).write(sample_records)
+    config_path = tmp_path / 'pipeline_all.yml'
+    config_path.write_text(
+        dedent(
+            f"""
+            name: DAG Smoke Test
+            sources:
+              - name: source_in
+                type: file
+                format: json
+                path: "{source_path}"
+              - name: intermediate_in
+                type: file
+                format: json
+                path: "{intermediate_path}"
+            targets:
+              - name: intermediate_out
+                type: file
+                format: json
+                path: "{intermediate_path}"
+              - name: final_out
+                type: file
+                format: json
+                path: "{final_path}"
+            jobs:
+              - name: publish
+                depends_on: [seed]
+                extract:
+                  source: intermediate_in
+                load:
+                  target: final_out
+              - name: seed
+                extract:
+                  source: source_in
+                load:
+                  target: intermediate_out
+            """,
+        ).strip(),
+        encoding='utf-8',
+    )
+    return config_path, final_path
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -179,7 +233,9 @@ class TestRun:
         env_name: str,
         backend_label: str,
     ) -> None:
-        """Test that CLI run can write a local file source to a real cloud target."""
+        """
+        Test that CLI run can write a local file source to a real cloud target.
+        """
         del backend_label
         source_path = json_file_factory(
             sample_records,
@@ -233,50 +289,11 @@ class TestRun:
         sample_records: list[dict[str, object]],
         tmp_path: Path,
     ) -> None:
-        """``run --all`` should execute jobs in DAG order and emit a summary."""
-        source_path = tmp_path / 'source.json'
-        intermediate_path = tmp_path / 'intermediate.json'
-        final_path = tmp_path / 'final.json'
-        File(source_path, FileFormat.JSON).write(sample_records)
-        config_path = tmp_path / 'pipeline_all.yml'
-        config_path.write_text(
-            dedent(
-                f"""
-                name: DAG Smoke Test
-                sources:
-                  - name: source_in
-                    type: file
-                    format: json
-                    path: "{source_path}"
-                  - name: intermediate_in
-                    type: file
-                    format: json
-                    path: "{intermediate_path}"
-                targets:
-                  - name: intermediate_out
-                    type: file
-                    format: json
-                    path: "{intermediate_path}"
-                  - name: final_out
-                    type: file
-                    format: json
-                    path: "{final_path}"
-                jobs:
-                  - name: publish
-                    depends_on: [seed]
-                    extract:
-                      source: intermediate_in
-                    load:
-                      target: final_out
-                  - name: seed
-                    extract:
-                      source: source_in
-                    load:
-                      target: intermediate_out
-                """,
-            ).strip(),
-            encoding='utf-8',
-        )
+        """
+        Test that the command ``run --all`` executes jobs in DAG order and emit
+        a summary.
+        """
+        config_path, final_path = _write_dag_pipeline_config(tmp_path, sample_records)
 
         code, out, err = cli_invoke(
             ('run', '--config', str(config_path), '--all'),
@@ -294,6 +311,131 @@ class TestRun:
             'publish',
         ]
         assert File(final_path, FileFormat.JSON).read() == sample_records
+
+    def test_run_all_persists_compact_run_summary_and_job_history(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        sample_records: list[dict[str, object]],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that DAG runs persists one aggregate run row plus per-job history
+        rows.
+        """
+        config_path, final_path = _write_dag_pipeline_config(tmp_path, sample_records)
+        state_dir = tmp_path / 'state'
+        monkeypatch.setenv('ETLPLUS_STATE_DIR', str(state_dir))
+
+        code, out, err = cli_invoke(
+            ('run', '--config', str(config_path), '--all'),
+        )
+
+        assert code == 0
+        assert err == ''
+        payload = parse_json_output(out)
+        run_id = payload['run_id']
+        expected_summary = {
+            'continue_on_fail': False,
+            'executed_job_count': 2,
+            'failed_job_count': 0,
+            'failed_jobs': [],
+            'final_job': 'publish',
+            'final_result_status': 'success',
+            'job_count': 2,
+            'mode': 'all',
+            'ordered_jobs': ['seed', 'publish'],
+            'requested_job': None,
+            'skipped_job_count': 0,
+            'skipped_jobs': [],
+            'status': 'success',
+            'succeeded_job_count': 2,
+            'succeeded_jobs': ['seed', 'publish'],
+        }
+
+        history_db = state_dir / 'history.sqlite'
+        with sqlite3.connect(history_db) as conn:
+            run_row = conn.execute(
+                """
+                SELECT job_name, result_summary
+                FROM runs
+                WHERE run_id = ?
+                """,
+                (run_id,),
+            ).fetchone()
+            job_rows = conn.execute(
+                """
+                SELECT run_id, job_name, sequence_index, status, duration_ms
+                FROM job_runs
+                WHERE run_id = ?
+                ORDER BY sequence_index
+                """,
+                (run_id,),
+            ).fetchall()
+
+        assert run_row is not None
+        assert run_row[0] is None
+        assert json.loads(run_row[1]) == expected_summary
+        assert [(row[0], row[1], row[2], row[3]) for row in job_rows] == [
+            (run_id, 'seed', 0, 'succeeded'),
+            (run_id, 'publish', 1, 'succeeded'),
+        ]
+        assert all(isinstance(row[4], int) for row in job_rows)
+        assert File(final_path, FileFormat.JSON).read() == sample_records
+
+        history_code, history_out, history_err = cli_invoke(
+            ('history', '--run-id', run_id),
+        )
+        assert history_code == 0
+        assert history_err == ''
+        history_payload = parse_json_output(history_out)
+        assert len(history_payload) == 1
+        assert history_payload[0]['run_id'] == run_id
+        assert history_payload[0]['job_name'] is None
+        assert history_payload[0]['result_summary'] == expected_summary
+        assert 'executed_jobs' not in history_payload[0]['result_summary']
+
+        job_history_code, job_history_out, job_history_err = cli_invoke(
+            ('history', '--level', 'job', '--run-id', run_id),
+        )
+        assert job_history_code == 0
+        assert job_history_err == ''
+        job_history_payload = sorted(
+            parse_json_output(job_history_out),
+            key=lambda row: row['sequence_index'],
+        )
+        assert [
+            (row['run_id'], row['job_name'], row['sequence_index'], row['status'])
+            for row in job_history_payload
+        ] == [
+            (run_id, 'seed', 0, 'succeeded'),
+            (run_id, 'publish', 1, 'succeeded'),
+        ]
+        assert all(isinstance(row['duration_ms'], int) for row in job_history_payload)
+
+        status_code, status_out, status_err = cli_invoke(
+            ('status', '--run-id', run_id),
+        )
+        assert status_code == 0
+        assert status_err == ''
+        status_payload = parse_json_output(status_out)
+        assert status_payload['run_id'] == run_id
+        assert status_payload['result_summary'] == expected_summary
+
+        report_code, report_out, report_err = cli_invoke(
+            ('report', '--level', 'job', '--run-id', run_id, '--group-by', 'status'),
+        )
+        assert report_code == 0
+        assert report_err == ''
+        report_payload = parse_json_output(report_out)
+        assert report_payload['group_by'] == 'status'
+        assert report_payload['summary']['runs'] == 2
+        assert report_payload['summary']['succeeded'] == 2
+        assert len(report_payload['rows']) == 1
+        assert report_payload['rows'][0]['group'] == 'succeeded'
+        assert report_payload['rows'][0]['runs'] == 2
+        assert report_payload['rows'][0]['success_rate_pct'] == 100.0
 
     def test_run_emits_jsonl_events_to_stderr(
         self,
