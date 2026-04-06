@@ -218,10 +218,14 @@ def _persisted_run_summary(
     skipped_jobs = _coerce_string_list(result.get('skipped_jobs'))
     succeeded_jobs = _coerce_string_list(result.get('succeeded_jobs'))
     raw_continue_on_fail = result.get('continue_on_fail')
-    continue_on_fail = raw_continue_on_fail if isinstance(
-        raw_continue_on_fail,
-        bool,
-    ) else False
+    continue_on_fail = (
+        raw_continue_on_fail
+        if isinstance(
+            raw_continue_on_fail,
+            bool,
+        )
+        else False
+    )
 
     return cast(
         JSONData,
@@ -254,9 +258,7 @@ def _persisted_run_summary(
                 else len(ordered_jobs)
             ),
             'mode': (
-                result.get('mode')
-                if isinstance(result.get('mode'), str)
-                else 'all'
+                result.get('mode') if isinstance(result.get('mode'), str) else 'all'
             ),
             'ordered_jobs': ordered_jobs,
             'requested_job': (
