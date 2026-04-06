@@ -157,7 +157,9 @@ These are the active follow-up items for the `v1.x` line.
   - `RUNTIME-CONFIG-AND-LOGGING.md` now documents the `etlplus.event.v1` compatibility rules and
     clarifies how handled DAG execution failures surface as `run.failed` lifecycle events.
   - `docs/run-history.md` now documents the persisted local-history compatibility posture for the
-    stable top-level run shape and additive DAG summary growth under `result_summary`.
+    stable top-level run shape: compact aggregate DAG summaries in `runs.result_summary` plus
+    detailed per-job rows in `job_runs`, with additive summary growth allowed under
+    `result_summary`.
 
 ## Archived `v1.0.0` Readiness Closeout
 
