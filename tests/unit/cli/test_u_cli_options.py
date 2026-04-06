@@ -92,14 +92,23 @@ class TestHelperOptionKwargs:
         show_default: bool | None,
         expected: dict[str, object],
     ) -> None:
-        """Flag helpers should include only explicitly requested metadata."""
-        assert cli_options._typer_flag_option_kwargs(
-            help_text,
-            show_default=show_default,
-        ) == expected
+        """
+        Test that :func:`_typer_flag_option_kwargs` includes only explicitly
+        requested metadata.
+        """
+        assert (
+            cli_options._typer_flag_option_kwargs(
+                help_text,
+                show_default=show_default,
+            )
+            == expected
+        )
 
     def test_flag_option_kwargs_include_is_eager_when_requested(self) -> None:
-        """Test that flag helpers preserve Typer eager-evaluation metadata."""
+        """
+        Test that :func:`_typer_flag_option_kwargs` preserves Typer
+        eager-evaluation metadata.
+        """
         assert cli_options._typer_flag_option_kwargs(
             'Show the version and exit.',
             is_eager=True,

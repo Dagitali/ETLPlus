@@ -138,7 +138,8 @@ def _sqlite_row(columns: Mapping[str, object]) -> Iterator[sqlite3.Row]:
 
 @pytest.fixture(name='history_store_factory')
 def history_store_factory_fixture() -> Callable[
-    [list[dict[str, object]]], _MemoryHistoryStore,
+    [list[dict[str, object]]],
+    _MemoryHistoryStore,
 ]:
     """Return a factory for lightweight in-memory history stores."""
     return _MemoryHistoryStore

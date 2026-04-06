@@ -304,7 +304,7 @@ class TestFile:
         """Test that embedded DB readers rejecting multi-table files."""
         path = tmp_path / filename
         if file_format is FileFormat.DUCKDB:
-            import duckdb
+            duckdb = pytest.importorskip('duckdb')
 
             conn = cast(Any, duckdb.connect(str(path)))
         else:
