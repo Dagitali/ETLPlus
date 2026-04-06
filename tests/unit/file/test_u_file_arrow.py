@@ -218,7 +218,7 @@ class TestArrow(PyarrowMissingDependencyMixin):
     def test_table_to_records_returns_pylist_rows(self) -> None:
         """
         Test that :meth:`table_to_records` delegates to
-        :meth:`table.to_pylist()`.
+        :meth:`table.to_pylist`.
         """
         table = _TableStub([{'id': 1}, {'id': 2}])
         assert mod.ArrowFile().table_to_records(table) == [

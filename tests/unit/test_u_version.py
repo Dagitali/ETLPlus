@@ -2,10 +2,6 @@
 :mod:`tests.unit.test_u_version` module.
 
 Unit tests for :mod:`etlplus.__version__`.
-
-Notes
------
-- Covers version detection and fallback logic.
 """
 
 from __future__ import annotations
@@ -60,19 +56,26 @@ def _reload_version_module() -> ModuleType:
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.parametrize(
-    ('metadata_version', 'expected_version'),
-    [
-        pytest.param('1.2.3', '1.2.3', id='metadata-version'),
-        pytest.param(None, '0.0.0', id='fallback-version'),
-    ],
-)
-def test_version_module_reports_expected_version(
-    monkeypatch: pytest.MonkeyPatch,
-    metadata_version: str | None,
-    expected_version: str,
-) -> None:
-    """Version module should use installed metadata or fallback consistently."""
-    _patch_version_lookup(monkeypatch, metadata_version)
-    version_mod = _reload_version_module()
-    assert version_mod.__version__ == expected_version
+class TestVersionModule:
+    """Unit tests for package version detection."""
+
+    @pytest.mark.parametrize(
+        ('metadata_version', 'expected_version'),
+        [
+            pytest.param('1.2.3', '1.2.3', id='metadata-version'),
+            pytest.param(None, '0.0.0', id='fallback-version'),
+        ],
+    )
+    def test_version_module_reports_expected_version(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        metadata_version: str | None,
+        expected_version: str,
+    ) -> None:
+        """
+        Test that :mod:`etlplus.__version__` uses installed metadata or its
+        fallback.
+        """
+        _patch_version_lookup(monkeypatch, metadata_version)
+
+        assert _reload_version_module().__version__ == expected_version
