@@ -4,6 +4,7 @@
 :maxdepth: 1
 
 examples
+structured-events
 run-history
 pipeline-authoring
 file-handler-matrix
