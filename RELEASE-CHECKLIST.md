@@ -160,6 +160,8 @@ These are the active follow-up items for the `v1.x` line.
     stable top-level run shape: compact aggregate DAG summaries in `runs.result_summary` plus
     detailed per-job rows in `job_runs`, with additive summary growth allowed under
     `result_summary`.
+  - Published docs now also include a dedicated structured-events guide and an explicit
+    event-to-history mapping for `etlplus run`.
 
 ## Archived `v1.0.0` Readiness Closeout
 
