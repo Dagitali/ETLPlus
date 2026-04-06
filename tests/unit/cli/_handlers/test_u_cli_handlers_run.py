@@ -240,3 +240,67 @@ class TestJobRunPersistence:
                 },
             ),
         ]
+
+
+class TestPersistedRunSummary:
+    """Unit tests for compact persisted run summaries."""
+
+    def test_persisted_run_summary_compacts_dag_results(self) -> None:
+        """DAG results should persist only the aggregate run-level summary."""
+        assert run_mod._persisted_run_summary(
+            {
+                'continue_on_fail': True,
+                'executed_job_count': 1,
+                'executed_jobs': [
+                    {
+                        'duration_ms': 12,
+                        'job': 'seed',
+                        'result': {'rows': 10, 'status': 'success'},
+                        'result_status': 'success',
+                        'status': 'succeeded',
+                    },
+                    {
+                        'duration_ms': 0,
+                        'job': 'publish',
+                        'reason': 'upstream_failed',
+                        'skipped_due_to': ['seed'],
+                        'status': 'skipped',
+                    },
+                ],
+                'failed_job_count': 0,
+                'failed_jobs': [],
+                'final_job': 'publish',
+                'final_result': {'rows': 10, 'status': 'success'},
+                'final_result_status': None,
+                'job_count': 2,
+                'mode': 'all',
+                'ordered_jobs': ['seed', 'publish'],
+                'requested_job': None,
+                'skipped_job_count': 1,
+                'skipped_jobs': ['publish'],
+                'status': 'partial_success',
+                'succeeded_job_count': 1,
+                'succeeded_jobs': ['seed'],
+            },
+        ) == {
+            'continue_on_fail': True,
+            'executed_job_count': 1,
+            'failed_job_count': 0,
+            'failed_jobs': [],
+            'final_job': 'publish',
+            'final_result_status': None,
+            'job_count': 2,
+            'mode': 'all',
+            'ordered_jobs': ['seed', 'publish'],
+            'requested_job': None,
+            'skipped_job_count': 1,
+            'skipped_jobs': ['publish'],
+            'status': 'partial_success',
+            'succeeded_job_count': 1,
+            'succeeded_jobs': ['seed'],
+        }
+
+    def test_persisted_run_summary_preserves_non_dag_results(self) -> None:
+        """Single-job results should keep their existing persisted summary."""
+        result = {'job': 'seed', 'status': 'success'}
+        assert run_mod._persisted_run_summary(result) == result
