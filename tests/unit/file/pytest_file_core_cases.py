@@ -31,8 +31,14 @@ type FormatCase = tuple[
 # SECTION: CONSTANTS ======================================================== #
 
 
+BSON_DEPS = ('bson',)
+CBOR_DEPS = ('cbor2',)
+DUCKDB_DEPS = ('duckdb',)
+MSGPACK_DEPS = ('msgpack',)
+ODS_DEPS = ('odf',)
 PYREADR_DEPS = ('pyreadr',)
 PYREADSTAT_DEPS = ('pyreadstat',)
+TOML_DEPS = ('tomli_w',)
 
 COMMON_INI: JSONData = {'DEFAULT': {'name': 'Ada'}, 'main': {'age': '36'}}
 COMMON_PROPERTIES: JSONData = {'name': 'Ada', 'age': '36'}
@@ -118,14 +124,14 @@ FORMAT_CASES: list[FormatCase] = [
     _format_case(FileFormat.TSV, 'sample.tsv', COMMON_ROWS_STR),
     _format_case(FileFormat.TXT, 'sample.txt', COMMON_TEXT_TXT),
     # Semi-structured and interchange
-    _format_case(FileFormat.BSON, 'sample.bson', COMMON_ROWS_NUM),
-    _format_case(FileFormat.CBOR, 'sample.cbor', COMMON_ROWS_NUM),
+    _format_case(FileFormat.BSON, 'sample.bson', COMMON_ROWS_NUM, BSON_DEPS),
+    _format_case(FileFormat.CBOR, 'sample.cbor', COMMON_ROWS_NUM, CBOR_DEPS),
     _format_case(FileFormat.JSON, 'sample.json', COMMON_ROWS_NUM),
-    _format_case(FileFormat.MSGPACK, 'sample.msgpack', COMMON_ROWS_NUM),
+    _format_case(FileFormat.MSGPACK, 'sample.msgpack', COMMON_ROWS_NUM, MSGPACK_DEPS),
     _format_case(FileFormat.NDJSON, 'sample.ndjson', COMMON_ROWS_NUM),
     _format_case(FileFormat.YAML, 'sample.yaml', COMMON_ROWS_NUM),
     _format_case(FileFormat.INI, 'sample.ini', COMMON_INI),
-    _format_case(FileFormat.TOML, 'sample.toml', COMMON_TOML),
+    _format_case(FileFormat.TOML, 'sample.toml', COMMON_TOML, TOML_DEPS),
     _format_case(
         FileFormat.PROPERTIES,
         'sample.properties',
@@ -168,11 +174,13 @@ FORMAT_CASES: list[FormatCase] = [
         FileFormat.DUCKDB,
         'sample.duckdb',
         COMMON_ROWS_STR,
+        DUCKDB_DEPS,
     ),
     _format_case(
         FileFormat.ODS,
         'sample.ods',
         COMMON_ROWS_NUM,
+        ODS_DEPS,
     ),
     _format_case(
         FileFormat.XLSX,
