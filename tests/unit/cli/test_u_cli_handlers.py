@@ -1341,6 +1341,24 @@ class TestRunHandler:
         assert finished.status == 'failed'
         assert finished.error_type == 'RunExecutionFailed'
         assert 'DAG execution' in cast(str, finished.error_message)
+        assert finished.result_summary == {
+            'continue_on_fail': True,
+            'executed_job_count': 1,
+            'failed_job_count': 1,
+            'failed_jobs': ['seed'],
+            'final_job': 'publish',
+            'final_result_status': None,
+            'job_count': 2,
+            'mode': 'all',
+            'ordered_jobs': ['seed', 'publish'],
+            'requested_job': None,
+            'skipped_job_count': 1,
+            'skipped_jobs': ['publish'],
+            'status': 'failed',
+            'succeeded_job_count': 0,
+            'succeeded_jobs': [],
+        }
+        assert len(job_runs) == 2
         assert [call['lifecycle'] for call in lifecycle_calls] == [
             'started',
             'failed',
