@@ -122,7 +122,9 @@ def _patch_file_read(
     monkeypatch: pytest.MonkeyPatch,
     payload: object,
 ) -> None:
-    """Patch :class:`File` to return one fixed payload from ``read()``."""
+    """
+    Patch :class:`File` to return one fixed payload from :meth:`File.read`.
+    """
 
     class _FakeFile:
         def __init__(self, *_args: object, **_kwargs: object) -> None:

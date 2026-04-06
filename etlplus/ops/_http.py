@@ -207,7 +207,7 @@ def response_json_or_text(
     response: Any,
 ) -> Any:
     """
-    Return ``response.json()`` when available, else the raw text body.
+    Return :meth:`response.json` when available, else the raw text body.
 
     Parameters
     ----------

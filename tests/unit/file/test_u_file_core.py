@@ -392,7 +392,7 @@ class TestFile:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that ``File.open()`` forwards to the remote backend."""
+        """Test that :meth:`File.open` forwards to the remote backend."""
         calls: list[tuple[object, str, dict[str, object]]] = []
 
         class FakeBackend:
@@ -420,7 +420,7 @@ class TestFile:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test that ``File.open()`` reads local text content."""
+        """Test that :meth:`File.open` reads local text content."""
         path = tmp_path / 'data.txt'
         path.write_text('alpha', encoding='utf-8')
 
@@ -431,7 +431,7 @@ class TestFile:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that ``File.read_bytes()`` uses the storage backend."""
+        """Test that :meth:`File.read_bytes` uses the storage backend."""
         calls: list[tuple[object, str]] = []
 
         class FakeBackend:
@@ -458,7 +458,7 @@ class TestFile:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test that ``File.read_bytes()`` returns local binary content."""
+        """Test that :meth:`File.read_bytes` returns local binary content."""
         path = tmp_path / 'data.bin'
         path.write_bytes(b'payload')
 
@@ -491,7 +491,7 @@ class TestFile:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that ``File.write_bytes()`` uses the storage backend."""
+        """Test that :meth:`File.write_bytes` uses the storage backend."""
         uploads: list[bytes] = []
 
         class CaptureUpload(BytesIO):
@@ -526,7 +526,7 @@ class TestFile:
         self,
         tmp_path: Path,
     ) -> None:
-        """Test that ``File.write_bytes()`` writes local binary content."""
+        """Test that :meth:`File.write_bytes` writes local binary content."""
         path = tmp_path / 'data.bin'
 
         File(path).write_bytes(b'payload')

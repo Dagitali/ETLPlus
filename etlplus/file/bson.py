@@ -73,7 +73,7 @@ def _decode_all(
     Raises
     ------
     AttributeError
-        If the bson module lacks the required :meth:`decode_all()` method.
+        If the bson module lacks the required :meth:`decode_all` method.
     """
     if hasattr(bson_module, 'decode_all'):
         return bson_module.decode_all(payload)
@@ -104,7 +104,7 @@ def _encode_doc(
     Raises
     ------
     AttributeError
-        If the bson module lacks the required :meth:`encode()` method.
+        If the bson module lacks the required :meth:`encode` method.
     """
     if hasattr(bson_module, 'encode'):
         return bson_module.encode(doc)

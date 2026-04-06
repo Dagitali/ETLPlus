@@ -120,7 +120,7 @@ def _run(
     cmd : list[str]
         Command and arguments to run.
     **kwargs
-        Additional arguments to pass to `subprocess.run()`.
+        Additional arguments to pass to :func:`subprocess.run`.
 
     Returns
     -------

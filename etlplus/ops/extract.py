@@ -200,7 +200,8 @@ def _parse_api_response(
     Parameters
     ----------
     response : Any
-        HTTP response object exposing ``headers``, ``json()``, and ``text``.
+        HTTP response object exposing :meth:`headers`, :meth:`json`, and
+        :meth:`text`.
 
     Returns
     -------
