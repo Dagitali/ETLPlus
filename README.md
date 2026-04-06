@@ -727,9 +727,9 @@ still a documented placeholder.
 
 #### Inspect Run History
 
-`etlplus run` persists local run history keyed by `run_id`. DAG-aware runs also persist one per-job
-history row for each executed job. Use the read/query commands to inspect that history without
-opening the backend directly.
+`etlplus run` persists local run history keyed by `run_id`. DAG-aware runs keep a compact aggregate
+summary on the parent run row and also persist one per-job history row for each executed job. Use
+the read/query commands to inspect that history without opening the backend directly.
 
 List recent normalized runs:
 ```bash
