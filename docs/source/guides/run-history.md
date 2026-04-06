@@ -3,7 +3,19 @@
 ETLPlus records local run history for `etlplus run` and exposes that history through stable
 read/query commands in the CLI.
 
-## What gets recorded
+- [Run History](#run-history)
+  - [What Gets Recorded](#what-gets-recorded)
+  - [Commands](#commands)
+    - [`etlplus history`](#etlplus-history)
+    - [`etlplus log`](#etlplus-log)
+    - [`etlplus status`](#etlplus-status)
+    - [`etlplus report`](#etlplus-report)
+  - [Output Conventions](#output-conventions)
+  - [Stable Normalized Fields](#stable-normalized-fields)
+  - [Event-to-history mapping for `etlplus run`](#event-to-history-mapping-for-etlplus-run)
+  - [Related Documentation](#related-documentation)
+
+## What Gets Recorded
 
 - Each `etlplus run` invocation gets a `run_id`.
 - Start and finish metadata are persisted to the configured local history backend.
@@ -98,7 +110,7 @@ Aggregate per-job history by pipeline:
 etlplus report --level job --group-by pipeline --since 2026-03-01T00:00:00Z --table
 ```
 
-## Output conventions
+## Output Conventions
 
 - `history` returns normalized records.
 - `log` returns raw backend-native records.
@@ -109,8 +121,85 @@ etlplus report --level job --group-by pipeline --since 2026-03-01T00:00:00Z --ta
   summaries stay compact and aggregate-oriented; detailed per-job execution data is available
   through `--level job`.
 
-## Related documentation
+## Stable Normalized Fields
+
+Stable normalized run fields:
+
+- `run_id`
+- `pipeline_name`
+- `job_name`
+- `config_path`
+- `config_sha256`
+- `status`
+- `started_at`
+- `finished_at`
+- `duration_ms`
+- `records_in`
+- `records_out`
+- `error_type`
+- `error_message`
+- `error_traceback`
+- `result_summary`
+- `host`
+- `pid`
+- `etlplus_version`
+
+Stable normalized job fields:
+
+- `run_id`
+- `job_name`
+- `pipeline_name`
+- `sequence_index`
+- `started_at`
+- `finished_at`
+- `duration_ms`
+- `records_in`
+- `records_out`
+- `status`
+- `result_status`
+- `error_type`
+- `error_message`
+- `skipped_due_to`
+- `result_summary`
+
+These normalized run/job shapes are the supported read contract across both SQLite and JSONL
+backends. Raw backend append records remain debug-oriented and backend-specific.
+
+## Event-to-history mapping for `etlplus run`
+
+| Event stream field | Persisted history field(s) | Notes |
+| --- | --- | --- |
+| `run_id` | `runs.run_id`, `job_runs.run_id` | Stable join key across STDERR events, STDOUT payloads, and persisted history. |
+| `run.started.timestamp` | `runs.started_at` | Same command invocation start time in ISO-8601 UTC form. |
+| `run.completed.duration_ms`, `run.failed.duration_ms` | `runs.duration_ms` | Semantically the same elapsed run duration. |
+| `run.completed.status`, `run.failed.status` | `runs.status` | Event statuses are `ok`/`error`; persisted statuses are `succeeded`/`failed`. |
+| `run.failed.error_type`, `run.failed.error_message` | `runs.error_type`, `runs.error_message` | Stable failure metadata when present. |
+
+Event-only fields today:
+
+- `event`
+- `command`
+- `lifecycle`
+- `timestamp`
+
+History-only fields today:
+
+- `config_sha256`
+- `records_in`
+- `records_out`
+- `error_traceback`
+- `host`
+- `pid`
+- full run/job `result_summary`
+- `job_runs.sequence_index`
+- `job_runs.skipped_due_to`
+
+DAG job detail is intentionally persisted in `job_runs`; ETLPlus does not currently promise a
+one-event-per-job stream contract.
+
+## Related Documentation
 
 - {doc}`examples`
+- {doc}`structured runtime events <structured-events>`
 - {doc}`pipeline-authoring`
 - {doc}`../api/operations`
