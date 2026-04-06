@@ -70,9 +70,7 @@ def _assert_base_event_fields(
 def _parse_event_lines(stderr: str) -> list[dict[str, Any]]:
     """Parse JSONL event output from STDERR."""
     return [
-        json.loads(line)
-        for line in stderr.splitlines()
-        if line.strip().startswith('{')
+        json.loads(line) for line in stderr.splitlines() if line.strip().startswith('{')
     ]
 
 

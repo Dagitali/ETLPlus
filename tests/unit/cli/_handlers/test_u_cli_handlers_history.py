@@ -1031,8 +1031,7 @@ class TestStatusHandler:
         )
 
         assert (
-            history_mod.status_handler(level='job', pretty=False, run_id='run-1')
-            == 0
+            history_mod.status_handler(level='job', pretty=False, run_id='run-1') == 0
         )
         assert_emit_json(
             capture_io,

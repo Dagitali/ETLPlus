@@ -304,3 +304,145 @@ class TestPersistedRunSummary:
         """Single-job results should keep their existing persisted summary."""
         result = {'job': 'seed', 'status': 'success'}
         assert run_mod._persisted_run_summary(result) == result
+
+
+class TestRunSummaryHelpers:
+    """Unit tests for compact DAG-summary helper functions."""
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(None, [], id='none'),
+            pytest.param('seed', [], id='non-list'),
+            pytest.param(['seed', 3, 'publish'], ['seed', 'publish'], id='mixed-list'),
+        ],
+    )
+    def test_coerce_string_list_filters_to_strings(
+        self,
+        value: object,
+        expected: list[str],
+    ) -> None:
+        """
+        Test that string-list coercion discards non-list and non-string inputs.
+        """
+        assert run_mod._coerce_string_list(value) == expected
+
+    @pytest.mark.parametrize(
+        (
+            'result',
+            'continue_on_fail',
+            'failed_jobs',
+            'skipped_jobs',
+            'succeeded_jobs',
+            'expected',
+        ),
+        [
+            pytest.param(
+                {'status': 'custom'},
+                False,
+                [],
+                [],
+                [],
+                'custom',
+                id='explicit-status-wins',
+            ),
+            pytest.param(
+                {},
+                True,
+                ['seed'],
+                [],
+                ['publish'],
+                'partial_success',
+                id='continue-on-fail-with-successes',
+            ),
+            pytest.param(
+                {},
+                False,
+                ['seed'],
+                ['notify'],
+                [],
+                'failed',
+                id='failed-or-skipped-without-continue',
+            ),
+            pytest.param(
+                {},
+                False,
+                [],
+                [],
+                ['seed'],
+                'success',
+                id='fallback-success',
+            ),
+        ],
+    )
+    def test_dag_run_status_normalizes_aggregate_status(
+        self,
+        result: dict[str, object],
+        continue_on_fail: bool,
+        failed_jobs: list[str],
+        skipped_jobs: list[str],
+        succeeded_jobs: list[str],
+        expected: str,
+    ) -> None:
+        """
+        Test that aggregate DAG status follows explicit, partial, failed, and
+        success cases.
+        """
+        assert (
+            run_mod._dag_run_status(
+                result,
+                continue_on_fail=continue_on_fail,
+                failed_jobs=failed_jobs,
+                skipped_jobs=skipped_jobs,
+                succeeded_jobs=succeeded_jobs,
+            )
+            == expected
+        )
+
+    @pytest.mark.parametrize(
+        ('executed_jobs', 'field_name', 'expected'),
+        [
+            pytest.param([], 'job', None, id='empty'),
+            pytest.param(['bad-row'], 'job', None, id='all-non-mappings'),
+            pytest.param(
+                [{'job': 'seed'}, {'job': ''}],
+                'job',
+                None,
+                id='last-mapping-missing-string',
+            ),
+            pytest.param(
+                ['bad-row', {'result_status': 'success'}],
+                'result_status',
+                'success',
+                id='skips-trailing-non-mappings',
+            ),
+        ],
+    )
+    def test_last_job_field_handles_empty_invalid_and_trailing_rows(
+        self,
+        executed_jobs: list[object],
+        field_name: str,
+        expected: str | None,
+    ) -> None:
+        """
+        Test that trailing-job field lookup ignores invalid rows and requires
+        non-empty strings.
+        """
+        assert run_mod._last_job_field(executed_jobs, field_name=field_name) == expected
+
+    @pytest.mark.parametrize(
+        ('result', 'expected'),
+        [
+            pytest.param(None, None, id='none'),
+            pytest.param('plain-text', 'plain-text', id='non-mapping'),
+        ],
+    )
+    def test_persisted_run_summary_preserves_none_and_non_mapping_inputs(
+        self,
+        result: object,
+        expected: object,
+    ) -> None:
+        """
+        Test that persisted run summaries preserve null and non-mapping shapes.
+        """
+        assert run_mod._persisted_run_summary(result) == expected
