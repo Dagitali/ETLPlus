@@ -145,7 +145,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
 
         Parameters
         ----------
-        requirement : _RequirementSpec
+        requirement : RequirementSpec
             The requirement specification to check.
 
         Returns
@@ -183,7 +183,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             The detected scheme, if any.
         reason : str
             The reason for the missing requirement.
-        requirement : _RequirementSpec
+        requirement : RequirementSpec
             The requirement specification.
         role : str
             The role associated with the requirement.

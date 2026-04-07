@@ -321,7 +321,7 @@ def missing_requirement_rows(
         The configuration object containing the connectors.
     netcdf_available_fn : Callable[[], bool]
         A function that returns whether netCDF support dependencies are installed.
-    requirement_available_fn : Callable[[_RequirementSpec], bool]
+    requirement_available_fn : Callable[[RequirementSpec], bool]
         A function that returns whether the dependencies for a given
         requirement are installed.
 
@@ -415,7 +415,7 @@ def requirement_available(
 
     Parameters
     ----------
-    requirement : _RequirementSpec
+    requirement : RequirementSpec
         The requirement specification containing the modules to check.
     package_available : Callable[[str], bool]
         A function that checks if a package is available.

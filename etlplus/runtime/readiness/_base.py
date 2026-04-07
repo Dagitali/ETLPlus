@@ -544,7 +544,7 @@ class ReadinessBaseMixin:
 
         Returns
         -------
-        _ResolvedConfigContext
+        ResolvedConfigContext
             The resolved configuration context.
         """
         cfg = Config.from_dict(raw)
