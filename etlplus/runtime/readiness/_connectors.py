@@ -20,7 +20,7 @@ from ._base import coerce_storage_scheme
 from ._support import FORMAT_EXTRA_REQUIREMENTS
 from ._support import SCHEME_EXTRA_REQUIREMENTS
 from ._support import ReadinessRow
-from ._support import _RequirementSpec
+from ._support import RequirementSpec
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -82,7 +82,7 @@ def _requirement_row(
     detected_format: str | None = None,
     detected_scheme: str | None = None,
     reason: str,
-    requirement: _RequirementSpec,
+    requirement: RequirementSpec,
     role: str,
 ) -> ReadinessRow:
     """Return one missing-requirement row."""
@@ -310,7 +310,7 @@ def missing_requirement_rows(
     *,
     cfg: Config,
     netcdf_available_fn: Callable[[], bool],
-    requirement_available_fn: Callable[[_RequirementSpec], bool],
+    requirement_available_fn: Callable[[RequirementSpec], bool],
 ) -> list[ReadinessRow]:
     """
     Return missing optional dependency rows for configured connectors.
@@ -358,7 +358,7 @@ def missing_requirement_rows(
                         connector=connector_name,
                         detected_format='nc',
                         reason='nc format requires xarray and netCDF4 or h5netcdf',
-                        requirement=_RequirementSpec(
+                        requirement=RequirementSpec(
                             modules=('xarray', 'netCDF4', 'h5netcdf'),
                             package='xarray/netCDF4',
                             extra='file',
@@ -406,7 +406,7 @@ def netcdf_available(
 
 
 def requirement_available(
-    requirement: _RequirementSpec,
+    requirement: RequirementSpec,
     *,
     package_available: Callable[[str], bool],
 ) -> bool:

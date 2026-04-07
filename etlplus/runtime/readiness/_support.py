@@ -27,8 +27,8 @@ __all__ = [
     'SUPPORTED_PYTHON_RANGE',
     'TOKEN_PATTERN',
     # Classes
-    '_RequirementSpec',
-    '_ResolvedConfigContext',
+    'RequirementSpec',
+    'ResolvedConfigContext',
     # Type Aliases
     'ReadinessRow',
 ]
@@ -41,11 +41,11 @@ type CheckStatus = Literal['ok', 'warn', 'error', 'skipped']
 type ReadinessRow = dict[str, Any]
 
 
-# SECTION: INTERNAL DATA CLASSES ============================================ #
+# SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(frozen=True, slots=True)
-class _RequirementSpec:
+class RequirementSpec:
     """One optional runtime dependency requirement."""
 
     # -- Instance Methods -- #
@@ -56,7 +56,7 @@ class _RequirementSpec:
 
 
 @dataclass(frozen=True, slots=True)
-class _ResolvedConfigContext:
+class ResolvedConfigContext:
     """Resolved config state reused across config readiness checks."""
 
     # -- Instance Methods -- #
@@ -90,26 +90,26 @@ AZURE_STORAGE_BOOTSTRAP_ENV: Final[tuple[str, ...]] = (
 )
 AZURE_STORAGE_CREDENTIAL_ENV: Final[str] = 'AZURE_STORAGE_CREDENTIAL'
 
-FORMAT_EXTRA_REQUIREMENTS: Final[dict[str, _RequirementSpec]] = {
-    'dta': _RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
-    'hdf5': _RequirementSpec(('tables',), 'tables'),
-    'rda': _RequirementSpec(('pyreadr',), 'pyreadr', 'file'),
-    'rds': _RequirementSpec(('pyreadr',), 'pyreadr', 'file'),
-    'sav': _RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
-    'zsav': _RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
+FORMAT_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
+    'dta': RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
+    'hdf5': RequirementSpec(('tables',), 'tables'),
+    'rda': RequirementSpec(('pyreadr',), 'pyreadr', 'file'),
+    'rds': RequirementSpec(('pyreadr',), 'pyreadr', 'file'),
+    'sav': RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
+    'zsav': RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
 }
-SCHEME_EXTRA_REQUIREMENTS: Final[dict[str, _RequirementSpec]] = {
-    'abfs': _RequirementSpec(
+SCHEME_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
+    'abfs': RequirementSpec(
         ('azure.storage.filedatalake',),
         'azure-storage-file-datalake',
         'storage',
     ),
-    'azure-blob': _RequirementSpec(
+    'azure-blob': RequirementSpec(
         ('azure.storage.blob',),
         'azure-storage-blob',
         'storage',
     ),
-    's3': _RequirementSpec(('boto3',), 'boto3', 'storage'),
+    's3': RequirementSpec(('boto3',), 'boto3', 'storage'),
 }
 
 SUPPORTED_PYTHON_RANGE: Final[tuple[tuple[int, int], tuple[int, int]]] = (

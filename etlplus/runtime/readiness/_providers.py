@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from collections.abc import Mapping
 from typing import Any
+from typing import Literal
+from typing import TypedDict
 from urllib.parse import urlsplit
 
 from ..._config import Config
@@ -32,9 +34,33 @@ __all__ = [
 # SECTION: INTERNAL TYPE ALIASES ============================================ #
 
 
+type _ProviderGapSeverity = Literal['error', 'warn']
+
+
+# SECTION: INTERNAL TYPED DICTS ============================================= #
+
+
+class _ProviderGapDetails(TypedDict):
+    """Provider-gap fields before connector, role, and scheme are attached."""
+
+    guidance: str
+    missing_env: list[str]
+    provider: str
+    reason: str
+    severity: _ProviderGapSeverity
+
+
+class _ProviderGapRow(_ProviderGapDetails):
+    """Normalized provider-environment gap row."""
+
+    connector: str
+    role: str
+    scheme: str
+
+
 type _ProviderEnvironmentRowsFn = Callable[
     [Config, Mapping[str, str]],
-    list[ReadinessRow],
+    list[_ProviderGapRow],
 ]
 
 
@@ -64,8 +90,8 @@ def _provider_gap_row(
     reason: str,
     role: str,
     scheme: str,
-    severity: str,
-) -> ReadinessRow:
+    severity: _ProviderGapSeverity,
+) -> _ProviderGapRow:
     """Return one normalized provider-environment gap row."""
     return {
         'connector': connector,
@@ -88,7 +114,7 @@ def _azure_provider_gaps(
     azure_account_url: bool,
     azure_connection_string: bool,
     azure_credential: bool,
-) -> list[ReadinessRow]:
+) -> list[_ProviderGapRow]:
     """Return Azure bootstrap or credential gaps for one connector path."""
     authority_has_account_host = _azure_authority_has_account_host(path)
     if not (azure_connection_string or azure_account_url or authority_has_account_host):
@@ -144,11 +170,22 @@ def _s3_provider_gaps(
     env: Mapping[str, str],
     has_aws_hints: bool,
     role: str,
-) -> list[ReadinessRow]:
+) -> list[_ProviderGapRow]:
     """Return AWS provider gaps for one S3 connector path."""
     explicit_gap = explicit_aws_credential_gap(env)
     if explicit_gap:
-        return [{'connector': connector, 'role': role, 'scheme': 's3'} | explicit_gap]
+        return [
+            _provider_gap_row(
+                connector=connector,
+                guidance=explicit_gap['guidance'],
+                missing_env=explicit_gap['missing_env'],
+                provider=explicit_gap['provider'],
+                reason=explicit_gap['reason'],
+                role=role,
+                scheme='s3',
+                severity=explicit_gap['severity'],
+            ),
+        ]
     if has_aws_hints:
         return []
     return [
@@ -177,7 +214,7 @@ def _s3_provider_gaps(
 
 def explicit_aws_credential_gap(
     env: Mapping[str, str],
-) -> ReadinessRow | None:
+) -> _ProviderGapDetails | None:
     """
     Return one AWS env error row for incomplete explicit credentials.
 
@@ -197,7 +234,7 @@ def explicit_aws_credential_gap(
 
     Returns
     -------
-    ReadinessRow | None
+    _ProviderGapDetails | None
         An error row for incomplete explicit AWS credentials, or ``None`` if no
         issues are found.
     """
@@ -289,7 +326,7 @@ def provider_environment_rows(
     *,
     cfg: Config,
     env: Mapping[str, str],
-) -> list[ReadinessRow]:
+) -> list[_ProviderGapRow]:
     """
     Return provider-specific environment gaps for configured connectors.
 
@@ -302,11 +339,11 @@ def provider_environment_rows(
 
     Returns
     -------
-    list[ReadinessRow]
+    list[_ProviderGapRow]
         A list of dictionaries representing the provider-specific environment
         gaps.
     """
-    rows: list[ReadinessRow] = []
+    rows: list[_ProviderGapRow] = []
     azure_connection_string = bool(env.get('AZURE_STORAGE_CONNECTION_STRING'))
     azure_account_url = bool(env.get('AZURE_STORAGE_ACCOUNT_URL'))
     azure_credential = bool(env.get(AZURE_STORAGE_CREDENTIAL_ENV))

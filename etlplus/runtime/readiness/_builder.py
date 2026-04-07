@@ -18,7 +18,7 @@ from . import _connectors
 from . import _providers
 from . import _strict
 from ._base import ReadinessBaseMixin
-from ._support import _RequirementSpec
+from ._support import RequirementSpec
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -138,7 +138,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
     @classmethod
     def requirement_available(
         cls,
-        requirement: _RequirementSpec,
+        requirement: RequirementSpec,
     ) -> bool:
         """
         Return whether any module for one requirement is importable.
@@ -167,7 +167,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         detected_format: str | None = None,
         detected_scheme: str | None = None,
         reason: str,
-        requirement: _RequirementSpec,
+        requirement: RequirementSpec,
         role: str,
     ) -> dict[str, Any]:
         """

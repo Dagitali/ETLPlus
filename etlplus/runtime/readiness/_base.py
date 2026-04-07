@@ -28,7 +28,7 @@ from ._support import SUPPORTED_PYTHON_RANGE
 from ._support import TOKEN_PATTERN
 from ._support import CheckStatus
 from ._support import ReadinessRow
-from ._support import _ResolvedConfigContext
+from ._support import ResolvedConfigContext
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -531,7 +531,7 @@ class ReadinessBaseMixin:
         raw: StrAnyMap,
         *,
         env: Mapping[str, str] | None,
-    ) -> _ResolvedConfigContext:
+    ) -> ResolvedConfigContext:
         """
         Return resolved config state shared by config readiness checks.
 
@@ -551,7 +551,7 @@ class ReadinessBaseMixin:
         effective_env = cls.effective_environment(cfg, env)
         resolved = cast(StrAnyMap, deep_substitute(raw, cfg.vars, effective_env))
         unresolved_tokens = sorted(cls.collect_substitution_tokens(resolved))
-        return _ResolvedConfigContext(
+        return ResolvedConfigContext(
             raw=raw,
             effective_env=effective_env,
             unresolved_tokens=unresolved_tokens,
