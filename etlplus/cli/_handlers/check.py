@@ -20,6 +20,16 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _readiness_exit_code(
+    report: dict[str, object],
+) -> int:
+    """Return the CLI exit code for one readiness report payload."""
+    return 1 if report.get('status') == 'error' else 0
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -95,7 +105,7 @@ def check_handler(
         return _output.emit_json_payload(
             report,
             pretty=pretty,
-            exit_code=0 if report.get('status') == 'ok' else 1,
+            exit_code=_readiness_exit_code(report),
         )
     if config is None:
         raise ValueError('config is required unless readiness-only mode is used')
