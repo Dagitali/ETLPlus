@@ -12,7 +12,7 @@ from typing import Any
 
 from ..connector import parse_connector
 from ..utils._types import StrAnyMap
-from . import _readiness_checks as _checks
+from . import _readiness_connectors as _connectors
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -33,9 +33,9 @@ __all__ = [
 def strict_config_issue_rows(
     *,
     raw: StrAnyMap,
-    connector_type_guidance: Callable[[str], str] = _checks.connector_type_guidance,
+    connector_type_guidance: Callable[[str], str] = _connectors.connector_type_guidance,
     connector_type_choices: Callable[[], tuple[str, ...]] = (
-        _checks.connector_type_choices
+        _connectors.connector_type_choices
     ),
 ) -> list[dict[str, Any]]:
     """Return strict-mode config issues hidden by tolerant parsing."""
@@ -82,9 +82,9 @@ def strict_connector_names(
     raw: StrAnyMap,
     section: str,
     issues: list[dict[str, Any]],
-    connector_type_guidance: Callable[[str], str] = _checks.connector_type_guidance,
+    connector_type_guidance: Callable[[str], str] = _connectors.connector_type_guidance,
     connector_type_choices: Callable[[], tuple[str, ...]] = (
-        _checks.connector_type_choices
+        _connectors.connector_type_choices
     ),
 ) -> set[str] | None:
     """Validate connector entries in *section* and return known names."""
