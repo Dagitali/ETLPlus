@@ -12,7 +12,8 @@ import pytest
 
 import etlplus.runtime as runtime_pkg
 import etlplus.runtime._readiness as readiness_mod
-import etlplus.runtime._readiness_checks as readiness_checks_mod
+import etlplus.runtime._readiness_connectors as readiness_connectors_mod
+import etlplus.runtime._readiness_providers as readiness_providers_mod
 import etlplus.runtime._readiness_strict as readiness_strict_mod
 from etlplus.runtime._events import EVENT_SCHEMA
 from etlplus.runtime._events import EVENT_SCHEMA_VERSION
@@ -39,7 +40,8 @@ EXPECTED_EXPORTS = [
     ('resolve_log_level', resolve_log_level),
 ]
 HELPER_EXPORT_CASES = [
-    ('_checks', readiness_checks_mod),
+    ('_connectors', readiness_connectors_mod),
+    ('_providers', readiness_providers_mod),
     ('_strict', readiness_strict_mod),
 ]
 
