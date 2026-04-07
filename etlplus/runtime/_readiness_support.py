@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from typing import Any
 from typing import Final
 from typing import Literal
 
@@ -28,6 +29,8 @@ __all__ = [
     # Classes
     '_RequirementSpec',
     '_ResolvedConfigContext',
+    # Type Aliases
+    'ReadinessRow',
 ]
 
 
@@ -35,6 +38,7 @@ __all__ = [
 
 
 type CheckStatus = Literal['ok', 'warn', 'error', 'skipped']
+type ReadinessRow = dict[str, Any]
 
 
 # SECTION: INTERNAL DATA CLASSES ============================================ #
