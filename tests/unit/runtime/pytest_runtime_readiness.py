@@ -16,7 +16,7 @@ import pytest
 
 import etlplus.runtime.readiness._base as readiness_base_mod
 import etlplus.runtime.readiness._builder as readiness_builder_mod
-from etlplus.runtime.readiness._support import _ResolvedConfigContext
+from etlplus.runtime.readiness._support import ResolvedConfigContext
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -129,9 +129,9 @@ def build_resolved_config_context(
     unresolved_tokens: list[str] | None = None,
     resolved_raw: Mapping[str, object] | None = None,
     resolved_cfg: object | None = None,
-) -> _ResolvedConfigContext:
+) -> ResolvedConfigContext:
     """Build one resolved-config context with stable defaults."""
-    return _ResolvedConfigContext(
+    return ResolvedConfigContext(
         raw=raw,
         effective_env={} if env is None else dict(env),
         unresolved_tokens=[] if unresolved_tokens is None else list(unresolved_tokens),
