@@ -11,7 +11,7 @@ from ._events import EVENT_SCHEMA_VERSION
 from ._events import RuntimeEvents
 from ._logging import configure_logging
 from ._logging import resolve_log_level
-from ._readiness import ReadinessReportBuilder
+from .readiness import ReadinessReportBuilder
 
 # SECTION: EXPORTS ========================================================== #
 

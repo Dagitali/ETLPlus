@@ -209,10 +209,10 @@ class TestCliCheck:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Partial explicit AWS credentials should fail readiness."""
-        from etlplus.runtime import _readiness as readiness_mod
+        from etlplus.runtime import ReadinessReportBuilder
 
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            ReadinessReportBuilder,
             'package_available',
             lambda _module_name: True,
         )
@@ -319,13 +319,11 @@ class TestCliCheck:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that readiness flags missing optional storage dependencies."""
-        from etlplus.runtime import _readiness as readiness_mod
+        from etlplus.runtime import ReadinessReportBuilder
 
-        original_package_available = (
-            readiness_mod.ReadinessReportBuilder.package_available
-        )
+        original_package_available = ReadinessReportBuilder.package_available
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            ReadinessReportBuilder,
             'package_available',
             lambda module_name: (
                 False
@@ -432,10 +430,10 @@ class TestCliCheck:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Provider bootstrap errors should keep readiness exit code non-zero."""
-        from etlplus.runtime import _readiness as readiness_mod
+        from etlplus.runtime import ReadinessReportBuilder
 
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            ReadinessReportBuilder,
             'package_available',
             lambda _module_name: True,
         )
@@ -499,10 +497,10 @@ class TestCliCheck:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Provider warnings should remain advisory and keep exit code zero."""
-        from etlplus.runtime import _readiness as readiness_mod
+        from etlplus.runtime import ReadinessReportBuilder
 
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            ReadinessReportBuilder,
             'package_available',
             lambda _module_name: True,
         )
