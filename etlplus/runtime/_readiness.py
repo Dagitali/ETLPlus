@@ -367,6 +367,11 @@ class ReadinessReportBuilder:
         -------
         StrAnyMap
             Parsed configuration mapping.
+
+        Raises
+        ------
+        TypeError
+            If the YAML root is not a mapping/object.
         """
         raw = File(Path(config_path), FileFormat.YAML).read()
         mapping = maybe_mapping(raw)
@@ -963,6 +968,7 @@ class ReadinessReportBuilder:
         ----------
         env : Mapping[str, str]
             Environment mapping to check for AWS credential env vars.
+
         Returns
         -------
         dict[str, Any] | None
@@ -1011,6 +1017,7 @@ class ReadinessReportBuilder:
         ----------
         cfg : Config
             Configuration object containing connectors to be analyzed.
+
         Returns
         -------
         list[dict[str, Any]]
