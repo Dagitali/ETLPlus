@@ -53,7 +53,7 @@ class TestReadinessReportBuilderConnectors:
             ],
         )
 
-        rows = readiness_mod.ReadinessReportBuilder.connector_gap_rows(cast(Any, cfg))
+        rows = readiness_connectors_mod.connector_gap_rows(cast(Any, cfg))
 
         assert rows == [
             _connector_gap(
@@ -92,7 +92,7 @@ class TestReadinessReportBuilderConnectors:
             apis={},
         )
 
-        rows = readiness_mod.ReadinessReportBuilder.connector_gap_rows(cast(Any, cfg))
+        rows = readiness_connectors_mod.connector_gap_rows(cast(Any, cfg))
 
         assert rows == [
             _connector_gap(
@@ -150,7 +150,7 @@ class TestReadinessReportBuilderConnectors:
             apis={},
         )
 
-        rows = readiness_mod.ReadinessReportBuilder.connector_gap_rows(
+        rows = readiness_connectors_mod.connector_gap_rows(
             cast(Any, cfg),
         )
 
@@ -208,7 +208,7 @@ class TestReadinessReportBuilderConnectors:
             apis={'known-api': object()},
         )
 
-        rows = readiness_mod.ReadinessReportBuilder.connector_gap_rows(cast(Any, cfg))
+        rows = readiness_connectors_mod.connector_gap_rows(cast(Any, cfg))
 
         assert not rows
 
@@ -240,12 +240,12 @@ class TestReadinessReportBuilderConnectors:
             return readiness_mod.DataConnectorType.FILE
 
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'connector_type',
+            readiness_connectors_mod,
+            '_connector_type',
             _connector_type,
         )
 
-        rows = readiness_mod.ReadinessReportBuilder.connector_gap_rows(cast(Any, cfg))
+        rows = readiness_connectors_mod.connector_gap_rows(cast(Any, cfg))
 
         assert not rows
 
@@ -280,7 +280,7 @@ class TestReadinessReportBuilderConnectors:
         """Test readiness rows when connector and dependency errors exist."""
         cfg = _cfg()
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_connectors_mod,
             'connector_gap_rows',
             lambda _cfg: [{'connector': 'bad-source'}],
         )
@@ -321,11 +321,10 @@ class TestReadinessReportBuilderConnectors:
         self,
     ) -> None:
         """Test actionable guidance for blank and non-storage invalid types."""
-        builder = readiness_mod.ReadinessReportBuilder
-        assert builder.connector_type_guidance('') == (
+        assert readiness_connectors_mod.connector_type_guidance('') == (
             'Set type to one of: api, database, file.'
         )
-        assert builder.connector_type_guidance('weird') == (
+        assert readiness_connectors_mod.connector_type_guidance('weird') == (
             'Use one of the supported connector types: api, database, file.'
         )
 

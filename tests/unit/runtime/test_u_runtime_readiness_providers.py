@@ -13,6 +13,8 @@ from typing import cast
 import pytest
 
 import etlplus.runtime._readiness as readiness_mod
+import etlplus.runtime._readiness_connectors as readiness_connectors_mod
+import etlplus.runtime._readiness_providers as readiness_providers_mod
 
 from .pytest_runtime_readiness import build_provider_check as _provider_check
 from .pytest_runtime_readiness import build_provider_gap_row as _provider_gap
@@ -71,10 +73,7 @@ class TestReadinessReportBuilderProviders:
         expected: dict[str, object] | None,
     ) -> None:
         """Explicit AWS credential diagnostics should cover all short-circuit cases."""
-        assert (
-            readiness_mod.ReadinessReportBuilder.explicit_aws_credential_gap(env)
-            == expected
-        )
+        assert readiness_providers_mod.explicit_aws_credential_gap(env) == expected
 
     @pytest.mark.parametrize(
         ('rows', 'expected'),
@@ -227,9 +226,9 @@ class TestReadinessReportBuilderProviders:
     ) -> None:
         """Provider check wrappers should map row severities into report rows."""
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_providers_mod,
             'provider_environment_rows',
-            lambda *, cfg, env: rows,
+            lambda cfg, env: rows,
         )
 
         checks = readiness_mod.ReadinessReportBuilder.provider_environment_checks(
@@ -334,7 +333,7 @@ class TestReadinessReportBuilderProviders:
         expected: list[dict[str, object]],
     ) -> None:
         """Provider row generation should emit the expected Azure/S3 gaps."""
-        rows = readiness_mod.ReadinessReportBuilder.provider_environment_rows(
+        rows = readiness_providers_mod.provider_environment_rows(
             cfg=cast(Any, cfg),
             env=env,
         )
@@ -355,7 +354,7 @@ class TestReadinessReportBuilderProviders:
             ],
         )
 
-        rows = readiness_mod.ReadinessReportBuilder.provider_environment_rows(
+        rows = readiness_providers_mod.provider_environment_rows(
             cfg=cast(Any, cfg),
             env={'AWS_ACCESS_KEY_ID': 'access-key'},
         )
@@ -428,7 +427,7 @@ class TestReadinessReportBuilderProviders:
         env: dict[str, str],
     ) -> None:
         """Provider rows should stay empty when explicit auth hints are present."""
-        rows = readiness_mod.ReadinessReportBuilder.provider_environment_rows(
+        rows = readiness_providers_mod.provider_environment_rows(
             cfg=cast(Any, cfg),
             env=env,
         )
@@ -450,7 +449,7 @@ class TestReadinessReportBuilderProviders:
             ],
         )
 
-        rows = readiness_mod.ReadinessReportBuilder.provider_environment_rows(
+        rows = readiness_providers_mod.provider_environment_rows(
             cfg=cast(Any, cfg),
             env={'AZURE_STORAGE_ACCOUNT_URL': 'https://account.blob.core.windows.net'},
         )
@@ -483,18 +482,25 @@ class TestReadinessReportBuilderProviders:
         Thin readiness wrapper methods should preserve the extracted helper
         behavior.
         """
-        builder = readiness_mod.ReadinessReportBuilder
         requirement = readiness_mod._RequirementSpec(('boto3',), 'boto3', 'storage')
 
-        assert builder.aws_env_hint_present({'AWS_PROFILE': 'default'}) is True
         assert (
-            builder.azure_authority_has_account_host(
+            readiness_providers_mod._aws_env_hint_present(
+                {'AWS_PROFILE': 'default'},
+            )
+            is True
+        )
+        assert (
+            readiness_providers_mod._azure_authority_has_account_host(
                 'azure-blob://container@account.blob.core.windows.net/data.csv',
             )
             is True
         )
-        assert builder.connector_type('file') is readiness_mod.DataConnectorType.FILE
-        assert builder.requirement_row(
+        assert (
+            readiness_connectors_mod._connector_type('file')
+            is readiness_mod.DataConnectorType.FILE
+        )
+        assert readiness_mod.ReadinessReportBuilder.requirement_row(
             connector='out',
             detected_scheme='s3',
             reason='s3 storage path requires boto3',
