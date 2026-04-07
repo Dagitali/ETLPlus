@@ -14,9 +14,9 @@ from typing import cast
 
 import pytest
 
-import etlplus.runtime._readiness as readiness_mod
-import etlplus.runtime._readiness_base as readiness_base_mod
-from etlplus.runtime._readiness_support import _ResolvedConfigContext
+import etlplus.runtime.readiness._base as readiness_base_mod
+import etlplus.runtime.readiness._builder as readiness_builder_mod
+from etlplus.runtime.readiness._support import _ResolvedConfigContext
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -156,12 +156,12 @@ def patch_config_resolution(
     effective_resolved_raw = raw_config if resolved_raw is None else dict(resolved_raw)
 
     monkeypatch.setattr(
-        readiness_mod.ReadinessReportBuilder,
+        readiness_builder_mod.ReadinessReportBuilder,
         'load_raw_config',
         lambda _path: raw_config,
     )
     monkeypatch.setattr(
-        readiness_mod.ReadinessReportBuilder,
+        readiness_builder_mod.ReadinessReportBuilder,
         'resolve_config_context',
         lambda raw, env=None: build_resolved_config_context(
             cast(Mapping[str, object], raw),
