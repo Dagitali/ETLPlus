@@ -1730,7 +1730,7 @@ class ReadinessReportBuilder:
             Set of valid validation ruleset names for validating job validate
             references, or ``None`` if issues were found in the validations
             section that prevent reliable extraction of validation names.
-       """
+        """
         value = raw.get('jobs')
         if value is None:
             return
