@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.runtime.test_u_runtime_readiness_connectors` module.
 
-Connector readiness unit tests for :mod:`etlplus.runtime._readiness`.
+Connector readiness unit tests for :mod:`etlplus.runtime.readiness._builder`.
 """
 
 from __future__ import annotations
@@ -12,8 +12,10 @@ from typing import cast
 
 import pytest
 
-import etlplus.runtime._readiness as readiness_mod
-import etlplus.runtime._readiness_connectors as readiness_connectors_mod
+import etlplus.runtime.readiness._builder as readiness_mod
+import etlplus.runtime.readiness._connectors as readiness_connectors_mod
+from etlplus.connector import DataConnectorType
+from etlplus.runtime.readiness._support import _RequirementSpec
 
 from .pytest_runtime_readiness import build_connector_gap_row as _connector_gap
 from .pytest_runtime_readiness import (
@@ -237,7 +239,7 @@ class TestReadinessReportBuilderConnectors:
             calls['count'] += 1
             if calls['count'] == 1:
                 return object()
-            return readiness_mod.DataConnectorType.FILE
+            return DataConnectorType.FILE
 
         monkeypatch.setattr(
             readiness_connectors_mod,
@@ -608,7 +610,11 @@ class TestReadinessReportBuilderConnectors:
         self,
     ) -> None:
         """Requirement rows should keep both detected format and scheme fields."""
-        requirement = readiness_mod._RequirementSpec(('pyarrow',), 'pyarrow', 'file')
+        requirement = _RequirementSpec(
+            ('pyarrow',),
+            'pyarrow',
+            'file',
+        )
 
         row = readiness_mod.ReadinessReportBuilder.requirement_row(
             connector='out',
@@ -637,7 +643,11 @@ class TestReadinessReportBuilderConnectors:
         self,
     ) -> None:
         """Requirement rows should omit scheme when only format context exists."""
-        requirement = readiness_mod._RequirementSpec(('pyarrow',), 'pyarrow', 'file')
+        requirement = _RequirementSpec(
+            ('pyarrow',),
+            'pyarrow',
+            'file',
+        )
 
         row = readiness_mod.ReadinessReportBuilder.requirement_row(
             connector='out',

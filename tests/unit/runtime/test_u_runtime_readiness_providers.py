@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.runtime.test_u_runtime_readiness_providers` module.
 
-Provider readiness unit tests for :mod:`etlplus.runtime._readiness`.
+Provider readiness unit tests for :mod:`etlplus.runtime.readiness._builder`.
 """
 
 from __future__ import annotations
@@ -12,9 +12,11 @@ from typing import cast
 
 import pytest
 
-import etlplus.runtime._readiness as readiness_mod
-import etlplus.runtime._readiness_connectors as readiness_connectors_mod
-import etlplus.runtime._readiness_providers as readiness_providers_mod
+import etlplus.runtime.readiness._builder as readiness_mod
+import etlplus.runtime.readiness._connectors as readiness_connectors_mod
+import etlplus.runtime.readiness._providers as readiness_providers_mod
+from etlplus.connector import DataConnectorType
+from etlplus.runtime.readiness._support import _RequirementSpec
 
 from .pytest_runtime_readiness import build_provider_check as _provider_check
 from .pytest_runtime_readiness import build_provider_gap_row as _provider_gap
@@ -482,7 +484,11 @@ class TestReadinessReportBuilderProviders:
         Thin readiness wrapper methods should preserve the extracted helper
         behavior.
         """
-        requirement = readiness_mod._RequirementSpec(('boto3',), 'boto3', 'storage')
+        requirement = _RequirementSpec(
+            ('boto3',),
+            'boto3',
+            'storage',
+        )
 
         assert (
             readiness_providers_mod._aws_env_hint_present(
@@ -498,7 +504,7 @@ class TestReadinessReportBuilderProviders:
         )
         assert (
             readiness_connectors_mod._connector_type('file')
-            is readiness_mod.DataConnectorType.FILE
+            is DataConnectorType.FILE
         )
         assert readiness_mod.ReadinessReportBuilder.requirement_row(
             connector='out',

@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.runtime.test_u_runtime_readiness_core` module.
 
-Core unit tests for :mod:`etlplus.runtime._readiness`.
+Core unit tests for :mod:`etlplus.runtime.readiness._builder`.
 """
 
 from __future__ import annotations
@@ -12,8 +12,8 @@ from types import SimpleNamespace
 
 import pytest
 
-import etlplus.runtime._readiness as readiness_mod
-import etlplus.runtime._readiness_base as readiness_base_mod
+import etlplus.runtime.readiness._base as readiness_base_mod
+import etlplus.runtime.readiness._builder as readiness_mod
 
 from .pytest_runtime_readiness import build_runtime_cfg as _cfg
 from .pytest_runtime_readiness import (

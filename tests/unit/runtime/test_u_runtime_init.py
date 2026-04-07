@@ -11,16 +11,16 @@ from types import ModuleType
 import pytest
 
 import etlplus.runtime as runtime_pkg
-import etlplus.runtime._readiness as readiness_mod
-import etlplus.runtime._readiness_connectors as readiness_connectors_mod
-import etlplus.runtime._readiness_providers as readiness_providers_mod
-import etlplus.runtime._readiness_strict as readiness_strict_mod
+import etlplus.runtime.readiness._builder as readiness_builder_mod
+import etlplus.runtime.readiness._connectors as readiness_connectors_mod
+import etlplus.runtime.readiness._providers as readiness_providers_mod
+import etlplus.runtime.readiness._strict as readiness_strict_mod
 from etlplus.runtime._events import EVENT_SCHEMA
 from etlplus.runtime._events import EVENT_SCHEMA_VERSION
 from etlplus.runtime._events import RuntimeEvents
 from etlplus.runtime._logging import configure_logging
 from etlplus.runtime._logging import resolve_log_level
-from etlplus.runtime._readiness import ReadinessReportBuilder
+from etlplus.runtime.readiness import ReadinessReportBuilder
 
 from ..pytest_export_contracts import assert_helper_module_exports_match_facade_usage
 
@@ -78,7 +78,7 @@ class TestRuntimePackageExports:
         facade.
         """
         assert_helper_module_exports_match_facade_usage(
-            facade_module=readiness_mod,
+            facade_module=readiness_builder_mod,
             helper_module=helper_module,
             alias=alias,
         )

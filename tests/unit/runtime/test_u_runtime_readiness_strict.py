@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.runtime.test_u_runtime_readiness_strict` module.
 
-Strict-structure readiness unit tests for :mod:`etlplus.runtime._readiness`.
+Strict-structure readiness unit tests for :mod:`etlplus.runtime.readiness._builder`.
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ from typing import cast
 
 import pytest
 
-import etlplus.runtime._readiness as readiness_mod
-import etlplus.runtime._readiness_strict as readiness_strict_mod
+import etlplus.runtime.readiness._builder as readiness_mod
+import etlplus.runtime.readiness._strict as readiness_strict_mod
 
 from .pytest_runtime_readiness import build_issue_row as _issue
 
