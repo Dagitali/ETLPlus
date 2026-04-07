@@ -597,6 +597,10 @@ etlplus check --readiness --config examples/configs/pipeline.yml
 etlplus check --readiness --strict --config examples/configs/pipeline.yml
 ```
 
+Readiness warnings are advisory and still return exit code `0`. Fatal readiness errors, such as
+unresolved required environment variables, missing blocking optional dependencies, or provider
+bootstrap failures, return exit code `1`.
+
 Validate dependency order before executing a DAG-shaped pipeline:
 ```bash
 etlplus check --config examples/configs/pipeline.yml --graph

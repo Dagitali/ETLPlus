@@ -269,6 +269,28 @@ class TestCheckHandler:
             pretty=True,
         )
 
+    def test_readiness_branch_returns_zero_on_warning(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Readiness warnings should emit the report without failing the CLI."""
+        monkeypatch.setattr(
+            handlers.ReadinessReportBuilder,
+            'build',
+            lambda config_path: {
+                'checks': [],
+                'status': 'warn',
+            },
+        )
+
+        assert handlers.check_handler(config='cfg.yml', readiness=True) == 0
+        assert_emit_json(
+            capture_io,
+            {'checks': [], 'status': 'warn'},
+            pretty=True,
+        )
+
     def test_requires_config_when_not_in_readiness_mode(self) -> None:
         """
         Test that non-readiness check mode requires a config path.

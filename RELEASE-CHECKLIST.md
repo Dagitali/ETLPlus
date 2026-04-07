@@ -123,7 +123,9 @@ release.
   DAG-aware execution via `run --all` and dependency-aware `run --job`.
 - Runtime execution hygiene progress on the current branch includes:
   - Shared runtime logging policy and config precedence documentation
-  - `check --readiness` runtime/config checks with optional dependency and connector-gap detection
+  - `check --readiness` runtime/config checks with required-env diagnostics, optional dependency
+    detection, connector-gap detection, provider-specific environment checks, and standardized exit
+    codes (`0` for `ok`/`warn`, `1` for fatal readiness errors)
   - Opt-in strict config diagnostics via `check --strict` and `check --readiness --strict` for
     malformed entries and broken references hidden by the tolerant loader
   - Stable `etlplus.event.v1` structured execution events on STDERR for supported execution
