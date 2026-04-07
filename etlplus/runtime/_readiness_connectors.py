@@ -19,6 +19,22 @@ from ._readiness_support import _FORMAT_EXTRA_REQUIREMENTS
 from ._readiness_support import _SCHEME_EXTRA_REQUIREMENTS
 from ._readiness_support import _RequirementSpec
 
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    # Functions
+    'connector_gap_rows',
+    'connector_readiness_checks',
+    'connector_type',
+    'connector_type_choices',
+    'connector_type_guidance',
+    'missing_requirement_rows',
+    'netcdf_available',
+    'requirement_available',
+]
+
+
 # SECTION: INTERNAL TYPE ALIASES ============================================ #
 
 
@@ -127,6 +143,14 @@ def _connector_gap_row(
     return row
 
 
+def _iter_connectors(
+    cfg: Config,
+) -> Iterator[tuple[str, Connector]]:
+    """Yield source and target connectors tagged with their role."""
+    yield from (('source', connector) for connector in cfg.sources)
+    yield from (('target', connector) for connector in cfg.targets)
+
+
 def _requirement_row(
     *,
     connector: str,
@@ -230,7 +254,7 @@ def connector_gap_rows(
     """
     gaps: list[_ReadinessRow] = []
     supported_types = connector_type_choices()
-    for role, connector in iter_connectors(cfg):
+    for role, connector in _iter_connectors(cfg):
         connector_name = str(getattr(connector, 'name', '<unnamed>'))
         connector_type_name = str(getattr(connector, 'type', ''))
         coerced_type = connector_type(connector_type_name)
@@ -435,32 +459,6 @@ def connector_type_guidance(
     return f'Use one of the supported connector types: {supported}.'
 
 
-def iter_connectors(
-    cfg: Config,
-) -> Iterator[tuple[str, Connector]]:
-    """
-    Yield source and target connectors tagged with their role.
-
-    Parameters
-    ----------
-    cfg : Config
-        The configuration object containing the connectors.
-
-    Returns
-    -------
-    Iterator[tuple[str, Connector]]
-        An iterator over tuples of role and connector.
-
-    Yields
-    ------
-    tuple[str, Connector]
-        Tuples of role ("source" or "target") and connector objects from the
-        configuration.
-    """
-    yield from (('source', connector) for connector in cfg.sources)
-    yield from (('target', connector) for connector in cfg.targets)
-
-
 def missing_requirement_rows(
     *,
     cfg: Config,
@@ -487,7 +485,7 @@ def missing_requirement_rows(
         for the configured connectors.
     """
     rows: list[_ReadinessRow] = []
-    for role, connector in iter_connectors(cfg):
+    for role, connector in _iter_connectors(cfg):
         connector_name = str(getattr(connector, 'name', '<unnamed>'))
         path = getattr(connector, 'path', None)
         format_name = str(getattr(connector, 'format', '') or '').lower()
