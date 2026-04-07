@@ -77,15 +77,25 @@ def _missing_requirement(
     reason: str,
     role: str,
     extra: str,
+    guidance: str | None = None,
+    detected_format: str | None = None,
+    detected_scheme: str | None = None,
 ) -> dict[str, object]:
     """Build one missing-optional-dependency row."""
-    return {
+    row: dict[str, object] = {
         'connector': connector,
         'extra': extra,
         'missing_package': missing_package,
         'reason': reason,
         'role': role,
     }
+    if guidance is not None:
+        row['guidance'] = guidance
+    if detected_format is not None:
+        row['detected_format'] = detected_format
+    if detected_scheme is not None:
+        row['detected_scheme'] = detected_scheme
+    return row
 
 
 def _patch_config_resolution(
@@ -511,7 +521,9 @@ class TestReadinessReportBuilder:
                 'message': (
                     'Configuration still contains unresolved substitution tokens.'
                 ),
+                'missing_env': ['MISSING_TOKEN'],
                 'name': 'config-substitution',
+                'references': [{'name': 'MISSING_TOKEN', 'paths': ['token']}],
                 'status': 'error',
                 'unresolved_tokens': ['MISSING_TOKEN'],
             },
@@ -649,24 +661,38 @@ class TestReadinessReportBuilder:
         assert rows == [
             _connector_gap(
                 connector='file-source',
+                guidance=(
+                    'Set "path" to a local path or storage URI for this file connector.'
+                ),
                 issue='missing path',
                 role='source',
                 connector_type='file',
             ),
             _connector_gap(
                 connector='api-source',
+                guidance=(
+                    'Set "url" to a reachable endpoint or "api" to a configured '
+                    'top-level API name.'
+                ),
                 issue='missing url or api reference',
                 role='source',
                 connector_type='api',
             ),
             _connector_gap(
                 connector='api-ref-source',
+                guidance=(
+                    'Define "missing-api" under top-level "apis" or update the '
+                    'connector "api" reference.'
+                ),
                 issue='unknown api reference: missing-api',
                 role='source',
                 connector_type='api',
             ),
             _connector_gap(
                 connector='db-target',
+                guidance=(
+                    'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
+                ),
                 issue='missing connection_string',
                 role='target',
                 connector_type='database',
@@ -970,14 +996,24 @@ class TestReadinessReportBuilder:
         assert rows == [
             _missing_requirement(
                 connector='nc-source',
+                detected_format='nc',
                 extra='file',
+                guidance=(
+                    'Install xarray plus one of netCDF4 or h5netcdf, or install '
+                    'the ETLPlus "file" extra.'
+                ),
                 missing_package='xarray/netCDF4',
                 reason='nc format requires xarray and netCDF4 or h5netcdf',
                 role='source',
             ),
             _missing_requirement(
                 connector='rda-source',
+                detected_format='rda',
                 extra='file',
+                guidance=(
+                    'Install pyreadr directly or install the ETLPlus "file" '
+                    'extra. Required for "rda" file format.'
+                ),
                 missing_package='pyreadr',
                 reason='rda format requires pyreadr',
                 role='source',
@@ -1014,7 +1050,12 @@ class TestReadinessReportBuilder:
         assert rows == [
             _missing_requirement(
                 connector='s3-source',
+                detected_scheme='s3',
                 extra='storage',
+                guidance=(
+                    'Install boto3 directly or install the ETLPlus "storage" '
+                    'extra. Required for "s3" storage paths.'
+                ),
                 missing_package='boto3',
                 reason='s3 storage path requires boto3',
                 role='source',
@@ -1134,6 +1175,7 @@ class TestReadinessReportBuilder:
                             'found.'
                         ),
                         role='source',
+                        scheme='azure-blob',
                         severity='error',
                     ),
                 ],
@@ -1159,6 +1201,7 @@ class TestReadinessReportBuilder:
                                     'found.'
                                 ),
                                 role='source',
+                                scheme='azure-blob',
                                 severity='error',
                             ),
                         ],
@@ -1189,6 +1232,8 @@ class TestReadinessReportBuilder:
                         ),
                         missing_env=[
                             'AWS_ACCESS_KEY_ID',
+                            'AWS_SECRET_ACCESS_KEY',
+                            'AWS_SESSION_TOKEN',
                             'AWS_PROFILE',
                             'AWS_DEFAULT_PROFILE',
                             'AWS_ROLE_ARN',
@@ -1204,6 +1249,7 @@ class TestReadinessReportBuilder:
                             'were detected for this S3 path.'
                         ),
                         role='source',
+                        scheme='s3',
                         severity='warn',
                     ),
                 ],
@@ -1221,6 +1267,8 @@ class TestReadinessReportBuilder:
                                 ),
                                 missing_env=[
                                     'AWS_ACCESS_KEY_ID',
+                                    'AWS_SECRET_ACCESS_KEY',
+                                    'AWS_SESSION_TOKEN',
                                     'AWS_PROFILE',
                                     'AWS_DEFAULT_PROFILE',
                                     'AWS_ROLE_ARN',
@@ -1236,6 +1284,7 @@ class TestReadinessReportBuilder:
                                     'were detected for this S3 path.'
                                 ),
                                 role='source',
+                                scheme='s3',
                                 severity='warn',
                             ),
                         ],
@@ -1300,6 +1349,7 @@ class TestReadinessReportBuilder:
                             'found.'
                         ),
                         role='source',
+                        scheme='azure-blob',
                         severity='error',
                     ),
                 ],
@@ -1328,6 +1378,8 @@ class TestReadinessReportBuilder:
                         ),
                         missing_env=[
                             'AWS_ACCESS_KEY_ID',
+                            'AWS_SECRET_ACCESS_KEY',
+                            'AWS_SESSION_TOKEN',
                             'AWS_PROFILE',
                             'AWS_DEFAULT_PROFILE',
                             'AWS_ROLE_ARN',
@@ -1343,6 +1395,7 @@ class TestReadinessReportBuilder:
                             'were detected for this S3 path.'
                         ),
                         role='source',
+                        scheme='s3',
                         severity='warn',
                     ),
                 ],
@@ -1363,6 +1416,46 @@ class TestReadinessReportBuilder:
         )
 
         assert rows == expected
+
+    def test_provider_environment_rows_report_incomplete_explicit_aws_credentials(
+        self,
+    ) -> None:
+        """Partial explicit AWS credentials should produce one provider error."""
+        cfg = _cfg(
+            sources=[
+                SimpleNamespace(
+                    name='s3-source',
+                    path='s3://bucket/input.csv',
+                    type='file',
+                ),
+            ],
+        )
+
+        rows = readiness_mod.ReadinessReportBuilder.provider_environment_rows(
+            cfg=cast(Any, cfg),
+            env={'AWS_ACCESS_KEY_ID': 'access-key'},
+        )
+
+        assert rows == [
+            {
+                'connector': 's3-source',
+                'guidance': (
+                    'Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY together, or '
+                    'remove the partial explicit credential env vars and rely on '
+                    'AWS_PROFILE, shared config files, container credentials, or '
+                    'instance metadata.'
+                ),
+                'missing_env': ['AWS_SECRET_ACCESS_KEY'],
+                'provider': 'aws-s3',
+                'reason': (
+                    'Incomplete explicit AWS access-key configuration was detected '
+                    'for this S3 path.'
+                ),
+                'role': 'source',
+                'scheme': 's3',
+                'severity': 'error',
+            },
+        ]
 
     @pytest.mark.parametrize(
         ('cfg', 'env'),
@@ -1454,6 +1547,7 @@ class TestReadinessReportBuilder:
                     'ambient authentication handled by the SDK call site.'
                 ),
                 'role': 'source',
+                'scheme': 'azure-blob',
                 'severity': 'warn',
             },
         ]
@@ -1940,3 +2034,29 @@ class TestReadinessReportBuilder:
         check = readiness_mod.ReadinessReportBuilder.supported_python_check()
 
         assert check == expected
+
+    def test_token_reference_rows_collect_nested_config_paths(
+        self,
+    ) -> None:
+        """Token references should preserve stable dotted and indexed paths."""
+        rows = readiness_mod.ReadinessReportBuilder.token_reference_rows(
+            {
+                'profile': {'env': {'API_TOKEN': '${TOKEN_A}'}},
+                'targets': [{'path': 's3://${TOKEN_B}/out.json'}],
+                'jobs': [{'extract': {'source': '${TOKEN_A}'}}],
+            },
+        )
+
+        assert rows == [
+            {
+                'name': 'TOKEN_A',
+                'paths': [
+                    'jobs[0].extract.source',
+                    'profile.env.API_TOKEN',
+                ],
+            },
+            {
+                'name': 'TOKEN_B',
+                'paths': ['targets[0].path'],
+            },
+        ]
