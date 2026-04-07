@@ -65,6 +65,8 @@ class _RequirementSpec:
 class _ResolvedConfigContext:
     """Resolved config state reused across config readiness checks."""
 
+    # -- Instance Attributes -- #
+
     raw: StrAnyMap
     effective_env: dict[str, str]
     unresolved_tokens: list[str]
@@ -74,8 +76,11 @@ class _ResolvedConfigContext:
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
+
 _AWS_ENV_HINTS: Final[tuple[str, ...]] = (
     'AWS_ACCESS_KEY_ID',
+    'AWS_SECRET_ACCESS_KEY',
+    'AWS_SESSION_TOKEN',
     'AWS_PROFILE',
     'AWS_DEFAULT_PROFILE',
     'AWS_ROLE_ARN',
@@ -134,7 +139,24 @@ class ReadinessReportBuilder:
     def coerce_connector_storage_scheme(
         value: str,
     ) -> str | None:
-        """Return one normalized storage scheme from raw connector-type text."""
+        """
+        Return one normalized storage scheme from raw connector-type text.
+
+        This supports coercing storage schemes embedded in connector type
+        fields as a common user error, e.g. "s3" instead of "file" with an S3
+        URI path.
+
+        Parameters
+        ----------
+        value : str
+            Raw connector-type text to be coerced.
+
+        Returns
+        -------
+        str | None
+            Normalized storage scheme or None if coercion fails.
+
+        """
         if not value:
             return None
         try:
@@ -146,7 +168,20 @@ class ReadinessReportBuilder:
     def coerce_storage_scheme(
         path: str,
     ) -> str | None:
-        """Return one normalized storage scheme for *path* when present."""
+        """
+        Return one normalized storage scheme for *path* when present.
+
+        Parameters
+        ----------
+        path : str
+            Path to be analyzed for a storage scheme.
+
+        Returns
+        -------
+        str | None
+            Normalized storage scheme or None if not present.
+
+        """
         if '://' not in path:
             return None
         parsed = urlsplit(path)
@@ -161,7 +196,20 @@ class ReadinessReportBuilder:
     def collect_substitution_tokens(
         value: Any,
     ) -> set[str]:
-        """Return unresolved ``${VAR}`` token names found in nested values."""
+        """
+        Return unresolved ``${VAR}`` token names found in nested values.
+
+        Parameters
+        ----------
+        value : Any
+            Nested value to be analyzed for substitution tokens.
+
+        Returns
+        -------
+        set[str]
+            Set of unresolved token names.
+
+        """
         tokens: set[str] = set()
 
         def _walk(node: Any) -> None:
@@ -182,11 +230,68 @@ class ReadinessReportBuilder:
         return tokens
 
     @staticmethod
+    def connector_gap_guidance(
+        *,
+        api_reference: str | None = None,
+        issue: str,
+    ) -> str | None:
+        """
+        Return one actionable guidance string for a blocking connector gap.
+
+        Parameters
+        ----------
+        api_reference : str | None
+            API reference name, if available.
+        issue : str
+            Description of the connector gap issue.
+
+        Returns
+        -------
+        str | None
+            Actionable guidance string or None if no guidance is available.
+        """
+        match issue:
+            case 'missing path':
+                return (
+                    'Set "path" to a local path or storage URI for this file connector.'
+                )
+            case 'missing url or api reference':
+                return (
+                    'Set "url" to a reachable endpoint or "api" to a configured '
+                    'top-level API name.'
+                )
+            case 'missing connection_string':
+                return (
+                    'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
+                )
+            case issue_text if issue_text.startswith('unknown api reference: '):
+                if api_reference:
+                    return (
+                        f'Define "{api_reference}" under top-level "apis" or update '
+                        'the connector "api" reference.'
+                    )
+                return 'Define the referenced API under top-level "apis".'
+            case _:
+                return None
+
+    @staticmethod
     def dedupe_rows(
-        rows: list[dict[str, str]],
-    ) -> list[dict[str, str]]:
-        """Return rows with duplicates removed while preserving order."""
-        unique_rows: list[dict[str, str]] = []
+        rows: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """
+        Return rows with duplicates removed while preserving order.
+
+        Parameters
+        ----------
+        rows : list[dict[str, Any]]
+            List of rows to be deduplicated.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            List of rows with duplicates removed.
+        """
+        unique_rows: list[dict[str, Any]] = []
         seen: set[tuple[str, str, str, str, str]] = set()
         for row in rows:
             key = (
@@ -207,7 +312,21 @@ class ReadinessReportBuilder:
         cfg: Config,
         env: Mapping[str, str] | None,
     ) -> dict[str, str]:
-        """Return the merged environment used for config substitution."""
+        """
+        Return the merged environment used for config substitution.
+
+        Parameters
+        ----------
+        cfg : Config
+            Configuration object containing profile information.
+        env : Mapping[str, str] | None
+            External environment variables to merge.
+
+        Returns
+        -------
+        dict[str, str]
+            Merged environment dictionary.
+        """
         base_env = dict(getattr(cfg.profile, 'env', {}) or {})
         external_env = dict(env) if env is not None else dict(os.environ)
         return base_env | external_env
@@ -216,7 +335,19 @@ class ReadinessReportBuilder:
     def iter_connectors(
         cfg: Config,
     ) -> Iterator[tuple[str, Connector]]:
-        """Yield source/target connectors tagged with their role."""
+        """
+        Yield source/target connectors tagged with their role.
+
+        Parameters
+        ----------
+        cfg : Config
+            Configuration object containing source and target connectors.
+
+        Yields
+        ------
+        tuple[str, Connector]
+            Tuples of role ('source' or 'target') and connector instance.
+        """
         yield from (('source', connector) for connector in cfg.sources)
         yield from (('target', connector) for connector in cfg.targets)
 
@@ -224,7 +355,19 @@ class ReadinessReportBuilder:
     def load_raw_config(
         config_path: str,
     ) -> StrAnyMap:
-        """Load raw YAML config and require a mapping root."""
+        """
+        Load raw YAML config and require a mapping root.
+
+        Parameters
+        ----------
+        config_path : str
+            Path to the YAML configuration file.
+
+        Returns
+        -------
+        StrAnyMap
+            Parsed configuration mapping.
+        """
         raw = File(Path(config_path), FileFormat.YAML).read()
         mapping = maybe_mapping(raw)
         if mapping is None:
@@ -238,7 +381,25 @@ class ReadinessReportBuilder:
         message: str,
         **details: Any,
     ) -> dict[str, Any]:
-        """Return one readiness check row."""
+        """
+        Return one readiness check row.
+
+        Parameters
+        ----------
+        name : str
+            Name of the check.
+        status : CheckStatus
+            Status of the check.
+        message : str
+            Message describing the check result.
+        **details : Any
+            Additional details to include in the check row.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary representing the readiness check row.
+        """
         payload: dict[str, Any] = {
             'name': name,
             'status': status,
@@ -248,10 +409,65 @@ class ReadinessReportBuilder:
         return payload
 
     @staticmethod
+    def missing_requirement_guidance(
+        *,
+        detected_format: str | None = None,
+        detected_scheme: str | None = None,
+        package: str,
+        extra: str | None,
+    ) -> str:
+        """
+        Return one actionable remediation string for a missing dependency.
+
+        Parameters
+        ----------
+        detected_format : str | None, optional
+            Detected file format that requires the missing dependency.
+        detected_scheme : str | None, optional
+            Detected storage scheme that requires the missing dependency.
+        package : str
+            Name of the missing package.
+        extra : str | None, optional
+            Name of the ETLPlus extra that includes the missing package.
+
+        Returns
+        -------
+        str
+            Actionable guidance string for the missing dependency.
+        """
+        install_hint = (
+            f'Install {package} directly or install the ETLPlus "{extra}" extra.'
+            if extra
+            else f'Install {package}.'
+        )
+        if detected_format == 'nc':
+            return (
+                'Install xarray plus one of netCDF4 or h5netcdf, or install the '
+                'ETLPlus "file" extra.'
+            )
+        if detected_format is not None:
+            return f'{install_hint} Required for "{detected_format}" file format.'
+        if detected_scheme is not None:
+            return f'{install_hint} Required for "{detected_scheme}" storage paths.'
+        return install_hint
+
+    @staticmethod
     def package_available(
         module_name: str,
     ) -> bool:
-        """Return whether *module_name* is importable without importing it."""
+        """
+        Return whether *module_name* is importable without importing it.
+
+        Parameters
+        ----------
+        module_name : str
+            Name of the module to check for availability.
+
+        Returns
+        -------
+        bool
+            ``True`` if the module is importable, ``False`` otherwise.
+        """
         try:
             return find_spec(module_name) is not None
         except (ImportError, ModuleNotFoundError, ValueError):
@@ -264,7 +480,19 @@ class ReadinessReportBuilder:
         cls,
         env: Mapping[str, str],
     ) -> bool:
-        """Return whether common AWS credential-chain env hints are present."""
+        """
+        Return whether common AWS credential-chain env hints are present.
+
+        Parameters
+        ----------
+        env : Mapping[str, str]
+            Environment mapping to check for AWS credential hints.
+
+        Returns
+        -------
+        bool
+            ``True`` if any AWS credential hints are present, ``False`` if not.
+        """
         return any(bool(env.get(name)) for name in _AWS_ENV_HINTS)
 
     @classmethod
@@ -272,7 +500,19 @@ class ReadinessReportBuilder:
         cls,
         path: str,
     ) -> bool:
-        """Return whether one Azure storage path authority embeds an account host."""
+        """
+        Return whether one Azure storage path authority embeds an account host.
+
+        Parameters
+        ----------
+        path : str
+            Azure storage path to check.
+
+        Returns
+        -------
+        bool
+            ``True`` if the authority embeds an account host, ``False`` if not.
+        """
         authority = urlsplit(path).netloc
         _, separator, account_host = authority.partition('@')
         return bool(separator and account_host)
@@ -348,7 +588,26 @@ class ReadinessReportBuilder:
         strict: bool = False,
         include_runtime_checks: bool = True,
     ) -> list[dict[str, Any]]:
-        """Return readiness checks for one pipeline config path."""
+        """
+        Return readiness checks for one pipeline config path.
+
+        Parameters
+        ----------
+        config_path : str
+            Path to the pipeline configuration file.
+        env : Mapping[str, str] | None, optional
+            Optional environment mapping used instead of :data:`os.environ`.
+        strict : bool, optional
+            Whether to enable stricter config diagnostics that surface
+            malformed entries normally ignored by the tolerant loader.
+        include_runtime_checks : bool, optional
+            Whether to include runtime readiness checks.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            List of readiness check results.
+        """
         checks: list[dict[str, Any]] = []
         path = Path(config_path)
         if not path.exists():
@@ -386,6 +645,8 @@ class ReadinessReportBuilder:
                     'config-substitution',
                     'error',
                     'Configuration still contains unresolved substitution tokens.',
+                    missing_env=context.unresolved_tokens,
+                    references=cls.token_reference_rows(context.resolved_raw),
                     unresolved_tokens=context.unresolved_tokens,
                 ),
             )
@@ -442,7 +703,20 @@ class ReadinessReportBuilder:
         cls,
         cfg: Config,
     ) -> list[dict[str, Any]]:
-        """Return connector configuration gaps that will block execution."""
+        """
+        Return connector configuration gaps that will block execution.
+
+        Parameters
+        ----------
+        cfg : Config
+            Configuration object containing connectors to be analyzed.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            List of connector gap rows describing missing required fields or
+            unsupported connector types.
+        """
         gaps: list[dict[str, Any]] = []
         for role, connector in cls.iter_connectors(cfg):
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
@@ -468,6 +742,9 @@ class ReadinessReportBuilder:
                     gaps.append(
                         {
                             'connector': connector_name,
+                            'guidance': cls.connector_gap_guidance(
+                                issue='missing path',
+                            ),
                             'issue': 'missing path',
                             'role': role,
                             'type': connector_type,
@@ -480,6 +757,9 @@ class ReadinessReportBuilder:
                     gaps.append(
                         {
                             'connector': connector_name,
+                            'guidance': cls.connector_gap_guidance(
+                                issue='missing url or api reference',
+                            ),
                             'issue': 'missing url or api reference',
                             'role': role,
                             'type': connector_type,
@@ -489,6 +769,10 @@ class ReadinessReportBuilder:
                     gaps.append(
                         {
                             'connector': connector_name,
+                            'guidance': cls.connector_gap_guidance(
+                                api_reference=cast(str, api_ref),
+                                issue=f'unknown api reference: {api_ref}',
+                            ),
                             'issue': f'unknown api reference: {api_ref}',
                             'role': role,
                             'type': connector_type,
@@ -500,6 +784,9 @@ class ReadinessReportBuilder:
                     gaps.append(
                         {
                             'connector': connector_name,
+                            'guidance': cls.connector_gap_guidance(
+                                issue='missing connection_string',
+                            ),
                             'issue': 'missing connection_string',
                             'role': role,
                             'type': connector_type,
@@ -513,7 +800,20 @@ class ReadinessReportBuilder:
         cls,
         cfg: Config,
     ) -> list[dict[str, Any]]:
-        """Return connector configuration and dependency readiness checks."""
+        """
+        Return connector configuration and dependency readiness checks.
+
+        Parameters
+        ----------
+        cfg : Config
+            Configuration object containing connectors to be analyzed.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            List of readiness check rows describing connector configuration gaps
+            and missing optional dependencies.
+        """
         checks: list[dict[str, Any]] = []
 
         gaps = cls.connector_gap_rows(cfg)
@@ -570,7 +870,19 @@ class ReadinessReportBuilder:
         cls,
         connector_type: str,
     ) -> DataConnectorType | None:
-        """Return one coerced connector type or ``None`` when unsupported."""
+        """
+        Return one coerced connector type or ``None`` when unsupported.
+
+        Parameters
+        ----------
+        connector_type : str
+            Raw connector type text to be coerced.
+
+        Returns
+        -------
+        DataConnectorType | None
+            Coerced connector type or ``None`` if unsupported.
+        """
         try:
             return DataConnectorType.coerce(connector_type)
         except ValueError:
@@ -578,7 +890,14 @@ class ReadinessReportBuilder:
 
     @classmethod
     def connector_type_choices(cls) -> tuple[str, ...]:
-        """Return the supported connector type names."""
+        """
+        Return the supported connector type names.
+
+        Returns
+        -------
+        tuple[str, ...]
+            Supported connector type names.
+        """
         return tuple(str(member.value) for member in DataConnectorType)
 
     @classmethod
@@ -586,7 +905,19 @@ class ReadinessReportBuilder:
         cls,
         connector_type: str,
     ) -> str:
-        """Return actionable guidance for an unsupported connector type."""
+        """
+        Return actionable guidance for an unsupported connector type.
+
+        Parameters
+        ----------
+        connector_type : str
+            Raw connector type text that was found to be unsupported.
+
+        Returns
+        -------
+        str
+            Actionable guidance for the unsupported connector type.
+        """
         supported = ', '.join(cls.connector_type_choices())
         normalized = connector_type.strip().lower()
         if not normalized:
@@ -603,13 +934,91 @@ class ReadinessReportBuilder:
         return f'Use one of the supported connector types: {supported}.'
 
     @classmethod
+    def explicit_aws_credential_gap(
+        cls,
+        env: Mapping[str, str],
+    ) -> dict[str, Any] | None:
+        """
+        Return one AWS env error row for incomplete explicit credentials.
+
+        This checks for the common user error of setting only part of the
+        explicit AWS credential env vars (e.g. only the access key without the
+        secret key), which would lead to runtime errors when accessing S3
+        paths. This is only surfaced as an error if at least one of the
+        explicit credential env vars is set, to avoid false positives for users
+        relying on other credential resolution methods like AWS profiles,
+        shared config files, container credentials, or instance metadata. This
+        check is only relevant for S3 paths, so it should be called
+        conditionally when S3 storage schemes are detected in the config. AWS
+        credential env vars (e.g. only the access key without the secret key),
+        which would lead to runtime errors when accessing S3 paths. This is only
+        surfaced as an error if at least one of the explicit credential env
+        vars is set, to avoid false positives for users relying on other
+        credential resolution methods like AWS profiles, shared config files,
+        container credentials, or instance metadata. This check is only
+        relevant for S3 paths, so it should be called conditionally when S3
+        storage schemes are detected in the config.
+
+        Parameters
+        ----------
+        env : Mapping[str, str]
+            Environment mapping to check for AWS credential env vars.
+        Returns
+        -------
+        dict[str, Any] | None
+            AWS credential env error row if incomplete explicit credentials are
+            detected, or ``None`` if no issues are found.
+        """
+        access_key = bool(env.get('AWS_ACCESS_KEY_ID'))
+        secret_key = bool(env.get('AWS_SECRET_ACCESS_KEY'))
+        session_token = bool(env.get('AWS_SESSION_TOKEN'))
+        if access_key and secret_key:
+            return None
+        if not (access_key or secret_key or session_token):
+            return None
+
+        missing_env: list[str] = []
+        if not access_key:
+            missing_env.append('AWS_ACCESS_KEY_ID')
+        if not secret_key:
+            missing_env.append('AWS_SECRET_ACCESS_KEY')
+        return {
+            'guidance': (
+                'Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY together, or '
+                'remove the partial explicit credential env vars and rely on '
+                'AWS_PROFILE, shared config files, container credentials, or '
+                'instance metadata.'
+            ),
+            'missing_env': missing_env,
+            'provider': 'aws-s3',
+            'reason': (
+                'Incomplete explicit AWS access-key configuration was detected '
+                'for this S3 path.'
+            ),
+            'severity': 'error',
+        }
+
+    @classmethod
     def missing_requirement_rows(
         cls,
         *,
         cfg: Config,
-    ) -> list[dict[str, str]]:
-        """Return missing optional dependency rows for configured connectors."""
-        rows: list[dict[str, str]] = []
+    ) -> list[dict[str, Any]]:
+        """
+        Return missing optional dependency rows for configured connectors.
+
+        Parameters
+        ----------
+        cfg : Config
+            Configuration object containing connectors to be analyzed.
+        Returns
+        -------
+        list[dict[str, Any]]
+            List of missing optional dependency rows describing which
+            dependencies are required by the config and not currently available
+            in the environment.
+        """
+        rows: list[dict[str, Any]] = []
 
         for role, connector in cls.iter_connectors(cfg):
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
@@ -623,6 +1032,7 @@ class ReadinessReportBuilder:
                         rows.append(
                             cls.requirement_row(
                                 connector=connector_name,
+                                detected_scheme=scheme,
                                 reason=(
                                     f'{scheme} storage path requires '
                                     f'{requirement.package}'
@@ -637,7 +1047,13 @@ class ReadinessReportBuilder:
                     rows.append(
                         {
                             'connector': connector_name,
+                            'detected_format': 'nc',
                             'extra': 'file',
+                            'guidance': cls.missing_requirement_guidance(
+                                detected_format='nc',
+                                package='xarray/netCDF4',
+                                extra='file',
+                            ),
                             'missing_package': 'xarray/netCDF4',
                             'reason': (
                                 'nc format requires xarray and netCDF4 or h5netcdf'
@@ -652,6 +1068,7 @@ class ReadinessReportBuilder:
                     rows.append(
                         cls.requirement_row(
                             connector=connector_name,
+                            detected_format=format_name,
                             reason=(
                                 f'{format_name} format requires {requirement.package}'
                             ),
@@ -669,7 +1086,25 @@ class ReadinessReportBuilder:
         cfg: Config,
         env: Mapping[str, str],
     ) -> list[dict[str, Any]]:
-        """Return provider-specific environment readiness checks."""
+        """
+        Return provider-specific environment readiness checks.
+
+        Parameters
+        ----------
+        cfg : Config
+            Configuration object containing connectors to be analyzed for
+            provider-specific environment gaps.
+        env : Mapping[str, str]
+            Environment mapping to check for provider-specific environment
+            gaps.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            List of readiness check rows describing provider-specific
+            environment gaps and their severity based on the potential impact
+            on runtime execution.
+        """
         rows = cls.provider_environment_rows(cfg=cfg, env=env)
         if not rows:
             return [
@@ -704,7 +1139,24 @@ class ReadinessReportBuilder:
         cfg: Config,
         env: Mapping[str, str],
     ) -> list[dict[str, Any]]:
-        """Return provider-specific environment gaps for configured connectors."""
+        """
+        Return provider-specific environment gaps for configured connectors.
+
+        Parameters
+        ----------
+        cfg : Config
+            Configuration object containing connectors to be analyzed for
+            provider-specific environment gaps.
+        env : Mapping[str, str]
+            Environment mapping to check for provider-specific environment gaps.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            List of readiness check rows describing provider-specific environment
+            gaps and their severity based on the potential impact on runtime execution.
+
+        """
         rows: list[dict[str, Any]] = []
 
         azure_connection_string = bool(env.get('AZURE_STORAGE_CONNECTION_STRING'))
@@ -746,6 +1198,7 @@ class ReadinessReportBuilder:
                                     'settings were found.'
                                 ),
                                 'role': role,
+                                'scheme': scheme,
                                 'severity': 'error',
                             },
                         )
@@ -771,10 +1224,21 @@ class ReadinessReportBuilder:
                                     'call site.'
                                 ),
                                 'role': role,
+                                'scheme': scheme,
                                 'severity': 'warn',
                             },
                         )
                 case 's3':
+                    if explicit_gap := cls.explicit_aws_credential_gap(env):
+                        rows.append(
+                            {
+                                'connector': connector_name,
+                                'role': role,
+                                'scheme': scheme,
+                            }
+                            | explicit_gap,
+                        )
+                        continue
                     if not aws_env_hint_present:
                         rows.append(
                             {
@@ -793,6 +1257,7 @@ class ReadinessReportBuilder:
                                     'S3 path.'
                                 ),
                                 'role': role,
+                                'scheme': scheme,
                                 'severity': 'warn',
                             },
                         )
@@ -801,7 +1266,15 @@ class ReadinessReportBuilder:
 
     @classmethod
     def netcdf_available(cls) -> bool:
-        """Return whether netCDF support dependencies are installed."""
+        """
+        Return whether netCDF support dependencies are installed.
+
+        Returns
+        -------
+        bool
+            ``True`` if netCDF support dependencies are installed, ``False``
+            if not.
+        """
         return cls.package_available('xarray') and (
             cls.package_available('netCDF4') or cls.package_available('h5netcdf')
         )
@@ -811,7 +1284,20 @@ class ReadinessReportBuilder:
         cls,
         checks: list[dict[str, Any]],
     ) -> Literal['ok', 'warn', 'error']:
-        """Return aggregate status from individual check rows."""
+        """
+        Return aggregate status from individual check rows.
+
+        Parameters
+        ----------
+        checks : list[dict[str, Any]]
+            List of individual check result rows to aggregate into an overall
+            status.
+
+        Returns
+        -------
+        Literal['ok', 'warn', 'error']
+            Aggregate status based on the individual check rows.
+        """
         statuses = {cast(CheckStatus, check['status']) for check in checks}
         if 'error' in statuses:
             return 'error'
@@ -821,7 +1307,14 @@ class ReadinessReportBuilder:
 
     @classmethod
     def python_version(cls) -> str:
-        """Return the current interpreter version as dotted text."""
+        """
+        Return the current interpreter version as dotted text.
+
+        Returns
+        -------
+        str
+            Current interpreter version in "major.minor.micro" format.
+        """
         return (
             f'{sys.version_info.major}.'
             f'{sys.version_info.minor}.'
@@ -833,7 +1326,20 @@ class ReadinessReportBuilder:
         cls,
         requirement: _RequirementSpec,
     ) -> bool:
-        """Return whether any module for one requirement is importable."""
+        """
+        Return whether any module for one requirement is importable.
+
+        Parameters
+        ----------
+        requirement : _RequirementSpec
+            Requirement specification to check.
+
+        Returns
+        -------
+        bool
+            ``True`` if any module for the requirement is importable, ``False``
+            if not.
+        """
         return any(
             cls.package_available(module_name) for module_name in requirement.modules
         )
@@ -843,18 +1349,57 @@ class ReadinessReportBuilder:
         cls,
         *,
         connector: str,
+        detected_format: str | None = None,
+        detected_scheme: str | None = None,
         reason: str,
         requirement: _RequirementSpec,
         role: str,
-    ) -> dict[str, str]:
-        """Return one missing-requirement row."""
-        return {
+    ) -> dict[str, Any]:
+        """
+        Return one missing-requirement row.
+
+        Parameters
+        ----------
+        connector : str
+            Name of the connector with the missing requirement.
+        detected_format : str | None, optional
+            Optional detected format that triggers the requirement. Default is
+            ``None``.
+        detected_scheme : str | None, optional
+            Optional detected storage scheme that triggers the requirement.
+            Default is ``None``.
+        reason : str
+            Explanation of why the requirement is needed based on the config
+            analysis.
+        requirement : _RequirementSpec
+            The missing requirement specification.
+        role : str
+            The role of the connector (e.g. "source", "target") with the
+            missing requirement.
+
+        Returns
+        -------
+        dict[str, Any]
+            A dictionary representing the missing requirement row.
+        """
+        row: dict[str, Any] = {
             'connector': connector,
             'extra': requirement.extra or '',
+            'guidance': cls.missing_requirement_guidance(
+                detected_format=detected_format,
+                detected_scheme=detected_scheme,
+                package=requirement.package,
+                extra=requirement.extra,
+            ),
             'missing_package': requirement.package,
             'reason': reason,
             'role': role,
         }
+        if detected_format is not None:
+            row['detected_format'] = detected_format
+        if detected_scheme is not None:
+            row['detected_scheme'] = detected_scheme
+        return row
 
     @classmethod
     def resolve_config_context(
@@ -863,7 +1408,31 @@ class ReadinessReportBuilder:
         *,
         env: Mapping[str, str] | None,
     ) -> _ResolvedConfigContext:
-        """Return resolved config state shared by config readiness checks."""
+        """
+        Return resolved config state shared by config readiness checks.
+
+        This performs deep substitution on the raw config and collects any
+        remaining unresolved substitution tokens for use in config checks that
+        need to report on unresolved tokens or references. This avoids redundant
+        substitution and token collection in individual checks that need this
+        information, and ensures consistent reporting of unresolved tokens
+        across checks.
+
+        Parameters
+        ----------
+        raw : StrAnyMap
+            Raw configuration mapping loaded from YAML, before any substitution.
+        env : Mapping[str, str] | None
+            Optional environment mapping used for substitution, falling back to
+            :data:`os.environ` when not provided.
+
+        Returns
+        -------
+        _ResolvedConfigContext
+            Resolved config context containing the raw config, effective
+            environment, resolved config with substitutions applied, and any
+            unresolved substitution tokens.
+        """
         cfg = Config.from_dict(raw)
         effective_env = cls.effective_environment(cfg, env)
         resolved = cast(StrAnyMap, deep_substitute(raw, cfg.vars, effective_env))
@@ -882,7 +1451,22 @@ class ReadinessReportBuilder:
         *,
         raw: StrAnyMap,
     ) -> list[dict[str, Any]]:
-        """Return strict-mode config issues hidden by tolerant parsing."""
+        """
+        Return strict-mode config issues hidden by tolerant parsing.
+
+        Parameters
+        ----------
+        raw : StrAnyMap
+            Raw configuration mapping loaded from YAML, before any
+            substitution.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            List of strict-mode config issues describing malformed or
+            inconsistent configuration entries that would be hidden by tolerant
+            parsing and could lead to runtime errors or unexpected behavior.
+        """
         issues: list[dict[str, Any]] = []
         source_names = cls.strict_connector_names(
             raw=raw,
@@ -923,7 +1507,34 @@ class ReadinessReportBuilder:
         config_path: str,
         env: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
-        """Return one strict config-validation report for ``check --strict``."""
+        """
+        Return one strict config-validation report for the CLI command
+        ``etlplus check --strict``.
+        This runs the strict config validation checks and returns a report
+        containing the overall status, the ETL+ version, and the individual check
+        results with any strict-mode config issues found. This is used for the
+        ``etlplus check --strict`` CLI command to provide users with detailed
+        feedback on any config issues that are hidden by tolerant parsing and
+        could lead to runtime errors or unexpected behavior, along with
+        actionable guidance for fixing the issues.
+
+        Parameters
+        ----------
+        config_path : str
+            Path to the config file being checked, used for context in error
+            messages.
+        env : Mapping[str, str] | None, optional
+            Optional environment mapping to use for substitution and
+            environment checks, falling back to :data:`os.environ` when not
+            provided.
+
+        Returns
+        -------
+        dict[str, Any]
+            Strict config-validation report containing the overall status,
+            ETL+ version, and individual check results with any strict-mode
+            config issues found.
+        """
         checks = cls.config_checks(
             config_path,
             env=env,
@@ -944,7 +1555,41 @@ class ReadinessReportBuilder:
         section: str,
         issues: list[dict[str, Any]],
     ) -> set[str] | None:
-        """Validate connector entries in *section* and return known names."""
+        """
+        Validate connector entries in *section* and return known names.
+
+        This checks that the connectors in the specified section are defined as
+        a list of mappings with valid types and non-empty names, and that there
+        are no duplicate names within the section. This is a strict-mode check
+        that surfaces issues that would be hidden by tolerant parsing, such as
+        connectors defined as a single mapping instead of a list, connectors
+        with missing or invalid types, connectors with blank names, and
+        duplicate connector names within the section. Any issues found are
+        appended to *issues* with actionable guidance for fixing the issues. If
+        no issues are found, the set of connector names in the section is
+        returned for use in validating job references. If issues are found that
+        prevent reliable extraction of connector names, ``None`` is returned to
+        indicate that job reference validation should be skipped for this
+        section.
+
+        Parameters
+        ----------
+        raw : StrAnyMap
+            Raw configuration mapping loaded from YAML, before any
+            substitution.
+        section : str
+            The connector section to validate (e.g. "sources", "targets").
+        issues : list[dict[str, Any]]
+            List to append any strict-mode config issues found during
+            validation, with actionable guidance for fixing the issues.
+
+        Returns
+        -------
+        set[str] | None
+            Set of connector names in the section if no issues are found, or
+            ``None`` if issues are found that prevent reliable extraction of
+            connector names.
+        """
         value = raw.get(section)
         if value is None:
             return set()
@@ -1039,7 +1684,53 @@ class ReadinessReportBuilder:
         transform_names: set[str] | None,
         validation_names: set[str] | None,
     ) -> None:
-        """Append strict-mode job diagnostics to *issues*."""
+        """
+        Append strict-mode job diagnostics to *issues*.
+
+        This checks that the jobs are defined as a list of mappings with valid
+        types and non-empty names, that there are no duplicate job names, and
+        that the extract, load, transform, and validate sections of each job
+        have valid references to configured sources, targets, transforms, and
+        validations. This is a strict-mode check that surfaces issues that
+        would be hidden by tolerant parsing, such as jobs defined as a single
+        mapping instead of a list, jobs with missing or invalid types or names,
+        duplicate job names, and job sections with missing or invalid
+        references to configured resources. Any issues found are appended to
+        *issues* with actionable guidance for fixing the issues. The
+        *source_names*, *target_names*, *transform_names*, and
+        *validation_names* parameters are used to validate job references to
+        configured resources, and should be passed as the sets of names
+        returned by :meth:`strict_connector_names` and
+        :meth:`strict_named_section_names` for the respective sections. If any
+        of these name sets are ``None`` due to issues found in the respective
+        sections, job reference validation for that section will be skipped to
+        avoid unreliable reference validation and overwhelming users with
+        cascading issues.
+
+        Parameters
+        ----------
+        raw : StrAnyMap
+            Raw configuration mapping loaded from YAML, before any substitution.
+        issues : list[dict[str, Any]]
+            List to append any strict-mode config issues found during
+            validation, with actionable guidance for fixing the issues.
+        source_names : set[str] | None
+            Set of valid source names for validating job extract references, or
+            ``None`` if issues were found in the sources section that prevent
+            reliable extraction of source names.
+        target_names : set[str] | None
+            Set of valid target names for validating job load references, or
+            ``None`` if issues were found in the targets section that prevent
+            reliable extraction of target names.
+        transform_names : set[str] | None
+            Set of valid transform pipeline names for validating job transform
+            references, or ``None`` if issues were found in the transforms
+            section that prevent reliable extraction of transform names.
+        validation_names : set[str] | None
+            Set of valid validation ruleset names for validating job validate
+            references, or ``None`` if issues were found in the validations
+            section that prevent reliable extraction of validation names.
+       """
         value = raw.get('jobs')
         if value is None:
             return
@@ -1155,7 +1846,67 @@ class ReadinessReportBuilder:
         section_names: set[str] | None,
         section_label: str,
     ) -> None:
-        """Append one strict-mode job reference issue when needed."""
+        """
+        Append one strict-mode job reference issue when needed.
+        This checks one job section (extract, load, transform, or validate) for
+        missing or invalid references to configured resources, and appends an
+        issue to *issues* with actionable guidance if any issues are found.
+        This is a strict-mode check that surfaces issues that would be hidden
+        by tolerant parsing, such as missing sections, sections with invalid
+        types, missing required keys, blank references, and references to
+        unknown resources. The *section_names* and *section_label* parameters
+        are used to validate references to configured resources in the
+        respective sections, and should be passed as the sets of names returned
+        by :meth:`strict_connector_names` and
+        :meth:`strict_named_section_names` for the respective sections. If
+        *section_names* is ``None`` due to issues found in the respective
+        section, reference validation for that section will be skipped to avoid
+        unreliable reference validation and overwhelming users with cascading
+        issues. The *job_name* parameter is used to provide context in issue
+        messages when available, and the *required* parameter indicates whether
+        the section is required (e.g. extract and load) or optional (e.g.
+        transform and validate) for the job, which is used to tailor issue
+        messages and guidance accordingly.
+
+        Parameters
+        ----------
+        entry : Mapping[str, Any]
+            The job entry mapping to check the section in.
+        field : str
+            The job section to check (e.g., "extract", "load", "transform",
+            "validate").
+        index : int
+            The index of the job entry in the jobs list, used for context in
+            issue messages.
+        issues : list[dict[str, Any]]
+            List to append any strict-mode config issues found during
+            validation, with actionable guidance for fixing the issues.
+        job_name : str | None
+            The name of the job being checked, used for context in issue
+            messages when available.
+        required : bool
+            Whether the section being checked is required for the job, which is
+            used to tailor issue messages and guidance accordingly.
+        required_key : str
+            The required key that should be present in the section mapping
+            (e.g. "source" for extract, "target" for load, "pipeline" for
+            transform, "ruleset" for validate), used for validating the section
+            structure and providing specific guidance for fixing issues.
+        section_names : set[str] | None
+            Set of valid names for the referenced resources in the section
+            (e.g. source names for extract, target names for load, transform
+            pipeline names for transform, validation ruleset names for
+            validate), used for validating that references point to configured
+            resources. If ``None``, reference validation will be skipped for
+            this section to avoid unreliable validation and overwhelming users
+            with cascading issues when there are issues in the respective
+            section that prevent reliable extraction of valid names.
+        section_label : str
+            Human-friendly label for the section being referenced (e.g.,
+            "sources" for extract, "targets" for load, "transforms" for
+            transform, "validations" for validate), used for tailoring issue
+            messages and guidance.
+        """
         value = entry.get(field)
         base_issue: dict[str, Any] = {
             'field': (
@@ -1230,7 +1981,38 @@ class ReadinessReportBuilder:
         issues: list[dict[str, Any]],
         guidance: str,
     ) -> set[str] | None:
-        """Validate one mapping-like top-level section and return its keys."""
+        """
+        Validate one mapping-like top-level section and return its keys.
+
+        This checks that the specified section is defined as a mapping with
+        valid types and non-empty keys, and that there are no duplicate keys
+        within the section. This is a strict-mode check that surfaces issues
+        that would be hidden by tolerant parsing, such as sections defined as a
+        list instead of a mapping, sections with invalid types, and sections
+        with blank keys. Any issues found are appended to *issues* with
+        actionable guidance for fixing the issues. If no issues are found, the
+        set of keys in the section is returned for use in validating job
+        references. If issues are found that prevent reliable extraction of
+        keys, ``None`` is returned to indicate that job reference validation
+        should be skipped for this section.
+
+        Parameters
+        ----------
+        raw : StrAnyMap
+            The raw configuration data.
+        section : str
+            The name of the section to validate.
+        issues : list[dict[str, Any]]
+            A list to which any issues found will be appended.
+        guidance : str
+            Guidance message for fixing issues.
+
+        Returns
+        -------
+        set[str] | None
+            A set of keys in the section if no issues are found, ``None`` if
+            issues are found that prevent reliable extraction of keys.
+        """
         value = raw.get(section)
         if value is None:
             return set()
@@ -1251,7 +2033,14 @@ class ReadinessReportBuilder:
     def supported_python_check(
         cls,
     ) -> dict[str, Any]:
-        """Return runtime Python compatibility check."""
+        """
+        Return runtime Python compatibility check.
+
+        Returns
+        -------
+        dict[str, Any]
+            A dictionary containing the Python compatibility check results.
+        """
         version = cls.python_version()
         minimum, maximum = _SUPPORTED_PYTHON_RANGE
         supported = minimum <= sys.version_info[:2] < maximum
@@ -1272,3 +2061,67 @@ class ReadinessReportBuilder:
             ),
             version=version,
         )
+
+    @classmethod
+    def token_reference_rows(
+        cls,
+        value: Any,
+    ) -> list[dict[str, Any]]:
+        """
+        Return unresolved token rows with stable dotted/indexed paths.
+
+        This recursively walks the given value and collects any strings
+        containing unresolved substitution tokens, returning a list of rows
+        with the token names and their corresponding paths in the config. The
+        paths are represented in a stable dotted/indexed format that can be
+        used in check reports to provide clear context for where unresolved
+        tokens are located in the config, even when the config structure is
+        complex and nested. This is used in checks that need to report on
+        unresolved tokens or references in the config, allowing them to provide
+        actionable feedback to users on where unresolved tokens are located and
+        what they are, which can help users identify and fix issues with their
+        config more effectively.
+
+        Parameters
+        ----------
+        value : Any
+            The value to recursively walk for collecting unresolved
+            substitution tokens.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            A list of dictionaries, each containing a token name and its
+            corresponding paths in the config where it is found.
+        """
+        paths_by_name: dict[str, set[str]] = {}
+
+        def _walk(node: Any, path: str = '') -> None:
+            match node:
+                case str():
+                    for match in _TOKEN_PATTERN.findall(node):
+                        paths_by_name.setdefault(match, set()).add(path or '<root>')
+                case Mapping():
+                    for key, inner in node.items():
+                        key_text = str(key)
+                        next_path = f'{path}.{key_text}' if path else key_text
+                        _walk(inner, next_path)
+                case list() | tuple() as seq:
+                    for index, inner in enumerate(seq):
+                        next_path = f'{path}[{index}]' if path else f'[{index}]'
+                        _walk(inner, next_path)
+                case set() | frozenset():
+                    for index, inner in enumerate(sorted(node, key=repr)):
+                        next_path = f'{path}[{index}]' if path else f'[{index}]'
+                        _walk(inner, next_path)
+                case _:
+                    return
+
+        _walk(value)
+        return [
+            {
+                'name': name,
+                'paths': sorted(paths),
+            }
+            for name, paths in sorted(paths_by_name.items())
+        ]
