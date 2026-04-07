@@ -313,12 +313,12 @@ class ReadinessBaseMixin:
 
         Parameters
         ----------
-        rows : list[dict[str, Any]]
+        rows : list[ReadinessRow]
             The list of rows to deduplicate.
 
         Returns
         -------
-        list[dict[str, Any]]
+        list[ReadinessRow]
             The deduplicated list of rows.
         """
         return _dedupe_rows(rows)
