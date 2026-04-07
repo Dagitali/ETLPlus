@@ -7,7 +7,7 @@ Config inspection helpers for the CLI facade.
 from __future__ import annotations
 
 from ... import Config
-from ...runtime._readiness import ReadinessReportBuilder
+from ...runtime import ReadinessReportBuilder
 from . import _output
 from . import _summary
 
