@@ -412,10 +412,6 @@ def connector_type(
         return DataConnectorType.coerce(connector_type_str)
     except ValueError:
         return None
-    try:
-        return DataConnectorType.coerce(connector_type_str)
-    except ValueError:
-        return None
 
 
 def connector_type_choices() -> tuple[str, ...]:
@@ -507,19 +503,17 @@ def missing_requirement_rows(
         if format_name == 'nc':
             if not netcdf_available_fn():
                 rows.append(
-                    {
-                        'connector': connector_name,
-                        'detected_format': 'nc',
-                        'extra': 'file',
-                        'guidance': _missing_requirement_guidance(
-                            detected_format='nc',
+                    _requirement_row(
+                        connector=connector_name,
+                        detected_format='nc',
+                        reason='nc format requires xarray and netCDF4 or h5netcdf',
+                        requirement=_RequirementSpec(
+                            modules=('xarray', 'netCDF4', 'h5netcdf'),
                             package='xarray/netCDF4',
                             extra='file',
                         ),
-                        'missing_package': 'xarray/netCDF4',
-                        'reason': 'nc format requires xarray and netCDF4 or h5netcdf',
-                        'role': role,
-                    },
+                        role=role,
+                    ),
                 )
             continue
 
