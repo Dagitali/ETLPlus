@@ -15,6 +15,7 @@ from typing import cast
 import pytest
 
 import etlplus.runtime._readiness as readiness_mod
+import etlplus.runtime._readiness_strict as readiness_strict_mod
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -351,6 +352,38 @@ class TestReadinessReportBuilder:
             'TUPLE_TOKEN',
         }
 
+    @pytest.mark.parametrize(
+        ('issue', 'api_reference', 'expected'),
+        [
+            pytest.param(
+                'unknown api reference: missing-api',
+                None,
+                'Define the referenced API under top-level "apis".',
+                id='unknown-api-without-reference-name',
+            ),
+            pytest.param(
+                'unhandled',
+                None,
+                None,
+                id='unknown-issue',
+            ),
+        ],
+    )
+    def test_connector_gap_guidance_covers_fallback_paths(
+        self,
+        issue: str,
+        api_reference: str | None,
+        expected: str | None,
+    ) -> None:
+        """Connector-gap guidance should cover non-standard issue shapes."""
+        assert (
+            readiness_mod.ReadinessReportBuilder.connector_gap_guidance(
+                api_reference=api_reference,
+                issue=issue,
+            )
+            == expected
+        )
+
     def test_config_checks_can_skip_runtime_checks_without_strict_mode(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -631,6 +664,42 @@ class TestReadinessReportBuilder:
             for check in checks
         )
 
+    def test_connector_gap_rows_continue_after_complete_database_connector(
+        self,
+    ) -> None:
+        """
+        A complete database connector should not prevent later gaps from being
+        reported.
+        """
+        cfg = _cfg(
+            sources=[
+                SimpleNamespace(
+                    connection_string='sqlite:///:memory:',
+                    name='db-source',
+                    type='database',
+                ),
+                SimpleNamespace(
+                    name='file-source',
+                    path=None,
+                    type='file',
+                ),
+            ],
+        )
+
+        rows = readiness_mod.ReadinessReportBuilder.connector_gap_rows(cast(Any, cfg))
+
+        assert rows == [
+            _connector_gap(
+                connector='file-source',
+                guidance=(
+                    'Set "path" to a local path or storage URI for this file connector.'
+                ),
+                issue='missing path',
+                role='source',
+                connector_type='file',
+            ),
+        ]
+
     def test_connector_gap_rows_cover_missing_required_connector_fields(
         self,
     ) -> None:
@@ -910,6 +979,54 @@ class TestReadinessReportBuilder:
         assert rows == [row, {**row, 'connector': 'source-b'}]
 
     @pytest.mark.parametrize(
+        ('env', 'expected'),
+        [
+            pytest.param(
+                {
+                    'AWS_ACCESS_KEY_ID': 'access-key',
+                    'AWS_SECRET_ACCESS_KEY': 'secret-key',
+                },
+                None,
+                id='complete-explicit-pair',
+            ),
+            pytest.param(
+                {},
+                None,
+                id='no-explicit-credentials',
+            ),
+            pytest.param(
+                {'AWS_SECRET_ACCESS_KEY': 'secret-key'},
+                {
+                    'guidance': (
+                        'Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY together, or '
+                        'remove the partial explicit credential env vars and rely on '
+                        'AWS_PROFILE, shared config files, container credentials, or '
+                        'instance metadata.'
+                    ),
+                    'missing_env': ['AWS_ACCESS_KEY_ID'],
+                    'provider': 'aws-s3',
+                    'reason': (
+                        'Incomplete explicit AWS access-key configuration was detected '
+                        'for this S3 path.'
+                    ),
+                    'severity': 'error',
+                },
+                id='secret-only',
+            ),
+        ],
+    )
+    def test_explicit_aws_credential_gap_covers_guard_and_missing_access_key_paths(
+        self,
+        env: dict[str, str],
+        expected: dict[str, object] | None,
+    ) -> None:
+        """Explicit AWS credential diagnostics should cover all short-circuit cases."""
+        assert (
+            readiness_mod.ReadinessReportBuilder.explicit_aws_credential_gap(env)
+            == expected
+        )
+
+    @pytest.mark.parametrize(
         ('payload', 'expected', 'match'),
         [
             pytest.param(
@@ -948,6 +1065,18 @@ class TestReadinessReportBuilder:
                 'pipeline.yml',
             )
             == expected
+        )
+
+    def test_missing_requirement_guidance_returns_plain_install_hint_without_context(
+        self,
+    ) -> None:
+        """Missing-dependency guidance should fall back to one plain install hint."""
+        assert (
+            readiness_mod.ReadinessReportBuilder.missing_requirement_guidance(
+                package='tables',
+                extra=None,
+            )
+            == 'Install tables.'
         )
 
     def test_missing_requirement_rows_cover_netcdf_and_format_specific_branches(
@@ -1552,6 +1681,43 @@ class TestReadinessReportBuilder:
             },
         ]
 
+    def test_runtime_wrapper_helpers_delegate_to_extracted_helpers(
+        self,
+    ) -> None:
+        """
+        Thin readiness wrapper methods should preserve the extracted helper
+        behavior.
+        """
+        builder = readiness_mod.ReadinessReportBuilder
+        requirement = readiness_mod._RequirementSpec(('boto3',), 'boto3', 'storage')
+
+        assert builder.aws_env_hint_present({'AWS_PROFILE': 'default'}) is True
+        assert (
+            builder.azure_authority_has_account_host(
+                'azure-blob://container@account.blob.core.windows.net/data.csv',
+            )
+            is True
+        )
+        assert builder.connector_type('file') is readiness_mod.DataConnectorType.FILE
+        assert builder.requirement_row(
+            connector='out',
+            detected_scheme='s3',
+            reason='s3 storage path requires boto3',
+            requirement=requirement,
+            role='target',
+        ) == {
+            'connector': 'out',
+            'detected_scheme': 's3',
+            'extra': 'storage',
+            'guidance': (
+                'Install boto3 directly or install the ETLPlus "storage" extra. '
+                'Required for "s3" storage paths.'
+            ),
+            'missing_package': 'boto3',
+            'reason': 's3 storage path requires boto3',
+            'role': 'target',
+        }
+
     def test_strict_config_issue_rows_report_duplicates_and_unknown_refs(
         self,
     ) -> None:
@@ -1711,7 +1877,11 @@ class TestReadinessReportBuilder:
         issues: list[dict[str, Any]] = []
 
         if parse_connector is not None:
-            monkeypatch.setattr(readiness_mod, 'parse_connector', parse_connector)
+            monkeypatch.setattr(
+                readiness_strict_mod,
+                'parse_connector',
+                parse_connector,
+            )
 
         names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
             raw=raw,
@@ -1734,7 +1904,11 @@ class TestReadinessReportBuilder:
                 raise TypeError('bad connector')
             return SimpleNamespace(name='   ')
 
-        monkeypatch.setattr(readiness_mod, 'parse_connector', _parse_connector)
+        monkeypatch.setattr(
+            readiness_strict_mod,
+            'parse_connector',
+            _parse_connector,
+        )
 
         names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
             raw={
@@ -2058,5 +2232,28 @@ class TestReadinessReportBuilder:
             {
                 'name': 'TOKEN_B',
                 'paths': ['targets[0].path'],
+            },
+        ]
+
+    def test_token_reference_rows_cover_set_frozenset_and_scalar_fallthrough(
+        self,
+    ) -> None:
+        """Token-reference walking should also cover unordered sets and scalars."""
+        rows = readiness_mod.ReadinessReportBuilder.token_reference_rows(
+            {
+                'set_values': {'${SET_TOKEN}'},
+                'frozen_values': frozenset({'${FROZEN_TOKEN}'}),
+                'number': 1,
+            },
+        )
+
+        assert rows == [
+            {
+                'name': 'FROZEN_TOKEN',
+                'paths': ['frozen_values[0]'],
+            },
+            {
+                'name': 'SET_TOKEN',
+                'paths': ['set_values[0]'],
             },
         ]
