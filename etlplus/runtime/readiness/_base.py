@@ -24,9 +24,10 @@ from ...storage import StorageScheme
 from ...utils import deep_substitute
 from ...utils import maybe_mapping
 from ...utils._types import StrAnyMap
-from ._support import _SUPPORTED_PYTHON_RANGE
-from ._support import _TOKEN_PATTERN
+from ._support import SUPPORTED_PYTHON_RANGE
+from ._support import TOKEN_PATTERN
 from ._support import CheckStatus
+from ._support import ReadinessRow
 from ._support import _ResolvedConfigContext
 
 # SECTION: EXPORTS ========================================================== #
@@ -35,7 +36,153 @@ from ._support import _ResolvedConfigContext
 __all__ = [
     # Classes
     'ReadinessBaseMixin',
+    # Functions
+    'coerce_storage_scheme',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _connector_gap_guidance(
+    *,
+    api_reference: str | None = None,
+    issue: str,
+) -> str | None:
+    """Return one actionable guidance string for a blocking connector gap."""
+    match issue:
+        case 'missing path':
+            return 'Set "path" to a local path or storage URI for this file connector.'
+        case 'missing url or api reference':
+            return (
+                'Set "url" to a reachable endpoint or "api" to a configured '
+                'top-level API name.'
+            )
+        case 'missing connection_string':
+            return 'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
+        case issue_text if issue_text.startswith('unknown api reference: '):
+            if api_reference:
+                return (
+                    f'Define "{api_reference}" under top-level "apis" or update '
+                    'the connector "api" reference.'
+                )
+            return 'Define the referenced API under top-level "apis".'
+        case _:
+            return None
+
+
+def _dedupe_rows(
+    rows: list[ReadinessRow],
+) -> list[ReadinessRow]:
+    """Return rows with duplicates removed while preserving order."""
+    unique_rows: list[ReadinessRow] = []
+    seen: set[tuple[str, str, str, str, str]] = set()
+    for row in rows:
+        key = (
+            str(row['connector']),
+            str(row['role']),
+            str(row['missing_package']),
+            str(row['reason']),
+            str(row['extra']),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_rows.append(row)
+    return unique_rows
+
+
+def _iter_connectors(
+    cfg: Config,
+) -> Iterator[tuple[str, Connector]]:
+    """Yield source and target connectors tagged with their role."""
+    yield from (('source', connector) for connector in cfg.sources)
+    yield from (('target', connector) for connector in cfg.targets)
+
+
+def _missing_requirement_guidance(
+    *,
+    detected_format: str | None = None,
+    detected_scheme: str | None = None,
+    package: str,
+    extra: str | None,
+) -> str:
+    """Return one actionable remediation string for a missing dependency."""
+    install_hint = (
+        f'Install {package} directly or install the ETLPlus "{extra}" extra.'
+        if extra
+        else f'Install {package}.'
+    )
+    if detected_format == 'nc':
+        return (
+            'Install xarray plus one of netCDF4 or h5netcdf, or install the '
+            'ETLPlus "file" extra.'
+        )
+    if detected_format is not None:
+        return f'{install_hint} Required for "{detected_format}" file format.'
+    if detected_scheme is not None:
+        return f'{install_hint} Required for "{detected_scheme}" storage paths.'
+    return install_hint
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def coerce_connector_storage_scheme(
+    value: str,
+) -> str | None:
+    """
+    Return one normalized storage scheme from raw connector-type text.
+
+    This is a best-effort coercion that accepts some common connector type
+    strings and attempts to map them to a recognized storage scheme.
+    Recognized storage schemes are normalized to their canonical lowercase
+    form.
+
+    Parameters
+    ----------
+    value : str
+        Raw connector type string to coerce as a storage scheme.
+
+    Returns
+    -------
+    str | None
+        The normalized storage scheme name if coercion is successful, or
+        ``None`` if the value cannot be coerced as a known storage scheme.
+    """
+    if not value:
+        return None
+    try:
+        return str(StorageScheme.coerce(value))
+    except ValueError:
+        return None
+
+
+def coerce_storage_scheme(
+    path: str,
+) -> str | None:
+    """
+    Return one normalized storage scheme for *path* when present.
+
+    Parameters
+    ----------
+    path : str
+        The path to coerce as a storage scheme.
+
+    Returns
+    -------
+    str | None
+        The normalized storage scheme name if present, or ``None`` if not.
+    """
+    if '://' not in path:
+        return None
+    parsed = urlsplit(path)
+    if not parsed.scheme:
+        return None
+    try:
+        return str(StorageScheme.coerce(parsed.scheme))
+    except ValueError:
+        return parsed.scheme.lower()
 
 
 # SECTION: CLASSES ========================================================== #
@@ -69,12 +216,7 @@ class ReadinessBaseMixin:
             The normalized storage scheme name if coercion is successful, or
             ``None`` if the value cannot be coerced as a known storage scheme.
         """
-        if not value:
-            return None
-        try:
-            return str(StorageScheme.coerce(value))
-        except ValueError:
-            return None
+        return coerce_connector_storage_scheme(value)
 
     @staticmethod
     def coerce_storage_scheme(
@@ -93,15 +235,7 @@ class ReadinessBaseMixin:
         str | None
             The normalized storage scheme name if present, or ``None`` if not.
         """
-        if '://' not in path:
-            return None
-        parsed = urlsplit(path)
-        if not parsed.scheme:
-            return None
-        try:
-            return str(StorageScheme.coerce(parsed.scheme))
-        except ValueError:
-            return parsed.scheme.lower()
+        return coerce_storage_scheme(path)
 
     @staticmethod
     def collect_substitution_tokens(
@@ -129,7 +263,7 @@ class ReadinessBaseMixin:
         def _walk(node: Any) -> None:
             match node:
                 case str():
-                    for match in _TOKEN_PATTERN.findall(node):
+                    for match in TOKEN_PATTERN.findall(node):
                         tokens.add(match)
                 case Mapping():
                     for inner in node.values():
@@ -165,34 +299,15 @@ class ReadinessBaseMixin:
             An actionable guidance string if the issue is recognized, or ``None``
             if not.
         """
-        match issue:
-            case 'missing path':
-                return (
-                    'Set "path" to a local path or storage URI for this file connector.'
-                )
-            case 'missing url or api reference':
-                return (
-                    'Set "url" to a reachable endpoint or "api" to a configured '
-                    'top-level API name.'
-                )
-            case 'missing connection_string':
-                return (
-                    'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
-                )
-            case issue_text if issue_text.startswith('unknown api reference: '):
-                if api_reference:
-                    return (
-                        f'Define "{api_reference}" under top-level "apis" or update '
-                        'the connector "api" reference.'
-                    )
-                return 'Define the referenced API under top-level "apis".'
-            case _:
-                return None
+        return _connector_gap_guidance(
+            api_reference=api_reference,
+            issue=issue,
+        )
 
     @staticmethod
     def dedupe_rows(
-        rows: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
+        rows: list[ReadinessRow],
+    ) -> list[ReadinessRow]:
         """
         Return rows with duplicates removed while preserving order.
 
@@ -206,21 +321,7 @@ class ReadinessBaseMixin:
         list[dict[str, Any]]
             The deduplicated list of rows.
         """
-        unique_rows: list[dict[str, Any]] = []
-        seen: set[tuple[str, str, str, str, str]] = set()
-        for row in rows:
-            key = (
-                str(row['connector']),
-                str(row['role']),
-                str(row['missing_package']),
-                str(row['reason']),
-                str(row['extra']),
-            )
-            if key in seen:
-                continue
-            seen.add(key)
-            unique_rows.append(row)
-        return unique_rows
+        return _dedupe_rows(rows)
 
     @staticmethod
     def effective_environment(
@@ -275,8 +376,7 @@ class ReadinessBaseMixin:
             Tuples of role ("source" or "target") and connector objects from the
             configuration.
         """
-        yield from (('source', connector) for connector in cfg.sources)
-        yield from (('target', connector) for connector in cfg.targets)
+        yield from _iter_connectors(cfg)
 
     @staticmethod
     def load_raw_config(
@@ -349,21 +449,12 @@ class ReadinessBaseMixin:
         str
             An actionable remediation string for the missing dependency.
         """
-        install_hint = (
-            f'Install {package} directly or install the ETLPlus "{extra}" extra.'
-            if extra
-            else f'Install {package}.'
+        return _missing_requirement_guidance(
+            detected_format=detected_format,
+            detected_scheme=detected_scheme,
+            package=package,
+            extra=extra,
         )
-        if detected_format == 'nc':
-            return (
-                'Install xarray plus one of netCDF4 or h5netcdf, or install the '
-                'ETLPlus "file" extra.'
-            )
-        if detected_format is not None:
-            return f'{install_hint} Required for "{detected_format}" file format.'
-        if detected_scheme is not None:
-            return f'{install_hint} Required for "{detected_scheme}" storage paths.'
-        return install_hint
 
     @staticmethod
     def package_available(
@@ -481,7 +572,7 @@ class ReadinessBaseMixin:
             The Python compatibility check result.
         """
         version = cls.python_version()
-        minimum, maximum = _SUPPORTED_PYTHON_RANGE
+        minimum, maximum = SUPPORTED_PYTHON_RANGE
         supported = minimum <= sys.version_info[:2] < maximum
         if supported:
             return cls.make_check(
@@ -523,7 +614,7 @@ class ReadinessBaseMixin:
         def _walk(node: Any, path: str = '') -> None:
             match node:
                 case str():
-                    for match in _TOKEN_PATTERN.findall(node):
+                    for match in TOKEN_PATTERN.findall(node):
                         paths_by_name.setdefault(match, set()).add(path or '<root>')
                 case Mapping():
                     for key, inner in node.items():

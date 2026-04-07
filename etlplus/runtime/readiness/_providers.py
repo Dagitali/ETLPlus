@@ -12,11 +12,11 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from ..._config import Config
-from ._connectors import _iter_connectors
-from ._connectors import coerce_storage_scheme
-from ._support import _AWS_ENV_HINTS
-from ._support import _AZURE_STORAGE_BOOTSTRAP_ENV
-from ._support import _AZURE_STORAGE_CREDENTIAL_ENV
+from ._base import _iter_connectors
+from ._base import coerce_storage_scheme
+from ._support import AWS_ENV_HINTS
+from ._support import AZURE_STORAGE_BOOTSTRAP_ENV
+from ._support import AZURE_STORAGE_CREDENTIAL_ENV
 from ._support import ReadinessRow
 
 # SECTION: EXPORTS ========================================================== #
@@ -45,7 +45,7 @@ def _aws_env_hint_present(
     env: Mapping[str, str],
 ) -> bool:
     """Return whether common AWS credential-chain *env* hints are present."""
-    return any(bool(env.get(name)) for name in _AWS_ENV_HINTS)
+    return any(bool(env.get(name)) for name in AWS_ENV_HINTS)
 
 
 def _azure_authority_has_account_host(path: str) -> bool:
@@ -100,7 +100,7 @@ def _azure_provider_gaps(
                     'AZURE_STORAGE_ACCOUNT_URL, or include the '
                     'account host in the path authority.'
                 ),
-                missing_env=list(_AZURE_STORAGE_BOOTSTRAP_ENV),
+                missing_env=list(AZURE_STORAGE_BOOTSTRAP_ENV),
                 provider='azure-storage',
                 reason=(
                     f'{scheme} path does not provide an account host '
@@ -123,7 +123,7 @@ def _azure_provider_gaps(
                 'not public, or use AZURE_STORAGE_CONNECTION_STRING '
                 'for a fully explicit configuration.'
             ),
-            missing_env=[_AZURE_STORAGE_CREDENTIAL_ENV],
+            missing_env=[AZURE_STORAGE_CREDENTIAL_ENV],
             provider='azure-storage',
             reason=(
                 f'{scheme} access has no explicit Azure credential '
@@ -159,7 +159,7 @@ def _s3_provider_gaps(
                 'AWS_SECRET_ACCESS_KEY, or rely on shared config '
                 'files, container credentials, or instance metadata.'
             ),
-            missing_env=list(_AWS_ENV_HINTS),
+            missing_env=list(AWS_ENV_HINTS),
             provider='aws-s3',
             reason=(
                 'No common AWS credential-chain environment hints '
@@ -309,7 +309,7 @@ def provider_environment_rows(
     rows: list[ReadinessRow] = []
     azure_connection_string = bool(env.get('AZURE_STORAGE_CONNECTION_STRING'))
     azure_account_url = bool(env.get('AZURE_STORAGE_ACCOUNT_URL'))
-    azure_credential = bool(env.get(_AZURE_STORAGE_CREDENTIAL_ENV))
+    azure_credential = bool(env.get(AZURE_STORAGE_CREDENTIAL_ENV))
     has_aws_hints = _aws_env_hint_present(env)
 
     for role, connector in _iter_connectors(cfg):

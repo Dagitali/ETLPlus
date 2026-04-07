@@ -19,13 +19,13 @@ from ...utils._types import StrAnyMap
 
 __all__ = [
     # Constants
-    '_AWS_ENV_HINTS',
-    '_AZURE_STORAGE_BOOTSTRAP_ENV',
-    '_AZURE_STORAGE_CREDENTIAL_ENV',
-    '_FORMAT_EXTRA_REQUIREMENTS',
-    '_SCHEME_EXTRA_REQUIREMENTS',
-    '_SUPPORTED_PYTHON_RANGE',
-    '_TOKEN_PATTERN',
+    'AWS_ENV_HINTS',
+    'AZURE_STORAGE_BOOTSTRAP_ENV',
+    'AZURE_STORAGE_CREDENTIAL_ENV',
+    'FORMAT_EXTRA_REQUIREMENTS',
+    'SCHEME_EXTRA_REQUIREMENTS',
+    'SUPPORTED_PYTHON_RANGE',
+    'TOKEN_PATTERN',
     # Classes
     '_RequirementSpec',
     '_ResolvedConfigContext',
@@ -68,10 +68,10 @@ class _ResolvedConfigContext:
     resolved_cfg: object | None
 
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
+# SECTION: CONSTANTS ======================================================== #
 
 
-_AWS_ENV_HINTS: Final[tuple[str, ...]] = (
+AWS_ENV_HINTS: Final[tuple[str, ...]] = (
     'AWS_ACCESS_KEY_ID',
     'AWS_SECRET_ACCESS_KEY',
     'AWS_SESSION_TOKEN',
@@ -84,19 +84,13 @@ _AWS_ENV_HINTS: Final[tuple[str, ...]] = (
     'AWS_SHARED_CREDENTIALS_FILE',
     'AWS_CONFIG_FILE',
 )
-_AZURE_STORAGE_BOOTSTRAP_ENV: Final[tuple[str, ...]] = (
+AZURE_STORAGE_BOOTSTRAP_ENV: Final[tuple[str, ...]] = (
     'AZURE_STORAGE_CONNECTION_STRING',
     'AZURE_STORAGE_ACCOUNT_URL',
 )
-_AZURE_STORAGE_CREDENTIAL_ENV: Final[str] = 'AZURE_STORAGE_CREDENTIAL'
+AZURE_STORAGE_CREDENTIAL_ENV: Final[str] = 'AZURE_STORAGE_CREDENTIAL'
 
-_SUPPORTED_PYTHON_RANGE: Final[tuple[tuple[int, int], tuple[int, int]]] = (
-    (3, 13),
-    (3, 15),
-)
-_TOKEN_PATTERN: Final[re.Pattern[str]] = re.compile(r'\$\{([^}]+)\}')
-
-_FORMAT_EXTRA_REQUIREMENTS: Final[dict[str, _RequirementSpec]] = {
+FORMAT_EXTRA_REQUIREMENTS: Final[dict[str, _RequirementSpec]] = {
     'dta': _RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
     'hdf5': _RequirementSpec(('tables',), 'tables'),
     'rda': _RequirementSpec(('pyreadr',), 'pyreadr', 'file'),
@@ -104,7 +98,7 @@ _FORMAT_EXTRA_REQUIREMENTS: Final[dict[str, _RequirementSpec]] = {
     'sav': _RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
     'zsav': _RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
 }
-_SCHEME_EXTRA_REQUIREMENTS: Final[dict[str, _RequirementSpec]] = {
+SCHEME_EXTRA_REQUIREMENTS: Final[dict[str, _RequirementSpec]] = {
     'abfs': _RequirementSpec(
         ('azure.storage.filedatalake',),
         'azure-storage-file-datalake',
@@ -117,3 +111,9 @@ _SCHEME_EXTRA_REQUIREMENTS: Final[dict[str, _RequirementSpec]] = {
     ),
     's3': _RequirementSpec(('boto3',), 'boto3', 'storage'),
 }
+
+SUPPORTED_PYTHON_RANGE: Final[tuple[tuple[int, int], tuple[int, int]]] = (
+    (3, 13),
+    (3, 15),
+)
+TOKEN_PATTERN: Final[re.Pattern[str]] = re.compile(r'\$\{([^}]+)\}')
