@@ -15,6 +15,8 @@ from typing import cast
 import pytest
 
 import etlplus.runtime._readiness as readiness_mod
+import etlplus.runtime._readiness_base as readiness_base_mod
+from etlplus.runtime._readiness_support import _ResolvedConfigContext
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -127,9 +129,9 @@ def build_resolved_config_context(
     unresolved_tokens: list[str] | None = None,
     resolved_raw: Mapping[str, object] | None = None,
     resolved_cfg: object | None = None,
-) -> readiness_mod._ResolvedConfigContext:
+) -> _ResolvedConfigContext:
     """Build one resolved-config context with stable defaults."""
-    return readiness_mod._ResolvedConfigContext(
+    return _ResolvedConfigContext(
         raw=raw,
         effective_env={} if env is None else dict(env),
         unresolved_tokens=[] if unresolved_tokens is None else list(unresolved_tokens),
@@ -184,7 +186,7 @@ def patch_file_read(
         def read(self) -> object:
             return payload
 
-    monkeypatch.setattr(readiness_mod, 'File', _FakeFile)
+    monkeypatch.setattr(readiness_base_mod, 'File', _FakeFile)
 
 
 def write_pipeline_config(
