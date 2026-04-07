@@ -17,15 +17,13 @@ from ._readiness_connectors import coerce_storage_scheme
 from ._readiness_support import _AWS_ENV_HINTS
 from ._readiness_support import _AZURE_STORAGE_BOOTSTRAP_ENV
 from ._readiness_support import _AZURE_STORAGE_CREDENTIAL_ENV
+from ._readiness_support import ReadinessRow
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
     # Functions
-    'aws_env_hint_present',
-    'azure_authority_has_account_host',
-    'explicit_aws_credential_gap',
     'provider_environment_checks',
     'provider_environment_rows',
 ]
@@ -36,12 +34,25 @@ __all__ = [
 
 type _ProviderEnvironmentRowsFn = Callable[
     [Config, Mapping[str, str]],
-    list[_ReadinessRow],
+    list[ReadinessRow],
 ]
-type _ReadinessRow = dict[str, Any]
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _aws_env_hint_present(
+    env: Mapping[str, str],
+) -> bool:
+    """Return whether common AWS credential-chain *env* hints are present."""
+    return any(bool(env.get(name)) for name in _AWS_ENV_HINTS)
+
+
+def _azure_authority_has_account_host(path: str) -> bool:
+    """Return whether one Azure path authority embeds an account host."""
+    authority = urlsplit(path).netloc
+    _, separator, account_host = authority.partition('@')
+    return bool(separator and account_host)
 
 
 def _provider_gap_row(
@@ -54,7 +65,7 @@ def _provider_gap_row(
     role: str,
     scheme: str,
     severity: str,
-) -> _ReadinessRow:
+) -> ReadinessRow:
     """Return one normalized provider-environment gap row."""
     return {
         'connector': connector,
@@ -77,9 +88,9 @@ def _azure_provider_gaps(
     azure_account_url: bool,
     azure_connection_string: bool,
     azure_credential: bool,
-) -> list[_ReadinessRow]:
+) -> list[ReadinessRow]:
     """Return Azure bootstrap or credential gaps for one connector path."""
-    authority_has_account_host = azure_authority_has_account_host(path)
+    authority_has_account_host = _azure_authority_has_account_host(path)
     if not (azure_connection_string or azure_account_url or authority_has_account_host):
         return [
             _provider_gap_row(
@@ -133,7 +144,7 @@ def _s3_provider_gaps(
     env: Mapping[str, str],
     has_aws_hints: bool,
     role: str,
-) -> list[_ReadinessRow]:
+) -> list[ReadinessRow]:
     """Return AWS provider gaps for one S3 connector path."""
     explicit_gap = explicit_aws_credential_gap(env)
     if explicit_gap:
@@ -164,67 +175,9 @@ def _s3_provider_gaps(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def aws_env_hint_present(
-    env: Mapping[str, str],
-) -> bool:
-    """
-    Return whether common AWS credential-chain *env* hints are present.
-
-    This is a heuristic to determine whether AWS credentials may be configured
-    in the environment for SDK credential providers like profiles, shared
-    config files, container credentials, or instance metadata. The presence of
-    any of these environment variables is a strong signal that the user intends
-    to use AWS credentials, even if the variables are not sufficient for a fully
-    explicit configuration. This is used to provide more targeted guidance when
-    an S3 path is detected but no AWS credential hints are found in the
-    environment. The check is intentionally broad to avoid false negatives for
-    users relying on shared config files, container credentials, or instance
-    metadata, which may not have a single specific environment variable set.
-
-    Parameters
-    ----------
-    env : Mapping[str, str]
-        The environment mapping to check for AWS credential hints, typically
-        ``os.environ`` or a similar mapping.
-
-    Returns
-    -------
-    bool
-        ``True`` if any common AWS credential-chain environment variable is
-        present, ``False`` if not.
-    """
-    return any(bool(env.get(name)) for name in _AWS_ENV_HINTS)
-
-
-def azure_authority_has_account_host(path: str) -> bool:
-    """
-    Return whether one Azure path authority embeds an account host.
-
-    For Azure storage paths, the authority component of the URI may include an
-    account host, which can serve as a bootstrap credential hint. For example,
-    in the path ``https://myaccount.blob.core.windows.net/mycontainer/myblob``,
-    the authority component is ``myaccount.blob.core.windows.net``.
-
-    Parameters
-    ----------
-    path : str
-        The path to check for an Azure storage authority with an account host.
-
-    Returns
-    -------
-    bool
-        ``True`` if the authority component of the Azure storage path includes
-        an account host, ``False`` if not.
-
-    """
-    authority = urlsplit(path).netloc
-    _, separator, account_host = authority.partition('@')
-    return bool(separator and account_host)
-
-
 def explicit_aws_credential_gap(
     env: Mapping[str, str],
-) -> _ReadinessRow | None:
+) -> ReadinessRow | None:
     """
     Return one AWS env error row for incomplete explicit credentials.
 
@@ -244,7 +197,7 @@ def explicit_aws_credential_gap(
 
     Returns
     -------
-    _ReadinessRow | None
+    ReadinessRow | None
         An error row for incomplete explicit AWS credentials, or ``None`` if no
         issues are found.
     """
@@ -284,7 +237,7 @@ def provider_environment_checks(
     env: Mapping[str, str],
     make_check: Callable[..., dict[str, Any]],
     provider_environment_rows_fn: _ProviderEnvironmentRowsFn,
-) -> list[_ReadinessRow]:
+) -> list[ReadinessRow]:
     """
     Return provider-specific environment readiness checks.
 
@@ -301,7 +254,7 @@ def provider_environment_checks(
 
     Returns
     -------
-    list[_ReadinessRow]
+    list[ReadinessRow]
         A list of dictionaries representing the provider-specific environment
         readiness checks.
     """
@@ -336,7 +289,7 @@ def provider_environment_rows(
     *,
     cfg: Config,
     env: Mapping[str, str],
-) -> list[_ReadinessRow]:
+) -> list[ReadinessRow]:
     """
     Return provider-specific environment gaps for configured connectors.
 
@@ -349,15 +302,15 @@ def provider_environment_rows(
 
     Returns
     -------
-    list[_ReadinessRow]
+    list[ReadinessRow]
         A list of dictionaries representing the provider-specific environment
         gaps.
     """
-    rows: list[_ReadinessRow] = []
+    rows: list[ReadinessRow] = []
     azure_connection_string = bool(env.get('AZURE_STORAGE_CONNECTION_STRING'))
     azure_account_url = bool(env.get('AZURE_STORAGE_ACCOUNT_URL'))
     azure_credential = bool(env.get(_AZURE_STORAGE_CREDENTIAL_ENV))
-    has_aws_hints = aws_env_hint_present(env)
+    has_aws_hints = _aws_env_hint_present(env)
 
     for role, connector in _iter_connectors(cfg):
         connector_name = str(getattr(connector, 'name', '<unnamed>'))

@@ -17,6 +17,7 @@ from ..connector import DataConnectorType
 from ..storage import StorageScheme
 from ._readiness_support import _FORMAT_EXTRA_REQUIREMENTS
 from ._readiness_support import _SCHEME_EXTRA_REQUIREMENTS
+from ._readiness_support import ReadinessRow
 from ._readiness_support import _RequirementSpec
 
 # SECTION: EXPORTS ========================================================== #
@@ -26,19 +27,12 @@ __all__ = [
     # Functions
     'connector_gap_rows',
     'connector_readiness_checks',
-    'connector_type',
     'connector_type_choices',
     'connector_type_guidance',
     'missing_requirement_rows',
     'netcdf_available',
     'requirement_available',
 ]
-
-
-# SECTION: INTERNAL TYPE ALIASES ============================================ #
-
-
-type _ReadinessRow = dict[str, Any]
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -71,9 +65,9 @@ def _connector_gap_guidance(
             return None
 
 
-def _dedupe_rows(rows: list[_ReadinessRow]) -> list[_ReadinessRow]:
+def _dedupe_rows(rows: list[ReadinessRow]) -> list[ReadinessRow]:
     """Return rows with duplicates removed while preserving order."""
-    unique_rows: list[_ReadinessRow] = []
+    unique_rows: list[ReadinessRow] = []
     seen: set[tuple[str, str, str, str, str]] = set()
     for row in rows:
         key = (
@@ -123,9 +117,9 @@ def _connector_gap_row(
     connector_type_str: str,
     api_reference: str | None = None,
     supported_types: tuple[str, ...] | None = None,
-) -> _ReadinessRow:
+) -> ReadinessRow:
     """Return one normalized connector-gap row."""
-    row: _ReadinessRow = {
+    row: ReadinessRow = {
         'connector': connector,
         'issue': issue,
         'role': role,
@@ -141,6 +135,16 @@ def _connector_gap_row(
     if supported_types is not None:
         row['supported_types'] = list(supported_types)
     return row
+
+
+def _connector_type(
+    connector_type_str: str,
+) -> DataConnectorType | None:
+    """Return one coerced connector type or ``None`` when unsupported."""
+    try:
+        return DataConnectorType.coerce(connector_type_str)
+    except ValueError:
+        return None
 
 
 def _iter_connectors(
@@ -159,9 +163,9 @@ def _requirement_row(
     reason: str,
     requirement: _RequirementSpec,
     role: str,
-) -> _ReadinessRow:
+) -> ReadinessRow:
     """Return one missing-requirement row."""
-    row: _ReadinessRow = {
+    row: ReadinessRow = {
         'connector': connector,
         'extra': requirement.extra or '',
         'guidance': _missing_requirement_guidance(
@@ -238,7 +242,7 @@ def coerce_storage_scheme(
 
 def connector_gap_rows(
     cfg: Config,
-) -> list[_ReadinessRow]:
+) -> list[ReadinessRow]:
     """
     Return connector configuration gaps that will block execution.
 
@@ -249,15 +253,15 @@ def connector_gap_rows(
 
     Returns
     -------
-    list[_ReadinessRow]
+    list[ReadinessRow]
         A list of dictionaries representing the configuration gaps.
     """
-    gaps: list[_ReadinessRow] = []
+    gaps: list[ReadinessRow] = []
     supported_types = connector_type_choices()
     for role, connector in _iter_connectors(cfg):
         connector_name = str(getattr(connector, 'name', '<unnamed>'))
         connector_type_name = str(getattr(connector, 'type', ''))
-        coerced_type = connector_type(connector_type_name)
+        coerced_type = _connector_type(connector_type_name)
 
         if coerced_type is None:
             gaps.append(
@@ -329,10 +333,10 @@ def connector_gap_rows(
 def connector_readiness_checks(
     cfg: Config,
     *,
-    connector_gap_rows_fn: Callable[[Config], list[_ReadinessRow]],
+    connector_gap_rows_fn: Callable[[Config], list[ReadinessRow]],
     make_check: Callable[..., dict[str, Any]],
-    missing_requirement_rows_fn: Callable[[Config], list[_ReadinessRow]],
-) -> list[_ReadinessRow]:
+    missing_requirement_rows_fn: Callable[[Config], list[ReadinessRow]],
+) -> list[ReadinessRow]:
     """
     Return connector configuration and dependency readiness checks.
 
@@ -340,19 +344,19 @@ def connector_readiness_checks(
     ----------
     cfg : Config
         The configuration object containing the connectors.
-    connector_gap_rows_fn : Callable[[Config], list[_ReadinessRow]]
+    connector_gap_rows_fn : Callable[[Config], list[ReadinessRow]]
         A function that returns a list of connector configuration gaps.
     make_check : Callable[..., dict[str, Any]]
         A function that creates a readiness check dictionary.
-    missing_requirement_rows_fn : Callable[[Config], list[_ReadinessRow]]
+    missing_requirement_rows_fn : Callable[[Config], list[ReadinessRow]]
         A function that returns a list of missing optional dependencies.
 
     Returns
     -------
-    list[_ReadinessRow]
+    list[ReadinessRow]
         A list of dictionaries representing the readiness checks.
     """
-    checks: list[_ReadinessRow] = []
+    checks: list[ReadinessRow] = []
     gaps = connector_gap_rows_fn(cfg)
     checks.append(
         make_check(
@@ -390,28 +394,6 @@ def connector_readiness_checks(
         ),
     )
     return checks
-
-
-def connector_type(
-    connector_type_str: str,
-) -> DataConnectorType | None:
-    """
-    Return one coerced connector type or ``None`` when unsupported.
-
-    Parameters
-    ----------
-    connector_type_str : str
-        The connector type string to coerce.
-
-    Returns
-    -------
-    DataConnectorType | None
-        The coerced connector type or ``None`` if unsupported.
-    """
-    try:
-        return DataConnectorType.coerce(connector_type_str)
-    except ValueError:
-        return None
 
 
 def connector_type_choices() -> tuple[str, ...]:
@@ -460,7 +442,7 @@ def missing_requirement_rows(
     cfg: Config,
     netcdf_available_fn: Callable[[], bool],
     requirement_available_fn: Callable[[_RequirementSpec], bool],
-) -> list[_ReadinessRow]:
+) -> list[ReadinessRow]:
     """
     Return missing optional dependency rows for configured connectors.
 
@@ -476,11 +458,11 @@ def missing_requirement_rows(
 
     Returns
     -------
-    list[_ReadinessRow]
+    list[ReadinessRow]
         A list of dictionaries representing the missing optional dependencies
         for the configured connectors.
     """
-    rows: list[_ReadinessRow] = []
+    rows: list[ReadinessRow] = []
     for role, connector in _iter_connectors(cfg):
         connector_name = str(getattr(connector, 'name', '<unnamed>'))
         path = getattr(connector, 'path', None)

@@ -41,84 +41,6 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
     # -- Class Methods -- #
 
     @classmethod
-    def aws_env_hint_present(
-        cls,
-        env: Mapping[str, str],
-    ) -> bool:
-        """
-        Return whether common AWS credential-chain env hints are present.
-
-        The presence of any of these environment variables is a strong signal that
-        the user intends to use AWS credentials, even if the variables are not
-        sufficient for a fully explicit configuration. This is used to provide more
-        targeted guidance when an S3 path is detected but no AWS credential hints
-        are found in the environment. The check is intentionally broad to avoid
-        false negatives for users relying on shared config files, container
-        credentials, or instance metadata, which may not have a single specific
-        environment variable set.
-
-        Parameters
-        ----------
-        env : Mapping[str, str]
-            The environment mapping to check for AWS credential hints, typically
-            ``os.environ`` or a similar mapping.
-
-        Returns
-        -------
-        bool
-            ``True`` if any common AWS credential-chain environment variable is
-            present, ``False`` if not.
-        """
-        return _providers.aws_env_hint_present(env)
-
-    @classmethod
-    def azure_authority_has_account_host(
-        cls,
-        path: str,
-    ) -> bool:
-        """
-        Return whether one Azure storage path authority embeds an account host.
-
-        For Azure storage paths, the authority component of the URI may include an
-        account host, which can serve as a bootstrap credential hint. For example,
-        in the path ``https://myaccount.blob.core.windows.net/mycontainer/myblob``,
-        the authority component is ``myaccount.blob.core.windows.net``.
-
-        Parameters
-        ----------
-        path : str
-            The path to check for an Azure storage authority with an account host.
-
-        Returns
-        -------
-        bool
-            ``True`` if the authority component of the Azure storage path includes
-            an account host, ``False`` if not.
-
-        """
-        return _providers.azure_authority_has_account_host(path)
-
-    @classmethod
-    def connector_gap_rows(
-        cls,
-        cfg: Config,
-    ) -> list[dict[str, Any]]:
-        """
-        Return connector configuration gaps that will block execution.
-
-        Parameters
-        ----------
-        cfg : Config
-            The configuration object containing the connectors.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            A list of dictionaries representing the configuration gaps.
-        """
-        return _connectors.connector_gap_rows(cfg)
-
-    @classmethod
     def connector_readiness_checks(
         cls,
         cfg: Config,
@@ -138,96 +60,12 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         """
         return _connectors.connector_readiness_checks(
             cfg,
-            connector_gap_rows_fn=cls.connector_gap_rows,
+            connector_gap_rows_fn=_connectors.connector_gap_rows,
             make_check=cls.make_check,
             missing_requirement_rows_fn=lambda inner_cfg: cls.missing_requirement_rows(
                 cfg=inner_cfg,
             ),
         )
-
-    @classmethod
-    def connector_type(
-        cls,
-        connector_type_str: str,
-    ) -> _DataConnectorType | None:
-        """
-        Return one coerced connector type or ``None`` when unsupported.
-
-        Parameters
-        ----------
-        connector_type_str : str
-            The connector type string to coerce.
-
-        Returns
-        -------
-        _DataConnectorType | None
-            The coerced connector type or ``None`` if unsupported.
-        """
-        return _connectors.connector_type(connector_type_str)
-
-    @classmethod
-    def connector_type_choices(
-        cls,
-    ) -> tuple[str, ...]:
-        """
-        Return the supported connector type names.
-
-        Returns
-        -------
-        tuple[str, ...]
-            A tuple of supported connector type names.
-        """
-        return _connectors.connector_type_choices()
-
-    @classmethod
-    def connector_type_guidance(
-        cls,
-        connector_type_str: str,
-    ) -> str:
-        """
-        Return actionable guidance for an unsupported connector type.
-
-        Parameters
-        ----------
-        connector_type_str : str
-            The connector type string to provide guidance for.
-
-        Returns
-        -------
-        str
-            Actionable guidance for the unsupported connector type.
-        """
-        return _connectors.connector_type_guidance(connector_type_str)
-
-    @classmethod
-    def explicit_aws_credential_gap(
-        cls,
-        env: Mapping[str, str],
-    ) -> dict[str, Any] | None:
-        """
-        Return one AWS env error row for incomplete explicit credentials.
-
-        This check looks for the presence of partial explicit AWS credential
-        environment variables that indicate an attempt at explicit credential
-        configuration, but the variables are not sufficient for a complete explicit
-        configuration. The check is intentionally specific to avoid false positives
-        for users who are not attempting explicit credential configuration, as the
-        presence of any of these variables is a strong signal of that intent. If
-        both ``AWS_ACCESS_KEY_ID`` and ``AWS_SECRET_ACCESS_KEY`` are not set, but
-        ``AWS_SESSION_TOKEN`` is set, it indicates an incomplete configuration.
-
-        Parameters
-        ----------
-        env : Mapping[str, str]
-            The environment variables to check.
-
-        Returns
-        -------
-        dict[str, Any] | None
-            An error row for incomplete explicit AWS credentials, or ``None`` if no
-            issues are found.
-        """
-        return _providers.explicit_aws_credential_gap(env)
 
     @classmethod
     def missing_requirement_rows(
@@ -296,34 +134,9 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             env=env,
             make_check=cls.make_check,
             provider_environment_rows_fn=lambda inner_cfg, inner_env: (
-                cls.provider_environment_rows(cfg=inner_cfg, env=inner_env)
+                _providers.provider_environment_rows(cfg=inner_cfg, env=inner_env)
             ),
         )
-
-    @classmethod
-    def provider_environment_rows(
-        cls,
-        *,
-        cfg: Config,
-        env: Mapping[str, str],
-    ) -> list[dict[str, Any]]:
-        """
-        Return provider-specific environment gaps for configured connectors.
-
-        Parameters
-        ----------
-        cfg : Config
-            The configuration object containing the connectors.
-        env : Mapping[str, str]
-            The environment variables to check for provider-specific gaps.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            A list of dictionaries representing the provider-specific environment
-            gaps.
-        """
-        return _providers.provider_environment_rows(cfg=cfg, env=env)
 
     @classmethod
     def requirement_available(
@@ -423,8 +236,8 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         """
         return _strict.strict_config_issue_rows(
             raw=raw,
-            connector_type_guidance=cls.connector_type_guidance,
-            connector_type_choices=cls.connector_type_choices,
+            connector_type_guidance=_connectors.connector_type_guidance,
+            connector_type_choices=_connectors.connector_type_choices,
         )
 
     @classmethod
@@ -456,8 +269,8 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             raw=raw,
             section=section,
             issues=issues,
-            connector_type_guidance=cls.connector_type_guidance,
-            connector_type_choices=cls.connector_type_choices,
+            connector_type_guidance=_connectors.connector_type_guidance,
+            connector_type_choices=_connectors.connector_type_choices,
         )
 
     @classmethod
