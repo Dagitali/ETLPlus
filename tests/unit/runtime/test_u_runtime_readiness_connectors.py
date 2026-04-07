@@ -15,7 +15,7 @@ import pytest
 import etlplus.runtime.readiness._builder as readiness_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
 from etlplus.connector import DataConnectorType
-from etlplus.runtime.readiness._support import _RequirementSpec
+from etlplus.runtime.readiness._support import RequirementSpec
 
 from .pytest_runtime_readiness import build_connector_gap_row as _connector_gap
 from .pytest_runtime_readiness import (
@@ -610,7 +610,7 @@ class TestReadinessReportBuilderConnectors:
         self,
     ) -> None:
         """Requirement rows should keep both detected format and scheme fields."""
-        requirement = _RequirementSpec(
+        requirement = RequirementSpec(
             ('pyarrow',),
             'pyarrow',
             'file',
@@ -643,7 +643,7 @@ class TestReadinessReportBuilderConnectors:
         self,
     ) -> None:
         """Requirement rows should omit scheme when only format context exists."""
-        requirement = _RequirementSpec(
+        requirement = RequirementSpec(
             ('pyarrow',),
             'pyarrow',
             'file',

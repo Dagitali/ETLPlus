@@ -16,7 +16,7 @@ import etlplus.runtime.readiness._builder as readiness_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
 import etlplus.runtime.readiness._providers as readiness_providers_mod
 from etlplus.connector import DataConnectorType
-from etlplus.runtime.readiness._support import _RequirementSpec
+from etlplus.runtime.readiness._support import RequirementSpec
 
 from .pytest_runtime_readiness import build_provider_check as _provider_check
 from .pytest_runtime_readiness import build_provider_gap_row as _provider_gap
@@ -484,7 +484,7 @@ class TestReadinessReportBuilderProviders:
         Thin readiness wrapper methods should preserve the extracted helper
         behavior.
         """
-        requirement = _RequirementSpec(
+        requirement = RequirementSpec(
             ('boto3',),
             'boto3',
             'storage',
@@ -503,8 +503,7 @@ class TestReadinessReportBuilderProviders:
             is True
         )
         assert (
-            readiness_connectors_mod._connector_type('file')
-            is DataConnectorType.FILE
+            readiness_connectors_mod._connector_type('file') is DataConnectorType.FILE
         )
         assert readiness_mod.ReadinessReportBuilder.requirement_row(
             connector='out',
