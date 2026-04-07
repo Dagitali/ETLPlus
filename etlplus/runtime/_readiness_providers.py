@@ -12,11 +12,24 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from .._config import Config
+from ._readiness_connectors import _iter_connectors
 from ._readiness_connectors import coerce_storage_scheme
-from ._readiness_connectors import iter_connectors
 from ._readiness_support import _AWS_ENV_HINTS
 from ._readiness_support import _AZURE_STORAGE_BOOTSTRAP_ENV
 from ._readiness_support import _AZURE_STORAGE_CREDENTIAL_ENV
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    # Functions
+    'aws_env_hint_present',
+    'azure_authority_has_account_host',
+    'explicit_aws_credential_gap',
+    'provider_environment_checks',
+    'provider_environment_rows',
+]
+
 
 # SECTION: INTERNAL TYPE ALIASES ============================================ #
 
@@ -346,7 +359,7 @@ def provider_environment_rows(
     azure_credential = bool(env.get(_AZURE_STORAGE_CREDENTIAL_ENV))
     has_aws_hints = aws_env_hint_present(env)
 
-    for role, connector in iter_connectors(cfg):
+    for role, connector in _iter_connectors(cfg):
         connector_name = str(getattr(connector, 'name', '<unnamed>'))
         path = getattr(connector, 'path', None)
         if not isinstance(path, str) or not path:
