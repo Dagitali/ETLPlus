@@ -26,7 +26,15 @@ __all__ = [
     # Constants
     'DEFAULT_HISTORY_BACKEND',
     'DEFAULT_STATE_DIR',
+    # Type Aliases
+    'HistoryBackend',
 ]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type HistoryBackend = Literal['sqlite', 'jsonl']
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
@@ -38,7 +46,7 @@ _VALID_HISTORY_BACKENDS = frozenset({'sqlite', 'jsonl'})
 # SECTION: CONSTANTS ======================================================== #
 
 
-DEFAULT_HISTORY_BACKEND: Literal['sqlite', 'jsonl'] = 'sqlite'
+DEFAULT_HISTORY_BACKEND: HistoryBackend = 'sqlite'
 DEFAULT_STATE_DIR = Path('~/.etlplus').expanduser()
 
 
@@ -47,13 +55,13 @@ DEFAULT_STATE_DIR = Path('~/.etlplus').expanduser()
 
 def _coerce_backend(
     value: object,
-) -> Literal['sqlite', 'jsonl'] | None:
+) -> HistoryBackend | None:
     """Return one supported history backend name when valid."""
     if not isinstance(value, str):
         return None
     normalized = value.strip().lower()
     if normalized in _VALID_HISTORY_BACKENDS:
-        return cast(Literal['sqlite', 'jsonl'], normalized)
+        return cast(HistoryBackend, normalized)
     return None
 
 
@@ -85,7 +93,7 @@ class HistoryConfig:
     # -- Instance Attributes -- #
 
     enabled: bool = True
-    backend: Literal['sqlite', 'jsonl'] | None = None
+    backend: HistoryBackend | None = None
     state_dir: str | None = None
     capture_tracebacks: bool = False
 
@@ -125,7 +133,7 @@ class ResolvedHistoryConfig:
     # -- Instance Attributes -- #
 
     enabled: bool
-    backend: Literal['sqlite', 'jsonl']
+    backend: HistoryBackend
     state_dir: Path
     capture_tracebacks: bool
 
