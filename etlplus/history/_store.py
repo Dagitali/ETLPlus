@@ -31,6 +31,8 @@ from ..file.ndjson import NdjsonFile
 from ..file.sqlite import SqliteFile
 from ..utils import serialize_json
 from ..utils._types import JSONData
+from ._config import DEFAULT_HISTORY_BACKEND
+from ._config import DEFAULT_STATE_DIR
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -38,16 +40,18 @@ from ..utils._types import JSONData
 __all__ = [
     # Classes
     'HistoryStore',
-    'JobRunRecord',
     'JsonlHistoryStore',
-    'RunCompletion',
-    'RunRecord',
-    'RunState',
     'SQLiteHistoryStore',
     # Constants
     'HISTORY_SCHEMA_VERSION',
+    # Data Classes
+    'JobRunRecord',
+    'RunCompletion',
+    'RunRecord',
+    'RunState',
     # Functions
     'build_run_record',
+    # Typed Dicts
 ]
 
 
@@ -493,9 +497,6 @@ class RunState:
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_DEFAULT_HISTORY_BACKEND = 'sqlite'
-_DEFAULT_STATE_DIR = Path('~/.etlplus').expanduser()
-
 _RUN_STATE_FIELDS = tuple(field.name for field in fields(RunState))
 _RUN_RECORD_FIELDS = (
     *(field.name for field in fields(RunRecord) if field.name != 'state'),
@@ -643,13 +644,25 @@ class HistoryStore(ABC):
     @classmethod
     def from_environment(cls) -> HistoryStore:
         """Open the configured local history backend from environment values."""
-        backend = os.getenv('ETLPLUS_HISTORY_BACKEND', _DEFAULT_HISTORY_BACKEND)
-        state_dir = cls._coerce_state_dir()
+        return cls.from_settings(
+            backend=os.getenv('ETLPLUS_HISTORY_BACKEND', DEFAULT_HISTORY_BACKEND),
+            state_dir=os.getenv('ETLPLUS_STATE_DIR'),
+        )
+
+    @classmethod
+    def from_settings(
+        cls,
+        *,
+        backend: str = DEFAULT_HISTORY_BACKEND,
+        state_dir: str | os.PathLike[str] | None = None,
+    ) -> HistoryStore:
+        """Open one supported local history backend from explicit settings."""
+        resolved_state_dir = cls._coerce_state_dir(state_dir)
         match backend:
             case 'sqlite':
-                return SQLiteHistoryStore(state_dir / 'history.sqlite')
+                return SQLiteHistoryStore(resolved_state_dir / 'history.sqlite')
             case 'jsonl':
-                return JsonlHistoryStore(state_dir / 'history.jsonl')
+                return JsonlHistoryStore(resolved_state_dir / 'history.jsonl')
             case _:
                 raise ValueError(
                     'ETLPLUS_HISTORY_BACKEND must be one of: sqlite, jsonl',
@@ -711,7 +724,7 @@ class HistoryStore(ABC):
         """Coerce a state directory path from a value or environment variable."""
         raw = state_dir or os.getenv('ETLPLUS_STATE_DIR')
         if not raw:
-            return _DEFAULT_STATE_DIR
+            return DEFAULT_STATE_DIR
         return Path(raw).expanduser()
 
     @staticmethod
