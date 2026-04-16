@@ -10,7 +10,12 @@
 **Storage Backend**
 - Default: SQLite at `${ETLPLUS_STATE_DIR:-~/.etlplus}/history.sqlite`
 - Alternative: JSONL backend for ultra-lightweight setups
-- Override: `ETLPLUS_HISTORY_BACKEND=sqlite|jsonl` and `ETLPLUS_STATE_DIR`
+- Pipeline config: optional top-level `history` block with `enabled`, `backend`, `state_dir`, and
+  `capture_tracebacks`
+- Per-run CLI overrides: `run --history/--no-history`, `--history-backend`, `--history-state-dir`,
+  and `--capture-tracebacks/--no-capture-tracebacks`
+- Effective precedence: CLI overrides, then environment (`ETLPLUS_HISTORY_BACKEND`,
+  `ETLPLUS_STATE_DIR`), then pipeline config, then package defaults
 - Migrations: schema version stored in `meta` table; upgrades happen on open
 
 **Data Model (SQLite)**
@@ -68,7 +73,8 @@
   - On `etlplus run` start: write `runs` row with `status=running`.
   - On success: update `status=succeeded`, `finished_at`, `duration_ms`,
     `result_summary`.
-  - On failure: update `status=failed`, set error fields.
+  - On failure: update `status=failed`, set error fields, and persist a capped `error_traceback`
+    only when traceback capture is enabled.
   - DAG-aware `run --job` and `run --all` executions persist both:
     - a concise top-level run summary in `runs.result_summary` with aggregate DAG outcome fields
       such as `mode`, `ordered_jobs`, counts, final job/result status, and succeeded/failed/skipped
@@ -76,8 +82,6 @@
     - one per-job row in `job_runs` (SQLite) or one `record_level=job` event sequence (JSONL) for
       each executed/succeeded/failed/skipped job, including plan order, timing, terminal status,
       and per-job `result_summary`
-- Remaining work:
-  - capture traceback conditionally
 
 **CLI Commands**
 - `etlplus history`
@@ -222,12 +226,18 @@ one-event-per-job stream contract.
   stable fields should increment `HISTORY_SCHEMA_VERSION`.
 
 **Config Integration**
-- Add optional `history` block to pipeline config:
+- Implemented optional `history` block at the pipeline root:
   - `enabled` (default true)
   - `backend` (sqlite/jsonl)
   - `state_dir` override
   - `capture_tracebacks` (default false)
-- CLI flags override config defaults.
+- CLI flags for `etlplus run`:
+  - `--history/--no-history`
+  - `--history-backend sqlite|jsonl`
+  - `--history-state-dir PATH`
+  - `--capture-tracebacks/--no-capture-tracebacks`
+- CLI flags override config defaults. Environment variables still override backend and state
+  directory when CLI flags are not provided.
 
 **Implementation Touchpoints**
 - New module: `etlplus/history` with `HistoryStore` interface and two backends.

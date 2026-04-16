@@ -21,10 +21,20 @@ read/query commands in the CLI.
 - Start and finish metadata are persisted to the configured local history backend.
 - The default backend is SQLite at `${ETLPLUS_STATE_DIR:-~/.etlplus}/history.sqlite`.
 - A JSONL backend is also available through `ETLPLUS_HISTORY_BACKEND=jsonl`.
+- You can set pipeline defaults with a top-level `history` block containing `enabled`, `backend`,
+  `state_dir`, and `capture_tracebacks`.
+- `etlplus run` can override those defaults with `--history/--no-history`,
+  `--history-backend`, `--history-state-dir`, and
+  `--capture-tracebacks/--no-capture-tracebacks`.
+- Effective precedence is CLI overrides, then environment variables for backend and state directory,
+  then pipeline config, then package defaults.
 - DAG-style runs persist one compact aggregate run summary on the parent run row.
 - DAG-style `run --job` / `run --all` executions also persist one per-job history row for each
   executed/succeeded/failed/skipped job, including plan order, timing, terminal status, and
   per-job result summaries.
+
+When traceback capture is enabled, failed runs also persist a capped `error_traceback` string in the
+run-level history row.
 
 Today, the persisted history is written by `etlplus run`. The read/query commands below inspect that
 local store; they do not require external services.

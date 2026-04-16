@@ -246,6 +246,30 @@ class TestConfig:
         assert len(cfg.table_schemas) == 1
         assert cfg.table_schemas[0]['table'] == 'customers'
 
+    def test_from_dict_parses_history_defaults(
+        self,
+    ) -> None:
+        """Test that :class:`Config` parses one optional history block."""
+        cfg = Config.from_dict(
+            {
+                'name': 'History Config Test',
+                'history': {
+                    'enabled': False,
+                    'backend': 'jsonl',
+                    'state_dir': './.etlplus-state',
+                    'capture_tracebacks': True,
+                },
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+            },
+        )
+
+        assert cfg.history.enabled is False
+        assert cfg.history.backend == 'jsonl'
+        assert cfg.history.state_dir == './.etlplus-state'
+        assert cfg.history.capture_tracebacks is True
+
     def test_from_yaml_includes_profile_env_in_substitution(
         self,
         pipeline_builder: Callable[..., Config],

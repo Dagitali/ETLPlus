@@ -19,9 +19,13 @@ from .helpers import _typer_value_option_kwargs
 
 __all__ = [
     # Types
+    'CaptureTracebacksOption',
     'CheckConfigOption',
     'ConfigOption',
     'ContinueOnFailOption',
+    'HistoryBackendOption',
+    'HistoryEnabledOption',
+    'HistoryStateDirOption',
     'JobOption',
     'OutputOption',
     'PipelineOption',
@@ -74,6 +78,20 @@ ContinueOnFailOption = Annotated[
     ),
 ]
 
+CaptureTracebacksOption = Annotated[
+    bool | None,
+    typer.Option(
+        '--capture-tracebacks/--no-capture-tracebacks',
+        **_typer_flag_option_kwargs(
+            (
+                'Persist capped failure tracebacks in local run history when '
+                'history is enabled.'
+            ),
+            show_default=None,
+        ),
+    ),
+]
+
 JobOption = Annotated[
     str | None,
     typer.Option(
@@ -81,6 +99,41 @@ JobOption = Annotated[
         '--job',
         **_typer_value_option_kwargs(
             'Name of the job to run',
+            show_default=None,
+        ),
+    ),
+]
+
+HistoryBackendOption = Annotated[
+    Literal['sqlite', 'jsonl'] | None,
+    typer.Option(
+        '--history-backend',
+        **_typer_value_option_kwargs(
+            'Override the local history backend (sqlite or jsonl).',
+            metavar='BACKEND',
+            show_default=None,
+        ),
+    ),
+]
+
+HistoryEnabledOption = Annotated[
+    bool | None,
+    typer.Option(
+        '--history/--no-history',
+        **_typer_flag_option_kwargs(
+            'Enable or disable local run-history persistence for this run.',
+            show_default=None,
+        ),
+    ),
+]
+
+HistoryStateDirOption = Annotated[
+    str | None,
+    typer.Option(
+        '--history-state-dir',
+        **_typer_value_option_kwargs(
+            'Override the local history state directory.',
+            metavar='PATH',
             show_default=None,
         ),
     ),

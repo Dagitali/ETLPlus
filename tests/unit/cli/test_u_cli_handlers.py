@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.cli.test_u_cli_handlers` module.
 
-Unit tests for CLI handler implementation modules.
+Unit tests for :mod:`etlplus.cli._handlers`.
 """
 
 from __future__ import annotations
@@ -1250,7 +1250,7 @@ class TestRunHandler:
                 self,
                 completion: object,
             ) -> None:
-                completion_obj = cast(handlers.RunCompletion, completion)
+                completion_obj = cast(Any, completion)
                 history_calls['finished'] = {
                     'duration_ms': completion_obj.state.duration_ms,
                     'error_message': completion_obj.state.error_message,
@@ -1265,7 +1265,7 @@ class TestRunHandler:
         monkeypatch.setattr(
             handlers.HistoryStore,
             'from_environment',
-            lambda: _FakeHistoryStore(),
+            _FakeHistoryStore,
         )
         run_calls: dict[str, object] = {}
 
@@ -1339,13 +1339,13 @@ class TestRunHandler:
                 self,
                 completion: object,
             ) -> None:
-                completion_obj = cast(handlers.RunCompletion, completion)
+                completion_obj = cast(Any, completion)
                 history_calls['finished'] = completion_obj.state
 
         monkeypatch.setattr(
             handlers.HistoryStore,
             'from_environment',
-            lambda: _FakeHistoryStore(),
+            _FakeHistoryStore,
         )
         lifecycle_calls: list[dict[str, object]] = []
         monkeypatch.setattr(
@@ -1386,7 +1386,7 @@ class TestRunHandler:
             == 1
         )
         assert cast(Any, history_calls['started']).job_name is None
-        finished = cast(handlers.RunState, history_calls['finished'])
+        finished = cast(Any, history_calls['finished'])
         assert finished.status == 'failed'
         assert finished.error_type == 'RunExecutionFailed'
         assert 'DAG execution' in cast(str, finished.error_message)
@@ -1456,6 +1456,56 @@ class TestRunHandler:
             pretty=False,
         )
 
+    def test_run_exception_captures_traceback_when_enabled(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        dummy_cfg: Config,
+    ) -> None:
+        """History completion should include a capped traceback when enabled."""
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
+        monkeypatch.setattr(
+            handlers.RuntimeEvents,
+            'create_run_id',
+            lambda: 'run-trace-1',
+        )
+
+        completions: list[Any] = []
+
+        class _FakeHistoryStore:
+            def record_run_started(self, record: object) -> None:
+                _ = record
+
+            def record_job_run(self, record: object) -> None:
+                _ = record
+
+            def record_run_finished(self, completion: object) -> None:
+                completions.append(completion)
+
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            _FakeHistoryStore,
+        )
+
+        def _raise_error(**_kwargs: object) -> object:
+            raise ValueError('boom')
+
+        monkeypatch.setattr(run_mod, 'run', _raise_error)
+
+        with pytest.raises(ValueError, match='boom'):
+            handlers.run_handler(
+                config='pipeline.yml',
+                job='job1',
+                capture_tracebacks=True,
+                pretty=False,
+            )
+
+        assert len(completions) == 1
+        assert completions[0].state.error_type == 'ValueError'
+        assert completions[0].state.error_message == 'boom'
+        assert completions[0].state.error_traceback is not None
+        assert 'ValueError: boom' in cast(str, completions[0].state.error_traceback)
+
     def test_run_exception_emits_failed_event_with_stable_context(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -1485,7 +1535,7 @@ class TestRunHandler:
         monkeypatch.setattr(
             handlers.HistoryStore,
             'from_environment',
-            lambda: _FakeHistoryStore(),
+            _FakeHistoryStore,
         )
         lifecycle_calls: list[dict[str, object]] = []
         monkeypatch.setattr(
@@ -1526,6 +1576,58 @@ class TestRunHandler:
             'run_all': False,
             'status': 'error',
         }
+
+    def test_run_handler_skips_local_history_when_disabled(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        dummy_cfg: Config,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Disabling history should skip store creation and persistence."""
+        _patch_config_from_yaml(monkeypatch, dummy_cfg)
+        monkeypatch.setattr(
+            handlers.RuntimeEvents,
+            'create_run_id',
+            lambda: 'run-no-history',
+        )
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_environment',
+            lambda: (_ for _ in ()).throw(
+                AssertionError('history store should not be opened'),
+            ),
+        )
+        monkeypatch.setattr(
+            handlers.HistoryStore,
+            'from_settings',
+            lambda **_kwargs: (_ for _ in ()).throw(
+                AssertionError('history store should not be opened'),
+            ),
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'run',
+            lambda **_kwargs: {'job': 'job1', 'ok': True},
+        )
+
+        assert (
+            handlers.run_handler(
+                config='pipeline.yml',
+                job='job1',
+                history_enabled=False,
+                pretty=False,
+            )
+            == 0
+        )
+        assert_emit_json(
+            capture_io,
+            {
+                'run_id': 'run-no-history',
+                'status': 'ok',
+                'result': {'job': 'job1', 'ok': True},
+            },
+            pretty=False,
+        )
 
 
 class TestSourceMappingPayloadHandlers:
