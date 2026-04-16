@@ -369,8 +369,8 @@ class TestModuleHelpers:
         assert payload['result_summary'] == '{"rows":0}'
 
 
-class TestHistoryStoreBase:
-    """Unit tests for the `HistoryStore` base class and merge helpers."""
+class TestHistoryStore:
+    """Unit tests for :class:`HistoryStore`."""
 
     def test_abstract_methods_raise_not_implemented(
         self,
@@ -638,33 +638,6 @@ class TestHistoryStoreBase:
             ),
         ]
 
-    def test_resolve_history_config_applies_cli_env_and_config_precedence(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """CLI overrides should win, then env, then pipeline config."""
-        resolved = history_config_mod.resolve_history_config(
-            history_config_mod.HistoryConfig(
-                enabled=True,
-                backend='sqlite',
-                state_dir='./from-config',
-                capture_tracebacks=False,
-            ),
-            env={
-                'ETLPLUS_HISTORY_BACKEND': 'jsonl',
-                'ETLPLUS_STATE_DIR': str(tmp_path / 'from-env'),
-            },
-            enabled=False,
-            backend='sqlite',
-            state_dir=tmp_path / 'from-cli',
-            capture_tracebacks=True,
-        )
-
-        assert resolved.enabled is False
-        assert resolved.backend == 'sqlite'
-        assert resolved.state_dir == tmp_path / 'from-cli'
-        assert resolved.capture_tracebacks is True
-
 
 class TestJsonlHistoryStore:
     """Unit tests for the JSONL persisted-history backend."""
@@ -866,6 +839,37 @@ class TestJsonlHistoryStore:
         }
         assert captured['options'] is None
         assert path.read_text(encoding='utf-8') == '{"serialized":true}\n'
+
+
+class TestResolvedHistoryStore:
+    """Unit tests for :class:`ResolvedHistoryStore`."""
+
+    def test_resolve_applies_precedence(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that CLI overrides win, then env, then pipeline config."""
+        resolved = history_config_mod.ResolvedHistoryConfig.resolve(
+            history_config_mod.HistoryConfig(
+                enabled=True,
+                backend='sqlite',
+                state_dir='./from-config',
+                capture_tracebacks=False,
+            ),
+            env={
+                'ETLPLUS_HISTORY_BACKEND': 'jsonl',
+                'ETLPLUS_STATE_DIR': str(tmp_path / 'from-env'),
+            },
+            enabled=False,
+            backend='sqlite',
+            state_dir=tmp_path / 'from-cli',
+            capture_tracebacks=True,
+        )
+
+        assert resolved.enabled is False
+        assert resolved.backend == 'sqlite'
+        assert resolved.state_dir == tmp_path / 'from-cli'
+        assert resolved.capture_tracebacks is True
 
 
 class TestRunRecord:
