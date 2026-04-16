@@ -11,6 +11,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from time import perf_counter
+from traceback import format_exception
 from typing import Any
 
 from ...history import RunCompletion
@@ -36,6 +37,12 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_TRACEBACK_CHAR_LIMIT = 16_000
+
+
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -50,6 +57,22 @@ class CommandContext:
     run_id: str
     started_at: str
     started_perf: float
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _capture_traceback(
+    exc: Exception,
+) -> str:
+    """Return one capped traceback string for a persisted run failure."""
+    traceback_text = ''.join(
+        format_exception(type(exc), exc, exc.__traceback__),
+    )
+    if len(traceback_text) <= _TRACEBACK_CHAR_LIMIT:
+        return traceback_text
+    suffix = '\n...[truncated]\n'
+    return traceback_text[: _TRACEBACK_CHAR_LIMIT - len(suffix)] + suffix
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -272,6 +295,7 @@ def record_run_completion(
     status: str,
     result_summary: JSONData | None = None,
     exc: Exception | None = None,
+    capture_tracebacks: bool = False,
     error_message: str | None = None,
     error_traceback: str | None = None,
     error_type: str | None = None,
@@ -291,6 +315,8 @@ def record_run_completion(
         A summary of the run's result, if available.
     exc : Exception | None, optional
         The exception that caused the failure, if any.
+    capture_tracebacks : bool, optional
+        Whether to persist a capped traceback string for exception failures.
     error_message : str | None, optional
         Explicit error message for handled failures without an exception.
     error_traceback : str | None, optional
@@ -320,7 +346,13 @@ def record_run_completion(
                     if exc is None
                     else str(exc)
                 ),
-                error_traceback=error_traceback,
+                error_traceback=(
+                    error_traceback
+                    if error_traceback is not None
+                    else _capture_traceback(exc)
+                    if capture_tracebacks and exc is not None
+                    else None
+                ),
             ),
         ),
     )
