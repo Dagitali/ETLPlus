@@ -195,9 +195,7 @@ class ResolvedHistoryConfig:
                 or DEFAULT_HISTORY_BACKEND
             ),
             state_dir=_coerce_state_dir(
-                state_dir
-                or env_map.get('ETLPLUS_STATE_DIR')
-                or history_cfg.state_dir,
+                state_dir or env_map.get('ETLPLUS_STATE_DIR') or history_cfg.state_dir,
             ),
             capture_tracebacks=(
                 capture_tracebacks
