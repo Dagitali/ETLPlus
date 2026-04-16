@@ -26,8 +26,6 @@ __all__ = [
     # Constants
     'DEFAULT_HISTORY_BACKEND',
     'DEFAULT_STATE_DIR',
-    # Functions
-    'resolve_history_config',
 ]
 
 
@@ -131,73 +129,71 @@ class ResolvedHistoryConfig:
     state_dir: Path
     capture_tracebacks: bool
 
+    # -- Class Methods -- #
 
-# SECTION: FUNCTIONS ======================================================== #
+    @classmethod
+    def resolve(
+        cls,
+        config: HistoryConfig | None,
+        *,
+        env: Mapping[str, str] | None = None,
+        enabled: bool | None = None,
+        backend: str | None = None,
+        state_dir: str | PathLike[str] | None = None,
+        capture_tracebacks: bool | None = None,
+    ) -> Self:
+        """
+        Return effective local-history settings from config, env, and CLI.
 
+        Precedence (highest to lowest):
+        1. CLI arguments
+        2. Environment variables
+        3. Pipeline-level config
+        4. Internal defaults
 
-# TODO: See if this function couldbe converted to a class method on
-# TODO: ResolvedHistoryConfig or HistoryConfig.
-def resolve_history_config(
-    config: HistoryConfig | None,
-    *,
-    env: Mapping[str, str] | None = None,
-    enabled: bool | None = None,
-    backend: str | None = None,
-    state_dir: str | PathLike[str] | None = None,
-    capture_tracebacks: bool | None = None,
-) -> ResolvedHistoryConfig:
-    """
-    Return effective local-history settings from config, env, and CLI.
+        Parameters
+        ----------
+        config : HistoryConfig | None
+            Optional pipeline-level history config.
+        env : Mapping[str, str] | None, optional
+            Optional environment variables mapping. Defaults to empty mapping.
+        enabled : bool | None, optional
+            Optional CLI argument to enable or disable history. Defaults to
+            ``None``.
+        backend : str | None, optional
+            Optional CLI argument to specify the history backend. Defaults to
+            ``None``.
+        state_dir : str | PathLike[str] | None, optional
+            Optional CLI argument to specify the state directory. Defaults to
+            ``None``.
+        capture_tracebacks : bool | None, optional
+            Optional CLI argument to enable or disable traceback capture.
+            Defaults to ``None``.
 
-    Precedence (highest to lowest):
-    1. CLI arguments
-    2. Environment variables
-    3. Pipeline-level config
-    4. Internal defaults
+        Returns
+        -------
+        Self
+            Effective local-history settings to use at runtime.
+        """
+        history_cfg = config if config is not None else HistoryConfig()
+        env_map = env or {}
 
-    Parameters
-    ----------
-    config : HistoryConfig | None
-        Optional pipeline-level history config.
-    env : Mapping[str, str] | None, optional
-        Optional environment variables mapping. Defaults to empty mapping.
-    enabled : bool | None, optional
-        Optional CLI argument to enable or disable history. Defaults to
-        ``None``.
-    backend : str | None, optional
-        Optional CLI argument to specify the history backend. Defaults to
-        ``None``.
-    state_dir : str | PathLike[str] | None, optional
-        Optional CLI argument to specify the state directory. Defaults to
-        ``None``.
-    capture_tracebacks : bool | None, optional
-        Optional CLI argument to enable or disable traceback capture. Defaults to
-        ``None``.
-
-    Returns
-    -------
-    ResolvedHistoryConfig
-        Effective local-history settings to use at runtime.
-    """
-    history_cfg = config if config is not None else HistoryConfig()
-    env_map = env or {}
-
-    return ResolvedHistoryConfig(
-        enabled=(enabled if enabled is not None else history_cfg.enabled),
-        backend=(
-            _coerce_backend(backend)
-            or _coerce_backend(env_map.get('ETLPLUS_HISTORY_BACKEND'))
-            or history_cfg.backend
-            or DEFAULT_HISTORY_BACKEND
-        ),
-        state_dir=_coerce_state_dir(
-            state_dir
-            or env_map.get('ETLPLUS_STATE_DIR')
-            or history_cfg.state_dir,
-        ),
-        capture_tracebacks=(
-            capture_tracebacks
-            if capture_tracebacks is not None
-            else history_cfg.capture_tracebacks
-        ),
-    )
+        return cls(
+            enabled=(enabled if enabled is not None else history_cfg.enabled),
+            backend=(
+                _coerce_backend(backend)
+                or _coerce_backend(env_map.get('ETLPLUS_HISTORY_BACKEND'))
+                or history_cfg.backend
+                or DEFAULT_HISTORY_BACKEND
+            ),
+            state_dir=_coerce_state_dir(
+                state_dir
+                or env_map.get('ETLPLUS_STATE_DIR')
+                or history_cfg.state_dir,
+            ),
+            capture_tracebacks=(
+                capture_tracebacks
+                if capture_tracebacks is not None
+                else history_cfg.capture_tracebacks
+            ),
+        )
