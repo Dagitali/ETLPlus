@@ -135,6 +135,8 @@ class ResolvedHistoryConfig:
 # SECTION: FUNCTIONS ======================================================== #
 
 
+# TODO: See if this function couldbe converted to a class method on
+# TODO: ResolvedHistoryConfig or HistoryConfig.
 def resolve_history_config(
     config: HistoryConfig | None,
     *,
@@ -189,7 +191,9 @@ def resolve_history_config(
             or DEFAULT_HISTORY_BACKEND
         ),
         state_dir=_coerce_state_dir(
-            state_dir or env_map.get('ETLPLUS_STATE_DIR') or history_cfg.state_dir,
+            state_dir
+            or env_map.get('ETLPLUS_STATE_DIR')
+            or history_cfg.state_dir,
         ),
         capture_tracebacks=(
             capture_tracebacks
