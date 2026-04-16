@@ -13,8 +13,12 @@ from ._app import app
 from ._helpers import call_handler
 from ._helpers import fail_usage
 from ._helpers import require_value
+from ._options.common import CaptureTracebacksOption
 from ._options.common import ConfigOption
 from ._options.common import ContinueOnFailOption
+from ._options.common import HistoryBackendOption
+from ._options.common import HistoryEnabledOption
+from ._options.common import HistoryStateDirOption
 from ._options.common import JobOption
 from ._options.common import PipelineOption
 from ._options.common import RunAllOption
@@ -41,6 +45,10 @@ def run_cmd(
     pipeline: PipelineOption = None,
     run_all: RunAllOption = False,
     continue_on_fail: ContinueOnFailOption = False,
+    history_enabled: HistoryEnabledOption = None,
+    history_backend: HistoryBackendOption = None,
+    history_state_dir: HistoryStateDirOption = None,
+    capture_tracebacks: CaptureTracebacksOption = None,
     event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
@@ -61,6 +69,15 @@ def run_cmd(
     continue_on_fail : ContinueOnFailOption, optional
         Whether to continue past failed jobs and skip only blocked downstream
         jobs.
+    history_enabled : HistoryEnabledOption, optional
+        Override local run-history persistence for this invocation.
+    history_backend : HistoryBackendOption, optional
+        Override the local history backend for this invocation.
+    history_state_dir : HistoryStateDirOption, optional
+        Override the local history state directory for this invocation.
+    capture_tracebacks : CaptureTracebacksOption, optional
+        Override whether capped failure tracebacks are persisted in local
+        run history.
     event_format : StructuredEventFormatOption, optional
         Structured event output format.
 
@@ -84,5 +101,9 @@ def run_cmd(
         pipeline=pipeline,
         run_all=run_all,
         continue_on_fail=continue_on_fail,
+        history_enabled=history_enabled,
+        history_backend=history_backend,
+        history_state_dir=history_state_dir,
+        capture_tracebacks=capture_tracebacks,
         event_format=event_format,
     )
