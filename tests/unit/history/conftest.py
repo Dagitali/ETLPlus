@@ -80,7 +80,8 @@ def sample_record_fixture() -> store_mod.RunRecord:
 
 
 @pytest.fixture(name='sqlite_row_factory')
-def sqlite_row_factory_fixture(
-) -> Callable[[Mapping[str, object]], Iterator[sqlite3.Row] | Any]:
+def sqlite_row_factory_fixture() -> Callable[
+    [Mapping[str, object]], Iterator[sqlite3.Row] | Any,
+]:
     """Return a factory that materializes one temporary SQLite row."""
     return sqlite_row
