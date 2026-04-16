@@ -19,6 +19,7 @@ from typing import cast
 
 import pytest
 
+import etlplus.history._config as history_config_mod
 import etlplus.history._store as mod
 
 # SECTION: PRAGMAS ========================================================== #
@@ -464,6 +465,25 @@ class TestHistoryStoreBase:
         with pytest.raises(ValueError, match='sqlite, jsonl'):
             mod.HistoryStore.from_environment()
 
+    def test_from_settings_selects_supported_backend(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that explicit store settings resolve supported backends."""
+        sqlite_store = mod.HistoryStore.from_settings(
+            backend='sqlite',
+            state_dir=tmp_path / 'sqlite-state',
+        )
+        jsonl_store = mod.HistoryStore.from_settings(
+            backend='jsonl',
+            state_dir=tmp_path / 'jsonl-state',
+        )
+
+        assert isinstance(sqlite_store, mod.SQLiteHistoryStore)
+        assert sqlite_store.db_path == tmp_path / 'sqlite-state' / 'history.sqlite'
+        assert isinstance(jsonl_store, mod.JsonlHistoryStore)
+        assert jsonl_store.log_path == tmp_path / 'jsonl-state' / 'history.jsonl'
+
     @pytest.mark.parametrize(
         ('backend', 'expected_type', 'path_attr', 'path_name'),
         [
@@ -617,6 +637,33 @@ class TestHistoryStoreBase:
                 status='running',
             ),
         ]
+
+    def test_resolve_history_config_applies_cli_env_and_config_precedence(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """CLI overrides should win, then env, then pipeline config."""
+        resolved = history_config_mod.resolve_history_config(
+            history_config_mod.HistoryConfig(
+                enabled=True,
+                backend='sqlite',
+                state_dir='./from-config',
+                capture_tracebacks=False,
+            ),
+            env={
+                'ETLPLUS_HISTORY_BACKEND': 'jsonl',
+                'ETLPLUS_STATE_DIR': str(tmp_path / 'from-env'),
+            },
+            enabled=False,
+            backend='sqlite',
+            state_dir=tmp_path / 'from-cli',
+            capture_tracebacks=True,
+        )
+
+        assert resolved.enabled is False
+        assert resolved.backend == 'sqlite'
+        assert resolved.state_dir == tmp_path / 'from-cli'
+        assert resolved.capture_tracebacks is True
 
 
 class TestJsonlHistoryStore:

@@ -29,6 +29,7 @@ from .connector import Connector
 from .connector import parse_connector
 from .file import File
 from .file import FileFormat
+from .history._config import HistoryConfig
 from .utils import coerce_dict
 from .utils import deep_substitute
 from .utils import maybe_mapping
@@ -140,6 +141,8 @@ class Config:
         Optional pipeline version string.
     profile : ProfileConfig
         Pipeline profile defaults and environment.
+    history : HistoryConfig
+        Optional local history defaults.
     vars : dict[str, Any]
         Named variables available for substitution.
     apis : dict[str, ApiConfig]
@@ -167,6 +170,7 @@ class Config:
     name: str | None = None
     version: str | None = None
     profile: ProfileConfig = field(default_factory=ProfileConfig)
+    history: HistoryConfig = field(default_factory=HistoryConfig)
     vars: dict[str, Any] = field(default_factory=dict)
 
     apis: dict[str, ApiConfig] = field(default_factory=dict)
@@ -258,6 +262,7 @@ class Config:
         # Profile and vars
         prof_raw = maybe_mapping(raw.get('profile')) or {}
         profile = ProfileConfig.from_obj(prof_raw)
+        history = HistoryConfig.from_obj(maybe_mapping(raw.get('history')))
         vars_map: dict[str, Any] = coerce_dict(raw.get('vars'))
 
         # APIs
@@ -297,6 +302,7 @@ class Config:
             name=name,
             version=version,
             profile=profile,
+            history=history,
             vars=vars_map,
             apis=apis,
             databases=databases,

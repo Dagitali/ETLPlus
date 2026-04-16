@@ -1,11 +1,12 @@
 """
 :mod:`etlplus.cli._handlers.run` module.
 
-Run-command implementation for the CLI facade.
+Run-command handler.
 """
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
 from typing import Any
 from typing import Final
@@ -15,6 +16,9 @@ from ... import Config
 from ... import __version__
 from ...history import HistoryStore
 from ...history import build_run_record
+from ...history._config import HistoryConfig
+from ...history._config import ResolvedHistoryConfig
+from ...history._config import resolve_history_config
 from ...history._store import JobRunRecord
 from ...ops import run
 from ...utils._types import JSONData
@@ -195,6 +199,24 @@ def _persist_job_runs(
             history_store.record_job_run(job_run)
 
 
+def _open_history_store(
+    settings: ResolvedHistoryConfig,
+) -> HistoryStore | None:
+    """Return one local history store when persistence is enabled."""
+    if not settings.enabled:
+        return None
+    env_settings = resolve_history_config(None, env=os.environ)
+    if (
+        settings.backend == env_settings.backend
+        and settings.state_dir == env_settings.state_dir
+    ):
+        return HistoryStore.from_environment()
+    return HistoryStore.from_settings(
+        backend=settings.backend,
+        state_dir=settings.state_dir,
+    )
+
+
 def _persisted_run_summary(
     result: Mapping[str, object] | object,
 ) -> JSONData | None:
@@ -289,6 +311,25 @@ def _persisted_run_summary(
     )
 
 
+def _resolved_history_settings(
+    config: HistoryConfig | None,
+    *,
+    history_enabled: bool | None,
+    history_backend: str | None,
+    history_state_dir: str | None,
+    capture_tracebacks: bool | None,
+) -> ResolvedHistoryConfig:
+    """Return effective history settings for one run command invocation."""
+    return resolve_history_config(
+        config,
+        env=os.environ,
+        enabled=history_enabled,
+        backend=history_backend,
+        state_dir=history_state_dir,
+        capture_tracebacks=capture_tracebacks,
+    )
+
+
 def _result_failed(
     result: Mapping[str, object] | object,
 ) -> bool:
@@ -309,6 +350,10 @@ def run_handler(
     pipeline: str | None = None,
     run_all: bool = False,
     continue_on_fail: bool = False,
+    history_enabled: bool | None = None,
+    history_backend: str | None = None,
+    history_state_dir: str | None = None,
+    capture_tracebacks: bool | None = None,
     event_format: str | None = None,
     pretty: bool = True,
 ) -> int:
@@ -328,6 +373,15 @@ def run_handler(
     continue_on_fail : bool, optional
         Whether to continue past failed jobs and skip only blocked downstream
         jobs. Default is ``False``.
+    history_enabled : bool | None, optional
+        Override whether local run history should be persisted.
+    history_backend : str | None, optional
+        Override the configured local history backend.
+    history_state_dir : str | None, optional
+        Override the configured local history state directory.
+    capture_tracebacks : bool | None, optional
+        Override whether failure tracebacks should be persisted in local
+        history.
     event_format : str | None, optional
         Structured event output format. Default is ``None``.
     pretty : bool, optional
@@ -339,6 +393,13 @@ def run_handler(
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
     cfg = Config.from_yaml(config, substitute=True)
+    history_settings = _resolved_history_settings(
+        getattr(cfg, 'history', None),
+        history_enabled=history_enabled,
+        history_backend=history_backend,
+        history_state_dir=history_state_dir,
+        capture_tracebacks=capture_tracebacks,
+    )
 
     job_name = job or pipeline
     if not job_name and not run_all:
@@ -355,24 +416,30 @@ def run_handler(
         pipeline_name=cfg.name,
         status='running',
     )
-    history_store = HistoryStore.from_environment()
-    history_store.record_run_started(
-        build_run_record(
-            run_id=context.run_id,
-            config_path=config,
-            started_at=context.started_at,
-            pipeline_name=cfg.name,
-            job_name=None if run_all else job_name,
-        ),
-    )
+    history_store = _open_history_store(history_settings)
+    if history_store is not None:
+        history_store.record_run_started(
+            build_run_record(
+                run_id=context.run_id,
+                config_path=config,
+                started_at=context.started_at,
+                pipeline_name=cfg.name,
+                job_name=None if run_all else job_name,
+            ),
+        )
 
     with _lifecycle.failure_boundary(
         context,
-        on_error=lambda exc: _lifecycle.record_run_completion(
-            history_store,
-            context,
-            status='failed',
-            exc=exc,
+        on_error=(
+            None
+            if history_store is None
+            else lambda exc: _lifecycle.record_run_completion(
+                history_store,
+                context,
+                status='failed',
+                exc=exc,
+                capture_tracebacks=history_settings.capture_tracebacks,
+            )
         ),
         continue_on_fail=continue_on_fail,
         config_path=config,
@@ -388,20 +455,21 @@ def run_handler(
             continue_on_fail=continue_on_fail,
         )
 
-    _persist_job_runs(
-        history_store,
-        run_id=context.run_id,
-        pipeline_name=cfg.name,
-        result=result,
-    )
-    _lifecycle.record_run_completion(
-        history_store,
-        context,
-        status='failed' if _result_failed(result) else 'succeeded',
-        result_summary=_persisted_run_summary(result),
-        error_message=_failure_message(result),
-        error_type='RunExecutionFailed' if _result_failed(result) else None,
-    )
+    if history_store is not None:
+        _persist_job_runs(
+            history_store,
+            run_id=context.run_id,
+            pipeline_name=cfg.name,
+            result=result,
+        )
+        _lifecycle.record_run_completion(
+            history_store,
+            context,
+            status='failed' if _result_failed(result) else 'succeeded',
+            result_summary=_persisted_run_summary(result),
+            error_message=_failure_message(result),
+            error_type='RunExecutionFailed' if _result_failed(result) else None,
+        )
     result_status = result.get('status') if isinstance(result, dict) else None
     payload = {
         'run_id': context.run_id,

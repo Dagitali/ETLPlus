@@ -437,6 +437,78 @@ class TestRun:
         assert report_payload['rows'][0]['runs'] == 2
         assert report_payload['rows'][0]['success_rate_pct'] == 100.0
 
+    def test_run_captures_traceback_when_enabled_in_config(
+        self,
+        cli_invoke: CliInvoke,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A failing run should persist a traceback when config capture is enabled."""
+        monkeypatch.delenv('ETLPLUS_STATE_DIR', raising=False)
+        source_path = tmp_path / 'input.json'
+        File(source_path, FileFormat.JSON).write([{'id': 1}])
+        state_dir = tmp_path / 'history-state'
+        config_path = tmp_path / 'traceback_pipeline.yml'
+        config_path.write_text(
+            dedent(
+                f"""
+                name: Traceback Smoke Test
+                history:
+                  state_dir: "{state_dir}"
+                  capture_tracebacks: true
+                sources:
+                  - name: source_in
+                    type: file
+                    format: json
+                    path: "{source_path}"
+                targets:
+                  - name: output_out
+                    type: file
+                    format: json
+                    path: "{tmp_path / 'output.json'}"
+                jobs:
+                  - name: seed
+                    extract:
+                      source: source_in
+                    load:
+                      target: output_out
+                """,
+            ).strip(),
+            encoding='utf-8',
+        )
+
+        code, _out, err = cli_invoke(
+            (
+                'run',
+                '--config',
+                str(config_path),
+                '--job',
+                'missing_job',
+            ),
+        )
+
+        assert code == 1
+        assert 'Job not found: missing_job' in err
+        history_db = state_dir / 'history.sqlite'
+        assert history_db.exists()
+
+        with sqlite3.connect(history_db) as conn:
+            row = conn.execute(
+                """
+                SELECT status, error_type, error_message, error_traceback
+                FROM runs
+                ORDER BY started_at DESC
+                LIMIT 1
+                """,
+            ).fetchone()
+
+        assert row is not None
+        assert row[0] == 'failed'
+        assert row[1] == 'ValueError'
+        assert 'Job not found: missing_job' in row[2]
+        assert row[3] is not None
+        assert 'ValueError: Job not found: missing_job' in row[3]
+
     def test_run_emits_jsonl_events_to_stderr(
         self,
         cli_invoke: CliInvoke,
@@ -528,3 +600,44 @@ class TestRun:
         assert row[4] == 'succeeded'
         assert isinstance(row[5], int)
         assert row[6] is not None
+
+    def test_run_supports_history_backend_and_state_dir_overrides(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        pipeline_config_factory: PipelineConfigFactory,
+        sample_records: list[dict[str, object]],
+        tmp_path: Path,
+    ) -> None:
+        """Run history overrides should route persistence to the requested backend."""
+        cfg = pipeline_config_factory(sample_records)
+        history_state_dir = tmp_path / 'history-jsonl'
+
+        code, out, err = cli_invoke(
+            (
+                'run',
+                '--config',
+                str(cfg.config_path),
+                '--job',
+                cfg.job_name,
+                '--history-backend',
+                'jsonl',
+                '--history-state-dir',
+                str(history_state_dir),
+            ),
+        )
+
+        assert code == 0
+        assert err == ''
+        payload = parse_json_output(out)
+        history_log = history_state_dir / 'history.jsonl'
+        assert history_log.exists()
+        assert not (history_state_dir / 'history.sqlite').exists()
+
+        records = [
+            json.loads(line)
+            for line in history_log.read_text(encoding='utf-8').splitlines()
+            if line.strip()
+        ]
+        assert [record['record_level'] for record in records] == ['run', 'run']
+        assert all(record['run_id'] == payload['run_id'] for record in records)
