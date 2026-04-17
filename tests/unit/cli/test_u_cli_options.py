@@ -93,7 +93,7 @@ class TestHelperOptionKwargs:
         expected: dict[str, object],
     ) -> None:
         """
-        Test that :func:`_typer_flag_option_kwargs` includes only explicitly
+        Test that :func:`typer_flag_option_kwargs` includes only explicitly
         requested metadata.
         """
         assert (
@@ -106,7 +106,7 @@ class TestHelperOptionKwargs:
 
     def test_flag_option_kwargs_include_is_eager_when_requested(self) -> None:
         """
-        Test that :func:`_typer_flag_option_kwargs` preserves Typer
+        Test that :func:`typer_flag_option_kwargs` preserves Typer
         eager-evaluation metadata.
         """
         assert cli_options.typer_flag_option_kwargs(
@@ -116,6 +116,24 @@ class TestHelperOptionKwargs:
             'help': 'Show the version and exit.',
             'is_eager': True,
         }
+
+    def test_helper_module_exports_intended_public_api(self) -> None:
+        """Option helper exports should reflect the public helper surface."""
+        assert cli_options.__all__ == [
+            'typer_connector_option_kwargs',
+            'typer_connector_option_alias',
+            'typer_flag_option_alias',
+            'typer_flag_option_kwargs',
+            'typer_format_option_alias',
+            'typer_format_option_kwargs',
+            'typer_option_alias',
+            'typer_resource_argument_alias',
+            'typer_resource_argument_kwargs',
+            'typer_timestamp_option_alias',
+            'typer_timestamp_option_kwargs',
+            'typer_value_option_alias',
+            'typer_value_option_kwargs',
+        ]
 
     @pytest.mark.parametrize(
         ('context', 'expected_fragment'),
