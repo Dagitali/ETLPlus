@@ -31,7 +31,6 @@ __all__ = [
     'optional_choice',
     'resolve_logged_resource_type',
     'resolve_resource_type',
-    'validate_choice',
 ]
 
 
@@ -66,26 +65,6 @@ class CliState:
     pretty: bool = True
     quiet: bool = False
     verbose: bool = False
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _validate_choice_value(
-    value: str | object,
-    choices: Collection[str],
-    *,
-    label: str,
-) -> str:
-    """Validate one CLI value against *choices* and preserve canonical case."""
-    normalized_value = normalize_str(str(value or ''))
-    normalized_choices = {normalize_str(choice): choice for choice in choices}
-    if normalized_value in normalized_choices:
-        return normalized_choices[normalized_value]
-    allowed = ', '.join(sorted(choices))
-    raise typer.BadParameter(
-        f"Invalid {label} '{value}'. Choose from: {allowed}",
-    )
 
 
 # SECTION: CLASSES ========================================================== #
@@ -141,7 +120,16 @@ class ResourceTypeResolver:
         label: str,
     ) -> str:
         """Validate CLI input against a whitelist of choices."""
-        return validate_choice(value, choices, label=label)
+        normalized_value = normalize_str(str(value or ''))
+        normalized_choices = {
+            normalize_str(choice): choice for choice in choices
+        }
+        if normalized_value in normalized_choices:
+            return normalized_choices[normalized_value]
+        allowed = ', '.join(sorted(choices))
+        raise typer.BadParameter(
+            f"Invalid {label} '{value}'. Choose from: {allowed}",
+        )
 
     # -- Class Methods -- #
 
@@ -169,7 +157,7 @@ class ResourceTypeResolver:
         """Validate optional CLI choice inputs while preserving ``None``."""
         if value is None:
             return None
-        return _validate_choice_value(value, choices, label=label)
+        return cls.validate(value, choices, label=label)
 
     @classmethod
     def resolve(
@@ -191,7 +179,7 @@ class ResourceTypeResolver:
             candidate = explicit_type
         else:
             candidate = override_type or cls.infer_or_exit(value)
-        return validate_choice(candidate, DATA_CONNECTORS, label=label)
+        return cls.validate(candidate, DATA_CONNECTORS, label=label)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -303,7 +291,7 @@ def resolve_logged_resource_type(
         )
         resource_type = infer(value)
     if resource_type is not None:
-        resource_type = validate_choice(
+        resource_type = ResourceTypeResolver.validate(
             resource_type,
             DATA_CONNECTORS,
             label=f'{role}_type',
@@ -345,13 +333,3 @@ def resolve_resource_type(
         conflict_error=conflict_error,
         legacy_file_error=legacy_file_error,
     )
-
-
-def validate_choice(
-    value: str | object,
-    choices: Collection[str],
-    *,
-    label: str,
-) -> str:
-    """Validate CLI input against a whitelist of choices."""
-    return _validate_choice_value(value, choices, label=label)
