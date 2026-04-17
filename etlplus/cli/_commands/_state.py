@@ -27,7 +27,6 @@ __all__ = [
     'ResourceTypeResolver',
     # Functions
     'ensure_state',
-    'infer_resource_type',
     'infer_resource_type_or_exit',
     'infer_resource_type_soft',
     'log_inferred_resource',
@@ -144,7 +143,7 @@ class ResourceTypeResolver:
         label: str,
     ) -> str:
         """Validate CLI input against a whitelist of choices."""
-        return _validate_choice_value(value, choices, label=label)
+        return validate_choice(value, choices, label=label)
 
     # -- Class Methods -- #
 
@@ -157,7 +156,7 @@ class ResourceTypeResolver:
         if value is None:
             return None
         try:
-            return infer_resource_type(value)
+            return cls.infer(value)
         except ValueError:
             return None
 
@@ -193,7 +192,7 @@ class ResourceTypeResolver:
                 raise typer.BadParameter(legacy_file_error)
             candidate = explicit_type
         else:
-            candidate = override_type or infer_resource_type_or_exit(value)
+            candidate = override_type or cls.infer_or_exit(value)
         return validate_choice(candidate, DATA_CONNECTORS, label=label)
 
 
@@ -239,9 +238,19 @@ def ensure_state(
     return ctx.obj
 
 
-infer_resource_type = ResourceTypeResolver.infer
-infer_resource_type_or_exit = ResourceTypeResolver.infer_or_exit
-infer_resource_type_soft = ResourceTypeResolver.infer_soft
+# TODO: Remove this function.
+def infer_resource_type_or_exit(
+    value: str,
+) -> str:
+    """Infer a resource type and map ``ValueError`` to ``BadParameter``."""
+    return ResourceTypeResolver.infer_or_exit(value)
+
+
+def infer_resource_type_soft(
+    value: str | None,
+) -> str | None:
+    """Make a best-effort inference that tolerates inline payloads."""
+    return ResourceTypeResolver.infer_soft(value)
 
 
 def log_inferred_resource(
@@ -323,6 +332,41 @@ def resolve_logged_resource_type(
     return resource_type
 
 
-optional_choice = ResourceTypeResolver.optional_choice
-resolve_resource_type = ResourceTypeResolver.resolve
-validate_choice = ResourceTypeResolver.validate
+def optional_choice(
+    value: str | None,
+    choices: Collection[str],
+    *,
+    label: str,
+) -> str | None:
+    """Validate optional CLI choice inputs while preserving ``None``."""
+    return ResourceTypeResolver.optional_choice(value, choices, label=label)
+
+
+def resolve_resource_type(
+    *,
+    explicit_type: str | None,
+    override_type: str | None,
+    value: str,
+    label: str,
+    conflict_error: str | None = None,
+    legacy_file_error: str | None = None,
+) -> str:
+    """Resolve resource type preference order and validate it."""
+    return ResourceTypeResolver.resolve(
+        explicit_type=explicit_type,
+        override_type=override_type,
+        value=value,
+        label=label,
+        conflict_error=conflict_error,
+        legacy_file_error=legacy_file_error,
+    )
+
+
+def validate_choice(
+    value: str | object,
+    choices: Collection[str],
+    *,
+    label: str,
+) -> str:
+    """Validate CLI input against a whitelist of choices."""
+    return _validate_choice_value(value, choices, label=label)
