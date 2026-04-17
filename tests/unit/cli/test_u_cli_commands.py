@@ -47,6 +47,7 @@ class TestCommandsInternalHelpers:
         """Command helpers should expose only the intended public surface."""
         assert helpers_mod.__all__ == [
             'call_handler',
+            'call_history_command',
             'call_history_handler',
             'fail_usage',
             'normalize_file_format',
@@ -105,6 +106,29 @@ class TestCommandsInternalHelpers:
             'level': 'job',
             'pipeline': None,
             'pretty': False,
+        }
+
+    def test_call_history_command_reuses_supplied_state(self) -> None:
+        """History command dispatch should reuse injected CLI state."""
+        captured: dict[str, object] = {}
+
+        def _handler(**kwargs: object) -> int:
+            captured.update(kwargs)
+            return 13
+
+        result = helpers_mod.call_history_command(
+            _handler,
+            ctx=cast(typer.Context, object()),
+            state=CliState(pretty=False),
+            level='run',
+            status='failed',
+        )
+
+        assert result == 13
+        assert captured == {
+            'level': 'run',
+            'pretty': False,
+            'status': 'failed',
         }
 
     def test_normalize_file_format_returns_enum_member(self) -> None:
