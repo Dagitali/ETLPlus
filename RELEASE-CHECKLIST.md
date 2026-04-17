@@ -109,6 +109,8 @@ release.
   already used at their boundaries: `etlplus.ops` exports validation TypedDicts, `etlplus.api`
   exports `PaginationInput` and `RateLimitOverrides`, and `etlplus.history` exports
   `HISTORY_SCHEMA_VERSION`.
+- The `etlplus.history` facade no longer exports the redundant `build_run_record` helper; the
+  supported constructor path is now `RunRecord.build(...)`.
 - The stable package facades also expose adjacent public contract types and exceptions where the
   documented surface already depends on them: `etlplus.workflow` exports `DagError`,
   `etlplus.api.rate_limiting` exports `RateLimitInput`, and `etlplus.file` now re-exports the

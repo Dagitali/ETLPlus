@@ -16,7 +16,6 @@ from etlplus.history._store import RunCompletion
 from etlplus.history._store import RunRecord
 from etlplus.history._store import RunState
 from etlplus.history._store import SQLiteHistoryStore
-from etlplus.history._store import build_run_record
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -33,7 +32,6 @@ HISTORY_EXPORTS = [
     ('RunState', RunState),
     ('SQLiteHistoryStore', SQLiteHistoryStore),
     ('HISTORY_SCHEMA_VERSION', HISTORY_SCHEMA_VERSION),
-    ('build_run_record', build_run_record),
 ]
 
 # SECTION: TESTS ============================================================ #

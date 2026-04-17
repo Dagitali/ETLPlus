@@ -15,10 +15,9 @@ from typing import cast
 from ... import Config
 from ... import __version__
 from ...history import HistoryStore
-from ...history import build_run_record
+from ...history import RunRecord
 from ...history._config import HistoryConfig
 from ...history._config import ResolvedHistoryConfig
-from ...history._config import resolve_history_config
 from ...history._store import JobRunRecord
 from ...ops import run
 from ...utils._types import JSONData
@@ -205,7 +204,7 @@ def _open_history_store(
     """Return one local history store when persistence is enabled."""
     if not settings.enabled:
         return None
-    env_settings = resolve_history_config(None, env=os.environ)
+    env_settings = ResolvedHistoryConfig.resolve(None, env=os.environ)
     if (
         settings.backend == env_settings.backend
         and settings.state_dir == env_settings.state_dir
@@ -320,7 +319,7 @@ def _resolved_history_settings(
     capture_tracebacks: bool | None,
 ) -> ResolvedHistoryConfig:
     """Return effective history settings for one run command invocation."""
-    return resolve_history_config(
+    return ResolvedHistoryConfig.resolve(
         config,
         env=os.environ,
         enabled=history_enabled,
@@ -419,7 +418,7 @@ def run_handler(
     history_store = _open_history_store(history_settings)
     if history_store is not None:
         history_store.record_run_started(
-            build_run_record(
+            RunRecord.build(
                 run_id=context.run_id,
                 config_path=config,
                 started_at=context.started_at,
