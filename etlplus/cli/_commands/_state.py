@@ -121,9 +121,7 @@ class ResourceTypeResolver:
     ) -> str:
         """Validate CLI input against a whitelist of choices."""
         normalized_value = normalize_str(str(value or ''))
-        normalized_choices = {
-            normalize_str(choice): choice for choice in choices
-        }
+        normalized_choices = {normalize_str(choice): choice for choice in choices}
         if normalized_value in normalized_choices:
             return normalized_choices[normalized_value]
         allowed = ', '.join(sorted(choices))
