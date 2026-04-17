@@ -27,13 +27,13 @@ import etlplus.history._store as store_mod
 class TestHistoryStoreModuleHelpers:
     """Unit tests for module-level history-store helper functions."""
 
-    def test_build_run_record_delegates_to_run_record_build(
+    def test_run_record_build_delegates_to_classmethod_implementation(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that :func:`build_run_record` delegates straight through to
-        :meth:`RunRecord.build`.
+        Test that the preferred :meth:`RunRecord.build` entry point receives
+        the supplied constructor inputs unchanged.
         """
         captured: dict[str, Any] = {}
         sentinel = object()
@@ -44,7 +44,7 @@ class TestHistoryStoreModuleHelpers:
 
         monkeypatch.setattr(store_mod.RunRecord, 'build', staticmethod(fake_build))
 
-        result = store_mod.build_run_record(
+        result = store_mod.RunRecord.build(
             run_id='run-123',
             config_path='pipeline.yml',
             started_at='2026-03-23T00:00:00Z',
