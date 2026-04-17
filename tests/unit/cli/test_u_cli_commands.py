@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
+from typing import cast
 
 import pytest
 import typer
@@ -52,6 +53,7 @@ class TestCommandsInternalHelpers:
             'parse_json_option',
             'require_any',
             'require_value',
+            'resolve_command_resource',
             'resolve_resource',
         ]
 
@@ -129,6 +131,23 @@ class TestCommandsInternalHelpers:
         )
         with pytest.raises(typer.BadParameter, match='Invalid JSON for --ops'):
             helpers_mod.parse_json_option('not-json', '--ops')
+
+    def test_resolve_command_resource_reuses_supplied_state(self) -> None:
+        """Command resource resolution should reuse the injected CLI state."""
+        state = CliState(pretty=False)
+
+        resolved_state, resolved = helpers_mod.resolve_command_resource(
+            cast(typer.Context, object()),
+            state=state,
+            role='source',
+            value='payload.json',
+            connector_type='file',
+            format_value='json',
+        )
+
+        assert resolved_state is state
+        assert resolved.require_resource_type() == 'file'
+        assert resolved.format_explicit is True
 
     def test_resolve_logged_resource_type_reuses_state_implementation(
         self,
