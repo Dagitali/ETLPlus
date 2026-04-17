@@ -33,6 +33,7 @@ from ._types import DataConnectorContext
 __all__ = [
     # Functions
     'call_handler',
+    'call_history_command',
     'call_history_handler',
     'fail_usage',
     'normalize_file_format',
@@ -279,6 +280,42 @@ def call_history_handler(
     return handler(
         pretty=state.pretty,
         **history_kwargs,
+        **kwargs,
+    )
+
+
+def call_history_command(
+    handler: Callable[..., int],
+    /,
+    *,
+    ctx: typer.Context,
+    state: CliState | None = None,
+    **kwargs: Any,
+) -> int:
+    """
+    Invoke one history-style command using CLI state from *ctx* by default.
+
+    Parameters
+    ----------
+    handler : Callable[..., int]
+        The history-oriented handler function to invoke.
+    ctx : typer.Context
+        The Typer context used to resolve CLI state when *state* is not given.
+    state : CliState | None, optional
+        Existing CLI state to reuse (defaults to ``None``, which means
+        :func:`ensure_state` will be called).
+    **kwargs : Any
+        Additional keyword arguments to forward through
+        :func:`call_history_handler`.
+
+    Returns
+    -------
+    int
+        The exit code returned by *handler*.
+    """
+    return call_history_handler(
+        handler,
+        state=ensure_state(ctx) if state is None else state,
         **kwargs,
     )
 
