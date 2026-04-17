@@ -11,8 +11,11 @@ from typing import Literal
 
 import typer
 
-from .helpers import _typer_flag_option_kwargs
-from .helpers import _typer_value_option_kwargs
+from .helpers import typer_flag_option_alias
+from .helpers import typer_flag_option_kwargs
+from .helpers import typer_option_alias
+from .helpers import typer_value_option_alias
+from .helpers import typer_value_option_kwargs
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -41,23 +44,19 @@ __all__ = [
 # SECTION: TYPES ============================================================ #
 
 
-CheckConfigOption = Annotated[
+CheckConfigOption = typer_value_option_alias(
     str | None,
-    typer.Option(
-        '--config',
-        **_typer_value_option_kwargs(
-            'Path to YAML-formatted configuration file.',
-            metavar='PATH',
-        ),
-    ),
-]
+    '--config',
+    help_text='Path to YAML-formatted configuration file.',
+    metavar='PATH',
+)
 
 ConfigOption = Annotated[
     str,
     typer.Option(
         ...,
         '--config',
-        **_typer_value_option_kwargs(
+        **typer_value_option_kwargs(
             'Path to YAML-formatted configuration file.',
             metavar='PATH',
             show_default=None,
@@ -65,164 +64,109 @@ ConfigOption = Annotated[
     ),
 ]
 
-ContinueOnFailOption = Annotated[
-    bool,
-    typer.Option(
-        '--continue-on-fail',
-        **_typer_flag_option_kwargs(
-            (
-                'Continue running independent jobs after a failure and skip '
-                'only blocked downstream jobs.'
-            ),
-        ),
+ContinueOnFailOption = typer_flag_option_alias(
+    '--continue-on-fail',
+    help_text=(
+        'Continue running independent jobs after a failure and skip only '
+        'blocked downstream jobs.'
     ),
-]
+)
 
-CaptureTracebacksOption = Annotated[
+CaptureTracebacksOption = typer_option_alias(
     bool | None,
-    typer.Option(
-        '--capture-tracebacks/--no-capture-tracebacks',
-        **_typer_flag_option_kwargs(
-            (
-                'Persist capped failure tracebacks in local run history when '
-                'history is enabled.'
-            ),
-            show_default=None,
+    '--capture-tracebacks/--no-capture-tracebacks',
+    **typer_flag_option_kwargs(
+        (
+            'Persist capped failure tracebacks in local run history when '
+            'history is enabled.'
         ),
+        show_default=None,
     ),
-]
+)
 
-JobOption = Annotated[
+JobOption = typer_value_option_alias(
     str | None,
-    typer.Option(
-        '-j',
-        '--job',
-        **_typer_value_option_kwargs(
-            'Name of the job to run',
-            show_default=None,
-        ),
-    ),
-]
+    '-j',
+    '--job',
+    help_text='Name of the job to run',
+    show_default=None,
+)
 
-HistoryBackendOption = Annotated[
+HistoryBackendOption = typer_value_option_alias(
     Literal['sqlite', 'jsonl'] | None,
-    typer.Option(
-        '--history-backend',
-        **_typer_value_option_kwargs(
-            'Override the local history backend (sqlite or jsonl).',
-            metavar='BACKEND',
-            show_default=None,
-        ),
-    ),
-]
+    '--history-backend',
+    help_text='Override the local history backend (sqlite or jsonl).',
+    metavar='BACKEND',
+    show_default=None,
+)
 
-HistoryEnabledOption = Annotated[
+HistoryEnabledOption = typer_option_alias(
     bool | None,
-    typer.Option(
-        '--history/--no-history',
-        **_typer_flag_option_kwargs(
-            'Enable or disable local run-history persistence for this run.',
-            show_default=None,
-        ),
+    '--history/--no-history',
+    **typer_flag_option_kwargs(
+        'Enable or disable local run-history persistence for this run.',
+        show_default=None,
     ),
-]
+)
 
-HistoryStateDirOption = Annotated[
+HistoryStateDirOption = typer_value_option_alias(
     str | None,
-    typer.Option(
-        '--history-state-dir',
-        **_typer_value_option_kwargs(
-            'Override the local history state directory.',
-            metavar='PATH',
-            show_default=None,
-        ),
-    ),
-]
+    '--history-state-dir',
+    help_text='Override the local history state directory.',
+    metavar='PATH',
+    show_default=None,
+)
 
-OutputOption = Annotated[
+OutputOption = typer_value_option_alias(
     str | None,
-    typer.Option(
-        '--output',
-        '-o',
-        **_typer_value_option_kwargs(
-            'Write output to file PATH (default: STDOUT).',
-            metavar='PATH',
-            show_default=None,
-        ),
-    ),
-]
+    '--output',
+    '-o',
+    help_text='Write output to file PATH (default: STDOUT).',
+    metavar='PATH',
+    show_default=None,
+)
 
-PipelineOption = Annotated[
+PipelineOption = typer_value_option_alias(
     str | None,
-    typer.Option(
-        '-p',
-        '--pipeline',
-        **_typer_value_option_kwargs(
-            'Name of the pipeline to run',
-            show_default=None,
-        ),
-    ),
-]
+    '-p',
+    '--pipeline',
+    help_text='Name of the pipeline to run',
+    show_default=None,
+)
 
-PrettyOption = Annotated[
+PrettyOption = typer_option_alias(
     bool,
-    typer.Option(
-        '--pretty/--no-pretty',
-        **_typer_flag_option_kwargs(
-            'Pretty-print JSON output (default: pretty).',
-        ),
-    ),
-]
+    '--pretty/--no-pretty',
+    **typer_flag_option_kwargs('Pretty-print JSON output (default: pretty).'),
+)
 
-QuietOption = Annotated[
-    bool,
-    typer.Option(
-        '--quiet',
-        '-q',
-        **_typer_flag_option_kwargs(
-            'Suppress warnings and non-essential output.',
-        ),
-    ),
-]
+QuietOption = typer_flag_option_alias(
+    '--quiet',
+    '-q',
+    help_text='Suppress warnings and non-essential output.',
+)
 
-RunAllOption = Annotated[
-    bool,
-    typer.Option(
-        '--all',
-        **_typer_flag_option_kwargs(
-            'Run all configured jobs in DAG order.',
-        ),
-    ),
-]
+RunAllOption = typer_flag_option_alias(
+    '--all',
+    help_text='Run all configured jobs in DAG order.',
+)
 
-StructuredEventFormatOption = Annotated[
+StructuredEventFormatOption = typer_value_option_alias(
     Literal['jsonl'] | None,
-    typer.Option(
-        '--event-format',
-        **_typer_value_option_kwargs(
-            'Emit structured command events to STDERR (currently: jsonl).',
-            metavar='FORMAT',
-        ),
-    ),
-]
+    '--event-format',
+    help_text='Emit structured command events to STDERR (currently: jsonl).',
+    metavar='FORMAT',
+)
 
-VerboseOption = Annotated[
-    bool,
-    typer.Option(
-        '--verbose',
-        '-v',
-        **_typer_flag_option_kwargs('Emit extra diagnostics to STDERR.'),
-    ),
-]
+VerboseOption = typer_flag_option_alias(
+    '--verbose',
+    '-v',
+    help_text='Emit extra diagnostics to STDERR.',
+)
 
-VersionOption = Annotated[
-    bool,
-    typer.Option(
-        '--version',
-        '-V',
-        **_typer_flag_option_kwargs(
-            'Show the version and exit.',
-            is_eager=True,
-        ),
-    ),
-]
+VersionOption = typer_flag_option_alias(
+    '--version',
+    '-V',
+    help_text='Show the version and exit.',
+    is_eager=True,
+)

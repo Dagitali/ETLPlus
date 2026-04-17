@@ -27,14 +27,8 @@ __all__ = [
     'ResourceTypeResolver',
     # Functions
     'ensure_state',
-    'infer_resource_type',
-    'infer_resource_type_or_exit',
-    'infer_resource_type_soft',
     'log_inferred_resource',
-    'optional_choice',
     'resolve_logged_resource_type',
-    'resolve_resource_type',
-    'validate_choice',
 ]
 
 
@@ -69,26 +63,6 @@ class CliState:
     pretty: bool = True
     quiet: bool = False
     verbose: bool = False
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _validate_choice_value(
-    value: str | object,
-    choices: Collection[str],
-    *,
-    label: str,
-) -> str:
-    """Validate one CLI value against *choices* and preserve canonical case."""
-    normalized_value = normalize_str(str(value or ''))
-    normalized_choices = {normalize_str(choice): choice for choice in choices}
-    if normalized_value in normalized_choices:
-        return normalized_choices[normalized_value]
-    allowed = ', '.join(sorted(choices))
-    raise typer.BadParameter(
-        f"Invalid {label} '{value}'. Choose from: {allowed}",
-    )
 
 
 # SECTION: CLASSES ========================================================== #
@@ -144,7 +118,14 @@ class ResourceTypeResolver:
         label: str,
     ) -> str:
         """Validate CLI input against a whitelist of choices."""
-        return _validate_choice_value(value, choices, label=label)
+        normalized_value = normalize_str(str(value or ''))
+        normalized_choices = {normalize_str(choice): choice for choice in choices}
+        if normalized_value in normalized_choices:
+            return normalized_choices[normalized_value]
+        allowed = ', '.join(sorted(choices))
+        raise typer.BadParameter(
+            f"Invalid {label} '{value}'. Choose from: {allowed}",
+        )
 
     # -- Class Methods -- #
 
@@ -157,7 +138,7 @@ class ResourceTypeResolver:
         if value is None:
             return None
         try:
-            return infer_resource_type(value)
+            return cls.infer(value)
         except ValueError:
             return None
 
@@ -172,7 +153,7 @@ class ResourceTypeResolver:
         """Validate optional CLI choice inputs while preserving ``None``."""
         if value is None:
             return None
-        return _validate_choice_value(value, choices, label=label)
+        return cls.validate(value, choices, label=label)
 
     @classmethod
     def resolve(
@@ -193,8 +174,8 @@ class ResourceTypeResolver:
                 raise typer.BadParameter(legacy_file_error)
             candidate = explicit_type
         else:
-            candidate = override_type or infer_resource_type_or_exit(value)
-        return validate_choice(candidate, DATA_CONNECTORS, label=label)
+            candidate = override_type or cls.infer_or_exit(value)
+        return cls.validate(candidate, DATA_CONNECTORS, label=label)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -237,11 +218,6 @@ def ensure_state(
     if not isinstance(getattr(ctx, 'obj', None), CliState):
         ctx.obj = CliState()
     return ctx.obj
-
-
-infer_resource_type = ResourceTypeResolver.infer
-infer_resource_type_or_exit = ResourceTypeResolver.infer_or_exit
-infer_resource_type_soft = ResourceTypeResolver.infer_soft
 
 
 def log_inferred_resource(
@@ -305,11 +281,13 @@ def resolve_logged_resource_type(
     resource_type = explicit_type
     if resource_type is None:
         infer = (
-            infer_resource_type_soft if soft_inference else infer_resource_type_or_exit
+            ResourceTypeResolver.infer_soft
+            if soft_inference
+            else ResourceTypeResolver.infer_or_exit
         )
         resource_type = infer(value)
     if resource_type is not None:
-        resource_type = validate_choice(
+        resource_type = ResourceTypeResolver.validate(
             resource_type,
             DATA_CONNECTORS,
             label=f'{role}_type',
@@ -321,8 +299,3 @@ def resolve_logged_resource_type(
         resource_type=resource_type,
     )
     return resource_type
-
-
-optional_choice = ResourceTypeResolver.optional_choice
-resolve_resource_type = ResourceTypeResolver.resolve
-validate_choice = ResourceTypeResolver.validate

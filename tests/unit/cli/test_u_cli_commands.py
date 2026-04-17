@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
+from typing import cast
 
 import pytest
 import typer
@@ -46,12 +47,14 @@ class TestCommandsInternalHelpers:
         """Command helpers should expose only the intended public surface."""
         assert helpers_mod.__all__ == [
             'call_handler',
+            'call_history_command',
             'call_history_handler',
             'fail_usage',
             'normalize_file_format',
             'parse_json_option',
             'require_any',
             'require_value',
+            'resolve_command_resource',
             'resolve_resource',
         ]
 
@@ -105,6 +108,29 @@ class TestCommandsInternalHelpers:
             'pretty': False,
         }
 
+    def test_call_history_command_reuses_supplied_state(self) -> None:
+        """History command dispatch should reuse injected CLI state."""
+        captured: dict[str, object] = {}
+
+        def _handler(**kwargs: object) -> int:
+            captured.update(kwargs)
+            return 13
+
+        result = helpers_mod.call_history_command(
+            _handler,
+            ctx=cast(typer.Context, object()),
+            state=CliState(pretty=False),
+            level='run',
+            status='failed',
+        )
+
+        assert result == 13
+        assert captured == {
+            'level': 'run',
+            'pretty': False,
+            'status': 'failed',
+        }
+
     def test_normalize_file_format_returns_enum_member(self) -> None:
         """Shared format normalization should preserve ``FileFormat`` typing."""
         assert helpers_mod.normalize_file_format('json', label='source') is (
@@ -129,6 +155,23 @@ class TestCommandsInternalHelpers:
         )
         with pytest.raises(typer.BadParameter, match='Invalid JSON for --ops'):
             helpers_mod.parse_json_option('not-json', '--ops')
+
+    def test_resolve_command_resource_reuses_supplied_state(self) -> None:
+        """Command resource resolution should reuse the injected CLI state."""
+        state = CliState(pretty=False)
+
+        resolved_state, resolved = helpers_mod.resolve_command_resource(
+            cast(typer.Context, object()),
+            state=state,
+            role='source',
+            value='payload.json',
+            connector_type='file',
+            format_value='json',
+        )
+
+        assert resolved_state is state
+        assert resolved.require_resource_type() == 'file'
+        assert resolved.format_explicit is True
 
     def test_resolve_logged_resource_type_reuses_state_implementation(
         self,

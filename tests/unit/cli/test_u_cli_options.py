@@ -93,11 +93,11 @@ class TestHelperOptionKwargs:
         expected: dict[str, object],
     ) -> None:
         """
-        Test that :func:`_typer_flag_option_kwargs` includes only explicitly
+        Test that :func:`typer_flag_option_kwargs` includes only explicitly
         requested metadata.
         """
         assert (
-            cli_options._typer_flag_option_kwargs(
+            cli_options.typer_flag_option_kwargs(
                 help_text,
                 show_default=show_default,
             )
@@ -106,16 +106,34 @@ class TestHelperOptionKwargs:
 
     def test_flag_option_kwargs_include_is_eager_when_requested(self) -> None:
         """
-        Test that :func:`_typer_flag_option_kwargs` preserves Typer
+        Test that :func:`typer_flag_option_kwargs` preserves Typer
         eager-evaluation metadata.
         """
-        assert cli_options._typer_flag_option_kwargs(
+        assert cli_options.typer_flag_option_kwargs(
             'Show the version and exit.',
             is_eager=True,
         ) == {
             'help': 'Show the version and exit.',
             'is_eager': True,
         }
+
+    def test_helper_module_exports_intended_public_api(self) -> None:
+        """Option helper exports should reflect the public helper surface."""
+        assert cli_options.__all__ == [
+            'typer_connector_option_kwargs',
+            'typer_connector_option_alias',
+            'typer_flag_option_alias',
+            'typer_flag_option_kwargs',
+            'typer_format_option_alias',
+            'typer_format_option_kwargs',
+            'typer_option_alias',
+            'typer_resource_argument_alias',
+            'typer_resource_argument_kwargs',
+            'typer_timestamp_option_alias',
+            'typer_timestamp_option_kwargs',
+            'typer_value_option_alias',
+            'typer_value_option_kwargs',
+        ]
 
     @pytest.mark.parametrize(
         ('context', 'expected_fragment'),
@@ -138,7 +156,7 @@ class TestHelperOptionKwargs:
         expected_fragment: str,
     ) -> None:
         """Resource-argument helpers should preserve command semantics."""
-        kwargs = cli_options._typer_resource_argument_kwargs(
+        kwargs = cli_options.typer_resource_argument_kwargs(
             context=context,  # type: ignore[arg-type]
         )
 
@@ -218,7 +236,7 @@ class TestHelperOptionKwargs:
     ) -> None:
         """Test that scalar helpers preserve shared option metadata."""
         _assert_shared_option_metadata(
-            cli_options._typer_value_option_kwargs(
+            cli_options.typer_value_option_kwargs(
                 help_text,
                 metavar=metavar,
                 show_default=show_default,

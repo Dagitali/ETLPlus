@@ -12,7 +12,7 @@ from .._handlers.dataops import load_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import normalize_file_format
-from ._helpers import resolve_resource
+from ._helpers import resolve_command_resource
 from ._options.common import StructuredEventFormatOption
 from ._options.resources import SourceFormatOption
 from ._options.resources import TargetArg
@@ -69,17 +69,18 @@ def load_cmd(
         source_format,
         label='source_format',
     )
-    resolved_target = resolve_resource(
-        state,
+    _, resolved_target = resolve_command_resource(
+        ctx,
+        state=state,
         role='target',
         value=target,
         connector_type=target_type,
         format_value=target_format,
         positional=True,
     )
-    assert resolved_target.resource_type is not None
-    resolved_source = resolve_resource(
-        state,
+    _, resolved_source = resolve_command_resource(
+        ctx,
+        state=state,
         role='source',
         value='-',
         soft_inference=True,
@@ -91,9 +92,9 @@ def load_cmd(
         source=resolved_source.value,
         source_format=source_format_hint,
         target=resolved_target.value,
-        target_type=resolved_target.resource_type,
+        target_type=resolved_target.require_resource_type(),
         target_format=resolved_target.format_hint,
         event_format=event_format,
         output=None,
-        format_explicit=resolved_target.format_hint is not None,
+        format_explicit=resolved_target.format_explicit,
     )

@@ -11,9 +11,9 @@ from typing import Annotated
 import typer
 
 from ....file import FileFormat
-from .helpers import _typer_connector_option_kwargs
-from .helpers import _typer_format_option_kwargs
-from .helpers import _typer_resource_argument_kwargs
+from .helpers import typer_connector_option_alias
+from .helpers import typer_format_option_alias
+from .helpers import typer_resource_argument_kwargs
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -36,46 +36,38 @@ SourceArg = Annotated[
     str,
     typer.Argument(
         ...,
-        **_typer_resource_argument_kwargs(context='source'),
+        **typer_resource_argument_kwargs(context='source'),
     ),
 ]
 
-SourceFormatOption = Annotated[
+SourceFormatOption = typer_format_option_alias(
     FileFormat | None,
-    typer.Option(
-        '--source-format',
-        **_typer_format_option_kwargs(context='source'),
-    ),
-]
+    '--source-format',
+    context='source',
+)
 
-SourceTypeOption = Annotated[
+SourceTypeOption = typer_connector_option_alias(
     str | None,
-    typer.Option(
-        '--source-type',
-        **_typer_connector_option_kwargs(context='source'),
-    ),
-]
+    '--source-type',
+    context='source',
+)
 
 TargetArg = Annotated[
     str,
     typer.Argument(
         ...,
-        **_typer_resource_argument_kwargs(context='target'),
+        **typer_resource_argument_kwargs(context='target'),
     ),
 ]
 
-TargetFormatOption = Annotated[
+TargetFormatOption = typer_format_option_alias(
     FileFormat | None,
-    typer.Option(
-        '--target-format',
-        **_typer_format_option_kwargs(context='target'),
-    ),
-]
+    '--target-format',
+    context='target',
+)
 
-TargetTypeOption = Annotated[
+TargetTypeOption = typer_connector_option_alias(
     str | None,
-    typer.Option(
-        '--target-type',
-        **_typer_connector_option_kwargs(context='target'),
-    ),
-]
+    '--target-type',
+    context='target',
+)

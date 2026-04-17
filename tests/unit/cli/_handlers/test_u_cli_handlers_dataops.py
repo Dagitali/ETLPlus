@@ -6,8 +6,11 @@ Unit tests for CLI handler implementation modules.
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
+from etlplus.cli._handlers import _lifecycle as lifecycle_mod
 from etlplus.cli._handlers import dataops as dataops_mod
 
 # SECTION: PRAGMAS ========================================================== #
@@ -20,6 +23,49 @@ from etlplus.cli._handlers import dataops as dataops_mod
 
 class TestDataops:
     """Unit tests for internal helpers in :mod:`etlplus.cli._handlers.dataops`."""
+
+    def test_complete_json_success_uses_json_mode(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """JSON success helper should delegate through the shared completer."""
+        captured: dict[
+            str,
+            tuple[
+                lifecycle_mod.CommandContext,
+                object,
+                str,
+                bool,
+                dict[str, object],
+            ],
+        ] = {}
+
+        def fake_complete(
+            context: lifecycle_mod.CommandContext,
+            payload: object,
+            *,
+            mode: str,
+            pretty: bool = True,
+            **fields: object,
+        ) -> int:
+            captured['params'] = (context, payload, mode, pretty, fields)
+            return 9
+
+        monkeypatch.setattr(dataops_mod, '_complete_success', fake_complete)
+
+        result = dataops_mod._complete_json_success(
+            cast(lifecycle_mod.CommandContext, object()),
+            {'ok': True},
+            pretty=False,
+            source='data.json',
+        )
+
+        assert result == 9
+        _, payload, mode, pretty, fields = captured['params']
+        assert payload == {'ok': True}
+        assert mode == 'json'
+        assert pretty is False
+        assert fields == {'source': 'data.json'}
 
     @pytest.mark.parametrize(
         ('target', 'expected'),
@@ -36,6 +82,22 @@ class TestDataops:
     ) -> None:
         """Target display labels should normalize STDOUT-style targets."""
         assert dataops_mod._display_target(target) == expected
+
+    @pytest.mark.parametrize(
+        ('target', 'expected'),
+        [
+            (None, False),
+            ('-', False),
+            ('out.json', True),
+        ],
+    )
+    def test_has_named_target(
+        self,
+        target: str | None,
+        expected: bool,
+    ) -> None:
+        """Concrete-target detection should exclude STDOUT-style targets."""
+        assert dataops_mod._has_named_target(target) is expected
 
     @pytest.mark.parametrize(
         ('format_hint', 'explicit', 'expected'),

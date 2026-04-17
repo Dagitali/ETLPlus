@@ -12,7 +12,7 @@ from .._handlers.dataops import validate_handler
 from ._app import app
 from ._helpers import call_handler
 from ._helpers import parse_json_option
-from ._helpers import resolve_resource
+from ._helpers import resolve_command_resource
 from ._options.common import OutputOption
 from ._options.common import StructuredEventFormatOption
 from ._options.resources import SourceArg
@@ -69,8 +69,9 @@ def validate_cmd(
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
     state = ensure_state(ctx)
-    resolved_source = resolve_resource(
-        state,
+    _, resolved_source = resolve_command_resource(
+        ctx,
+        state=state,
         role='source',
         value=source,
         connector_type=source_type,
@@ -86,5 +87,5 @@ def validate_cmd(
         target=output,
         source_format=resolved_source.format_hint,
         event_format=event_format,
-        format_explicit=resolved_source.format_hint is not None,
+        format_explicit=resolved_source.format_explicit,
     )

@@ -6,9 +6,13 @@ Private Typer option families shared by CLI command modules.
 
 from __future__ import annotations
 
+from .common import CaptureTracebacksOption
 from .common import CheckConfigOption
 from .common import ConfigOption
 from .common import ContinueOnFailOption
+from .common import HistoryBackendOption
+from .common import HistoryEnabledOption
+from .common import HistoryStateDirOption
 from .common import JobOption
 from .common import OutputOption
 from .common import PipelineOption
@@ -49,6 +53,7 @@ from .specs import RenderTemplateOption
 from .specs import RenderTemplatePathOption
 from .specs import RulesOption
 from .specs import SourcesOption
+from .specs import StrictOption
 from .specs import SummaryOption
 from .specs import TargetsOption
 from .specs import TransformsOption
@@ -58,14 +63,18 @@ from .specs import TransformsOption
 
 __all__ = [
     # Types
+    'CaptureTracebacksOption',
     'CheckConfigOption',
     'ContinueOnFailOption',
     'ConfigOption',
     'GraphOption',
+    'HistoryBackendOption',
+    'HistoryEnabledOption',
     'HistoryFollowOption',
     'HistoryJsonOption',
     'HistoryLimitOption',
     'HistoryRawOption',
+    'HistoryStateDirOption',
     'HistorySinceOption',
     'HistoryStatusOption',
     'HistoryTableOption',
@@ -95,6 +104,7 @@ __all__ = [
     'SourceFormatOption',
     'SourceTypeOption',
     'SourcesOption',
+    'StrictOption',
     'StructuredEventFormatOption',
     'SummaryOption',
     'TargetArg',
