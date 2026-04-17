@@ -27,8 +27,6 @@ __all__ = [
     'ResourceTypeResolver',
     # Functions
     'ensure_state',
-    'infer_resource_type_or_exit',
-    'infer_resource_type_soft',
     'log_inferred_resource',
     'optional_choice',
     'resolve_logged_resource_type',
@@ -238,21 +236,6 @@ def ensure_state(
     return ctx.obj
 
 
-# TODO: Remove this function.
-def infer_resource_type_or_exit(
-    value: str,
-) -> str:
-    """Infer a resource type and map ``ValueError`` to ``BadParameter``."""
-    return ResourceTypeResolver.infer_or_exit(value)
-
-
-def infer_resource_type_soft(
-    value: str | None,
-) -> str | None:
-    """Make a best-effort inference that tolerates inline payloads."""
-    return ResourceTypeResolver.infer_soft(value)
-
-
 def log_inferred_resource(
     state: CliState,
     *,
@@ -314,7 +297,9 @@ def resolve_logged_resource_type(
     resource_type = explicit_type
     if resource_type is None:
         infer = (
-            infer_resource_type_soft if soft_inference else infer_resource_type_or_exit
+            ResourceTypeResolver.infer_soft
+            if soft_inference
+            else ResourceTypeResolver.infer_or_exit
         )
         resource_type = infer(value)
     if resource_type is not None:
