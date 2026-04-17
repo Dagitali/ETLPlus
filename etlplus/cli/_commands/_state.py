@@ -28,7 +28,6 @@ __all__ = [
     # Functions
     'ensure_state',
     'log_inferred_resource',
-    'optional_choice',
     'resolve_logged_resource_type',
     'resolve_resource_type',
 ]
@@ -301,16 +300,6 @@ def resolve_logged_resource_type(
         resource_type=resource_type,
     )
     return resource_type
-
-
-def optional_choice(
-    value: str | None,
-    choices: Collection[str],
-    *,
-    label: str,
-) -> str | None:
-    """Validate optional CLI choice inputs while preserving ``None``."""
-    return ResourceTypeResolver.optional_choice(value, choices, label=label)
 
 
 def resolve_resource_type(

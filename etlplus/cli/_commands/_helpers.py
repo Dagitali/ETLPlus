@@ -22,8 +22,8 @@ from ...utils._data import parse_json
 from ._constants import DATA_CONNECTORS
 from ._constants import FILE_FORMATS
 from ._state import CliState
+from ._state import ResourceTypeResolver
 from ._state import ensure_state
-from ._state import optional_choice as _normalize_choice
 from ._state import resolve_logged_resource_type as _resolve_logged_resource_type
 from ._types import DataConnectorContext
 
@@ -133,7 +133,7 @@ def _normalize_optional_choice[T](
     coerce: Callable[[str], T] | None = None,
 ) -> str | T | None:
     """Normalize one optional CLI value against *choices*."""
-    normalized = _normalize_choice(
+    normalized = ResourceTypeResolver.optional_choice(
         None if value is None else str(value),
         choices,
         label=label,
