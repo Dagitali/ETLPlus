@@ -29,7 +29,6 @@ __all__ = [
     'ensure_state',
     'log_inferred_resource',
     'resolve_logged_resource_type',
-    'resolve_resource_type',
 ]
 
 
@@ -300,23 +299,3 @@ def resolve_logged_resource_type(
         resource_type=resource_type,
     )
     return resource_type
-
-
-def resolve_resource_type(
-    *,
-    explicit_type: str | None,
-    override_type: str | None,
-    value: str,
-    label: str,
-    conflict_error: str | None = None,
-    legacy_file_error: str | None = None,
-) -> str:
-    """Resolve resource type preference order and validate it."""
-    return ResourceTypeResolver.resolve(
-        explicit_type=explicit_type,
-        override_type=override_type,
-        value=value,
-        label=label,
-        conflict_error=conflict_error,
-        legacy_file_error=legacy_file_error,
-    )
