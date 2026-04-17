@@ -314,16 +314,16 @@ class TestCliHelp:
 
 
 class TestInferResourceType:
-    """Unit tests for :func:`infer_resource_type`."""
+    """Unit tests for :meth:`ResourceTypeResolver.infer`."""
 
     def test_file_path(self, tmp_path: Path) -> None:
         """
-        Test that :func:`infer_resource_type` detects local files via extension
-        parsing.
+        Test that :meth:`ResourceTypeResolver.infer` detects local files via
+        extension parsing.
         """
         path = tmp_path / 'payload.csv'
         path.write_text('a,b\n1,2\n', encoding='utf-8')
-        assert cli_state_mod.infer_resource_type(str(path)) == 'file'
+        assert cli_state_mod.ResourceTypeResolver.infer(str(path)) == 'file'
 
     def test_invalid_raises(self) -> None:
         """
@@ -331,7 +331,7 @@ class TestInferResourceType:
         guidance.
         """
         with pytest.raises(ValueError, match='Could not infer resource type'):
-            cli_state_mod.infer_resource_type('unknown-resource')
+            cli_state_mod.ResourceTypeResolver.infer('unknown-resource')
 
     @pytest.mark.parametrize(
         ('raw', 'expected'),
@@ -347,10 +347,10 @@ class TestInferResourceType:
         expected: str,
     ) -> None:
         """
-        Test that :func:`infer_resource_type` classifies common resource
+        Test that :meth:`ResourceTypeResolver.infer` classifies common resource
         inputs.
         """
-        assert cli_state_mod.infer_resource_type(raw) == expected
+        assert cli_state_mod.ResourceTypeResolver.infer(raw) == expected
 
 
 class TestCliStateHelpers:
@@ -401,8 +401,8 @@ class TestCliStateHelpers:
             pytest.param(
                 'invalid',
                 lambda monkeypatch: monkeypatch.setattr(
-                    cli_state_mod,
-                    'infer_resource_type',
+                    cli_state_mod.ResourceTypeResolver,
+                    'infer',
                     lambda _value: (_ for _ in ()).throw(ValueError('bad')),
                 ),
                 id='invalid-resource',
@@ -419,7 +419,7 @@ class TestCliStateHelpers:
         if setup is not None:
             setup(monkeypatch)
 
-        assert cli_state_mod.infer_resource_type_soft(value) is None
+        assert cli_state_mod.ResourceTypeResolver.infer_soft(value) is None
 
     def test_log_inferred_resource_prints_verbose_messages(
         self,
@@ -583,7 +583,7 @@ class TestCliStateHelpers:
         if infer_result is not None:
             monkeypatch.setattr(
                 cli_state_mod,
-                'infer_resource_type_or_exit',
+                'ResourceTypeResolver.infer_or_exit',
                 lambda _value: infer_result,
             )
 
@@ -600,8 +600,8 @@ class TestCliStateHelpers:
     ) -> None:
         """Test that class-based soft inference still respects wrapper patches."""
         monkeypatch.setattr(
-            cli_state_mod,
-            'infer_resource_type',
+            cli_state_mod.ResourceTypeResolver,
+            'infer',
             lambda _value: (_ for _ in ()).throw(ValueError('bad')),
         )
 
