@@ -10,7 +10,7 @@ from typing import Annotated
 
 import typer
 
-from .helpers import _typer_flag_option_kwargs
+from .helpers import typer_flag_option_kwargs
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -38,7 +38,7 @@ InitForceOption = Annotated[
     typer.Option(
         '--force',
         '-f',
-        **_typer_flag_option_kwargs(
+        **typer_flag_option_kwargs(
             'Overwrite scaffold files when they already exist.',
         ),
     ),

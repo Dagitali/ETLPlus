@@ -6,14 +6,11 @@ History and report Typer option aliases for CLI command modules.
 
 from __future__ import annotations
 
-from typing import Annotated
 from typing import Literal
 
-import typer
-
-from .helpers import _typer_flag_option_kwargs
-from .helpers import _typer_timestamp_option_kwargs
-from .helpers import _typer_value_option_kwargs
+from .helpers import typer_flag_option_alias
+from .helpers import typer_timestamp_option_alias
+from .helpers import typer_value_option_alias
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -38,113 +35,73 @@ __all__ = [
 # SECTION: TYPES ============================================================ #
 
 
-HistoryFollowOption = Annotated[
-    bool,
-    typer.Option(
-        '--follow',
-        **_typer_flag_option_kwargs(
-            'Keep polling for newly persisted matching raw history events.',
-        ),
-    ),
-]
+HistoryFollowOption = typer_flag_option_alias(
+    '--follow',
+    help_text='Keep polling for newly persisted matching raw history events.',
+)
 
-HistoryJsonOption = Annotated[
-    bool,
-    typer.Option(
-        '--json',
-        **_typer_flag_option_kwargs('Format output as JSON explicitly.'),
-    ),
-]
+HistoryJsonOption = typer_flag_option_alias(
+    '--json',
+    help_text='Format output as JSON explicitly.',
+)
 
-HistoryLevelOption = Annotated[
+HistoryLevelOption = typer_value_option_alias(
     Literal['run', 'job'],
-    typer.Option(
-        '--level',
-        **_typer_value_option_kwargs(
-            'Query run-level or job-level persisted history.',
-            show_default=True,
-        ),
-    ),
-]
+    '--level',
+    help_text='Query run-level or job-level persisted history.',
+    show_default=True,
+)
 
-HistoryLimitOption = Annotated[
+HistoryLimitOption = typer_value_option_alias(
     int | None,
-    typer.Option(
-        '--limit',
-        min=1,
-        **_typer_value_option_kwargs(
-            'Maximum number of history records to emit.',
-        ),
-    ),
-]
+    '--limit',
+    help_text='Maximum number of history records to emit.',
+    min=1,
+)
 
-HistoryPipelineOption = Annotated[
+HistoryPipelineOption = typer_value_option_alias(
     str | None,
-    typer.Option(
-        '--pipeline',
-        **_typer_value_option_kwargs('Filter persisted history by pipeline name.'),
-    ),
-]
+    '--pipeline',
+    help_text='Filter persisted history by pipeline name.',
+)
 
-HistoryRawOption = Annotated[
-    bool,
-    typer.Option(
-        '--raw',
-        **_typer_flag_option_kwargs(
-            'Emit raw append events instead of normalized runs.',
-        ),
-    ),
-]
+HistoryRawOption = typer_flag_option_alias(
+    '--raw',
+    help_text='Emit raw append events instead of normalized runs.',
+)
 
-HistorySinceOption = Annotated[
+HistorySinceOption = typer_timestamp_option_alias(
     str | None,
-    typer.Option(
-        '--since',
-        **_typer_timestamp_option_kwargs(bound='since'),
-    ),
-]
+    '--since',
+    bound='since',
+)
 
-HistoryStatusOption = Annotated[
+HistoryStatusOption = typer_value_option_alias(
     str | None,
-    typer.Option(
-        '--status',
-        **_typer_value_option_kwargs('Filter persisted runs by status.'),
-    ),
-]
+    '--status',
+    help_text='Filter persisted runs by status.',
+)
 
-HistoryTableOption = Annotated[
-    bool,
-    typer.Option(
-        '--table',
-        **_typer_flag_option_kwargs(
-            'Format normalized history output as a Markdown table.',
-        ),
-    ),
-]
+HistoryTableOption = typer_flag_option_alias(
+    '--table',
+    help_text='Format normalized history output as a Markdown table.',
+)
 
-HistoryUntilOption = Annotated[
+HistoryUntilOption = typer_timestamp_option_alias(
     str | None,
-    typer.Option(
-        '--until',
-        **_typer_timestamp_option_kwargs(bound='until'),
-    ),
-]
+    '--until',
+    bound='until',
+)
 
-ReportGroupByOption = Annotated[
+ReportGroupByOption = typer_value_option_alias(
     Literal['day', 'job', 'pipeline', 'run', 'status'],
-    typer.Option(
-        '--group-by',
-        **_typer_value_option_kwargs(
-            'Grouping dimension for aggregated history reports.',
-            show_default=True,
-        ),
-    ),
-]
+    '--group-by',
+    help_text='Grouping dimension for aggregated history reports.',
+    show_default=True,
+)
 
-RunIdOption = Annotated[
+RunIdOption = typer_value_option_alias(
     str | None,
-    typer.Option(
-        '--run-id',
-        **_typer_value_option_kwargs('Filter persisted runs by run identifier.'),
-    ),
-]
+    '--run-id',
+    help_text='Filter persisted runs by run identifier.',
+)

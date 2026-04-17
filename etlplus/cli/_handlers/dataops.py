@@ -10,6 +10,7 @@ import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
+from typing import TypeGuard
 from typing import cast
 
 from ...ops import extract
@@ -86,6 +87,44 @@ def _complete_success(
     )
 
 
+def _complete_file_success(
+    context: _lifecycle.CommandContext,
+    payload: JSONData,
+    *,
+    output_path: str,
+    format_hint: str | None = None,
+    success_message: str,
+    **fields: Any,
+) -> int:
+    """Complete one command by writing a payload to a concrete target."""
+    return _complete_success(
+        context,
+        payload,
+        mode='file',
+        output_path=output_path,
+        format_hint=format_hint,
+        success_message=success_message,
+        **fields,
+    )
+
+
+def _complete_json_success(
+    context: _lifecycle.CommandContext,
+    payload: Any,
+    *,
+    pretty: bool = True,
+    **fields: Any,
+) -> int:
+    """Complete one command by emitting its payload as JSON."""
+    return _complete_success(
+        context,
+        payload,
+        mode='json',
+        pretty=pretty,
+        **fields,
+    )
+
+
 def _display_target(
     target: str | None,
 ) -> str:
@@ -94,6 +133,13 @@ def _display_target(
         return 'stdout'
     assert target is not None
     return target
+
+
+def _has_named_target(
+    target: str | None,
+) -> TypeGuard[str]:
+    """Return whether *target* names a concrete non-STDOUT destination."""
+    return target not in (None, '-')
 
 
 def _is_explicit_format(
@@ -220,10 +266,9 @@ def extract_handler(
                 _input.read_stdin_text(),
                 source_format,
             )
-            return _complete_success(
+            return _complete_json_success(
                 context,
                 payload,
-                mode='json',
                 pretty=pretty,
                 **command_fields,
             )
@@ -314,14 +359,13 @@ def load_handler(
         )
 
         if target_type == 'file' and target == '-':
-            return _complete_success(
+            return _complete_json_success(
                 context,
                 _input.materialize_file_payload(
                     source_value,
                     format_hint=source_format,
                     format_explicit=source_format_explicit,
                 ),
-                mode='json',
                 pretty=pretty,
                 **command_fields,
             )
@@ -409,10 +453,10 @@ def transform_handler(
         )
         data = transform(payload, cast(PipelineConfig, operations_payload))
 
-        if target and target != '-':
+        if _has_named_target(target):
             if target_type not in (None, 'file'):
                 resolved_target_type = cast(str, target_type)
-                return _complete_success(
+                return _complete_json_success(
                     context,
                     load(
                         data,
@@ -420,17 +464,15 @@ def transform_handler(
                         target,
                         file_format=target_format if target_format_explicit else None,
                     ),
-                    mode='json',
                     pretty=pretty,
                     source=source,
                     target=target,
                     target_type=resolved_target_type,
                 )
 
-            return _complete_success(
+            return _complete_file_success(
                 context,
-                data,
-                mode='file',
+                cast(JSONData, data),
                 output_path=target,
                 format_hint=target_format,
                 success_message='Data transformed and saved to',
@@ -439,10 +481,9 @@ def transform_handler(
                 target_type=target_type or 'file',
             )
 
-        return _complete_success(
+        return _complete_json_success(
             context,
             data,
-            mode='json',
             pretty=pretty,
             **command_fields,
         )
@@ -506,7 +547,7 @@ def validate_handler(
             cast(dict[str, FieldRulesDict], rules_payload),
         )
 
-        if target and target != '-':
+        if _has_named_target(target):
             validated_data = result.get('data')
             if validated_data is not None:
                 return _complete_success(
@@ -526,10 +567,9 @@ def validate_handler(
             )
             return 0
 
-        return _complete_success(
+        return _complete_json_success(
             context,
             result,
-            mode='json',
             pretty=pretty,
             valid=result.get('valid'),
             **command_fields,

@@ -10,7 +10,7 @@ import typer
 
 from .._handlers.history import status_handler
 from ._app import app
-from ._helpers import call_history_handler
+from ._helpers import call_history_command
 from ._options.common import JobOption
 from ._options.history import HistoryLevelOption
 from ._options.history import HistoryPipelineOption
@@ -59,8 +59,9 @@ def status_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    return call_history_handler(
+    return call_history_command(
         status_handler,
+        ctx=ctx,
         state=ensure_state(ctx),
         level=level,
         job=job,

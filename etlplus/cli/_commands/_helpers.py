@@ -22,7 +22,8 @@ from ...utils._data import parse_json
 from ._constants import DATA_CONNECTORS
 from ._constants import FILE_FORMATS
 from ._state import CliState
-from ._state import optional_choice as _normalize_choice
+from ._state import ResourceTypeResolver
+from ._state import ensure_state
 from ._state import resolve_logged_resource_type as _resolve_logged_resource_type
 from ._types import DataConnectorContext
 
@@ -32,12 +33,14 @@ from ._types import DataConnectorContext
 __all__ = [
     # Functions
     'call_handler',
+    'call_history_command',
     'call_history_handler',
     'fail_usage',
     'normalize_file_format',
     'parse_json_option',
     'require_any',
     'require_value',
+    'resolve_command_resource',
     'resolve_resource',
 ]
 
@@ -61,9 +64,43 @@ _MISSING: Final[object] = object()
 class _ResolvedResource:
     """Normalized source/target CLI inputs for one command invocation."""
 
+    # -- Instance Attributes -- #
+
     value: str
     resource_type: str | None = None
     format_hint: FileFormat | None = None
+
+    # -- Getters -- #
+
+    @property
+    def format_explicit(self) -> bool:
+        """
+        Return whether the resource carries one explicit format hint.
+
+        This is used to determine whether to apply implicit format inference
+        based on the value when the handler supports it.
+
+        Returns
+        -------
+        bool
+            ``True`` if the resource has an explicit format hint, ``False`` if
+            not.
+        """
+        return self.format_hint is not None
+
+    # -- Instance Methods -- #
+
+    def require_resource_type(self) -> str:
+        """
+        Return the resolved connector type, asserting it is available.
+
+        Returns
+        -------
+        str
+            The resolved connector type.
+        """
+        assert self.resource_type is not None
+        return self.resource_type
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
@@ -96,7 +133,7 @@ def _normalize_optional_choice[T](
     coerce: Callable[[str], T] | None = None,
 ) -> str | T | None:
     """Normalize one optional CLI value against *choices*."""
-    normalized = _normalize_choice(
+    normalized = ResourceTypeResolver.optional_choice(
         None if value is None else str(value),
         choices,
         label=label,
@@ -243,6 +280,42 @@ def call_history_handler(
     return handler(
         pretty=state.pretty,
         **history_kwargs,
+        **kwargs,
+    )
+
+
+def call_history_command(
+    handler: Callable[..., int],
+    /,
+    *,
+    ctx: typer.Context,
+    state: CliState | None = None,
+    **kwargs: Any,
+) -> int:
+    """
+    Invoke one history-style command using CLI state from *ctx* by default.
+
+    Parameters
+    ----------
+    handler : Callable[..., int]
+        The history-oriented handler function to invoke.
+    ctx : typer.Context
+        The Typer context used to resolve CLI state when *state* is not given.
+    state : CliState | None, optional
+        Existing CLI state to reuse (defaults to ``None``, which means
+        :func:`ensure_state` will be called).
+    **kwargs : Any
+        Additional keyword arguments to forward through
+        :func:`call_history_handler`.
+
+    Returns
+    -------
+    int
+        The exit code returned by *handler*.
+    """
+    return call_history_handler(
+        handler,
+        state=ensure_state(ctx) if state is None else state,
         **kwargs,
     )
 
@@ -452,4 +525,59 @@ def resolve_resource(
             format_value,
             label=f'{role}_format',
         ),
+    )
+
+
+def resolve_command_resource(
+    ctx: typer.Context,
+    *,
+    role: DataConnectorContext,
+    value: str | None,
+    state: CliState | None = None,
+    connector_type: str | None = None,
+    format_value: FileFormat | str | None = None,
+    positional: bool = False,
+    soft_inference: bool = False,
+    default_value: str = '-',
+) -> tuple[CliState, _ResolvedResource]:
+    """
+    Return one CLI state plus one normalized resource for a command wrapper.
+
+    Parameters
+    ----------
+    ctx : typer.Context
+        Typer context used to initialize CLI state when *state* is not given.
+    role : DataConnectorContext
+        The resource role for error messages ('source' or 'target').
+    value : str | None
+        The raw CLI value to resolve.
+    state : CliState | None, optional
+        Existing CLI state to reuse (defaults to ``None``, which means
+        :func:`ensure_state` will be called).
+    connector_type : str | None, optional
+        An explicit connector type override.
+    format_value : FileFormat | str | None, optional
+        An explicit file format override.
+    positional : bool, optional
+        Whether the value comes from a positional argument.
+    soft_inference : bool, optional
+        Whether to tolerate failed connector-type inference.
+    default_value : str, optional
+        The fallback CLI value to use when *value* is ``None``.
+
+    Returns
+    -------
+    tuple[CliState, _ResolvedResource]
+        The CLI state plus the normalized resource.
+    """
+    resolved_state = ensure_state(ctx) if state is None else state
+    return resolved_state, resolve_resource(
+        resolved_state,
+        role=role,
+        value=value,
+        connector_type=connector_type,
+        format_value=format_value,
+        positional=positional,
+        soft_inference=soft_inference,
+        default_value=default_value,
     )

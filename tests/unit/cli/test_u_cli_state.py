@@ -314,16 +314,16 @@ class TestCliHelp:
 
 
 class TestInferResourceType:
-    """Unit tests for :func:`infer_resource_type`."""
+    """Unit tests for :meth:`ResourceTypeResolver.infer`."""
 
     def test_file_path(self, tmp_path: Path) -> None:
         """
-        Test that :func:`infer_resource_type` detects local files via extension
-        parsing.
+        Test that :meth:`ResourceTypeResolver.infer` detects local files via
+        extension parsing.
         """
         path = tmp_path / 'payload.csv'
         path.write_text('a,b\n1,2\n', encoding='utf-8')
-        assert cli_state_mod.infer_resource_type(str(path)) == 'file'
+        assert cli_state_mod.ResourceTypeResolver.infer(str(path)) == 'file'
 
     def test_invalid_raises(self) -> None:
         """
@@ -331,7 +331,7 @@ class TestInferResourceType:
         guidance.
         """
         with pytest.raises(ValueError, match='Could not infer resource type'):
-            cli_state_mod.infer_resource_type('unknown-resource')
+            cli_state_mod.ResourceTypeResolver.infer('unknown-resource')
 
     @pytest.mark.parametrize(
         ('raw', 'expected'),
@@ -347,10 +347,10 @@ class TestInferResourceType:
         expected: str,
     ) -> None:
         """
-        Test that :func:`infer_resource_type` classifies common resource
+        Test that :meth:`ResourceTypeResolver.infer` classifies common resource
         inputs.
         """
-        assert cli_state_mod.infer_resource_type(raw) == expected
+        assert cli_state_mod.ResourceTypeResolver.infer(raw) == expected
 
 
 class TestCliStateHelpers:
@@ -401,8 +401,8 @@ class TestCliStateHelpers:
             pytest.param(
                 'invalid',
                 lambda monkeypatch: monkeypatch.setattr(
-                    cli_state_mod,
-                    'infer_resource_type',
+                    cli_state_mod.ResourceTypeResolver,
+                    'infer',
                     lambda _value: (_ for _ in ()).throw(ValueError('bad')),
                 ),
                 id='invalid-resource',
@@ -419,7 +419,7 @@ class TestCliStateHelpers:
         if setup is not None:
             setup(monkeypatch)
 
-        assert cli_state_mod.infer_resource_type_soft(value) is None
+        assert cli_state_mod.ResourceTypeResolver.infer_soft(value) is None
 
     def test_log_inferred_resource_prints_verbose_messages(
         self,
@@ -478,8 +478,8 @@ class TestCliStateHelpers:
         logged: dict[str, object] = {}
         validated: list[tuple[object, object, str]] = []
         monkeypatch.setattr(
-            cli_state_mod,
-            'infer_resource_type_soft',
+            cli_state_mod.ResourceTypeResolver,
+            'infer_soft',
             lambda _value: inferred,
         )
 
@@ -493,8 +493,8 @@ class TestCliStateHelpers:
             return str(value)
 
         monkeypatch.setattr(
-            cli_state_mod,
-            'validate_choice',
+            cli_state_mod.ResourceTypeResolver,
+            'validate',
             validate_choice,
         )
         monkeypatch.setattr(
@@ -582,17 +582,17 @@ class TestCliStateHelpers:
         """Resource type resolution should honor precedence and validation rules."""
         if infer_result is not None:
             monkeypatch.setattr(
-                cli_state_mod,
-                'infer_resource_type_or_exit',
+                cli_state_mod.ResourceTypeResolver,
+                'infer_or_exit',
                 lambda _value: infer_result,
             )
 
         if expected_error is not None:
             with pytest.raises(typer.BadParameter, match=expected_error):
-                cli_state_mod.resolve_resource_type(**kwargs)
+                cli_state_mod.ResourceTypeResolver.resolve(**kwargs)
             return
 
-        assert cli_state_mod.resolve_resource_type(**kwargs) == expected
+        assert cli_state_mod.ResourceTypeResolver.resolve(**kwargs) == expected
 
     def test_resource_type_resolver_infer_soft_uses_function_seam(
         self,
@@ -600,8 +600,8 @@ class TestCliStateHelpers:
     ) -> None:
         """Test that class-based soft inference still respects wrapper patches."""
         monkeypatch.setattr(
-            cli_state_mod,
-            'infer_resource_type',
+            cli_state_mod.ResourceTypeResolver,
+            'infer',
             lambda _value: (_ for _ in ()).throw(ValueError('bad')),
         )
 
@@ -609,40 +609,25 @@ class TestCliStateHelpers:
 
 
 class TestOptionalChoice:
-    """Unit tests for :func:`optional_choice`."""
+    """Unit tests for :meth:`ResourceTypeResolver.optional_choice`."""
 
     @pytest.mark.parametrize(
-        ('resolver', 'choice', 'expected'),
+        ('choice', 'expected'),
         [
             pytest.param(
-                cli_state_mod.optional_choice,
                 None,
                 None,
-                id='function-none',
+                id='none',
             ),
             pytest.param(
-                cli_state_mod.optional_choice,
                 'json',
                 'json',
-                id='function-valid',
-            ),
-            pytest.param(
-                cli_state_mod.ResourceTypeResolver.optional_choice,
-                None,
-                None,
-                id='class-none',
-            ),
-            pytest.param(
-                cli_state_mod.ResourceTypeResolver.optional_choice,
-                'json',
-                'json',
-                id='class-valid',
+                id='valid',
             ),
         ],
     )
     def test_passthrough_and_validation(
         self,
-        resolver: Callable[..., str | None],
         choice: str | None,
         expected: str | None,
     ) -> None:
@@ -650,7 +635,7 @@ class TestOptionalChoice:
         Optional choice helpers should preserve ``None`` and normalize values.
         """
         assert (
-            resolver(
+            cli_state_mod.ResourceTypeResolver.optional_choice(
                 choice,
                 {'json', 'csv'},
                 label='format',
@@ -659,35 +644,26 @@ class TestOptionalChoice:
         )
 
     @pytest.mark.parametrize(
-        ('resolver', 'invalid'),
+        ('invalid',),
         [
             pytest.param(
-                cli_state_mod.optional_choice,
                 'yaml',
-                id='function-yaml',
+                id='yaml',
             ),
             pytest.param(
-                cli_state_mod.optional_choice,
                 'parquet',
-                id='function-parquet',
-            ),
-            pytest.param(
-                cli_state_mod.ResourceTypeResolver.optional_choice,
-                'yaml',
-                id='class-yaml',
-            ),
-            pytest.param(
-                cli_state_mod.ResourceTypeResolver.optional_choice,
-                'parquet',
-                id='class-parquet',
+                id='parquet',
             ),
         ],
     )
     def test_rejects_invalid(
         self,
-        resolver: Callable[..., str | None],
         invalid: str,
     ) -> None:
         """Invalid choices should raise :class:`typer.BadParameter`."""
         with pytest.raises(typer.BadParameter):
-            resolver(invalid, {'json'}, label='format')
+            cli_state_mod.ResourceTypeResolver.optional_choice(
+                invalid,
+                {'json'},
+                label='format',
+            )
