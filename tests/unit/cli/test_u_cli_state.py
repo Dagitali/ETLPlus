@@ -589,10 +589,10 @@ class TestCliStateHelpers:
 
         if expected_error is not None:
             with pytest.raises(typer.BadParameter, match=expected_error):
-                cli_state_mod.resolve_resource_type(**kwargs)
+                cli_state_mod.ResourceTypeResolver.resolve(**kwargs)
             return
 
-        assert cli_state_mod.resolve_resource_type(**kwargs) == expected
+        assert cli_state_mod.ResourceTypeResolver.resolve(**kwargs) == expected
 
     def test_resource_type_resolver_infer_soft_uses_function_seam(
         self,
