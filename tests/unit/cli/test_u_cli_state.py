@@ -609,40 +609,25 @@ class TestCliStateHelpers:
 
 
 class TestOptionalChoice:
-    """Unit tests for :func:`optional_choice`."""
+    """Unit tests for :meth:`ResourceTypeResolver.optional_choice`."""
 
     @pytest.mark.parametrize(
-        ('resolver', 'choice', 'expected'),
+        ('choice', 'expected'),
         [
             pytest.param(
-                cli_state_mod.optional_choice,
                 None,
                 None,
-                id='function-none',
+                id='none',
             ),
             pytest.param(
-                cli_state_mod.optional_choice,
                 'json',
                 'json',
-                id='function-valid',
-            ),
-            pytest.param(
-                cli_state_mod.ResourceTypeResolver.optional_choice,
-                None,
-                None,
-                id='class-none',
-            ),
-            pytest.param(
-                cli_state_mod.ResourceTypeResolver.optional_choice,
-                'json',
-                'json',
-                id='class-valid',
+                id='valid',
             ),
         ],
     )
     def test_passthrough_and_validation(
         self,
-        resolver: Callable[..., str | None],
         choice: str | None,
         expected: str | None,
     ) -> None:
@@ -650,7 +635,7 @@ class TestOptionalChoice:
         Optional choice helpers should preserve ``None`` and normalize values.
         """
         assert (
-            resolver(
+            cli_state_mod.ResourceTypeResolver.optional_choice(
                 choice,
                 {'json', 'csv'},
                 label='format',
@@ -659,35 +644,26 @@ class TestOptionalChoice:
         )
 
     @pytest.mark.parametrize(
-        ('resolver', 'invalid'),
+        ('invalid',),
         [
             pytest.param(
-                cli_state_mod.optional_choice,
                 'yaml',
-                id='function-yaml',
+                id='yaml',
             ),
             pytest.param(
-                cli_state_mod.optional_choice,
                 'parquet',
-                id='function-parquet',
-            ),
-            pytest.param(
-                cli_state_mod.ResourceTypeResolver.optional_choice,
-                'yaml',
-                id='class-yaml',
-            ),
-            pytest.param(
-                cli_state_mod.ResourceTypeResolver.optional_choice,
-                'parquet',
-                id='class-parquet',
+                id='parquet',
             ),
         ],
     )
     def test_rejects_invalid(
         self,
-        resolver: Callable[..., str | None],
         invalid: str,
     ) -> None:
         """Invalid choices should raise :class:`typer.BadParameter`."""
         with pytest.raises(typer.BadParameter):
-            resolver(invalid, {'json'}, label='format')
+            cli_state_mod.ResourceTypeResolver.optional_choice(
+                invalid,
+                {'json'},
+                label='format',
+            )
