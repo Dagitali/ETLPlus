@@ -478,8 +478,8 @@ class TestCliStateHelpers:
         logged: dict[str, object] = {}
         validated: list[tuple[object, object, str]] = []
         monkeypatch.setattr(
-            cli_state_mod,
-            'infer_resource_type_soft',
+            cli_state_mod.ResourceTypeResolver,
+            'infer_soft',
             lambda _value: inferred,
         )
 
@@ -582,8 +582,8 @@ class TestCliStateHelpers:
         """Resource type resolution should honor precedence and validation rules."""
         if infer_result is not None:
             monkeypatch.setattr(
-                cli_state_mod,
-                'ResourceTypeResolver.infer_or_exit',
+                cli_state_mod.ResourceTypeResolver,
+                'infer_or_exit',
                 lambda _value: infer_result,
             )
 
