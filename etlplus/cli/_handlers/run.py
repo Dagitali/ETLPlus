@@ -15,7 +15,7 @@ from typing import cast
 from ... import Config
 from ... import __version__
 from ...history import HistoryStore
-from ...history import build_run_record
+from ...history import RunRecord
 from ...history._config import HistoryConfig
 from ...history._config import ResolvedHistoryConfig
 from ...history._store import JobRunRecord
@@ -418,7 +418,7 @@ def run_handler(
     history_store = _open_history_store(history_settings)
     if history_store is not None:
         history_store.record_run_started(
-            build_run_record(
+            RunRecord.build(
                 run_id=context.run_id,
                 config_path=config,
                 started_at=context.started_at,
