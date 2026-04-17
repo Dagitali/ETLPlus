@@ -313,20 +313,20 @@ class HistoryStore(ABC):
 
     # -- Instance Methods -- #
 
-    def iter_runs(self) -> Iterator[dict[str, Any]]:
-        """Yield one normalized run record per ``run_id`` from a history backend."""
-        yield from self._iter_merged_records(
-            record_level='run',
-            key_fn=_run_record_key,
-            field_names=_RUN_RECORD_FIELDS,
-        )
-
     def iter_job_runs(self) -> Iterator[dict[str, Any]]:
         """Yield one normalized job-run record per ``(run_id, job_name)`` key."""
         yield from self._iter_merged_records(
             record_level='job',
             key_fn=_job_run_record_key,
             field_names=_JOB_RUN_RECORD_FIELDS,
+        )
+
+    def iter_runs(self) -> Iterator[dict[str, Any]]:
+        """Yield one normalized run record per ``run_id`` from a history backend."""
+        yield from self._iter_merged_records(
+            record_level='run',
+            key_fn=_run_record_key,
+            field_names=_RUN_RECORD_FIELDS,
         )
 
     # -- Static Methods -- #
