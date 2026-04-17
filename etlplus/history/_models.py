@@ -233,8 +233,7 @@ class RunRecord:
     def to_payload(self) -> dict[str, Any]:
         """Return the flat persisted representation of the run record."""
         return (
-            _field_payload(self, exclude=frozenset({'state'}))
-            | self.state.to_payload()
+            _field_payload(self, exclude=frozenset({'state'})) | self.state.to_payload()
         )
 
 
