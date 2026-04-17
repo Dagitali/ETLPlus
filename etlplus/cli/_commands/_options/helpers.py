@@ -19,13 +19,12 @@ from .._types import DataConnectorContext
 
 __all__ = [
     # Functions
-    '_typer_connector_option_kwargs',
-    '_typer_format_option_kwargs',
-    '_typer_timestamp_option_kwargs',
     'typer_connector_option_alias',
     'typer_flag_option_alias',
     'typer_flag_option_kwargs',
     'typer_format_option_alias',
+    'typer_option_alias',
+    'typer_resource_argument_alias',
     'typer_resource_argument_kwargs',
     'typer_timestamp_option_alias',
     'typer_value_option_alias',
@@ -67,21 +66,7 @@ def _typer_format_option_kwargs(
     context: DataConnectorContext,
     rich_help_panel: str = 'Format overrides',
 ) -> dict[str, object]:
-    """
-    Return common Typer option kwargs for format overrides.
-
-    Parameters
-    ----------
-    context : DataConnectorContext
-        Either ``'source'`` or ``'target'`` to tailor help text.
-    rich_help_panel : str, optional
-        The rich help panel name. Default is ``'Format overrides'``.
-
-    Returns
-    -------
-    dict[str, object]
-        The Typer option keyword arguments.
-    """
+    """Return common Typer option kwargs for format overrides."""
     return {
         'metavar': 'FORMAT',
         'show_default': False,
@@ -91,18 +76,6 @@ def _typer_format_option_kwargs(
             'non-file connector. File connectors infer from extensions.'
         ),
     }
-
-
-def _typer_option_alias(
-    value_type: Any,
-    *param_decls: object,
-    **kwargs: Any,
-) -> Any:
-    """Return one ``Annotated`` Typer option alias."""
-    return Annotated[
-        value_type,
-        typer.Option(*param_decls, **kwargs),  # type: ignore[call-overload]
-    ]
 
 
 def _typer_timestamp_option_kwargs(
@@ -119,6 +92,34 @@ def _typer_timestamp_option_kwargs(
 
 
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def typer_option_alias(
+    value_type: Any,
+    *param_decls: object,
+    **kwargs: Any,
+) -> Any:
+    """
+    Return one ``Annotated`` Typer option alias.
+
+    Parameters
+    ----------
+    value_type : Any
+        The type of the option value.
+    *param_decls : object
+        The Typer option parameter declarations, e.g. ``'--verbose'``.
+    **kwargs : Any
+        Additional keyword arguments to pass to the Typer option.
+
+    Returns
+    -------
+    Any
+        The annotated Typer option alias.
+    """
+    return Annotated[
+        value_type,
+        typer.Option(*param_decls, **kwargs),  # type: ignore[call-overload]
+    ]
 
 
 def typer_connector_option_alias(
@@ -146,7 +147,7 @@ def typer_connector_option_alias(
     Any
         The annotated Typer option alias.
     """
-    return _typer_option_alias(
+    return typer_option_alias(
         value_type,
         *param_decls,
         **_typer_connector_option_kwargs(
@@ -212,7 +213,7 @@ def typer_flag_option_alias(
     Any
         The annotated Typer option alias.
     """
-    return _typer_option_alias(
+    return typer_option_alias(
         bool,
         *param_decls,
         **typer_flag_option_kwargs(
@@ -248,7 +249,7 @@ def typer_format_option_alias(
     Any
         The annotated Typer option alias.
     """
-    return _typer_option_alias(
+    return typer_option_alias(
         value_type,
         *param_decls,
         **_typer_format_option_kwargs(
@@ -327,7 +328,7 @@ def typer_timestamp_option_alias(
     bound: Literal['since', 'until'],
 ) -> Any:
     """Return one history-bound Typer option alias."""
-    return _typer_option_alias(
+    return typer_option_alias(
         value_type,
         *param_decls,
         **_typer_timestamp_option_kwargs(bound=bound),
@@ -396,7 +397,7 @@ def typer_value_option_alias(
     Any
         The annotated Typer option alias.
     """
-    return _typer_option_alias(
+    return typer_option_alias(
         value_type,
         *param_decls,
         **typer_value_option_kwargs(

@@ -11,9 +11,9 @@ from typing import Literal
 
 import typer
 
-from .helpers import _typer_option_alias
 from .helpers import typer_flag_option_alias
 from .helpers import typer_flag_option_kwargs
+from .helpers import typer_option_alias
 from .helpers import typer_value_option_alias
 from .helpers import typer_value_option_kwargs
 
@@ -72,7 +72,7 @@ ContinueOnFailOption = typer_flag_option_alias(
     ),
 )
 
-CaptureTracebacksOption = _typer_option_alias(
+CaptureTracebacksOption = typer_option_alias(
     bool | None,
     '--capture-tracebacks/--no-capture-tracebacks',
     **typer_flag_option_kwargs(
@@ -100,7 +100,7 @@ HistoryBackendOption = typer_value_option_alias(
     show_default=None,
 )
 
-HistoryEnabledOption = _typer_option_alias(
+HistoryEnabledOption = typer_option_alias(
     bool | None,
     '--history/--no-history',
     **typer_flag_option_kwargs(
@@ -134,7 +134,7 @@ PipelineOption = typer_value_option_alias(
     show_default=None,
 )
 
-PrettyOption = _typer_option_alias(
+PrettyOption = typer_option_alias(
     bool,
     '--pretty/--no-pretty',
     **typer_flag_option_kwargs('Pretty-print JSON output (default: pretty).'),
