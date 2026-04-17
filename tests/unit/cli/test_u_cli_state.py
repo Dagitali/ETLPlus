@@ -493,8 +493,8 @@ class TestCliStateHelpers:
             return str(value)
 
         monkeypatch.setattr(
-            cli_state_mod,
-            'validate_choice',
+            cli_state_mod.ResourceTypeResolver,
+            'validate',
             validate_choice,
         )
         monkeypatch.setattr(
