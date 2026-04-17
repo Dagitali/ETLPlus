@@ -13,7 +13,6 @@ from ._store import RunCompletion
 from ._store import RunRecord
 from ._store import RunState
 from ._store import SQLiteHistoryStore
-from ._store import build_run_record
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -28,6 +27,4 @@ __all__ = [
     'SQLiteHistoryStore',
     # Constants
     'HISTORY_SCHEMA_VERSION',
-    # Functions
-    'build_run_record',
 ]
