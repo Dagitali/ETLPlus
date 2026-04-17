@@ -97,7 +97,7 @@ class TestHelperOptionKwargs:
         requested metadata.
         """
         assert (
-            cli_options._typer_flag_option_kwargs(
+            cli_options.typer_flag_option_kwargs(
                 help_text,
                 show_default=show_default,
             )
@@ -109,7 +109,7 @@ class TestHelperOptionKwargs:
         Test that :func:`_typer_flag_option_kwargs` preserves Typer
         eager-evaluation metadata.
         """
-        assert cli_options._typer_flag_option_kwargs(
+        assert cli_options.typer_flag_option_kwargs(
             'Show the version and exit.',
             is_eager=True,
         ) == {
@@ -138,7 +138,7 @@ class TestHelperOptionKwargs:
         expected_fragment: str,
     ) -> None:
         """Resource-argument helpers should preserve command semantics."""
-        kwargs = cli_options._typer_resource_argument_kwargs(
+        kwargs = cli_options.typer_resource_argument_kwargs(
             context=context,  # type: ignore[arg-type]
         )
 
@@ -218,7 +218,7 @@ class TestHelperOptionKwargs:
     ) -> None:
         """Test that scalar helpers preserve shared option metadata."""
         _assert_shared_option_metadata(
-            cli_options._typer_value_option_kwargs(
+            cli_options.typer_value_option_kwargs(
                 help_text,
                 metavar=metavar,
                 show_default=show_default,
