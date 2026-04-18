@@ -6,9 +6,12 @@ Direct unit tests for :mod:`etlplus.cli._handlers.run`.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from etlplus.cli._handlers import run as run_mod
+from etlplus.history._config import ResolvedHistoryConfig
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -240,6 +243,90 @@ class TestJobRunPersistence:
                 },
             ),
         ]
+
+
+class TestHistoryStoreSelection:
+    """Unit tests for local history-store selection helpers."""
+
+    def test_open_history_store_reuses_environment_store_when_settings_match(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Matching resolved settings should reuse the environment-backed store."""
+        settings = ResolvedHistoryConfig(
+            enabled=True,
+            backend='sqlite',
+            state_dir=tmp_path,
+            capture_tracebacks=False,
+        )
+        sentinel = object()
+
+        monkeypatch.setattr(
+            run_mod.ResolvedHistoryConfig,
+            'resolve',
+            classmethod(lambda _cls, *_args, **_kwargs: settings),
+        )
+        monkeypatch.setattr(
+            run_mod.HistoryStore,
+            'from_environment',
+            lambda: sentinel,
+        )
+        monkeypatch.setattr(
+            run_mod.HistoryStore,
+            'from_settings',
+            lambda **_kwargs: (_ for _ in ()).throw(
+                AssertionError('from_settings should not be called'),
+            ),
+        )
+
+        assert run_mod._open_history_store(settings) is sentinel
+
+    def test_open_history_store_uses_explicit_settings_when_environment_differs(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Differing settings should open the store from explicit resolved values."""
+        settings = ResolvedHistoryConfig(
+            enabled=True,
+            backend='jsonl',
+            state_dir=tmp_path / 'cli',
+            capture_tracebacks=False,
+        )
+        env_settings = ResolvedHistoryConfig(
+            enabled=True,
+            backend='sqlite',
+            state_dir=tmp_path / 'env',
+            capture_tracebacks=False,
+        )
+        captured: dict[str, object] = {}
+        sentinel = object()
+
+        monkeypatch.setattr(
+            run_mod.ResolvedHistoryConfig,
+            'resolve',
+            classmethod(lambda _cls, *_args, **_kwargs: env_settings),
+        )
+        monkeypatch.setattr(
+            run_mod.HistoryStore,
+            'from_environment',
+            lambda: (_ for _ in ()).throw(
+                AssertionError('from_environment should not be called'),
+            ),
+        )
+
+        def fake_from_settings(**kwargs: object) -> object:
+            captured.update(kwargs)
+            return sentinel
+
+        monkeypatch.setattr(run_mod.HistoryStore, 'from_settings', fake_from_settings)
+
+        assert run_mod._open_history_store(settings) is sentinel
+        assert captured == {
+            'backend': 'jsonl',
+            'state_dir': tmp_path / 'cli',
+        }
 
 
 class TestPersistedRunSummary:
