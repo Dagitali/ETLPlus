@@ -34,6 +34,22 @@ def history_store_factory_fixture() -> Callable[
     return MemoryHistoryStore
 
 
+@pytest.fixture(name='sample_completion')
+def sample_completion_fixture(
+    sample_record: store_mod.RunRecord,
+) -> store_mod.RunCompletion:
+    """Return one minimal successful run completion for store tests."""
+    return store_mod.RunCompletion(
+        run_id=sample_record.run_id,
+        state=store_mod.RunState(
+            status='succeeded',
+            finished_at='2026-03-23T00:00:05Z',
+            duration_ms=5000,
+            result_summary={'rows': 10},
+        ),
+    )
+
+
 @pytest.fixture(name='sample_job_run_record')
 def sample_job_run_record_fixture() -> store_mod.JobRunRecord:
     """Return one minimal persisted job-run record for store tests."""
