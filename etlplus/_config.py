@@ -30,6 +30,7 @@ from .connector import parse_connector
 from .file import File
 from .file import FileFormat
 from .history._config import HistoryConfig
+from .runtime import TelemetryConfig
 from .utils import coerce_dict
 from .utils import deep_substitute
 from .utils import maybe_mapping
@@ -143,6 +144,8 @@ class Config:
         Pipeline profile defaults and environment.
     history : HistoryConfig
         Optional local history defaults.
+    telemetry : TelemetryConfig
+        Optional runtime telemetry defaults.
     vars : dict[str, Any]
         Named variables available for substitution.
     apis : dict[str, ApiConfig]
@@ -171,6 +174,7 @@ class Config:
     version: str | None = None
     profile: ProfileConfig = field(default_factory=ProfileConfig)
     history: HistoryConfig = field(default_factory=HistoryConfig)
+    telemetry: TelemetryConfig = field(default_factory=TelemetryConfig)
     vars: dict[str, Any] = field(default_factory=dict)
 
     apis: dict[str, ApiConfig] = field(default_factory=dict)
@@ -263,6 +267,7 @@ class Config:
         prof_raw = maybe_mapping(raw.get('profile')) or {}
         profile = ProfileConfig.from_obj(prof_raw)
         history = HistoryConfig.from_obj(maybe_mapping(raw.get('history')))
+        telemetry = TelemetryConfig.from_obj(maybe_mapping(raw.get('telemetry')))
         vars_map: dict[str, Any] = coerce_dict(raw.get('vars'))
 
         # APIs
@@ -303,6 +308,7 @@ class Config:
             version=version,
             profile=profile,
             history=history,
+            telemetry=telemetry,
             vars=vars_map,
             apis=apis,
             databases=databases,
