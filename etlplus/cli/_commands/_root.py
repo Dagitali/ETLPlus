@@ -6,10 +6,13 @@ Root callback and global CLI flags for the Typer app.
 
 from __future__ import annotations
 
+import os
+
 import typer
 
 from ... import __version__
 from ...runtime import configure_logging
+from ...runtime import configure_telemetry
 from ._app import app
 from ._options.common import PrettyOption
 from ._options.common import QuietOption
@@ -61,6 +64,7 @@ def _root(
         verbose=state.verbose,
         force=True,
     )
+    configure_telemetry(env=os.environ, force=True)
 
     if version:
         typer.echo(f'etlplus {__version__}')

@@ -270,6 +270,28 @@ class TestConfig:
         assert cfg.history.state_dir == './.etlplus-state'
         assert cfg.history.capture_tracebacks is True
 
+    def test_from_dict_parses_telemetry_defaults(
+        self,
+    ) -> None:
+        """Test that :class:`Config` parses one optional telemetry block."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Telemetry Config Test',
+                'telemetry': {
+                    'enabled': True,
+                    'exporter': 'opentelemetry',
+                    'service_name': 'etlplus-tests',
+                },
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+            },
+        )
+
+        assert cfg.telemetry.enabled is True
+        assert cfg.telemetry.exporter == 'opentelemetry'
+        assert cfg.telemetry.service_name == 'etlplus-tests'
+
     def test_from_yaml_includes_profile_env_in_substitution(
         self,
         pipeline_builder: Callable[..., Config],

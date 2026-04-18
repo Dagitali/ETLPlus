@@ -17,6 +17,7 @@ from typing import Any
 from ...history import RunCompletion
 from ...history import RunState
 from ...runtime import RuntimeEvents
+from ...runtime import RuntimeTelemetry
 from ...utils._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
@@ -293,6 +294,10 @@ def record_run_completion(
     context: CommandContext,
     *,
     status: str,
+    pipeline_name: str | None = None,
+    job_name: str | None = None,
+    config_path: str | None = None,
+    etlplus_version: str | None = None,
     result_summary: JSONData | None = None,
     exc: Exception | None = None,
     capture_tracebacks: bool = False,
@@ -311,6 +316,14 @@ def record_run_completion(
         The command context for the completed command.
     status : str
         The final status of the run.
+    pipeline_name : str | None, optional
+        Optional pipeline name used for history-derived telemetry metrics.
+    job_name : str | None, optional
+        Optional job name used for history-derived telemetry metrics.
+    config_path : str | None, optional
+        Optional config path used for history-derived telemetry metrics.
+    etlplus_version : str | None, optional
+        Optional ETLPlus version used for history-derived telemetry metrics.
     result_summary : JSONData | None, optional
         A summary of the run's result, if available.
     exc : Exception | None, optional
@@ -324,35 +337,57 @@ def record_run_completion(
     error_type : str | None, optional
         Explicit error type for handled failures without an exception.
     """
-    history_store.record_run_finished(
-        RunCompletion(
-            run_id=context.run_id,
-            state=RunState(
-                status=status,
-                finished_at=RuntimeEvents.utc_now_iso(),
-                duration_ms=elapsed_ms(context.started_perf),
-                result_summary=result_summary,
-                error_type=(
-                    error_type
-                    if error_type is not None
-                    else None
-                    if exc is None
-                    else type(exc).__name__
-                ),
-                error_message=(
-                    error_message
-                    if error_message is not None
-                    else None
-                    if exc is None
-                    else str(exc)
-                ),
-                error_traceback=(
-                    error_traceback
-                    if error_traceback is not None
-                    else _capture_traceback(exc)
-                    if capture_tracebacks and exc is not None
-                    else None
-                ),
+    completion = RunCompletion(
+        run_id=context.run_id,
+        state=RunState(
+            status=status,
+            finished_at=RuntimeEvents.utc_now_iso(),
+            duration_ms=elapsed_ms(context.started_perf),
+            result_summary=result_summary,
+            error_type=(
+                error_type
+                if error_type is not None
+                else None
+                if exc is None
+                else type(exc).__name__
+            ),
+            error_message=(
+                error_message
+                if error_message is not None
+                else None
+                if exc is None
+                else str(exc)
+            ),
+            error_traceback=(
+                error_traceback
+                if error_traceback is not None
+                else _capture_traceback(exc)
+                if capture_tracebacks and exc is not None
+                else None
             ),
         ),
+    )
+    history_store.record_run_finished(completion)
+    RuntimeTelemetry.emit_history_record(
+        {
+            'config_path': config_path,
+            'config_sha256': None,
+            'duration_ms': completion.state.duration_ms,
+            'error_message': completion.state.error_message,
+            'error_traceback': completion.state.error_traceback,
+            'error_type': completion.state.error_type,
+            'etlplus_version': etlplus_version,
+            'finished_at': completion.state.finished_at,
+            'host': None,
+            'job_name': job_name,
+            'pid': None,
+            'pipeline_name': pipeline_name,
+            'records_in': None,
+            'records_out': None,
+            'result_summary': completion.state.result_summary,
+            'run_id': context.run_id,
+            'started_at': context.started_at,
+            'status': completion.state.status,
+        },
+        record_level='run',
     )

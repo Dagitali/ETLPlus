@@ -20,6 +20,8 @@ from ...history._config import HistoryConfig
 from ...history._config import ResolvedHistoryConfig
 from ...history._store import JobRunRecord
 from ...ops import run
+from ...runtime import RuntimeTelemetry
+from ...runtime import configure_telemetry
 from ...utils._types import JSONData
 from . import _completion
 from . import _lifecycle
@@ -196,6 +198,10 @@ def _persist_job_runs(
         )
         if job_run is not None:
             history_store.record_job_run(job_run)
+            RuntimeTelemetry.emit_history_record(
+                job_run.to_payload(),
+                record_level='job',
+            )
 
 
 def _open_history_store(
@@ -392,6 +398,11 @@ def run_handler(
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
     cfg = Config.from_yaml(config, substitute=True)
+    configure_telemetry(
+        getattr(cfg, 'telemetry', None),
+        env=os.environ,
+        force=True,
+    )
     history_settings = _resolved_history_settings(
         getattr(cfg, 'history', None),
         history_enabled=history_enabled,
@@ -436,6 +447,10 @@ def run_handler(
                 history_store,
                 context,
                 status='failed',
+                pipeline_name=cfg.name,
+                job_name=None if run_all else job_name,
+                config_path=config,
+                etlplus_version=__version__,
                 exc=exc,
                 capture_tracebacks=history_settings.capture_tracebacks,
             )
@@ -465,6 +480,10 @@ def run_handler(
             history_store,
             context,
             status='failed' if _result_failed(result) else 'succeeded',
+            pipeline_name=cfg.name,
+            job_name=None if run_all else job_name,
+            config_path=config,
+            etlplus_version=__version__,
             result_summary=_persisted_run_summary(result),
             error_message=_failure_message(result),
             error_type='RunExecutionFailed' if _result_failed(result) else None,
