@@ -223,6 +223,26 @@ class TestRuntimeTelemetry:
         """Reset process-local telemetry state between tests."""
         telemetry_mod.RuntimeTelemetry.reset()
 
+    def test_configure_telemetry_drops_adapter_when_optional_dep_missing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Missing optional dependencies should degrade to a no-op adapter."""
+        monkeypatch.delitem(sys.modules, 'opentelemetry', raising=False)
+        monkeypatch.delitem(sys.modules, 'opentelemetry.trace', raising=False)
+        monkeypatch.delitem(sys.modules, 'opentelemetry.metrics', raising=False)
+
+        with caplog.at_level('WARNING'):
+            telemetry_mod.configure_telemetry(
+                telemetry_mod.TelemetryConfig(enabled=True),
+                env={},
+                force=True,
+            )
+
+        assert telemetry_mod.RuntimeTelemetry._adapter is None
+        assert 'optional OpenTelemetry dependencies are not installed' in caplog.text
+
     def test_emit_event_is_noop_when_disabled(self) -> None:
         """Disabled telemetry should not create any runtime adapter."""
         settings = telemetry_mod.configure_telemetry(
@@ -296,22 +316,59 @@ class TestRuntimeTelemetry:
             (42, span.events[1][1]),
         ]
 
-    def test_configure_telemetry_drops_adapter_when_optional_dep_missing(
+    def test_emit_history_record_exports_metrics_from_normalized_fields(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Missing optional dependencies should degrade to a no-op adapter."""
-        monkeypatch.delitem(sys.modules, 'opentelemetry', raising=False)
-        monkeypatch.delitem(sys.modules, 'opentelemetry.trace', raising=False)
-        monkeypatch.delitem(sys.modules, 'opentelemetry.metrics', raising=False)
+        """History-derived telemetry should emit counters and histograms."""
+        _tracer, meter = _install_fake_opentelemetry(monkeypatch)
 
-        with caplog.at_level('WARNING'):
-            telemetry_mod.configure_telemetry(
-                telemetry_mod.TelemetryConfig(enabled=True),
-                env={},
-                force=True,
-            )
+        telemetry_mod.configure_telemetry(
+            telemetry_mod.TelemetryConfig(
+                enabled=True,
+                exporter='opentelemetry',
+                service_name='etlplus-tests',
+            ),
+            env={},
+            force=True,
+        )
 
-        assert telemetry_mod.RuntimeTelemetry._adapter is None
-        assert 'optional OpenTelemetry dependencies are not installed' in caplog.text
+        telemetry_mod.RuntimeTelemetry.emit_history_record(
+            {
+                'duration_ms': 125,
+                'job_name': 'publish',
+                'pipeline_name': 'customer-sync',
+                'records_in': 20,
+                'records_out': 18,
+                'result_status': 'success',
+                'run_id': 'run-123',
+                'sequence_index': 2,
+                'status': 'succeeded',
+            },
+            record_level='job',
+        )
+
+        assert meter.counters[2].calls == [
+            (
+                1,
+                {
+                    'etlplus.history.job_name': 'publish',
+                    'etlplus.history.level': 'job',
+                    'etlplus.history.pipeline_name': 'customer-sync',
+                    'etlplus.history.result_status': 'success',
+                    'etlplus.history.sequence_index': 2,
+                    'etlplus.history.status': 'succeeded',
+                    'etlplus.run_id': 'run-123',
+                    'etlplus.service_name': 'etlplus-tests',
+                },
+            ),
+        ]
+        assert meter.histograms[1].calls == [
+            (125, meter.counters[2].calls[0][1]),
+        ]
+        assert meter.histograms[2].calls == [
+            (20, meter.counters[2].calls[0][1]),
+        ]
+        assert meter.histograms[3].calls == [
+            (18, meter.counters[2].calls[0][1]),
+        ]
