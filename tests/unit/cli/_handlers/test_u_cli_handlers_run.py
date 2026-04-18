@@ -533,3 +533,49 @@ class TestRunSummaryHelpers:
         Test that persisted run summaries preserve null and non-mapping shapes.
         """
         assert run_mod._persisted_run_summary(result) == expected
+
+
+class TestTelemetryConfiguration:
+    """Unit tests for telemetry setup in the run handler."""
+
+    def test_run_handler_configures_telemetry_before_start_event(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Run handler should install config-backed telemetry before startup."""
+        configure_calls: list[object] = []
+
+        cfg = run_mod.Config.from_dict(
+            {
+                'name': 'Telemetry Pipeline',
+                'telemetry': {
+                    'enabled': True,
+                    'exporter': 'opentelemetry',
+                    'service_name': 'etlplus-run-tests',
+                },
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+            },
+        )
+
+        monkeypatch.setattr(run_mod.Config, 'from_yaml', lambda *_args, **_kwargs: cfg)
+        monkeypatch.setattr(
+            run_mod,
+            'configure_telemetry',
+            lambda config, **_kwargs: configure_calls.append(config),
+        )
+        monkeypatch.setattr(
+            run_mod._summary,
+            'pipeline_summary',
+            lambda _cfg: {'name': 'Telemetry Pipeline'},
+        )
+        monkeypatch.setattr(
+            run_mod._output,
+            'emit_json_payload',
+            lambda _payload, pretty=True: 0,
+        )
+
+        assert run_mod.run_handler(config='pipeline.yml') == 0
+        assert len(configure_calls) == 1
+        assert getattr(configure_calls[0], 'service_name', None) == 'etlplus-run-tests'
