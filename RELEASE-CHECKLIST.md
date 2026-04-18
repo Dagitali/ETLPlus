@@ -154,6 +154,22 @@ These are the active follow-up items for the `v1.x` line.
 - [ ] Expand performance-smoke and cross-platform confidence based on real `v1.x` usage.
   - Add coverage where support load or issue history shows weak spots.
   - Keep the release path proportionate rather than turning CI into a bottleneck.
+- [ ] Add opt-in OpenTelemetry adapters on top of the stable event/history contracts.
+  - Reuse `etlplus.event.v1` plus the normalized local history shapes rather than introducing a
+    second observability contract.
+  - Keep telemetry dependencies optional and the default CLI/runtime behavior unchanged.
+- [ ] Add job-level retry controls for DAG execution.
+  - Keep retries opt-in at the job level rather than introducing a global default.
+  - Persist enough retry/attempt metadata for `history`, `status`, `log`, and `report` to explain
+    what happened.
+- [ ] Add opt-in bounded concurrency for independent DAG jobs.
+  - Keep serial execution as the default stable behavior.
+  - Define deterministic ready-job ordering and failure semantics before enabling parallelism.
+- [ ] Start scheduling with portable schedule config and OS helper output.
+  - Prefer config validation plus `crontab`/`systemd` snippet emission before adding a long-running
+    local scheduler process.
+- [ ] Decide whether any local run-history UI ships in core or as an optional extra/package.
+  - Keep the existing normalized history read path as the only supported data source.
 - [x] Decide when the local run-history work becomes part of the documented stable CLI surface.
   - `history`, `log`, `status`, and `report` are now documented as stable `v1.x` CLI commands.
   - Contract coverage exists in the public-surface meta tests.
@@ -213,8 +229,9 @@ These are the active follow-up items for the `v1.x` line.
 
 ### Next Minor Release
 
-- Treat the run/job history query surface as stable and decide which additional observability
-  capabilities graduate next: traceback capture, UI affordances, and OpenTelemetry adapters.
+- Treat the run/job history query surface as stable and prioritize the next execution-hygiene slice
+  in this order: OpenTelemetry adapters, job-level retries, bounded DAG concurrency, scheduling
+  helper output, and then a UI packaging decision.
 - Review dependency-group ergonomics and installation footprint with actual user feedback.
 - Expand confidence coverage where the stable line has shown friction on platforms, large-file
   workflows, or optional backends.
