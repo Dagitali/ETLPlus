@@ -27,6 +27,7 @@ class TestJsonlHistoryStore:
     def test_appends_finished_records_as_ndjson(
         self,
         tmp_path: Path,
+        sample_completion: store_mod.RunCompletion,
     ) -> None:
         """
         Test that finished records append as one JSON object per NDJSON line.
@@ -34,17 +35,7 @@ class TestJsonlHistoryStore:
         path = tmp_path / 'history.jsonl'
         store = store_mod.JsonlHistoryStore(path)
 
-        store.record_run_finished(
-            store_mod.RunCompletion(
-                run_id='run-123',
-                state=store_mod.RunState(
-                    status='success',
-                    finished_at='2026-03-23T00:00:05Z',
-                    duration_ms=5000,
-                    result_summary={'rows': 10},
-                ),
-            ),
-        )
+        store.record_run_finished(sample_completion)
 
         lines = path.read_text(encoding='utf-8').splitlines()
 
@@ -59,7 +50,7 @@ class TestJsonlHistoryStore:
             'result_summary': {'rows': 10},
             'run_id': 'run-123',
             'schema_version': store_mod.HISTORY_SCHEMA_VERSION,
-            'status': 'success',
+            'status': 'succeeded',
         }
 
     def test_appends_job_run_records_as_ndjson(
@@ -112,23 +103,14 @@ class TestJsonlHistoryStore:
     def test_iter_runs_merges_append_events_into_one_run(
         self,
         tmp_path: Path,
+        sample_completion: store_mod.RunCompletion,
         sample_record: store_mod.RunRecord,
     ) -> None:
         """Test that run iteration merges JSONL start and finish events."""
         store = store_mod.JsonlHistoryStore(tmp_path / 'history.jsonl')
 
         store.record_run_started(sample_record)
-        store.record_run_finished(
-            store_mod.RunCompletion(
-                run_id=sample_record.run_id,
-                state=store_mod.RunState(
-                    status='succeeded',
-                    finished_at='2026-03-23T00:00:05Z',
-                    duration_ms=5000,
-                    result_summary={'rows': 10},
-                ),
-            ),
-        )
+        store.record_run_finished(sample_completion)
 
         assert list(store.iter_runs()) == [
             sample_record.to_payload()
