@@ -30,6 +30,7 @@ __all__ = [
     'TelemetryConfig',
     # Functions
     'configure_telemetry',
+    'emit_history_record',
     'resolve_telemetry_settings',
 ]
 
@@ -54,6 +55,24 @@ _LOGGER = logging.getLogger(__name__)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _build_adapter(
+    settings: ResolvedTelemetryConfig,
+) -> _OpenTelemetryAdapter | None:
+    """Return one configured telemetry adapter when optional deps are present."""
+    if not settings.enabled or settings.exporter == 'none':
+        return None
+    if settings.exporter != 'opentelemetry':
+        return None
+    try:
+        return _OpenTelemetryAdapter(settings)
+    except ImportError:
+        _LOGGER.warning(
+            'Telemetry is enabled but optional OpenTelemetry dependencies are '
+            'not installed. Install the telemetry extra to activate export.',
+        )
+        return None
 
 
 def _coerce_exporter(
@@ -125,30 +144,42 @@ def _event_attributes(
     return attrs
 
 
+def _history_attributes(
+    record: Mapping[str, Any],
+    *,
+    record_level: str,
+    service_name: str,
+) -> dict[str, str | bool | int | float]:
+    """Return one attribute mapping derived from normalized history fields."""
+    attrs: dict[str, str | bool | int | float] = {
+        'etlplus.service_name': service_name,
+        'etlplus.history.level': record_level,
+        'etlplus.run_id': str(record.get('run_id', '')),
+    }
+    for field_name in (
+        'config_path',
+        'error_type',
+        'etlplus_version',
+        'job_name',
+        'pipeline_name',
+        'result_status',
+        'status',
+    ):
+        value = record.get(field_name)
+        if isinstance(value, str) and value:
+            attrs[f'etlplus.history.{field_name}'] = value
+    sequence_index = record.get('sequence_index')
+    if isinstance(sequence_index, int):
+        attrs['etlplus.history.sequence_index'] = sequence_index
+    return attrs
+
+
 def _span_name(
     event: Mapping[str, Any],
 ) -> str:
     """Return one stable span name for a runtime command event."""
     command = event.get('command')
     return f'etlplus.{command}' if isinstance(command, str) and command else 'etlplus'
-
-
-def _build_adapter(
-    settings: ResolvedTelemetryConfig,
-) -> _OpenTelemetryAdapter | None:
-    """Return one configured telemetry adapter when optional deps are present."""
-    if not settings.enabled or settings.exporter == 'none':
-        return None
-    if settings.exporter != 'opentelemetry':
-        return None
-    try:
-        return _OpenTelemetryAdapter(settings)
-    except ImportError:
-        _LOGGER.warning(
-            'Telemetry is enabled but optional OpenTelemetry dependencies are '
-            'not installed. Install the telemetry extra to activate export.',
-        )
-        return None
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -308,6 +339,32 @@ class _OpenTelemetryAdapter:
             unit='ms',
             description='Observed ETLPlus command duration in milliseconds.',
         )
+        self._history_record_counter = meter.create_counter(
+            'etlplus.history.records',
+            unit='1',
+            description='Count of persisted ETLPlus run and job history records.',
+        )
+        self._history_duration_histogram = meter.create_histogram(
+            'etlplus.history.duration',
+            unit='ms',
+            description='Observed persisted ETLPlus run/job durations in milliseconds.',
+        )
+        self._history_records_in_histogram = meter.create_histogram(
+            'etlplus.history.records_in',
+            unit='1',
+            description=(
+                'Observed persisted input record counts for ETLPlus '
+                'history rows.'
+            ),
+        )
+        self._history_records_out_histogram = meter.create_histogram(
+            'etlplus.history.records_out',
+            unit='1',
+            description=(
+                'Observed persisted output record counts for ETLPlus '
+                'history rows.'
+            ),
+        )
 
     # -- Instance Methods -- #
 
@@ -359,6 +416,32 @@ class _OpenTelemetryAdapter:
             span.set_status(self._status(self._status_code.OK))
 
         span.end()
+
+    def emit_history_record(
+        self,
+        record: Mapping[str, Any],
+        *,
+        record_level: str,
+    ) -> None:
+        """Export one normalized persisted history record as metrics."""
+        attrs = _history_attributes(
+            record,
+            record_level=record_level,
+            service_name=self._settings.service_name,
+        )
+        self._history_record_counter.add(1, attrs)
+
+        duration_ms = record.get('duration_ms')
+        if isinstance(duration_ms, int):
+            self._history_duration_histogram.record(duration_ms, attrs)
+
+        records_in = record.get('records_in')
+        if isinstance(records_in, int):
+            self._history_records_in_histogram.record(records_in, attrs)
+
+        records_out = record.get('records_out')
+        if isinstance(records_out, int):
+            self._history_records_out_histogram.record(records_out, attrs)
 
 
 # SECTION: CLASSES ========================================================== #
@@ -422,6 +505,26 @@ class RuntimeTelemetry:
             )
 
     @classmethod
+    def emit_history_record(
+        cls,
+        record: Mapping[str, Any],
+        *,
+        record_level: str,
+    ) -> None:
+        """Export one normalized persisted history record as metrics."""
+        if cls._settings is None:
+            cls.configure(env=os.environ)
+        if cls._adapter is None:
+            return
+        try:
+            cls._adapter.emit_history_record(record, record_level=record_level)
+        except (AttributeError, RuntimeError, TypeError, ValueError):
+            _LOGGER.debug(
+                'Runtime telemetry adapter failed to export history record.',
+                exc_info=True,
+            )
+
+    @classmethod
     def reset(
         cls,
     ) -> None:
@@ -452,6 +555,16 @@ def configure_telemetry(
         service_name=service_name,
         force=force,
     )
+
+
+# TODO: Replace with direct call to RuntimeTelemetry.emit_history_record.
+def emit_history_record(
+    record: Mapping[str, Any],
+    *,
+    record_level: str,
+) -> None:
+    """Export one normalized persisted history record through the active adapter."""
+    RuntimeTelemetry.emit_history_record(record, record_level=record_level)
 
 
 # TODO: Replace with direct call to ResolvedTelemetryConfig.resolve.
