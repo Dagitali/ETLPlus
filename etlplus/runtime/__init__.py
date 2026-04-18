@@ -15,6 +15,7 @@ from ._telemetry import ResolvedTelemetryConfig
 from ._telemetry import RuntimeTelemetry
 from ._telemetry import TelemetryConfig
 from ._telemetry import configure_telemetry
+from ._telemetry import emit_history_record
 from ._telemetry import resolve_telemetry_settings
 from .readiness import ReadinessReportBuilder
 
@@ -34,6 +35,7 @@ __all__ = [
     # Functions
     'configure_logging',
     'configure_telemetry',
+    'emit_history_record',
     'resolve_log_level',
     'resolve_telemetry_settings',
 ]
