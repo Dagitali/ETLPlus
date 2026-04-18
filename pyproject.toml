@@ -85,6 +85,10 @@ storage = [
   "azure-storage-file-datalake>=12.21.0",
   "boto3>=1.40.0",
 ]
+telemetry = [
+  "opentelemetry-api>=1.38.0",
+  "opentelemetry-sdk>=1.38.0",
+]
 
 [project.scripts]
 etlplus = "etlplus.cli:main"
