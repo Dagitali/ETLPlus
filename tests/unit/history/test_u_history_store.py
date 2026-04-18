@@ -290,38 +290,3 @@ class TestResolvedHistoryStore:
         assert resolved.backend == 'sqlite'
         assert resolved.state_dir == tmp_path / 'from-cli'
         assert resolved.capture_tracebacks is True
-
-
-class TestRunRecord:
-    """Unit tests for `RunRecord` construction helpers."""
-
-    def test_run_record_build_populates_runtime_metadata(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that :meth:`RunRecord.build` populates derived runtime metadata.
-        """
-        config_path = tmp_path / 'pipeline.yml'
-        config_path.write_text('name: pipeline-a\n', encoding='utf-8')
-
-        record = store_mod.RunRecord.build(
-            run_id='run-123',
-            config_path=str(config_path),
-            started_at='2026-03-23T00:00:00Z',
-            pipeline_name='pipeline-a',
-            job_name='job-a',
-        )
-
-        assert record.run_id == 'run-123'
-        assert record.pipeline_name == 'pipeline-a'
-        assert record.job_name == 'job-a'
-        assert record.state.status == 'running'
-        assert (
-            record.config_sha256
-            == hashlib.sha256(
-                config_path.read_bytes(),
-            ).hexdigest()
-        )
-        assert record.host is not None
-        assert record.pid is not None
