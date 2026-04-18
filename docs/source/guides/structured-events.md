@@ -11,6 +11,7 @@ The stable event schema for `v1.x` is `etlplus.event.v1`.
   - [Stable Command-Context Fields](#stable-command-context-fields)
   - [Compatibility Promise](#compatibility-promise)
   - [Relationship to Run History](#relationship-to-run-history)
+  - [Optional Telemetry Bridge](#optional-telemetry-bridge)
 
 ## Stable Contract
 
@@ -103,8 +104,8 @@ event-to-history field mapping.
 
 ## Optional Telemetry Bridge
 
-ETLPlus can also forward the same structured runtime events into optional
-OpenTelemetry spans and metrics without changing the default CLI output.
+ETLPlus can also forward the same structured runtime events and persisted run/job history records
+into optional OpenTelemetry spans and metrics without changing the default CLI output.
 
 - Activation is opt-in.
 - The `telemetry` extra installs the OpenTelemetry API and SDK.
@@ -126,3 +127,18 @@ telemetry:
   exporter: opentelemetry
   service_name: etlplus
 ```
+
+Quick local validation example:
+
+```bash
+export ETLPLUS_TELEMETRY_ENABLED=true
+export ETLPLUS_TELEMETRY_EXPORTER=opentelemetry
+export ETLPLUS_TELEMETRY_SERVICE_NAME=etlplus-local
+export OTEL_TRACES_EXPORTER=console
+export OTEL_METRICS_EXPORTER=console
+etlplus run pipeline.yml
+```
+
+When local history persistence is enabled, ETLPlus emits the runtime event
+stream immediately and records additional run/job metrics after the normalized
+history rows are written.
