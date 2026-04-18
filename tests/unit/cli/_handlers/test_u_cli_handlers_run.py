@@ -142,9 +142,9 @@ class TestJobRunPersistence:
 
         class _FakeHistoryStore:
             def __init__(self) -> None:
-                self.records: list[object] = []
+                self.records: list[run_mod.JobRunRecord] = []
 
-            def record_job_run(self, record: object) -> None:
+            def record_job_run(self, record: run_mod.JobRunRecord) -> None:
                 self.records.append(record)
 
         history_store = _FakeHistoryStore()
@@ -165,44 +165,59 @@ class TestJobRunPersistence:
 
         class _FakeHistoryStore:
             def __init__(self) -> None:
-                self.records: list[object] = []
+                self.records: list[run_mod.JobRunRecord] = []
 
-            def record_job_run(self, record: object) -> None:
+            def record_job_run(self, record: run_mod.JobRunRecord) -> None:
                 self.records.append(record)
 
         history_store = _FakeHistoryStore()
+        telemetry_calls: list[dict[str, object]] = []
 
-        run_mod._persist_job_runs(
-            history_store,
-            pipeline_name='pipeline-a',
-            result={
-                'executed_jobs': [
-                    {
-                        'duration_ms': 25,
-                        'job': 'seed',
-                        'result': {'status': 'success', 'rows': 10},
-                        'result_status': 'success',
-                        'sequence_index': 0,
-                        'started_at': '2026-03-23T00:00:00Z',
-                        'finished_at': '2026-03-23T00:00:01Z',
-                        'status': 'succeeded',
-                    },
-                    {
-                        'job': 'publish',
-                        'reason': 'upstream_failed',
-                        'skipped_due_to': ['seed'],
-                        'started_at': '2026-03-23T00:00:01Z',
-                        'finished_at': '2026-03-23T00:00:01Z',
-                        'status': 'skipped',
-                    },
-                    {
-                        'job': '',
-                        'status': 'succeeded',
-                    },
-                ],
-            },
-            run_id='run-123',
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            run_mod.RuntimeTelemetry,
+            'emit_history_record',
+            classmethod(
+                lambda _cls, record, *, record_level: telemetry_calls.append(
+                    {'record': dict(record), 'record_level': record_level},
+                ),
+            ),
         )
+
+        try:
+            run_mod._persist_job_runs(
+                history_store,
+                pipeline_name='pipeline-a',
+                result={
+                    'executed_jobs': [
+                        {
+                            'duration_ms': 25,
+                            'job': 'seed',
+                            'result': {'status': 'success', 'rows': 10},
+                            'result_status': 'success',
+                            'sequence_index': 0,
+                            'started_at': '2026-03-23T00:00:00Z',
+                            'finished_at': '2026-03-23T00:00:01Z',
+                            'status': 'succeeded',
+                        },
+                        {
+                            'job': 'publish',
+                            'reason': 'upstream_failed',
+                            'skipped_due_to': ['seed'],
+                            'started_at': '2026-03-23T00:00:01Z',
+                            'finished_at': '2026-03-23T00:00:01Z',
+                            'status': 'skipped',
+                        },
+                        {
+                            'job': '',
+                            'status': 'succeeded',
+                        },
+                    ],
+                },
+                run_id='run-123',
+            )
+        finally:
+            monkeypatch.undo()
 
         assert history_store.records == [
             run_mod.JobRunRecord(
@@ -242,6 +257,16 @@ class TestJobRunPersistence:
                     'skipped_due_to': ['seed'],
                 },
             ),
+        ]
+        assert telemetry_calls == [
+            {
+                'record': history_store.records[0].to_payload(),
+                'record_level': 'job',
+            },
+            {
+                'record': history_store.records[1].to_payload(),
+                'record_level': 'job',
+            },
         ]
 
 
@@ -533,3 +558,49 @@ class TestRunSummaryHelpers:
         Test that persisted run summaries preserve null and non-mapping shapes.
         """
         assert run_mod._persisted_run_summary(result) == expected
+
+
+class TestTelemetryConfiguration:
+    """Unit tests for telemetry setup in the run handler."""
+
+    def test_run_handler_configures_telemetry_before_start_event(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Run handler should install config-backed telemetry before startup."""
+        configure_calls: list[object] = []
+
+        cfg = run_mod.Config.from_dict(
+            {
+                'name': 'Telemetry Pipeline',
+                'telemetry': {
+                    'enabled': True,
+                    'exporter': 'opentelemetry',
+                    'service_name': 'etlplus-run-tests',
+                },
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+            },
+        )
+
+        monkeypatch.setattr(run_mod.Config, 'from_yaml', lambda *_args, **_kwargs: cfg)
+        monkeypatch.setattr(
+            run_mod,
+            'configure_telemetry',
+            lambda config, **_kwargs: configure_calls.append(config),
+        )
+        monkeypatch.setattr(
+            run_mod._summary,
+            'pipeline_summary',
+            lambda _cfg: {'name': 'Telemetry Pipeline'},
+        )
+        monkeypatch.setattr(
+            run_mod._output,
+            'emit_json_payload',
+            lambda _payload, pretty=True: 0,
+        )
+
+        assert run_mod.run_handler(config='pipeline.yml') == 0
+        assert len(configure_calls) == 1
+        assert getattr(configure_calls[0], 'service_name', None) == 'etlplus-run-tests'

@@ -14,6 +14,7 @@ from uuid import UUID
 import pytest
 
 import etlplus.runtime._events as events_mod
+import etlplus.runtime._telemetry as telemetry_mod
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -33,8 +34,8 @@ EXPECTED_BASE_EVENT_FIELDS = {
 }
 
 
-@pytest.fixture
-def frozen_runtime_timestamp(
+@pytest.fixture(name='frozen_timestamp')
+def fixture_frozen_runtime_timestamp(
     monkeypatch: pytest.MonkeyPatch,
 ) -> str:
     """Freeze runtime-event timestamps at one stable ISO-8601 value."""
@@ -116,7 +117,7 @@ class TestRuntimeEvents:
     def test_build_returns_expected_event_envelope(
         self,
         kwargs: dict[str, object],
-        frozen_runtime_timestamp: str,
+        frozen_timestamp: str,
         expected_timestamp: str,
     ) -> None:
         """
@@ -134,9 +135,7 @@ class TestRuntimeEvents:
             'schema': events_mod.EVENT_SCHEMA,
             'schema_version': events_mod.EVENT_SCHEMA_VERSION,
             'timestamp': (
-                frozen_runtime_timestamp
-                if 'timestamp' not in kwargs
-                else expected_timestamp
+                frozen_timestamp if 'timestamp' not in kwargs else expected_timestamp
             ),
             **({'job': 'daily'} if 'job' in kwargs else {}),
             **(
@@ -153,6 +152,28 @@ class TestRuntimeEvents:
     def test_create_run_id_returns_uuid_text(self) -> None:
         """Test that run identifiers are emitted as UUID text."""
         UUID(events_mod.RuntimeEvents.create_run_id())
+
+    def test_emit_always_forwards_events_to_runtime_telemetry(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Runtime event emission should also feed the telemetry bridge."""
+        captured: list[dict[str, object]] = []
+
+        monkeypatch.setattr(
+            telemetry_mod.RuntimeTelemetry,
+            'emit_event',
+            classmethod(
+                lambda _cls, event: captured.append(dict(event)),
+            ),
+        )
+
+        events_mod.RuntimeEvents.emit(
+            {'event': 'run.started', 'run_id': 'run-123'},
+            event_format=None,
+        )
+
+        assert captured == [{'event': 'run.started', 'run_id': 'run-123'}]
 
     @pytest.mark.parametrize(
         ('event_format', 'expected_err'),
