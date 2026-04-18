@@ -55,6 +55,26 @@ def _command_context(
 # SECTION: TESTS ============================================================ #
 
 
+class TestCaptureTraceback:
+    """Unit tests for :func:`etlplus.cli._handlers._lifecycle._capture_traceback`."""
+
+    def test_truncates_long_traceback_strings(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Persisted failure tracebacks should be capped to the configured limit."""
+        monkeypatch.setattr(
+            lifecycle_mod,
+            'format_exception',
+            lambda *_args: ['x' * (16_000 + 250)],
+        )
+
+        text = lifecycle_mod._capture_traceback(RuntimeError('boom'))
+
+        assert len(text) == 16_000
+        assert text.endswith('\n...[truncated]\n')
+
+
 class TestCommandContext:
     """
     Unit tests for :class:`etlplus.cli._handlers._lifecycle.CommandContext`.
