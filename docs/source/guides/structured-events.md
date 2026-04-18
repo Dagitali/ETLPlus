@@ -100,3 +100,29 @@ For `run`:
 
 See the {doc}`run history guide <run-history>` for the stable normalized run/job shapes and the
 event-to-history field mapping.
+
+## Optional Telemetry Bridge
+
+ETLPlus can also forward the same structured runtime events into optional
+OpenTelemetry spans and metrics without changing the default CLI output.
+
+- Activation is opt-in.
+- The `telemetry` extra installs the OpenTelemetry API and SDK.
+- Environment activation applies to supported execution commands.
+- `etlplus run` also accepts pipeline-level defaults through a top-level
+  `telemetry` block.
+
+Current environment variables:
+
+- `ETLPLUS_TELEMETRY_ENABLED=true|false`
+- `ETLPLUS_TELEMETRY_EXPORTER=opentelemetry|none`
+- `ETLPLUS_TELEMETRY_SERVICE_NAME=<name>`
+
+Example pipeline defaults for `etlplus run`:
+
+```yaml
+telemetry:
+  enabled: true
+  exporter: opentelemetry
+  service_name: etlplus
+```
