@@ -24,6 +24,7 @@ from etlplus.runtime._telemetry import ResolvedTelemetryConfig
 from etlplus.runtime._telemetry import RuntimeTelemetry
 from etlplus.runtime._telemetry import TelemetryConfig
 from etlplus.runtime._telemetry import configure_telemetry
+from etlplus.runtime._telemetry import emit_history_record
 from etlplus.runtime._telemetry import resolve_telemetry_settings
 from etlplus.runtime.readiness import ReadinessReportBuilder
 
@@ -46,6 +47,7 @@ EXPECTED_EXPORTS = [
     ('EVENT_SCHEMA_VERSION', EVENT_SCHEMA_VERSION),
     ('configure_logging', configure_logging),
     ('configure_telemetry', configure_telemetry),
+    ('emit_history_record', emit_history_record),
     ('resolve_log_level', resolve_log_level),
     ('resolve_telemetry_settings', resolve_telemetry_settings),
 ]
