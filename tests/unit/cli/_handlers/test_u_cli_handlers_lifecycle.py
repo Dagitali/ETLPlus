@@ -480,6 +480,7 @@ class TestRecordRunCompletion:
         Test that run completions persist either success or failure metadata.
         """
         store = _FakeHistoryStore()
+        telemetry_calls: list[dict[str, object]] = []
         monkeypatch.setattr(
             lifecycle_mod.RuntimeEvents,
             'utc_now_iso',
@@ -490,11 +491,24 @@ class TestRecordRunCompletion:
             'elapsed_ms',
             lambda _started_perf: duration_ms,
         )
+        monkeypatch.setattr(
+            lifecycle_mod.RuntimeTelemetry,
+            'emit_history_record',
+            classmethod(
+                lambda _cls, record, *, record_level: telemetry_calls.append(
+                    {'record': dict(record), 'record_level': record_level},
+                ),
+            ),
+        )
 
         lifecycle_mod.record_run_completion(
             store,
             context,
             status=status,
+            pipeline_name='customer-sync',
+            job_name='daily',
+            config_path='pipeline.yml',
+            etlplus_version='1.2.3',
             result_summary=result_summary,
             exc=exc,
         )
@@ -504,6 +518,31 @@ class TestRecordRunCompletion:
                 run_id=context.run_id,
                 state=expected_state,
             ),
+        ]
+        assert telemetry_calls == [
+            {
+                'record': {
+                    'config_path': 'pipeline.yml',
+                    'config_sha256': None,
+                    'duration_ms': expected_state.duration_ms,
+                    'error_message': expected_state.error_message,
+                    'error_traceback': expected_state.error_traceback,
+                    'error_type': expected_state.error_type,
+                    'etlplus_version': '1.2.3',
+                    'finished_at': expected_state.finished_at,
+                    'host': None,
+                    'job_name': 'daily',
+                    'pid': None,
+                    'pipeline_name': 'customer-sync',
+                    'records_in': None,
+                    'records_out': None,
+                    'result_summary': expected_state.result_summary,
+                    'run_id': context.run_id,
+                    'started_at': context.started_at,
+                    'status': expected_state.status,
+                },
+                'record_level': 'run',
+            },
         ]
 
     def test_records_handled_failure_without_exception_from_explicit_fields(
@@ -519,6 +558,7 @@ class TestRecordRunCompletion:
             run_id='run-handled-1',
             started_perf=5.0,
         )
+        telemetry_calls: list[dict[str, object]] = []
         monkeypatch.setattr(
             lifecycle_mod.RuntimeEvents,
             'utc_now_iso',
@@ -529,11 +569,21 @@ class TestRecordRunCompletion:
             'elapsed_ms',
             lambda _started_perf: 999,
         )
+        monkeypatch.setattr(
+            lifecycle_mod.RuntimeTelemetry,
+            'emit_history_record',
+            classmethod(
+                lambda _cls, record, *, record_level: telemetry_calls.append(
+                    {'record': dict(record), 'record_level': record_level},
+                ),
+            ),
+        )
 
         lifecycle_mod.record_run_completion(
             store,
             context,
             status='failed',
+            pipeline_name='customer-sync',
             error_message='DAG execution failed',
             error_type='RunExecutionFailed',
             result_summary={'status': 'failed'},
@@ -552,6 +602,7 @@ class TestRecordRunCompletion:
                 ),
             ),
         ]
+        assert telemetry_calls[0]['record_level'] == 'run'
 
 
 class TestStartCommand:
