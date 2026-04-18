@@ -19,9 +19,6 @@ pytestmark = pytest.mark.unit
 # SECTION: TESTS ============================================================ #
 
 
-# class TestHistoryModels:
-#     """Unit tests for shared persisted history model payload helpers."""
-
 class TestJobRunRecord:
     """Unit tests for :class:`JobRunRecord`."""
 
