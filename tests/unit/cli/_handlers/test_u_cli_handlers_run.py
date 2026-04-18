@@ -142,9 +142,9 @@ class TestJobRunPersistence:
 
         class _FakeHistoryStore:
             def __init__(self) -> None:
-                self.records: list[object] = []
+                self.records: list[run_mod.JobRunRecord] = []
 
-            def record_job_run(self, record: object) -> None:
+            def record_job_run(self, record: run_mod.JobRunRecord) -> None:
                 self.records.append(record)
 
         history_store = _FakeHistoryStore()
@@ -165,44 +165,59 @@ class TestJobRunPersistence:
 
         class _FakeHistoryStore:
             def __init__(self) -> None:
-                self.records: list[object] = []
+                self.records: list[run_mod.JobRunRecord] = []
 
-            def record_job_run(self, record: object) -> None:
+            def record_job_run(self, record: run_mod.JobRunRecord) -> None:
                 self.records.append(record)
 
         history_store = _FakeHistoryStore()
+        telemetry_calls: list[dict[str, object]] = []
 
-        run_mod._persist_job_runs(
-            history_store,
-            pipeline_name='pipeline-a',
-            result={
-                'executed_jobs': [
-                    {
-                        'duration_ms': 25,
-                        'job': 'seed',
-                        'result': {'status': 'success', 'rows': 10},
-                        'result_status': 'success',
-                        'sequence_index': 0,
-                        'started_at': '2026-03-23T00:00:00Z',
-                        'finished_at': '2026-03-23T00:00:01Z',
-                        'status': 'succeeded',
-                    },
-                    {
-                        'job': 'publish',
-                        'reason': 'upstream_failed',
-                        'skipped_due_to': ['seed'],
-                        'started_at': '2026-03-23T00:00:01Z',
-                        'finished_at': '2026-03-23T00:00:01Z',
-                        'status': 'skipped',
-                    },
-                    {
-                        'job': '',
-                        'status': 'succeeded',
-                    },
-                ],
-            },
-            run_id='run-123',
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(
+            run_mod.RuntimeTelemetry,
+            'emit_history_record',
+            classmethod(
+                lambda _cls, record, *, record_level: telemetry_calls.append(
+                    {'record': dict(record), 'record_level': record_level},
+                ),
+            ),
         )
+
+        try:
+            run_mod._persist_job_runs(
+                history_store,
+                pipeline_name='pipeline-a',
+                result={
+                    'executed_jobs': [
+                        {
+                            'duration_ms': 25,
+                            'job': 'seed',
+                            'result': {'status': 'success', 'rows': 10},
+                            'result_status': 'success',
+                            'sequence_index': 0,
+                            'started_at': '2026-03-23T00:00:00Z',
+                            'finished_at': '2026-03-23T00:00:01Z',
+                            'status': 'succeeded',
+                        },
+                        {
+                            'job': 'publish',
+                            'reason': 'upstream_failed',
+                            'skipped_due_to': ['seed'],
+                            'started_at': '2026-03-23T00:00:01Z',
+                            'finished_at': '2026-03-23T00:00:01Z',
+                            'status': 'skipped',
+                        },
+                        {
+                            'job': '',
+                            'status': 'succeeded',
+                        },
+                    ],
+                },
+                run_id='run-123',
+            )
+        finally:
+            monkeypatch.undo()
 
         assert history_store.records == [
             run_mod.JobRunRecord(
@@ -242,6 +257,16 @@ class TestJobRunPersistence:
                     'skipped_due_to': ['seed'],
                 },
             ),
+        ]
+        assert telemetry_calls == [
+            {
+                'record': history_store.records[0].to_payload(),
+                'record_level': 'job',
+            },
+            {
+                'record': history_store.records[1].to_payload(),
+                'record_level': 'job',
+            },
         ]
 
 
