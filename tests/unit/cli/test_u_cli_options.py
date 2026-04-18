@@ -6,7 +6,10 @@ Unit tests for :mod:`etlplus.cli._commands._options.helpers`.
 
 from __future__ import annotations
 
+from typing import get_args
+
 import pytest
+import typer
 
 import etlplus.cli._commands._options as cli_option_pkg
 import etlplus.cli._commands._options.helpers as cli_options
@@ -135,6 +138,31 @@ class TestHelperOptionKwargs:
             'typer_value_option_kwargs',
         ]
 
+    def test_public_kwargs_wrappers_match_internal_implementations(self) -> None:
+        """Public kwargs helpers should forward to their internal sources."""
+        assert cli_options.typer_connector_option_kwargs(context='source') == (
+            cli_options._typer_connector_option_kwargs(context='source')
+        )
+        assert cli_options.typer_format_option_kwargs(context='target') == (
+            cli_options._typer_format_option_kwargs(context='target')
+        )
+        assert cli_options.typer_timestamp_option_kwargs(bound='since') == (
+            cli_options._typer_timestamp_option_kwargs(bound='since')
+        )
+
+    def test_resource_argument_alias_builds_typer_argument_metadata(self) -> None:
+        """Resource argument aliases should wrap one Typer argument metadata object."""
+        alias = cli_options.typer_resource_argument_alias(
+            str,
+            'SOURCE',
+            context='source',
+        )
+
+        value_type, argument_info = get_args(alias)
+        assert value_type is str
+        assert isinstance(argument_info, typer.models.ArgumentInfo)
+        assert 'Extract data from SOURCE' in str(argument_info.help)
+
     @pytest.mark.parametrize(
         ('context', 'expected_fragment'),
         [
@@ -204,6 +232,22 @@ class TestHelperOptionKwargs:
         assert kwargs['metavar'] == 'FORMAT'
         assert kwargs['show_default'] is False
         assert expected_fragment in str(kwargs['help'])
+
+    def test_value_option_alias_builds_typer_option_metadata(self) -> None:
+        """Scalar option aliases should carry the requested metadata."""
+        alias = cli_options.typer_value_option_alias(
+            str,
+            '--job',
+            help_text='Name of the job to run',
+            metavar='JOB',
+            show_default=None,
+        )
+
+        value_type, option_info = get_args(alias)
+        assert value_type is str
+        assert isinstance(option_info, typer.models.OptionInfo)
+        assert option_info.help == 'Name of the job to run'
+        assert option_info.metavar == 'JOB'
 
     @pytest.mark.parametrize(
         ('help_text', 'metavar', 'show_default'),

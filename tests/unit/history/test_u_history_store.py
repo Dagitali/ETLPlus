@@ -10,12 +10,17 @@ import hashlib
 from collections.abc import Callable
 from collections.abc import Mapping
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
+from typing import cast
 
 import pytest
 
 import etlplus.history._config as history_config_mod
 import etlplus.history._store as store_mod
+
+from .pytest_history_store_support import MemoryHistoryStore
+from .pytest_history_store_support import normalized_job_run_payload
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -24,8 +29,48 @@ import etlplus.history._store as store_mod
 # SECTION: TESTS ============================================================ #
 
 
+class TestHistoryStoreMergeHelpers:
+    """Unit tests for internal record-merge behavior."""
+
+    def test_iter_job_runs_skips_records_without_merge_keys(
+        self,
+        history_store_factory: Callable[[list[dict[str, object]]], MemoryHistoryStore],
+    ) -> None:
+        """Job-run merging should ignore rows missing ``run_id`` or ``job_name``."""
+        store = history_store_factory(
+            [
+                normalized_job_run_payload(
+                    record_level='job',
+                    run_id='run-123',
+                    job_name='job-a',
+                    status='succeeded',
+                ),
+                normalized_job_run_payload(
+                    record_level='job',
+                    run_id=None,
+                    job_name='job-b',
+                    status='failed',
+                ),
+                normalized_job_run_payload(
+                    record_level='job',
+                    run_id='run-999',
+                    job_name=None,
+                    status='failed',
+                ),
+            ],
+        )
+
+        assert list(store.iter_job_runs()) == [
+            normalized_job_run_payload(
+                run_id='run-123',
+                job_name='job-a',
+                status='succeeded',
+            ),
+        ]
+
+
 class TestHistoryStoreModuleHelpers:
-    """Unit tests for module-level history-store helper functions."""
+    """Unit tests for :mod:`etlplus.history._store` helper functions."""
 
     def test_run_record_build_delegates_to_classmethod_implementation(
         self,
@@ -198,6 +243,26 @@ class TestHistoryStoreModuleHelpers:
 
 class TestResolvedHistoryStore:
     """Unit tests for resolved history configuration helpers."""
+
+    def test_from_settings_rejects_invalid_backend(self) -> None:
+        """Explicit store settings should fail fast for unsupported backends."""
+        with pytest.raises(ValueError, match='sqlite, jsonl'):
+            store_mod.HistoryStore.from_settings(backend='csv')
+
+    def test_from_resolved_settings_rejects_unknown_backend(self) -> None:
+        """Resolved settings should still fail fast for unsupported backends."""
+        settings = cast(
+            history_config_mod.ResolvedHistoryConfig,
+            SimpleNamespace(
+                enabled=True,
+                backend='csv',
+                state_dir=Path('/tmp/etlplus-state'),
+                capture_tracebacks=False,
+            ),
+        )
+
+        with pytest.raises(ValueError, match='sqlite, jsonl'):
+            store_mod.HistoryStore._from_resolved_settings(settings)
 
     def test_resolve_applies_precedence(
         self,
