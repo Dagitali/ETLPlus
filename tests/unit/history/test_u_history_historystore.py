@@ -36,12 +36,9 @@ class TestHistoryStore:
         self,
         sample_job_run_record: store_mod.JobRunRecord,
         sample_record: store_mod.RunRecord,
+        sample_completion: store_mod.RunCompletion,
     ) -> None:
         """Test that abstract base-method bodies raise `NotImplementedError`."""
-        completion = store_mod.RunCompletion(
-            run_id=sample_record.run_id,
-            state=sample_record.state,
-        )
         history_store = cast(store_mod.HistoryStore, object())
 
         with pytest.raises(NotImplementedError):
@@ -49,7 +46,10 @@ class TestHistoryStore:
         with pytest.raises(NotImplementedError):
             store_mod.HistoryStore.record_run_started(history_store, sample_record)
         with pytest.raises(NotImplementedError):
-            store_mod.HistoryStore.record_run_finished(history_store, completion)
+            store_mod.HistoryStore.record_run_finished(
+                history_store,
+                sample_completion,
+            )
         with pytest.raises(NotImplementedError):
             store_mod.HistoryStore.record_job_run(history_store, sample_job_run_record)
 
@@ -64,6 +64,7 @@ class TestHistoryStore:
         self,
         tmp_path: Path,
         sample_job_run_record: store_mod.JobRunRecord,
+        sample_completion: store_mod.RunCompletion,
         sample_record: store_mod.RunRecord,
         backend: str,
         path_name: str,
@@ -78,15 +79,6 @@ class TestHistoryStore:
             if backend == 'jsonl'
             else store_mod.SQLiteHistoryStore(path)
         )
-        completion = store_mod.RunCompletion(
-            run_id=sample_record.run_id,
-            state=store_mod.RunState(
-                status='succeeded',
-                finished_at='2026-03-23T00:00:05Z',
-                duration_ms=5000,
-                result_summary={'rows': 10},
-            ),
-        )
         expected_run = sample_record.to_payload() | {
             'duration_ms': 5000,
             'finished_at': '2026-03-23T00:00:05Z',
@@ -96,7 +88,7 @@ class TestHistoryStore:
         expected_job_run = sample_job_run_record.to_payload()
 
         store.record_run_started(sample_record)
-        store.record_run_finished(completion)
+        store.record_run_finished(sample_completion)
         store.record_job_run(sample_job_run_record)
 
         assert list(store.iter_runs()) == [expected_run]
