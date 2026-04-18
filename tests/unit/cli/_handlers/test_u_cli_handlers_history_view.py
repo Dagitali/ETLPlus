@@ -1,138 +1,29 @@
 """
-:mod:`tests.unit.cli._handlers.test_u_cli_handlers_history` module.
+:mod:`tests.unit.cli._handlers.test_u_cli_handlers_history_view` module.
 
-Direct unit tests for :mod:`etlplus.cli._handlers.history`.
+Direct unit tests for history view and status entry points in
+:mod:`etlplus.cli._handlers.history`.
 """
 
 from __future__ import annotations
 
 from typing import Any
-from typing import Literal
 
 import pytest
 
-from etlplus.cli._handlers import _history_report as history_report_mod
 from etlplus.cli._handlers import _history_view as history_view_mod
 from etlplus.cli._handlers import history as history_mod
 
 from ..conftest import CaptureIo
 from ..conftest import assert_emit_json
+from .pytest_cli_history_support import assert_emit_markdown_table
+from .pytest_cli_history_support import normalized_job
+from .pytest_cli_history_support import normalized_run
+from .pytest_cli_history_support import patch_history_store_records
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-
-# SECTION: HELPERS ========================================================== #
-
-
-def _assert_emit_markdown_table(
-    calls: CaptureIo,
-    rows: list[dict[str, object]],
-    *,
-    columns: tuple[str, ...],
-) -> None:
-    """Assert that :func:`emit_markdown_table` was called once as expected."""
-    assert calls['emit_json'] == []
-    assert calls['emit_markdown_table'] == [((rows,), {'columns': columns})]
-
-
-def _normalized_run(**overrides: object) -> dict[str, object]:
-    """Build one normalized run payload with stable default ``None`` fields."""
-    return {
-        'config_path': None,
-        'config_sha256': None,
-        'duration_ms': None,
-        'error_message': None,
-        'error_traceback': None,
-        'error_type': None,
-        'etlplus_version': None,
-        'finished_at': None,
-        'host': None,
-        'job_name': None,
-        'pid': None,
-        'pipeline_name': None,
-        'records_in': None,
-        'records_out': None,
-        'result_summary': None,
-        'run_id': None,
-        'started_at': None,
-        'status': None,
-    } | overrides
-
-
-def _normalized_job(**overrides: object) -> dict[str, object]:
-    """Build one normalized job payload with stable default ``None`` fields."""
-    return {
-        'duration_ms': None,
-        'error_message': None,
-        'error_type': None,
-        'finished_at': None,
-        'job_name': None,
-        'pipeline_name': None,
-        'records_in': None,
-        'records_out': None,
-        'result_status': None,
-        'result_summary': None,
-        'run_id': None,
-        'sequence_index': None,
-        'skipped_due_to': None,
-        'started_at': None,
-        'status': None,
-    } | overrides
-
-
-def _patch_history_store_records(
-    monkeypatch: pytest.MonkeyPatch,
-    records: list[dict[str, object]],
-) -> None:
-    """Patch :class:`HistoryStore` to yield one fixed record sequence."""
-
-    class _FakeHistoryStore(history_view_mod.HistoryStore):
-        def iter_records(self) -> Any:
-            return iter(records)
-
-        def record_run_started(self, record: object) -> None:
-            _ = record
-
-        def record_run_finished(self, completion: object) -> None:
-            _ = completion
-
-        def record_job_run(self, record: object) -> None:
-            _ = record
-
-    monkeypatch.setattr(
-        history_view_mod.HistoryStore,
-        'from_environment',
-        _FakeHistoryStore,
-    )
-
-
-def _report_row(**overrides: object) -> dict[str, object]:
-    """Build one aggregated history report row with zero/``None`` defaults."""
-    return {
-        'avg_duration_ms': None,
-        'failed': 0,
-        'group': None,
-        'last_started_at': None,
-        'max_duration_ms': None,
-        'min_duration_ms': None,
-        'other': 0,
-        'running': 0,
-        'runs': 0,
-        'success_rate_pct': None,
-        'succeeded': 0,
-    } | overrides
-
-
-def _report_summary(**overrides: object) -> dict[str, object]:
-    """Build one aggregated history report summary payload."""
-    return {
-        key: value
-        for key, value in _report_row(**overrides).items()
-        if key not in {'group', 'last_started_at'}
-    }
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -163,7 +54,7 @@ class TestHistoryHandler:
                 {},
                 True,
                 [
-                    _normalized_run(
+                    normalized_run(
                         config_path='pipeline.yml',
                         duration_ms=5000,
                         finished_at='2026-03-23T00:00:05Z',
@@ -213,7 +104,7 @@ class TestHistoryHandler:
                 {'json_output': True},
                 False,
                 [
-                    _normalized_run(
+                    normalized_run(
                         finished_at='2026-03-23T00:00:05Z',
                         job_name='job-a',
                         run_id='run-2',
@@ -237,7 +128,7 @@ class TestHistoryHandler:
         """
         Test that history emits JSON for default, raw, and explicit JSON modes.
         """
-        _patch_history_store_records(monkeypatch, records)
+        patch_history_store_records(monkeypatch, records)
 
         assert history_mod.history_handler(pretty=pretty, **kwargs) == 0
         assert_emit_json(capture_io, expected, pretty=pretty)
@@ -250,7 +141,7 @@ class TestHistoryHandler:
         """
         Test that job-level history uses per-job records and table columns.
         """
-        _patch_history_store_records(
+        patch_history_store_records(
             monkeypatch,
             [
                 {
@@ -288,7 +179,7 @@ class TestHistoryHandler:
             == 0
         )
 
-        _assert_emit_markdown_table(
+        assert_emit_markdown_table(
             capture_io,
             [
                 {
@@ -318,7 +209,7 @@ class TestHistoryHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Test that history filters normalized runs before table rendering."""
-        _patch_history_store_records(
+        patch_history_store_records(
             monkeypatch,
             [
                 {
@@ -353,10 +244,10 @@ class TestHistoryHandler:
             == 0
         )
 
-        _assert_emit_markdown_table(
+        assert_emit_markdown_table(
             capture_io,
             [
-                _normalized_run(
+                normalized_run(
                     finished_at='2026-03-22T00:00:10Z',
                     job_name='job-a',
                     run_id='run-1',
@@ -375,7 +266,7 @@ class TestHistoryHandler:
         """
         Test that raw history mode can target job-level records explicitly.
         """
-        _patch_history_store_records(
+        patch_history_store_records(
             monkeypatch,
             [
                 {
@@ -446,7 +337,7 @@ class TestHistoryHandler:
         """
         Test that raw history mode filters by run identifier and timestamp.
         """
-        _patch_history_store_records(
+        patch_history_store_records(
             monkeypatch,
             [
                 {
@@ -609,7 +500,7 @@ class TestHistoryHandler:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that history rejects conflicting JSON and table output flags."""
-        _patch_history_store_records(monkeypatch, [])
+        patch_history_store_records(monkeypatch, [])
 
         with pytest.raises(ValueError, match='choose either json output'):
             history_mod.history_handler(json_output=True, table=True)
@@ -667,339 +558,6 @@ class TestHistoryHelperFunctions:
         assert recorded['limit'] == 3
 
 
-class TestReportHandler:
-    """Unit tests for :func:`report_handler`."""
-
-    @pytest.mark.parametrize(
-        ('records', 'group_by', 'kwargs', 'expected'),
-        [
-            pytest.param(
-                [
-                    {
-                        'duration_ms': 3000,
-                        'finished_at': '2026-03-23T00:00:05Z',
-                        'job_name': 'job-a',
-                        'run_id': 'run-1',
-                        'started_at': '2026-03-23T00:00:00Z',
-                        'status': 'succeeded',
-                    },
-                    {
-                        'duration_ms': 1000,
-                        'finished_at': '2026-03-24T00:00:05Z',
-                        'job_name': 'job-a',
-                        'run_id': 'run-2',
-                        'started_at': '2026-03-24T00:00:00Z',
-                        'status': 'failed',
-                    },
-                ],
-                'job',
-                {
-                    'job': 'job-a',
-                    'since': '2026-03-23T00:00:00Z',
-                    'until': '2026-03-24T23:59:59Z',
-                },
-                {
-                    'group_by': 'job',
-                    'rows': [
-                        _report_row(
-                            avg_duration_ms=2000,
-                            failed=1,
-                            group='job-a',
-                            last_started_at='2026-03-24T00:00:00Z',
-                            max_duration_ms=3000,
-                            min_duration_ms=1000,
-                            runs=2,
-                            success_rate_pct=50.0,
-                            succeeded=1,
-                        ),
-                    ],
-                    'summary': _report_summary(
-                        avg_duration_ms=2000,
-                        failed=1,
-                        max_duration_ms=3000,
-                        min_duration_ms=1000,
-                        runs=2,
-                        success_rate_pct=50.0,
-                        succeeded=1,
-                    ),
-                },
-                id='group-by-job',
-            ),
-            pytest.param(
-                [
-                    {
-                        'duration_ms': 3000,
-                        'finished_at': '2026-03-23T00:00:05Z',
-                        'job_name': 'job-a',
-                        'run_id': 'run-1',
-                        'started_at': '2026-03-23T00:00:00Z',
-                        'status': 'succeeded',
-                    },
-                    {
-                        'duration_ms': 1000,
-                        'finished_at': '2026-03-23T01:00:05Z',
-                        'job_name': 'job-b',
-                        'run_id': 'run-2',
-                        'started_at': '2026-03-23T01:00:00Z',
-                        'status': 'failed',
-                    },
-                ],
-                'day',
-                {},
-                {
-                    'group_by': 'day',
-                    'rows': [
-                        _report_row(
-                            avg_duration_ms=2000,
-                            failed=1,
-                            group='2026-03-23',
-                            last_started_at='2026-03-23T01:00:00Z',
-                            max_duration_ms=3000,
-                            min_duration_ms=1000,
-                            runs=2,
-                            success_rate_pct=50.0,
-                            succeeded=1,
-                        ),
-                    ],
-                    'summary': _report_summary(
-                        avg_duration_ms=2000,
-                        failed=1,
-                        max_duration_ms=3000,
-                        min_duration_ms=1000,
-                        runs=2,
-                        success_rate_pct=50.0,
-                        succeeded=1,
-                    ),
-                },
-                id='group-by-day',
-            ),
-        ],
-    )
-    def test_emits_grouped_report_as_json(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-        records: list[dict[str, object]],
-        group_by: Literal['day', 'job', 'pipeline', 'run', 'status'],
-        kwargs: dict[str, Any],
-        expected: dict[str, object],
-    ) -> None:
-        """Test that report aggregates normalized runs into JSON output."""
-        _patch_history_store_records(monkeypatch, records)
-
-        assert (
-            history_mod.report_handler(group_by=group_by, pretty=False, **kwargs) == 0
-        )
-        assert_emit_json(capture_io, expected, pretty=False)
-
-    def test_emits_grouped_report_as_markdown_table(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """Test that report renders grouped rows as a Markdown table."""
-        _patch_history_store_records(
-            monkeypatch,
-            [
-                {
-                    'duration_ms': 3000,
-                    'finished_at': '2026-03-23T00:00:05Z',
-                    'job_name': 'job-a',
-                    'run_id': 'run-1',
-                    'started_at': '2026-03-23T00:00:00Z',
-                    'status': 'succeeded',
-                },
-            ],
-        )
-
-        assert history_mod.report_handler(group_by='status', table=True) == 0
-
-        _assert_emit_markdown_table(
-            capture_io,
-            [
-                _report_row(
-                    avg_duration_ms=3000,
-                    group='succeeded',
-                    last_started_at='2026-03-23T00:00:00Z',
-                    max_duration_ms=3000,
-                    min_duration_ms=3000,
-                    runs=1,
-                    success_rate_pct=100.0,
-                    succeeded=1,
-                ),
-            ],
-            columns=history_report_mod.REPORT_TABLE_COLUMNS,
-        )
-
-    def test_emits_pipeline_grouped_report_for_job_level_records(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """Test that job-level reports support grouping by pipeline name."""
-        _patch_history_store_records(
-            monkeypatch,
-            [
-                {
-                    'duration_ms': 3000,
-                    'finished_at': '2026-03-23T00:00:05Z',
-                    'job_name': 'job-a',
-                    'pipeline_name': 'pipeline-a',
-                    'record_level': 'job',
-                    'run_id': 'run-1',
-                    'started_at': '2026-03-23T00:00:00Z',
-                    'status': 'succeeded',
-                },
-                {
-                    'duration_ms': 1000,
-                    'finished_at': '2026-03-23T01:00:05Z',
-                    'job_name': 'job-b',
-                    'pipeline_name': 'pipeline-a',
-                    'record_level': 'job',
-                    'run_id': 'run-1',
-                    'started_at': '2026-03-23T01:00:00Z',
-                    'status': 'failed',
-                },
-            ],
-        )
-
-        assert (
-            history_mod.report_handler(
-                group_by='pipeline',
-                level='job',
-                pretty=False,
-            )
-            == 0
-        )
-
-        assert_emit_json(
-            capture_io,
-            {
-                'group_by': 'pipeline',
-                'rows': [
-                    _report_row(
-                        avg_duration_ms=2000,
-                        failed=1,
-                        group='pipeline-a',
-                        last_started_at='2026-03-23T01:00:00Z',
-                        max_duration_ms=3000,
-                        min_duration_ms=1000,
-                        runs=2,
-                        success_rate_pct=50.0,
-                        succeeded=1,
-                    ),
-                ],
-                'summary': _report_summary(
-                    avg_duration_ms=2000,
-                    failed=1,
-                    max_duration_ms=3000,
-                    min_duration_ms=1000,
-                    runs=2,
-                    success_rate_pct=50.0,
-                    succeeded=1,
-                ),
-            },
-            pretty=False,
-        )
-
-    def test_uses_history_view_and_report_builder_directly(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """Test that report delegates through the direct class-based helpers."""
-        recorded: dict[str, object] = {}
-
-        def fake_validate_output_mode(*, json_output: bool, table: bool) -> None:
-            recorded['validate'] = (json_output, table)
-
-        def fake_load_records(
-            cls: type[history_mod.HistoryView],
-            **kwargs: object,
-        ) -> list[dict[str, object]]:
-            recorded['load'] = kwargs
-            return [
-                {
-                    'duration_ms': 1000,
-                    'job_name': 'job-a',
-                    'run_id': 'run-1',
-                    'started_at': '2026-03-23T00:00:00Z',
-                    'status': 'succeeded',
-                },
-            ]
-
-        def fake_build(
-            cls: type[history_mod.HistoryReportBuilder],
-            records: list[dict[str, object]],
-            *,
-            group_by: str,
-        ) -> dict[str, object]:
-            recorded['build'] = (records, group_by)
-            return {
-                'group_by': group_by,
-                'rows': [{'group': 'job-a', 'runs': 1}],
-                'summary': {'runs': 1},
-            }
-
-        monkeypatch.setattr(
-            history_mod.HistoryView,
-            'validate_output_mode',
-            staticmethod(fake_validate_output_mode),
-        )
-        monkeypatch.setattr(
-            history_mod.HistoryView,
-            'load_records',
-            classmethod(fake_load_records),
-        )
-        monkeypatch.setattr(
-            history_mod.HistoryReportBuilder,
-            'build',
-            classmethod(fake_build),
-        )
-
-        assert (
-            history_mod.report_handler(
-                group_by='job',
-                job='job-a',
-                json_output=True,
-                pretty=False,
-                since='2026-03-23T00:00:00Z',
-                until='2026-03-24T00:00:00Z',
-            )
-            == 0
-        )
-
-        assert recorded['validate'] == (True, False)
-        assert recorded['load'] == {
-            'job': 'job-a',
-            'level': 'run',
-            'raw': False,
-            'since': '2026-03-23T00:00:00Z',
-            'until': '2026-03-24T00:00:00Z',
-        }
-        assert recorded['build'] == (
-            [
-                {
-                    'duration_ms': 1000,
-                    'job_name': 'job-a',
-                    'run_id': 'run-1',
-                    'started_at': '2026-03-23T00:00:00Z',
-                    'status': 'succeeded',
-                },
-            ],
-            'job',
-        )
-        assert_emit_json(
-            capture_io,
-            {
-                'group_by': 'job',
-                'rows': [{'group': 'job-a', 'runs': 1}],
-                'summary': {'runs': 1},
-            },
-            pretty=False,
-        )
-
-
 class TestStatusHandler:
     """Unit tests for :func:`status_handler`."""
 
@@ -1012,7 +570,7 @@ class TestStatusHandler:
         Test that job-level status emits the full normalized DAG job record
         shape.
         """
-        _patch_history_store_records(
+        patch_history_store_records(
             monkeypatch,
             [
                 {
@@ -1035,7 +593,7 @@ class TestStatusHandler:
         )
         assert_emit_json(
             capture_io,
-            _normalized_job(
+            normalized_job(
                 duration_ms=1000,
                 finished_at='2026-03-23T00:00:01Z',
                 job_name='seed',
@@ -1072,7 +630,7 @@ class TestStatusHandler:
                 {'job': 'job-a'},
                 True,
                 0,
-                _normalized_run(
+                normalized_run(
                     finished_at='2026-03-23T00:00:05Z',
                     job_name='job-a',
                     run_id='run-2',
@@ -1102,7 +660,7 @@ class TestStatusHandler:
         expected_payload: dict[str, object],
     ) -> None:
         """Test that status emits the latest match or an empty miss payload."""
-        _patch_history_store_records(monkeypatch, records)
+        patch_history_store_records(monkeypatch, records)
 
         assert history_mod.status_handler(pretty=pretty, **kwargs) == expected_exit
         assert_emit_json(capture_io, expected_payload, pretty=pretty)

@@ -82,6 +82,7 @@ class TestSQLiteHistoryStore:
     def test_updates_finished_record(
         self,
         tmp_path: Path,
+        sample_completion: store_mod.RunCompletion,
         sample_record: store_mod.RunRecord,
     ) -> None:
         """
@@ -89,18 +90,9 @@ class TestSQLiteHistoryStore:
         state.
         """
         store = store_mod.SQLiteHistoryStore(tmp_path / 'history.sqlite')
-        completion = store_mod.RunCompletion(
-            run_id=sample_record.run_id,
-            state=store_mod.RunState(
-                status='succeeded',
-                finished_at='2026-03-23T00:00:05Z',
-                duration_ms=5000,
-                result_summary={'rows': 10},
-            ),
-        )
 
         store.record_run_started(sample_record)
-        store.record_run_finished(completion)
+        store.record_run_finished(sample_completion)
 
         assert list(store.iter_records()) == [
             sqlite_run_row(
