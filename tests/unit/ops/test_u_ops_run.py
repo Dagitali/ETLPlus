@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import importlib
 from pathlib import Path
+from threading import Lock
+from time import sleep
 from types import SimpleNamespace
 from typing import Any
 from typing import ClassVar
@@ -49,11 +51,13 @@ def _make_job(
     target: str,
     depends_on: list[str] | None = None,
     options: dict[str, Any] | None = None,
+    retry: Any | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
         depends_on=[] if depends_on is None else list(depends_on),
         name=name,
         extract=SimpleNamespace(source=source, options=options or {}),
+        retry=retry,
         transform=SimpleNamespace(pipeline='noop'),
         load=SimpleNamespace(target=target, overrides=None),
         validate=None,
@@ -751,6 +755,226 @@ class TestRun:
         assert skipped_job['status'] == 'skipped'
         assert isinstance(skipped_job['started_at'], str)
         assert isinstance(skipped_job['finished_at'], str)
+
+    def test_run_all_executes_independent_jobs_with_bounded_concurrency(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Independent jobs should overlap when bounded concurrency is enabled."""
+        jobs = [
+            _make_job(name='seed_a', source='src_a', target='tgt_a'),
+            _make_job(name='seed_b', source='src_b', target='tgt_b'),
+            _make_job(
+                name='publish',
+                source='src_publish',
+                target='tgt_publish',
+                depends_on=['seed_a', 'seed_b'],
+            ),
+        ]
+        active = 0
+        max_active = 0
+        lock = Lock()
+
+        def _run_job_config(_context: Any, job_obj: Any) -> dict[str, Any]:
+            nonlocal active, max_active
+            with lock:
+                active += 1
+                max_active = max(max_active, active)
+            try:
+                if cast(str, job_obj.name) in {'seed_a', 'seed_b'}:
+                    sleep(0.05)
+                return {'status': 'success', 'job': cast(str, job_obj.name)}
+            finally:
+                with lock:
+                    active -= 1
+
+        monkeypatch.setattr(run_mod, '_run_job_config', _run_job_config)
+
+        result = run_mod._run_job_plan(
+            cast(Any, SimpleNamespace()),
+            jobs,
+            requested_job=None,
+            continue_on_fail=False,
+            mode='all',
+            max_concurrency=2,
+        )
+
+        assert result['status'] == 'success'
+        assert result['max_concurrency'] == 2
+        assert max_active == 2
+        assert [item['job'] for item in result['executed_jobs']] == [
+            'seed_a',
+            'seed_b',
+            'publish',
+        ]
+
+    def test_run_all_parallel_fail_fast_stops_scheduling_new_jobs(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Fail-fast parallel runs should not schedule new jobs after a failure."""
+        jobs = [
+            _make_job(name='seed_a', source='src_a', target='tgt_a'),
+            _make_job(name='seed_b', source='src_b', target='tgt_b'),
+            _make_job(name='notify', source='src_notify', target='tgt_notify'),
+        ]
+        call_order: list[str] = []
+
+        def _run_job_config(_context: Any, job_obj: Any) -> dict[str, Any]:
+            name = cast(str, job_obj.name)
+            call_order.append(name)
+            if name == 'seed_a':
+                raise ValueError('seed_a boom')
+            sleep(0.05)
+            return {'status': 'success', 'job': name}
+
+        monkeypatch.setattr(run_mod, '_run_job_config', _run_job_config)
+
+        result = run_mod._run_job_plan(
+            cast(Any, SimpleNamespace()),
+            jobs,
+            requested_job=None,
+            continue_on_fail=False,
+            mode='all',
+            max_concurrency=2,
+        )
+
+        assert result['status'] == 'failed'
+        assert result['failed_jobs'] == ['seed_a']
+        assert result['succeeded_jobs'] == ['seed_b']
+        assert 'notify' not in call_order
+        assert [item['job'] for item in result['executed_jobs']] == ['seed_a', 'seed_b']
+
+    def test_run_all_records_terminal_failure_after_retry_exhaustion(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Configured retries should stop after the final failed attempt."""
+        jobs = [
+            _make_job(
+                name='seed',
+                source='src',
+                target='tgt',
+                retry=SimpleNamespace(max_attempts=2, backoff_seconds=0.0),
+            ),
+            _make_job(name='publish', source='src', target='tgt'),
+        ]
+        call_order: list[str] = []
+
+        def _run_job_config(_context: Any, job_obj: Any) -> dict[str, Any]:
+            name = cast(str, job_obj.name)
+            call_order.append(name)
+            raise ValueError(f'{name} boom')
+
+        monkeypatch.setattr(run_mod, '_run_job_config', _run_job_config)
+        monkeypatch.setattr(run_mod, 'sleep', lambda _seconds: None)
+
+        result = run_mod._run_job_plan(
+            cast(Any, SimpleNamespace()),
+            jobs,
+            requested_job=None,
+            continue_on_fail=False,
+            mode='all',
+        )
+
+        assert call_order == ['seed', 'seed']
+        assert result['status'] == 'failed'
+        assert result['failed_jobs'] == ['seed']
+        assert result['retried_job_count'] == 1
+        assert result['total_retry_count'] == 1
+        failed_job = result['executed_jobs'][0]
+        assert failed_job['status'] == 'failed'
+        assert failed_job['retry']['attempt_count'] == 2
+        assert failed_job['retry']['attempts'][0]['will_retry'] is True
+        assert failed_job['retry']['attempts'][1]['will_retry'] is False
+
+    def test_run_all_retries_failed_job_until_success(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Configured job retries should rerun a failing DAG job before success."""
+        seed_job = _make_job(
+            name='seed',
+            source='seed_src',
+            target='seed_tgt',
+            retry=SimpleNamespace(max_attempts=3, backoff_seconds=0.0),
+        )
+        publish_job = _make_job(
+            name='publish',
+            source='publish_src',
+            target='publish_tgt',
+            depends_on=['seed'],
+        )
+        cfg = SimpleNamespace(
+            jobs=[publish_job, seed_job],
+            sources=[
+                SimpleNamespace(
+                    name='seed_src',
+                    type='file',
+                    path='/tmp/seed.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='publish_src',
+                    type='file',
+                    path='/tmp/publish.json',
+                    format='json',
+                ),
+            ],
+            targets=[
+                SimpleNamespace(
+                    name='seed_tgt',
+                    type='file',
+                    path='/tmp/seed-out.json',
+                    format='json',
+                ),
+                SimpleNamespace(
+                    name='publish_tgt',
+                    type='file',
+                    path='/tmp/publish-out.json',
+                    format='json',
+                ),
+            ],
+            transforms={'noop': {}},
+            validations={},
+        )
+        attempts = {'seed': 0, 'publish': 0}
+
+        monkeypatch.setattr(
+            run_mod.Config,
+            'from_yaml',
+            lambda path, substitute=True: cfg,
+        )
+
+        def _run_job_config(_context: Any, job_obj: Any) -> dict[str, Any]:
+            job_name = cast(str, job_obj.name)
+            attempts[job_name] += 1
+            if job_name == 'seed' and attempts[job_name] == 1:
+                raise ValueError('temporary seed failure')
+            return {'status': 'success', 'job': job_name}
+
+        monkeypatch.setattr(run_mod, '_run_job_config', _run_job_config)
+        monkeypatch.setattr(run_mod, 'sleep', lambda _seconds: None)
+
+        result = run_mod.run(run_all=True)
+
+        assert result['status'] == 'success'
+        assert result['retried_job_count'] == 1
+        assert result['retried_jobs'] == ['seed']
+        assert result['total_retry_count'] == 1
+        assert result['total_attempt_count'] == 3
+        assert attempts == {'seed': 2, 'publish': 1}
+        seed_result = result['executed_jobs'][0]
+        assert seed_result['job'] == 'seed'
+        assert seed_result['status'] == 'succeeded'
+        assert seed_result['retry']['attempt_count'] == 2
+        assert seed_result['retry']['max_attempts'] == 3
+        assert seed_result['retry']['retried'] is True
+        assert [item['status'] for item in seed_result['retry']['attempts']] == [
+            'failed',
+            'succeeded',
+        ]
+        assert seed_result['retry']['attempts'][0]['will_retry'] is True
 
     def test_run_executes_dependency_closure_in_dag_order(
         self,

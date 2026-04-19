@@ -12,6 +12,7 @@ import pytest
 
 from etlplus.workflow._jobs import ExtractRef
 from etlplus.workflow._jobs import JobConfig
+from etlplus.workflow._jobs import JobRetryConfig
 from etlplus.workflow._jobs import LoadRef
 from etlplus.workflow._jobs import TransformRef
 from etlplus.workflow._jobs import ValidationRef
@@ -25,7 +26,11 @@ from etlplus.workflow._jobs import ValidationRef
 
 
 type RefClass = (
-    type[ExtractRef] | type[LoadRef] | type[TransformRef] | type[ValidationRef]
+    type[ExtractRef]
+    | type[JobRetryConfig]
+    | type[LoadRef]
+    | type[TransformRef]
+    | type[ValidationRef]
 )
 
 
@@ -63,6 +68,12 @@ class TestReferenceParsing:
                 id='transform-ref',
             ),
             pytest.param(
+                JobRetryConfig,
+                {'max_attempts': 3, 'backoff_seconds': 1.5},
+                {'max_attempts': 3, 'backoff_seconds': 1.5},
+                id='retry-ref',
+            ),
+            pytest.param(
                 ValidationRef,
                 {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'},
                 {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'},
@@ -89,6 +100,7 @@ class TestReferenceParsing:
             pytest.param(ExtractRef, None, id='extract-none'),
             pytest.param(ExtractRef, {'source': 123}, id='extract-bad'),
             pytest.param(LoadRef, {'target': 123}, id='load-bad'),
+            pytest.param(JobRetryConfig, None, id='retry-none'),
             pytest.param(TransformRef, {'pipeline': 123}, id='transform-bad'),
             pytest.param(ValidationRef, None, id='validation-none'),
             pytest.param(ValidationRef, {'ruleset': 123}, id='validation-bad'),
@@ -117,6 +129,7 @@ class TestJobConfigParsing:
                 'description': 'desc',
                 'extract': {'source': 'src'},
                 'validate': {'ruleset': 'rs'},
+                'retry': {'max_attempts': 3, 'backoff_seconds': 0.25},
                 'transform': {'pipeline': 'p'},
                 'load': {'target': 't'},
             },
@@ -126,6 +139,7 @@ class TestJobConfigParsing:
         _assert_fields(cfg, {'name': 'job1', 'description': 'desc'})
         assert cfg.extract is not None
         assert cfg.validate is not None
+        assert cfg.retry == JobRetryConfig(max_attempts=3, backoff_seconds=0.25)
         assert cfg.transform is not None
         assert cfg.load is not None
 
@@ -162,6 +176,14 @@ class TestJobConfigParsing:
                 {'name': 'x', 'description': None, 'depends_on': ['prepare']},
                 id='wraps-string-dependency',
             ),
+            pytest.param(
+                {
+                    'name': 'x',
+                    'retry': {'max_attempts': '4', 'backoff_seconds': '1.25'},
+                },
+                {'name': 'x', 'description': None, 'depends_on': []},
+                id='coerces-retry-settings',
+            ),
         ],
     )
     def test_jobconfig_from_obj_normalizes_optional_fields(
@@ -175,3 +197,5 @@ class TestJobConfigParsing:
         cfg = JobConfig.from_obj(obj)
         assert cfg is not None
         _assert_fields(cfg, expected)
+        if 'retry' in obj:
+            assert cfg.retry == JobRetryConfig(max_attempts=4, backoff_seconds=1.25)

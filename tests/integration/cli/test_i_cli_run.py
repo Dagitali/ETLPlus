@@ -13,6 +13,7 @@ Notes
 from __future__ import annotations
 
 import csv
+import importlib
 import json
 import sqlite3
 from io import StringIO
@@ -282,6 +283,28 @@ class TestRun:
         assert payload['result'].get('status') == 'success'
         assert payload['result'].get('message') == f'Data loaded to {target.uri}'
 
+    def test_run_all_accepts_max_concurrency_override(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        sample_records: list[dict[str, object]],
+        tmp_path: Path,
+    ) -> None:
+        """The run command should accept an explicit bounded-concurrency override."""
+        config_path, final_path = _write_dag_pipeline_config(tmp_path, sample_records)
+
+        code, out, err = cli_invoke(
+            ('run', '--config', str(config_path), '--all', '--max-concurrency', '2'),
+        )
+
+        assert code == 0
+        assert err == ''
+        payload = parse_json_output(out)
+        assert payload['status'] == 'ok'
+        assert payload['result']['status'] == 'success'
+        assert payload['result']['max_concurrency'] == 2
+        assert File(final_path, FileFormat.JSON).read() == sample_records
+
     def test_run_all_executes_dependency_order_and_returns_summary(
         self,
         cli_invoke: CliInvoke,
@@ -436,6 +459,137 @@ class TestRun:
         assert report_payload['rows'][0]['group'] == 'succeeded'
         assert report_payload['rows'][0]['runs'] == 2
         assert report_payload['rows'][0]['success_rate_pct'] == 100.0
+
+    def test_run_all_persists_retry_metadata_in_run_and_job_history(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        sample_records: list[dict[str, object]],
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """DAG retries should persist additive metadata in run and job history."""
+        run_mod = importlib.import_module('etlplus.ops.run')
+
+        config_path, final_path = _write_dag_pipeline_config(tmp_path, sample_records)
+        state_dir = tmp_path / 'state'
+        monkeypatch.setenv('ETLPLUS_STATE_DIR', str(state_dir))
+
+        original_run_job_config = run_mod._run_job_config
+        attempts = {'seed': 0}
+
+        def _flaky_run_job_config(
+            context: object,
+            job_obj: object,
+        ) -> dict[str, object]:
+            if getattr(job_obj, 'name', None) == 'seed':
+                attempts['seed'] += 1
+                if attempts['seed'] == 1:
+                    raise ValueError('temporary seed failure')
+            return original_run_job_config(context, job_obj)
+
+        monkeypatch.setattr(run_mod, '_run_job_config', _flaky_run_job_config)
+
+        source_path = tmp_path / 'source.json'
+        intermediate_path = tmp_path / 'intermediate.json'
+        config_path.write_text(
+            dedent(
+                f"""
+                name: DAG Smoke Test
+                sources:
+                  - name: source_in
+                    type: file
+                    format: json
+                    path: "{source_path}"
+                  - name: intermediate_in
+                    type: file
+                    format: json
+                    path: "{intermediate_path}"
+                targets:
+                  - name: intermediate_out
+                    type: file
+                    format: json
+                    path: "{intermediate_path}"
+                  - name: final_out
+                    type: file
+                    format: json
+                    path: "{final_path}"
+                jobs:
+                  - name: publish
+                    depends_on: [seed]
+                    extract:
+                      source: intermediate_in
+                    load:
+                      target: final_out
+                  - name: seed
+                    retry:
+                      max_attempts: 3
+                      backoff_seconds: 0.0
+                    extract:
+                      source: source_in
+                    load:
+                      target: intermediate_out
+                """,
+            ).strip(),
+            encoding='utf-8',
+        )
+        code, out, err = cli_invoke(
+            ('run', '--config', str(config_path), '--all'),
+        )
+
+        assert code == 0
+        assert err == ''
+        payload = parse_json_output(out)
+        run_id = payload['run_id']
+        assert payload['result']['retried_job_count'] == 1
+        assert payload['result']['retried_jobs'] == ['seed']
+        assert payload['result']['total_retry_count'] == 1
+        assert payload['result']['total_attempt_count'] == 3
+
+        history_db = state_dir / 'history.sqlite'
+        with sqlite3.connect(history_db) as conn:
+            run_row = conn.execute(
+                """
+                SELECT result_summary
+                FROM runs
+                WHERE run_id = ?
+                """,
+                (run_id,),
+            ).fetchone()
+            job_rows = conn.execute(
+                """
+                SELECT job_name, result_summary
+                FROM job_runs
+                WHERE run_id = ?
+                ORDER BY sequence_index
+                """,
+                (run_id,),
+            ).fetchall()
+
+        assert run_row is not None
+        persisted_run_summary = json.loads(run_row[0])
+        assert persisted_run_summary['retried_job_count'] == 1
+        assert persisted_run_summary['retried_jobs'] == ['seed']
+        assert persisted_run_summary['total_retry_count'] == 1
+        assert persisted_run_summary['total_attempt_count'] == 3
+
+        persisted_job_summaries = {
+            row[0]: json.loads(row[1]) if row[1] is not None else None
+            for row in job_rows
+        }
+        seed_summary = persisted_job_summaries['seed']
+        publish_summary = persisted_job_summaries['publish']
+        assert isinstance(seed_summary, dict)
+        assert isinstance(publish_summary, dict)
+        assert seed_summary['retry']['attempt_count'] == 2
+        assert seed_summary['retry']['max_attempts'] == 3
+        assert seed_summary['retry']['retried'] is True
+        assert [item['status'] for item in seed_summary['retry']['attempts']] == [
+            'failed',
+            'succeeded',
+        ]
+        assert publish_summary['status'] == 'success'
+        assert File(final_path, FileFormat.JSON).read() == sample_records
 
     def test_run_captures_traceback_when_enabled_in_config(
         self,

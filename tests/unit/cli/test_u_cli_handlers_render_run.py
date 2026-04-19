@@ -254,8 +254,15 @@ class TestRunHandler:
             config_path: str,
             run_all: bool = False,
             continue_on_fail: bool = False,
+            max_concurrency: int | None = None,
         ) -> dict[str, object]:
-            run_calls['params'] = (job, config_path, run_all, continue_on_fail)
+            run_calls['params'] = (
+                job,
+                config_path,
+                run_all,
+                continue_on_fail,
+                max_concurrency,
+            )
             return {'job': job, 'ok': True}
 
         monkeypatch.setattr(run_mod, 'run', fake_run)
@@ -268,7 +275,7 @@ class TestRunHandler:
             )
             == 0
         )
-        assert run_calls['params'] == ('job1', 'pipeline.yml', False, False)
+        assert run_calls['params'] == ('job1', 'pipeline.yml', False, False, None)
         assert cast(Any, history_calls['started']).run_id == 'run-123'
         assert history_calls['finished'] == {
             'duration_ms': ANY,

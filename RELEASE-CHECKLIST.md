@@ -158,15 +158,15 @@ These are the active follow-up items for the `v1.x` line.
 - [ ] Expand performance-smoke and cross-platform confidence based on real `v1.x` usage.
   - Add coverage where support load or issue history shows weak spots.
   - Keep the release path proportionate rather than turning CI into a bottleneck.
-- [ ] Add opt-in OpenTelemetry adapters on top of the stable event/history contracts.
+- [x] Add opt-in OpenTelemetry adapters on top of the stable event/history contracts.
   - Reuse `etlplus.event.v1` plus the normalized local history shapes rather than introducing a
     second observability contract.
   - Keep telemetry dependencies optional and the default CLI/runtime behavior unchanged.
-- [ ] Add job-level retry controls for DAG execution.
+- [x] Add job-level retry controls for DAG execution.
   - Keep retries opt-in at the job level rather than introducing a global default.
   - Persist enough retry/attempt metadata for `history`, `status`, `log`, and `report` to explain
     what happened.
-- [ ] Add opt-in bounded concurrency for independent DAG jobs.
+- [x] Add opt-in bounded concurrency for independent DAG jobs.
   - Keep serial execution as the default stable behavior.
   - Define deterministic ready-job ordering and failure semantics before enabling parallelism.
 - [ ] Start scheduling with portable schedule config and OS helper output.
