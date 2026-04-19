@@ -208,7 +208,7 @@ class TestTelemetryConfig:
 
     def test_resolve_prefers_env_and_promotes_enabled_exporter(self) -> None:
         """Env values should override config and enabling telemetry picks OTel."""
-        resolved = telemetry_mod.resolve_telemetry_settings(
+        resolved = telemetry_mod.ResolvedTelemetryConfig.resolve(
             telemetry_mod.TelemetryConfig(enabled=False),
             env={
                 'ETLPLUS_TELEMETRY_ENABLED': 'true',
@@ -239,7 +239,7 @@ class TestRuntimeTelemetry:
         monkeypatch.delitem(sys.modules, 'opentelemetry.metrics', raising=False)
 
         with caplog.at_level('WARNING'):
-            telemetry_mod.configure_telemetry(
+            telemetry_mod.RuntimeTelemetry.configure(
                 telemetry_mod.TelemetryConfig(enabled=True),
                 env={},
                 force=True,
@@ -250,7 +250,7 @@ class TestRuntimeTelemetry:
 
     def test_emit_event_is_noop_when_disabled(self) -> None:
         """Disabled telemetry should not create any runtime adapter."""
-        settings = telemetry_mod.configure_telemetry(
+        settings = telemetry_mod.RuntimeTelemetry.configure(
             telemetry_mod.TelemetryConfig(enabled=False),
             env={},
             force=True,
@@ -268,7 +268,7 @@ class TestRuntimeTelemetry:
         """Enabled telemetry should bridge runtime events into spans and metrics."""
         tracer, meter = _FakeOpenTelemetryInstaller.install(monkeypatch)
 
-        telemetry_mod.configure_telemetry(
+        telemetry_mod.RuntimeTelemetry.configure(
             telemetry_mod.TelemetryConfig(
                 enabled=True,
                 exporter='opentelemetry',
@@ -328,7 +328,7 @@ class TestRuntimeTelemetry:
         """History-derived telemetry should emit counters and histograms."""
         _tracer, meter = _FakeOpenTelemetryInstaller.install(monkeypatch)
 
-        telemetry_mod.configure_telemetry(
+        telemetry_mod.RuntimeTelemetry.configure(
             telemetry_mod.TelemetryConfig(
                 enabled=True,
                 exporter='opentelemetry',
