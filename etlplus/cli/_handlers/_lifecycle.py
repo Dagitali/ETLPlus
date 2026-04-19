@@ -7,12 +7,12 @@ Lifecycle helpers shared by CLI handler implementations.
 from __future__ import annotations
 
 from collections.abc import Callable
-from collections.abc import Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass
 from time import perf_counter
 from traceback import format_exception
+from types import TracebackType
 from typing import Any
+from typing import Literal
 
 from ...history import RunCompletion
 from ...history import RunState
@@ -58,6 +58,65 @@ class CommandContext:
     run_id: str
     started_at: str
     started_perf: float
+
+
+# SECTION: INTERNAL CLASSES ================================================== #
+
+
+class _FailureBoundary:
+    """Context manager that emits lifecycle failure events on exceptions."""
+
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __init__(
+        self,
+        context: CommandContext,
+        *,
+        on_error: Callable[[Exception], None] | None = None,
+        **fields: Any,
+    ) -> None:
+        self._context = context
+        self._fields = fields
+        self._on_error = on_error
+
+    # -- Magic Methods (Context Manager Protocol) -- #
+
+    def __enter__(
+        self,
+    ) -> None:
+        """Enter the failure boundary without altering block state."""
+        return None
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> Literal[False]:
+        """
+        Emit failure telemetry for exceptions and let them propagate.
+
+        Parameters
+        ----------
+        exc_type : type[BaseException] | None
+            The type of the exception raised, if any.
+        exc : BaseException | None
+            The exception instance raised, if any.
+        traceback : TracebackType | None
+            The traceback object associated with the exception, if any.
+
+        Returns
+        -------
+        Literal[False]
+            Always returns ``False`` to propagate exceptions.
+        """
+        del exc_type, traceback
+        if not isinstance(exc, Exception):
+            return False
+        if self._on_error is not None:
+            self._on_error(exc)
+        fail_command(self._context, exc, **self._fields)
+        return False
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -255,13 +314,12 @@ def fail_command(
     )
 
 
-@contextmanager
 def failure_boundary(
     context: CommandContext,
     *,
     on_error: Callable[[Exception], None] | None = None,
     **fields: Any,
-) -> Iterator[None]:
+) -> _FailureBoundary:
     """
     Emit a failed lifecycle event for exceptions raised inside the block.
 
@@ -274,19 +332,17 @@ def failure_boundary(
     **fields : Any
         Additional fields to include in the emitted event payload.
 
-    Raises
-    ------
-    Exception
-        Any exception raised inside the block will be re-raised after emitting
-        the failure event and invoking the callback.
+    Returns
+    -------
+    _FailureBoundary
+        A context manager that emits a failed lifecycle event when the block
+        raises an exception derived from :class:`Exception`.
     """
-    try:
-        yield
-    except Exception as exc:
-        if on_error is not None:
-            on_error(exc)
-        fail_command(context, exc, **fields)
-        raise
+    return _FailureBoundary(
+        context,
+        on_error=on_error,
+        **fields,
+    )
 
 
 def record_run_completion(
