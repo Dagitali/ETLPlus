@@ -54,22 +54,48 @@ def _coerce_job_result_summary(
 ) -> JSONData | None:
     """Return one JSON-serializable per-job result summary when available."""
     result = item.get('result')
+    retry_summary = item.get('retry')
+    summary: JSONData | None = None
     if isinstance(result, (dict, list, str, int, float, bool)) or result is None:
         if result is not None:
-            return cast(JSONData, result)
+            summary = cast(JSONData, result)
 
     reason = item.get('reason')
     skipped_due_to = item.get('skipped_due_to')
-    if isinstance(reason, str) or isinstance(skipped_due_to, list):
-        summary: dict[str, object] = {}
+    if summary is None and (
+        isinstance(reason, str) or isinstance(skipped_due_to, list)
+    ):
+        fallback_summary: dict[str, object] = {}
         if isinstance(reason, str):
-            summary['reason'] = reason
+            fallback_summary['reason'] = reason
         if isinstance(skipped_due_to, list):
-            summary['skipped_due_to'] = [
+            fallback_summary['skipped_due_to'] = [
                 value for value in skipped_due_to if isinstance(value, str)
             ]
-        return cast(JSONData, summary)
-    return None
+        summary = cast(JSONData, fallback_summary)
+
+    if isinstance(retry_summary, Mapping):
+        retry_payload = {
+            key: value
+            for key, value in retry_summary.items()
+            if isinstance(key, str)
+            and isinstance(value, (dict, list, str, int, float, bool))
+        }
+        if retry_payload:
+            if isinstance(summary, Mapping):
+                merged_summary = dict(summary)
+                merged_summary['retry'] = retry_payload
+                return cast(JSONData, merged_summary)
+            if summary is not None:
+                return cast(
+                    JSONData,
+                    {
+                        'result': summary,
+                        'retry': retry_payload,
+                    },
+                )
+            return cast(JSONData, {'retry': retry_payload})
+    return summary
 
 
 def _coerce_string_list(
@@ -253,6 +279,12 @@ def _persisted_run_summary(
         else False
     )
 
+    max_concurrency = result.get('max_concurrency')
+    retried_job_count = result.get('retried_job_count')
+    retried_jobs = result.get('retried_jobs')
+    total_attempt_count = result.get('total_attempt_count')
+    total_retry_count = result.get('total_retry_count')
+
     return cast(
         JSONData,
         {
@@ -311,6 +343,24 @@ def _persisted_run_summary(
                 else len(succeeded_jobs)
             ),
             'succeeded_jobs': succeeded_jobs,
+            **(
+                {
+                    'max_concurrency': max_concurrency,
+                    'retried_job_count': retried_job_count,
+                    'retried_jobs': _coerce_string_list(retried_jobs),
+                    'total_attempt_count': total_attempt_count,
+                    'total_retry_count': total_retry_count,
+                }
+                if (
+                    isinstance(max_concurrency, int) and max_concurrency > 1
+                )
+                or (
+                    isinstance(retried_job_count, int)
+                    and isinstance(total_attempt_count, int)
+                    and isinstance(total_retry_count, int)
+                )
+                else {}
+            ),
         },
     )
 
@@ -354,6 +404,7 @@ def run_handler(
     pipeline: str | None = None,
     run_all: bool = False,
     continue_on_fail: bool = False,
+    max_concurrency: int | None = None,
     history_enabled: bool | None = None,
     history_backend: str | None = None,
     history_state_dir: str | None = None,
@@ -377,6 +428,9 @@ def run_handler(
     continue_on_fail : bool, optional
         Whether to continue past failed jobs and skip only blocked downstream
         jobs. Default is ``False``.
+    max_concurrency : int | None, optional
+        Maximum number of independent DAG jobs to run concurrently. Default
+        is ``None`` which preserves serial execution.
     history_enabled : bool | None, optional
         Override whether local run history should be persisted.
     history_backend : str | None, optional
@@ -466,6 +520,7 @@ def run_handler(
             config_path=config,
             run_all=run_all,
             continue_on_fail=continue_on_fail,
+            max_concurrency=max_concurrency,
         )
 
     if history_store is not None:
