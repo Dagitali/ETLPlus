@@ -10,6 +10,7 @@ from ._dag import DagError
 from ._dag import topological_sort_jobs
 from ._jobs import ExtractRef
 from ._jobs import JobConfig
+from ._jobs import JobRetryConfig
 from ._jobs import LoadRef
 from ._jobs import TransformRef
 from ._jobs import ValidationRef
@@ -22,6 +23,7 @@ __all__ = [
     # Data Classes
     'ExtractRef',
     'JobConfig',
+    'JobRetryConfig',
     'LoadRef',
     'ProfileConfig',
     'TransformRef',

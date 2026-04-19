@@ -20,6 +20,7 @@ from ._options.common import HistoryBackendOption
 from ._options.common import HistoryEnabledOption
 from ._options.common import HistoryStateDirOption
 from ._options.common import JobOption
+from ._options.common import MaxConcurrencyOption
 from ._options.common import PipelineOption
 from ._options.common import RunAllOption
 from ._options.common import StructuredEventFormatOption
@@ -45,6 +46,7 @@ def run_cmd(
     pipeline: PipelineOption = None,
     run_all: RunAllOption = False,
     continue_on_fail: ContinueOnFailOption = False,
+    max_concurrency: MaxConcurrencyOption = None,
     history_enabled: HistoryEnabledOption = None,
     history_backend: HistoryBackendOption = None,
     history_state_dir: HistoryStateDirOption = None,
@@ -69,6 +71,8 @@ def run_cmd(
     continue_on_fail : ContinueOnFailOption, optional
         Whether to continue past failed jobs and skip only blocked downstream
         jobs.
+    max_concurrency : MaxConcurrencyOption, optional
+        Maximum number of independent DAG jobs to run concurrently.
     history_enabled : HistoryEnabledOption, optional
         Override local run-history persistence for this invocation.
     history_backend : HistoryBackendOption, optional
@@ -101,6 +105,7 @@ def run_cmd(
         pipeline=pipeline,
         run_all=run_all,
         continue_on_fail=continue_on_fail,
+        max_concurrency=max_concurrency,
         history_enabled=history_enabled,
         history_backend=history_backend,
         history_state_dir=history_state_dir,

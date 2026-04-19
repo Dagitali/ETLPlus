@@ -20,6 +20,8 @@ from typing import Self
 
 from ..utils import coerce_dict
 from ..utils import maybe_mapping
+from ..utils import to_float
+from ..utils import to_positive_int
 from ..utils._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
@@ -29,6 +31,7 @@ __all__ = [
     # Data Classes
     'ExtractRef',
     'JobConfig',
+    'JobRetryConfig',
     'LoadRef',
     'TransformRef',
     'ValidationRef',
@@ -155,6 +158,64 @@ class ExtractRef:
         return cls(source=source, options=coerce_dict(data.get('options')))
 
 
+@dataclass(kw_only=True, slots=True, frozen=True)
+class JobRetryConfig:
+    """
+    Optional retry policy for DAG-style job execution.
+
+    Attributes
+    ----------
+    max_attempts : int
+        Maximum number of attempts for the job, including the first attempt.
+    backoff_seconds : float
+        Fixed delay applied before each retry attempt.
+    """
+
+    # -- Attributes -- #
+
+    max_attempts: int = 1
+    backoff_seconds: float = 0.0
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_obj(
+        cls,
+        obj: Any,
+    ) -> Self | None:
+        """
+        Parse one retry policy mapping.
+
+        Parameters
+        ----------
+        obj : Any
+            Mapping containing retry controls.
+
+        Returns
+        -------
+        Self | None
+            Parsed retry policy or ``None`` when the payload is invalid.
+        """
+        data = maybe_mapping(obj)
+        if not data:
+            return None
+        return cls(
+            max_attempts=to_positive_int(data.get('max_attempts'), default=1),
+            backoff_seconds=(
+                to_float(data.get('backoff_seconds'), default=0.0, minimum=0.0) or 0.0
+            ),
+        )
+
+    # -- Instance Properties -- #
+
+    @property
+    def enabled(
+        self,
+    ) -> bool:
+        """Return whether retries are enabled beyond the first attempt."""
+        return self.max_attempts > 1
+
+
 @dataclass(kw_only=True, slots=True)
 class JobConfig:
     """
@@ -172,6 +233,8 @@ class JobConfig:
         Extraction reference.
     validate : ValidationRef | None
         Validation reference.
+    retry : JobRetryConfig | None
+        Optional retry controls applied by DAG-style execution.
     transform : TransformRef | None
         Transform reference.
     load : LoadRef | None
@@ -185,6 +248,7 @@ class JobConfig:
     depends_on: list[str] = field(default_factory=list)
     extract: ExtractRef | None = None
     validate: ValidationRef | None = None
+    retry: JobRetryConfig | None = None
     transform: TransformRef | None = None
     load: LoadRef | None = None
 
@@ -220,6 +284,7 @@ class JobConfig:
             depends_on=_parse_depends_on(data.get('depends_on')),
             extract=ExtractRef.from_obj(data.get('extract')),
             validate=ValidationRef.from_obj(data.get('validate')),
+            retry=JobRetryConfig.from_obj(data.get('retry')),
             transform=TransformRef.from_obj(data.get('transform')),
             load=LoadRef.from_obj(data.get('load')),
         )

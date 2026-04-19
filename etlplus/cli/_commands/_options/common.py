@@ -30,6 +30,7 @@ __all__ = [
     'HistoryEnabledOption',
     'HistoryStateDirOption',
     'JobOption',
+    'MaxConcurrencyOption',
     'OutputOption',
     'PipelineOption',
     'PrettyOption',
@@ -84,14 +85,6 @@ CaptureTracebacksOption = typer_option_alias(
     ),
 )
 
-JobOption = typer_value_option_alias(
-    str | None,
-    '-j',
-    '--job',
-    help_text='Name of the job to run',
-    show_default=None,
-)
-
 HistoryBackendOption = typer_value_option_alias(
     Literal['sqlite', 'jsonl'] | None,
     '--history-backend',
@@ -115,6 +108,26 @@ HistoryStateDirOption = typer_value_option_alias(
     help_text='Override the local history state directory.',
     metavar='PATH',
     show_default=None,
+)
+
+JobOption = typer_value_option_alias(
+    str | None,
+    '-j',
+    '--job',
+    help_text='Name of the job to run',
+    show_default=None,
+)
+
+MaxConcurrencyOption = typer_value_option_alias(
+    int | None,
+    '--max-concurrency',
+    help_text=(
+        'Maximum number of independent DAG jobs to run concurrently. '
+        'Defaults to serial execution.'
+    ),
+    metavar='N',
+    show_default=None,
+    min=1,
 )
 
 OutputOption = typer_value_option_alias(

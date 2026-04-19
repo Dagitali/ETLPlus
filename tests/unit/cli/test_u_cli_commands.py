@@ -250,6 +250,7 @@ class TestDelegatingCommands:
                     'pipeline': None,
                     'run_all': False,
                     'continue_on_fail': True,
+                    'max_concurrency': 3,
                     'event_format': 'jsonl',
                 },
                 {
@@ -259,6 +260,7 @@ class TestDelegatingCommands:
                     'pipeline': None,
                     'run_all': False,
                     'continue_on_fail': True,
+                    'max_concurrency': 3,
                     'event_format': 'jsonl',
                     'history_backend': None,
                     'history_enabled': None,
@@ -565,6 +567,8 @@ class TestCliInvokeParsing:
                     '--config',
                     'pipeline.yml',
                     '--all',
+                    '--max-concurrency',
+                    '2',
                     '--continue-on-fail',
                 ),
                 run_mod,
@@ -572,6 +576,7 @@ class TestCliInvokeParsing:
                 {
                     'config': 'pipeline.yml',
                     'continue_on_fail': True,
+                    'max_concurrency': 2,
                     'run_all': True,
                 },
                 id='run-all',

@@ -83,6 +83,35 @@ class TestJobRunPersistence:
                 id='unsupported-result-falls-back',
             ),
             pytest.param(
+                {
+                    'result': {'status': 'success'},
+                    'retry': {
+                        'attempt_count': 2,
+                        'attempts': [
+                            {'attempt': 1, 'status': 'failed', 'will_retry': True},
+                            {'attempt': 2, 'status': 'succeeded'},
+                        ],
+                        'backoff_seconds': 0.0,
+                        'max_attempts': 3,
+                        'retried': True,
+                    },
+                },
+                {
+                    'status': 'success',
+                    'retry': {
+                        'attempt_count': 2,
+                        'attempts': [
+                            {'attempt': 1, 'status': 'failed', 'will_retry': True},
+                            {'attempt': 2, 'status': 'succeeded'},
+                        ],
+                        'backoff_seconds': 0.0,
+                        'max_attempts': 3,
+                        'retried': True,
+                    },
+                },
+                id='merges-retry-summary',
+            ),
+            pytest.param(
                 {'reason': 'upstream_failed'},
                 {'reason': 'upstream_failed'},
                 id='reason-only',
@@ -385,14 +414,19 @@ class TestPersistedRunSummary:
                 'final_result': {'rows': 10, 'status': 'success'},
                 'final_result_status': None,
                 'job_count': 2,
+                'max_concurrency': 3,
                 'mode': 'all',
                 'ordered_jobs': ['seed', 'publish'],
                 'requested_job': None,
+                'retried_job_count': 1,
+                'retried_jobs': ['seed'],
                 'skipped_job_count': 1,
                 'skipped_jobs': ['publish'],
                 'status': 'partial_success',
                 'succeeded_job_count': 1,
                 'succeeded_jobs': ['seed'],
+                'total_attempt_count': 3,
+                'total_retry_count': 1,
             },
         ) == {
             'continue_on_fail': True,
@@ -402,14 +436,19 @@ class TestPersistedRunSummary:
             'final_job': 'publish',
             'final_result_status': None,
             'job_count': 2,
+            'max_concurrency': 3,
             'mode': 'all',
             'ordered_jobs': ['seed', 'publish'],
             'requested_job': None,
+            'retried_job_count': 1,
+            'retried_jobs': ['seed'],
             'skipped_job_count': 1,
             'skipped_jobs': ['publish'],
             'status': 'partial_success',
             'succeeded_job_count': 1,
             'succeeded_jobs': ['seed'],
+            'total_attempt_count': 3,
+            'total_retry_count': 1,
         }
 
     def test_persisted_run_summary_preserves_non_dag_results(self) -> None:
@@ -606,3 +645,68 @@ class TestTelemetryConfiguration:
         assert run_mod.run_handler(config='pipeline.yml') == 0
         assert len(configure_calls) == 1
         assert getattr(configure_calls[0], 'service_name', None) == 'etlplus-run-tests'
+
+    def test_run_handler_passes_max_concurrency_to_run_executor(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Run handler should forward the CLI concurrency override to the executor."""
+        captured: dict[str, object] = {}
+        cfg = run_mod.Config.from_dict(
+            {
+                'name': 'Concurrency Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [{'name': 'seed'}],
+            },
+        )
+
+        monkeypatch.setattr(run_mod.Config, 'from_yaml', lambda *_args, **_kwargs: cfg)
+        monkeypatch.setattr(
+            run_mod.RuntimeTelemetry,
+            'configure',
+            classmethod(lambda _cls, *_args, **_kwargs: None),
+        )
+        monkeypatch.setattr(
+            run_mod._lifecycle,
+            'start_command',
+            lambda **_kwargs: type(
+                'Ctx',
+                (),
+                {
+                    'command': 'run',
+                    'event_format': None,
+                    'run_id': 'run-concurrency-1',
+                    'started_at': '2026-04-19T00:00:00Z',
+                    'started_perf': 0.0,
+                },
+            )(),
+        )
+        monkeypatch.setattr(
+            run_mod._lifecycle,
+            'failure_boundary',
+            lambda *args, **kwargs: __import__('contextlib').nullcontext(),
+        )
+        monkeypatch.setattr(
+            run_mod._completion,
+            'complete_output',
+            lambda *_args, **_kwargs: 0,
+        )
+        monkeypatch.setattr(run_mod, '_open_history_store', lambda _settings: None)
+
+        def _fake_run(**kwargs: object) -> dict[str, object]:
+            captured.update(kwargs)
+            return {'status': 'success'}
+
+        monkeypatch.setattr(run_mod, 'run', _fake_run)
+
+        assert (
+            run_mod.run_handler(
+                config='pipeline.yml',
+                job='seed',
+                max_concurrency=4,
+                pretty=False,
+            )
+            == 0
+        )
+        assert captured['max_concurrency'] == 4

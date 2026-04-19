@@ -14,6 +14,7 @@ from .common import HistoryBackendOption
 from .common import HistoryEnabledOption
 from .common import HistoryStateDirOption
 from .common import JobOption
+from .common import MaxConcurrencyOption
 from .common import OutputOption
 from .common import PipelineOption
 from .common import PrettyOption
@@ -83,6 +84,7 @@ __all__ = [
     'InitForceOption',
     'JobOption',
     'JobsOption',
+    'MaxConcurrencyOption',
     'OperationsOption',
     'OutputOption',
     'PipelineOption',
