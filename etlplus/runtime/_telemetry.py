@@ -353,16 +353,14 @@ class _OpenTelemetryAdapter:
             'etlplus.history.records_in',
             unit='1',
             description=(
-                'Observed persisted input record counts for ETLPlus '
-                'history rows.'
+                'Observed persisted input record counts for ETLPlus history rows.'
             ),
         )
         self._history_records_out_histogram = meter.create_histogram(
             'etlplus.history.records_out',
             unit='1',
             description=(
-                'Observed persisted output record counts for ETLPlus '
-                'history rows.'
+                'Observed persisted output record counts for ETLPlus history rows.'
             ),
         )
 

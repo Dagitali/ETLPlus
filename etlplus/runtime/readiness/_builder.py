@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
-from ... import __version__ as etlplus_version
+from ... import __version__
 from ..._config import Config
 from ...utils._types import StrAnyMap
 from . import _connectors
@@ -445,7 +445,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
 
         return {
             'status': cls.overall_status(checks),
-            'etlplus_version': etlplus_version,
+            'etlplus_version': __version__,
             'python_version': cls.python_version(),
             'checks': checks,
         }
@@ -598,6 +598,6 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         )
         return {
             'status': cls.overall_status(checks),
-            'etlplus_version': etlplus_version,
+            'etlplus_version': __version__,
             'checks': checks,
         }
