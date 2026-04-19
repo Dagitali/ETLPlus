@@ -27,6 +27,7 @@ __all__ = [
     'SUPPORTED_PYTHON_RANGE',
     'TOKEN_PATTERN',
     # Classes
+    'ReadinessReport',
     'RequirementSpec',
     'ResolvedConfigContext',
     # Type Aliases
@@ -53,6 +54,31 @@ class RequirementSpec:
     modules: tuple[str, ...]
     package: str
     extra: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ReadinessReport:
+    """One normalized runtime-readiness report payload."""
+
+    # -- Instance Methods -- #
+
+    checks: list[dict[str, Any]]
+    etlplus_version: str
+    status: CheckStatus
+    python_version: str | None = None
+
+    # -- Instance Methods -- #
+
+    def to_payload(self) -> dict[str, Any]:
+        """Return one JSON-serializable readiness report mapping."""
+        payload: dict[str, Any] = {
+            'status': self.status,
+            'etlplus_version': self.etlplus_version,
+            'checks': self.checks,
+        }
+        if self.python_version is not None:
+            payload['python_version'] = self.python_version
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
