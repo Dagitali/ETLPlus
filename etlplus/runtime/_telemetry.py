@@ -28,10 +28,6 @@ __all__ = [
     # Data Classes
     'ResolvedTelemetryConfig',
     'TelemetryConfig',
-    # Functions
-    'configure_telemetry',
-    'emit_history_record',
-    'resolve_telemetry_settings',
 ]
 
 
@@ -575,56 +571,3 @@ class RuntimeTelemetry:
         """Reset the process-local telemetry bridge state for tests."""
         cls._adapter = None
         cls._settings = None
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-# TODO: Replace with direct call to RuntimeTelemetry.configure.
-def configure_telemetry(
-    config: TelemetryConfig | ResolvedTelemetryConfig | None = None,
-    *,
-    env: Mapping[str, str] | None = None,
-    enabled: bool | None = None,
-    exporter: str | None = None,
-    service_name: str | None = None,
-    force: bool = False,
-) -> ResolvedTelemetryConfig:
-    """Resolve and install the active runtime telemetry settings."""
-    return RuntimeTelemetry.configure(
-        config,
-        env=env,
-        enabled=enabled,
-        exporter=exporter,
-        service_name=service_name,
-        force=force,
-    )
-
-
-# TODO: Replace with direct call to RuntimeTelemetry.emit_history_record.
-def emit_history_record(
-    record: Mapping[str, Any],
-    *,
-    record_level: str,
-) -> None:
-    """Export one normalized persisted history record through the active adapter."""
-    RuntimeTelemetry.emit_history_record(record, record_level=record_level)
-
-
-# TODO: Replace with direct call to ResolvedTelemetryConfig.resolve.
-def resolve_telemetry_settings(
-    config: TelemetryConfig | None,
-    *,
-    env: Mapping[str, str] | None = None,
-    enabled: bool | None = None,
-    exporter: str | None = None,
-    service_name: str | None = None,
-) -> ResolvedTelemetryConfig:
-    """Return effective telemetry settings without mutating global state."""
-    return ResolvedTelemetryConfig.resolve(
-        config,
-        env=env,
-        enabled=enabled,
-        exporter=exporter,
-        service_name=service_name,
-    )
