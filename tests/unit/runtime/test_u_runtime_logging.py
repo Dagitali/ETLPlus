@@ -32,22 +32,30 @@ class _ResolveLogLevelKwargs(TypedDict, total=False):
     verbose: bool
 
 
-def _capture_logging_setup(
-    monkeypatch: pytest.MonkeyPatch,
-) -> dict[str, object]:
-    """Patch logging setup hooks and return one mutable call capture."""
-    calls: dict[str, object] = {}
-    monkeypatch.setattr(
-        logging_mod.logging,
-        'basicConfig',
-        lambda **kwargs: calls.setdefault('basicConfig', kwargs),
-    )
-    monkeypatch.setattr(
-        logging_mod.logging,
-        'captureWarnings',
-        lambda enabled: calls.setdefault('captureWarnings', enabled),
-    )
-    return calls
+class _LoggingSetupCapture:
+    """Capture calls made through the process-wide logging setup seam."""
+
+    def __init__(self) -> None:
+        self.calls: dict[str, object] = {}
+
+    @classmethod
+    def install(
+        cls,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> _LoggingSetupCapture:
+        """Patch logging setup hooks and return one mutable capture object."""
+        capture = cls()
+        monkeypatch.setattr(
+            logging_mod.logging,
+            'basicConfig',
+            lambda **kwargs: capture.calls.setdefault('basicConfig', kwargs),
+        )
+        monkeypatch.setattr(
+            logging_mod.logging,
+            'captureWarnings',
+            lambda enabled: capture.calls.setdefault('captureWarnings', enabled),
+        )
+        return capture
 
 
 # SECTION: TESTS ============================================================ #
@@ -61,11 +69,11 @@ class TestConfigureLogging:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that STDERR is used when no explicit stream is supplied."""
-        calls = _capture_logging_setup(monkeypatch)
+        capture = _LoggingSetupCapture.install(monkeypatch)
 
         logging_mod.configure_logging(env={})
 
-        basic_config = cast(dict[str, object], calls['basicConfig'])
+        basic_config = cast(dict[str, object], capture.calls['basicConfig'])
         assert basic_config['stream'] is sys.stderr
 
     def test_configure_logging_passes_expected_arguments(
@@ -73,7 +81,7 @@ class TestConfigureLogging:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that configuration forwards the resolved level and options."""
-        calls = _capture_logging_setup(monkeypatch)
+        capture = _LoggingSetupCapture.install(monkeypatch)
         stream = StringIO()
 
         level = logging_mod.configure_logging(
@@ -83,7 +91,7 @@ class TestConfigureLogging:
         )
 
         assert level == logging.ERROR
-        assert calls == {
+        assert capture.calls == {
             'basicConfig': {
                 'force': True,
                 'format': '%(levelname)s %(name)s: %(message)s',

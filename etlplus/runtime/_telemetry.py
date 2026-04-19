@@ -28,10 +28,6 @@ __all__ = [
     # Data Classes
     'ResolvedTelemetryConfig',
     'TelemetryConfig',
-    # Functions
-    'configure_telemetry',
-    'emit_history_record',
-    'resolve_telemetry_settings',
 ]
 
 
@@ -55,24 +51,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _build_adapter(
-    settings: ResolvedTelemetryConfig,
-) -> _OpenTelemetryAdapter | None:
-    """Return one configured telemetry adapter when optional deps are present."""
-    if not settings.enabled or settings.exporter == 'none':
-        return None
-    if settings.exporter != 'opentelemetry':
-        return None
-    try:
-        return _OpenTelemetryAdapter(settings)
-    except ImportError:
-        _LOGGER.warning(
-            'Telemetry is enabled but optional OpenTelemetry dependencies are '
-            'not installed. Install the telemetry extra to activate export.',
-        )
-        return None
 
 
 def _coerce_exporter(
@@ -103,75 +81,6 @@ def _coerce_flag(
     if normalized in _ENABLED_FALSE_VALUES:
         return False
     return default
-
-
-def _event_attributes(
-    event: Mapping[str, Any],
-    *,
-    service_name: str,
-) -> dict[str, str | bool | int | float]:
-    """Return one attribute mapping derived from the stable event envelope."""
-    attrs: dict[str, str | bool | int | float] = {
-        'etlplus.service_name': service_name,
-        'etlplus.schema': str(event.get('schema', '')),
-        'etlplus.schema_version': int(event.get('schema_version', 0) or 0),
-        'etlplus.command': str(event.get('command', '')),
-        'etlplus.lifecycle': str(event.get('lifecycle', '')),
-        'etlplus.run_id': str(event.get('run_id', '')),
-    }
-    for field_name in (
-        'config_path',
-        'error_message',
-        'error_type',
-        'event',
-        'job',
-        'pipeline_name',
-        'result_status',
-        'source',
-        'source_type',
-        'status',
-        'target',
-        'target_type',
-        'timestamp',
-    ):
-        value = event.get(field_name)
-        if isinstance(value, str) and value:
-            attrs[f'etlplus.{field_name}'] = value
-    for field_name in ('continue_on_fail', 'run_all', 'valid'):
-        value = event.get(field_name)
-        if isinstance(value, bool):
-            attrs[f'etlplus.{field_name}'] = value
-    return attrs
-
-
-def _history_attributes(
-    record: Mapping[str, Any],
-    *,
-    record_level: str,
-    service_name: str,
-) -> dict[str, str | bool | int | float]:
-    """Return one attribute mapping derived from normalized history fields."""
-    attrs: dict[str, str | bool | int | float] = {
-        'etlplus.service_name': service_name,
-        'etlplus.history.level': record_level,
-        'etlplus.run_id': str(record.get('run_id', '')),
-    }
-    for field_name in (
-        'config_path',
-        'error_type',
-        'etlplus_version',
-        'job_name',
-        'pipeline_name',
-        'result_status',
-        'status',
-    ):
-        value = record.get(field_name)
-        if isinstance(value, str) and value:
-            attrs[f'etlplus.history.{field_name}'] = value
-    sequence_index = record.get('sequence_index')
-    if isinstance(sequence_index, int):
-        attrs['etlplus.history.sequence_index'] = sequence_index
-    return attrs
 
 
 def _span_name(
@@ -299,7 +208,7 @@ class TelemetryConfig:
         )
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: INTERNAL CLASSES ================================================= #
 
 
 class _OpenTelemetryAdapter:
@@ -364,6 +273,27 @@ class _OpenTelemetryAdapter:
             ),
         )
 
+    # -- Static Methods -- #
+
+    @staticmethod
+    def build_adapter(
+        settings: ResolvedTelemetryConfig,
+    ) -> _OpenTelemetryAdapter | None:
+        """Return one configured adapter when OpenTelemetry is available."""
+        if not settings.enabled or settings.exporter == 'none':
+            return None
+        if settings.exporter != 'opentelemetry':
+            return None
+        try:
+            return _OpenTelemetryAdapter(settings)
+        except ImportError:
+            _LOGGER.warning(
+                'Telemetry is enabled but optional OpenTelemetry dependencies '
+                'are not installed. Install the telemetry extra to activate '
+                'export.',
+            )
+            return None
+
     # -- Instance Methods -- #
 
     def emit_event(
@@ -371,7 +301,10 @@ class _OpenTelemetryAdapter:
         event: Mapping[str, Any],
     ) -> None:
         """Export one structured runtime event as spans and metrics."""
-        attrs = _event_attributes(event, service_name=self._settings.service_name)
+        attrs = _TelemetryAttributeBuilder.for_event(
+            event,
+            service_name=self._settings.service_name,
+        )
         self._event_counter.add(1, attrs)
 
         lifecycle = event.get('lifecycle')
@@ -422,7 +355,7 @@ class _OpenTelemetryAdapter:
         record_level: str,
     ) -> None:
         """Export one normalized persisted history record as metrics."""
-        attrs = _history_attributes(
+        attrs = _TelemetryAttributeBuilder.for_history_record(
             record,
             record_level=record_level,
             service_name=self._settings.service_name,
@@ -440,6 +373,106 @@ class _OpenTelemetryAdapter:
         records_out = record.get('records_out')
         if isinstance(records_out, int):
             self._history_records_out_histogram.record(records_out, attrs)
+
+
+class _TelemetryAttributeBuilder:
+    """Build normalized OpenTelemetry attribute mappings for runtime payloads."""
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def for_event(
+        cls,
+        event: Mapping[str, Any],
+        *,
+        service_name: str,
+    ) -> dict[str, str | bool | int | float]:
+        """Return one attribute mapping derived from the stable event envelope."""
+        attrs: dict[str, str | bool | int | float] = {
+            'etlplus.service_name': service_name,
+            'etlplus.schema': str(event.get('schema', '')),
+            'etlplus.schema_version': int(event.get('schema_version', 0) or 0),
+            'etlplus.command': str(event.get('command', '')),
+            'etlplus.lifecycle': str(event.get('lifecycle', '')),
+            'etlplus.run_id': str(event.get('run_id', '')),
+        }
+        attrs.update(
+            cls._optional_string_attributes(
+                event,
+                fields=(
+                    'config_path',
+                    'error_message',
+                    'error_type',
+                    'event',
+                    'job',
+                    'pipeline_name',
+                    'result_status',
+                    'source',
+                    'source_type',
+                    'status',
+                    'target',
+                    'target_type',
+                    'timestamp',
+                ),
+                prefix='etlplus.',
+            ),
+        )
+        for field_name in ('continue_on_fail', 'run_all', 'valid'):
+            value = event.get(field_name)
+            if isinstance(value, bool):
+                attrs[f'etlplus.{field_name}'] = value
+        return attrs
+
+    @classmethod
+    def for_history_record(
+        cls,
+        record: Mapping[str, Any],
+        *,
+        record_level: str,
+        service_name: str,
+    ) -> dict[str, str | bool | int | float]:
+        """Return one attribute mapping derived from normalized history fields."""
+        attrs: dict[str, str | bool | int | float] = {
+            'etlplus.service_name': service_name,
+            'etlplus.history.level': record_level,
+            'etlplus.run_id': str(record.get('run_id', '')),
+        }
+        attrs.update(
+            cls._optional_string_attributes(
+                record,
+                fields=(
+                    'config_path',
+                    'error_type',
+                    'etlplus_version',
+                    'job_name',
+                    'pipeline_name',
+                    'result_status',
+                    'status',
+                ),
+                prefix='etlplus.history.',
+            ),
+        )
+        sequence_index = record.get('sequence_index')
+        if isinstance(sequence_index, int):
+            attrs['etlplus.history.sequence_index'] = sequence_index
+        return attrs
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def _optional_string_attributes(
+        payload: Mapping[str, Any],
+        *,
+        fields: tuple[str, ...],
+        prefix: str,
+    ) -> dict[str, str]:
+        """Return optional string attributes copied from one payload mapping."""
+        attrs: dict[str, str] = {}
+        for field_name in fields:
+            value = payload.get(field_name)
+            if isinstance(value, str) and value:
+                attrs[f'{prefix}{field_name}'] = value
+        return attrs
 
 
 # SECTION: CLASSES ========================================================== #
@@ -481,8 +514,26 @@ class RuntimeTelemetry:
         if not force and resolved == cls._settings:
             return resolved
         cls._settings = resolved
-        cls._adapter = _build_adapter(resolved)
+        cls._adapter = _OpenTelemetryAdapter.build_adapter(resolved)
         return resolved
+
+    @classmethod
+    def _emit_via_adapter(
+        cls,
+        emitter: str,
+        *args: object,
+        debug_message: str,
+        **kwargs: object,
+    ) -> None:
+        """Call one adapter emitter defensively when telemetry is enabled."""
+        if cls._settings is None:
+            cls.configure(env=os.environ)
+        if cls._adapter is None:
+            return
+        try:
+            getattr(cls._adapter, emitter)(*args, **kwargs)
+        except (AttributeError, RuntimeError, TypeError, ValueError):
+            _LOGGER.debug(debug_message, exc_info=True)
 
     @classmethod
     def emit_event(
@@ -490,17 +541,11 @@ class RuntimeTelemetry:
         event: Mapping[str, Any],
     ) -> None:
         """Export one runtime event through the active adapter when enabled."""
-        if cls._settings is None:
-            cls.configure(env=os.environ)
-        if cls._adapter is None:
-            return
-        try:
-            cls._adapter.emit_event(event)
-        except (AttributeError, RuntimeError, TypeError, ValueError):
-            _LOGGER.debug(
-                'Runtime telemetry adapter failed to export event.',
-                exc_info=True,
-            )
+        cls._emit_via_adapter(
+            'emit_event',
+            event,
+            debug_message='Runtime telemetry adapter failed to export event.',
+        )
 
     @classmethod
     def emit_history_record(
@@ -510,17 +555,14 @@ class RuntimeTelemetry:
         record_level: str,
     ) -> None:
         """Export one normalized persisted history record as metrics."""
-        if cls._settings is None:
-            cls.configure(env=os.environ)
-        if cls._adapter is None:
-            return
-        try:
-            cls._adapter.emit_history_record(record, record_level=record_level)
-        except (AttributeError, RuntimeError, TypeError, ValueError):
-            _LOGGER.debug(
-                'Runtime telemetry adapter failed to export history record.',
-                exc_info=True,
-            )
+        cls._emit_via_adapter(
+            'emit_history_record',
+            record,
+            record_level=record_level,
+            debug_message=(
+                'Runtime telemetry adapter failed to export history record.'
+            ),
+        )
 
     @classmethod
     def reset(
@@ -529,56 +571,3 @@ class RuntimeTelemetry:
         """Reset the process-local telemetry bridge state for tests."""
         cls._adapter = None
         cls._settings = None
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-# TODO: Replace with direct call to RuntimeTelemetry.configure.
-def configure_telemetry(
-    config: TelemetryConfig | ResolvedTelemetryConfig | None = None,
-    *,
-    env: Mapping[str, str] | None = None,
-    enabled: bool | None = None,
-    exporter: str | None = None,
-    service_name: str | None = None,
-    force: bool = False,
-) -> ResolvedTelemetryConfig:
-    """Resolve and install the active runtime telemetry settings."""
-    return RuntimeTelemetry.configure(
-        config,
-        env=env,
-        enabled=enabled,
-        exporter=exporter,
-        service_name=service_name,
-        force=force,
-    )
-
-
-# TODO: Replace with direct call to RuntimeTelemetry.emit_history_record.
-def emit_history_record(
-    record: Mapping[str, Any],
-    *,
-    record_level: str,
-) -> None:
-    """Export one normalized persisted history record through the active adapter."""
-    RuntimeTelemetry.emit_history_record(record, record_level=record_level)
-
-
-# TODO: Replace with direct call to ResolvedTelemetryConfig.resolve.
-def resolve_telemetry_settings(
-    config: TelemetryConfig | None,
-    *,
-    env: Mapping[str, str] | None = None,
-    enabled: bool | None = None,
-    exporter: str | None = None,
-    service_name: str | None = None,
-) -> ResolvedTelemetryConfig:
-    """Return effective telemetry settings without mutating global state."""
-    return ResolvedTelemetryConfig.resolve(
-        config,
-        env=env,
-        enabled=enabled,
-        exporter=exporter,
-        service_name=service_name,
-    )

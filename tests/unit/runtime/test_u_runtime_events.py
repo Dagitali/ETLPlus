@@ -34,25 +34,25 @@ EXPECTED_BASE_EVENT_FIELDS = {
 }
 
 
-@pytest.fixture(name='frozen_timestamp')
-def fixture_frozen_runtime_timestamp(
-    monkeypatch: pytest.MonkeyPatch,
-) -> str:
-    """Freeze runtime-event timestamps at one stable ISO-8601 value."""
-    timestamp = '2025-01-01T00:00:00+00:00'
-    monkeypatch.setattr(
-        events_mod.RuntimeEvents,
-        'utc_now_iso',
-        staticmethod(lambda: timestamp),
-    )
-    return timestamp
-
-
 # SECTION: TESTS ============================================================ #
 
 
 class TestRuntimeEvents:
     """Unit tests for structured runtime event helpers."""
+
+    @pytest.fixture(name='frozen_timestamp')
+    def fixture_frozen_runtime_timestamp(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> str:
+        """Freeze runtime-event timestamps at one stable ISO-8601 value."""
+        timestamp = '2025-01-01T00:00:00+00:00'
+        monkeypatch.setattr(
+            events_mod.RuntimeEvents,
+            'utc_now_iso',
+            staticmethod(lambda: timestamp),
+        )
+        return timestamp
 
     def test_build_preserves_additive_command_specific_fields(self) -> None:
         """

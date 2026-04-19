@@ -11,13 +11,14 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
-from ...__version__ import __version__ as etlplus_version
+from ...__version__ import __version__ as _ETLPLUS_VERSION
 from ..._config import Config
 from ...utils._types import StrAnyMap
 from . import _connectors
 from . import _providers
 from . import _strict
 from ._base import ReadinessBaseMixin
+from ._support import ReadinessReport
 from ._support import RequirementSpec
 
 # SECTION: EXPORTS ========================================================== #
@@ -34,6 +35,40 @@ __all__ = [
 
 class ReadinessReportBuilder(ReadinessBaseMixin):
     """Shared builder for ETLPlus runtime readiness reports."""
+
+    # -- Internal Class Methods -- #
+
+    @classmethod
+    def _build_report(
+        cls,
+        *,
+        checks: list[dict[str, Any]],
+        include_python_version: bool,
+    ) -> dict[str, Any]:
+        """Return one normalized readiness report payload."""
+        return ReadinessReport(
+            checks=checks,
+            etlplus_version=_ETLPLUS_VERSION,
+            status=cls.overall_status(checks),
+            python_version=(cls.python_version() if include_python_version else None),
+        ).to_payload()
+
+    @classmethod
+    def _missing_requirement_rows_for_connectors(
+        cls,
+        cfg: Config,
+    ) -> list[dict[str, Any]]:
+        """Return missing requirement rows for connector readiness checks."""
+        return cls.missing_requirement_rows(cfg=cfg)
+
+    @classmethod
+    def _provider_environment_rows(
+        cls,
+        cfg: Config,
+        env: Mapping[str, str],
+    ) -> list[Any]:
+        """Return provider-environment rows for one resolved config."""
+        return _providers.provider_environment_rows(cfg=cfg, env=env)
 
     # -- Class Methods -- #
 
@@ -59,9 +94,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             cfg,
             connector_gap_rows_fn=_connectors.connector_gap_rows,
             make_check=cls.make_check,
-            missing_requirement_rows_fn=lambda inner_cfg: cls.missing_requirement_rows(
-                cfg=inner_cfg,
-            ),
+            missing_requirement_rows_fn=cls._missing_requirement_rows_for_connectors,
         )
 
     @classmethod
@@ -130,9 +163,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             cfg=cfg,
             env=env,
             make_check=cls.make_check,
-            provider_environment_rows_fn=lambda inner_cfg, inner_env: (
-                _providers.provider_environment_rows(cfg=inner_cfg, env=inner_env)
-            ),
+            provider_environment_rows_fn=cls._provider_environment_rows,
         )
 
     @classmethod
@@ -443,12 +474,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
                 ),
             )
 
-        return {
-            'status': cls.overall_status(checks),
-            'etlplus_version': etlplus_version,
-            'python_version': cls.python_version(),
-            'checks': checks,
-        }
+        return cls._build_report(checks=checks, include_python_version=True)
 
     @classmethod
     def config_checks(
@@ -596,8 +622,4 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             strict=True,
             include_runtime_checks=False,
         )
-        return {
-            'status': cls.overall_status(checks),
-            'etlplus_version': etlplus_version,
-            'checks': checks,
-        }
+        return cls._build_report(checks=checks, include_python_version=False)
