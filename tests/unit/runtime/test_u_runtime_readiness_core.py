@@ -108,7 +108,7 @@ class TestReadinessReportBuilderCore:
                     'status': 'skipped',
                 },
             ],
-            'etlplus_version': readiness_mod.__version__,
+            'etlplus_version': readiness_mod.etlplus_version,
             'python_version': '3.13.12',
             'status': 'ok',
         }
@@ -669,7 +669,7 @@ class TestReadinessReportBuilderCore:
 
         assert report == {
             'checks': [{'name': 'config-structure', 'status': 'ok'}],
-            'etlplus_version': readiness_mod.__version__,
+            'etlplus_version': readiness_mod.etlplus_version,
             'status': 'ok',
         }
         assert captured == {
