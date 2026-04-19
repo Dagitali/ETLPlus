@@ -119,6 +119,10 @@ release.
 - `etlplus.utils` now follows the same package-facade pattern: user-facing helpers plus the shared
   enum/mixin base abstractions are exported from `etlplus.utils`, while utility type aliases stay
   internal on an underscore-prefixed module.
+- The runtime telemetry facade no longer exports the thin wrapper helpers `configure_telemetry`,
+  `emit_history_record`, or `resolve_telemetry_settings`; the supported public entrypoints are now
+  `RuntimeTelemetry.configure(...)`, `RuntimeTelemetry.emit_history_record(...)`, and
+  `ResolvedTelemetryConfig.resolve(...)`.
 - The documented stable CLI surface keeps readiness under `check --readiness`.
 - The documented stable CLI surface now also includes the `init` starter-project scaffold command.
 - The documented stable CLI surface now also includes DAG validation under `check --graph` plus
