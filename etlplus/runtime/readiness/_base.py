@@ -63,8 +63,8 @@ def _connector_gap_guidance(
         case issue_text if issue_text.startswith('unknown api reference: '):
             if api_reference:
                 return (
-                    f'Define "{api_reference}" under top-level "apis" or update '
-                    'the connector "api" reference.'
+                    f'Define "{api_reference}" under top-level "apis" or '
+                    'update the connector "api" reference.'
                 )
             return 'Define the referenced API under top-level "apis".'
         case _:
@@ -123,6 +123,71 @@ def _missing_requirement_guidance(
     if detected_scheme is not None:
         return f'{install_hint} Required for "{detected_scheme}" storage paths.'
     return install_hint
+
+
+# SECTION: INTERNAL CLASSES ================================================= #
+
+
+class _TokenReferenceCollector:
+    """Collect unresolved substitution tokens and their stable config paths."""
+
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __init__(self) -> None:
+        self._paths_by_name: dict[str, set[str]] = {}
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def collect_names(
+        cls,
+        value: Any,
+    ) -> set[str]:
+        """Return one set of unresolved token names discovered in *value*."""
+        collector = cls()
+        collector.walk(value)
+        return set(collector._paths_by_name)
+
+    @classmethod
+    def collect_rows(
+        cls,
+        value: Any,
+    ) -> list[dict[str, Any]]:
+        """Return one stable list of unresolved token reference rows."""
+        collector = cls()
+        collector.walk(value)
+        return [
+            {'name': name, 'paths': sorted(paths)}
+            for name, paths in sorted(collector._paths_by_name.items())
+        ]
+
+    # -- Instance Methods -- #
+
+    def walk(
+        self,
+        node: Any,
+        path: str = '',
+    ) -> None:
+        """Record unresolved token names and paths found in *node*."""
+        match node:
+            case str():
+                for match in TOKEN_PATTERN.findall(node):
+                    self._paths_by_name.setdefault(match, set()).add(path or '<root>')
+            case Mapping():
+                for key, inner in node.items():
+                    key_text = str(key)
+                    next_path = f'{path}.{key_text}' if path else key_text
+                    self.walk(inner, next_path)
+            case list() | tuple() as seq:
+                for index, inner in enumerate(seq):
+                    next_path = f'{path}[{index}]' if path else f'[{index}]'
+                    self.walk(inner, next_path)
+            case set() | frozenset():
+                for index, inner in enumerate(sorted(node, key=repr)):
+                    next_path = f'{path}[{index}]' if path else f'[{index}]'
+                    self.walk(inner, next_path)
+            case _:
+                return
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -258,24 +323,7 @@ class ReadinessBaseMixin:
             contains the string ``"Database URL: ${DB_URL}"``, the returned set
             will include the token name ``"DB_URL"``.
         """
-        tokens: set[str] = set()
-
-        def _walk(node: Any) -> None:
-            match node:
-                case str():
-                    for match in TOKEN_PATTERN.findall(node):
-                        tokens.add(match)
-                case Mapping():
-                    for inner in node.values():
-                        _walk(inner)
-                case list() | tuple() | set() | frozenset() as seq:
-                    for inner in seq:
-                        _walk(inner)
-                case _:
-                    return
-
-        _walk(value)
-        return tokens
+        return _TokenReferenceCollector.collect_names(value)
 
     @staticmethod
     def connector_gap_guidance(
@@ -609,31 +657,4 @@ class ReadinessBaseMixin:
         list[dict[str, Any]]
             A list of dictionaries containing token names and their paths.
         """
-        paths_by_name: dict[str, set[str]] = {}
-
-        def _walk(node: Any, path: str = '') -> None:
-            match node:
-                case str():
-                    for match in TOKEN_PATTERN.findall(node):
-                        paths_by_name.setdefault(match, set()).add(path or '<root>')
-                case Mapping():
-                    for key, inner in node.items():
-                        key_text = str(key)
-                        next_path = f'{path}.{key_text}' if path else key_text
-                        _walk(inner, next_path)
-                case list() | tuple() as seq:
-                    for index, inner in enumerate(seq):
-                        next_path = f'{path}[{index}]' if path else f'[{index}]'
-                        _walk(inner, next_path)
-                case set() | frozenset():
-                    for index, inner in enumerate(sorted(node, key=repr)):
-                        next_path = f'{path}[{index}]' if path else f'[{index}]'
-                        _walk(inner, next_path)
-                case _:
-                    return
-
-        _walk(value)
-        return [
-            {'name': name, 'paths': sorted(paths)}
-            for name, paths in sorted(paths_by_name.items())
-        ]
+        return _TokenReferenceCollector.collect_rows(value)

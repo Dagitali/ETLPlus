@@ -586,9 +586,11 @@ class TestTelemetryConfiguration:
 
         monkeypatch.setattr(run_mod.Config, 'from_yaml', lambda *_args, **_kwargs: cfg)
         monkeypatch.setattr(
-            run_mod,
-            'configure_telemetry',
-            lambda config, **_kwargs: configure_calls.append(config),
+            run_mod.RuntimeTelemetry,
+            'configure',
+            classmethod(
+                lambda _cls, config=None, **_kwargs: configure_calls.append(config),
+            ),
         )
         monkeypatch.setattr(
             run_mod._summary,

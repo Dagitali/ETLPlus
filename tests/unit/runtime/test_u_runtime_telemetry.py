@@ -156,29 +156,34 @@ class _FakeOpenTelemetryModule(ModuleType):
     metrics: _FakeMetricsModule
 
 
-def _install_fake_opentelemetry(
-    monkeypatch: pytest.MonkeyPatch,
-) -> tuple[_FakeTracer, _FakeMeter]:
-    """Install lightweight fake OpenTelemetry modules into ``sys.modules``."""
-    tracer = _FakeTracer()
-    meter = _FakeMeter()
+class _FakeOpenTelemetryInstaller:
+    """Install typed fake OpenTelemetry modules for telemetry tests."""
 
-    trace_mod = _FakeTraceModule('opentelemetry.trace')
-    trace_mod.get_tracer = lambda *_args, **_kwargs: tracer
-    trace_mod.Status = _FakeStatus  # noqa: N815
-    trace_mod.StatusCode = _FakeStatusCode  # noqa: N815
+    @classmethod
+    def install(
+        cls,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> tuple[_FakeTracer, _FakeMeter]:
+        """Install lightweight fake OpenTelemetry modules into ``sys.modules``."""
+        tracer = _FakeTracer()
+        meter = _FakeMeter()
 
-    metrics_mod = _FakeMetricsModule('opentelemetry.metrics')
-    metrics_mod.get_meter = lambda *_args, **_kwargs: meter
+        trace_mod = _FakeTraceModule('opentelemetry.trace')
+        trace_mod.get_tracer = lambda *_args, **_kwargs: tracer
+        trace_mod.Status = _FakeStatus  # noqa: N815
+        trace_mod.StatusCode = _FakeStatusCode  # noqa: N815
 
-    root_mod = _FakeOpenTelemetryModule('opentelemetry')
-    root_mod.trace = trace_mod
-    root_mod.metrics = metrics_mod
+        metrics_mod = _FakeMetricsModule('opentelemetry.metrics')
+        metrics_mod.get_meter = lambda *_args, **_kwargs: meter
 
-    monkeypatch.setitem(sys.modules, 'opentelemetry', root_mod)
-    monkeypatch.setitem(sys.modules, 'opentelemetry.trace', trace_mod)
-    monkeypatch.setitem(sys.modules, 'opentelemetry.metrics', metrics_mod)
-    return tracer, meter
+        root_mod = _FakeOpenTelemetryModule('opentelemetry')
+        root_mod.trace = trace_mod
+        root_mod.metrics = metrics_mod
+
+        monkeypatch.setitem(sys.modules, 'opentelemetry', root_mod)
+        monkeypatch.setitem(sys.modules, 'opentelemetry.trace', trace_mod)
+        monkeypatch.setitem(sys.modules, 'opentelemetry.metrics', metrics_mod)
+        return tracer, meter
 
 
 # SECTION: TESTS ============================================================ #
@@ -203,7 +208,7 @@ class TestTelemetryConfig:
 
     def test_resolve_prefers_env_and_promotes_enabled_exporter(self) -> None:
         """Env values should override config and enabling telemetry picks OTel."""
-        resolved = telemetry_mod.resolve_telemetry_settings(
+        resolved = telemetry_mod.ResolvedTelemetryConfig.resolve(
             telemetry_mod.TelemetryConfig(enabled=False),
             env={
                 'ETLPLUS_TELEMETRY_ENABLED': 'true',
@@ -234,7 +239,7 @@ class TestRuntimeTelemetry:
         monkeypatch.delitem(sys.modules, 'opentelemetry.metrics', raising=False)
 
         with caplog.at_level('WARNING'):
-            telemetry_mod.configure_telemetry(
+            telemetry_mod.RuntimeTelemetry.configure(
                 telemetry_mod.TelemetryConfig(enabled=True),
                 env={},
                 force=True,
@@ -245,7 +250,7 @@ class TestRuntimeTelemetry:
 
     def test_emit_event_is_noop_when_disabled(self) -> None:
         """Disabled telemetry should not create any runtime adapter."""
-        settings = telemetry_mod.configure_telemetry(
+        settings = telemetry_mod.RuntimeTelemetry.configure(
             telemetry_mod.TelemetryConfig(enabled=False),
             env={},
             force=True,
@@ -261,9 +266,9 @@ class TestRuntimeTelemetry:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Enabled telemetry should bridge runtime events into spans and metrics."""
-        tracer, meter = _install_fake_opentelemetry(monkeypatch)
+        tracer, meter = _FakeOpenTelemetryInstaller.install(monkeypatch)
 
-        telemetry_mod.configure_telemetry(
+        telemetry_mod.RuntimeTelemetry.configure(
             telemetry_mod.TelemetryConfig(
                 enabled=True,
                 exporter='opentelemetry',
@@ -321,9 +326,9 @@ class TestRuntimeTelemetry:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """History-derived telemetry should emit counters and histograms."""
-        _tracer, meter = _install_fake_opentelemetry(monkeypatch)
+        _tracer, meter = _FakeOpenTelemetryInstaller.install(monkeypatch)
 
-        telemetry_mod.configure_telemetry(
+        telemetry_mod.RuntimeTelemetry.configure(
             telemetry_mod.TelemetryConfig(
                 enabled=True,
                 exporter='opentelemetry',

@@ -21,7 +21,6 @@ from ...history._config import ResolvedHistoryConfig
 from ...history._store import JobRunRecord
 from ...ops import run
 from ...runtime import RuntimeTelemetry
-from ...runtime import configure_telemetry
 from ...utils._types import JSONData
 from . import _completion
 from . import _lifecycle
@@ -398,7 +397,7 @@ def run_handler(
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
     cfg = Config.from_yaml(config, substitute=True)
-    configure_telemetry(
+    RuntimeTelemetry.configure(
         getattr(cfg, 'telemetry', None),
         env=os.environ,
         force=True,
