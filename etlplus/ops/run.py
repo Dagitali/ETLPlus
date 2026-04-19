@@ -7,12 +7,17 @@ A module for running ETL jobs defined in YAML configurations.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from concurrent.futures import FIRST_COMPLETED
+from concurrent.futures import Future
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import wait
 from dataclasses import dataclass
 from dataclasses import field
 from datetime import UTC
 from datetime import datetime
 from pathlib import Path
 from time import perf_counter
+from time import sleep
 from typing import Any
 from typing import Final
 from typing import Self
@@ -24,6 +29,8 @@ from ..api import HttpMethod
 from ..connector import DataConnectorType
 from ..file._core import FileFormatArg
 from ..utils import print_json
+from ..utils import to_float
+from ..utils import to_positive_int
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import StrPath
@@ -53,10 +60,24 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNALCONSTANTS ================================================ #
+
+
+_JOB_EXECUTION_EXCEPTIONS: Final[tuple[type[Exception], ...]] = (
+    KeyError,
+    OSError,
+    RuntimeError,
+    ValueError,
+)
+
+
 # SECTION: CONSTANTS ======================================================== #
 
 
 DEFAULT_CONFIG_PATH: Final[str] = 'in/pipeline.yml'
+
+
+# SECTION: INTERNAL DATA CLASSES ============================================ #
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,37 +93,6 @@ class _DagJobRef:
 
 
 @dataclass(frozen=True, slots=True)
-class _RunContext:
-    """Resolved config and connector indexes used across one run."""
-
-    # -- Instance Attributes -- #
-
-    cfg: Any
-    sources_by_name: dict[str, Any]
-    targets_by_name: dict[str, Any]
-
-    # -- Class Methods -- #
-
-    @classmethod
-    def from_config(
-        cls,
-        cfg: Any,
-    ) -> Self:
-        """Build a context with indexed sources and targets."""
-        return cls(
-            cfg=cfg,
-            sources_by_name=_index_connectors(
-                list(getattr(cfg, 'sources', []) or []),
-                label='source',
-            ),
-            targets_by_name=_index_connectors(
-                list(getattr(cfg, 'targets', []) or []),
-                label='target',
-            ),
-        )
-
-
-@dataclass(frozen=True, slots=True)
 class _FileConnectorConfig:
     """Resolved file connector settings for one extract/load step."""
 
@@ -111,6 +101,20 @@ class _FileConnectorConfig:
     path: StrPath
     file_format: FileFormatArg
     options: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class _JobExecutionOutcome:
+    """Terminal outcome for one job execution with retry metadata."""
+
+    # -- Instance Attributes -- #
+
+    started_at: str
+    finished_at: str
+    duration_ms: int
+    result: JSONDict | None = None
+    exc: Exception | None = None
+    retry_summary: JSONDict | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,6 +195,56 @@ class _ResolvedJobConnector:
     connector_obj: Any
 
 
+@dataclass(frozen=True, slots=True)
+class _ResolvedJobRetry:
+    """Normalized retry controls for one job execution."""
+
+    # -- Instance Attributes -- #
+
+    max_attempts: int = 1
+    backoff_seconds: float = 0.0
+
+    # -- Instance Properties -- #
+
+    @property
+    def enabled(
+        self,
+    ) -> bool:
+        """Return whether retries are enabled beyond the first attempt."""
+        return self.max_attempts > 1
+
+
+@dataclass(frozen=True, slots=True)
+class _RunContext:
+    """Resolved config and connector indexes used across one run."""
+
+    # -- Instance Attributes -- #
+
+    cfg: Any
+    sources_by_name: dict[str, Any]
+    targets_by_name: dict[str, Any]
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_config(
+        cls,
+        cfg: Any,
+    ) -> Self:
+        """Build a context with indexed sources and targets."""
+        return cls(
+            cfg=cfg,
+            sources_by_name=_index_connectors(
+                list(getattr(cfg, 'sources', []) or []),
+                label='source',
+            ),
+            targets_by_name=_index_connectors(
+                list(getattr(cfg, 'targets', []) or []),
+                label='target',
+            ),
+        )
+
+
 @dataclass(slots=True)
 class _RunPlanTracker:
     """Accumulate execution state for one DAG-style run."""
@@ -201,13 +255,11 @@ class _RunPlanTracker:
     requested_job: str | None
     continue_on_fail: bool
     mode: str
-    failed_job_names: list[str] = field(default_factory=list)
-    skipped_job_names: list[str] = field(default_factory=list)
-    succeeded_job_names: list[str] = field(default_factory=list)
-    executed_jobs: list[dict[str, Any]] = field(default_factory=list)
-    final_job_name: str | None = None
-    final_result: JSONDict | None = None
-    final_result_status: str | None = None
+    max_concurrency: int = 1
+    _executed_lookup: dict[int, dict[str, Any]] = field(
+        default_factory=dict,
+        repr=False,
+    )
     _failed_lookup: set[str] = field(default_factory=set, repr=False)
     _skipped_lookup: set[str] = field(default_factory=set, repr=False)
 
@@ -233,23 +285,17 @@ class _RunPlanTracker:
         timestamp: str,
     ) -> None:
         """Record a skipped job caused by failed upstream dependencies."""
-        self.skipped_job_names.append(job_name)
         self._skipped_lookup.add(job_name)
-        self.executed_jobs.append(
-            {
-                'duration_ms': 0,
-                'finished_at': timestamp,
-                'job': job_name,
-                'reason': 'upstream_failed',
-                'sequence_index': sequence_index,
-                'skipped_due_to': blocked_by,
-                'started_at': timestamp,
-                'status': 'skipped',
-            },
-        )
-        self.final_job_name = job_name
-        self.final_result = None
-        self.final_result_status = None
+        self._executed_lookup[sequence_index] = {
+            'duration_ms': 0,
+            'finished_at': timestamp,
+            'job': job_name,
+            'reason': 'upstream_failed',
+            'sequence_index': sequence_index,
+            'skipped_due_to': blocked_by,
+            'started_at': timestamp,
+            'status': 'skipped',
+        }
 
     def record_failure(
         self,
@@ -258,27 +304,25 @@ class _RunPlanTracker:
         exc: Exception,
         duration_ms: int,
         finished_at: str,
+        retry_summary: JSONDict | None,
         sequence_index: int,
         started_at: str,
     ) -> None:
         """Record a failed job execution."""
-        self.failed_job_names.append(job_name)
         self._failed_lookup.add(job_name)
-        self.executed_jobs.append(
-            {
-                'duration_ms': duration_ms,
-                'error_message': str(exc),
-                'error_type': type(exc).__name__,
-                'finished_at': finished_at,
-                'job': job_name,
-                'sequence_index': sequence_index,
-                'started_at': started_at,
-                'status': 'failed',
-            },
-        )
-        self.final_job_name = job_name
-        self.final_result = None
-        self.final_result_status = None
+        job_record: dict[str, Any] = {
+            'duration_ms': duration_ms,
+            'error_message': str(exc),
+            'error_type': type(exc).__name__,
+            'finished_at': finished_at,
+            'job': job_name,
+            'sequence_index': sequence_index,
+            'started_at': started_at,
+            'status': 'failed',
+        }
+        if retry_summary is not None:
+            job_record['retry'] = retry_summary
+        self._executed_lookup[sequence_index] = job_record
 
     def record_success(
         self,
@@ -287,60 +331,130 @@ class _RunPlanTracker:
         result: JSONDict,
         duration_ms: int,
         finished_at: str,
+        retry_summary: JSONDict | None,
         sequence_index: int,
         started_at: str,
     ) -> None:
         """Record a successful job execution."""
         result_status = result.get('status')
-        self.succeeded_job_names.append(job_name)
-        self.executed_jobs.append(
-            {
-                'duration_ms': duration_ms,
-                'finished_at': finished_at,
-                'job': job_name,
-                'result': result,
-                'result_status': result_status,
-                'sequence_index': sequence_index,
-                'started_at': started_at,
-                'status': 'succeeded',
-            },
-        )
-        self.final_job_name = job_name
-        self.final_result = result
-        self.final_result_status = (
-            result_status if isinstance(result_status, str) else None
-        )
+        job_record: dict[str, Any] = {
+            'duration_ms': duration_ms,
+            'finished_at': finished_at,
+            'job': job_name,
+            'result': result,
+            'result_status': result_status,
+            'sequence_index': sequence_index,
+            'started_at': started_at,
+            'status': 'succeeded',
+        }
+        if retry_summary is not None:
+            job_record['retry'] = retry_summary
+        self._executed_lookup[sequence_index] = job_record
+
+    @property
+    def executed_jobs(
+        self,
+    ) -> list[dict[str, Any]]:
+        """Return executed-job rows in deterministic DAG order."""
+        return [self._executed_lookup[index] for index in sorted(self._executed_lookup)]
 
     def result(self) -> JSONDict:
         """Return the stable summary payload for the run."""
+        executed_jobs = self.executed_jobs
+        failed_job_names = [
+            cast(str, item['job'])
+            for item in executed_jobs
+            if item.get('status') == 'failed' and isinstance(item.get('job'), str)
+        ]
+        skipped_job_names = [
+            cast(str, item['job'])
+            for item in executed_jobs
+            if item.get('status') == 'skipped' and isinstance(item.get('job'), str)
+        ]
+        succeeded_job_names = [
+            cast(str, item['job'])
+            for item in executed_jobs
+            if item.get('status') == 'succeeded' and isinstance(item.get('job'), str)
+        ]
+        retried_jobs = [
+            item['job']
+            for item in executed_jobs
+            if isinstance(item, Mapping)
+            and isinstance(item.get('job'), str)
+            and isinstance(item.get('retry'), Mapping)
+            and isinstance(item['retry'].get('attempt_count'), int)
+            and item['retry']['attempt_count'] > 1
+        ]
+        total_retry_count = 0
+        for item in executed_jobs:
+            if not isinstance(item, Mapping):
+                continue
+            retry_summary = item.get('retry')
+            if not isinstance(retry_summary, Mapping):
+                continue
+            attempt_count = retry_summary.get('attempt_count')
+            if isinstance(attempt_count, int) and attempt_count > 1:
+                total_retry_count += attempt_count - 1
+
         summary_status = (
             'success'
-            if not self.failed_job_names and not self.skipped_job_names
+            if not failed_job_names and not skipped_job_names
             else 'partial_success'
-            if self.continue_on_fail and self.succeeded_job_names
+            if self.continue_on_fail and succeeded_job_names
             else 'failed'
         )
 
-        return {
+        final_job_name = None
+        final_result_status = None
+        for item in reversed(executed_jobs):
+            if final_job_name is None:
+                job_name = item.get('job') if isinstance(item, Mapping) else None
+                if isinstance(job_name, str) and job_name:
+                    final_job_name = job_name
+            if final_result_status is None:
+                result_status = (
+                    item.get('result_status') if isinstance(item, Mapping) else None
+                )
+                if isinstance(result_status, str) and result_status:
+                    final_result_status = result_status
+            if final_job_name is not None and final_result_status is not None:
+                break
+        final_result = None
+        for item in reversed(executed_jobs):
+            item_result = item.get('result') if isinstance(item, Mapping) else None
+            if isinstance(item_result, Mapping):
+                final_result = cast(JSONDict, item_result)
+                break
+
+        summary: JSONDict = {
             'continue_on_fail': self.continue_on_fail,
-            'executed_job_count': len(self.failed_job_names)
-            + len(self.succeeded_job_names),
-            'executed_jobs': self.executed_jobs,
-            'failed_job_count': len(self.failed_job_names),
-            'failed_jobs': self.failed_job_names,
-            'final_job': self.final_job_name,
-            'final_result': self.final_result,
-            'final_result_status': self.final_result_status,
+            'executed_job_count': len(failed_job_names) + len(succeeded_job_names),
+            'executed_jobs': executed_jobs,
+            'failed_job_count': len(failed_job_names),
+            'failed_jobs': failed_job_names,
+            'final_job': final_job_name,
+            'final_result': final_result,
+            'final_result_status': final_result_status,
             'job_count': len(self.ordered_job_names),
             'mode': self.mode,
             'ordered_jobs': self.ordered_job_names,
             'requested_job': self.requested_job,
-            'skipped_job_count': len(self.skipped_job_names),
-            'skipped_jobs': self.skipped_job_names,
+            'skipped_job_count': len(skipped_job_names),
+            'skipped_jobs': skipped_job_names,
             'status': summary_status,
-            'succeeded_job_count': len(self.succeeded_job_names),
-            'succeeded_jobs': self.succeeded_job_names,
+            'succeeded_job_count': len(succeeded_job_names),
+            'succeeded_jobs': succeeded_job_names,
         }
+        if self.max_concurrency > 1:
+            summary['max_concurrency'] = self.max_concurrency
+        if retried_jobs:
+            summary['retried_job_count'] = len(retried_jobs)
+            summary['retried_jobs'] = retried_jobs
+            summary['total_attempt_count'] = (
+                summary['executed_job_count'] + total_retry_count
+            )
+            summary['total_retry_count'] = total_retry_count
+        return summary
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -398,6 +512,128 @@ def _job_dependencies(
     if not isinstance(depends_on, (list, tuple, set, frozenset)):
         return []
     return [dep for dep in depends_on if isinstance(dep, str)]
+
+
+def _job_retry_value(
+    retry_obj: object,
+    field_name: str,
+) -> object:
+    """Return one retry field from a mapping-like or object payload."""
+    if isinstance(retry_obj, Mapping):
+        return retry_obj.get(field_name)
+    return getattr(retry_obj, field_name, None)
+
+
+def _job_retry_settings(
+    job_obj: Any,
+) -> _ResolvedJobRetry:
+    """Return normalized retry settings for one job-like object."""
+    retry_obj = getattr(job_obj, 'retry', None)
+    if retry_obj is None:
+        return _ResolvedJobRetry()
+    return _ResolvedJobRetry(
+        max_attempts=to_positive_int(
+            _job_retry_value(retry_obj, 'max_attempts'),
+            default=1,
+        ),
+        backoff_seconds=(
+            to_float(
+                _job_retry_value(retry_obj, 'backoff_seconds'),
+                default=0.0,
+                minimum=0.0,
+            )
+            or 0.0
+        ),
+    )
+
+
+def _job_retry_summary(
+    *,
+    attempts: list[JSONDict],
+    retry: _ResolvedJobRetry,
+) -> JSONDict | None:
+    """Return one additive retry summary when retries are configured."""
+    if not retry.enabled:
+        return None
+    return {
+        'attempt_count': len(attempts),
+        'attempts': attempts,
+        'backoff_seconds': retry.backoff_seconds,
+        'max_attempts': retry.max_attempts,
+        'retried': len(attempts) > 1,
+    }
+
+
+def _maybe_sleep_for_retry(
+    backoff_seconds: float,
+) -> None:
+    """Sleep for one retry backoff interval when configured."""
+    if backoff_seconds > 0:
+        sleep(backoff_seconds)
+
+
+def _execute_job_with_retries(
+    context: _RunContext,
+    job_obj: Any,
+) -> _JobExecutionOutcome:
+    """Execute one job with optional retry attempts and additive metadata."""
+    retry = _job_retry_settings(job_obj)
+    total_started_perf = perf_counter()
+    job_started_at = _utc_now_iso()
+    attempts: list[JSONDict] = []
+
+    for attempt_number in range(1, retry.max_attempts + 1):
+        attempt_started_at = _utc_now_iso()
+        attempt_started_perf = perf_counter()
+        try:
+            result = _run_job_config(context, job_obj)
+        except _JOB_EXECUTION_EXCEPTIONS as exc:
+            attempt_finished_at = _utc_now_iso()
+            will_retry = attempt_number < retry.max_attempts
+            attempts.append(
+                {
+                    'attempt': attempt_number,
+                    'duration_ms': _duration_ms(attempt_started_perf),
+                    'error_message': str(exc),
+                    'error_type': type(exc).__name__,
+                    'finished_at': attempt_finished_at,
+                    'started_at': attempt_started_at,
+                    'status': 'failed',
+                    'will_retry': will_retry,
+                },
+            )
+            if will_retry:
+                _maybe_sleep_for_retry(retry.backoff_seconds)
+                continue
+            return _JobExecutionOutcome(
+                started_at=job_started_at,
+                finished_at=attempt_finished_at,
+                duration_ms=_duration_ms(total_started_perf),
+                exc=exc,
+                retry_summary=_job_retry_summary(attempts=attempts, retry=retry),
+            )
+
+        attempt_finished_at = _utc_now_iso()
+        result_status = result.get('status') if isinstance(result, Mapping) else None
+        attempt_payload: JSONDict = {
+            'attempt': attempt_number,
+            'duration_ms': _duration_ms(attempt_started_perf),
+            'finished_at': attempt_finished_at,
+            'started_at': attempt_started_at,
+            'status': 'succeeded',
+        }
+        if isinstance(result_status, str):
+            attempt_payload['result_status'] = result_status
+        attempts.append(attempt_payload)
+        return _JobExecutionOutcome(
+            started_at=job_started_at,
+            finished_at=attempt_finished_at,
+            duration_ms=_duration_ms(total_started_perf),
+            result=result,
+            retry_summary=_job_retry_summary(attempts=attempts, retry=retry),
+        )
+
+    raise RuntimeError('job execution reached an unreachable retry state')
 
 
 def _merge_file_options(
@@ -775,6 +1011,209 @@ def _duration_ms(
     return int((perf_counter() - started_perf) * 1000)
 
 
+def _resolved_max_concurrency(
+    max_concurrency: object,
+) -> int:
+    """Return one bounded concurrency setting with a serial default."""
+    return to_positive_int(max_concurrency, default=1)
+
+
+def _refresh_ready_jobs(
+    *,
+    allow_scheduling: bool,
+    completed_job_names: set[str],
+    jobs_by_name: Mapping[str, Any],
+    ordered_job_names: list[str],
+    ready_queue: list[str],
+    seen_job_names: set[str],
+    sequence_lookup: Mapping[str, int],
+    tracker: _RunPlanTracker,
+) -> None:
+    """Update ready and skipped jobs after one or more terminal outcomes."""
+    for job_name in ordered_job_names:
+        if job_name in seen_job_names or job_name in completed_job_names:
+            continue
+        job_obj = jobs_by_name[job_name]
+        blocked_by = tracker.blocked_dependencies(job_obj)
+        if blocked_by:
+            tracker.record_skipped(
+                job_name,
+                blocked_by=blocked_by,
+                sequence_index=sequence_lookup[job_name],
+                timestamp=_utc_now_iso(),
+            )
+            completed_job_names.add(job_name)
+            seen_job_names.add(job_name)
+            continue
+        if not allow_scheduling:
+            continue
+        if all(dep in completed_job_names for dep in _job_dependencies(job_obj)):
+            ready_queue.append(job_name)
+            seen_job_names.add(job_name)
+
+
+def _run_job_plan_serial(
+    context: _RunContext,
+    jobs: list[Any],
+    *,
+    requested_job: str | None,
+    continue_on_fail: bool,
+    mode: str,
+    max_concurrency: int,
+) -> JSONDict:
+    """Execute DAG jobs serially and return the stable summary payload."""
+    tracker = _RunPlanTracker(
+        ordered_job_names=[_require_job_name(job) for job in jobs],
+        requested_job=requested_job,
+        continue_on_fail=continue_on_fail,
+        mode=mode,
+        max_concurrency=max_concurrency,
+    )
+
+    for job_obj in jobs:
+        job_name = _require_job_name(job_obj)
+        sequence_index = tracker.ordered_job_names.index(job_name)
+        blocked_by = tracker.blocked_dependencies(job_obj)
+        if blocked_by:
+            tracker.record_skipped(
+                job_name,
+                blocked_by=blocked_by,
+                sequence_index=sequence_index,
+                timestamp=_utc_now_iso(),
+            )
+            continue
+
+        outcome = _execute_job_with_retries(context, job_obj)
+        if outcome.exc is not None:
+            tracker.record_failure(
+                job_name,
+                exc=outcome.exc,
+                duration_ms=outcome.duration_ms,
+                finished_at=outcome.finished_at,
+                retry_summary=outcome.retry_summary,
+                sequence_index=sequence_index,
+                started_at=outcome.started_at,
+            )
+            if not continue_on_fail:
+                break
+            continue
+
+        tracker.record_success(
+            job_name,
+            result=cast(JSONDict, outcome.result),
+            duration_ms=outcome.duration_ms,
+            finished_at=outcome.finished_at,
+            retry_summary=outcome.retry_summary,
+            sequence_index=sequence_index,
+            started_at=outcome.started_at,
+        )
+    return tracker.result()
+
+
+def _run_job_plan_parallel(
+    context: _RunContext,
+    jobs: list[Any],
+    *,
+    requested_job: str | None,
+    continue_on_fail: bool,
+    mode: str,
+    max_concurrency: int,
+) -> JSONDict:
+    """Execute independent DAG jobs concurrently with a bounded worker pool."""
+    ordered_job_names = [_require_job_name(job) for job in jobs]
+    tracker = _RunPlanTracker(
+        ordered_job_names=ordered_job_names,
+        requested_job=requested_job,
+        continue_on_fail=continue_on_fail,
+        mode=mode,
+        max_concurrency=max_concurrency,
+    )
+    jobs_by_name = {_require_job_name(job): job for job in jobs}
+    sequence_lookup = {
+        job_name: index for index, job_name in enumerate(ordered_job_names)
+    }
+    completed_job_names: set[str] = set()
+    ready_queue: list[str] = []
+    seen_job_names: set[str] = set()
+    stop_scheduling = False
+
+    _refresh_ready_jobs(
+        allow_scheduling=True,
+        completed_job_names=completed_job_names,
+        jobs_by_name=jobs_by_name,
+        ordered_job_names=ordered_job_names,
+        ready_queue=ready_queue,
+        seen_job_names=seen_job_names,
+        sequence_lookup=sequence_lookup,
+        tracker=tracker,
+    )
+
+    with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
+        running: dict[Future[_JobExecutionOutcome], str] = {}
+
+        while ready_queue or running:
+            while (
+                ready_queue and len(running) < max_concurrency and not stop_scheduling
+            ):
+                job_name = ready_queue.pop(0)
+                running[
+                    executor.submit(
+                        _execute_job_with_retries,
+                        context,
+                        jobs_by_name[job_name],
+                    )
+                ] = job_name
+
+            if not running:
+                break
+
+            done, _pending = wait(
+                tuple(running),
+                return_when=FIRST_COMPLETED,
+            )
+            for future in sorted(done, key=lambda item: sequence_lookup[running[item]]):
+                job_name = running.pop(future)
+                sequence_index = sequence_lookup[job_name]
+                outcome = future.result()
+                completed_job_names.add(job_name)
+                if outcome.exc is not None:
+                    tracker.record_failure(
+                        job_name,
+                        exc=outcome.exc,
+                        duration_ms=outcome.duration_ms,
+                        finished_at=outcome.finished_at,
+                        retry_summary=outcome.retry_summary,
+                        sequence_index=sequence_index,
+                        started_at=outcome.started_at,
+                    )
+                    if not continue_on_fail:
+                        stop_scheduling = True
+                    continue
+
+                tracker.record_success(
+                    job_name,
+                    result=cast(JSONDict, outcome.result),
+                    duration_ms=outcome.duration_ms,
+                    finished_at=outcome.finished_at,
+                    retry_summary=outcome.retry_summary,
+                    sequence_index=sequence_index,
+                    started_at=outcome.started_at,
+                )
+
+            _refresh_ready_jobs(
+                allow_scheduling=continue_on_fail or not stop_scheduling,
+                completed_job_names=completed_job_names,
+                jobs_by_name=jobs_by_name,
+                ordered_job_names=ordered_job_names,
+                ready_queue=ready_queue,
+                seen_job_names=seen_job_names,
+                sequence_lookup=sequence_lookup,
+                tracker=tracker,
+            )
+
+    return tracker.result()
+
+
 def _require_record_payload(
     data: DataSourceArg,
 ) -> JSONData:
@@ -793,57 +1232,26 @@ def _run_job_plan(
     requested_job: str | None,
     continue_on_fail: bool,
     mode: str,
+    max_concurrency: int = 1,
 ) -> JSONDict:
     """Execute multiple jobs in DAG order and return a stable summary."""
-    tracker = _RunPlanTracker(
-        ordered_job_names=[_require_job_name(job) for job in jobs],
+    if max_concurrency <= 1 or len(jobs) <= 1:
+        return _run_job_plan_serial(
+            context,
+            jobs,
+            requested_job=requested_job,
+            continue_on_fail=continue_on_fail,
+            mode=mode,
+            max_concurrency=max_concurrency,
+        )
+    return _run_job_plan_parallel(
+        context,
+        jobs,
         requested_job=requested_job,
         continue_on_fail=continue_on_fail,
         mode=mode,
+        max_concurrency=max_concurrency,
     )
-
-    for job_obj in jobs:
-        job_name = _require_job_name(job_obj)
-        sequence_index = tracker.ordered_job_names.index(job_name)
-        blocked_by = tracker.blocked_dependencies(job_obj)
-        if blocked_by:
-            tracker.record_skipped(
-                job_name,
-                blocked_by=blocked_by,
-                sequence_index=sequence_index,
-                timestamp=_utc_now_iso(),
-            )
-            continue
-
-        started_at = _utc_now_iso()
-        started_perf = perf_counter()
-        try:
-            result = _run_job_config(
-                context,
-                job_obj,
-            )
-        except (KeyError, OSError, RuntimeError, ValueError) as exc:
-            tracker.record_failure(
-                job_name,
-                exc=exc,
-                duration_ms=_duration_ms(started_perf),
-                finished_at=_utc_now_iso(),
-                sequence_index=sequence_index,
-                started_at=started_at,
-            )
-            if not continue_on_fail:
-                break
-            continue
-
-        tracker.record_success(
-            job_name,
-            result=result,
-            duration_ms=_duration_ms(started_perf),
-            finished_at=_utc_now_iso(),
-            sequence_index=sequence_index,
-            started_at=started_at,
-        )
-    return tracker.result()
 
 
 def _require_named_connector(
@@ -934,6 +1342,7 @@ def run(
     *,
     run_all: bool = False,
     continue_on_fail: bool = False,
+    max_concurrency: int | None = None,
 ) -> JSONDict:
     """
     Run one configured job or a DAG-ordered job set from a YAML configuration.
@@ -956,6 +1365,10 @@ def run(
     continue_on_fail : bool, optional
         Whether DAG-style runs should continue past failed jobs and skip only
         blocked downstream jobs. Defaults to ``False``.
+    max_concurrency : int | None, optional
+        Maximum number of independent DAG jobs to run concurrently for
+        DAG-style runs. Defaults to ``None`` which preserves serial
+        execution.
 
     Returns
     -------
@@ -971,6 +1384,7 @@ def run(
         run_all=run_all,
     )
     context = _RunContext.from_config(cfg)
+    resolved_max_concurrency = _resolved_max_concurrency(max_concurrency)
 
     if len(planned_jobs) > 1 or run_all:
         return _run_job_plan(
@@ -979,6 +1393,7 @@ def run(
             requested_job=job,
             continue_on_fail=continue_on_fail,
             mode='all' if run_all else 'job',
+            max_concurrency=resolved_max_concurrency,
         )
 
     return _run_job_config(context, planned_jobs[0])
