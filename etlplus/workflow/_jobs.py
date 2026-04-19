@@ -202,8 +202,7 @@ class JobRetryConfig:
         return cls(
             max_attempts=to_positive_int(data.get('max_attempts'), default=1),
             backoff_seconds=(
-                to_float(data.get('backoff_seconds'), default=0.0, minimum=0.0)
-                or 0.0
+                to_float(data.get('backoff_seconds'), default=0.0, minimum=0.0) or 0.0
             ),
         )
 
