@@ -125,11 +125,18 @@ def _missing_requirement_guidance(
     return install_hint
 
 
+# SECTION: INTERNAL CLASSES ================================================= #
+
+
 class _TokenReferenceCollector:
     """Collect unresolved substitution tokens and their stable config paths."""
 
+    # -- Magic Methods (Object Lifecycle) -- #
+
     def __init__(self) -> None:
         self._paths_by_name: dict[str, set[str]] = {}
+
+    # -- Class Methods -- #
 
     @classmethod
     def collect_names(
@@ -153,6 +160,8 @@ class _TokenReferenceCollector:
             {'name': name, 'paths': sorted(paths)}
             for name, paths in sorted(collector._paths_by_name.items())
         ]
+
+    # -- Instance Methods -- #
 
     def walk(
         self,
