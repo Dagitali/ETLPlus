@@ -15,7 +15,7 @@ from typing import cast
 
 from ...file import File
 from ...file import FileFormat
-from ...utils._data import parse_json
+from ...utils import parse_json
 from ...utils._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
