@@ -15,15 +15,8 @@ from ._mapping import cast_str_dict
 from ._mapping import coerce_dict
 from ._mapping import maybe_mapping
 from ._mixins import BoundsWarningsMixin
-from ._numbers import to_float
-from ._numbers import to_int
-from ._numbers import to_maximum_float
-from ._numbers import to_maximum_int
-from ._numbers import to_minimum_float
-from ._numbers import to_minimum_int
-from ._numbers import to_number
-from ._numbers import to_positive_float
-from ._numbers import to_positive_int
+from ._numbers import FloatParser
+from ._numbers import IntParser
 from ._parsing import MappingFieldParser
 from ._parsing import SequenceParser
 from ._parsing import ValueParser
@@ -39,6 +32,8 @@ __all__ = [
     'MappingFieldParser',
     'SequenceParser',
     'ValueParser',
+    'FloatParser',
+    'IntParser',
     # Enums
     'CoercibleStrEnum',
     # Functions (data utilities)
@@ -51,18 +46,6 @@ __all__ = [
     'coerce_dict',
     'deep_substitute',
     'maybe_mapping',
-    # Functions (float coercion)
-    'to_float',
-    'to_maximum_float',
-    'to_minimum_float',
-    'to_positive_float',
-    # Functions (int coercion)
-    'to_int',
-    'to_maximum_int',
-    'to_minimum_int',
-    'to_positive_int',
-    # Functions (generic number coercion)
-    'to_number',
     # Functions (text processing)
     'normalize_choice',
     'normalize_str',

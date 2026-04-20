@@ -27,8 +27,7 @@ from typing import Self
 from typing import TypedDict
 from typing import overload
 
-from ...utils import to_float
-from ...utils import to_positive_float
+from ...utils import FloatParser
 from ...utils._mixins import BoundsWarningsMixin
 from ...utils._types import StrAnyMap
 
@@ -125,8 +124,8 @@ def _normalized_rate_values(
     if not cfg:
         return None, None
     return (
-        to_positive_float(cfg.get('sleep_seconds')),
-        to_positive_float(cfg.get('max_per_sec')),
+        FloatParser.positive(cfg.get('sleep_seconds')),
+        FloatParser.positive(cfg.get('max_per_sec')),
     )
 
 
@@ -200,9 +199,9 @@ class RateLimitConfig(BoundsWarningsMixin):
     def as_mapping(self) -> RateLimitConfigDict:
         """Return a normalized mapping consumable by rate-limit helpers."""
         cfg: RateLimitConfigDict = {}
-        if (sleep := to_float(self.sleep_seconds)) is not None:
+        if (sleep := FloatParser.parse(self.sleep_seconds)) is not None:
             cfg['sleep_seconds'] = sleep
-        if (rate := to_float(self.max_per_sec)) is not None:
+        if (rate := FloatParser.parse(self.max_per_sec)) is not None:
             cfg['max_per_sec'] = rate
         return cfg
 
@@ -210,12 +209,12 @@ class RateLimitConfig(BoundsWarningsMixin):
         """Return human-readable warnings for suspicious numeric bounds."""
         warnings: list[str] = []
         self._warn_if(
-            (sleep := to_float(self.sleep_seconds)) is not None and sleep < 0,
+            (sleep := FloatParser.parse(self.sleep_seconds)) is not None and sleep < 0,
             'sleep_seconds should be >= 0',
             warnings,
         )
         self._warn_if(
-            (rate := to_float(self.max_per_sec)) is not None and rate <= 0,
+            (rate := FloatParser.parse(self.max_per_sec)) is not None and rate <= 0,
             'max_per_sec should be > 0',
             warnings,
         )
@@ -255,8 +254,8 @@ class RateLimitConfig(BoundsWarningsMixin):
             return None
 
         return cls(
-            sleep_seconds=to_float(sleep_seconds),
-            max_per_sec=to_float(max_per_sec),
+            sleep_seconds=FloatParser.parse(sleep_seconds),
+            max_per_sec=FloatParser.parse(max_per_sec),
         )
 
     @classmethod
@@ -347,8 +346,8 @@ class RateLimitConfig(BoundsWarningsMixin):
             return None
 
         return cls(
-            sleep_seconds=to_float(obj.get('sleep_seconds')),
-            max_per_sec=to_float(obj.get('max_per_sec')),
+            sleep_seconds=FloatParser.parse(obj.get('sleep_seconds')),
+            max_per_sec=FloatParser.parse(obj.get('max_per_sec')),
         )
 
 

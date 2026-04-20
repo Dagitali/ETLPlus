@@ -17,13 +17,13 @@ from dataclasses import field
 from typing import Any
 from typing import Self
 
+from ..utils import FloatParser
+from ..utils import IntParser
 from ..utils import MappingFieldParser
 from ..utils import SequenceParser
 from ..utils import ValueParser
 from ..utils import coerce_dict
 from ..utils import maybe_mapping
-from ..utils import to_float
-from ..utils import to_positive_int
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -130,9 +130,10 @@ class JobRetryConfig:
         if not data:
             return None
         return cls(
-            max_attempts=to_positive_int(data.get('max_attempts'), default=1),
+            max_attempts=IntParser.positive(data.get('max_attempts'), default=1),
             backoff_seconds=(
-                to_float(data.get('backoff_seconds'), default=0.0, minimum=0.0) or 0.0
+                FloatParser.parse(data.get('backoff_seconds'), default=0.0, minimum=0.0)
+                or 0.0
             ),
         )
 

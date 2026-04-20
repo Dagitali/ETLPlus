@@ -29,8 +29,8 @@ from typing import Self
 from typing import TypedDict
 from typing import overload
 
+from ...utils import IntParser
 from ...utils import maybe_mapping
-from ...utils import to_int
 from ...utils._enums import CoercibleStrEnum
 from ...utils._mixins import BoundsWarningsMixin
 from ...utils._types import StrAnyMap
@@ -353,15 +353,15 @@ class PaginationConfig(BoundsWarningsMixin):
             type=PaginationType.try_coerce(obj.get('type')),
             page_param=page_param,
             size_param=size_param,
-            start_page=to_int(start_page),
-            page_size=to_int(page_size),
+            start_page=IntParser.parse(start_page),
+            page_size=IntParser.parse(page_size),
             cursor_param=cursor_param,
             cursor_path=cursor_path,
             start_cursor=start_cursor,
             records_path=records_path,
             fallback_path=fallback_path,
-            max_pages=to_int(max_pages),
-            max_records=to_int(max_records),
+            max_pages=IntParser.parse(max_pages),
+            max_records=IntParser.parse(max_records),
             limit_param=limit_param,
         )
 
@@ -401,7 +401,7 @@ class PaginationConfig(BoundsWarningsMixin):
         Notes
         -----
         Tolerant: unknown keys ignored; numeric fields coerced via
-        ``to_int``; non-mapping inputs return ``None``.
+        ``IntParser.parse``; non-mapping inputs return ``None``.
         """
         if not isinstance(obj, Mapping):
             return None
@@ -410,15 +410,15 @@ class PaginationConfig(BoundsWarningsMixin):
             type=PaginationType.try_coerce(obj.get('type')),
             page_param=obj.get('page_param'),
             size_param=obj.get('size_param'),
-            start_page=to_int(obj.get('start_page')),
-            page_size=to_int(obj.get('page_size')),
+            start_page=IntParser.parse(obj.get('start_page')),
+            page_size=IntParser.parse(obj.get('page_size')),
             cursor_param=obj.get('cursor_param'),
             cursor_path=obj.get('cursor_path'),
             start_cursor=obj.get('start_cursor'),
             records_path=obj.get('records_path'),
             fallback_path=obj.get('fallback_path'),
-            max_pages=to_int(obj.get('max_pages')),
-            max_records=to_int(obj.get('max_records')),
+            max_pages=IntParser.parse(obj.get('max_pages')),
+            max_records=IntParser.parse(obj.get('max_records')),
             limit_param=obj.get('limit_param'),
         )
 

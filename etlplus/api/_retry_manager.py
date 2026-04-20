@@ -31,9 +31,8 @@ from typing import TypedDict
 
 import requests  # type: ignore[import]
 
-from ..utils import to_float
-from ..utils import to_int
-from ..utils import to_positive_int
+from ..utils import FloatParser
+from ..utils import IntParser
 from ..utils._types import JSONData
 from ..utils._types import Sleeper
 from ._errors import ApiAuthError
@@ -130,12 +129,12 @@ class RetryStrategy:
     ) -> RetryStrategy:
         """Normalize user policy values into a deterministic strategy."""
         policy = policy or {}
-        attempts = to_positive_int(
+        attempts = IntParser.positive(
             policy.get('max_attempts'),
             cls.DEFAULT_ATTEMPTS,
         )
         backoff = (
-            to_float(
+            FloatParser.parse(
                 policy.get('backoff'),
                 default=cls.DEFAULT_BACKOFF,
                 minimum=0.0,
@@ -145,7 +144,7 @@ class RetryStrategy:
         retry_on = policy.get('retry_on') or []
         normalized: set[int] = set()
         for code in retry_on:
-            value = to_int(code)
+            value = IntParser.parse(code)
             if value is not None and value > 0:
                 normalized.add(value)
         if not normalized:

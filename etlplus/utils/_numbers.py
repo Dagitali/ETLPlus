@@ -7,24 +7,14 @@ Numeric coercion utility helpers.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
-    # Functions (float coercion)
-    'to_float',
-    'to_maximum_float',
-    'to_minimum_float',
-    'to_positive_float',
-    # Functions (int coercion)
-    'to_int',
-    'to_maximum_int',
-    'to_minimum_int',
-    'to_positive_int',
-    # Functions (generic number coercion)
-    'to_number',
+    # Classes
+    'FloatParser',
+    'IntParser',
 ]
 
 
@@ -34,12 +24,7 @@ __all__ = [
 class _NumberParser:
     """Shared normalization helpers for numeric parser classes."""
 
-    @staticmethod
-    def _strip_text(
-        value: str,
-    ) -> str:
-        """Return trimmed text used by numeric coercion helpers."""
-        return value.strip()
+    # -- Internal Class Methods -- #
 
     @classmethod
     def _clamp[Num: (int, float)](
@@ -110,6 +95,15 @@ class _NumberParser:
             return None
         return cls._clamp(result, minimum, maximum)
 
+    # -- Internal Static Methods -- #
+
+    @staticmethod
+    def _strip_text(
+        value: str,
+    ) -> str:
+        """Return trimmed text used by numeric coercion helpers."""
+        return value.strip()
+
     @staticmethod
     def _validate_bounds[Num: (int, float)](
         minimum: Num | None,
@@ -162,15 +156,33 @@ class _NumberParser:
         return default if value is None else value
 
 
-class _FloatParser(_NumberParser):
+# SECTION: CLASSES ========================================================== #
+
+
+class FloatParser(_NumberParser):
     """Cohesive float-oriented parsing and normalization rules."""
+
+    # -- Class Methods -- #
 
     @classmethod
     def coerce(
         cls,
         value: object,
     ) -> float | None:
-        """Best-effort float coercion that ignores booleans and blanks."""
+        """
+        Best-effort float coercion that ignores booleans and blanks.
+
+
+        Parameters
+        ----------
+        value : object
+            Value to coerce.
+
+        Returns
+        -------
+        float | None
+            Coerced float or ``None`` when coercion fails.
+        """
         match value:
             case None | bool():
                 return None
@@ -200,7 +212,25 @@ class _FloatParser(_NumberParser):
         minimum: float | None = None,
         maximum: float | None = None,
     ) -> float | None:
-        """Coerce *value* to a float with optional fallback and bounds."""
+        """
+        Coerce *value* to a float with optional fallback and bounds.
+
+        Parameters
+        ----------
+        value : object
+            Value to coerce.
+        default : float | None, optional
+            Fallback returned if coercion fails. Defaults to ``None``.
+        minimum : float | None, optional
+            Lower bound, inclusive. Defaults to ``None``.
+        maximum : float | None, optional
+            Upper bound, inclusive. Defaults to ``None``.
+
+        Returns
+        -------
+        float | None
+            Coerced and optionally clamped value.
+        """
         return cls._normalize(
             cls.coerce,
             value,
@@ -215,7 +245,21 @@ class _FloatParser(_NumberParser):
         value: object,
         default: float,
     ) -> float:
-        """Return the greater of *default* and the parsed float value."""
+        """
+        Return the greater of *default* and the parsed float value.
+
+        Parameters
+        ----------
+        value : object
+            Value to coerce.
+        default : float
+            Baseline float value.
+
+        Returns
+        -------
+        float
+            Greater of *default* and parsed float value.
+        """
         result = cls.parse(value, default)
         return max(cls._value_or_default(result, default), default)
 
@@ -225,7 +269,21 @@ class _FloatParser(_NumberParser):
         value: object,
         default: float,
     ) -> float:
-        """Return the lesser of *default* and the parsed float value."""
+        """
+        Return the lesser of *default* and the parsed float value.
+
+        Parameters
+        ----------
+        value : object
+            Value to coerce.
+        default : float
+            Baseline float value.
+
+        Returns
+        -------
+        float
+            Lesser of *default* and parsed float value.
+        """
         result = cls.parse(value, default)
         return min(cls._value_or_default(result, default), default)
 
@@ -234,15 +292,29 @@ class _FloatParser(_NumberParser):
         cls,
         value: object,
     ) -> float | None:
-        """Return a positive float when coercion succeeds."""
+        """
+        Return a positive float when coercion succeeds.
+
+        Parameters
+        ----------
+        value : object
+            Value to coerce.
+
+        Returns
+        -------
+        float | None
+            Positive float or ``None`` when coercion fails.
+        """
         result = cls.parse(value)
         if result is None or result <= 0:
             return None
         return result
 
 
-class _IntParser(_NumberParser):
+class IntParser(_NumberParser):
     """Cohesive integer-oriented parsing and normalization rules."""
+
+    # -- Internal Static Methods -- #
 
     @staticmethod
     def _integral_from_float(
@@ -252,6 +324,8 @@ class _IntParser(_NumberParser):
         if candidate is None or not candidate.is_integer():
             return None
         return int(candidate)
+
+    # -- Class Methods -- #
 
     @classmethod
     def coerce(
@@ -285,9 +359,9 @@ class _IntParser(_NumberParser):
                 try:
                     return int(text)
                 except ValueError:
-                    return cls._integral_from_float(_FloatParser.coerce(text))
+                    return cls._integral_from_float(FloatParser.coerce(text))
             case _:
-                return cls._integral_from_float(_FloatParser.coerce(value))
+                return cls._integral_from_float(FloatParser.coerce(value))
 
     @classmethod
     def parse(
@@ -299,6 +373,17 @@ class _IntParser(_NumberParser):
     ) -> int | None:
         """
         Coerce *value* to an integer with optional fallback and bounds.
+
+        Parameters
+        ----------
+        value : object
+            Value to coerce.
+        default : int | None, optional
+            Fallback returned if coercion fails. Defaults to ``None``.
+        minimum : int | None, optional
+            Lower bound, inclusive. Defaults to ``None``.
+        maximum : int | None, optional
+            Upper bound, inclusive. Defaults to ``None``.
 
         Returns
         -------
@@ -388,212 +473,3 @@ class _IntParser(_NumberParser):
         """
         result = cls.parse(value, default, minimum=minimum)
         return cls._value_or_default(result, minimum)
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-# -- Float Coercion -- #
-
-
-def to_float(
-    value: object,
-    default: float | None = None,
-    minimum: float | None = None,
-    maximum: float | None = None,
-) -> float | None:
-    """
-    Coerce *value* to a float with optional fallback and bounds.
-
-    Notes
-    -----
-    For strings, leading/trailing whitespace is ignored. Returns ``None``
-    when coercion fails and no *default* is provided.
-    """
-    return _FloatParser.parse(
-        value,
-        default=default,
-        minimum=minimum,
-        maximum=maximum,
-    )
-
-
-def to_maximum_float(
-    value: Any,
-    default: float,
-) -> float:
-    """
-    Return the greater of *default* and *value* after float coercion.
-
-    Parameters
-    ----------
-    value : Any
-        Candidate input coerced with :func:`to_float`.
-    default : float
-        Baseline float value that acts as the lower bound.
-
-    Returns
-    -------
-    float
-        *default* if coercion fails; else ``max(coerced, default)``.
-    """
-    return _FloatParser.at_least(value, default)
-
-
-def to_minimum_float(
-    value: Any,
-    default: float,
-) -> float:
-    """
-    Return the lesser of *default* and *value* after float coercion.
-
-    Parameters
-    ----------
-    value : Any
-        Candidate input coerced with :func:`to_float`.
-    default : float
-        Baseline float value that acts as the upper bound.
-
-    Returns
-    -------
-    float
-        *default* if coercion fails; else ``min(coerced, default)``.
-    """
-    return _FloatParser.at_most(value, default)
-
-
-def to_positive_float(
-    value: Any,
-) -> float | None:
-    """
-    Return a positive float when coercion succeeds.
-
-    Parameters
-    ----------
-    value : Any
-        Value coerced using :func:`to_float`.
-
-    Returns
-    -------
-    float | None
-        Positive float if coercion succeeds and ``value > 0``; else ``None``.
-    """
-    return _FloatParser.positive(value)
-
-
-# -- Int Coercion -- #
-
-
-def to_int(
-    value: object,
-    default: int | None = None,
-    minimum: int | None = None,
-    maximum: int | None = None,
-) -> int | None:
-    """
-    Coerce *value* to an integer with optional fallback and bounds.
-
-    Notes
-    -----
-    For strings, leading/trailing whitespace is ignored. Returns ``None``
-    when coercion fails and no *default* is provided.
-    """
-    return _IntParser.parse(
-        value,
-        default=default,
-        minimum=minimum,
-        maximum=maximum,
-    )
-
-
-def to_maximum_int(
-    value: Any,
-    default: int,
-) -> int:
-    """
-    Return the greater of *default* and *value* after integer coercion.
-
-    Parameters
-    ----------
-    value : Any
-        Candidate input coerced with :func:`to_int`.
-    default : int
-        Baseline integer that acts as the lower bound.
-
-    Returns
-    -------
-    int
-        *default* if coercion fails; else ``max(coerced, default)``.
-    """
-    return _IntParser.at_least(value, default)
-
-
-def to_minimum_int(
-    value: Any,
-    default: int,
-) -> int:
-    """
-    Return the lesser of *default* and *value* after integer coercion.
-
-    Parameters
-    ----------
-    value : Any
-        Candidate input coerced with :func:`to_int`.
-    default : int
-        Baseline integer acting as the upper bound.
-
-    Returns
-    -------
-    int
-        *default* if coercion fails; else ``min(coerced, default)``.
-    """
-    return _IntParser.at_most(value, default)
-
-
-def to_positive_int(
-    value: Any,
-    default: int,
-    *,
-    minimum: int = 1,
-) -> int:
-    """
-    Return a positive integer, falling back to *minimum* when needed.
-
-    Parameters
-    ----------
-    value : Any
-        Candidate input coerced with :func:`to_int`.
-    default : int
-        Fallback value when coercion fails; clamped by *minimum*.
-    minimum : int
-        Inclusive lower bound for the result. Defaults to ``1``.
-
-    Returns
-    -------
-    int
-        Positive integer respecting *minimum*.
-    """
-    return _IntParser.positive(value, default, minimum=minimum)
-
-
-# -- Generic Number Coercion -- #
-
-
-def to_number(
-    value: object,
-) -> float | None:
-    """
-    Coerce *value* to a ``float`` using the internal float coercer.
-
-    Parameters
-    ----------
-    value : object
-        Value that may be numeric or a numeric string. Booleans and blanks
-        return ``None`` for consistency with :func:`to_float`.
-
-    Returns
-    -------
-    float | None
-        ``float(value)`` if coercion succeeds; else ``None``.
-    """
-    return _FloatParser.coerce(value)
