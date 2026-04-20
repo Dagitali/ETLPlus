@@ -26,6 +26,7 @@ from etlplus.utils._numbers import to_minimum_int
 from etlplus.utils._numbers import to_number
 from etlplus.utils._numbers import to_positive_float
 from etlplus.utils._numbers import to_positive_int
+from etlplus.utils._parsing import ValueParser
 from etlplus.utils._substitution import deep_substitute
 from etlplus.utils._text import normalize_choice
 from etlplus.utils._text import normalize_str
@@ -38,7 +39,7 @@ from etlplus.utils._text import normalize_str
 
 
 UTILS_EXPORTS = [
-    ('BoundsWarningsMixin', BoundsWarningsMixin),
+    ('ValueParser', ValueParser),
     ('CoercibleStrEnum', CoercibleStrEnum),
     ('count_records', count_records),
     ('print_json', print_json),
@@ -58,6 +59,7 @@ UTILS_EXPORTS = [
     ('to_number', to_number),
     ('normalize_choice', normalize_choice),
     ('normalize_str', normalize_str),
+    ('BoundsWarningsMixin', BoundsWarningsMixin),
 ]
 
 

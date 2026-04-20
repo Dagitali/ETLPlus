@@ -12,17 +12,15 @@ Notes
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 from typing import Self
 
+from ..utils import ValueParser
 from ..utils import coerce_dict
-from ..utils import maybe_mapping
 from ..utils import to_float
 from ..utils import to_positive_int
-from ..utils._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -36,77 +34,6 @@ __all__ = [
     'TransformRef',
     'ValidationRef',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _coerce_optional_str(value: Any) -> str | None:
-    """
-    Normalize optional string values, coercing non-strings when needed.
-
-    Parameters
-    ----------
-    value : Any
-        Optional value to normalize.
-
-    Returns
-    -------
-    str | None
-        ``None`` when *value* is ``None``; otherwise a string value.
-    """
-    if value is None:
-        return None
-    return value if isinstance(value, str) else str(value)
-
-
-def _parse_depends_on(
-    value: Any,
-) -> list[str]:
-    """
-    Normalize dependency declarations into a string list.
-
-    Parameters
-    ----------
-    value : Any
-        Input dependency specification (string or list of strings).
-
-    Returns
-    -------
-    list[str]
-        Normalized dependency list.
-    """
-    if isinstance(value, str):
-        return [value]
-    if isinstance(value, Sequence) and not isinstance(
-        value,
-        (str, bytes, bytearray),
-    ):
-        return [entry for entry in value if isinstance(entry, str)]
-    return []
-
-
-def _require_str(
-    data: StrAnyMap,
-    key: str,
-) -> str | None:
-    """
-    Extract a required string field from a mapping.
-
-    Parameters
-    ----------
-    data : StrAnyMap
-        Mapping containing the target field.
-    key : str
-        Field name to extract.
-
-    Returns
-    -------
-    str | None
-        The string value when present and valid; otherwise ``None``.
-    """
-    value = data.get(key)
-    return value if isinstance(value, str) else None
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -150,10 +77,10 @@ class ExtractRef:
         Self | None
             Parsed reference or ``None`` when the payload is invalid.
         """
-        data = maybe_mapping(obj)
+        data = ValueParser.mapping(obj)
         if not data:
             return None
-        if (source := _require_str(data, 'source')) is None:
+        if (source := ValueParser.required_str(data, 'source')) is None:
             return None
         return cls(source=source, options=coerce_dict(data.get('options')))
 
@@ -196,7 +123,7 @@ class JobRetryConfig:
         Self | None
             Parsed retry policy or ``None`` when the payload is invalid.
         """
-        data = maybe_mapping(obj)
+        data = ValueParser.mapping(obj)
         if not data:
             return None
         return cls(
@@ -272,16 +199,16 @@ class JobConfig:
         Self | None
             Parsed job configuration or ``None`` if invalid.
         """
-        data = maybe_mapping(obj)
+        data = ValueParser.mapping(obj)
         if not data:
             return None
-        if (name := _require_str(data, 'name')) is None:
+        if (name := ValueParser.required_str(data, 'name')) is None:
             return None
 
         return cls(
             name=name,
-            description=_coerce_optional_str(data.get('description')),
-            depends_on=_parse_depends_on(data.get('depends_on')),
+            description=ValueParser.optional_str(data.get('description')),
+            depends_on=ValueParser.str_list(data.get('depends_on')),
             extract=ExtractRef.from_obj(data.get('extract')),
             validate=ValidationRef.from_obj(data.get('validate')),
             retry=JobRetryConfig.from_obj(data.get('retry')),
@@ -328,10 +255,10 @@ class LoadRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = maybe_mapping(obj)
+        data = ValueParser.mapping(obj)
         if not data:
             return None
-        if (target := _require_str(data, 'target')) is None:
+        if (target := ValueParser.required_str(data, 'target')) is None:
             return None
         return cls(
             target=target,
@@ -374,10 +301,10 @@ class TransformRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = maybe_mapping(obj)
+        data = ValueParser.mapping(obj)
         if not data:
             return None
-        if (pipeline := _require_str(data, 'pipeline')) is None:
+        if (pipeline := ValueParser.required_str(data, 'pipeline')) is None:
             return None
         return cls(pipeline=pipeline)
 
@@ -424,13 +351,13 @@ class ValidationRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = maybe_mapping(obj)
+        data = ValueParser.mapping(obj)
         if not data:
             return None
-        if (ruleset := _require_str(data, 'ruleset')) is None:
+        if (ruleset := ValueParser.required_str(data, 'ruleset')) is None:
             return None
         return cls(
             ruleset=ruleset,
-            severity=_coerce_optional_str(data.get('severity')),
-            phase=_coerce_optional_str(data.get('phase')),
+            severity=ValueParser.optional_str(data.get('severity')),
+            phase=ValueParser.optional_str(data.get('phase')),
         )

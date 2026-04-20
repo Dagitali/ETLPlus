@@ -351,9 +351,7 @@ def _persisted_run_summary(
                     'total_attempt_count': total_attempt_count,
                     'total_retry_count': total_retry_count,
                 }
-                if (
-                    isinstance(max_concurrency, int) and max_concurrency > 1
-                )
+                if (isinstance(max_concurrency, int) and max_concurrency > 1)
                 or (
                     isinstance(retried_job_count, int)
                     and isinstance(total_attempt_count, int)
