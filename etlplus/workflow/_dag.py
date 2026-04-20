@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
+from dataclasses import field
 
 from ._jobs import JobConfig
 
@@ -45,6 +46,93 @@ class DagError(ValueError):
 
     def __str__(self) -> str:
         return self.message
+
+
+# SECTION: INTERNAL CLASSES ================================================= #
+
+
+@dataclass(slots=True)
+class _DagTopology:
+    """Internal dependency graph state for one topological sort operation."""
+
+    # -- Instance Attributes -- #
+
+    jobs_by_name: dict[str, JobConfig]
+    edges: dict[str, set[str]] = field(default_factory=dict)
+    indegree: dict[str, int] = field(default_factory=dict)
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_jobs(
+        cls,
+        jobs: list[JobConfig],
+    ) -> _DagTopology:
+        """Build validated DAG state from parsed workflow jobs."""
+        jobs_by_name = {job.name: job for job in jobs}
+        topology = cls(
+            jobs_by_name=jobs_by_name,
+            edges={name: set() for name in jobs_by_name},
+            indegree={name: 0 for name in jobs_by_name},
+        )
+
+        for job in jobs:
+            for dep in job.depends_on:
+                topology._add_dependency(job, dep)
+        return topology
+
+    # -- Internal Instance Methods -- #
+
+    def _add_dependency(
+        self,
+        job: JobConfig,
+        dependency_name: str,
+    ) -> None:
+        """Validate and register one job dependency edge."""
+        if dependency_name not in self.jobs_by_name:
+            raise DagError(
+                f'Unknown dependency "{dependency_name}" in job "{job.name}"',
+            )
+        if dependency_name == job.name:
+            raise DagError(f'Job "{job.name}" depends on itself')
+        if job.name in self.edges[dependency_name]:
+            return
+        self.edges[dependency_name].add(job.name)
+        self.indegree[job.name] += 1
+
+    # -- Instance Methods -- #
+
+    def ordered_names(
+        self,
+    ) -> list[str]:
+        """
+        Return job names in topological order.
+
+        Returns
+        -------
+        list[str]
+            Job names in topological order.
+
+        Raises
+        ------
+        DagError
+            If a dependency cycle is detected.
+        """
+        remaining_indegree = dict(self.indegree)
+        queue = deque(_ready(remaining_indegree))
+        ordered: list[str] = []
+
+        while queue:
+            name = queue.popleft()
+            ordered.append(name)
+            for child in sorted(self.edges[name]):
+                remaining_indegree[child] -= 1
+                if remaining_indegree[child] == 0:
+                    queue.append(child)
+
+        if len(ordered) != len(self.jobs_by_name):
+            raise DagError('Dependency cycle detected')
+        return ordered
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -88,40 +176,11 @@ def topological_sort_jobs(
     list[JobConfig]
         Jobs sorted in topological order.
 
-    Raises
-    ------
-    DagError
-        If a dependency is missing, self-referential, or when a cycle is
-        detected.
+    Notes
+    -----
+    - Propagates :class:`DagError` when dependency validation fails or a cycle
+      is detected.
     """
-    index = {job.name: job for job in jobs}
-    edges: dict[str, set[str]] = {name: set() for name in index}
-    indegree: dict[str, int] = {name: 0 for name in index}
-
-    for job in jobs:
-        for dep in job.depends_on:
-            if dep not in index:
-                raise DagError(
-                    f'Unknown dependency "{dep}" in job "{job.name}"',
-                )
-            if dep == job.name:
-                raise DagError(f'Job "{job.name}" depends on itself')
-            if job.name not in edges[dep]:
-                edges[dep].add(job.name)
-                indegree[job.name] += 1
-
-    queue = deque(_ready(indegree))
-    ordered: list[str] = []
-
-    while queue:
-        name = queue.popleft()
-        ordered.append(name)
-        for child in sorted(edges[name]):
-            indegree[child] -= 1
-            if indegree[child] == 0:
-                queue.append(child)
-
-    if len(ordered) != len(jobs):
-        raise DagError('Dependency cycle detected')
-
-    return [index[name] for name in ordered]
+    topology = _DagTopology.from_jobs(jobs)
+    ordered_names = topology.ordered_names()
+    return [topology.jobs_by_name[name] for name in ordered_names]
