@@ -7,7 +7,9 @@ Data-oriented utility helpers.
 from __future__ import annotations
 
 import json
+import sys
 from typing import Any
+from typing import TextIO
 from typing import cast
 
 from ._types import JSONData
@@ -22,6 +24,132 @@ __all__ = [
     'print_json',
     'serialize_json',
 ]
+
+
+# SECTION: INTERNAL CLASSES ================================================= #
+
+
+class _RecordCounter:
+    """Centralize record-count semantics for JSON-like ETL payloads."""
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def count(
+        data: JSONData,
+    ) -> int:
+        """
+        Return a consistent record count for JSON-like data payloads.
+
+        Lists are treated as multiple records; dicts as a single record.
+
+        Parameters
+        ----------
+        data : JSONData
+            Data payload to count records for.
+
+        Returns
+        -------
+        int
+            Number of records in `data`.
+        """
+        match data:
+            case list():
+                return len(data)
+            case _:
+                return 1
+
+
+class _JsonCodec:
+    """Centralize JSON parse, render, and print behavior."""
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def parse(
+        cls,
+        text: str,
+    ) -> JSONData:
+        """
+        Parse JSON text and surface a concise error when it fails.
+
+        Parameters
+        ----------
+        text : str
+            The JSON text to parse.
+
+        Returns
+        -------
+        JSONData
+            The parsed JSON data.
+
+        Notes
+        -----
+        This wrapper preserves the concise :class:`ValueError` raised by the
+        internal JSON codec when decoding fails.`
+        """
+        try:
+            return cast(JSONData, json.loads(text))
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f'Invalid JSON payload: {exc.msg} (pos {exc.pos})',
+            ) from exc
+
+    @classmethod
+    def print(
+        cls,
+        obj: Any,
+        *,
+        stream: TextIO | None = None,
+    ) -> None:
+        """
+        Pretty-print *obj* as UTF-8 JSON without ASCII escaping.
+
+        Parameters
+        ----------
+        obj : Any
+            Object to serialize as JSON.
+
+        Returns
+        -------
+        None
+            This helper writes directly to STDOUT.
+        """
+        print(cls.serialize(obj, pretty=True), file=stream or sys.stdout)
+
+    @classmethod
+    def serialize(
+        cls,
+        obj: Any,
+        *,
+        pretty: bool = False,
+        sort_keys: bool = False,
+    ) -> str:
+        """
+        Serialize *obj* as UTF-8 JSON without ASCII escaping.
+
+        Parameters
+        ----------
+        obj : Any
+            Object to serialize as JSON.
+        pretty : bool, optional
+            Whether to format output with indentation. Default is ``False``.
+        sort_keys : bool, optional
+            Whether to sort mapping keys for stable output. Default is ``False``.
+
+        Returns
+        -------
+        str
+            Serialized JSON text.
+        """
+        kwargs: dict[str, Any] = {
+            'ensure_ascii': False,
+            'sort_keys': sort_keys,
+            'indent': 2 if pretty else None,
+        }
+        if not pretty:
+            kwargs['separators'] = (',', ':')
+        return json.dumps(obj, **kwargs)
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -45,7 +173,7 @@ def count_records(
     int
         Number of records in `data`.
     """
-    return len(data) if isinstance(data, list) else 1
+    return _RecordCounter.count(data)
 
 
 def parse_json(
@@ -64,17 +192,12 @@ def parse_json(
     JSONData
         The parsed JSON data.
 
-    Raises
-    ------
-    ValueError
-        When the JSON text is invalid.
+    Notes
+    -----
+    This wrapper preserves the concise :class:`ValueError` raised by the
+    internal JSON codec when decoding fails.
     """
-    try:
-        return cast(JSONData, json.loads(text))
-    except json.JSONDecodeError as exc:
-        raise ValueError(
-            f'Invalid JSON payload: {exc.msg} (pos {exc.pos})',
-        ) from exc
+    return _JsonCodec.parse(text)
 
 
 def serialize_json(
@@ -100,15 +223,7 @@ def serialize_json(
     str
         Serialized JSON text.
     """
-    kwargs: dict[str, Any] = {
-        'ensure_ascii': False,
-        'sort_keys': sort_keys,
-    }
-    if pretty:
-        kwargs['indent'] = 2
-    else:
-        kwargs['separators'] = (',', ':')
-    return json.dumps(obj, **kwargs)
+    return _JsonCodec.serialize(obj, pretty=pretty, sort_keys=sort_keys)
 
 
 def print_json(
@@ -127,4 +242,4 @@ def print_json(
     None
         This helper writes directly to STDOUT.
     """
-    print(serialize_json(obj, pretty=True))
+    _JsonCodec.print(obj)
