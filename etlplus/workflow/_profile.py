@@ -16,9 +16,8 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Self
 
+from ..utils import MappingParser
 from ..utils import ValueParser
-from ..utils import cast_str_dict
-from ..utils import maybe_mapping
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -75,7 +74,7 @@ class ProfileConfig:
             return cls()
 
         # Coerce all env values to strings using shared helper.
-        env = cast_str_dict(maybe_mapping(obj.get('env')))
+        env = MappingParser.to_str_dict(MappingParser.optional(obj.get('env')))
 
         return cls(
             default_target=ValueParser.optional_str(

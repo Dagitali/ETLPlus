@@ -17,10 +17,12 @@ from dataclasses import field
 from typing import Any
 from typing import Self
 
+from ..utils import FloatParser
+from ..utils import IntParser
+from ..utils import MappingFieldParser
+from ..utils import MappingParser
+from ..utils import SequenceParser
 from ..utils import ValueParser
-from ..utils import coerce_dict
-from ..utils import to_float
-from ..utils import to_positive_int
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -77,12 +79,15 @@ class ExtractRef:
         Self | None
             Parsed reference or ``None`` when the payload is invalid.
         """
-        data = ValueParser.mapping(obj)
+        data = MappingParser.optional(obj)
         if not data:
             return None
-        if (source := ValueParser.required_str(data, 'source')) is None:
+        if (source := MappingFieldParser.required_str(data, 'source')) is None:
             return None
-        return cls(source=source, options=coerce_dict(data.get('options')))
+        return cls(
+            source=source,
+            options=MappingParser.to_dict(data.get('options')),
+        )
 
 
 @dataclass(kw_only=True, slots=True, frozen=True)
@@ -123,13 +128,14 @@ class JobRetryConfig:
         Self | None
             Parsed retry policy or ``None`` when the payload is invalid.
         """
-        data = ValueParser.mapping(obj)
+        data = MappingParser.optional(obj)
         if not data:
             return None
         return cls(
-            max_attempts=to_positive_int(data.get('max_attempts'), default=1),
+            max_attempts=IntParser.positive(data.get('max_attempts'), default=1),
             backoff_seconds=(
-                to_float(data.get('backoff_seconds'), default=0.0, minimum=0.0) or 0.0
+                FloatParser.parse(data.get('backoff_seconds'), default=0.0, minimum=0.0)
+                or 0.0
             ),
         )
 
@@ -199,16 +205,16 @@ class JobConfig:
         Self | None
             Parsed job configuration or ``None`` if invalid.
         """
-        data = ValueParser.mapping(obj)
+        data = MappingParser.optional(obj)
         if not data:
             return None
-        if (name := ValueParser.required_str(data, 'name')) is None:
+        if (name := MappingFieldParser.required_str(data, 'name')) is None:
             return None
 
         return cls(
             name=name,
             description=ValueParser.optional_str(data.get('description')),
-            depends_on=ValueParser.str_list(data.get('depends_on')),
+            depends_on=SequenceParser.str_list(data.get('depends_on')),
             extract=ExtractRef.from_obj(data.get('extract')),
             validate=ValidationRef.from_obj(data.get('validate')),
             retry=JobRetryConfig.from_obj(data.get('retry')),
@@ -255,14 +261,14 @@ class LoadRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = ValueParser.mapping(obj)
+        data = MappingParser.optional(obj)
         if not data:
             return None
-        if (target := ValueParser.required_str(data, 'target')) is None:
+        if (target := MappingFieldParser.required_str(data, 'target')) is None:
             return None
         return cls(
             target=target,
-            overrides=coerce_dict(data.get('overrides')),
+            overrides=MappingParser.to_dict(data.get('overrides')),
         )
 
 
@@ -301,10 +307,10 @@ class TransformRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = ValueParser.mapping(obj)
+        data = MappingParser.optional(obj)
         if not data:
             return None
-        if (pipeline := ValueParser.required_str(data, 'pipeline')) is None:
+        if (pipeline := MappingFieldParser.required_str(data, 'pipeline')) is None:
             return None
         return cls(pipeline=pipeline)
 
@@ -351,10 +357,10 @@ class ValidationRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = ValueParser.mapping(obj)
+        data = MappingParser.optional(obj)
         if not data:
             return None
-        if (ruleset := ValueParser.required_str(data, 'ruleset')) is None:
+        if (ruleset := MappingFieldParser.required_str(data, 'ruleset')) is None:
             return None
         return cls(
             ruleset=ruleset,

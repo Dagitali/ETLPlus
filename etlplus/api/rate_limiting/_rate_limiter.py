@@ -22,8 +22,7 @@ import time
 from dataclasses import dataclass
 from typing import Self
 
-from ...utils import to_float
-from ...utils import to_positive_float
+from ...utils import FloatParser
 from ._config import RateLimitConfig
 from ._config import RateLimitConfigDict
 from ._config import RateLimitInput
@@ -87,8 +86,8 @@ class RateLimiter:
             ``sleep_seconds``.
         3. Otherwise the limiter is disabled.
         """
-        sleep = to_positive_float(self.sleep_seconds)
-        rate = to_positive_float(self.max_per_sec)
+        sleep = FloatParser.positive(self.sleep_seconds)
+        rate = FloatParser.positive(self.max_per_sec)
 
         if sleep is not None:
             self.sleep_seconds = sleep
@@ -174,7 +173,7 @@ class RateLimiter:
         Self
             Instance with the specified delay.
         """
-        value = to_float(seconds, 0.0, minimum=0.0) or 0.0
+        value = FloatParser.parse(seconds, 0.0, minimum=0.0) or 0.0
 
         return cls(sleep_seconds=value)
 

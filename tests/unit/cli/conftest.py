@@ -260,7 +260,6 @@ def capture_io_fixture(monkeypatch: pytest.MonkeyPatch) -> CaptureIo:
         'emit_or_write',
         'emit_json',
         'emit_markdown_table',
-        'print_json',
     )
 
 

@@ -33,8 +33,7 @@ from typing import TypedDict
 import requests  # type: ignore[import]
 from requests.adapters import HTTPAdapter  # type: ignore
 
-from ..utils import to_maximum_int
-from ..utils import to_positive_int
+from ..utils import IntParser
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -182,7 +181,7 @@ def _build_retry_value(
     try:
         from urllib3.util.retry import Retry  # type: ignore
     except ImportError:  # pragma: no cover - optional dependency
-        return to_maximum_int(config.get('total'), 0)
+        return IntParser.at_least(config.get('total'), 0)
 
     kwargs = _normalize_retry_kwargs(config)
     return Retry(**kwargs) if kwargs else 0
@@ -251,12 +250,12 @@ def _resolve_max_retries(
     """
     match retries_cfg:
         case int():
-            return to_maximum_int(retries_cfg, 0)
+            return IntParser.at_least(retries_cfg, 0)
         case Mapping():
             try:
                 return _build_retry_value(retries_cfg)
             except (TypeError, ValueError, AttributeError):
-                return to_maximum_int(retries_cfg.get('total'), 0)
+                return IntParser.at_least(retries_cfg.get('total'), 0)
         case _:
             return 0
 
@@ -291,8 +290,8 @@ def build_http_adapter(
     HTTPAdapter
         Configured HTTPAdapter instance.
     """
-    pool_connections = to_positive_int(cfg.get('pool_connections'), 10)
-    pool_maxsize = to_positive_int(cfg.get('pool_maxsize'), 10)
+    pool_connections = IntParser.positive(cfg.get('pool_connections'), 10)
+    pool_maxsize = IntParser.positive(cfg.get('pool_maxsize'), 10)
     pool_block = bool(cfg.get('pool_block', False))
 
     max_retries = _resolve_max_retries(cfg.get('max_retries'))

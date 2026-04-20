@@ -12,9 +12,7 @@ from typing import cast
 
 import pytest
 
-from etlplus.utils import cast_str_dict
-from etlplus.utils import coerce_dict
-from etlplus.utils import maybe_mapping
+from etlplus.utils import MappingParser
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -45,9 +43,10 @@ class TestMappingHelpers:
         expected: dict[str, str],
     ) -> None:
         """
-        Test that :func:`cast_str_dict` coerces keys and values to strings.
+        Test that :meth:`MappingParser.to_str_dict` coerces keys and values to
+        strings.
         """
-        assert cast_str_dict(mapping) == expected
+        assert MappingParser.to_str_dict(mapping) == expected
 
     @pytest.mark.parametrize(
         ('value', 'expected'),
@@ -64,24 +63,25 @@ class TestMappingHelpers:
         expected: dict[str, Any],
     ) -> None:
         """
-        Test that :func:`coerce_dict` copies mappings and rejects non-mappings.
+        Test that :meth:`MappingParser.to_dict` copies mappings and rejects
+        non-mappings.
         """
-        assert coerce_dict(value) == expected
+        assert MappingParser.to_dict(value) == expected
 
     def test_maybe_mapping_returns_same_object_for_mappings(self) -> None:
         """
-        Test that :func:`maybe_mapping` preserves mapping identity when
+        Test that :meth:`MappingParser.optional` preserves mapping identity when
         possible.
         """
         mapping: Mapping[str, int] = {'x': 1}
-        assert maybe_mapping(mapping) is mapping
+        assert MappingParser.optional(mapping) is mapping
 
     def test_maybe_mapping_returns_none_for_non_mappings(
         self,
         non_mapping_value: object,
     ) -> None:
         """
-        Test that :func:`maybe_mapping` returns ``None`` for non-mapping
+        Test that :meth:`MappingParser.optional` returns ``None`` for non-mapping
         values.
         """
-        assert maybe_mapping(non_mapping_value) is None
+        assert MappingParser.optional(non_mapping_value) is None

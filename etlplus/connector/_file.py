@@ -21,7 +21,7 @@ from typing import Self
 from typing import TypedDict
 from typing import overload
 
-from ..utils import coerce_dict
+from ..utils import MappingParser
 from ..utils._types import StrAnyMap
 from ._core import ConnectorBase
 from ._enums import DataConnectorType
@@ -116,5 +116,5 @@ class ConnectorFile(ConnectorBase):
             name=name,
             format=obj.get('format'),
             path=obj.get('path'),
-            options=coerce_dict(obj.get('options')),
+            options=MappingParser.to_dict(obj.get('options')),
         )
