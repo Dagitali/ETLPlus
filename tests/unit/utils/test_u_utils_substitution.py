@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from etlplus.utils import deep_substitute
+from etlplus.utils import SubstitutionResolver
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -27,10 +27,11 @@ class TestDeepSubstitute:
         vars_map_basic: dict[str, str],
     ) -> None:
         """
-        Test that :func:`deep_substitute` recurses through nested mappings and
-        sequences to replace tokens with values from the provided maps.
+        Test that :meth:`SubstitutionResolver.deep` recurses through nested
+        mappings and sequences to replace tokens with values from the provided
+        maps.
         """
-        assert deep_substitute(
+        assert SubstitutionResolver.deep(
             {'a': '${FOO}', 'b': 2, 'c': ['${BAR}', 3]},
             vars_map_basic,
             None,
@@ -45,10 +46,10 @@ class TestDeepSubstitute:
         vars_map_basic: dict[str, str],
     ) -> None:
         """
-        Test that :func:`deep_substitute` environment values take precedence
-        over vars-map values when keys overlap.
+        Test that :meth:`SubstitutionResolver.deep` environment values take
+        precedence over vars-map values when keys overlap.
         """
-        assert deep_substitute(
+        assert SubstitutionResolver.deep(
             {'a': '${FOO}', 'b': '${BAR}'},
             vars_map_basic,
             {'FOO': 'envfoo'},
@@ -81,10 +82,10 @@ class TestDeepSubstitute:
         expected: Any,
     ) -> None:
         """
-        Test that :func:`deep_substitute` applies substitutions recursively and
-        preserves non-string values while replacing tokens.
+        Test that :meth:`SubstitutionResolver.deep` applies substitutions
+        recursively and preserves non-string values while replacing tokens.
         """
-        assert deep_substitute(value, vars_map, None) == expected
+        assert SubstitutionResolver.deep(value, vars_map, None) == expected
 
     @pytest.mark.parametrize(
         ('value', 'expected'),
@@ -101,20 +102,20 @@ class TestDeepSubstitute:
         expected: object,
     ) -> None:
         """
-        Test that :func:`deep_substitute` preserves empty and ``None`` inputs
-        when maps are missing.
+        Test that :meth:`SubstitutionResolver.deep` preserves empty and
+        ``None`` inputs when maps are missing.
         """
-        assert deep_substitute(value, None, None) == expected
+        assert SubstitutionResolver.deep(value, None, None) == expected
 
     def test_nested_container_types(
         self,
         vars_map_nested: dict[str, int],
     ) -> None:
         """
-        Test that :func:`deep_substitute` supports tuple, set, and frozenset
+        Test that :meth:`SubstitutionResolver.deep` supports tuple, set, and frozenset
         containers.
         """
-        result = deep_substitute(
+        result = SubstitutionResolver.deep(
             {
                 'a': ['${X}', {'b': '${Y}'}],
                 'b': ({'c': '${Z}'},),
