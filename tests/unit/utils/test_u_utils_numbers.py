@@ -188,7 +188,7 @@ class TestGenericNumberCoercion:
         expected: float | None,
     ) -> None:
         """
-        Test that :func:`to_number` follows float-style coercion whilerejecting bools.
+        Test that :func:`to_number` follows float-style coercion while rejecting bools.
         """
         assert to_number(value) == expected
 
