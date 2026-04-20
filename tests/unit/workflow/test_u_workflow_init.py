@@ -9,8 +9,8 @@ from __future__ import annotations
 import pytest
 
 import etlplus.workflow as workflow_pkg
-from etlplus.workflow._dag import DagError
 from etlplus.workflow._dag import topological_sort_jobs
+from etlplus.workflow._errors import DagError
 from etlplus.workflow._jobs import ExtractRef
 from etlplus.workflow._jobs import JobConfig
 from etlplus.workflow._jobs import JobRetryConfig

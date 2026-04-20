@@ -6,8 +6,8 @@ Job workflow helpers.
 
 from __future__ import annotations
 
-from ._dag import DagError
 from ._dag import topological_sort_jobs
+from ._errors import DagError
 from ._jobs import ExtractRef
 from ._jobs import JobConfig
 from ._jobs import JobRetryConfig
