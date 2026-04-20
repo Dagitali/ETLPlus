@@ -10,6 +10,7 @@ import pytest
 
 from etlplus import utils as utils_pkg
 from etlplus.utils._data import count_records
+from etlplus.utils._data import parse_json
 from etlplus.utils._data import print_json
 from etlplus.utils._data import serialize_json
 from etlplus.utils._enums import CoercibleStrEnum
@@ -46,6 +47,7 @@ UTILS_EXPORTS = [
     ('ValueParser', ValueParser),
     ('CoercibleStrEnum', CoercibleStrEnum),
     ('count_records', count_records),
+    ('parse_json', parse_json),
     ('print_json', print_json),
     ('serialize_json', serialize_json),
     ('cast_str_dict', cast_str_dict),
