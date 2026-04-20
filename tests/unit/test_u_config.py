@@ -346,8 +346,8 @@ jobs: []
         Test that substitution logic is bypassed when ``substitute=False``.
         """
         monkeypatch.setattr(
-            config_mod,
-            'deep_substitute',
+            config_mod.SubstitutionResolver,
+            'deep',
             lambda *_a, **_k: (_ for _ in ()).throw(
                 AssertionError('deep_substitute should not be called'),
             ),
