@@ -18,7 +18,7 @@ from typing import overload
 import typer
 
 from ...file import FileFormat
-from ...utils import parse_json
+from ...utils import JsonCodec
 from ._constants import DATA_CONNECTORS
 from ._constants import FILE_FORMATS
 from ._state import CliState
@@ -398,7 +398,7 @@ def parse_json_option(
         When the JSON is invalid.
     """
     try:
-        return parse_json(value)
+        return JsonCodec.parse(value)
     except ValueError as exc:
         raise typer.BadParameter(f'Invalid JSON for {flag}: {exc}') from exc
 

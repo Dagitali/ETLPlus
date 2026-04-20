@@ -21,8 +21,8 @@ from ...connector import Connector
 from ...file import File
 from ...file import FileFormat
 from ...storage import StorageScheme
-from ...utils import deep_substitute
-from ...utils import maybe_mapping
+from ...utils import MappingParser
+from ...utils import SubstitutionResolver
 from ...utils._types import StrAnyMap
 from ._support import SUPPORTED_PYTHON_RANGE
 from ._support import TOKEN_PATTERN
@@ -449,7 +449,7 @@ class ReadinessBaseMixin:
             If the YAML root is not a mapping/object.
         """
         raw = File(Path(config_path), FileFormat.YAML).read()
-        mapping = maybe_mapping(raw)
+        mapping = MappingParser.optional(raw)
         if mapping is None:
             raise TypeError('Pipeline YAML must have a mapping/object root')
         return dict(mapping)
@@ -597,7 +597,10 @@ class ReadinessBaseMixin:
         """
         cfg = Config.from_dict(raw)
         effective_env = cls.effective_environment(cfg, env)
-        resolved = cast(StrAnyMap, deep_substitute(raw, cfg.vars, effective_env))
+        resolved = cast(
+            StrAnyMap,
+            SubstitutionResolver.deep(raw, cfg.vars, effective_env),
+        )
         unresolved_tokens = sorted(cls.collect_substitution_tokens(resolved))
         return ResolvedConfigContext(
             raw=raw,

@@ -18,18 +18,16 @@ from ._types import JSONData
 
 
 __all__ = [
-    # Functions (data utilities)
-    'count_records',
-    'parse_json',
-    'print_json',
-    'serialize_json',
+    # Classes
+    'JsonCodec',
+    'RecordCounter',
 ]
 
 
 # SECTION: INTERNAL CLASSES ================================================= #
 
 
-class _RecordCounter:
+class RecordCounter:
     """Centralize record-count semantics for JSON-like ETL payloads."""
 
     # -- Static Methods -- #
@@ -60,7 +58,7 @@ class _RecordCounter:
                 return 1
 
 
-class _JsonCodec:
+class JsonCodec:
     """Centralize JSON parse, render, and print behavior."""
 
     # -- Class Methods -- #
@@ -82,6 +80,11 @@ class _JsonCodec:
         -------
         JSONData
             The parsed JSON data.
+
+        Raises
+        ------
+        ValueError
+            If *text* is not valid JSON.
 
         Notes
         -----
@@ -109,6 +112,8 @@ class _JsonCodec:
         ----------
         obj : Any
             Object to serialize as JSON.
+        stream : TextIO | None, optional
+            Destination stream. Defaults to :data:`sys.stdout`.
 
         Returns
         -------
@@ -150,96 +155,3 @@ class _JsonCodec:
         if not pretty:
             kwargs['separators'] = (',', ':')
         return json.dumps(obj, **kwargs)
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-def count_records(
-    data: JSONData,
-) -> int:
-    """
-    Return a consistent record count for JSON-like data payloads.
-
-    Lists are treated as multiple records; dicts as a single record.
-
-    Parameters
-    ----------
-    data : JSONData
-        Data payload to count records for.
-
-    Returns
-    -------
-    int
-        Number of records in `data`.
-    """
-    return _RecordCounter.count(data)
-
-
-def parse_json(
-    text: str,
-) -> JSONData:
-    """
-    Parse JSON text and surface a concise error when it fails.
-
-    Parameters
-    ----------
-    text : str
-        The JSON text to parse.
-
-    Returns
-    -------
-    JSONData
-        The parsed JSON data.
-
-    Notes
-    -----
-    This wrapper preserves the concise :class:`ValueError` raised by the
-    internal JSON codec when decoding fails.
-    """
-    return _JsonCodec.parse(text)
-
-
-def serialize_json(
-    obj: Any,
-    *,
-    pretty: bool = False,
-    sort_keys: bool = False,
-) -> str:
-    """
-    Serialize *obj* as UTF-8 JSON without ASCII escaping.
-
-    Parameters
-    ----------
-    obj : Any
-        Object to serialize as JSON.
-    pretty : bool, optional
-        Whether to format output with indentation. Default is ``False``.
-    sort_keys : bool, optional
-        Whether to sort mapping keys for stable output. Default is ``False``.
-
-    Returns
-    -------
-    str
-        Serialized JSON text.
-    """
-    return _JsonCodec.serialize(obj, pretty=pretty, sort_keys=sort_keys)
-
-
-def print_json(
-    obj: Any,
-) -> None:
-    """
-    Pretty-print *obj* as UTF-8 JSON without ASCII escaping.
-
-    Parameters
-    ----------
-    obj : Any
-        Object to serialize as JSON.
-
-    Returns
-    -------
-    None
-        This helper writes directly to STDOUT.
-    """
-    _JsonCodec.print(obj)

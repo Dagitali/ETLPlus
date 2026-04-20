@@ -20,10 +20,9 @@ from typing import Self
 from ..utils import FloatParser
 from ..utils import IntParser
 from ..utils import MappingFieldParser
+from ..utils import MappingParser
 from ..utils import SequenceParser
 from ..utils import ValueParser
-from ..utils import coerce_dict
-from ..utils import maybe_mapping
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -80,12 +79,15 @@ class ExtractRef:
         Self | None
             Parsed reference or ``None`` when the payload is invalid.
         """
-        data = maybe_mapping(obj)
+        data = MappingParser.optional(obj)
         if not data:
             return None
         if (source := MappingFieldParser.required_str(data, 'source')) is None:
             return None
-        return cls(source=source, options=coerce_dict(data.get('options')))
+        return cls(
+            source=source,
+            options=MappingParser.to_dict(data.get('options')),
+        )
 
 
 @dataclass(kw_only=True, slots=True, frozen=True)
@@ -126,7 +128,7 @@ class JobRetryConfig:
         Self | None
             Parsed retry policy or ``None`` when the payload is invalid.
         """
-        data = maybe_mapping(obj)
+        data = MappingParser.optional(obj)
         if not data:
             return None
         return cls(
@@ -203,7 +205,7 @@ class JobConfig:
         Self | None
             Parsed job configuration or ``None`` if invalid.
         """
-        data = maybe_mapping(obj)
+        data = MappingParser.optional(obj)
         if not data:
             return None
         if (name := MappingFieldParser.required_str(data, 'name')) is None:
@@ -259,14 +261,14 @@ class LoadRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = maybe_mapping(obj)
+        data = MappingParser.optional(obj)
         if not data:
             return None
         if (target := MappingFieldParser.required_str(data, 'target')) is None:
             return None
         return cls(
             target=target,
-            overrides=coerce_dict(data.get('overrides')),
+            overrides=MappingParser.to_dict(data.get('overrides')),
         )
 
 
@@ -305,7 +307,7 @@ class TransformRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = maybe_mapping(obj)
+        data = MappingParser.optional(obj)
         if not data:
             return None
         if (pipeline := MappingFieldParser.required_str(data, 'pipeline')) is None:
@@ -355,7 +357,7 @@ class ValidationRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = maybe_mapping(obj)
+        data = MappingParser.optional(obj)
         if not data:
             return None
         if (ruleset := MappingFieldParser.required_str(data, 'ruleset')) is None:

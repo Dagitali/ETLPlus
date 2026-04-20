@@ -30,7 +30,7 @@ from typing import TypedDict
 from typing import overload
 
 from ...utils import IntParser
-from ...utils import maybe_mapping
+from ...utils import MappingParser
 from ...utils._enums import CoercibleStrEnum
 from ...utils._mixins import BoundsWarningsMixin
 from ...utils._types import StrAnyMap
@@ -335,18 +335,18 @@ class PaginationConfig(BoundsWarningsMixin):
         limit_param = obj.get('limit_param')
 
         # Map from nested shapes when provided.
-        if params_blk := maybe_mapping(obj.get('params')):
+        if params_blk := MappingParser.optional(obj.get('params')):
             page_param = page_param or params_blk.get('page')
             size_param = (
                 size_param or params_blk.get('per_page') or params_blk.get('limit')
             )
             cursor_param = cursor_param or params_blk.get('cursor')
             fallback_path = fallback_path or params_blk.get('fallback_path')
-        if resp_blk := maybe_mapping(obj.get('response')):
+        if resp_blk := MappingParser.optional(obj.get('response')):
             records_path = records_path or resp_blk.get('items_path')
             cursor_path = cursor_path or resp_blk.get('next_cursor_path')
             fallback_path = fallback_path or resp_blk.get('fallback_path')
-        if dflt_blk := maybe_mapping(obj.get('defaults')):
+        if dflt_blk := MappingParser.optional(obj.get('defaults')):
             page_size = page_size or dflt_blk.get('per_page')
 
         return cls(

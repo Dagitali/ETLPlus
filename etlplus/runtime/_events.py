@@ -14,7 +14,7 @@ from typing import TypedDict
 from typing import cast
 from uuid import uuid4
 
-from ..utils import serialize_json
+from ..utils import JsonCodec
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -148,7 +148,7 @@ class RuntimeEvents:
         RuntimeTelemetry.emit_event(event)
         if event_format != 'jsonl':
             return
-        print(serialize_json(event), file=sys.stderr)
+        print(JsonCodec.serialize(event), file=sys.stderr)
 
     @staticmethod
     def utc_now_iso() -> str:

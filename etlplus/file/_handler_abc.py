@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import ClassVar
 
-from ..utils import count_records
+from ..utils import RecordCounter
 from ..utils._types import JSONData
 from ..utils._types import JSONList
 from ._io import EmbeddedDatabaseTableOption
@@ -163,7 +163,7 @@ class BinarySerializationABC(ABC):
         """
         payload = self.dumps_bytes(data, options=options)
         write_bytes(path, payload)
-        return count_records(data)
+        return RecordCounter.count(data)
 
 
 class ColumnarABC(ABC):
@@ -727,7 +727,7 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
             encoding=self.encoding_from_options(options),
             trailing_newline=self.write_trailing_newline,
         )
-        return count_records(data)
+        return RecordCounter.count(data)
 
 
 class ScientificDatasetABC(ScientificDatasetOption, ABC):

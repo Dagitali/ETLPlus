@@ -23,7 +23,7 @@ from typing import Any
 
 from ..file.ndjson import NdjsonFile
 from ..file.sqlite import SqliteFile
-from ..utils import serialize_json
+from ..utils import JsonCodec
 from ..utils._types import JSONData
 from ._config import DEFAULT_HISTORY_BACKEND
 from ._config import HistoryBackend
@@ -159,14 +159,14 @@ def _serialize_result_summary(
     """Serialize one optional JSON result summary for persistence."""
     if result_summary is None:
         return None
-    return serialize_json(result_summary)
+    return JsonCodec.serialize(result_summary)
 
 
 def _serialize_string_list(
     values: list[str] | None,
 ) -> str | None:
     """Serialize one optional string list for persistence."""
-    return None if values is None else serialize_json(values)
+    return None if values is None else JsonCodec.serialize(values)
 
 
 def _sqlite_job_run_payload(

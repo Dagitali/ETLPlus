@@ -14,7 +14,7 @@ from typing import Literal
 from typing import cast
 
 from ...history import HistoryStore
-from ...utils import serialize_json
+from ...utils import JsonCodec
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -87,7 +87,7 @@ class HistoryView:
         should be stable for related events of the same run and different
         enough across unrelated runs to avoid collisions in practice.
         """
-        return serialize_json(record, sort_keys=True)
+        return JsonCodec.serialize(record, sort_keys=True)
 
     @staticmethod
     def parse_timestamp(

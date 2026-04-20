@@ -15,7 +15,7 @@ from typing import cast
 
 import requests  # type: ignore[import]
 
-from ..utils import coerce_dict
+from ..utils import MappingParser
 from ..utils._types import Timeout
 from ._config import ApiConfig
 from ._config import EndpointConfig
@@ -384,12 +384,15 @@ def compose_api_request_env(
         Mapping[str, Any] | None,
         getattr(source_obj, 'query_params', None),
     )
-    params: dict[str, Any] = coerce_dict(source_params)
+    params: dict[str, Any] = MappingParser.to_dict(source_params)
     source_headers = cast(
         Mapping[str, str] | None,
         getattr(source_obj, 'headers', None),
     )
-    headers: dict[str, str] = cast(dict[str, str], coerce_dict(source_headers))
+    headers: dict[str, str] = cast(
+        dict[str, str],
+        MappingParser.to_dict(source_headers),
+    )
     pagination = getattr(source_obj, 'pagination', None)
     rate_limit = getattr(source_obj, 'rate_limit', None)
     retry: RetryPolicyDict | None = cast(
@@ -418,7 +421,7 @@ def compose_api_request_env(
             session_cfg,
             force_url=True,
         )
-        ep_params: dict[str, Any] = coerce_dict(
+        ep_params: dict[str, Any] = MappingParser.to_dict(
             cast(Mapping[str, Any] | None, getattr(ep, 'query_params', None)),
         )
         _update_mapping(ep_params, params)
@@ -539,7 +542,7 @@ def compose_api_target_env(
     )
     headers = cast(
         dict[str, str],
-        coerce_dict(
+        MappingParser.to_dict(
             cast(
                 Mapping[str, str] | None,
                 getattr(target_obj, 'headers', None),

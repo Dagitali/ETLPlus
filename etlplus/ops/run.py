@@ -30,7 +30,7 @@ from ..connector import DataConnectorType
 from ..file._core import FileFormatArg
 from ..utils import FloatParser
 from ..utils import IntParser
-from ..utils import print_json
+from ..utils import JsonCodec
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import StrPath
@@ -178,7 +178,7 @@ class _JobValidationConfig:
             phase=self.phase,
             severity=self.severity,
             validate_fn=_validate_payload,
-            print_json_fn=print_json,
+            print_json_fn=JsonCodec.print,
         )
 
 

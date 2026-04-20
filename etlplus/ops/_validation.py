@@ -21,7 +21,7 @@ from typing import Self
 from typing import TypedDict
 from typing import cast
 
-from ..utils import normalize_choice
+from ..utils import TextNormalizer
 from ..utils._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
@@ -225,7 +225,7 @@ def _normalize_choice[T: ValidationChoice](
     """Normalize arbitrary text into one of the allowed literal choices."""
     return cast(
         T,
-        normalize_choice(
+        TextNormalizer.resolve_choice(
             value,
             mapping=mapping,
             default=default,

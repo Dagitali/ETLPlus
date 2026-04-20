@@ -16,8 +16,8 @@ from ._types import StrAnyMap
 
 
 __all__ = [
-    # Mapping utilities
-    'deep_substitute',
+    # Classes
+    'SubstitutionResolver',
 ]
 
 
@@ -79,50 +79,57 @@ def _replace_tokens(
     return out
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: CLASSES ========================================================== #
 
 
-def deep_substitute(
-    value: Any,
-    vars_map: StrAnyMap | None,
-    env_map: Mapping[str, str] | None,
-) -> Any:
-    """
-    Recursively substitute ``${VAR}`` tokens in nested structures.
+class SubstitutionResolver:
+    """Resolve token substitutions across nested Python containers."""
 
-    Only strings are substituted; other types are returned as-is.
+    # -- Class Methods -- #
 
-    Parameters
-    ----------
-    value : Any
-        The value to perform substitutions on.
-    vars_map : StrAnyMap | None
-        Mapping of variable names to replacement values (lower precedence).
-    env_map : Mapping[str, str] | None
-        Mapping of environment variables overriding *vars_map* values (higher
-        precedence).
+    @classmethod
+    def deep(
+        cls,
+        value: Any,
+        vars_map: StrAnyMap | None,
+        env_map: Mapping[str, str] | None,
+    ) -> Any:
+        """
+        Recursively substitute ``${VAR}`` tokens in nested structures.
 
-    Returns
-    -------
-    Any
-        New structure with substitutions applied where tokens were found.
-    """
-    substitutions = _prepare_substitutions(vars_map, env_map)
+        Only strings are substituted; other types are returned as-is.
 
-    def _apply(node: Any) -> Any:
-        match node:
-            case str():
-                return _replace_tokens(node, substitutions)
-            case Mapping():
-                return {k: _apply(v) for k, v in node.items()}
-            case list() | tuple() as seq:
-                apply = [_apply(item) for item in seq]
-                return apply if isinstance(seq, list) else tuple(apply)
-            case set():
-                return {_apply(item) for item in node}
-            case frozenset():
-                return frozenset(_apply(item) for item in node)
-            case _:
-                return node
+        Parameters
+        ----------
+        value : Any
+            The value to perform substitutions on.
+        vars_map : StrAnyMap | None
+            Mapping of variable names to replacement values (lower precedence).
+        env_map : Mapping[str, str] | None
+            Mapping of environment variables overriding *vars_map* values (higher
+            precedence).
 
-    return _apply(value)
+        Returns
+        -------
+        Any
+            New structure with substitutions applied where tokens were found.
+        """
+        substitutions = _prepare_substitutions(vars_map, env_map)
+
+        def _apply(node: Any) -> Any:
+            match node:
+                case str():
+                    return _replace_tokens(node, substitutions)
+                case Mapping():
+                    return {k: _apply(v) for k, v in node.items()}
+                case list() | tuple() as seq:
+                    apply = [_apply(item) for item in seq]
+                    return apply if isinstance(seq, list) else tuple(apply)
+                case set():
+                    return {_apply(item) for item in node}
+                case frozenset():
+                    return frozenset(_apply(item) for item in node)
+                case _:
+                    return node
+
+        return _apply(value)

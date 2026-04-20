@@ -25,9 +25,7 @@ from ..api import PaginationConfig
 from ..api import PaginationConfigDict
 from ..api import RateLimitConfig
 from ..api import RateLimitConfigDict
-from ..utils import cast_str_dict
-from ..utils import coerce_dict
-from ..utils import maybe_mapping
+from ..utils import MappingParser
 from ..utils._types import StrAnyMap
 from ..utils._types import StrStrMap
 from ._core import ConnectorBase
@@ -146,14 +144,16 @@ class ConnectorApi(ConnectorBase):
             Parsed connector instance.
         """
         name = cls._require_name(obj, kind='Api')
-        headers = cast_str_dict(maybe_mapping(obj.get('headers')))
+        headers = MappingParser.to_str_dict(
+            MappingParser.optional(obj.get('headers')),
+        )
 
         return cls(
             name=name,
             url=obj.get('url'),
             method=obj.get('method'),
             headers=headers,
-            query_params=coerce_dict(obj.get('query_params')),
+            query_params=MappingParser.to_dict(obj.get('query_params')),
             pagination=PaginationConfig.from_obj(obj.get('pagination')),
             rate_limit=RateLimitConfig.from_obj(obj.get('rate_limit')),
             api=obj.get('api') or obj.get('service'),

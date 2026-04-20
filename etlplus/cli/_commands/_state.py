@@ -15,7 +15,7 @@ from typing import Final
 
 import typer
 
-from ...utils import normalize_str
+from ...utils import TextNormalizer
 from ._constants import DATA_CONNECTORS
 from ._types import DataConnectorContext
 
@@ -118,8 +118,10 @@ class ResourceTypeResolver:
         label: str,
     ) -> str:
         """Validate CLI input against a whitelist of choices."""
-        normalized_value = normalize_str(str(value or ''))
-        normalized_choices = {normalize_str(choice): choice for choice in choices}
+        normalized_value = TextNormalizer.normalize(str(value or ''))
+        normalized_choices = {
+            TextNormalizer.normalize(choice): choice for choice in choices
+        }
         if normalized_value in normalized_choices:
             return normalized_choices[normalized_value]
         allowed = ', '.join(sorted(choices))
