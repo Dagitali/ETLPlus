@@ -11,41 +11,16 @@ from collections import deque
 from dataclasses import dataclass
 from dataclasses import field
 
+from ._errors import DagError
 from ._jobs import JobConfig
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
-    # Errors
-    'DagError',
     # Functions
     'topological_sort_jobs',
 ]
-
-
-# SECTION: ERRORS =========================================================== #
-
-
-@dataclass(slots=True)
-class DagError(ValueError):
-    """
-    Raised when the job dependency graph is invalid.
-
-    Attributes
-    ----------
-    message : str
-        Error message.
-    """
-
-    # -- Attributes -- #
-
-    message: str
-
-    # -- Magic Methods (Object Representation) -- #
-
-    def __str__(self) -> str:
-        return self.message
 
 
 # SECTION: INTERNAL CLASSES ================================================= #
@@ -91,10 +66,11 @@ class _DagTopology:
         """Validate and register one job dependency edge."""
         if dependency_name not in self.jobs_by_name:
             raise DagError(
-                f'Unknown dependency "{dependency_name}" in job "{job.name}"',
+                message=(f'Unknown dependency "{dependency_name}" in job "{job.name}"'),
             )
         if dependency_name == job.name:
-            raise DagError(f'Job "{job.name}" depends on itself')
+            # raise DagError(f'Job "{job.name}" depends on itself')
+            raise DagError(message=f'Job "{job.name}" depends on itself')
         if job.name in self.edges[dependency_name]:
             return
         self.edges[dependency_name].add(job.name)
@@ -131,7 +107,8 @@ class _DagTopology:
                     queue.append(child)
 
         if len(ordered) != len(self.jobs_by_name):
-            raise DagError('Dependency cycle detected')
+            # raise DagError('Dependency cycle detected')
+            raise DagError(message='Dependency cycle detected')
         return ordered
 
 
