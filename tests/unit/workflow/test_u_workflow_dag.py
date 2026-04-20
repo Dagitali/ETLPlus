@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import pytest
 
-from etlplus.workflow._dag import DagError
 from etlplus.workflow._dag import _ready
 from etlplus.workflow._dag import topological_sort_jobs
+from etlplus.workflow._errors import DagError
 from etlplus.workflow._jobs import JobConfig
 
 # SECTION: PRAGMAS ========================================================== #
@@ -41,7 +41,7 @@ class TestDagHelpers:
         Test that :class:`DagError` string conversion returns the original
         message.
         """
-        assert str(DagError('boom')) == 'boom'
+        assert str(DagError(message='boom')) == 'boom'
 
     def test_ready_returns_sorted_zero_indegree_nodes(self) -> None:
         """Test that :func:`_ready` sorts node names with zero indegree."""
