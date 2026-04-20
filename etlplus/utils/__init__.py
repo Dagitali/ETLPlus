@@ -23,6 +23,7 @@ from ._numbers import to_minimum_int
 from ._numbers import to_number
 from ._numbers import to_positive_float
 from ._numbers import to_positive_int
+from ._parsing import ValueParser
 from ._substitution import deep_substitute
 from ._text import normalize_choice
 from ._text import normalize_str
@@ -31,8 +32,9 @@ from ._text import normalize_str
 
 
 __all__ = [
-    # Shared base abstractions
-    'BoundsWarningsMixin',
+    # Classes
+    'ValueParser',
+    # Enums
     'CoercibleStrEnum',
     # Functions (data utilities)
     'count_records',
@@ -58,4 +60,6 @@ __all__ = [
     # Functions (text processing)
     'normalize_choice',
     'normalize_str',
+    # Mixins
+    'BoundsWarningsMixin',
 ]
