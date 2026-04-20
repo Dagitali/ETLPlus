@@ -18,7 +18,7 @@ from typing import overload
 import typer
 
 from ...file import FileFormat
-from ...utils._data import parse_json
+from ...utils import parse_json
 from ._constants import DATA_CONNECTORS
 from ._constants import FILE_FORMATS
 from ._state import CliState
