@@ -10,15 +10,8 @@ from collections.abc import Callable
 
 import pytest
 
-from etlplus.utils import to_float
-from etlplus.utils import to_int
-from etlplus.utils import to_maximum_float
-from etlplus.utils import to_maximum_int
-from etlplus.utils import to_minimum_float
-from etlplus.utils import to_minimum_int
-from etlplus.utils import to_number
-from etlplus.utils import to_positive_float
-from etlplus.utils import to_positive_int
+from etlplus.utils import FloatParser
+from etlplus.utils import IntParser
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -41,16 +34,16 @@ class TestFloatCoercion:
             pytest.param(True, None, id='bool-rejected'),
         ],
     )
-    def test_to_float_coercion(
+    def test_float_parser_parse_coercion(
         self,
         value: object,
         expected: float | None,
     ) -> None:
         """
-        Test that :func:`to_float` coerces valid values and rejects invalid
-        ones.
+        Test that :meth:`FloatParser.parse` coerces valid values and rejects
+        invalid ones.
         """
-        assert to_float(value) == expected
+        assert FloatParser.parse(value) == expected
 
     @pytest.mark.parametrize(
         ('value', 'kwargs', 'expected'),
@@ -60,45 +53,35 @@ class TestFloatCoercion:
             pytest.param('10', {'maximum': 3}, 3, id='maximum-clamp'),
         ],
     )
-    def test_to_float_bounds_and_default(
+    def test_float_parser_parse_bounds_and_default(
         self,
         value: object,
         kwargs: dict[str, float],
         expected: float,
     ) -> None:
         """
-        Test that :func:`to_float` applies defaults and clamp bounds
+        Test that :meth:`FloatParser.parse` applies defaults and clamp bounds
         consistently.
         """
-        assert to_float(value, **kwargs) == expected
+        assert FloatParser.parse(value, **kwargs) == expected
 
     @pytest.mark.parametrize(
         ('func', 'args', 'expected'),
         [
-            pytest.param(to_maximum_float, ('1.5', 2.0), 2.0, id='to_maximum_float'),
-            pytest.param(to_minimum_float, ('9.0', 5.0), 5.0, id='to_minimum_float'),
-            pytest.param(
-                to_positive_float,
-                ('2.5',),
-                2.5,
-                id='to_positive_float-positive',
-            ),
-            pytest.param(
-                to_positive_float,
-                ('-1',),
-                None,
-                id='to_positive_float-non-positive',
-            ),
+            pytest.param(FloatParser.at_least, ('1.5', 2.0), 2.0, id='at_least'),
+            pytest.param(FloatParser.at_most, ('9.0', 5.0), 5.0, id='at_most'),
+            pytest.param(FloatParser.positive, ('2.5',), 2.5, id='positive'),
+            pytest.param(FloatParser.positive, ('-1',), None, id='non-positive'),
         ],
     )
-    def test_float_helper_variants(
+    def test_float_parser_variants(
         self,
         func: Callable[..., float | None],
         args: tuple[object, ...],
         expected: float | None,
     ) -> None:
         """
-        Test that float helper wrappers delegate to the shared coercion rules.
+        Test that float parser variants delegate to the shared coercion rules.
         """
         assert func(*args) == expected
 
@@ -122,48 +105,49 @@ class TestIntCoercion:
             pytest.param(False, None, id='bool-rejected'),
         ],
     )
-    def test_to_int_coercion(
+    def test_int_parser_parse_coercion(
         self,
         value: object,
         expected: int | None,
     ) -> None:
         """
-        Test that :func:`to_int` coerces valid integer inputs and rejects
+        Test that :meth:`IntParser.parse` coerces valid integer inputs and rejects
         invalid ones.
         """
-        assert to_int(value) == expected
+        assert IntParser.parse(value) == expected
 
-    def test_to_int_raises_on_invalid_bounds(self) -> None:
+    def test_int_parser_parse_raises_on_invalid_bounds(self) -> None:
         """
-        Test that :func:`to_int` rejects invalid minimum and maximum bounds.
+        Test that :meth:`IntParser.parse` rejects invalid minimum and maximum bounds.
         """
         with pytest.raises(ValueError, match='minimum cannot exceed maximum'):
-            to_int(5, minimum=10, maximum=1)
+            IntParser.parse(5, minimum=10, maximum=1)
 
     @pytest.mark.parametrize(
         ('func', 'args', 'expected'),
         [
-            pytest.param(to_maximum_int, ('7', 10), 10, id='to_maximum_int'),
-            pytest.param(to_minimum_int, ('2', 5), 2, id='to_minimum_int'),
+            pytest.param(IntParser.at_least, ('7', 10), 10, id='at_least'),
+            pytest.param(IntParser.at_most, ('2', 5), 2, id='at_most'),
         ],
     )
-    def test_int_bound_helper_variants(
+    def test_int_parser_bound_variants(
         self,
         func: Callable[..., int],
         args: tuple[object, ...],
         expected: int,
     ) -> None:
         """
-        Test that min/max int wrappers preserve their helper semantics.
+        Test that parser bound helpers preserve their numeric semantics.
         """
         assert func(*args) == expected
 
-    def test_to_positive_int_minimum_fallback(self) -> None:
+    def test_int_parser_positive_minimum_fallback(self) -> None:
         """
-        Test that :func:`to_positive_int` falls back to the provided positive
+        Test that :meth:`IntParser.positive` falls back to the provided
+        positive
         minimum.
         """
-        assert to_positive_int('not-an-int', default=0, minimum=3) == 3
+        assert IntParser.positive('not-an-int', default=0, minimum=3) == 3
 
 
 class TestGenericNumberCoercion:
@@ -182,21 +166,22 @@ class TestGenericNumberCoercion:
             pytest.param(True, None, id='bool-rejected'),
         ],
     )
-    def test_to_number(
+    def test_float_parser_coerce(
         self,
         value: object,
         expected: float | None,
     ) -> None:
         """
-        Test that :func:`to_number` follows float-style coercion while rejecting bools.
+        Test that :meth:`FloatParser.coerce` follows float-style coercion
+        while rejecting bools.
         """
-        assert to_number(value) == expected
+        assert FloatParser.coerce(value) == expected
 
-    def test_to_number_with_shared_non_mapping_cases(
+    def test_float_parser_coerce_with_shared_non_mapping_cases(
         self,
         non_mapping_value: object,
     ) -> None:
         """
         Test that shared non-mapping fixture values remain safe for coercion.
         """
-        assert to_number(non_mapping_value) is None
+        assert FloatParser.coerce(non_mapping_value) is None
