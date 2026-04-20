@@ -149,8 +149,8 @@ class TestCommandsInternalHelpers:
             raise ValueError('bad json')
 
         monkeypatch.setattr(
-            helpers_mod,
-            'parse_json',
+            helpers_mod.JsonCodec,
+            'parse',
             _parse_json,
         )
         with pytest.raises(typer.BadParameter, match='Invalid JSON for --ops'):
