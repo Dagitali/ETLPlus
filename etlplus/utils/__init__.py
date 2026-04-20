@@ -23,6 +23,8 @@ from ._numbers import to_minimum_int
 from ._numbers import to_number
 from ._numbers import to_positive_float
 from ._numbers import to_positive_int
+from ._parsing import MappingFieldParser
+from ._parsing import SequenceParser
 from ._parsing import ValueParser
 from ._substitution import deep_substitute
 from ._text import normalize_choice
@@ -33,6 +35,8 @@ from ._text import normalize_str
 
 __all__ = [
     # Classes
+    'MappingFieldParser',
+    'SequenceParser',
     'ValueParser',
     # Enums
     'CoercibleStrEnum',

@@ -9,28 +9,28 @@ from __future__ import annotations
 from collections.abc import Mapping
 from collections.abc import Sequence
 
-from ._mapping import maybe_mapping
-from ._types import StrAnyMap
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    # Classes
+    'MappingFieldParser',
+    'SequenceParser',
+    'ValueParser',
+]
+
+
+# SECTION: CLASSES ========================================================== #
 
 
 class ValueParser:
     """
-    Centralize tolerant parsing rules for config-like payloads.
+    Centralize tolerant scalar parsing rules for config-like payloads.
 
     Notes
     -----
-    - Non-mapping inputs are treated as invalid payloads.
     - Optional string fields coerce non-``None`` values to strings.
-    - Sequence fields preserve only string entries.
     """
-
-    @classmethod
-    def mapping(
-        cls,
-        obj: object,
-    ) -> StrAnyMap | None:
-        """Return a mapping payload when *obj* is mapping-like."""
-        return maybe_mapping(obj)
 
     @classmethod
     def optional_str(
@@ -42,6 +42,17 @@ class ValueParser:
             return None
         return value if isinstance(value, str) else str(value)
 
+
+class MappingFieldParser(ValueParser):
+    """
+    Parse required fields from mapping-style payloads.
+
+    Notes
+    -----
+    - Mapping validation belongs in :mod:`etlplus.utils._mapping`.
+    - This class only extracts typed fields once a mapping is already known.
+    """
+
     @classmethod
     def required_str(
         cls,
@@ -51,6 +62,10 @@ class ValueParser:
         """Return one required string field from a mapping payload."""
         value = data.get(key)
         return value if isinstance(value, str) else None
+
+
+class SequenceParser(ValueParser):
+    """Parse sequence-style payloads into concrete sequence types."""
 
     @classmethod
     def str_list(

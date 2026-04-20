@@ -17,8 +17,11 @@ from dataclasses import field
 from typing import Any
 from typing import Self
 
+from ..utils import MappingFieldParser
+from ..utils import SequenceParser
 from ..utils import ValueParser
 from ..utils import coerce_dict
+from ..utils import maybe_mapping
 from ..utils import to_float
 from ..utils import to_positive_int
 
@@ -77,10 +80,10 @@ class ExtractRef:
         Self | None
             Parsed reference or ``None`` when the payload is invalid.
         """
-        data = ValueParser.mapping(obj)
+        data = maybe_mapping(obj)
         if not data:
             return None
-        if (source := ValueParser.required_str(data, 'source')) is None:
+        if (source := MappingFieldParser.required_str(data, 'source')) is None:
             return None
         return cls(source=source, options=coerce_dict(data.get('options')))
 
@@ -123,7 +126,7 @@ class JobRetryConfig:
         Self | None
             Parsed retry policy or ``None`` when the payload is invalid.
         """
-        data = ValueParser.mapping(obj)
+        data = maybe_mapping(obj)
         if not data:
             return None
         return cls(
@@ -199,16 +202,16 @@ class JobConfig:
         Self | None
             Parsed job configuration or ``None`` if invalid.
         """
-        data = ValueParser.mapping(obj)
+        data = maybe_mapping(obj)
         if not data:
             return None
-        if (name := ValueParser.required_str(data, 'name')) is None:
+        if (name := MappingFieldParser.required_str(data, 'name')) is None:
             return None
 
         return cls(
             name=name,
             description=ValueParser.optional_str(data.get('description')),
-            depends_on=ValueParser.str_list(data.get('depends_on')),
+            depends_on=SequenceParser.str_list(data.get('depends_on')),
             extract=ExtractRef.from_obj(data.get('extract')),
             validate=ValidationRef.from_obj(data.get('validate')),
             retry=JobRetryConfig.from_obj(data.get('retry')),
@@ -255,10 +258,10 @@ class LoadRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = ValueParser.mapping(obj)
+        data = maybe_mapping(obj)
         if not data:
             return None
-        if (target := ValueParser.required_str(data, 'target')) is None:
+        if (target := MappingFieldParser.required_str(data, 'target')) is None:
             return None
         return cls(
             target=target,
@@ -301,10 +304,10 @@ class TransformRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = ValueParser.mapping(obj)
+        data = maybe_mapping(obj)
         if not data:
             return None
-        if (pipeline := ValueParser.required_str(data, 'pipeline')) is None:
+        if (pipeline := MappingFieldParser.required_str(data, 'pipeline')) is None:
             return None
         return cls(pipeline=pipeline)
 
@@ -351,10 +354,10 @@ class ValidationRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = ValueParser.mapping(obj)
+        data = maybe_mapping(obj)
         if not data:
             return None
-        if (ruleset := ValueParser.required_str(data, 'ruleset')) is None:
+        if (ruleset := MappingFieldParser.required_str(data, 'ruleset')) is None:
             return None
         return cls(
             ruleset=ruleset,
