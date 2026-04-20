@@ -28,9 +28,9 @@ from .._config import Config
 from ..api import HttpMethod
 from ..connector import DataConnectorType
 from ..file._core import FileFormatArg
+from ..utils import FloatParser
+from ..utils import IntParser
 from ..utils import print_json
-from ..utils import to_float
-from ..utils import to_positive_int
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import StrPath
@@ -532,12 +532,12 @@ def _job_retry_settings(
     if retry_obj is None:
         return _ResolvedJobRetry()
     return _ResolvedJobRetry(
-        max_attempts=to_positive_int(
+        max_attempts=IntParser.positive(
             _job_retry_value(retry_obj, 'max_attempts'),
             default=1,
         ),
         backoff_seconds=(
-            to_float(
+            FloatParser.parse(
                 _job_retry_value(retry_obj, 'backoff_seconds'),
                 default=0.0,
                 minimum=0.0,
@@ -1015,7 +1015,7 @@ def _resolved_max_concurrency(
     max_concurrency: object,
 ) -> int:
     """Return one bounded concurrency setting with a serial default."""
-    return to_positive_int(max_concurrency, default=1)
+    return IntParser.positive(max_concurrency, default=1)
 
 
 def _refresh_ready_jobs(
