@@ -16,9 +16,9 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Self
 
+from ..utils import ValueParser
 from ..utils import cast_str_dict
 from ..utils import maybe_mapping
-from ..utils._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -55,14 +55,14 @@ class ProfileConfig:
     @classmethod
     def from_obj(
         cls,
-        obj: StrAnyMap | None,
+        obj: object,
     ) -> Self:
         """
         Parse a mapping into a :class:`ProfileConfig` instance.
 
         Parameters
         ----------
-        obj : StrAnyMap | None
+        obj : object
             Mapping with optional profile fields, or ``None``.
 
         Returns
@@ -78,6 +78,8 @@ class ProfileConfig:
         env = cast_str_dict(maybe_mapping(obj.get('env')))
 
         return cls(
-            default_target=obj.get('default_target'),
+            default_target=ValueParser.optional_str(
+                obj.get('default_target'),
+            ),
             env=env,
         )
