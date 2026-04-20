@@ -26,6 +26,8 @@ from etlplus.utils._numbers import to_minimum_int
 from etlplus.utils._numbers import to_number
 from etlplus.utils._numbers import to_positive_float
 from etlplus.utils._numbers import to_positive_int
+from etlplus.utils._parsing import MappingFieldParser
+from etlplus.utils._parsing import SequenceParser
 from etlplus.utils._parsing import ValueParser
 from etlplus.utils._substitution import deep_substitute
 from etlplus.utils._text import normalize_choice
@@ -39,6 +41,8 @@ from etlplus.utils._text import normalize_str
 
 
 UTILS_EXPORTS = [
+    ('MappingFieldParser', MappingFieldParser),
+    ('SequenceParser', SequenceParser),
     ('ValueParser', ValueParser),
     ('CoercibleStrEnum', CoercibleStrEnum),
     ('count_records', count_records),
