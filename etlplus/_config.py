@@ -1,14 +1,14 @@
 """
 :mod:`etlplus._config` module.
 
-Configuration model and helpers for job pipeline orchestration.
+Configuration models and parsing routines for job pipeline orchestration.
 
 Notes
 -----
 - Loads from dicts or YAML and builds typed models for sources, targets, and
     jobs.
-- Connector parsing is unified (``parse_connector``) and tolerant; unknown or
-    malformed entries are skipped.
+- Connector parsing is centralized and tolerant; unknown or malformed entries
+    are skipped.
 - Optional variable substitution merges ``profile.env`` (lower precedence)
     with the provided/environment variables (higher precedence).
 """
@@ -47,31 +47,6 @@ __all__ = [
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _build_connectors(
-    raw: StrAnyMap,
-    *,
-    key: str,
-) -> list[Connector]:
-    """
-    Parse connector entries from a list under ``raw[key]``.
-
-    Parameters
-    ----------
-    raw : StrAnyMap
-        Raw pipeline mapping.
-    key : str
-        Key pointing to connector entries (e.g., ``"sources"``).
-
-    Returns
-    -------
-    list[Connector]
-        Parsed connector instances.
-    """
-    return list(
-        _collect_parsed(raw.get(key, []) or [], _parse_connector_entry),
-    )
 
 
 def _collect_parsed[T](
@@ -123,6 +98,31 @@ def _parse_connector_entry(
         return parse_connector(entry)
     except TypeError:
         return None
+
+
+def _parse_connectors(
+    raw: StrAnyMap,
+    *,
+    key: str,
+) -> list[Connector]:
+    """
+    Parse connector entries from a list under ``raw[key]``.
+
+    Parameters
+    ----------
+    raw : StrAnyMap
+        Raw pipeline mapping.
+    key : str
+        Key pointing to connector entries (e.g., ``"sources"``).
+
+    Returns
+    -------
+    list[Connector]
+        Parsed connector instances.
+    """
+    return list(
+        _collect_parsed(raw.get(key, []) or [], _parse_connector_entry),
+    )
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -282,14 +282,14 @@ class Config:
         file_systems = MappingParser.to_dict(raw.get('file_systems'))
 
         # Sources
-        sources = _build_connectors(raw, key='sources')
+        sources = _parse_connectors(raw, key='sources')
 
         # Validations/Transforms
         validations = MappingParser.to_dict(raw.get('validations'))
         transforms = MappingParser.to_dict(raw.get('transforms'))
 
         # Targets
-        targets = _build_connectors(raw, key='targets')
+        targets = _parse_connectors(raw, key='targets')
 
         # Jobs
         jobs: list[JobConfig] = _collect_parsed(
