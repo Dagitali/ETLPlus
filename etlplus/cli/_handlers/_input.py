@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.cli._handlers._input` module.
 
-Input and payload-hydration helpers shared by CLI handlers.
+CLI payload parsing and input materialization helpers shared by CLI handler
+entrypoints.
 """
 
 from __future__ import annotations
