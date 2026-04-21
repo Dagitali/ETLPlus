@@ -1,8 +1,8 @@
 """
 :mod:`etlplus.cli._commands._state` module.
 
-Shared state and helper utilities for the ``etlplus`` command-line interface
-(CLI).
+Shared CLI state and resource-type resolution for the ``etlplus`` command-line
+interface.
 """
 
 from __future__ import annotations
