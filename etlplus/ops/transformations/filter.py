@@ -14,7 +14,7 @@ from collections.abc import Callable
 from typing import Any
 from typing import cast
 
-from ...utils import to_number
+from ...utils import FloatParser
 from ...utils._types import JSONDict
 from ...utils._types import JSONList
 from .._enums import OperatorName
@@ -107,8 +107,8 @@ def _resolve_operator(
         }:
 
             def compare(a: Any, b: Any) -> bool:  # noqa: ANN401 - generic
-                a_num = to_number(a)
-                b_num = to_number(b)
+                a_num = FloatParser.coerce(a)
+                b_num = FloatParser.coerce(b)
                 if a_num is not None and b_num is not None:
                     return bool(base(a_num, b_num))
                 return bool(base(a, b))

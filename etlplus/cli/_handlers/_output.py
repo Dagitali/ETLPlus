@@ -12,8 +12,7 @@ from typing import Any
 
 from ...file import File
 from ...file import FileFormat
-from ...utils import print_json
-from ...utils import serialize_json
+from ...utils import JsonCodec
 from ...utils._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
@@ -49,9 +48,9 @@ def emit_json(
         Whether to pretty-print JSON output.
     """
     if pretty:
-        print_json(data)
+        JsonCodec.print(data)
         return
-    print(serialize_json(data))
+    print(JsonCodec.serialize(data))
 
 
 def emit_markdown_table(
@@ -74,7 +73,7 @@ def emit_markdown_table(
         if value is None:
             return ''
         if isinstance(value, (dict, list)):
-            rendered = serialize_json(value, sort_keys=True)
+            rendered = JsonCodec.serialize(value, sort_keys=True)
         else:
             rendered = str(value)
         return rendered.replace('|', '\\|').replace('\n', '<br>')

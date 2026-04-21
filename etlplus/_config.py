@@ -31,9 +31,8 @@ from .file import File
 from .file import FileFormat
 from .history._config import HistoryConfig
 from .runtime import TelemetryConfig
-from .utils import coerce_dict
-from .utils import deep_substitute
-from .utils import maybe_mapping
+from .utils import MappingParser
+from .utils import SubstitutionResolver
 from .utils._types import StrAnyMap
 from .workflow._jobs import JobConfig
 from .workflow._profile import ProfileConfig
@@ -118,7 +117,7 @@ def _parse_connector_entry(
     Connector | None
         Parsed connector instance or ``None`` when invalid.
     """
-    if not (entry := maybe_mapping(obj)):
+    if not (entry := MappingParser.optional(obj)):
         return None
     try:
         return parse_connector(entry)
@@ -234,7 +233,7 @@ class Config:
             base_env = dict(getattr(cfg.profile, 'env', {}) or {})
             external = dict(env) if env is not None else dict(os.environ)
             env_map = base_env | external
-            resolved = deep_substitute(raw, cfg.vars, env_map)
+            resolved = SubstitutionResolver.deep(raw, cfg.vars, env_map)
             cfg = cls.from_dict(resolved)
 
         return cfg
@@ -264,28 +263,30 @@ class Config:
         version = raw.get('version')
 
         # Profile and vars
-        prof_raw = maybe_mapping(raw.get('profile')) or {}
+        prof_raw = MappingParser.optional(raw.get('profile')) or {}
         profile = ProfileConfig.from_obj(prof_raw)
-        history = HistoryConfig.from_obj(maybe_mapping(raw.get('history')))
-        telemetry = TelemetryConfig.from_obj(maybe_mapping(raw.get('telemetry')))
-        vars_map: dict[str, Any] = coerce_dict(raw.get('vars'))
+        history = HistoryConfig.from_obj(MappingParser.optional(raw.get('history')))
+        telemetry = TelemetryConfig.from_obj(
+            MappingParser.optional(raw.get('telemetry')),
+        )
+        vars_map: dict[str, Any] = MappingParser.to_dict(raw.get('vars'))
 
         # APIs
         apis: dict[str, ApiConfig] = {}
-        api_block = maybe_mapping(raw.get('apis')) or {}
+        api_block = MappingParser.optional(raw.get('apis')) or {}
         for api_name, api_obj in api_block.items():
             apis[str(api_name)] = ApiConfig.from_obj(api_obj)
 
         # Databases and file systems (pass-through structures)
-        databases = coerce_dict(raw.get('databases'))
-        file_systems = coerce_dict(raw.get('file_systems'))
+        databases = MappingParser.to_dict(raw.get('databases'))
+        file_systems = MappingParser.to_dict(raw.get('file_systems'))
 
         # Sources
         sources = _build_connectors(raw, key='sources')
 
         # Validations/Transforms
-        validations = coerce_dict(raw.get('validations'))
-        transforms = coerce_dict(raw.get('transforms'))
+        validations = MappingParser.to_dict(raw.get('validations'))
+        transforms = MappingParser.to_dict(raw.get('transforms'))
 
         # Targets
         targets = _build_connectors(raw, key='targets')
@@ -299,7 +300,7 @@ class Config:
         # Table schemas (optional, tolerant pass-through structures).
         table_schemas: list[dict[str, Any]] = []
         for entry in raw.get('table_schemas', []) or []:
-            spec = maybe_mapping(entry)
+            spec = MappingParser.optional(entry)
             if spec is not None:
                 table_schemas.append(dict(spec))
 

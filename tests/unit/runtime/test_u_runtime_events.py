@@ -193,7 +193,11 @@ class TestRuntimeEvents:
         """
         Test that runtime events only emit serialized output for ``jsonl``.
         """
-        monkeypatch.setattr(events_mod, 'serialize_json', lambda event: 'SERIALIZED')
+        monkeypatch.setattr(
+            events_mod.JsonCodec,
+            'serialize',
+            lambda event: 'SERIALIZED',
+        )
 
         events_mod.RuntimeEvents.emit(
             {'event': 'run.started'},

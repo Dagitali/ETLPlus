@@ -16,7 +16,7 @@ import pytest
 from etlplus.cli._handlers import _input as input_mod
 from etlplus.cli._handlers import _output as output_mod
 from etlplus.file import FileFormat
-from etlplus.utils._data import parse_json
+from etlplus.utils import JsonCodec
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -104,9 +104,9 @@ class TestEmitJson:
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that pretty-printing delegates to :func:`print_json`."""
+        """Test that pretty-printing delegates to :meth:`JsonCodec.print`."""
         called_with: list[object] = []
-        monkeypatch.setattr(output_mod, 'print_json', called_with.append)
+        monkeypatch.setattr(output_mod.JsonCodec, 'print', called_with.append)
 
         payload = {'a': 1}
         output_mod.emit_json(payload, pretty=True)
@@ -538,7 +538,7 @@ class TestParseTextPayload:
     def test_parse_json_payload_reports_decode_errors(self) -> None:
         """Test that invalid JSON raises a normalized :class:`ValueError`."""
         with pytest.raises(ValueError, match='Invalid JSON payload'):
-            parse_json('{broken')
+            JsonCodec.parse('{broken')
 
 
 class TestReadCsvRows:

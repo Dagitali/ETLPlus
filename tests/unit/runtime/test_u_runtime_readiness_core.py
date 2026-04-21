@@ -311,8 +311,8 @@ class TestReadinessReportBuilderCore:
 
         monkeypatch.setattr(readiness_mod.Config, 'from_dict', _config_from_dict)
         monkeypatch.setattr(
-            readiness_base_mod,
-            'deep_substitute',
+            readiness_base_mod.SubstitutionResolver,
+            'deep',
             lambda raw, _vars, _env: {'token': '${MISSING_TOKEN}'},
         )
 

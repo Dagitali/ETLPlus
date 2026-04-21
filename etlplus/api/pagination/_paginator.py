@@ -28,9 +28,7 @@ from typing import Any
 from typing import ClassVar
 from typing import cast
 
-from ...utils import to_int
-from ...utils import to_maximum_int
-from ...utils import to_positive_int
+from ...utils import IntParser
 from ...utils._types import JSONDict
 from ...utils._types import JSONRecords
 from .._errors import ApiRequestError
@@ -291,8 +289,8 @@ class Paginator:
 
         return cls(
             type=ptype,
-            page_size=to_positive_int(cfg.get('page_size'), cls.PAGE_SIZE),
-            start_page=to_maximum_int(
+            page_size=IntParser.positive(cfg.get('page_size'), cls.PAGE_SIZE),
+            start_page=IntParser.at_least(
                 cfg.get('start_page'),
                 cls.START_PAGES[ptype],
             ),
@@ -300,8 +298,8 @@ class Paginator:
             records_path=cfg.get('records_path'),
             fallback_path=cfg.get('fallback_path'),
             cursor_path=cfg.get('cursor_path'),
-            max_pages=to_int(cfg.get('max_pages'), None, minimum=1),
-            max_records=to_int(cfg.get('max_records'), None, minimum=1),
+            max_pages=IntParser.parse(cfg.get('max_pages'), None, minimum=1),
+            max_records=IntParser.parse(cfg.get('max_records'), None, minimum=1),
             page_param=cfg.get('page_param', ''),
             size_param=cfg.get('size_param', ''),
             cursor_param=cfg.get('cursor_param', ''),
@@ -608,7 +606,7 @@ class Paginator:
         maybe = request.params.get(self.page_param)
         if maybe is None:
             return self.start_page
-        parsed = to_int(maybe)
+        parsed = IntParser.parse(maybe)
         if parsed is None:
             return self.start_page
         if self.type == PaginationType.OFFSET:

@@ -15,70 +15,74 @@ from ._types import StrAnyMap
 
 
 __all__ = [
-    # Functions (mapping utilities)
-    'cast_str_dict',
-    'coerce_dict',
-    'maybe_mapping',
+    # Classes
+    'MappingParser',
 ]
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: CLASSES ========================================================== #
 
 
-def cast_str_dict(
-    mapping: StrAnyMap | None,
-) -> dict[str, str]:
-    """
-    Return a new ``dict`` with keys and values coerced to ``str``.
+class MappingParser:
+    """Normalize optionally mapping-like inputs into concrete mapping shapes."""
 
-    Parameters
-    ----------
-    mapping : StrAnyMap | None
-        Mapping to normalize; ``None`` yields ``{}``.
+    # -- Static Methods -- #
 
-    Returns
-    -------
-    dict[str, str]
-        Dictionary of the original key/value pairs converted via :func:`str`.
-    """
-    if not mapping:
-        return {}
-    return {str(key): str(value) for key, value in mapping.items()}
+    @staticmethod
+    def to_str_dict(
+        mapping: StrAnyMap | None,
+    ) -> dict[str, str]:
+        """
+        Return a new ``dict`` with keys and values coerced to ``str``.
 
+        Parameters
+        ----------
+        mapping : StrAnyMap | None
+            Mapping to normalize; ``None`` yields ``{}``.
 
-def coerce_dict(
-    value: Any,
-) -> dict[str, Any]:
-    """
-    Return a ``dict`` copy when *value* is mapping-like.
+        Returns
+        -------
+        dict[str, str]
+            Dictionary of the original key/value pairs converted via :func:`str`.
+        """
+        if not mapping:
+            return {}
+        return {str(key): str(value) for key, value in mapping.items()}
 
-    Parameters
-    ----------
-    value : Any
-        Mapping-like object to copy. ``None`` returns an empty dict.
+    @staticmethod
+    def to_dict(
+        value: Any,
+    ) -> dict[str, Any]:
+        """
+        Return a ``dict`` copy when *value* is mapping-like.
 
-    Returns
-    -------
-    dict[str, Any]
-        Shallow copy of *value* converted to a standard ``dict``.
-    """
-    return dict(value) if isinstance(value, Mapping) else {}
+        Parameters
+        ----------
+        value : Any
+            Mapping-like object to copy. ``None`` returns an empty dict.
 
+        Returns
+        -------
+        dict[str, Any]
+            Shallow copy of *value* converted to a standard ``dict``.
+        """
+        return dict(value) if isinstance(value, Mapping) else {}
 
-def maybe_mapping(
-    value: Any,
-) -> StrAnyMap | None:
-    """
-    Return *value* when it is mapping-like; otherwise ``None``.
+    @staticmethod
+    def optional(
+        value: Any,
+    ) -> StrAnyMap | None:
+        """
+        Return *value* when it is mapping-like; otherwise ``None``.
 
-    Parameters
-    ----------
-    value : Any
-        Value to test.
+        Parameters
+        ----------
+        value : Any
+            Value to test.
 
-    Returns
-    -------
-    StrAnyMap | None
-        The input value if it is a mapping; ``None`` if not.
-    """
-    return value if isinstance(value, Mapping) else None
+        Returns
+        -------
+        StrAnyMap | None
+            The input value if it is a mapping; ``None`` if not.
+        """
+        return value if isinstance(value, Mapping) else None

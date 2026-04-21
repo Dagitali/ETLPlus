@@ -9,27 +9,18 @@ from __future__ import annotations
 import pytest
 
 from etlplus import utils as utils_pkg
-from etlplus.utils._data import count_records
-from etlplus.utils._data import print_json
-from etlplus.utils._data import serialize_json
+from etlplus.utils._data import JsonCodec
+from etlplus.utils._data import RecordCounter
 from etlplus.utils._enums import CoercibleStrEnum
-from etlplus.utils._mapping import cast_str_dict
-from etlplus.utils._mapping import coerce_dict
-from etlplus.utils._mapping import maybe_mapping
+from etlplus.utils._mapping import MappingParser
 from etlplus.utils._mixins import BoundsWarningsMixin
-from etlplus.utils._numbers import to_float
-from etlplus.utils._numbers import to_int
-from etlplus.utils._numbers import to_maximum_float
-from etlplus.utils._numbers import to_maximum_int
-from etlplus.utils._numbers import to_minimum_float
-from etlplus.utils._numbers import to_minimum_int
-from etlplus.utils._numbers import to_number
-from etlplus.utils._numbers import to_positive_float
-from etlplus.utils._numbers import to_positive_int
+from etlplus.utils._numbers import FloatParser
+from etlplus.utils._numbers import IntParser
+from etlplus.utils._parsing import MappingFieldParser
+from etlplus.utils._parsing import SequenceParser
 from etlplus.utils._parsing import ValueParser
-from etlplus.utils._substitution import deep_substitute
-from etlplus.utils._text import normalize_choice
-from etlplus.utils._text import normalize_str
+from etlplus.utils._substitution import SubstitutionResolver
+from etlplus.utils._text import TextNormalizer
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -39,26 +30,17 @@ from etlplus.utils._text import normalize_str
 
 
 UTILS_EXPORTS = [
+    ('MappingFieldParser', MappingFieldParser),
+    ('SequenceParser', SequenceParser),
     ('ValueParser', ValueParser),
+    ('FloatParser', FloatParser),
+    ('IntParser', IntParser),
+    ('JsonCodec', JsonCodec),
+    ('MappingParser', MappingParser),
+    ('RecordCounter', RecordCounter),
+    ('SubstitutionResolver', SubstitutionResolver),
+    ('TextNormalizer', TextNormalizer),
     ('CoercibleStrEnum', CoercibleStrEnum),
-    ('count_records', count_records),
-    ('print_json', print_json),
-    ('serialize_json', serialize_json),
-    ('cast_str_dict', cast_str_dict),
-    ('coerce_dict', coerce_dict),
-    ('deep_substitute', deep_substitute),
-    ('maybe_mapping', maybe_mapping),
-    ('to_float', to_float),
-    ('to_maximum_float', to_maximum_float),
-    ('to_minimum_float', to_minimum_float),
-    ('to_positive_float', to_positive_float),
-    ('to_int', to_int),
-    ('to_maximum_int', to_maximum_int),
-    ('to_minimum_int', to_minimum_int),
-    ('to_positive_int', to_positive_int),
-    ('to_number', to_number),
-    ('normalize_choice', normalize_choice),
-    ('normalize_str', normalize_str),
     ('BoundsWarningsMixin', BoundsWarningsMixin),
 ]
 
