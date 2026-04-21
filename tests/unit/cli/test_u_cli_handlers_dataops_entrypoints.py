@@ -136,7 +136,7 @@ class TestExtractHandler:
         monkeypatch.setattr(
             handlers._input,
             'parse_text_payload',
-            lambda text, fmt: {'payload': text, 'fmt': fmt},
+            lambda text, fmt_hint: {'payload': text, 'fmt_hint': fmt_hint},
         )
 
         def fail_extract(*_args: object, **_kwargs: object) -> None:
@@ -156,7 +156,7 @@ class TestExtractHandler:
         )
         assert_emit_json(
             capture_io,
-            {'payload': 'raw-text', 'fmt': None},
+            {'payload': 'raw-text', 'fmt_hint': None},
             pretty=False,
         )
         assert capture_io['emit_or_write'] == []
@@ -263,11 +263,11 @@ class TestLoadHandler:
             fake_read_stdin,
         )
 
-        parsed_payload = {'payload': 'stdin-payload', 'fmt': None}
+        parsed_payload = {'payload': 'stdin-payload', 'fmt_hint': None}
         parse_calls: dict[str, object] = {}
 
-        def fake_parse(text: str, fmt: str | None) -> object:
-            parse_calls['params'] = (text, fmt)
+        def fake_parse(text: str, fmt_hint: str | None) -> object:
+            parse_calls['params'] = (text, fmt_hint)
             return parsed_payload
 
         monkeypatch.setattr(handlers._input, 'parse_text_payload', fake_parse)
