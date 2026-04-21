@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.cli._handlers._input` module.
 
-Input and payload-hydration helpers shared by CLI handlers.
+CLI payload parsing and input materialization helpers shared by CLI handler
+entrypoints.
 """
 
 from __future__ import annotations
@@ -120,7 +121,7 @@ def materialize_file_payload(
 
 def parse_text_payload(
     text: str,
-    fmt: str | None,
+    fmt_hint: str | None,
 ) -> JSONData | str:
     """
     Parse JSON/CSV text into a Python payload.
@@ -129,7 +130,7 @@ def parse_text_payload(
     ----------
     text : str
         The text payload to parse.
-    fmt : str | None
+    fmt_hint : str | None
         An optional format hint (e.g., 'json', 'csv').
 
     Returns
@@ -137,7 +138,7 @@ def parse_text_payload(
     JSONData | str
         The parsed payload as JSON data or raw text.
     """
-    effective = (fmt or '').strip().lower() or infer_payload_format(text)
+    effective = (fmt_hint or '').strip().lower() or infer_payload_format(text)
     if effective == 'json':
         return JsonCodec.parse(text)
     if effective == 'csv':

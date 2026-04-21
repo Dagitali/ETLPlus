@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.cli._commands._options.helpers` module.
 
-Shared Typer option helper functions for CLI command modules.
+Shared Typer option aliases and keyword factories for CLI command modules.
 """
 
 from __future__ import annotations

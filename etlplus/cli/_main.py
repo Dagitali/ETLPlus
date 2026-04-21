@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.cli._main` module.
 
-Entry point helpers for the Typer-powered ``etlplus`` CLI.
+Typer-powered console entry point for the ``etlplus`` CLI.
 
 This module exposes :func:`main` for the console script.
 """
@@ -146,9 +146,8 @@ def main(
 
     Notes
     -----
-    This function uses Typer (Click) for parsing/dispatch, but preserves the
-    existing `cmd_*` handlers by adapting parsed arguments into an
-    :class:`argparse.Namespace`.
+    This wrapper keeps Typer/Click parsing behavior while normalizing help
+    output and conventional CLI exit codes.
     """
     resolved_argv = sys.argv[1:] if argv is None else list(argv)
     command = typer.main.get_command(app)
