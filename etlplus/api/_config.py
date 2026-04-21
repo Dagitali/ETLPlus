@@ -7,8 +7,8 @@ Notes
 -----
 - TypedDict references remain editor hints only; :meth:`from_obj` accepts
     ``StrAnyMap`` for permissive parsing.
-- Helper functions near the bottom keep parsing logic centralized and avoid
-    leaking implementation details.
+- Private parsing routines keep normalization centralized without widening the
+    public surface.
 """
 
 from __future__ import annotations
