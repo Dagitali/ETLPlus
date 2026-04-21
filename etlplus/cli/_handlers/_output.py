@@ -1,7 +1,8 @@
 """
 :mod:`etlplus.cli._handlers._output` module.
 
-Output helpers shared by CLI handler implementations.
+CLI output emission and file-write routines shared by CLI handler
+implementations.
 """
 
 from __future__ import annotations

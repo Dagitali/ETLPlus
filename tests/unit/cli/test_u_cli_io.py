@@ -503,7 +503,7 @@ class TestParseTextPayload:
     """Unit tests for :func:`parse_text_payload`."""
 
     @pytest.mark.parametrize(
-        ('payload', 'fmt', 'expected'),
+        ('payload', 'fmt_hint', 'expected'),
         [
             ('{"a": 1}', None, {'a': 1}),
             ('a,b\n1,2\n', 'csv', [{'a': '1', 'b': '2'}]),
@@ -513,14 +513,14 @@ class TestParseTextPayload:
     def test_parsing_text_payload_variants(
         self,
         payload: str,
-        fmt: str | None,
+        fmt_hint: str | None,
         expected: object,
     ) -> None:
         """
         Test that :func:`parse_text_payload` handles JSON, CSV, and passthrough
         cases.
         """
-        assert input_mod.parse_text_payload(payload, fmt=fmt) == expected
+        assert input_mod.parse_text_payload(payload, fmt_hint=fmt_hint) == expected
 
     def test_inferring_csv_when_unspecified(
         self,
@@ -529,7 +529,7 @@ class TestParseTextPayload:
         """
         Test that CSV payloads are parsed when no format hint is provided.
         """
-        result = input_mod.parse_text_payload(csv_text, fmt=None)
+        result = input_mod.parse_text_payload(csv_text, fmt_hint=None)
         assert result == [
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},

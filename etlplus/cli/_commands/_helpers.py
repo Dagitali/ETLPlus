@@ -75,7 +75,7 @@ class _ResolvedResource:
     @property
     def format_explicit(self) -> bool:
         """
-        Return whether the resource carries one explicit format hint.
+        Return whether the resource carries an explicit format hint.
 
         This is used to determine whether to apply implicit format inference
         based on the value when the handler supports it.
