@@ -42,6 +42,7 @@ __all__ = [
     # Type Aliases (Connectors & Sources)
     'ConnectorTypeArg',
     'DataSourceArg',
+    'OptionalPathArg',
     'OptionalConnectorTypeArg',
     # Type Aliases (Functions)
     'AggregateFunc',
@@ -76,6 +77,9 @@ type ConnectorTypeArg = DataConnectorType | str
 
 # Source argument accepted by load/transform facades.
 type DataSourceArg = StrPath | JSONData
+
+# Optional path-like argument used by ops facades.
+type OptionalPathArg = StrPath | None
 
 # Optional connector type accepted as enum, coercible string, or None.
 type OptionalConnectorTypeArg = ConnectorTypeArg | None
