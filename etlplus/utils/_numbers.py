@@ -165,6 +165,54 @@ class FloatParser(_NumberParser):
     # -- Class Methods -- #
 
     @classmethod
+    def at_least(
+        cls,
+        value: object,
+        default: float,
+    ) -> float:
+        """
+        Return the greater of *default* and the parsed float value.
+
+        Parameters
+        ----------
+        value : object
+            Value to coerce.
+        default : float
+            Baseline float value.
+
+        Returns
+        -------
+        float
+            Greater of *default* and parsed float value.
+        """
+        result = cls.parse(value, default)
+        return max(cls._value_or_default(result, default), default)
+
+    @classmethod
+    def at_most(
+        cls,
+        value: object,
+        default: float,
+    ) -> float:
+        """
+        Return the lesser of *default* and the parsed float value.
+
+        Parameters
+        ----------
+        value : object
+            Value to coerce.
+        default : float
+            Baseline float value.
+
+        Returns
+        -------
+        float
+            Lesser of *default* and parsed float value.
+        """
+        result = cls.parse(value, default)
+        return min(cls._value_or_default(result, default), default)
+
+    @classmethod
     def coerce(
         cls,
         value: object,
@@ -240,54 +288,6 @@ class FloatParser(_NumberParser):
         )
 
     @classmethod
-    def at_least(
-        cls,
-        value: object,
-        default: float,
-    ) -> float:
-        """
-        Return the greater of *default* and the parsed float value.
-
-        Parameters
-        ----------
-        value : object
-            Value to coerce.
-        default : float
-            Baseline float value.
-
-        Returns
-        -------
-        float
-            Greater of *default* and parsed float value.
-        """
-        result = cls.parse(value, default)
-        return max(cls._value_or_default(result, default), default)
-
-    @classmethod
-    def at_most(
-        cls,
-        value: object,
-        default: float,
-    ) -> float:
-        """
-        Return the lesser of *default* and the parsed float value.
-
-        Parameters
-        ----------
-        value : object
-            Value to coerce.
-        default : float
-            Baseline float value.
-
-        Returns
-        -------
-        float
-            Lesser of *default* and parsed float value.
-        """
-        result = cls.parse(value, default)
-        return min(cls._value_or_default(result, default), default)
-
-    @classmethod
     def positive(
         cls,
         value: object,
@@ -326,6 +326,54 @@ class IntParser(_NumberParser):
         return int(candidate)
 
     # -- Class Methods -- #
+
+    @classmethod
+    def at_least(
+        cls,
+        value: object,
+        default: int,
+    ) -> int:
+        """
+        Return the greater of *default* and the parsed integer value.
+
+        Parameters
+        ----------
+        value : object
+            Value to compare.
+        default : int
+            Baseline integer value.
+
+        Returns
+        -------
+        int
+            Greater of *default* and the parsed integer value.
+        """
+        result = cls.parse(value, default)
+        return max(cls._value_or_default(result, default), default)
+
+    @classmethod
+    def at_most(
+        cls,
+        value: object,
+        default: int,
+    ) -> int:
+        """
+        Return the lesser of *default* and the parsed integer value.
+
+        Parameters
+        ----------
+        value : object
+            Value to compare.
+        default : int
+            Baseline integer value.
+
+        Returns
+        -------
+        int
+            Lesser of *default* and the parsed integer value.
+        """
+        result = cls.parse(value, default)
+        return min(cls._value_or_default(result, default), default)
 
     @classmethod
     def coerce(
@@ -397,54 +445,6 @@ class IntParser(_NumberParser):
             minimum=minimum,
             maximum=maximum,
         )
-
-    @classmethod
-    def at_least(
-        cls,
-        value: object,
-        default: int,
-    ) -> int:
-        """
-        Return the greater of *default* and the parsed integer value.
-
-        Parameters
-        ----------
-        value : object
-            Value to compare.
-        default : int
-            Baseline integer value.
-
-        Returns
-        -------
-        int
-            Greater of *default* and the parsed integer value.
-        """
-        result = cls.parse(value, default)
-        return max(cls._value_or_default(result, default), default)
-
-    @classmethod
-    def at_most(
-        cls,
-        value: object,
-        default: int,
-    ) -> int:
-        """
-        Return the lesser of *default* and the parsed integer value.
-
-        Parameters
-        ----------
-        value : object
-            Value to compare.
-        default : int
-            Baseline integer value.
-
-        Returns
-        -------
-        int
-            Lesser of *default* and the parsed integer value.
-        """
-        result = cls.parse(value, default)
-        return min(cls._value_or_default(result, default), default)
 
     @classmethod
     def positive(
