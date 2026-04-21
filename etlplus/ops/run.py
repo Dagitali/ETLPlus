@@ -39,6 +39,7 @@ from ._mappings import index_named_items
 from ._mappings import merge_mapping_options
 from ._types import DataSourceArg
 from ._types import OptionalConnectorTypeArg
+from ._types import OptionalPathArg
 from ._types import PipelineConfig
 from ._validation import ValidationResultDict
 from ._validation import maybe_validate
@@ -1399,14 +1400,13 @@ def run(
     return _run_job_config(context, planned_jobs[0])
 
 
-# TODO: Define a global type alias to replace StrPath | None.
 def run_pipeline(
     *,
     source_type: OptionalConnectorTypeArg = None,
     source: DataSourceArg | None = None,
     operations: PipelineConfig | None = None,
     target_type: OptionalConnectorTypeArg = None,
-    target: StrPath | None = None,
+    target: OptionalPathArg = None,
     file_format: FileFormatArg = None,
     method: HttpMethod | str | None = None,
     **kwargs: Any,
@@ -1427,7 +1427,7 @@ def run_pipeline(
     target_type : OptionalConnectorTypeArg, optional
         Connector type for loading. When ``None``, load is skipped and the
         transformed data is returned.
-    target : StrPath | None, optional
+    target : OptionalPathArg, optional
         Target for loading (file path, connection string, or API URL).
     file_format : FileFormatArg, optional
         File format for file sources/targets (forwarded to extract/load).
