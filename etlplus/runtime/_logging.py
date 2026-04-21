@@ -47,6 +47,55 @@ _VERBOSE_LEVEL_NAME: Final[str] = 'INFO'
 _LOG_FORMAT: Final[str] = '%(levelname)s %(name)s: %(message)s'
 
 
+# SECTION: INTERNAL CLASSES ================================================ #
+
+
+class _RuntimeLoggingPolicy:
+    """Resolve and install the shared runtime logging baseline."""
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def configure(
+        cls,
+        *,
+        quiet: bool = False,
+        verbose: bool = False,
+        stream: IO[str] | None = None,
+        force: bool = False,
+        env: Mapping[str, str] | None = None,
+    ) -> int:
+        """Install the process-wide ETLPlus logging baseline."""
+        level = cls.resolve_level(quiet=quiet, verbose=verbose, env=env)
+        logging.basicConfig(
+            level=level,
+            stream=stream or sys.stderr,
+            format=_LOG_FORMAT,
+            force=force,
+        )
+        logging.captureWarnings(True)
+        return level
+
+    @classmethod
+    def resolve_level(
+        cls,
+        *,
+        quiet: bool = False,
+        verbose: bool = False,
+        env: Mapping[str, str] | None = None,
+    ) -> int:
+        """Return the effective logging level for one runtime invocation."""
+        env_map = os.environ if env is None else env
+        explicit = (env_map.get('ETLPLUS_LOG_LEVEL') or '').strip().upper()
+        if explicit in _LOG_LEVELS:
+            return _LOG_LEVELS[explicit]
+        if quiet:
+            return _LOG_LEVELS[_QUIET_LEVEL_NAME]
+        if verbose:
+            return _LOG_LEVELS[_VERBOSE_LEVEL_NAME]
+        return _LOG_LEVELS[_DEFAULT_LEVEL_NAME]
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -74,15 +123,11 @@ def resolve_log_level(
     int
         A :mod:`logging` level constant.
     """
-    env_map = os.environ if env is None else env
-    explicit = (env_map.get('ETLPLUS_LOG_LEVEL') or '').strip().upper()
-    if explicit in _LOG_LEVELS:
-        return _LOG_LEVELS[explicit]
-    if quiet:
-        return _LOG_LEVELS[_QUIET_LEVEL_NAME]
-    if verbose:
-        return _LOG_LEVELS[_VERBOSE_LEVEL_NAME]
-    return _LOG_LEVELS[_DEFAULT_LEVEL_NAME]
+    return _RuntimeLoggingPolicy.resolve_level(
+        quiet=quiet,
+        verbose=verbose,
+        env=env,
+    )
 
 
 def configure_logging(
@@ -115,12 +160,10 @@ def configure_logging(
     int
         The effective logging level that was configured.
     """
-    level = resolve_log_level(quiet=quiet, verbose=verbose, env=env)
-    logging.basicConfig(
-        level=level,
-        stream=stream or sys.stderr,
-        format=_LOG_FORMAT,
+    return _RuntimeLoggingPolicy.configure(
+        quiet=quiet,
+        verbose=verbose,
+        stream=stream,
         force=force,
+        env=env,
     )
-    logging.captureWarnings(True)
-    return level
