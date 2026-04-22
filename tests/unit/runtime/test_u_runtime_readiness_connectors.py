@@ -38,8 +38,13 @@ def _connector_checks(cfg: object) -> list[dict[str, object]]:
             readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows
         ),
         make_check=readiness_mod.ReadinessReportBuilder.make_check,
-        missing_requirement_rows_fn=(
-            readiness_mod.ReadinessReportBuilder._connector_requirement_rows
+        missing_requirement_rows_fn=lambda inner_cfg: (
+            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
+                cfg=cast(Any, inner_cfg),
+                package_available=(
+                    readiness_mod.ReadinessReportBuilder.package_available
+                ),
+            )
         ),
     )
 
@@ -310,9 +315,11 @@ class TestReadinessReportBuilderConnectors:
             lambda _cfg: [{'connector': 'bad-source'}],
         )
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            '_missing_requirement_rows_for_connectors',
-            lambda _cfg: [{'connector': 'bad-source', 'missing_package': 'boto3'}],
+            readiness_connectors_mod.ConnectorReadinessPolicy,
+            'missing_requirement_rows',
+            lambda *, cfg, package_available: [
+                {'connector': 'bad-source', 'missing_package': 'boto3'},
+            ],
         )
 
         checks = _connector_checks(cfg)
@@ -410,10 +417,7 @@ class TestReadinessReportBuilderConnectors:
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
                 cfg=cast(Any, cfg),
-                netcdf_available_fn=lambda: False,
-                requirement_available_fn=lambda requirement: (
-                    requirement.package == 'boto3'
-                ),
+                package_available=lambda module_name: module_name == 'boto3',
             )
         )
 
@@ -467,8 +471,13 @@ class TestReadinessReportBuilderConnectors:
             apis={},
         )
 
-        rows = readiness_mod.ReadinessReportBuilder._connector_requirement_rows(
-            cast(Any, cfg),
+        rows = (
+            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
+                cfg=cast(Any, cfg),
+                package_available=(
+                    readiness_mod.ReadinessReportBuilder.package_available
+                ),
+            )
         )
 
         assert rows == [
@@ -517,8 +526,7 @@ class TestReadinessReportBuilderConnectors:
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
                 cfg=cast(Any, cfg),
-                netcdf_available_fn=lambda: True,
-                requirement_available_fn=lambda requirement: True,
+                package_available=lambda _module_name: True,
             )
         )
 
