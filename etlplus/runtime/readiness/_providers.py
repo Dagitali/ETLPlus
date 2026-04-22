@@ -15,7 +15,7 @@ from urllib.parse import urlsplit
 
 from ..._config import Config
 from ._base import _iter_connectors
-from ._base import coerce_storage_scheme
+from ._base import _ReadinessSupportPolicy
 from ._support import AWS_ENV_HINTS
 from ._support import AZURE_STORAGE_BOOTSTRAP_ENV
 from ._support import AZURE_STORAGE_CREDENTIAL_ENV
@@ -367,7 +367,7 @@ class _ProviderEnvironmentPolicy:
             if not isinstance(path, str) or not path:
                 continue
 
-            match coerce_storage_scheme(path):
+            match _ReadinessSupportPolicy.coerce_storage_scheme(path):
                 case 'azure-blob' | 'abfs' as scheme:
                     rows.extend(
                         _azure_provider_gaps(

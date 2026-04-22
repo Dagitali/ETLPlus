@@ -15,8 +15,7 @@ from ._base import _connector_gap_guidance
 from ._base import _dedupe_rows
 from ._base import _iter_connectors
 from ._base import _missing_requirement_guidance
-from ._base import coerce_connector_storage_scheme
-from ._base import coerce_storage_scheme
+from ._base import _ReadinessSupportPolicy
 from ._support import FORMAT_EXTRA_REQUIREMENTS
 from ._support import SCHEME_EXTRA_REQUIREMENTS
 from ._support import ReadinessRow
@@ -239,7 +238,7 @@ class _ConnectorReadinessPolicy:
             format_name = str(getattr(connector, 'format', '') or '').lower()
 
             if path:
-                scheme = coerce_storage_scheme(path)
+                scheme = _ReadinessSupportPolicy.coerce_storage_scheme(path)
                 requirement = SCHEME_EXTRA_REQUIREMENTS.get(scheme or '')
                 if scheme and requirement and not requirement_available_fn(requirement):
                     rows.append(
@@ -491,7 +490,7 @@ def connector_type_guidance(
     normalized = connector_type_str.strip().lower()
     if not normalized:
         return f'Set type to one of: {supported}.'
-    if coerce_connector_storage_scheme(normalized) is not None:
+    if _ReadinessSupportPolicy.coerce_connector_storage_scheme(normalized) is not None:
         return (
             f'"{normalized}" is a storage scheme, not a connector type. '
             'Use connector type "file" and keep the provider in the path '

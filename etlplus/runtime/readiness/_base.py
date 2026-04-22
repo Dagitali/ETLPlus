@@ -36,8 +36,6 @@ from ._support import ResolvedConfigContext
 __all__ = [
     # Classes
     'ReadinessBaseMixin',
-    # Functions
-    'coerce_storage_scheme',
 ]
 
 
@@ -358,53 +356,6 @@ class _TokenReferenceCollector:
                 return
 
 
-# SECTION: FUNCTIONS ======================================================== #
-
-
-def coerce_connector_storage_scheme(
-    value: str,
-) -> str | None:
-    """
-    Return one normalized storage scheme from raw connector-type text.
-
-    This is a best-effort coercion that accepts some common connector type
-    strings and attempts to map them to a recognized storage scheme.
-    Recognized storage schemes are normalized to their canonical lowercase
-    form.
-
-    Parameters
-    ----------
-    value : str
-        Raw connector type string to coerce as a storage scheme.
-
-    Returns
-    -------
-    str | None
-        The normalized storage scheme name if coercion is successful, or
-        ``None`` if the value cannot be coerced as a known storage scheme.
-    """
-    return _ReadinessSupportPolicy.coerce_connector_storage_scheme(value)
-
-
-def coerce_storage_scheme(
-    path: str,
-) -> str | None:
-    """
-    Return one normalized storage scheme for *path* when present.
-
-    Parameters
-    ----------
-    path : str
-        The path to coerce as a storage scheme.
-
-    Returns
-    -------
-    str | None
-        The normalized storage scheme name if present, or ``None`` if not.
-    """
-    return _ReadinessSupportPolicy.coerce_storage_scheme(path)
-
-
 # SECTION: CLASSES ========================================================== #
 
 
@@ -436,7 +387,7 @@ class ReadinessBaseMixin:
             The normalized storage scheme name if coercion is successful, or
             ``None`` if the value cannot be coerced as a known storage scheme.
         """
-        return coerce_connector_storage_scheme(value)
+        return _ReadinessSupportPolicy.coerce_connector_storage_scheme(value)
 
     @staticmethod
     def coerce_storage_scheme(
@@ -455,7 +406,7 @@ class ReadinessBaseMixin:
         str | None
             The normalized storage scheme name if present, or ``None`` if not.
         """
-        return coerce_storage_scheme(path)
+        return _ReadinessSupportPolicy.coerce_storage_scheme(path)
 
     @staticmethod
     def collect_substitution_tokens(
