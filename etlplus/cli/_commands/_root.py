@@ -11,8 +11,8 @@ import os
 import typer
 
 from ... import __version__
+from ...runtime import RuntimeLoggingPolicy
 from ...runtime import RuntimeTelemetry
-from ...runtime import configure_logging
 from ._app import app
 from ._options.common import PrettyOption
 from ._options.common import QuietOption
@@ -59,7 +59,7 @@ def _root(
         quiet=quiet,
         verbose=verbose,
     )
-    configure_logging(
+    RuntimeLoggingPolicy.configure(
         quiet=state.quiet,
         verbose=state.verbose,
         force=True,
