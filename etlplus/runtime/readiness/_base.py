@@ -123,6 +123,30 @@ class ReadinessBaseMixin:
         return payload
 
     @staticmethod
+    def overall_status(
+        checks: list[dict[str, Any]],
+    ) -> CheckStatus:
+        """
+        Return aggregate status from individual check rows.
+
+        Parameters
+        ----------
+        checks : list[dict[str, Any]]
+            A list of individual check rows.
+
+        Returns
+        -------
+        CheckStatus
+            The overall status derived from the individual checks.
+        """
+        statuses = {cast(CheckStatus, check['status']) for check in checks}
+        if 'error' in statuses:
+            return 'error'
+        if 'warn' in statuses:
+            return 'warn'
+        return 'ok'
+
+    @staticmethod
     def package_available(
         module_name: str,
     ) -> bool:
@@ -148,35 +172,8 @@ class ReadinessBaseMixin:
         except (ImportError, ModuleNotFoundError, ValueError):
             return False
 
-    # -- Class Methods -- #
-
-    @classmethod
-    def overall_status(
-        cls,
-        checks: list[dict[str, Any]],
-    ) -> CheckStatus:
-        """
-        Return aggregate status from individual check rows.
-
-        Parameters
-        ----------
-        checks : list[dict[str, Any]]
-            A list of individual check rows.
-
-        Returns
-        -------
-        CheckStatus
-            The overall status derived from the individual checks.
-        """
-        statuses = {cast(CheckStatus, check['status']) for check in checks}
-        if 'error' in statuses:
-            return 'error'
-        if 'warn' in statuses:
-            return 'warn'
-        return 'ok'
-
-    @classmethod
-    def python_version(cls) -> str:
+    @staticmethod
+    def python_version() -> str:
         """
         Return the current interpreter version as dotted text.
 
@@ -190,6 +187,8 @@ class ReadinessBaseMixin:
             f'{sys.version_info.minor}.'
             f'{sys.version_info.micro}'
         )
+
+    # -- Class Methods -- #
 
     @classmethod
     def resolve_config_context(
