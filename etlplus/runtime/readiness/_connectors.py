@@ -218,8 +218,7 @@ class ConnectorReadinessPolicy:
         cls,
         *,
         cfg: Config,
-        netcdf_available_fn: Callable[[], bool],
-        requirement_available_fn: Callable[[RequirementSpec], bool],
+        package_available: Callable[[str], bool],
     ) -> list[ReadinessRow]:
         """
         Return missing optional dependency rows for configured connectors.
@@ -228,11 +227,8 @@ class ConnectorReadinessPolicy:
         ----------
         cfg : Config
             The configuration object containing the connectors.
-        netcdf_available_fn : Callable[[], bool]
-            A function that returns whether netCDF support dependencies are
-            installed.
-        requirement_available_fn : Callable[[RequirementSpec], bool]
-            A function that returns whether a requirement is available.
+        package_available : Callable[[str], bool]
+            A function that returns whether a package is available.
 
         Returns
         -------
@@ -249,7 +245,14 @@ class ConnectorReadinessPolicy:
             if path:
                 scheme = ReadinessSupportPolicy.coerce_storage_scheme(path)
                 requirement = SCHEME_EXTRA_REQUIREMENTS.get(scheme or '')
-                if scheme and requirement and not requirement_available_fn(requirement):
+                if (
+                    scheme
+                    and requirement
+                    and not cls.requirement_available(
+                        requirement,
+                        package_available=package_available,
+                    )
+                ):
                     rows.append(
                         cls.requirement_row(
                             connector=connector_name,
@@ -263,7 +266,9 @@ class ConnectorReadinessPolicy:
                     )
 
             if format_name == 'nc':
-                if not netcdf_available_fn():
+                if not cls.netcdf_available(
+                    package_available=package_available,
+                ):
                     rows.append(
                         cls.requirement_row(
                             connector=connector_name,
@@ -282,7 +287,10 @@ class ConnectorReadinessPolicy:
                 continue
 
             requirement = FORMAT_EXTRA_REQUIREMENTS.get(format_name)
-            if requirement and not requirement_available_fn(requirement):
+            if requirement and not cls.requirement_available(
+                requirement,
+                package_available=package_available,
+            ):
                 rows.append(
                     cls.requirement_row(
                         connector=connector_name,

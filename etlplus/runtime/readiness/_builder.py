@@ -62,25 +62,9 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             cfg,
             connector_gap_rows_fn=_connectors.ConnectorReadinessPolicy.gap_rows,
             make_check=cls.make_check,
-            missing_requirement_rows_fn=cls._connector_requirement_rows,
-        )
-
-    @classmethod
-    def _connector_requirement_rows(
-        cls,
-        cfg: Config,
-    ) -> list[dict[str, Any]]:
-        """Return missing requirement rows for connector readiness checks."""
-        return _connectors.ConnectorReadinessPolicy.missing_requirement_rows(
-            cfg=cfg,
-            netcdf_available_fn=lambda: (
-                _connectors.ConnectorReadinessPolicy.netcdf_available(
-                    package_available=cls.package_available,
-                )
-            ),
-            requirement_available_fn=lambda requirement: (
-                _connectors.ConnectorReadinessPolicy.requirement_available(
-                    requirement,
+            missing_requirement_rows_fn=lambda cfg: (
+                _connectors.ConnectorReadinessPolicy.missing_requirement_rows(
+                    cfg=cfg,
                     package_available=cls.package_available,
                 )
             ),
