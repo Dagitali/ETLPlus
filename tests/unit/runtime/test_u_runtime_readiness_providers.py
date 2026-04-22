@@ -238,9 +238,13 @@ class TestReadinessReportBuilderProviders:
             lambda cfg, env: rows,
         )
 
-        checks = readiness_mod.ReadinessReportBuilder.provider_environment_checks(
+        checks = readiness_providers_mod.ProviderEnvironmentPolicy.environment_checks(
             cfg=cast(Any, _cfg()),
             env={},
+            make_check=readiness_mod.ReadinessReportBuilder.make_check,
+            provider_environment_rows_fn=(
+                readiness_mod.ReadinessReportBuilder._provider_environment_rows
+            ),
         )
 
         assert checks == expected
@@ -510,7 +514,7 @@ class TestReadinessReportBuilderProviders:
         assert (
             readiness_connectors_mod._connector_type('file') is DataConnectorType.FILE
         )
-        assert readiness_mod.ReadinessReportBuilder.requirement_row(
+        assert readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
             connector='out',
             detected_scheme='s3',
             reason='s3 storage path requires boto3',

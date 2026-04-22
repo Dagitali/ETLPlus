@@ -27,6 +27,23 @@ from .pytest_runtime_readiness import build_runtime_cfg as _cfg
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: HELPERS ========================================================== #
+
+
+def _connector_checks(cfg: object) -> list[dict[str, object]]:
+    """Return connector checks using the production policy seams."""
+    return readiness_connectors_mod.ConnectorReadinessPolicy.readiness_checks(
+        cast(Any, cfg),
+        connector_gap_rows_fn=(
+            readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows
+        ),
+        make_check=readiness_mod.ReadinessReportBuilder.make_check,
+        missing_requirement_rows_fn=(
+            readiness_mod.ReadinessReportBuilder._connector_requirement_rows
+        ),
+    )
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -263,9 +280,7 @@ class TestReadinessReportBuilderConnectors:
         """Test readiness rows when gaps and optional dependency gaps are absent."""
         cfg = _cfg()
 
-        checks = readiness_mod.ReadinessReportBuilder.connector_readiness_checks(
-            cast(Any, cfg),
-        )
+        checks = _connector_checks(cfg)
 
         assert checks == [
             {
@@ -296,13 +311,11 @@ class TestReadinessReportBuilderConnectors:
         )
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
-            'missing_requirement_rows',
-            lambda *, cfg: [{'connector': 'bad-source', 'missing_package': 'boto3'}],
+            '_connector_requirement_rows',
+            lambda _cfg: [{'connector': 'bad-source', 'missing_package': 'boto3'}],
         )
 
-        checks = readiness_mod.ReadinessReportBuilder.connector_readiness_checks(
-            cast(Any, cfg),
-        )
+        checks = _connector_checks(cfg)
 
         assert checks == [
             {
@@ -394,19 +407,14 @@ class TestReadinessReportBuilderConnectors:
             ],
         )
 
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'requirement_available',
-            lambda requirement: requirement.package == 'boto3',
-        )
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'netcdf_available',
-            lambda: False,
-        )
-
-        rows = readiness_mod.ReadinessReportBuilder.missing_requirement_rows(
-            cfg=cast(Any, cfg),
+        rows = (
+            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
+                cfg=cast(Any, cfg),
+                netcdf_available_fn=lambda: False,
+                requirement_available_fn=lambda requirement: (
+                    requirement.package == 'boto3'
+                ),
+            )
         )
 
         assert rows == [
@@ -459,8 +467,8 @@ class TestReadinessReportBuilderConnectors:
             apis={},
         )
 
-        rows = readiness_mod.ReadinessReportBuilder.missing_requirement_rows(
-            cfg=cast(Any, cfg),
+        rows = readiness_mod.ReadinessReportBuilder._connector_requirement_rows(
+            cast(Any, cfg),
         )
 
         assert rows == [
@@ -506,19 +514,12 @@ class TestReadinessReportBuilderConnectors:
             ],
         )
 
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'netcdf_available',
-            lambda: True,
-        )
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'requirement_available',
-            lambda requirement: True,
-        )
-
-        rows = readiness_mod.ReadinessReportBuilder.missing_requirement_rows(
-            cfg=cast(Any, cfg),
+        rows = (
+            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
+                cfg=cast(Any, cfg),
+                netcdf_available_fn=lambda: True,
+                requirement_available_fn=lambda requirement: True,
+            )
         )
 
         assert not rows
@@ -533,7 +534,7 @@ class TestReadinessReportBuilderConnectors:
             'file',
         )
 
-        row = readiness_mod.ReadinessReportBuilder.requirement_row(
+        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
             connector='out',
             detected_format='csv',
             detected_scheme='s3',
@@ -566,7 +567,7 @@ class TestReadinessReportBuilderConnectors:
             'file',
         )
 
-        row = readiness_mod.ReadinessReportBuilder.requirement_row(
+        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
             connector='out',
             detected_format='csv',
             reason='csv format requires pyarrow',
@@ -602,10 +603,9 @@ class TestReadinessReportBuilderConnectors:
         expected: bool,
     ) -> None:
         """Test netCDF availability resolution across supported backend combos."""
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'package_available',
-            lambda module_name: module_name in available_modules,
+        assert (
+            readiness_connectors_mod.ConnectorReadinessPolicy.netcdf_available(
+                package_available=lambda module_name: module_name in available_modules,
+            )
+            is expected
         )
-
-        assert readiness_mod.ReadinessReportBuilder.netcdf_available() is expected

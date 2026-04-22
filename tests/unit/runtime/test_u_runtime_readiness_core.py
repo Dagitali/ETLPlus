@@ -199,7 +199,7 @@ class TestReadinessReportBuilderCore:
 
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
-            'connector_readiness_checks',
+            '_connector_checks',
             _connector_readiness_checks,
         )
 
@@ -252,12 +252,12 @@ class TestReadinessReportBuilderCore:
         )
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
-            'connector_readiness_checks',
+            '_connector_checks',
             lambda _cfg: [{'name': 'connector-readiness', 'status': 'ok'}],
         )
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
-            'provider_environment_checks',
+            '_provider_checks',
             lambda *, cfg, env: [{'name': 'provider-environment', 'status': 'ok'}],
         )
 
@@ -324,7 +324,7 @@ class TestReadinessReportBuilderCore:
 
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
-            'connector_readiness_checks',
+            '_connector_checks',
             _connector_readiness_checks,
         )
 
@@ -388,7 +388,7 @@ class TestReadinessReportBuilderCore:
 
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
-            'connector_readiness_checks',
+            '_connector_checks',
             _connector_readiness_checks,
         )
 
@@ -427,17 +427,17 @@ class TestReadinessReportBuilderCore:
         )
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
-            'strict_config_issue_rows',
+            '_strict_config_issues',
             lambda *, raw: [],
         )
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
-            'connector_readiness_checks',
+            '_connector_checks',
             lambda _cfg: [{'name': 'connector-readiness', 'status': 'ok'}],
         )
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
-            'provider_environment_checks',
+            '_provider_checks',
             lambda *, cfg, env: [{'name': 'provider-environment', 'status': 'ok'}],
         )
 
