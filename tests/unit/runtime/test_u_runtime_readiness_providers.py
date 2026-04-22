@@ -75,7 +75,12 @@ class TestReadinessReportBuilderProviders:
         expected: dict[str, object] | None,
     ) -> None:
         """Explicit AWS credential diagnostics should cover all short-circuit cases."""
-        assert readiness_providers_mod.explicit_aws_credential_gap(env) == expected
+        assert (
+            readiness_providers_mod.ProviderEnvironmentPolicy.explicit_aws_credential_gap(
+                env,
+            )
+            == expected
+        )
 
     @pytest.mark.parametrize(
         ('rows', 'expected'),
@@ -228,8 +233,8 @@ class TestReadinessReportBuilderProviders:
     ) -> None:
         """Provider check wrappers should map row severities into report rows."""
         monkeypatch.setattr(
-            readiness_providers_mod,
-            'provider_environment_rows',
+            readiness_providers_mod.ProviderEnvironmentPolicy,
+            'environment_rows',
             lambda cfg, env: rows,
         )
 
@@ -335,7 +340,7 @@ class TestReadinessReportBuilderProviders:
         expected: list[dict[str, object]],
     ) -> None:
         """Provider row generation should emit the expected Azure/S3 gaps."""
-        rows = readiness_providers_mod.provider_environment_rows(
+        rows = readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows(
             cfg=cast(Any, cfg),
             env=env,
         )
@@ -356,7 +361,7 @@ class TestReadinessReportBuilderProviders:
             ],
         )
 
-        rows = readiness_providers_mod.provider_environment_rows(
+        rows = readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows(
             cfg=cast(Any, cfg),
             env={'AWS_ACCESS_KEY_ID': 'access-key'},
         )
@@ -429,7 +434,7 @@ class TestReadinessReportBuilderProviders:
         env: dict[str, str],
     ) -> None:
         """Provider rows should stay empty when explicit auth hints are present."""
-        rows = readiness_providers_mod.provider_environment_rows(
+        rows = readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows(
             cfg=cast(Any, cfg),
             env=env,
         )
@@ -451,7 +456,7 @@ class TestReadinessReportBuilderProviders:
             ],
         )
 
-        rows = readiness_providers_mod.provider_environment_rows(
+        rows = readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows(
             cfg=cast(Any, cfg),
             env={'AZURE_STORAGE_ACCOUNT_URL': 'https://account.blob.core.windows.net'},
         )
