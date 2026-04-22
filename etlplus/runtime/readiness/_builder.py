@@ -90,9 +90,9 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         list[dict[str, Any]]
             A list of dictionaries representing the readiness checks.
         """
-        return _connectors.connector_readiness_checks(
+        return _connectors.ConnectorReadinessPolicy.readiness_checks(
             cfg,
-            connector_gap_rows_fn=_connectors.connector_gap_rows,
+            connector_gap_rows_fn=_connectors.ConnectorReadinessPolicy.gap_rows,
             make_check=cls.make_check,
             missing_requirement_rows_fn=cls._missing_requirement_rows_for_connectors,
         )
@@ -117,7 +117,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             A list of dictionaries representing the missing optional dependencies
             for the configured connectors.
         """
-        return _connectors.missing_requirement_rows(
+        return _connectors.ConnectorReadinessPolicy.missing_requirement_rows(
             cfg=cfg,
             netcdf_available_fn=cls.netcdf_available,
             requirement_available_fn=cls.requirement_available,
@@ -133,7 +133,9 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         bool
             True if netCDF support dependencies are installed, False otherwise.
         """
-        return _connectors.netcdf_available(package_available=cls.package_available)
+        return _connectors.ConnectorReadinessPolicy.netcdf_available(
+            package_available=cls.package_available,
+        )
 
     @classmethod
     def provider_environment_checks(
@@ -185,7 +187,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             ``True`` if any module for the requirement is importable,
             ``False`` if not.
         """
-        return _connectors.requirement_available(
+        return _connectors.ConnectorReadinessPolicy.requirement_available(
             requirement,
             package_available=cls.package_available,
         )

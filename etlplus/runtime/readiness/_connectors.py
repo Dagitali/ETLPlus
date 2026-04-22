@@ -21,18 +21,17 @@ from ._support import RequirementSpec
 
 
 __all__ = [
+    # Classes
+    'ConnectorReadinessPolicy',
     # Functions
-    'connector_gap_rows',
-    'connector_readiness_checks',
     'connector_type_choices',
     'connector_type_guidance',
-    'missing_requirement_rows',
-    'netcdf_available',
-    'requirement_available',
 ]
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
 def _connector_gap_row(
     *,
     connector: str,
@@ -101,10 +100,10 @@ def _requirement_row(
     return row
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: INTERNAL CLASSES ================================================= #
 
 
-class _ConnectorReadinessPolicy:
+class ConnectorReadinessPolicy:
     """Evaluate connector configuration and optional dependency readiness."""
 
     # -- Class Methods -- #
@@ -401,59 +400,6 @@ class _ConnectorReadinessPolicy:
         )
 
 
-def connector_gap_rows(
-    cfg: Config,
-) -> list[ReadinessRow]:
-    """
-    Return connector configuration gaps that will block execution.
-
-    Parameters
-    ----------
-    cfg : Config
-        The configuration object containing the connectors.
-
-    Returns
-    -------
-    list[ReadinessRow]
-        A list of dictionaries representing the configuration gaps.
-    """
-    return _ConnectorReadinessPolicy.gap_rows(cfg)
-
-
-def connector_readiness_checks(
-    cfg: Config,
-    *,
-    connector_gap_rows_fn: Callable[[Config], list[ReadinessRow]],
-    make_check: Callable[..., dict[str, Any]],
-    missing_requirement_rows_fn: Callable[[Config], list[ReadinessRow]],
-) -> list[ReadinessRow]:
-    """
-    Return connector configuration and dependency readiness checks.
-
-    Parameters
-    ----------
-    cfg : Config
-        The configuration object containing the connectors.
-    connector_gap_rows_fn : Callable[[Config], list[ReadinessRow]]
-        A function that returns a list of connector configuration gaps.
-    make_check : Callable[..., dict[str, Any]]
-        A function that creates a readiness check dictionary.
-    missing_requirement_rows_fn : Callable[[Config], list[ReadinessRow]]
-        A function that returns a list of missing optional dependencies.
-
-    Returns
-    -------
-    list[ReadinessRow]
-        A list of dictionaries representing the readiness checks.
-    """
-    return _ConnectorReadinessPolicy.readiness_checks(
-        cfg,
-        connector_gap_rows_fn=connector_gap_rows_fn,
-        make_check=make_check,
-        missing_requirement_rows_fn=missing_requirement_rows_fn,
-    )
-
-
 def connector_type_choices() -> tuple[str, ...]:
     """
     Return the supported connector type names.
@@ -493,83 +439,3 @@ def connector_type_guidance(
             'or URI scheme.'
         )
     return f'Use one of the supported connector types: {supported}.'
-
-
-def missing_requirement_rows(
-    *,
-    cfg: Config,
-    netcdf_available_fn: Callable[[], bool],
-    requirement_available_fn: Callable[[RequirementSpec], bool],
-) -> list[ReadinessRow]:
-    """
-    Return missing optional dependency rows for configured connectors.
-
-    Parameters
-    ----------
-    cfg : Config
-        The configuration object containing the connectors.
-    netcdf_available_fn : Callable[[], bool]
-        A function that returns whether netCDF support dependencies are installed.
-    requirement_available_fn : Callable[[RequirementSpec], bool]
-        A function that returns whether the dependencies for a given
-        requirement are installed.
-
-    Returns
-    -------
-    list[ReadinessRow]
-        A list of dictionaries representing the missing optional dependencies
-        for the configured connectors.
-    """
-    return _ConnectorReadinessPolicy.missing_requirement_rows(
-        cfg=cfg,
-        netcdf_available_fn=netcdf_available_fn,
-        requirement_available_fn=requirement_available_fn,
-    )
-
-
-def netcdf_available(
-    *,
-    package_available: Callable[[str], bool],
-) -> bool:
-    """
-    Return whether netCDF support dependencies are installed.
-
-    Parameters
-    ----------
-    package_available : Callable[[str], bool]
-        A function that checks if a package is available.
-
-    Returns
-    -------
-    bool
-        True if netCDF support dependencies are installed, False otherwise.
-    """
-    return _ConnectorReadinessPolicy.netcdf_available(
-        package_available=package_available,
-    )
-
-
-def requirement_available(
-    requirement: RequirementSpec,
-    *,
-    package_available: Callable[[str], bool],
-) -> bool:
-    """
-    Return whether any module for one requirement is importable.
-
-    Parameters
-    ----------
-    requirement : RequirementSpec
-        The requirement specification containing the modules to check.
-    package_available : Callable[[str], bool]
-        A function that checks if a package is available.
-
-    Returns
-    -------
-    bool
-        True if any module for the requirement is importable, False otherwise.
-    """
-    return _ConnectorReadinessPolicy.requirement_available(
-        requirement,
-        package_available=package_available,
-    )
