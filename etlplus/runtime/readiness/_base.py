@@ -41,6 +41,213 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL CLASSES ================================================= #
+
+
+class _ReadinessSupportPolicy:
+    """
+    Normalize shared readiness guidance, deduplication, and scheme parsing.
+    """
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def coerce_connector_storage_scheme(
+        value: str,
+    ) -> str | None:
+        """
+        Return one normalized storage scheme from raw connector-type text.
+
+        Parameters
+        ----------
+        value : str
+            The raw connector-type text to normalize.
+
+        Returns
+        -------
+        str | None
+            The normalized storage scheme, or None if the value is invalid.
+        """
+        if not value:
+            return None
+        try:
+            return str(StorageScheme.coerce(value))
+        except ValueError:
+            return None
+
+    @staticmethod
+    def coerce_storage_scheme(
+        path: str,
+    ) -> str | None:
+        """
+        Return one normalized storage scheme for *path* when present.
+
+        Parameters
+        ----------
+        path : str
+            The path to normalize.
+
+        Returns
+        -------
+        str | None
+            The normalized storage scheme, or None if the path is invalid.
+        """
+        if '://' not in path:
+            return None
+        parsed = urlsplit(path)
+        if not parsed.scheme:
+            return None
+        try:
+            return str(StorageScheme.coerce(parsed.scheme))
+        except ValueError:
+            return parsed.scheme.lower()
+
+    @staticmethod
+    def connector_gap_guidance(
+        *,
+        api_reference: str | None = None,
+        issue: str,
+    ) -> str | None:
+        """
+        Return one actionable guidance string for a blocking connector gap.
+
+        Parameters
+        ----------
+        api_reference : str | None
+            The API reference associated with the connector, if any.
+        issue : str
+            The specific issue encountered with the connector.
+
+        Returns
+        -------
+        str | None
+            An actionable guidance string for resolving the connector gap, or
+            ``None`` if no guidance is available.
+
+        """
+        match issue:
+            case 'missing path':
+                return (
+                    'Set "path" to a local path or storage URI for this file connector.'
+                )
+            case 'missing url or api reference':
+                return (
+                    'Set "url" to a reachable endpoint or "api" to a configured '
+                    'top-level API name.'
+                )
+            case 'missing connection_string':
+                return (
+                    'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
+                )
+            case issue_text if issue_text.startswith('unknown api reference: '):
+                if api_reference:
+                    return (
+                        f'Define "{api_reference}" under top-level "apis" or '
+                        'update the connector "api" reference.'
+                    )
+                return 'Define the referenced API under top-level "apis".'
+            case _:
+                return None
+
+    @staticmethod
+    def dedupe_rows(
+        rows: list[ReadinessRow],
+    ) -> list[ReadinessRow]:
+        """
+        Return rows with duplicates removed while preserving order.
+
+        Parameters
+        ----------
+        rows : list[ReadinessRow]
+            The list of readiness rows to deduplicate.
+
+        Returns
+        -------
+        list[ReadinessRow]
+            The deduplicated list of readiness rows.
+        """
+        unique_rows: list[ReadinessRow] = []
+        seen: set[tuple[str, str, str, str, str]] = set()
+        for row in rows:
+            key = (
+                str(row['connector']),
+                str(row['role']),
+                str(row['missing_package']),
+                str(row['reason']),
+                str(row['extra']),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            unique_rows.append(row)
+        return unique_rows
+
+    @staticmethod
+    def iter_connectors(
+        cfg: Config,
+    ) -> Iterator[tuple[str, Connector]]:
+        """
+        Yield source and target connectors tagged with their role.
+
+        Parameters
+        ----------
+        cfg : Config
+            The configuration containing the connectors.
+
+        Yields
+        ------
+        tuple[str, Connector]
+            A tuple containing the role ("source" or "target") and the
+            connector.
+        """
+        yield from (('source', connector) for connector in cfg.sources)
+        yield from (('target', connector) for connector in cfg.targets)
+
+    @staticmethod
+    def missing_requirement_guidance(
+        *,
+        detected_format: str | None = None,
+        detected_scheme: str | None = None,
+        package: str,
+        extra: str | None = None,
+    ) -> str:
+        """
+        Return one actionable remediation string for a missing dependency.
+
+        Parameters
+        ----------
+        detected_format : str | None
+            The detected file format, if any.
+        detected_scheme : str | None
+            The detected storage scheme, if any.
+        package : str
+            The name of the missing package.
+        extra : str | None
+            The name of the ETLPlus extra that includes the missing package, if
+            any.
+
+        Returns
+        -------
+        str
+            An actionable remediation string for the missing dependency.
+        """
+        install_hint = (
+            f'Install {package} directly or install the ETLPlus "{extra}" extra.'
+            if extra
+            else f'Install {package}.'
+        )
+        if detected_format == 'nc':
+            return (
+                'Install xarray plus one of netCDF4 or h5netcdf, or install the '
+                'ETLPlus "file" extra.'
+            )
+        if detected_format is not None:
+            return f'{install_hint} Required for "{detected_format}" file format.'
+        if detected_scheme is not None:
+            return f'{install_hint} Required for "{detected_scheme}" storage paths.'
+        return install_hint
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
@@ -50,54 +257,24 @@ def _connector_gap_guidance(
     issue: str,
 ) -> str | None:
     """Return one actionable guidance string for a blocking connector gap."""
-    match issue:
-        case 'missing path':
-            return 'Set "path" to a local path or storage URI for this file connector.'
-        case 'missing url or api reference':
-            return (
-                'Set "url" to a reachable endpoint or "api" to a configured '
-                'top-level API name.'
-            )
-        case 'missing connection_string':
-            return 'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
-        case issue_text if issue_text.startswith('unknown api reference: '):
-            if api_reference:
-                return (
-                    f'Define "{api_reference}" under top-level "apis" or '
-                    'update the connector "api" reference.'
-                )
-            return 'Define the referenced API under top-level "apis".'
-        case _:
-            return None
+    return _ReadinessSupportPolicy.connector_gap_guidance(
+        api_reference=api_reference,
+        issue=issue,
+    )
 
 
 def _dedupe_rows(
     rows: list[ReadinessRow],
 ) -> list[ReadinessRow]:
     """Return rows with duplicates removed while preserving order."""
-    unique_rows: list[ReadinessRow] = []
-    seen: set[tuple[str, str, str, str, str]] = set()
-    for row in rows:
-        key = (
-            str(row['connector']),
-            str(row['role']),
-            str(row['missing_package']),
-            str(row['reason']),
-            str(row['extra']),
-        )
-        if key in seen:
-            continue
-        seen.add(key)
-        unique_rows.append(row)
-    return unique_rows
+    return _ReadinessSupportPolicy.dedupe_rows(rows)
 
 
 def _iter_connectors(
     cfg: Config,
 ) -> Iterator[tuple[str, Connector]]:
     """Yield source and target connectors tagged with their role."""
-    yield from (('source', connector) for connector in cfg.sources)
-    yield from (('target', connector) for connector in cfg.targets)
+    yield from _ReadinessSupportPolicy.iter_connectors(cfg)
 
 
 def _missing_requirement_guidance(
@@ -108,21 +285,12 @@ def _missing_requirement_guidance(
     extra: str | None,
 ) -> str:
     """Return one actionable remediation string for a missing dependency."""
-    install_hint = (
-        f'Install {package} directly or install the ETLPlus "{extra}" extra.'
-        if extra
-        else f'Install {package}.'
+    return _ReadinessSupportPolicy.missing_requirement_guidance(
+        detected_format=detected_format,
+        detected_scheme=detected_scheme,
+        package=package,
+        extra=extra,
     )
-    if detected_format == 'nc':
-        return (
-            'Install xarray plus one of netCDF4 or h5netcdf, or install the '
-            'ETLPlus "file" extra.'
-        )
-    if detected_format is not None:
-        return f'{install_hint} Required for "{detected_format}" file format.'
-    if detected_scheme is not None:
-        return f'{install_hint} Required for "{detected_scheme}" storage paths.'
-    return install_hint
 
 
 # SECTION: INTERNAL CLASSES ================================================= #
@@ -215,12 +383,7 @@ def coerce_connector_storage_scheme(
         The normalized storage scheme name if coercion is successful, or
         ``None`` if the value cannot be coerced as a known storage scheme.
     """
-    if not value:
-        return None
-    try:
-        return str(StorageScheme.coerce(value))
-    except ValueError:
-        return None
+    return _ReadinessSupportPolicy.coerce_connector_storage_scheme(value)
 
 
 def coerce_storage_scheme(
@@ -239,15 +402,7 @@ def coerce_storage_scheme(
     str | None
         The normalized storage scheme name if present, or ``None`` if not.
     """
-    if '://' not in path:
-        return None
-    parsed = urlsplit(path)
-    if not parsed.scheme:
-        return None
-    try:
-        return str(StorageScheme.coerce(parsed.scheme))
-    except ValueError:
-        return parsed.scheme.lower()
+    return _ReadinessSupportPolicy.coerce_storage_scheme(path)
 
 
 # SECTION: CLASSES ========================================================== #
