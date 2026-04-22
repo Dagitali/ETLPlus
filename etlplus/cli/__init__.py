@@ -12,4 +12,7 @@ from ._main import main
 # SECTION: EXPORTS ========================================================== #
 
 
-__all__ = ['main']
+__all__ = [
+    # Functions
+    'main',
+]
