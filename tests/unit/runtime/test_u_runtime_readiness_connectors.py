@@ -55,7 +55,9 @@ class TestReadinessReportBuilderConnectors:
             ],
         )
 
-        rows = readiness_connectors_mod.connector_gap_rows(cast(Any, cfg))
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
+            cast(Any, cfg),
+        )
 
         assert rows == [
             _connector_gap(
@@ -94,7 +96,9 @@ class TestReadinessReportBuilderConnectors:
             apis={},
         )
 
-        rows = readiness_connectors_mod.connector_gap_rows(cast(Any, cfg))
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
+            cast(Any, cfg),
+        )
 
         assert rows == [
             _connector_gap(
@@ -152,7 +156,7 @@ class TestReadinessReportBuilderConnectors:
             apis={},
         )
 
-        rows = readiness_connectors_mod.connector_gap_rows(
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
             cast(Any, cfg),
         )
 
@@ -210,7 +214,9 @@ class TestReadinessReportBuilderConnectors:
             apis={'known-api': object()},
         )
 
-        rows = readiness_connectors_mod.connector_gap_rows(cast(Any, cfg))
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
+            cast(Any, cfg),
+        )
 
         assert not rows
 
@@ -247,7 +253,9 @@ class TestReadinessReportBuilderConnectors:
             _connector_type,
         )
 
-        rows = readiness_connectors_mod.connector_gap_rows(cast(Any, cfg))
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
+            cast(Any, cfg),
+        )
 
         assert not rows
 
@@ -282,8 +290,8 @@ class TestReadinessReportBuilderConnectors:
         """Test readiness rows when connector and dependency errors exist."""
         cfg = _cfg()
         monkeypatch.setattr(
-            readiness_connectors_mod,
-            'connector_gap_rows',
+            readiness_connectors_mod.ConnectorReadinessPolicy,
+            'gap_rows',
             lambda _cfg: [{'connector': 'bad-source'}],
         )
         monkeypatch.setattr(
