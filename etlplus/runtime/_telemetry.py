@@ -579,29 +579,3 @@ class RuntimeTelemetry:
         """Reset the process-local telemetry bridge state for tests."""
         cls._adapter = None
         cls._settings = None
-
-
-# SECTION: INTERNAL FUNCTION COMPATIBILITY ================================= #
-
-
-def _coerce_exporter(
-    value: object,
-) -> TelemetryExporter | None:
-    """Compatibility wrapper for internal exporter normalization tests."""
-    return _TelemetryValueParser.exporter(value)
-
-
-def _coerce_flag(
-    value: object,
-    *,
-    default: bool,
-) -> bool:
-    """Compatibility wrapper for internal flag normalization tests."""
-    return _TelemetryValueParser.flag(value, default=default)
-
-
-def _span_name(
-    event: Mapping[str, Any],
-) -> str:
-    """Compatibility wrapper for internal span-name normalization."""
-    return _TelemetryValueParser.span_name(event)
