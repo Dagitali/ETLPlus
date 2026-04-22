@@ -251,24 +251,16 @@ class RunHistoryPolicy:
                 if isinstance(raw_sequence_index, int)
                 else fallback_index
             ),
-            started_at=(
-                raw_started_at if isinstance(raw_started_at, str) else None
-            ),
-            finished_at=(
-                raw_finished_at if isinstance(raw_finished_at, str) else None
-            ),
-            duration_ms=(
-                raw_duration_ms if isinstance(raw_duration_ms, int) else None
-            ),
+            started_at=(raw_started_at if isinstance(raw_started_at, str) else None),
+            finished_at=(raw_finished_at if isinstance(raw_finished_at, str) else None),
+            duration_ms=(raw_duration_ms if isinstance(raw_duration_ms, int) else None),
             records_in=None,
             records_out=None,
             status=status,
             result_status=(
                 raw_result_status if isinstance(raw_result_status, str) else None
             ),
-            error_type=(
-                raw_error_type if isinstance(raw_error_type, str) else None
-            ),
+            error_type=(raw_error_type if isinstance(raw_error_type, str) else None),
             error_message=(
                 raw_error_message if isinstance(raw_error_message, str) else None
             ),
@@ -416,9 +408,7 @@ class RunHistoryPolicy:
         succeeded_jobs = cls.coerce_string_list(result.get('succeeded_jobs'))
         raw_continue_on_fail = result.get('continue_on_fail')
         continue_on_fail = (
-            raw_continue_on_fail
-            if isinstance(raw_continue_on_fail, bool)
-            else False
+            raw_continue_on_fail if isinstance(raw_continue_on_fail, bool) else False
         )
 
         max_concurrency = result.get('max_concurrency')
@@ -457,9 +447,7 @@ class RunHistoryPolicy:
                     else len(ordered_jobs)
                 ),
                 'mode': (
-                    result.get('mode')
-                    if isinstance(result.get('mode'), str)
-                    else 'all'
+                    result.get('mode') if isinstance(result.get('mode'), str) else 'all'
                 ),
                 'ordered_jobs': ordered_jobs,
                 'requested_job': (
