@@ -216,9 +216,9 @@ class TestTelemetryConfig:
 
     def test_helper_coercions_cover_invalid_and_false_inputs(self) -> None:
         """Telemetry helper coercions should reject invalid inputs predictably."""
-        assert telemetry_mod._coerce_exporter('bogus') is None
-        assert telemetry_mod._coerce_flag('off', default=True) is False
-        assert telemetry_mod._coerce_flag('maybe', default=True) is True
+        assert telemetry_mod._TelemetryValueParser.exporter('bogus') is None
+        assert telemetry_mod._TelemetryValueParser.flag('off', default=True) is False
+        assert telemetry_mod._TelemetryValueParser.flag('maybe', default=True) is True
 
     def test_resolve_prefers_env_and_promotes_enabled_exporter(self) -> None:
         """Env values should override config and enabling telemetry picks OTel."""

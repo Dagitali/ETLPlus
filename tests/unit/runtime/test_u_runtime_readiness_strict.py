@@ -13,7 +13,6 @@ from typing import cast
 
 import pytest
 
-import etlplus.runtime.readiness._builder as readiness_mod
 import etlplus.runtime.readiness._strict as readiness_strict_mod
 
 from .pytest_runtime_readiness import build_issue_row as _issue
@@ -32,7 +31,7 @@ class TestReadinessReportBuilderStrict:
         self,
     ) -> None:
         """Strict issue rows should surface hidden connector/job problems."""
-        issues = readiness_mod.ReadinessReportBuilder.strict_config_issue_rows(
+        issues = readiness_strict_mod.StrictConfigValidator.config_issue_rows(
             raw={
                 'sources': [
                     {
@@ -89,7 +88,7 @@ class TestReadinessReportBuilderStrict:
             _parse_connector,
         )
 
-        names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
+        names = readiness_strict_mod.StrictConfigValidator.connector_names(
             raw={
                 'sources': [
                     {'type': 'weird'},
@@ -194,7 +193,7 @@ class TestReadinessReportBuilderStrict:
                 parse_connector,
             )
 
-        names = readiness_mod.ReadinessReportBuilder.strict_connector_names(
+        names = readiness_strict_mod.StrictConfigValidator.connector_names(
             raw=raw,
             section='sources',
             issues=issues,
@@ -209,7 +208,7 @@ class TestReadinessReportBuilderStrict:
         """Strict job validation should cover malformed top-level and entry cases."""
         issues: list[dict[str, Any]] = []
 
-        readiness_mod.ReadinessReportBuilder.strict_job_issue_rows(
+        readiness_strict_mod.StrictConfigValidator.job_issue_rows(
             raw={
                 'jobs': [
                     'not-a-mapping',
@@ -243,7 +242,7 @@ class TestReadinessReportBuilderStrict:
         """Strict job validation should reject non-list jobs sections."""
         issues: list[dict[str, Any]] = []
 
-        readiness_mod.ReadinessReportBuilder.strict_job_issue_rows(
+        readiness_strict_mod.StrictConfigValidator.job_issue_rows(
             raw={'jobs': {'name': 'publish'}},
             issues=issues,
             source_names=set(),
@@ -268,7 +267,7 @@ class TestReadinessReportBuilderStrict:
         """Strict job validation should do nothing when jobs are absent."""
         issues: list[dict[str, Any]] = []
 
-        readiness_mod.ReadinessReportBuilder.strict_job_issue_rows(
+        readiness_strict_mod.StrictConfigValidator.job_issue_rows(
             raw={},
             issues=issues,
             source_names=set(),
@@ -379,7 +378,7 @@ class TestReadinessReportBuilderStrict:
         """Strict job refs should emit the expected issue row for each case."""
         issues: list[dict[str, Any]] = []
 
-        readiness_mod.ReadinessReportBuilder.strict_job_ref_issue(
+        readiness_strict_mod.StrictConfigValidator.job_ref_issue(
             entry=entry,
             field=field,
             index=index,
@@ -399,7 +398,7 @@ class TestReadinessReportBuilderStrict:
         """Strict named section validation should reject non-mapping values."""
         issues: list[dict[str, Any]] = []
 
-        names = readiness_mod.ReadinessReportBuilder.strict_named_section_names(
+        names = readiness_strict_mod.StrictConfigValidator.named_section_names(
             raw={'transforms': ['trim']},
             section='transforms',
             issues=issues,

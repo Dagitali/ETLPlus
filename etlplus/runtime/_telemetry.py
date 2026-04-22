@@ -50,45 +50,53 @@ _ENV_TELEMETRY_SERVICE_NAME = 'ETLPLUS_TELEMETRY_SERVICE_NAME'
 _LOGGER = logging.getLogger(__name__)
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
+# SECTION: INTERNAL CLASSES ================================================= #
 
 
-def _coerce_exporter(
-    value: object,
-) -> TelemetryExporter | None:
-    """Return one supported telemetry exporter name when valid."""
-    if not isinstance(value, str):
+class _TelemetryValueParser:
+    """Normalize exporter, flag, and span-name values for runtime telemetry."""
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def exporter(
+        value: object,
+    ) -> TelemetryExporter | None:
+        """Return one supported telemetry exporter name when valid."""
+        if not isinstance(value, str):
+            return None
+        normalized = value.strip().lower()
+        if normalized in _VALID_EXPORTERS:
+            return cast(TelemetryExporter, normalized)
         return None
-    normalized = value.strip().lower()
-    if normalized in _VALID_EXPORTERS:
-        return cast(TelemetryExporter, normalized)
-    return None
 
-
-def _coerce_flag(
-    value: object,
-    *,
-    default: bool,
-) -> bool:
-    """Return one boolean flag or *default* when the input is invalid."""
-    if isinstance(value, bool):
-        return value
-    if not isinstance(value, str):
+    @staticmethod
+    def flag(
+        value: object,
+        *,
+        default: bool,
+    ) -> bool:
+        """Return one boolean flag or *default* when the input is invalid."""
+        if isinstance(value, bool):
+            return value
+        if not isinstance(value, str):
+            return default
+        normalized = value.strip().lower()
+        if normalized in _ENABLED_TRUE_VALUES:
+            return True
+        if normalized in _ENABLED_FALSE_VALUES:
+            return False
         return default
-    normalized = value.strip().lower()
-    if normalized in _ENABLED_TRUE_VALUES:
-        return True
-    if normalized in _ENABLED_FALSE_VALUES:
-        return False
-    return default
 
-
-def _span_name(
-    event: Mapping[str, Any],
-) -> str:
-    """Return one stable span name for a runtime command event."""
-    command = event.get('command')
-    return f'etlplus.{command}' if isinstance(command, str) and command else 'etlplus'
+    @staticmethod
+    def span_name(
+        event: Mapping[str, Any],
+    ) -> str:
+        """Return one stable span name for a runtime command event."""
+        command = event.get('command')
+        return (
+            f'etlplus.{command}' if isinstance(command, str) and command else 'etlplus'
+        )
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -144,15 +152,15 @@ class ResolvedTelemetryConfig:
         env_map = env or {}
 
         resolved_exporter = (
-            _coerce_exporter(exporter)
-            or _coerce_exporter(env_map.get(_ENV_TELEMETRY_EXPORTER))
+            _TelemetryValueParser.exporter(exporter)
+            or _TelemetryValueParser.exporter(env_map.get(_ENV_TELEMETRY_EXPORTER))
             or telemetry_cfg.exporter
             or _DEFAULT_EXPORTER
         )
         resolved_enabled = (
             enabled
             if enabled is not None
-            else _coerce_flag(
+            else _TelemetryValueParser.flag(
                 env_map.get(_ENV_TELEMETRY_ENABLED),
                 default=(telemetry_cfg.enabled or resolved_exporter != 'none'),
             )
@@ -198,8 +206,8 @@ class TelemetryConfig:
 
         raw_service_name = obj.get('service_name')
         return cls(
-            enabled=_coerce_flag(obj.get('enabled'), default=False),
-            exporter=_coerce_exporter(obj.get('exporter')),
+            enabled=_TelemetryValueParser.flag(obj.get('enabled'), default=False),
+            exporter=_TelemetryValueParser.exporter(obj.get('exporter')),
             service_name=(
                 raw_service_name.strip()
                 if isinstance(raw_service_name, str) and raw_service_name.strip()
@@ -224,12 +232,12 @@ class _OpenTelemetryAdapter:
         trace_module = import_module('opentelemetry.trace')
         metrics = opentelemetry_root.metrics
         trace = opentelemetry_root.trace
-        Status = trace_module.Status
-        StatusCode = trace_module.StatusCode
+        status_factory = trace_module.Status
+        status_code_enum = trace_module.StatusCode
 
         self._settings = settings
-        self._status = Status
-        self._status_code = StatusCode
+        self._status = status_factory
+        self._status_code = status_code_enum
         self._spans: dict[str, Any] = {}
         self._tracer = trace.get_tracer('etlplus.runtime', __version__)
         meter = metrics.get_meter('etlplus.runtime', __version__)
@@ -313,7 +321,7 @@ class _OpenTelemetryAdapter:
             return
 
         if lifecycle == 'started':
-            span = self._tracer.start_span(_span_name(event))
+            span = self._tracer.start_span(_TelemetryValueParser.span_name(event))
             span.set_attributes(attrs)
             span.add_event(str(event.get('event', 'started')), attributes=attrs)
             self._spans[run_id] = span
@@ -324,7 +332,7 @@ class _OpenTelemetryAdapter:
 
         span = self._spans.pop(run_id, None)
         if span is None:
-            span = self._tracer.start_span(_span_name(event))
+            span = self._tracer.start_span(_TelemetryValueParser.span_name(event))
 
         span.set_attributes(attrs)
         span.add_event(str(event.get('event', lifecycle)), attributes=attrs)
@@ -378,11 +386,10 @@ class _OpenTelemetryAdapter:
 class _TelemetryAttributeBuilder:
     """Build normalized OpenTelemetry attribute mappings for runtime payloads."""
 
-    # -- Class Methods -- #
+    # -- Static Methods -- #
 
-    @classmethod
+    @staticmethod
     def for_event(
-        cls,
         event: Mapping[str, Any],
         *,
         service_name: str,
@@ -397,7 +404,7 @@ class _TelemetryAttributeBuilder:
             'etlplus.run_id': str(event.get('run_id', '')),
         }
         attrs.update(
-            cls._optional_string_attributes(
+            _TelemetryAttributeBuilder._optional_string_attributes(
                 event,
                 fields=(
                     'config_path',
@@ -423,9 +430,8 @@ class _TelemetryAttributeBuilder:
                 attrs[f'etlplus.{field_name}'] = value
         return attrs
 
-    @classmethod
+    @staticmethod
     def for_history_record(
-        cls,
         record: Mapping[str, Any],
         *,
         record_level: str,
@@ -438,7 +444,7 @@ class _TelemetryAttributeBuilder:
             'etlplus.run_id': str(record.get('run_id', '')),
         }
         attrs.update(
-            cls._optional_string_attributes(
+            _TelemetryAttributeBuilder._optional_string_attributes(
                 record,
                 fields=(
                     'config_path',

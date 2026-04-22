@@ -9,8 +9,7 @@ from __future__ import annotations
 from ._events import EVENT_SCHEMA
 from ._events import EVENT_SCHEMA_VERSION
 from ._events import RuntimeEvents
-from ._logging import configure_logging
-from ._logging import resolve_log_level
+from ._logging import RuntimeLoggingPolicy
 from ._telemetry import ResolvedTelemetryConfig
 from ._telemetry import RuntimeTelemetry
 from ._telemetry import TelemetryConfig
@@ -23,13 +22,11 @@ __all__ = [
     # Classes
     'ReadinessReportBuilder',
     'RuntimeEvents',
+    'RuntimeLoggingPolicy',
     'RuntimeTelemetry',
     'TelemetryConfig',
     'ResolvedTelemetryConfig',
     # Constants
     'EVENT_SCHEMA',
     'EVENT_SCHEMA_VERSION',
-    # Functions
-    'configure_logging',
-    'resolve_log_level',
 ]
