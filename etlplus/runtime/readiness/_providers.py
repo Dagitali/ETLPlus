@@ -14,8 +14,7 @@ from typing import TypedDict
 from urllib.parse import urlsplit
 
 from ..._config import Config
-from ._base import _iter_connectors
-from ._base import _ReadinessSupportPolicy
+from ._base import ReadinessSupportPolicy
 from ._support import AWS_ENV_HINTS
 from ._support import AZURE_STORAGE_BOOTSTRAP_ENV
 from ._support import AZURE_STORAGE_CREDENTIAL_ENV
@@ -361,13 +360,13 @@ class _ProviderEnvironmentPolicy:
         azure_credential = bool(env.get(AZURE_STORAGE_CREDENTIAL_ENV))
         has_aws_hints = _aws_env_hint_present(env)
 
-        for role, connector in _iter_connectors(cfg):
+        for role, connector in ReadinessSupportPolicy.iter_connectors(cfg):
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
             path = getattr(connector, 'path', None)
             if not isinstance(path, str) or not path:
                 continue
 
-            match _ReadinessSupportPolicy.coerce_storage_scheme(path):
+            match ReadinessSupportPolicy.coerce_storage_scheme(path):
                 case 'azure-blob' | 'abfs' as scheme:
                     rows.extend(
                         _azure_provider_gaps(

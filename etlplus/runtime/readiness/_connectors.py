@@ -11,11 +11,7 @@ from typing import Any
 
 from ..._config import Config
 from ...connector import DataConnectorType
-from ._base import _connector_gap_guidance
-from ._base import _dedupe_rows
-from ._base import _iter_connectors
-from ._base import _missing_requirement_guidance
-from ._base import _ReadinessSupportPolicy
+from ._base import ReadinessSupportPolicy
 from ._support import FORMAT_EXTRA_REQUIREMENTS
 from ._support import SCHEME_EXTRA_REQUIREMENTS
 from ._support import ReadinessRow
@@ -56,7 +52,7 @@ def _connector_gap_row(
     if issue == 'unsupported type':
         row['guidance'] = connector_type_guidance(connector_type_str)
     else:
-        row['guidance'] = _connector_gap_guidance(
+        row['guidance'] = ReadinessSupportPolicy.connector_gap_guidance(
             api_reference=api_reference,
             issue=issue,
         )
@@ -88,7 +84,7 @@ def _requirement_row(
     row: ReadinessRow = {
         'connector': connector,
         'extra': requirement.extra or '',
-        'guidance': _missing_requirement_guidance(
+        'guidance': ReadinessSupportPolicy.missing_requirement_guidance(
             detected_format=detected_format,
             detected_scheme=detected_scheme,
             package=requirement.package,
@@ -133,7 +129,7 @@ class _ConnectorReadinessPolicy:
         """
         gaps: list[ReadinessRow] = []
         supported_types = connector_type_choices()
-        for role, connector in _iter_connectors(cfg):
+        for role, connector in ReadinessSupportPolicy.iter_connectors(cfg):
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
             connector_type_name = str(getattr(connector, 'type', ''))
             coerced_type = _connector_type(connector_type_name)
@@ -232,13 +228,13 @@ class _ConnectorReadinessPolicy:
             dependencies.
         """
         rows: list[ReadinessRow] = []
-        for role, connector in _iter_connectors(cfg):
+        for role, connector in ReadinessSupportPolicy.iter_connectors(cfg):
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
             path = getattr(connector, 'path', None)
             format_name = str(getattr(connector, 'format', '') or '').lower()
 
             if path:
-                scheme = _ReadinessSupportPolicy.coerce_storage_scheme(path)
+                scheme = ReadinessSupportPolicy.coerce_storage_scheme(path)
                 requirement = SCHEME_EXTRA_REQUIREMENTS.get(scheme or '')
                 if scheme and requirement and not requirement_available_fn(requirement):
                     rows.append(
@@ -284,7 +280,7 @@ class _ConnectorReadinessPolicy:
                     ),
                 )
 
-        return _dedupe_rows(rows)
+        return ReadinessSupportPolicy.dedupe_rows(rows)
 
     @classmethod
     def readiness_checks(
@@ -490,7 +486,7 @@ def connector_type_guidance(
     normalized = connector_type_str.strip().lower()
     if not normalized:
         return f'Set type to one of: {supported}.'
-    if _ReadinessSupportPolicy.coerce_connector_storage_scheme(normalized) is not None:
+    if ReadinessSupportPolicy.coerce_connector_storage_scheme(normalized) is not None:
         return (
             f'"{normalized}" is a storage scheme, not a connector type. '
             'Use connector type "file" and keep the provider in the path '
