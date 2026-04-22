@@ -31,11 +31,10 @@ class StrictConfigValidator:
     Validate tolerant config shapes and references in strict readiness mode.
     """
 
-    # -- Class Methods -- #
+    # -- Static Methods -- #
 
-    @classmethod
+    @staticmethod
     def config_issue_rows(
-        cls,
         *,
         raw: StrAnyMap,
         connector_type_guidance: Callable[[str], str] = (
@@ -66,33 +65,33 @@ class StrictConfigValidator:
             A list of strict-mode config issues.
         """
         issues: list[dict[str, Any]] = []
-        source_names = cls.connector_names(
+        source_names = StrictConfigValidator.connector_names(
             raw=raw,
             section='sources',
             issues=issues,
             connector_type_guidance=connector_type_guidance,
             connector_type_choices=connector_type_choices,
         )
-        target_names = cls.connector_names(
+        target_names = StrictConfigValidator.connector_names(
             raw=raw,
             section='targets',
             issues=issues,
             connector_type_guidance=connector_type_guidance,
             connector_type_choices=connector_type_choices,
         )
-        transform_names = cls.named_section_names(
+        transform_names = StrictConfigValidator.named_section_names(
             raw=raw,
             section='transforms',
             issues=issues,
             guidance='Define transforms as a mapping keyed by pipeline name.',
         )
-        validation_names = cls.named_section_names(
+        validation_names = StrictConfigValidator.named_section_names(
             raw=raw,
             section='validations',
             issues=issues,
             guidance='Define validations as a mapping keyed by ruleset name.',
         )
-        cls.job_issue_rows(
+        StrictConfigValidator.job_issue_rows(
             raw=raw,
             issues=issues,
             source_names=source_names,
@@ -102,9 +101,8 @@ class StrictConfigValidator:
         )
         return issues
 
-    @classmethod
+    @staticmethod
     def connector_names(
-        cls,
         *,
         raw: StrAnyMap,
         section: str,
@@ -220,9 +218,8 @@ class StrictConfigValidator:
             names.add(name)
         return names
 
-    @classmethod
+    @staticmethod
     def job_issue_rows(
-        cls,
         *,
         raw: StrAnyMap,
         issues: list[dict[str, Any]],
@@ -305,7 +302,7 @@ class StrictConfigValidator:
             else:
                 seen_jobs.add(job_name)
 
-            cls.job_ref_issue(
+            StrictConfigValidator.job_ref_issue(
                 entry=entry,
                 field='extract',
                 index=index,
@@ -316,7 +313,7 @@ class StrictConfigValidator:
                 section_names=source_names,
                 section_label='sources',
             )
-            cls.job_ref_issue(
+            StrictConfigValidator.job_ref_issue(
                 entry=entry,
                 field='load',
                 index=index,
@@ -327,7 +324,7 @@ class StrictConfigValidator:
                 section_names=target_names,
                 section_label='targets',
             )
-            cls.job_ref_issue(
+            StrictConfigValidator.job_ref_issue(
                 entry=entry,
                 field='transform',
                 index=index,
@@ -338,7 +335,7 @@ class StrictConfigValidator:
                 section_names=transform_names,
                 section_label='transforms',
             )
-            cls.job_ref_issue(
+            StrictConfigValidator.job_ref_issue(
                 entry=entry,
                 field='validate',
                 index=index,
