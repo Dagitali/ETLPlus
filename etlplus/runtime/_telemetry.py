@@ -386,11 +386,10 @@ class _OpenTelemetryAdapter:
 class _TelemetryAttributeBuilder:
     """Build normalized OpenTelemetry attribute mappings for runtime payloads."""
 
-    # -- Class Methods -- #
+    # -- Static Methods -- #
 
-    @classmethod
+    @staticmethod
     def for_event(
-        cls,
         event: Mapping[str, Any],
         *,
         service_name: str,
@@ -405,7 +404,7 @@ class _TelemetryAttributeBuilder:
             'etlplus.run_id': str(event.get('run_id', '')),
         }
         attrs.update(
-            cls._optional_string_attributes(
+            _TelemetryAttributeBuilder._optional_string_attributes(
                 event,
                 fields=(
                     'config_path',
@@ -431,9 +430,8 @@ class _TelemetryAttributeBuilder:
                 attrs[f'etlplus.{field_name}'] = value
         return attrs
 
-    @classmethod
+    @staticmethod
     def for_history_record(
-        cls,
         record: Mapping[str, Any],
         *,
         record_level: str,
@@ -446,7 +444,7 @@ class _TelemetryAttributeBuilder:
             'etlplus.run_id': str(record.get('run_id', '')),
         }
         attrs.update(
-            cls._optional_string_attributes(
+            _TelemetryAttributeBuilder._optional_string_attributes(
                 record,
                 fields=(
                     'config_path',
