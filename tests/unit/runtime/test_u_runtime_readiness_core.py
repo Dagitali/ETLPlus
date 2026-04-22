@@ -202,7 +202,7 @@ class TestReadinessReportBuilderCore:
             'number': 1,
         }
 
-        tokens = readiness_mod.ReadinessReportBuilder.collect_substitution_tokens(
+        tokens = readiness_base_mod.TokenReferenceCollector.collect_names(
             value,
         )
 
@@ -773,7 +773,7 @@ class TestReadinessReportBuilderCore:
         self,
     ) -> None:
         """Token references should preserve stable dotted and indexed paths."""
-        rows = readiness_mod.ReadinessReportBuilder.token_reference_rows(
+        rows = readiness_base_mod.TokenReferenceCollector.collect_rows(
             {
                 'profile': {'env': {'API_TOKEN': '${TOKEN_A}'}},
                 'targets': [{'path': 's3://${TOKEN_B}/out.json'}],
@@ -799,7 +799,7 @@ class TestReadinessReportBuilderCore:
         self,
     ) -> None:
         """Token-reference walking should also cover unordered sets and scalars."""
-        rows = readiness_mod.ReadinessReportBuilder.token_reference_rows(
+        rows = readiness_base_mod.TokenReferenceCollector.collect_rows(
             {
                 'set_values': {'${SET_TOKEN}'},
                 'frozen_values': frozenset({'${FROZEN_TOKEN}'}),
