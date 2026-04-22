@@ -87,18 +87,6 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         )
 
     @classmethod
-    def _provider_environment_rows(
-        cls,
-        cfg: Config,
-        env: Mapping[str, str],
-    ) -> list[Any]:
-        """Return provider-environment rows for one resolved config."""
-        return _providers.ProviderEnvironmentPolicy.environment_rows(
-            cfg=cfg,
-            env=env,
-        )
-
-    @classmethod
     def _provider_checks(
         cls,
         *,
@@ -127,6 +115,18 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             env=env,
             make_check=cls.make_check,
             provider_environment_rows_fn=cls._provider_environment_rows,
+        )
+
+    @classmethod
+    def _provider_environment_rows(
+        cls,
+        cfg: Config,
+        env: Mapping[str, str],
+    ) -> list[Any]:
+        """Return provider-environment rows for one resolved config."""
+        return _providers.ProviderEnvironmentPolicy.environment_rows(
+            cfg=cfg,
+            env=env,
         )
 
     @classmethod
