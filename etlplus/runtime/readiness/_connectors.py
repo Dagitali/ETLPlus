@@ -100,6 +100,50 @@ def _requirement_row(
     return row
 
 
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def connector_type_choices() -> tuple[str, ...]:
+    """
+    Return the supported connector type names.
+
+    Returns
+    -------
+    tuple[str, ...]
+        A tuple of supported connector type names.
+    """
+    return tuple(str(member.value) for member in DataConnectorType)
+
+
+def connector_type_guidance(
+    connector_type_str: str,
+) -> str:
+    """
+    Return actionable guidance for an unsupported connector type.
+
+    Parameters
+    ----------
+    connector_type_str : str
+        The connector type string to provide guidance for.
+
+    Returns
+    -------
+    str
+        Actionable guidance for the unsupported connector type.
+    """
+    supported = ', '.join(connector_type_choices())
+    normalized = connector_type_str.strip().lower()
+    if not normalized:
+        return f'Set type to one of: {supported}.'
+    if ReadinessSupportPolicy.coerce_connector_storage_scheme(normalized) is not None:
+        return (
+            f'"{normalized}" is a storage scheme, not a connector type. '
+            'Use connector type "file" and keep the provider in the path '
+            'or URI scheme.'
+        )
+    return f'Use one of the supported connector types: {supported}.'
+
+
 # SECTION: INTERNAL CLASSES ================================================= #
 
 
@@ -398,44 +442,3 @@ class ConnectorReadinessPolicy:
         return any(
             package_available(module_name) for module_name in requirement.modules
         )
-
-
-def connector_type_choices() -> tuple[str, ...]:
-    """
-    Return the supported connector type names.
-
-    Returns
-    -------
-    tuple[str, ...]
-        A tuple of supported connector type names.
-    """
-    return tuple(str(member.value) for member in DataConnectorType)
-
-
-def connector_type_guidance(
-    connector_type_str: str,
-) -> str:
-    """
-    Return actionable guidance for an unsupported connector type.
-
-    Parameters
-    ----------
-    connector_type_str : str
-        The connector type string to provide guidance for.
-
-    Returns
-    -------
-    str
-        Actionable guidance for the unsupported connector type.
-    """
-    supported = ', '.join(connector_type_choices())
-    normalized = connector_type_str.strip().lower()
-    if not normalized:
-        return f'Set type to one of: {supported}.'
-    if ReadinessSupportPolicy.coerce_connector_storage_scheme(normalized) is not None:
-        return (
-            f'"{normalized}" is a storage scheme, not a connector type. '
-            'Use connector type "file" and keep the provider in the path '
-            'or URI scheme.'
-        )
-    return f'Use one of the supported connector types: {supported}.'
