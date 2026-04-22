@@ -125,9 +125,23 @@ class HistoryReportBuilder:
             return None
         return round((succeeded / runs) * 100, 2)
 
-    @classmethod
+    @staticmethod
+    def _finalize_bucket(
+        bucket: dict[str, Any],
+    ) -> None:
+        """Collapse temporary duration metrics into the public report fields."""
+        samples = cast(int, bucket.pop('duration_samples'))
+        total_duration = cast(int, bucket.pop('total_duration_ms'))
+        bucket['avg_duration_ms'] = (
+            int(total_duration / samples) if samples > 0 else None
+        )
+        bucket['success_rate_pct'] = HistoryReportBuilder.success_rate_pct(
+            int(bucket['succeeded']),
+            int(bucket['runs']),
+        )
+
+    @staticmethod
     def build(
-        cls,
         records: list[dict[str, Any]],
         *,
         group_by: Literal['day', 'job', 'pipeline', 'run', 'status'],
@@ -165,11 +179,11 @@ class HistoryReportBuilder:
         for record in records:
             status = cast(str, record.get('status') or '')
             if status in ('succeeded', 'failed', 'running'):
-                cls.increment_metric(summary, status)
+                HistoryReportBuilder.increment_metric(summary, status)
             else:
-                cls.increment_metric(summary, 'other')
+                HistoryReportBuilder.increment_metric(summary, 'other')
 
-            key = cls.report_group_key(record, group_by=group_by)
+            key = HistoryReportBuilder.report_group_key(record, group_by=group_by)
             row = cast(
                 dict[str, Any],
                 rows_by_group.setdefault(
@@ -191,16 +205,16 @@ class HistoryReportBuilder:
                     },
                 ),
             )
-            cls.increment_metric(row, 'runs')
+            HistoryReportBuilder.increment_metric(row, 'runs')
             if status in ('succeeded', 'failed', 'running'):
-                cls.increment_metric(row, status)
+                HistoryReportBuilder.increment_metric(row, status)
             else:
-                cls.increment_metric(row, 'other')
+                HistoryReportBuilder.increment_metric(row, 'other')
 
             duration_ms = record.get('duration_ms')
             if isinstance(duration_ms, int):
-                cls.update_duration_metrics(row, duration_ms)
-                cls.update_duration_metrics(summary, duration_ms)
+                HistoryReportBuilder.update_duration_metrics(row, duration_ms)
+                HistoryReportBuilder.update_duration_metrics(summary, duration_ms)
 
             started_at = record.get('started_at')
             if isinstance(started_at, str) and (
@@ -210,27 +224,9 @@ class HistoryReportBuilder:
 
         rows = sorted(rows_by_group.values(), key=lambda item: cast(str, item['group']))
         for row in rows:
-            samples = cast(int, row.pop('duration_samples'))
-            total_duration = cast(int, row.pop('total_duration_ms'))
-            row['avg_duration_ms'] = (
-                int(total_duration / samples) if samples > 0 else None
-            )
-            row['success_rate_pct'] = cls.success_rate_pct(
-                int(row['succeeded']),
-                int(row['runs']),
-            )
+            HistoryReportBuilder._finalize_bucket(row)
 
-        summary_samples = cast(int, summary.pop('duration_samples'))
-        summary_total_duration = cast(int, summary.pop('total_duration_ms'))
-        summary['avg_duration_ms'] = (
-            int(summary_total_duration / summary_samples)
-            if summary_samples > 0
-            else None
-        )
-        summary['success_rate_pct'] = cls.success_rate_pct(
-            int(summary['succeeded']),
-            int(summary['runs']),
-        )
+        HistoryReportBuilder._finalize_bucket(summary)
 
         return {
             'group_by': group_by,
@@ -238,9 +234,8 @@ class HistoryReportBuilder:
             'summary': summary,
         }
 
-    @classmethod
+    @staticmethod
     def update_duration_metrics(
-        cls,
         bucket: dict[str, Any],
         duration_ms: int,
     ) -> None:
@@ -254,8 +249,8 @@ class HistoryReportBuilder:
         duration_ms : int
             The duration in milliseconds to incorporate into the metrics.
         """
-        cls.increment_metric(bucket, 'total_duration_ms', duration_ms)
-        cls.increment_metric(bucket, 'duration_samples', 1)
+        HistoryReportBuilder.increment_metric(bucket, 'total_duration_ms', duration_ms)
+        HistoryReportBuilder.increment_metric(bucket, 'duration_samples', 1)
         current_min = bucket.get('min_duration_ms')
         current_max = bucket.get('max_duration_ms')
         bucket['min_duration_ms'] = (
