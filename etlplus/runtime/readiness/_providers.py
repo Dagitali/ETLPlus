@@ -213,11 +213,10 @@ def _s3_provider_gaps(
 class ProviderEnvironmentPolicy:
     """Evaluate provider-specific environment readiness for file connectors."""
 
-    # -- Class Methods -- #
+    # -- Static Methods -- #
 
-    @classmethod
+    @staticmethod
     def explicit_aws_credential_gap(
-        cls,
         env: Mapping[str, str],
     ) -> _ProviderGapDetails | None:
         """
@@ -273,9 +272,8 @@ class ProviderEnvironmentPolicy:
             'severity': 'error',
         }
 
-    @classmethod
+    @staticmethod
     def environment_checks(
-        cls,
         *,
         cfg: Config,
         env: Mapping[str, str],
@@ -330,9 +328,8 @@ class ProviderEnvironmentPolicy:
             ),
         ]
 
-    @classmethod
+    @staticmethod
     def environment_rows(
-        cls,
         *,
         cfg: Config,
         env: Mapping[str, str],
