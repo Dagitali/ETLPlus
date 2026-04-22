@@ -310,7 +310,7 @@ class ConnectorReadinessPolicy:
         *,
         connector_gap_rows_fn: Callable[[Config], list[ReadinessRow]],
         make_check: Callable[..., dict[str, Any]],
-        missing_requirement_rows_fn: Callable[[Config], list[ReadinessRow]],
+        package_available: Callable[[str], bool],
     ) -> list[ReadinessRow]:
         """
         Return connector configuration and dependency readiness checks.
@@ -323,8 +323,8 @@ class ConnectorReadinessPolicy:
             A function that returns connector configuration gaps.
         make_check : Callable[..., dict[str, Any]]
             A function that creates a readiness check dictionary.
-        missing_requirement_rows_fn : Callable[[Config], list[ReadinessRow]]
-            A function that returns missing optional dependency rows.
+        package_available : Callable[[str], bool]
+            A function that returns whether a package is available.
 
         Returns
         -------
@@ -347,7 +347,10 @@ class ConnectorReadinessPolicy:
             ),
         )
 
-        missing_requirements = missing_requirement_rows_fn(cfg)
+        missing_requirements = cls.missing_requirement_rows(
+            cfg=cfg,
+            package_available=package_available,
+        )
         checks.append(
             make_check(
                 'optional-dependencies',

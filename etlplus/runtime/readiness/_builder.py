@@ -54,24 +54,6 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         ).to_payload()
 
     @classmethod
-    def _connector_checks(
-        cls,
-        cfg: Config,
-    ) -> list[dict[str, Any]]:
-        """Return connector readiness checks for one resolved config."""
-        return _connectors.ConnectorReadinessPolicy.readiness_checks(
-            cfg,
-            connector_gap_rows_fn=_connectors.ConnectorReadinessPolicy.gap_rows,
-            make_check=cls.make_check,
-            missing_requirement_rows_fn=lambda cfg: (
-                _connectors.ConnectorReadinessPolicy.missing_requirement_rows(
-                    cfg=cfg,
-                    package_available=cls.package_available,
-                )
-            ),
-        )
-
-    @classmethod
     def _provider_checks(
         cls,
         *,
@@ -256,7 +238,14 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         if not include_runtime_checks:
             return checks
 
-        checks.extend(cls._connector_checks(resolved_cfg))
+        checks.extend(
+            _connectors.ConnectorReadinessPolicy.readiness_checks(
+                resolved_cfg,
+                connector_gap_rows_fn=_connectors.ConnectorReadinessPolicy.gap_rows,
+                make_check=cls.make_check,
+                package_available=cls.package_available,
+            ),
+        )
         checks.extend(
             cls._provider_checks(
                 cfg=resolved_cfg,
