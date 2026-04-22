@@ -25,7 +25,9 @@ import etlplus.runtime._logging as logging_mod
 
 
 class _ResolveLogLevelKwargs(TypedDict, total=False):
-    """Typed kwargs shape for :func:`resolve_log_level` parameter tables."""
+    """
+    Typed kwargs shape for :meth:`RuntimeLoggingPolicy.resolve_level` tables.
+    """
 
     env: Mapping[str, str]
     quiet: bool
@@ -71,7 +73,7 @@ class TestConfigureLogging:
         """Test that STDERR is used when no explicit stream is supplied."""
         capture = _LoggingSetupCapture.install(monkeypatch)
 
-        logging_mod.configure_logging(env={})
+        logging_mod.RuntimeLoggingPolicy.configure(env={})
 
         basic_config = cast(dict[str, object], capture.calls['basicConfig'])
         assert basic_config['stream'] is sys.stderr
@@ -84,7 +86,7 @@ class TestConfigureLogging:
         capture = _LoggingSetupCapture.install(monkeypatch)
         stream = StringIO()
 
-        level = logging_mod.configure_logging(
+        level = logging_mod.RuntimeLoggingPolicy.configure(
             stream=stream,
             force=True,
             env={'ETLPLUS_LOG_LEVEL': 'error'},
@@ -112,7 +114,7 @@ class TestResolveLogLevel:
         """Test that resolution reads the process environment by default."""
         monkeypatch.setenv('ETLPLUS_LOG_LEVEL', 'info')
 
-        assert logging_mod.resolve_log_level() == logging.INFO
+        assert logging_mod.RuntimeLoggingPolicy.resolve_level() == logging.INFO
 
     @pytest.mark.parametrize(
         ('kwargs', 'expected'),
@@ -149,4 +151,4 @@ class TestResolveLogLevel:
         expected: int,
     ) -> None:
         """Log-level resolution should honor env overrides and CLI flags."""
-        assert logging_mod.resolve_log_level(**kwargs) == expected
+        assert logging_mod.RuntimeLoggingPolicy.resolve_level(**kwargs) == expected

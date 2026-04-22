@@ -26,8 +26,8 @@ from typing import Final
 
 
 __all__ = [
-    'configure_logging',
-    'resolve_log_level',
+    # Classes
+    'RuntimeLoggingPolicy',
 ]
 
 
@@ -41,86 +41,95 @@ _LOG_LEVELS: Final[dict[str, int]] = {
     'INFO': logging.INFO,
     'DEBUG': logging.DEBUG,
 }
+_LOG_FORMAT: Final[str] = '%(levelname)s %(name)s: %(message)s'
+
 _DEFAULT_LEVEL_NAME: Final[str] = 'WARNING'
 _QUIET_LEVEL_NAME: Final[str] = 'ERROR'
 _VERBOSE_LEVEL_NAME: Final[str] = 'INFO'
-_LOG_FORMAT: Final[str] = '%(levelname)s %(name)s: %(message)s'
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: CLASSES ========================================================== #
 
 
-def resolve_log_level(
-    *,
-    quiet: bool = False,
-    verbose: bool = False,
-    env: Mapping[str, str] | None = None,
-) -> int:
-    """
-    Resolve the effective log level for the current runtime.
+class RuntimeLoggingPolicy:
+    """Resolve and install the shared runtime logging baseline."""
 
-    Parameters
-    ----------
-    quiet : bool, optional
-        Whether quiet mode is enabled. Quiet mode takes precedence over
-        verbose mode. Default is ``False``.
-    verbose : bool, optional
-        Whether verbose mode is enabled. Default is ``False``.
-    env : Mapping[str, str] | None, optional
-        Optional environment mapping used instead of :data:`os.environ`.
+    # -- Class Methods -- #
 
-    Returns
-    -------
-    int
-        A :mod:`logging` level constant.
-    """
-    env_map = os.environ if env is None else env
-    explicit = (env_map.get('ETLPLUS_LOG_LEVEL') or '').strip().upper()
-    if explicit in _LOG_LEVELS:
-        return _LOG_LEVELS[explicit]
-    if quiet:
-        return _LOG_LEVELS[_QUIET_LEVEL_NAME]
-    if verbose:
-        return _LOG_LEVELS[_VERBOSE_LEVEL_NAME]
-    return _LOG_LEVELS[_DEFAULT_LEVEL_NAME]
+    @classmethod
+    def configure(
+        cls,
+        *,
+        quiet: bool = False,
+        verbose: bool = False,
+        stream: IO[str] | None = None,
+        force: bool = False,
+        env: Mapping[str, str] | None = None,
+    ) -> int:
+        """
+        Configure the process-wide logging baseline for ETLPlus runtime code.
 
+        Parameters
+        ----------
+        quiet : bool, optional
+            Whether quiet mode is enabled. Default is ``False``.
+        verbose : bool, optional
+            Whether verbose mode is enabled. Default is ``False``.
+        stream : IO[str] | None, optional
+            Stream to receive log records. Defaults to :data:`sys.stderr`.
+        force : bool, optional
+            Whether to override any existing root logging handlers. Default is
+            ``False``.
+        env : Mapping[str, str] | None, optional
+            Optional environment mapping used instead of :data:`os.environ`.
 
-def configure_logging(
-    *,
-    quiet: bool = False,
-    verbose: bool = False,
-    stream: IO[str] | None = None,
-    force: bool = False,
-    env: Mapping[str, str] | None = None,
-) -> int:
-    """
-    Configure the process-wide logging baseline for ETLPlus runtime code.
+        Returns
+        -------
+        int
+            The effective logging level that was configured.
+        """
+        level = cls.resolve_level(quiet=quiet, verbose=verbose, env=env)
+        logging.basicConfig(
+            level=level,
+            stream=stream or sys.stderr,
+            format=_LOG_FORMAT,
+            force=force,
+        )
+        logging.captureWarnings(True)
+        return level
 
-    Parameters
-    ----------
-    quiet : bool, optional
-        Whether quiet mode is enabled. Default is ``False``.
-    verbose : bool, optional
-        Whether verbose mode is enabled. Default is ``False``.
-    stream : IO[str] | None, optional
-        Stream to receive log records. Defaults to :data:`sys.stderr`.
-    force : bool, optional
-        Whether to override any existing root logging handlers. Default is
-        ``False``.
-    env : Mapping[str, str] | None, optional
-        Optional environment mapping used instead of :data:`os.environ`.
+    @classmethod
+    def resolve_level(
+        cls,
+        *,
+        quiet: bool = False,
+        verbose: bool = False,
+        env: Mapping[str, str] | None = None,
+    ) -> int:
+        """
+        Resolve the effective logging level for the current runtime invocation.
 
-    Returns
-    -------
-    int
-        The effective logging level that was configured.
-    """
-    level = resolve_log_level(quiet=quiet, verbose=verbose, env=env)
-    logging.basicConfig(
-        level=level,
-        stream=stream or sys.stderr,
-        format=_LOG_FORMAT,
-        force=force,
-    )
-    logging.captureWarnings(True)
-    return level
+        Parameters
+        ----------
+        quiet : bool, optional
+            Whether quiet mode is enabled. Quiet mode takes precedence over
+            verbose mode. Default is ``False``.
+        verbose : bool, optional
+            Whether verbose mode is enabled. Default is ``False``.
+        env : Mapping[str, str] | None, optional
+            Optional environment mapping used instead of :data:`os.environ`.
+
+        Returns
+        -------
+        int
+            A :mod:`logging` level constant.
+        """
+        env_map = os.environ if env is None else env
+        explicit = (env_map.get('ETLPLUS_LOG_LEVEL') or '').strip().upper()
+        if explicit in _LOG_LEVELS:
+            return _LOG_LEVELS[explicit]
+        if quiet:
+            return _LOG_LEVELS[_QUIET_LEVEL_NAME]
+        if verbose:
+            return _LOG_LEVELS[_VERBOSE_LEVEL_NAME]
+        return _LOG_LEVELS[_DEFAULT_LEVEL_NAME]

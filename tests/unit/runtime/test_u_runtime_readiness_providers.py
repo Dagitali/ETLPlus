@@ -12,7 +12,7 @@ from typing import cast
 
 import pytest
 
-import etlplus.runtime.readiness._builder as readiness_mod
+import etlplus.runtime.readiness._builder as readiness_builder_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
 import etlplus.runtime.readiness._providers as readiness_providers_mod
 from etlplus.connector import DataConnectorType
@@ -75,7 +75,12 @@ class TestReadinessReportBuilderProviders:
         expected: dict[str, object] | None,
     ) -> None:
         """Explicit AWS credential diagnostics should cover all short-circuit cases."""
-        assert readiness_providers_mod.explicit_aws_credential_gap(env) == expected
+        assert (
+            readiness_providers_mod.ProviderEnvironmentPolicy.explicit_aws_credential_gap(
+                env,
+            )
+            == expected
+        )
 
     @pytest.mark.parametrize(
         ('rows', 'expected'),
@@ -228,14 +233,18 @@ class TestReadinessReportBuilderProviders:
     ) -> None:
         """Provider check wrappers should map row severities into report rows."""
         monkeypatch.setattr(
-            readiness_providers_mod,
-            'provider_environment_rows',
+            readiness_providers_mod.ProviderEnvironmentPolicy,
+            'environment_rows',
             lambda cfg, env: rows,
         )
 
-        checks = readiness_mod.ReadinessReportBuilder.provider_environment_checks(
+        checks = readiness_providers_mod.ProviderEnvironmentPolicy.environment_checks(
             cfg=cast(Any, _cfg()),
             env={},
+            make_check=readiness_builder_mod.ReadinessReportBuilder.make_check,
+            provider_environment_rows_fn=(
+                readiness_builder_mod.ReadinessReportBuilder._provider_environment_rows
+            ),
         )
 
         assert checks == expected
@@ -335,7 +344,7 @@ class TestReadinessReportBuilderProviders:
         expected: list[dict[str, object]],
     ) -> None:
         """Provider row generation should emit the expected Azure/S3 gaps."""
-        rows = readiness_providers_mod.provider_environment_rows(
+        rows = readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows(
             cfg=cast(Any, cfg),
             env=env,
         )
@@ -356,7 +365,7 @@ class TestReadinessReportBuilderProviders:
             ],
         )
 
-        rows = readiness_providers_mod.provider_environment_rows(
+        rows = readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows(
             cfg=cast(Any, cfg),
             env={'AWS_ACCESS_KEY_ID': 'access-key'},
         )
@@ -429,7 +438,7 @@ class TestReadinessReportBuilderProviders:
         env: dict[str, str],
     ) -> None:
         """Provider rows should stay empty when explicit auth hints are present."""
-        rows = readiness_providers_mod.provider_environment_rows(
+        rows = readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows(
             cfg=cast(Any, cfg),
             env=env,
         )
@@ -451,7 +460,7 @@ class TestReadinessReportBuilderProviders:
             ],
         )
 
-        rows = readiness_providers_mod.provider_environment_rows(
+        rows = readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows(
             cfg=cast(Any, cfg),
             env={'AZURE_STORAGE_ACCOUNT_URL': 'https://account.blob.core.windows.net'},
         )
@@ -505,7 +514,7 @@ class TestReadinessReportBuilderProviders:
         assert (
             readiness_connectors_mod._connector_type('file') is DataConnectorType.FILE
         )
-        assert readiness_mod.ReadinessReportBuilder.requirement_row(
+        assert readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
             connector='out',
             detected_scheme='s3',
             reason='s3 storage path requires boto3',

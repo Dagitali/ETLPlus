@@ -14,8 +14,7 @@ from typing import TypedDict
 from urllib.parse import urlsplit
 
 from ..._config import Config
-from ._base import _iter_connectors
-from ._base import coerce_storage_scheme
+from ._base import ReadinessSupportPolicy
 from ._support import AWS_ENV_HINTS
 from ._support import AZURE_STORAGE_BOOTSTRAP_ENV
 from ._support import AZURE_STORAGE_CREDENTIAL_ENV
@@ -25,9 +24,8 @@ from ._support import ReadinessRow
 
 
 __all__ = [
-    # Functions
-    'provider_environment_checks',
-    'provider_environment_rows',
+    # Classes
+    'ProviderEnvironmentPolicy',
 ]
 
 
@@ -172,7 +170,7 @@ def _s3_provider_gaps(
     role: str,
 ) -> list[_ProviderGapRow]:
     """Return AWS provider gaps for one S3 connector path."""
-    explicit_gap = explicit_aws_credential_gap(env)
+    explicit_gap = ProviderEnvironmentPolicy.explicit_aws_credential_gap(env)
     if explicit_gap:
         return [
             _provider_gap_row(
@@ -212,171 +210,180 @@ def _s3_provider_gaps(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def explicit_aws_credential_gap(
-    env: Mapping[str, str],
-) -> _ProviderGapDetails | None:
-    """
-    Return one AWS env error row for incomplete explicit credentials.
+class ProviderEnvironmentPolicy:
+    """Evaluate provider-specific environment readiness for file connectors."""
 
-    This check looks for the presence of partial explicit AWS credential
-    environment variables that indicate an attempt at explicit credential
-    configuration, but the variables are not sufficient for a complete explicit
-    configuration. The check is intentionally specific to avoid false positives
-    for users who are not attempting explicit credential configuration, as the
-    presence of any of these variables is a strong signal of that intent. If
-    both ``AWS_ACCESS_KEY_ID`` and ``AWS_SECRET_ACCESS_KEY`` are not set, but
-    ``AWS_SESSION_TOKEN`` is set, it indicates an incomplete configuration.
+    # -- Static Methods -- #
 
-    Parameters
-    ----------
-    env : Mapping[str, str]
-        The environment variables to check.
+    @staticmethod
+    def explicit_aws_credential_gap(
+        env: Mapping[str, str],
+    ) -> _ProviderGapDetails | None:
+        """
+        Return one AWS env error row for incomplete explicit credentials.
 
-    Returns
-    -------
-    _ProviderGapDetails | None
-        An error row for incomplete explicit AWS credentials, or ``None`` if no
-        issues are found.
-    """
-    access_key = bool(env.get('AWS_ACCESS_KEY_ID'))
-    secret_key = bool(env.get('AWS_SECRET_ACCESS_KEY'))
-    session_token = bool(env.get('AWS_SESSION_TOKEN'))
-    if access_key and secret_key:
-        return None
-    if not (access_key or secret_key or session_token):
-        return None
+        This check looks for the presence of partial explicit AWS credential
+        environment variables that indicate an attempt at explicit credential
+        configuration, but the variables are not sufficient for a complete
+        explicit configuration. The check is intentionally specific to avoid
+        false positives for users who are not attempting explicit credential
+        configuration, as the presence of any of these variables is a strong
+        signal of that intent. If both ``AWS_ACCESS_KEY_ID`` and
+        ``AWS_SECRET_ACCESS_KEY`` are not set, but ``AWS_SESSION_TOKEN`` is
+        set, it indicates an incomplete configuration.
 
-    missing_env: list[str] = []
-    if not access_key:
-        missing_env.append('AWS_ACCESS_KEY_ID')
-    if not secret_key:
-        missing_env.append('AWS_SECRET_ACCESS_KEY')
-    return {
-        'guidance': (
-            'Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY together, or '
-            'remove the partial explicit credential env vars and rely on '
-            'AWS_PROFILE, shared config files, container credentials, or '
-            'instance metadata.'
-        ),
-        'missing_env': missing_env,
-        'provider': 'aws-s3',
-        'reason': (
-            'Incomplete explicit AWS access-key configuration was detected '
-            'for this S3 path.'
-        ),
-        'severity': 'error',
-    }
+        Parameters
+        ----------
+        env : Mapping[str, str]
+            The environment variables to check.
 
+        Returns
+        -------
+        _ProviderGapDetails | None
+            An error row for incomplete explicit AWS credentials, or ``None``
+            if no issues are found.
+        """
+        access_key = bool(env.get('AWS_ACCESS_KEY_ID'))
+        secret_key = bool(env.get('AWS_SECRET_ACCESS_KEY'))
+        session_token = bool(env.get('AWS_SESSION_TOKEN'))
+        if access_key and secret_key:
+            return None
+        if not (access_key or secret_key or session_token):
+            return None
 
-def provider_environment_checks(
-    *,
-    cfg: Config,
-    env: Mapping[str, str],
-    make_check: Callable[..., dict[str, Any]],
-    provider_environment_rows_fn: _ProviderEnvironmentRowsFn,
-) -> list[ReadinessRow]:
-    """
-    Return provider-specific environment readiness checks.
+        missing_env: list[str] = []
+        if not access_key:
+            missing_env.append('AWS_ACCESS_KEY_ID')
+        if not secret_key:
+            missing_env.append('AWS_SECRET_ACCESS_KEY')
+        return {
+            'guidance': (
+                'Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY together, or '
+                'remove the partial explicit credential env vars and rely on '
+                'AWS_PROFILE, shared config files, container credentials, or '
+                'instance metadata.'
+            ),
+            'missing_env': missing_env,
+            'provider': 'aws-s3',
+            'reason': (
+                'Incomplete explicit AWS access-key configuration was detected '
+                'for this S3 path.'
+            ),
+            'severity': 'error',
+        }
 
-    Parameters
-    ----------
-    cfg : Config
-        The configuration object containing the connectors.
-    env : Mapping[str, str]
-        The environment variables to check for provider-specific gaps.
-    make_check : Callable[..., dict[str, Any]]
-        A function that creates a readiness check dictionary.
-    provider_environment_rows_fn : _ProviderEnvironmentRowsFn
-        A function that returns a list of provider-specific environment gaps.
+    @staticmethod
+    def environment_checks(
+        *,
+        cfg: Config,
+        env: Mapping[str, str],
+        make_check: Callable[..., dict[str, Any]],
+        provider_environment_rows_fn: _ProviderEnvironmentRowsFn,
+    ) -> list[ReadinessRow]:
+        """
+        Return provider-specific environment readiness checks.
 
-    Returns
-    -------
-    list[ReadinessRow]
-        A list of dictionaries representing the provider-specific environment
-        readiness checks.
-    """
-    rows = provider_environment_rows_fn(cfg, env)
-    if not rows:
+        Parameters
+        ----------
+        cfg : Config
+            The configuration object containing the connectors.
+        env : Mapping[str, str]
+            The environment variables to check for provider-specific gaps.
+        make_check : Callable[..., dict[str, Any]]
+            A function that creates a readiness check dictionary.
+        provider_environment_rows_fn : _ProviderEnvironmentRowsFn
+            A function that returns a list of provider-specific environment
+            gaps.
+
+        Returns
+        -------
+        list[ReadinessRow]
+            A list of dictionaries representing the provider-specific
+            environment readiness checks.
+        """
+        rows = provider_environment_rows_fn(cfg, env)
+        if not rows:
+            return [
+                make_check(
+                    'provider-environment',
+                    'ok',
+                    'No provider-specific environment gaps were detected.',
+                ),
+            ]
+
+        errors = sum(1 for row in rows if row['severity'] == 'error')
+        warnings = sum(1 for row in rows if row['severity'] == 'warn')
+        has_error = errors > 0
         return [
             make_check(
                 'provider-environment',
-                'ok',
-                'No provider-specific environment gaps were detected.',
+                'error' if has_error else 'warn',
+                (
+                    'Provider environment gaps: '
+                    f'{errors} error(s), {warnings} warning(s).'
+                    if has_error
+                    else f'Provider environment warnings: {warnings}.'
+                ),
+                environment_gaps=rows,
             ),
         ]
 
-    errors = sum(1 for row in rows if row['severity'] == 'error')
-    warnings = sum(1 for row in rows if row['severity'] == 'warn')
-    has_error = errors > 0
-    return [
-        make_check(
-            'provider-environment',
-            'error' if has_error else 'warn',
-            (
-                f'Provider environment gaps: {errors} error(s), {warnings} warning(s).'
-                if has_error
-                else f'Provider environment warnings: {warnings}.'
-            ),
-            environment_gaps=rows,
-        ),
-    ]
+    @staticmethod
+    def environment_rows(
+        *,
+        cfg: Config,
+        env: Mapping[str, str],
+    ) -> list[_ProviderGapRow]:
+        """
+        Return provider-specific environment gaps for configured connectors.
 
+        Parameters
+        ----------
+        cfg : Config
+            The configuration object containing the connectors.
+        env : Mapping[str, str]
+            The environment variables to check for provider-specific gaps.
 
-def provider_environment_rows(
-    *,
-    cfg: Config,
-    env: Mapping[str, str],
-) -> list[_ProviderGapRow]:
-    """
-    Return provider-specific environment gaps for configured connectors.
+        Returns
+        -------
+        list[_ProviderGapRow]
+            A list of dictionaries representing the provider-specific
+            environment gaps.
+        """
+        rows: list[_ProviderGapRow] = []
+        azure_connection_string = bool(env.get('AZURE_STORAGE_CONNECTION_STRING'))
+        azure_account_url = bool(env.get('AZURE_STORAGE_ACCOUNT_URL'))
+        azure_credential = bool(env.get(AZURE_STORAGE_CREDENTIAL_ENV))
+        has_aws_hints = _aws_env_hint_present(env)
 
-    Parameters
-    ----------
-    cfg : Config
-        The configuration object containing the connectors.
-    env : Mapping[str, str]
-        The environment variables to check for provider-specific gaps.
-
-    Returns
-    -------
-    list[_ProviderGapRow]
-        A list of dictionaries representing the provider-specific environment
-        gaps.
-    """
-    rows: list[_ProviderGapRow] = []
-    azure_connection_string = bool(env.get('AZURE_STORAGE_CONNECTION_STRING'))
-    azure_account_url = bool(env.get('AZURE_STORAGE_ACCOUNT_URL'))
-    azure_credential = bool(env.get(AZURE_STORAGE_CREDENTIAL_ENV))
-    has_aws_hints = _aws_env_hint_present(env)
-
-    for role, connector in _iter_connectors(cfg):
-        connector_name = str(getattr(connector, 'name', '<unnamed>'))
-        path = getattr(connector, 'path', None)
-        if not isinstance(path, str) or not path:
-            continue
-
-        match coerce_storage_scheme(path):
-            case 'azure-blob' | 'abfs' as scheme:
-                rows.extend(
-                    _azure_provider_gaps(
-                        connector=connector_name,
-                        path=path,
-                        role=role,
-                        scheme=scheme,
-                        azure_account_url=azure_account_url,
-                        azure_connection_string=azure_connection_string,
-                        azure_credential=azure_credential,
-                    ),
-                )
-            case 's3':
-                rows.extend(
-                    _s3_provider_gaps(
-                        connector=connector_name,
-                        env=env,
-                        has_aws_hints=has_aws_hints,
-                        role=role,
-                    ),
-                )
-            case _:
+        for role, connector in ReadinessSupportPolicy.iter_connectors(cfg):
+            connector_name = str(getattr(connector, 'name', '<unnamed>'))
+            path = getattr(connector, 'path', None)
+            if not isinstance(path, str) or not path:
                 continue
-    return rows
+
+            match ReadinessSupportPolicy.coerce_storage_scheme(path):
+                case 'azure-blob' | 'abfs' as scheme:
+                    rows.extend(
+                        _azure_provider_gaps(
+                            connector=connector_name,
+                            path=path,
+                            role=role,
+                            scheme=scheme,
+                            azure_account_url=azure_account_url,
+                            azure_connection_string=azure_connection_string,
+                            azure_credential=azure_credential,
+                        ),
+                    )
+                case 's3':
+                    rows.extend(
+                        _s3_provider_gaps(
+                            connector=connector_name,
+                            env=env,
+                            has_aws_hints=has_aws_hints,
+                            role=role,
+                        ),
+                    )
+                case _:
+                    continue
+        return rows

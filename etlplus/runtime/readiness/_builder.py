@@ -18,8 +18,8 @@ from . import _connectors
 from . import _providers
 from . import _strict
 from ._base import ReadinessBaseMixin
+from ._base import TokenReferenceCollector
 from ._support import ReadinessReport
-from ._support import RequirementSpec
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -54,372 +54,24 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         ).to_payload()
 
     @classmethod
-    def _missing_requirement_rows_for_connectors(
-        cls,
-        cfg: Config,
-    ) -> list[dict[str, Any]]:
-        """Return missing requirement rows for connector readiness checks."""
-        return cls.missing_requirement_rows(cfg=cfg)
-
-    @classmethod
-    def _provider_environment_rows(
-        cls,
-        cfg: Config,
-        env: Mapping[str, str],
-    ) -> list[Any]:
-        """Return provider-environment rows for one resolved config."""
-        return _providers.provider_environment_rows(cfg=cfg, env=env)
-
-    # -- Class Methods -- #
-
-    @classmethod
-    def connector_readiness_checks(
-        cls,
-        cfg: Config,
-    ) -> list[dict[str, Any]]:
-        """
-        Return connector configuration and dependency readiness checks.
-
-        Parameters
-        ----------
-        cfg : Config
-            The configuration object containing the connectors.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            A list of dictionaries representing the readiness checks.
-        """
-        return _connectors.connector_readiness_checks(
-            cfg,
-            connector_gap_rows_fn=_connectors.connector_gap_rows,
-            make_check=cls.make_check,
-            missing_requirement_rows_fn=cls._missing_requirement_rows_for_connectors,
-        )
-
-    @classmethod
-    def missing_requirement_rows(
-        cls,
-        *,
-        cfg: Config,
-    ) -> list[dict[str, Any]]:
-        """
-        Return missing optional dependency rows for configured connectors.
-
-        Parameters
-        ----------
-        cfg : Config
-            The configuration object containing the connectors.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            A list of dictionaries representing the missing optional dependencies
-            for the configured connectors.
-        """
-        return _connectors.missing_requirement_rows(
-            cfg=cfg,
-            netcdf_available_fn=cls.netcdf_available,
-            requirement_available_fn=cls.requirement_available,
-        )
-
-    @classmethod
-    def netcdf_available(cls) -> bool:
-        """
-        Return whether netCDF support dependencies are installed.
-
-        Returns
-        -------
-        bool
-            True if netCDF support dependencies are installed, False otherwise.
-        """
-        return _connectors.netcdf_available(package_available=cls.package_available)
-
-    @classmethod
-    def provider_environment_checks(
+    def _provider_checks(
         cls,
         *,
         cfg: Config,
         env: Mapping[str, str],
     ) -> list[dict[str, Any]]:
         """
-        Return provider-specific environment readiness checks.
-
-        Parameters
-        ----------
-        cfg : Config
-            The configuration object containing the connectors and profile.
-        env : Mapping[str, str]
-            The environment variables to consider for provider readiness.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            A list of dictionaries representing the provider-specific
-            environment readiness checks.
-
+        Return provider-specific environment readiness checks for one resolved
+        config.
         """
-        return _providers.provider_environment_checks(
+        return _providers.ProviderEnvironmentPolicy.environment_checks(
             cfg=cfg,
             env=env,
             make_check=cls.make_check,
             provider_environment_rows_fn=cls._provider_environment_rows,
         )
 
-    @classmethod
-    def requirement_available(
-        cls,
-        requirement: RequirementSpec,
-    ) -> bool:
-        """
-        Return whether any module for one requirement is importable.
-
-        Parameters
-        ----------
-        requirement : RequirementSpec
-            The requirement specification to check.
-
-        Returns
-        -------
-        bool
-            ``True`` if any module for the requirement is importable,
-            ``False`` if not.
-        """
-        return _connectors.requirement_available(
-            requirement,
-            package_available=cls.package_available,
-        )
-
-    @classmethod
-    def requirement_row(
-        cls,
-        *,
-        connector: str,
-        detected_format: str | None = None,
-        detected_scheme: str | None = None,
-        reason: str,
-        requirement: RequirementSpec,
-        role: str,
-    ) -> dict[str, Any]:
-        """
-        Return one missing-requirement row.
-
-        Parameters
-        ----------
-        connector : str
-            The name of the connector.
-        detected_format : str | None, optional
-            The detected format, if any.
-        detected_scheme : str | None, optional
-            The detected scheme, if any.
-        reason : str
-            The reason for the missing requirement.
-        requirement : RequirementSpec
-            The requirement specification.
-        role : str
-            The role associated with the requirement.
-
-        Returns
-        -------
-        dict[str, Any]
-            A dictionary representing the missing requirement row.
-        """
-        row: dict[str, Any] = {
-            'connector': connector,
-            'extra': requirement.extra or '',
-            'guidance': cls.missing_requirement_guidance(
-                detected_format=detected_format,
-                detected_scheme=detected_scheme,
-                package=requirement.package,
-                extra=requirement.extra,
-            ),
-            'missing_package': requirement.package,
-            'reason': reason,
-            'role': role,
-        }
-        if detected_format is not None:
-            row['detected_format'] = detected_format
-        if detected_scheme is not None:
-            row['detected_scheme'] = detected_scheme
-        return row
-
-    @classmethod
-    def strict_config_issue_rows(
-        cls,
-        *,
-        raw: StrAnyMap,
-    ) -> list[dict[str, Any]]:
-        """
-        Return strict-mode config issues hidden by tolerant parsing.
-
-        Parameters
-        ----------
-        raw : StrAnyMap
-            The raw configuration data.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            A list of dictionaries representing the strict-mode config issues.
-        """
-        return _strict.strict_config_issue_rows(
-            raw=raw,
-            connector_type_guidance=_connectors.connector_type_guidance,
-            connector_type_choices=_connectors.connector_type_choices,
-        )
-
-    @classmethod
-    def strict_connector_names(
-        cls,
-        *,
-        raw: StrAnyMap,
-        section: str,
-        issues: list[dict[str, Any]],
-    ) -> set[str] | None:
-        """
-        Validate connector entries in *section* and return known names.
-
-        Parameters
-        ----------
-        raw : StrAnyMap
-            The raw configuration data.
-        section : str
-            The section name to validate.
-        issues : list[dict[str, Any]]
-            A list to append any issues found.
-
-        Returns
-        -------
-        set[str] | None
-            A set of known connector names, or None if validation fails.
-        """
-        return _strict.strict_connector_names(
-            raw=raw,
-            section=section,
-            issues=issues,
-            connector_type_guidance=_connectors.connector_type_guidance,
-            connector_type_choices=_connectors.connector_type_choices,
-        )
-
-    @classmethod
-    def strict_job_issue_rows(
-        cls,
-        *,
-        raw: StrAnyMap,
-        issues: list[dict[str, Any]],
-        source_names: set[str] | None,
-        target_names: set[str] | None,
-        transform_names: set[str] | None,
-        validation_names: set[str] | None,
-    ) -> None:
-        """Append strict-mode job diagnostics to *issues*.
-
-        Parameters
-        ----------
-        raw : StrAnyMap
-            The raw configuration data.
-        issues : list[dict[str, Any]]
-            A list to append any issues found.
-        source_names : set[str] | None
-            A set of known source names, or None if validation fails.
-        target_names : set[str] | None
-            A set of known target names, or None if validation fails.
-        transform_names : set[str] | None
-            A set of known transform names, or None if validation fails.
-        validation_names : set[str] | None
-            A set of known validation names, or None if validation fails.
-        """
-        _strict.strict_job_issue_rows(
-            raw=raw,
-            issues=issues,
-            source_names=source_names,
-            target_names=target_names,
-            transform_names=transform_names,
-            validation_names=validation_names,
-        )
-
-    @classmethod
-    def strict_job_ref_issue(
-        cls,
-        *,
-        entry: Mapping[str, Any],
-        field: str,
-        index: int,
-        issues: list[dict[str, Any]],
-        job_name: str | None,
-        required: bool,
-        required_key: str,
-        section_names: set[str] | None,
-        section_label: str,
-    ) -> None:
-        """Append one strict-mode job reference issue when needed.
-
-        Parameters
-        ----------
-        entry : Mapping[str, Any]
-            The job entry to validate.
-        field : str
-            The field name to validate.
-        index : int
-            The index of the job entry.
-        issues : list[dict[str, Any]]
-            A list to append any issues found.
-        job_name : str | None
-            The name of the job, or None if not available.
-        required : bool
-            Whether the field is required.
-        required_key : str
-            The key that is required.
-        section_names : set[str] | None
-            A set of known section names, or None if validation fails.
-        section_label : str
-            The label of the section.
-        """
-        _strict.strict_job_ref_issue(
-            entry=entry,
-            field=field,
-            index=index,
-            issues=issues,
-            job_name=job_name,
-            required=required,
-            required_key=required_key,
-            section_names=section_names,
-            section_label=section_label,
-        )
-
-    @classmethod
-    def strict_named_section_names(
-        cls,
-        *,
-        raw: StrAnyMap,
-        section: str,
-        issues: list[dict[str, Any]],
-        guidance: str,
-    ) -> set[str] | None:
-        """Validate one mapping-like top-level section and return its keys.
-
-        Parameters
-        ----------
-        raw : StrAnyMap
-            The raw configuration data.
-        section : str
-            The section name to validate.
-        issues : list[dict[str, Any]]
-            A list to append any issues found.
-        guidance : str
-            Guidance message for the validation.
-
-        Returns
-        -------
-        set[str] | None
-            A set of known section names, or None if validation fails.
-        """
-        return _strict.strict_named_section_names(
-            raw=raw,
-            section=section,
-            issues=issues,
-            guidance=guidance,
-        )
+    # -- Class Methods -- #
 
     @classmethod
     def build(
@@ -540,7 +192,9 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
                     'error',
                     'Configuration still contains unresolved substitution tokens.',
                     missing_env=context.unresolved_tokens,
-                    references=cls.token_reference_rows(context.resolved_raw),
+                    references=TokenReferenceCollector.collect_rows(
+                        context.resolved_raw,
+                    ),
                     unresolved_tokens=context.unresolved_tokens,
                 ),
             )
@@ -556,7 +210,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         resolved_cfg = cast(Config, context.resolved_cfg)
 
         if strict:
-            strict_issues = cls.strict_config_issue_rows(raw=context.resolved_raw)
+            strict_issues = cls._strict_config_issues(raw=context.resolved_raw)
             if strict_issues:
                 checks.append(
                     cls.make_check(
@@ -584,9 +238,16 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         if not include_runtime_checks:
             return checks
 
-        checks.extend(cls.connector_readiness_checks(resolved_cfg))
         checks.extend(
-            cls.provider_environment_checks(
+            _connectors.ConnectorReadinessPolicy.readiness_checks(
+                resolved_cfg,
+                connector_gap_rows_fn=_connectors.ConnectorReadinessPolicy.gap_rows,
+                make_check=cls.make_check,
+                package_available=cls.package_available,
+            ),
+        )
+        checks.extend(
+            cls._provider_checks(
                 cfg=resolved_cfg,
                 env=context.effective_env,
             ),
@@ -623,3 +284,30 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             include_runtime_checks=False,
         )
         return cls._build_report(checks=checks, include_python_version=False)
+
+    # -- Internal Static Methods -- #
+
+    @staticmethod
+    def _provider_environment_rows(
+        cfg: Config,
+        env: Mapping[str, str],
+    ) -> list[Any]:
+        """Return provider-environment rows for one resolved config."""
+        return _providers.ProviderEnvironmentPolicy.environment_rows(
+            cfg=cfg,
+            env=env,
+        )
+
+    @staticmethod
+    def _strict_config_issues(
+        *,
+        raw: StrAnyMap,
+    ) -> list[dict[str, Any]]:
+        """
+        Return strict-mode config issues for one resolved raw config mapping.
+        """
+        return _strict.StrictConfigValidator.config_issue_rows(
+            raw=raw,
+            connector_type_guidance=_connectors.connector_type_guidance,
+            connector_type_choices=_connectors.connector_type_choices,
+        )

@@ -12,7 +12,7 @@ from typing import cast
 
 import pytest
 
-import etlplus.runtime.readiness._builder as readiness_mod
+import etlplus.runtime.readiness._builder as readiness_builder_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
 from etlplus.connector import DataConnectorType
 from etlplus.runtime.readiness._support import RequirementSpec
@@ -26,6 +26,21 @@ from .pytest_runtime_readiness import build_runtime_cfg as _cfg
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+def _connector_checks(cfg: object) -> list[dict[str, object]]:
+    """Return connector checks using the production policy seams."""
+    return readiness_connectors_mod.ConnectorReadinessPolicy.readiness_checks(
+        cast(Any, cfg),
+        connector_gap_rows_fn=(
+            readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows
+        ),
+        make_check=readiness_builder_mod.ReadinessReportBuilder.make_check,
+        package_available=readiness_builder_mod.ReadinessReportBuilder.package_available,
+    )
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -55,7 +70,9 @@ class TestReadinessReportBuilderConnectors:
             ],
         )
 
-        rows = readiness_connectors_mod.connector_gap_rows(cast(Any, cfg))
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
+            cast(Any, cfg),
+        )
 
         assert rows == [
             _connector_gap(
@@ -94,7 +111,9 @@ class TestReadinessReportBuilderConnectors:
             apis={},
         )
 
-        rows = readiness_connectors_mod.connector_gap_rows(cast(Any, cfg))
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
+            cast(Any, cfg),
+        )
 
         assert rows == [
             _connector_gap(
@@ -152,7 +171,7 @@ class TestReadinessReportBuilderConnectors:
             apis={},
         )
 
-        rows = readiness_connectors_mod.connector_gap_rows(
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
             cast(Any, cfg),
         )
 
@@ -210,7 +229,9 @@ class TestReadinessReportBuilderConnectors:
             apis={'known-api': object()},
         )
 
-        rows = readiness_connectors_mod.connector_gap_rows(cast(Any, cfg))
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
+            cast(Any, cfg),
+        )
 
         assert not rows
 
@@ -247,7 +268,9 @@ class TestReadinessReportBuilderConnectors:
             _connector_type,
         )
 
-        rows = readiness_connectors_mod.connector_gap_rows(cast(Any, cfg))
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
+            cast(Any, cfg),
+        )
 
         assert not rows
 
@@ -255,9 +278,7 @@ class TestReadinessReportBuilderConnectors:
         """Test readiness rows when gaps and optional dependency gaps are absent."""
         cfg = _cfg()
 
-        checks = readiness_mod.ReadinessReportBuilder.connector_readiness_checks(
-            cast(Any, cfg),
-        )
+        checks = _connector_checks(cfg)
 
         assert checks == [
             {
@@ -282,19 +303,19 @@ class TestReadinessReportBuilderConnectors:
         """Test readiness rows when connector and dependency errors exist."""
         cfg = _cfg()
         monkeypatch.setattr(
-            readiness_connectors_mod,
-            'connector_gap_rows',
+            readiness_connectors_mod.ConnectorReadinessPolicy,
+            'gap_rows',
             lambda _cfg: [{'connector': 'bad-source'}],
         )
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_connectors_mod.ConnectorReadinessPolicy,
             'missing_requirement_rows',
-            lambda *, cfg: [{'connector': 'bad-source', 'missing_package': 'boto3'}],
+            lambda *, cfg, package_available: [
+                {'connector': 'bad-source', 'missing_package': 'boto3'},
+            ],
         )
 
-        checks = readiness_mod.ReadinessReportBuilder.connector_readiness_checks(
-            cast(Any, cfg),
-        )
+        checks = _connector_checks(cfg)
 
         assert checks == [
             {
@@ -340,109 +361,18 @@ class TestReadinessReportBuilderConnectors:
             'extra': 'storage',
         }
 
-        rows = readiness_mod.ReadinessReportBuilder.dedupe_rows(
+        rows = readiness_connectors_mod.ReadinessSupportPolicy.dedupe_rows(
             [row, dict(row), {**row, 'connector': 'source-b'}],
         )
 
         assert rows == [row, {**row, 'connector': 'source-b'}]
-
-    @pytest.mark.parametrize(
-        ('value', 'expected'),
-        [
-            pytest.param('', None, id='blank'),
-            pytest.param('s3', 's3', id='known-scheme'),
-            pytest.param('not-a-real-scheme', None, id='unknown-scheme'),
-        ],
-    )
-    def test_connector_helper_module_coerces_connector_storage_scheme(
-        self,
-        value: str,
-        expected: str | None,
-    ) -> None:
-        """Connector helper module should normalize connector storage schemes."""
-        assert (
-            readiness_connectors_mod.coerce_connector_storage_scheme(value) == expected
-        )
-
-    @pytest.mark.parametrize(
-        ('path', 'expected'),
-        [
-            pytest.param('local/path.csv', None, id='local-path'),
-            pytest.param('://missing', None, id='missing-scheme'),
-            pytest.param('custom://bucket/input.csv', 'custom', id='custom-scheme'),
-        ],
-    )
-    def test_connector_helper_module_coerces_storage_scheme(
-        self,
-        path: str,
-        expected: str | None,
-    ) -> None:
-        """Connector helper module should normalize storage schemes from paths."""
-        assert readiness_connectors_mod.coerce_storage_scheme(path) == expected
-
-    @pytest.mark.parametrize(
-        ('issue', 'api_reference', 'expected'),
-        [
-            pytest.param(
-                'unknown api reference: missing-api',
-                None,
-                'Define the referenced API under top-level "apis".',
-                id='unknown-api-without-reference',
-            ),
-            pytest.param('unhandled', None, None, id='fallback-none'),
-        ],
-    )
-    def test_connector_helper_module_private_guidance_covers_fallbacks(
-        self,
-        issue: str,
-        api_reference: str | None,
-        expected: str | None,
-    ) -> None:
-        """Private connector guidance should still handle internal fallback cases."""
-        assert (
-            readiness_connectors_mod._connector_gap_guidance(
-                api_reference=api_reference,
-                issue=issue,
-            )
-            == expected
-        )
-
-    def test_connector_helper_module_private_dedupe_preserves_first_occurrence(
-        self,
-    ) -> None:
-        """Private connector dedupe helper should drop later duplicate rows."""
-        row = {
-            'connector': 'source-a',
-            'role': 'source',
-            'missing_package': 'boto3',
-            'reason': 's3 storage path requires boto3',
-            'extra': 'storage',
-        }
-
-        rows = readiness_connectors_mod._dedupe_rows(
-            [row, dict(row), {**row, 'connector': 'source-b'}],
-        )
-
-        assert rows == [row, {**row, 'connector': 'source-b'}]
-
-    def test_connector_helper_module_private_missing_requirement_guidance_plain_hint(
-        self,
-    ) -> None:
-        """Private dependency guidance should fall back to a plain install hint."""
-        assert (
-            readiness_connectors_mod._missing_requirement_guidance(
-                package='tables',
-                extra=None,
-            )
-            == 'Install tables.'
-        )
 
     def test_missing_requirement_guidance_returns_plain_install_hint_without_context(
         self,
     ) -> None:
         """Missing-dependency guidance should fall back to one plain install hint."""
         assert (
-            readiness_mod.ReadinessReportBuilder.missing_requirement_guidance(
+            readiness_connectors_mod.ReadinessSupportPolicy.missing_requirement_guidance(
                 package='tables',
                 extra=None,
             )
@@ -477,19 +407,11 @@ class TestReadinessReportBuilderConnectors:
             ],
         )
 
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'requirement_available',
-            lambda requirement: requirement.package == 'boto3',
-        )
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'netcdf_available',
-            lambda: False,
-        )
-
-        rows = readiness_mod.ReadinessReportBuilder.missing_requirement_rows(
-            cfg=cast(Any, cfg),
+        rows = (
+            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
+                cfg=cast(Any, cfg),
+                package_available=lambda module_name: module_name == 'boto3',
+            )
         )
 
         assert rows == [
@@ -525,7 +447,7 @@ class TestReadinessReportBuilderConnectors:
     ) -> None:
         """Test that class-based dependency checks still honor wrapper patches."""
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_builder_mod.ReadinessReportBuilder,
             'package_available',
             lambda module_name: False if module_name == 'boto3' else True,
         )
@@ -542,8 +464,13 @@ class TestReadinessReportBuilderConnectors:
             apis={},
         )
 
-        rows = readiness_mod.ReadinessReportBuilder.missing_requirement_rows(
-            cfg=cast(Any, cfg),
+        rows = (
+            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
+                cfg=cast(Any, cfg),
+                package_available=(
+                    readiness_builder_mod.ReadinessReportBuilder.package_available
+                ),
+            )
         )
 
         assert rows == [
@@ -589,19 +516,11 @@ class TestReadinessReportBuilderConnectors:
             ],
         )
 
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'netcdf_available',
-            lambda: True,
-        )
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'requirement_available',
-            lambda requirement: True,
-        )
-
-        rows = readiness_mod.ReadinessReportBuilder.missing_requirement_rows(
-            cfg=cast(Any, cfg),
+        rows = (
+            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
+                cfg=cast(Any, cfg),
+                package_available=lambda _module_name: True,
+            )
         )
 
         assert not rows
@@ -616,7 +535,7 @@ class TestReadinessReportBuilderConnectors:
             'file',
         )
 
-        row = readiness_mod.ReadinessReportBuilder.requirement_row(
+        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
             connector='out',
             detected_format='csv',
             detected_scheme='s3',
@@ -649,7 +568,7 @@ class TestReadinessReportBuilderConnectors:
             'file',
         )
 
-        row = readiness_mod.ReadinessReportBuilder.requirement_row(
+        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
             connector='out',
             detected_format='csv',
             reason='csv format requires pyarrow',
@@ -685,10 +604,9 @@ class TestReadinessReportBuilderConnectors:
         expected: bool,
     ) -> None:
         """Test netCDF availability resolution across supported backend combos."""
-        monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            'package_available',
-            lambda module_name: module_name in available_modules,
+        assert (
+            readiness_connectors_mod.ConnectorReadinessPolicy.netcdf_available(
+                package_available=lambda module_name: module_name in available_modules,
+            )
+            is expected
         )
-
-        assert readiness_mod.ReadinessReportBuilder.netcdf_available() is expected
