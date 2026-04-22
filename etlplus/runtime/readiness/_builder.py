@@ -18,6 +18,7 @@ from . import _connectors
 from . import _providers
 from . import _strict
 from ._base import ReadinessBaseMixin
+from ._base import TokenReferenceCollector
 from ._support import ReadinessReport
 
 # SECTION: EXPORTS ========================================================== #
@@ -236,7 +237,9 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
                     'error',
                     'Configuration still contains unresolved substitution tokens.',
                     missing_env=context.unresolved_tokens,
-                    references=cls.token_reference_rows(context.resolved_raw),
+                    references=TokenReferenceCollector.collect_rows(
+                        context.resolved_raw,
+                    ),
                     unresolved_tokens=context.unresolved_tokens,
                 ),
             )
