@@ -96,19 +96,6 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         """
         Return provider-specific environment readiness checks for one resolved
         config.
-
-        Parameters
-        ----------
-        cfg : Config
-            The configuration object containing the connectors and profile.
-        env : Mapping[str, str]
-            The environment variables to consider for provider readiness.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            A list of dictionaries representing the provider-specific
-            environment readiness checks.
         """
         return _providers.ProviderEnvironmentPolicy.environment_checks(
             cfg=cfg,
@@ -137,16 +124,6 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
     ) -> list[dict[str, Any]]:
         """
         Return strict-mode config issues for one resolved raw config mapping.
-
-        Parameters
-        ----------
-        raw : StrAnyMap
-            The raw configuration data.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            A list of dictionaries representing the strict-mode config issues.
         """
         return _strict.StrictConfigValidator.config_issue_rows(
             raw=raw,
