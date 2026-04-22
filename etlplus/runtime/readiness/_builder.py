@@ -68,7 +68,10 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         env: Mapping[str, str],
     ) -> list[Any]:
         """Return provider-environment rows for one resolved config."""
-        return _providers.provider_environment_rows(cfg=cfg, env=env)
+        return _providers.ProviderEnvironmentPolicy.environment_rows(
+            cfg=cfg,
+            env=env,
+        )
 
     # -- Class Methods -- #
 
@@ -161,7 +164,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             environment readiness checks.
 
         """
-        return _providers.provider_environment_checks(
+        return _providers.ProviderEnvironmentPolicy.environment_checks(
             cfg=cfg,
             env=env,
             make_check=cls.make_check,
