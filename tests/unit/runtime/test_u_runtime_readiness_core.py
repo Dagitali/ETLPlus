@@ -344,7 +344,9 @@ class TestReadinessReportBuilderCore:
             )
 
         monkeypatch.setattr(
-            readiness_builder_mod.Config, 'from_dict', _config_from_dict,
+            readiness_builder_mod.Config,
+            'from_dict',
+            _config_from_dict,
         )
         monkeypatch.setattr(
             readiness_base_mod.SubstitutionResolver,
