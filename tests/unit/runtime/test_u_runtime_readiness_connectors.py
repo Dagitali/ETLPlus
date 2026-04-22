@@ -311,7 +311,7 @@ class TestReadinessReportBuilderConnectors:
         )
         monkeypatch.setattr(
             readiness_mod.ReadinessReportBuilder,
-            '_connector_requirement_rows',
+            '_missing_requirement_rows_for_connectors',
             lambda _cfg: [{'connector': 'bad-source', 'missing_package': 'boto3'}],
         )
 
@@ -361,7 +361,7 @@ class TestReadinessReportBuilderConnectors:
             'extra': 'storage',
         }
 
-        rows = readiness_mod.ReadinessReportBuilder.dedupe_rows(
+        rows = readiness_connectors_mod.ReadinessSupportPolicy.dedupe_rows(
             [row, dict(row), {**row, 'connector': 'source-b'}],
         )
 
@@ -372,7 +372,7 @@ class TestReadinessReportBuilderConnectors:
     ) -> None:
         """Missing-dependency guidance should fall back to one plain install hint."""
         assert (
-            readiness_mod.ReadinessReportBuilder.missing_requirement_guidance(
+            readiness_connectors_mod.ReadinessSupportPolicy.missing_requirement_guidance(
                 package='tables',
                 extra=None,
             )

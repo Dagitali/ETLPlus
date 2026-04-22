@@ -142,20 +142,53 @@ class TestReadinessReportBuilderCore:
         self,
     ) -> None:
         """Test connector-storage coercion for blank, valid, and invalid text."""
-        builder = readiness_mod.ReadinessReportBuilder
-        assert builder.coerce_connector_storage_scheme('') is None
-        assert builder.coerce_connector_storage_scheme('s3') == 's3'
-        assert builder.coerce_connector_storage_scheme('not-a-real-scheme') is None
+        assert (
+            readiness_base_mod.ReadinessSupportPolicy.coerce_connector_storage_scheme(
+                '',
+            )
+            is None
+        )
+        assert (
+            readiness_base_mod.ReadinessSupportPolicy.coerce_connector_storage_scheme(
+                's3',
+            )
+            == 's3'
+        )
+        assert (
+            readiness_base_mod.ReadinessSupportPolicy.coerce_connector_storage_scheme(
+                'not-a-real-scheme',
+            )
+            is None
+        )
 
     def test_coerce_storage_scheme_handles_missing_and_unknown_schemes(
         self,
     ) -> None:
         """Test storage-scheme coercion for local, blank, known, and unknown."""
-        builder = readiness_mod.ReadinessReportBuilder
-        assert builder.coerce_storage_scheme('local/path.csv') is None
-        assert builder.coerce_storage_scheme('://missing') is None
-        assert builder.coerce_storage_scheme('s3://bucket/input.csv') == 's3'
-        assert builder.coerce_storage_scheme('custom://bucket/input.csv') == 'custom'
+        assert (
+            readiness_base_mod.ReadinessSupportPolicy.coerce_storage_scheme(
+                'local/path.csv',
+            )
+            is None
+        )
+        assert (
+            readiness_base_mod.ReadinessSupportPolicy.coerce_storage_scheme(
+                '://missing',
+            )
+            is None
+        )
+        assert (
+            readiness_base_mod.ReadinessSupportPolicy.coerce_storage_scheme(
+                's3://bucket/input.csv',
+            )
+            == 's3'
+        )
+        assert (
+            readiness_base_mod.ReadinessSupportPolicy.coerce_storage_scheme(
+                'custom://bucket/input.csv',
+            )
+            == 'custom'
+        )
 
     def test_collect_substitution_tokens_walks_nested_container_types(
         self,
@@ -511,7 +544,7 @@ class TestReadinessReportBuilderCore:
     ) -> None:
         """Connector-gap guidance should cover non-standard issue shapes."""
         assert (
-            readiness_mod.ReadinessReportBuilder.connector_gap_guidance(
+            readiness_base_mod.ReadinessSupportPolicy.connector_gap_guidance(
                 api_reference=api_reference,
                 issue=issue,
             )
@@ -527,7 +560,7 @@ class TestReadinessReportBuilderCore:
             targets=[SimpleNamespace(name='dst-a')],
         )
 
-        rows = list(readiness_mod.ReadinessReportBuilder.iter_connectors(cfg))
+        rows = list(readiness_base_mod.ReadinessSupportPolicy.iter_connectors(cfg))
 
         assert [(role, connector.name) for role, connector in rows] == [
             ('source', 'src-a'),
@@ -606,7 +639,9 @@ class TestReadinessReportBuilderCore:
     ) -> None:
         """Missing-dependency guidance should reflect format and scheme context."""
         assert (
-            readiness_mod.ReadinessReportBuilder.missing_requirement_guidance(**kwargs)
+            readiness_base_mod.ReadinessSupportPolicy.missing_requirement_guidance(
+                **kwargs,
+            )
             == expected
         )
 
