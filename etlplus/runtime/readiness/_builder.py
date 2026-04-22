@@ -89,33 +89,6 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             provider_environment_rows_fn=cls._provider_environment_rows,
         )
 
-    @classmethod
-    def _provider_environment_rows(
-        cls,
-        cfg: Config,
-        env: Mapping[str, str],
-    ) -> list[Any]:
-        """Return provider-environment rows for one resolved config."""
-        return _providers.ProviderEnvironmentPolicy.environment_rows(
-            cfg=cfg,
-            env=env,
-        )
-
-    @classmethod
-    def _strict_config_issues(
-        cls,
-        *,
-        raw: StrAnyMap,
-    ) -> list[dict[str, Any]]:
-        """
-        Return strict-mode config issues for one resolved raw config mapping.
-        """
-        return _strict.StrictConfigValidator.config_issue_rows(
-            raw=raw,
-            connector_type_guidance=_connectors.connector_type_guidance,
-            connector_type_choices=_connectors.connector_type_choices,
-        )
-
     # -- Class Methods -- #
 
     @classmethod
@@ -322,3 +295,30 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             include_runtime_checks=False,
         )
         return cls._build_report(checks=checks, include_python_version=False)
+
+    # -- Internal Static Methods -- #
+
+    @staticmethod
+    def _provider_environment_rows(
+        cfg: Config,
+        env: Mapping[str, str],
+    ) -> list[Any]:
+        """Return provider-environment rows for one resolved config."""
+        return _providers.ProviderEnvironmentPolicy.environment_rows(
+            cfg=cfg,
+            env=env,
+        )
+
+    @staticmethod
+    def _strict_config_issues(
+        *,
+        raw: StrAnyMap,
+    ) -> list[dict[str, Any]]:
+        """
+        Return strict-mode config issues for one resolved raw config mapping.
+        """
+        return _strict.StrictConfigValidator.config_issue_rows(
+            raw=raw,
+            connector_type_guidance=_connectors.connector_type_guidance,
+            connector_type_choices=_connectors.connector_type_choices,
+        )
