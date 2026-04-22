@@ -18,19 +18,15 @@ from . import _connectors
 
 
 __all__ = [
-    # Functions
-    'strict_config_issue_rows',
-    'strict_connector_names',
-    'strict_job_issue_rows',
-    'strict_job_ref_issue',
-    'strict_named_section_names',
+    # Classes
+    'StrictConfigValidator',
 ]
 
 
-# SECTION: INTERNAL CLASSES ================================================= #
+# SECTION: CLASSES ========================================================== #
 
 
-class _StrictConfigValidator:
+class StrictConfigValidator:
     """
     Validate tolerant config shapes and references in strict readiness mode.
     """
@@ -55,7 +51,14 @@ class _StrictConfigValidator:
         This method checks the configuration for issues that may not be caught
         by tolerant parsing, such as missing or invalid connector definitions.
 
-
+        Parameters
+        ----------
+        raw : StrAnyMap
+            The raw configuration mapping.
+        connector_type_guidance : Callable[[str], str], optional
+            A function to provide guidance for connector types.
+        connector_type_choices : Callable[[], tuple[str, ...]], optional
+            A function to provide available connector type choices.
 
         Returns
         -------
@@ -470,6 +473,11 @@ class _StrictConfigValidator:
             A list to append any found issues.
         guidance : str
             Guidance message for the section.
+
+        Returns
+        -------
+        set[str] | None
+            The set of keys in the section, or None if the section is invalid.
         """
         value = raw.get(section)
         if value is None:
@@ -486,104 +494,3 @@ class _StrictConfigValidator:
             )
             return None
         return {str(name) for name in value}
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-def strict_config_issue_rows(
-    *,
-    raw: StrAnyMap,
-    connector_type_guidance: Callable[[str], str] = _connectors.connector_type_guidance,
-    connector_type_choices: Callable[[], tuple[str, ...]] = (
-        _connectors.connector_type_choices
-    ),
-) -> list[dict[str, Any]]:
-    """Return strict-mode config issues hidden by tolerant parsing."""
-    return _StrictConfigValidator.config_issue_rows(
-        raw=raw,
-        connector_type_guidance=connector_type_guidance,
-        connector_type_choices=connector_type_choices,
-    )
-
-
-def strict_connector_names(
-    *,
-    raw: StrAnyMap,
-    section: str,
-    issues: list[dict[str, Any]],
-    connector_type_guidance: Callable[[str], str] = _connectors.connector_type_guidance,
-    connector_type_choices: Callable[[], tuple[str, ...]] = (
-        _connectors.connector_type_choices
-    ),
-) -> set[str] | None:
-    """Validate connector entries in *section* and return known names."""
-    return _StrictConfigValidator.connector_names(
-        raw=raw,
-        section=section,
-        issues=issues,
-        connector_type_guidance=connector_type_guidance,
-        connector_type_choices=connector_type_choices,
-    )
-
-
-def strict_job_issue_rows(
-    *,
-    raw: StrAnyMap,
-    issues: list[dict[str, Any]],
-    source_names: set[str] | None,
-    target_names: set[str] | None,
-    transform_names: set[str] | None,
-    validation_names: set[str] | None,
-) -> None:
-    """Append strict-mode job diagnostics to *issues*."""
-    _StrictConfigValidator.job_issue_rows(
-        raw=raw,
-        issues=issues,
-        source_names=source_names,
-        target_names=target_names,
-        transform_names=transform_names,
-        validation_names=validation_names,
-    )
-
-
-def strict_job_ref_issue(
-    *,
-    entry: Mapping[str, Any],
-    field: str,
-    index: int,
-    issues: list[dict[str, Any]],
-    job_name: str | None,
-    required: bool,
-    required_key: str,
-    section_names: set[str] | None,
-    section_label: str,
-) -> None:
-    """Append one strict-mode job reference issue when needed."""
-    _StrictConfigValidator.job_ref_issue(
-        entry=entry,
-        field=field,
-        index=index,
-        issues=issues,
-        job_name=job_name,
-        required=required,
-        required_key=required_key,
-        section_names=section_names,
-        section_label=section_label,
-    )
-
-
-def strict_named_section_names(
-    *,
-    raw: StrAnyMap,
-    section: str,
-    issues: list[dict[str, Any]],
-    guidance: str,
-) -> set[str] | None:
-    """Validate one mapping-like top-level section and return its keys."""
-    return _StrictConfigValidator.named_section_names(
-        raw=raw,
-        section=section,
-        issues=issues,
-        guidance=guidance,
-    )

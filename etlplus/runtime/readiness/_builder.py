@@ -267,7 +267,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         list[dict[str, Any]]
             A list of dictionaries representing the strict-mode config issues.
         """
-        return _strict.strict_config_issue_rows(
+        return _strict.StrictConfigValidator.config_issue_rows(
             raw=raw,
             connector_type_guidance=_connectors.connector_type_guidance,
             connector_type_choices=_connectors.connector_type_choices,
@@ -298,7 +298,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         set[str] | None
             A set of known connector names, or None if validation fails.
         """
-        return _strict.strict_connector_names(
+        return _strict.StrictConfigValidator.connector_names(
             raw=raw,
             section=section,
             issues=issues,
@@ -334,7 +334,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         validation_names : set[str] | None
             A set of known validation names, or None if validation fails.
         """
-        _strict.strict_job_issue_rows(
+        _strict.StrictConfigValidator.job_issue_rows(
             raw=raw,
             issues=issues,
             source_names=source_names,
@@ -380,7 +380,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         section_label : str
             The label of the section.
         """
-        _strict.strict_job_ref_issue(
+        _strict.StrictConfigValidator.job_ref_issue(
             entry=entry,
             field=field,
             index=index,
@@ -419,7 +419,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         set[str] | None
             A set of known section names, or None if validation fails.
         """
-        return _strict.strict_named_section_names(
+        return _strict.StrictConfigValidator.named_section_names(
             raw=raw,
             section=section,
             issues=issues,
