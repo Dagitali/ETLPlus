@@ -62,11 +62,11 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             cfg,
             connector_gap_rows_fn=_connectors.ConnectorReadinessPolicy.gap_rows,
             make_check=cls.make_check,
-            missing_requirement_rows_fn=cls._missing_requirement_rows_for_connectors,
+            missing_requirement_rows_fn=cls._connector_requirement_rows,
         )
 
     @classmethod
-    def _missing_requirement_rows_for_connectors(
+    def _connector_requirement_rows(
         cls,
         cfg: Config,
     ) -> list[dict[str, Any]]:
