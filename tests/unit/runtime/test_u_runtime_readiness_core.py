@@ -13,7 +13,8 @@ from types import SimpleNamespace
 import pytest
 
 import etlplus.runtime.readiness._base as readiness_base_mod
-import etlplus.runtime.readiness._builder as readiness_mod
+import etlplus.runtime.readiness._builder as readiness_builder_mod
+import etlplus.runtime.readiness._connectors as readiness_connectors_mod
 
 from .pytest_runtime_readiness import build_runtime_cfg as _cfg
 from .pytest_runtime_readiness import (
@@ -57,12 +58,12 @@ class TestReadinessReportBuilderCore:
             return [{'name': 'config-file', 'status': 'ok'}]
 
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_builder_mod.ReadinessReportBuilder,
             'config_checks',
             _config_checks,
         )
 
-        report = readiness_mod.ReadinessReportBuilder.build(
+        report = readiness_builder_mod.ReadinessReportBuilder.build(
             config_path='pipeline.yml',
             env={'MODE': 'test'},
             strict=True,
@@ -84,17 +85,17 @@ class TestReadinessReportBuilderCore:
         Test that runtime-only builds emit the stable non-config readiness rows.
         """
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_builder_mod.ReadinessReportBuilder,
             'supported_python_check',
             lambda: {'name': 'python-version', 'status': 'ok'},
         )
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_builder_mod.ReadinessReportBuilder,
             'python_version',
             classmethod(lambda cls: '3.13.12'),
         )
 
-        report = readiness_mod.ReadinessReportBuilder.build(env={})
+        report = readiness_builder_mod.ReadinessReportBuilder.build(env={})
 
         assert report == {
             'checks': [
@@ -108,7 +109,7 @@ class TestReadinessReportBuilderCore:
                     'status': 'skipped',
                 },
             ],
-            'etlplus_version': readiness_mod._ETLPLUS_VERSION,
+            'etlplus_version': readiness_builder_mod._ETLPLUS_VERSION,
             'python_version': '3.13.12',
             'status': 'ok',
         }
@@ -119,12 +120,12 @@ class TestReadinessReportBuilderCore:
     ) -> None:
         """Test that build converts config-check exceptions into error rows."""
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_builder_mod.ReadinessReportBuilder,
             'config_checks',
             lambda _config_path, env=None: (_ for _ in ()).throw(TypeError('boom')),
         )
 
-        report = readiness_mod.ReadinessReportBuilder.build(
+        report = readiness_builder_mod.ReadinessReportBuilder.build(
             config_path='pipeline.yml',
             env={},
         )
@@ -231,12 +232,12 @@ class TestReadinessReportBuilderCore:
             return [{'name': 'connector-readiness', 'status': 'ok'}]
 
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            '_connector_checks',
-            _connector_readiness_checks,
+            readiness_connectors_mod.ConnectorReadinessPolicy,
+            'readiness_checks',
+            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
         )
 
-        checks = readiness_mod.ReadinessReportBuilder.config_checks(
+        checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
             str(config_path),
             env={},
             include_runtime_checks=False,
@@ -256,7 +257,7 @@ class TestReadinessReportBuilderCore:
         """Test that config checks return a config-file error for missing paths."""
         missing_path = tmp_path / 'missing.yml'
 
-        checks = readiness_mod.ReadinessReportBuilder.config_checks(
+        checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
             str(missing_path),
             env={},
         )
@@ -284,17 +285,17 @@ class TestReadinessReportBuilderCore:
             resolved_cfg=resolved_cfg,
         )
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            '_connector_checks',
-            lambda _cfg: [{'name': 'connector-readiness', 'status': 'ok'}],
+            readiness_connectors_mod.ConnectorReadinessPolicy,
+            'readiness_checks',
+            lambda *_args, **_kwargs: [{'name': 'connector-readiness', 'status': 'ok'}],
         )
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_builder_mod.ReadinessReportBuilder,
             '_provider_checks',
             lambda *, cfg, env: [{'name': 'provider-environment', 'status': 'ok'}],
         )
 
-        checks = readiness_mod.ReadinessReportBuilder.config_checks(
+        checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
             str(config_path),
             env={},
         )
@@ -329,7 +330,7 @@ class TestReadinessReportBuilderCore:
         config_path = write_pipeline_config(tmp_path)
 
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_builder_mod.ReadinessReportBuilder,
             'load_raw_config',
             lambda _path: {'profile': {'env': {}}, 'vars': {'token': 'value'}},
         )
@@ -342,7 +343,9 @@ class TestReadinessReportBuilderCore:
                 vars=raw.get('vars', {}),
             )
 
-        monkeypatch.setattr(readiness_mod.Config, 'from_dict', _config_from_dict)
+        monkeypatch.setattr(
+            readiness_builder_mod.Config, 'from_dict', _config_from_dict,
+        )
         monkeypatch.setattr(
             readiness_base_mod.SubstitutionResolver,
             'deep',
@@ -356,12 +359,12 @@ class TestReadinessReportBuilderCore:
             return [{'name': 'connector-readiness', 'status': 'ok'}]
 
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            '_connector_checks',
-            _connector_readiness_checks,
+            readiness_connectors_mod.ConnectorReadinessPolicy,
+            'readiness_checks',
+            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
         )
 
-        checks = readiness_mod.ReadinessReportBuilder.config_checks(
+        checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
             str(config_path),
             env={},
         )
@@ -420,12 +423,12 @@ class TestReadinessReportBuilderCore:
             return [{'name': 'connector-readiness', 'status': 'ok'}]
 
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            '_connector_checks',
-            _connector_readiness_checks,
+            readiness_connectors_mod.ConnectorReadinessPolicy,
+            'readiness_checks',
+            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
         )
 
-        checks = readiness_mod.ReadinessReportBuilder.config_checks(
+        checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
             str(config_path),
             env={},
             strict=True,
@@ -459,22 +462,22 @@ class TestReadinessReportBuilderCore:
             resolved_cfg=resolved_cfg,
         )
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_builder_mod.ReadinessReportBuilder,
             '_strict_config_issues',
             lambda *, raw: [],
         )
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
-            '_connector_checks',
-            lambda _cfg: [{'name': 'connector-readiness', 'status': 'ok'}],
+            readiness_connectors_mod.ConnectorReadinessPolicy,
+            'readiness_checks',
+            lambda *_args, **_kwargs: [{'name': 'connector-readiness', 'status': 'ok'}],
         )
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_builder_mod.ReadinessReportBuilder,
             '_provider_checks',
             lambda *, cfg, env: [{'name': 'provider-environment', 'status': 'ok'}],
         )
 
-        checks = readiness_mod.ReadinessReportBuilder.config_checks(
+        checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
             str(config_path),
             env={},
             strict=True,
@@ -597,13 +600,13 @@ class TestReadinessReportBuilderCore:
 
         if match is not None:
             with pytest.raises(TypeError, match=match):
-                readiness_mod.ReadinessReportBuilder.load_raw_config(
+                readiness_builder_mod.ReadinessReportBuilder.load_raw_config(
                     'pipeline.yml',
                 )
             return
 
         assert (
-            readiness_mod.ReadinessReportBuilder.load_raw_config(
+            readiness_builder_mod.ReadinessReportBuilder.load_raw_config(
                 'pipeline.yml',
             )
             == expected
@@ -652,7 +655,10 @@ class TestReadinessReportBuilderCore:
             {'status': 'warn'},
         ]
 
-        assert readiness_mod.ReadinessReportBuilder.overall_status(checks) == 'warn'
+        assert (
+            readiness_builder_mod.ReadinessReportBuilder.overall_status(checks)
+            == 'warn'
+        )
 
     def test_package_available_handles_find_spec_errors(
         self,
@@ -665,7 +671,10 @@ class TestReadinessReportBuilderCore:
             lambda _module_name: (_ for _ in ()).throw(ValueError('boom')),
         )
 
-        assert readiness_mod.ReadinessReportBuilder.package_available('broken') is False
+        assert (
+            readiness_builder_mod.ReadinessReportBuilder.package_available('broken')
+            is False
+        )
 
     def test_strict_config_report_wraps_config_checks_without_runtime_rows(
         self,
@@ -692,19 +701,19 @@ class TestReadinessReportBuilderCore:
             return [{'name': 'config-structure', 'status': 'ok'}]
 
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_builder_mod.ReadinessReportBuilder,
             'config_checks',
             _config_checks,
         )
 
-        report = readiness_mod.ReadinessReportBuilder.strict_config_report(
+        report = readiness_builder_mod.ReadinessReportBuilder.strict_config_report(
             config_path='pipeline.yml',
             env={'MODE': 'test'},
         )
 
         assert report == {
             'checks': [{'name': 'config-structure', 'status': 'ok'}],
-            'etlplus_version': readiness_mod._ETLPLUS_VERSION,
+            'etlplus_version': readiness_builder_mod._ETLPLUS_VERSION,
             'status': 'ok',
         }
         assert captured == {
@@ -755,7 +764,7 @@ class TestReadinessReportBuilderCore:
     ) -> None:
         """Supported-Python readiness should reflect the active interpreter range."""
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_builder_mod.ReadinessReportBuilder,
             'python_version',
             classmethod(lambda cls: version),
         )
@@ -765,7 +774,7 @@ class TestReadinessReportBuilderCore:
             SimpleNamespace(version_info=version_info),
         )
 
-        check = readiness_mod.ReadinessReportBuilder.supported_python_check()
+        check = readiness_builder_mod.ReadinessReportBuilder.supported_python_check()
 
         assert check == expected
 

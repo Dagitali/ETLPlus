@@ -12,7 +12,7 @@ from typing import cast
 
 import pytest
 
-import etlplus.runtime.readiness._builder as readiness_mod
+import etlplus.runtime.readiness._builder as readiness_builder_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
 import etlplus.runtime.readiness._providers as readiness_providers_mod
 from etlplus.connector import DataConnectorType
@@ -241,9 +241,9 @@ class TestReadinessReportBuilderProviders:
         checks = readiness_providers_mod.ProviderEnvironmentPolicy.environment_checks(
             cfg=cast(Any, _cfg()),
             env={},
-            make_check=readiness_mod.ReadinessReportBuilder.make_check,
+            make_check=readiness_builder_mod.ReadinessReportBuilder.make_check,
             provider_environment_rows_fn=(
-                readiness_mod.ReadinessReportBuilder._provider_environment_rows
+                readiness_builder_mod.ReadinessReportBuilder._provider_environment_rows
             ),
         )
 

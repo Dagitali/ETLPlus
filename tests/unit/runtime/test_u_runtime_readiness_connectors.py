@@ -12,7 +12,7 @@ from typing import cast
 
 import pytest
 
-import etlplus.runtime.readiness._builder as readiness_mod
+import etlplus.runtime.readiness._builder as readiness_builder_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
 from etlplus.connector import DataConnectorType
 from etlplus.runtime.readiness._support import RequirementSpec
@@ -37,15 +37,8 @@ def _connector_checks(cfg: object) -> list[dict[str, object]]:
         connector_gap_rows_fn=(
             readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows
         ),
-        make_check=readiness_mod.ReadinessReportBuilder.make_check,
-        missing_requirement_rows_fn=lambda inner_cfg: (
-            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, inner_cfg),
-                package_available=(
-                    readiness_mod.ReadinessReportBuilder.package_available
-                ),
-            )
-        ),
+        make_check=readiness_builder_mod.ReadinessReportBuilder.make_check,
+        package_available=readiness_builder_mod.ReadinessReportBuilder.package_available,
     )
 
 
@@ -454,7 +447,7 @@ class TestReadinessReportBuilderConnectors:
     ) -> None:
         """Test that class-based dependency checks still honor wrapper patches."""
         monkeypatch.setattr(
-            readiness_mod.ReadinessReportBuilder,
+            readiness_builder_mod.ReadinessReportBuilder,
             'package_available',
             lambda module_name: False if module_name == 'boto3' else True,
         )
@@ -475,7 +468,7 @@ class TestReadinessReportBuilderConnectors:
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
                 cfg=cast(Any, cfg),
                 package_available=(
-                    readiness_mod.ReadinessReportBuilder.package_available
+                    readiness_builder_mod.ReadinessReportBuilder.package_available
                 ),
             )
         )
