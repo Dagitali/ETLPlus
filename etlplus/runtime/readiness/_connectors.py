@@ -70,36 +70,6 @@ def _connector_type(
         return None
 
 
-def _requirement_row(
-    *,
-    connector: str,
-    detected_format: str | None = None,
-    detected_scheme: str | None = None,
-    reason: str,
-    requirement: RequirementSpec,
-    role: str,
-) -> ReadinessRow:
-    """Return one missing-requirement row."""
-    row: ReadinessRow = {
-        'connector': connector,
-        'extra': requirement.extra or '',
-        'guidance': ReadinessSupportPolicy.missing_requirement_guidance(
-            detected_format=detected_format,
-            detected_scheme=detected_scheme,
-            package=requirement.package,
-            extra=requirement.extra,
-        ),
-        'missing_package': requirement.package,
-        'reason': reason,
-        'role': role,
-    }
-    if detected_format is not None:
-        row['detected_format'] = detected_format
-    if detected_scheme is not None:
-        row['detected_scheme'] = detected_scheme
-    return row
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -281,7 +251,7 @@ class ConnectorReadinessPolicy:
                 requirement = SCHEME_EXTRA_REQUIREMENTS.get(scheme or '')
                 if scheme and requirement and not requirement_available_fn(requirement):
                     rows.append(
-                        _requirement_row(
+                        cls.requirement_row(
                             connector=connector_name,
                             detected_scheme=scheme,
                             reason=(
@@ -295,7 +265,7 @@ class ConnectorReadinessPolicy:
             if format_name == 'nc':
                 if not netcdf_available_fn():
                     rows.append(
-                        _requirement_row(
+                        cls.requirement_row(
                             connector=connector_name,
                             detected_format='nc',
                             reason=(
@@ -314,7 +284,7 @@ class ConnectorReadinessPolicy:
             requirement = FORMAT_EXTRA_REQUIREMENTS.get(format_name)
             if requirement and not requirement_available_fn(requirement):
                 rows.append(
-                    _requirement_row(
+                    cls.requirement_row(
                         connector=connector_name,
                         detected_format=format_name,
                         reason=f'{format_name} format requires {requirement.package}',
@@ -442,3 +412,33 @@ class ConnectorReadinessPolicy:
         return any(
             package_available(module_name) for module_name in requirement.modules
         )
+
+    @staticmethod
+    def requirement_row(
+        *,
+        connector: str,
+        detected_format: str | None = None,
+        detected_scheme: str | None = None,
+        reason: str,
+        requirement: RequirementSpec,
+        role: str,
+    ) -> ReadinessRow:
+        """Return one missing-requirement row."""
+        row: ReadinessRow = {
+            'connector': connector,
+            'extra': requirement.extra or '',
+            'guidance': ReadinessSupportPolicy.missing_requirement_guidance(
+                detected_format=detected_format,
+                detected_scheme=detected_scheme,
+                package=requirement.package,
+                extra=requirement.extra,
+            ),
+            'missing_package': requirement.package,
+            'reason': reason,
+            'role': role,
+        }
+        if detected_format is not None:
+            row['detected_format'] = detected_format
+        if detected_scheme is not None:
+            row['detected_scheme'] = detected_scheme
+        return row
