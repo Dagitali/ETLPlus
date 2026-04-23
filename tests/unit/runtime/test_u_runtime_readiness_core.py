@@ -15,6 +15,7 @@ import pytest
 import etlplus.runtime.readiness._base as readiness_base_mod
 import etlplus.runtime.readiness._builder as readiness_builder_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
+import etlplus.runtime.readiness._providers as readiness_providers_mod
 
 from .pytest_runtime_readiness import build_runtime_cfg as _cfg
 from .pytest_runtime_readiness import (
@@ -677,6 +678,53 @@ class TestReadinessReportBuilderCore:
             readiness_builder_mod.ReadinessReportBuilder.package_available('broken')
             is False
         )
+
+    def test_provider_checks_delegate_to_provider_environment_policy(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Provider checks should forward config, env, and builder seams."""
+        captured: dict[str, object] = {}
+
+        def _environment_checks(
+            *,
+            cfg: object,
+            env: Mapping[str, str],
+            make_check: object,
+            provider_environment_rows_fn: object,
+        ) -> list[dict[str, object]]:
+            captured.update(
+                {
+                    'cfg': cfg,
+                    'env': env,
+                    'make_check': make_check,
+                    'provider_environment_rows_fn': provider_environment_rows_fn,
+                },
+            )
+            return [{'name': 'provider-environment', 'status': 'ok'}]
+
+        monkeypatch.setattr(
+            readiness_providers_mod.ProviderEnvironmentPolicy,
+            'environment_checks',
+            _environment_checks,
+        )
+        cfg = _cfg()
+        env = {'AWS_PROFILE': 'dev'}
+
+        checks = readiness_builder_mod.ReadinessReportBuilder._provider_checks(
+            cfg=cfg,
+            env=env,
+        )
+
+        assert checks == [{'name': 'provider-environment', 'status': 'ok'}]
+        assert captured == {
+            'cfg': cfg,
+            'env': env,
+            'make_check': readiness_builder_mod.ReadinessReportBuilder.make_check,
+            'provider_environment_rows_fn': (
+                readiness_builder_mod.ReadinessReportBuilder._provider_environment_rows
+            ),
+        }
 
     def test_strict_config_report_wraps_config_checks_without_runtime_rows(
         self,
