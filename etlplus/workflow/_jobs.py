@@ -22,6 +22,7 @@ from ..utils import IntParser
 from ..utils import MappingFieldParser
 from ..utils import MappingParser
 from ..utils import SequenceParser
+from ..utils import TextNormalizer
 from ..utils import ValueParser
 
 # SECTION: EXPORTS ========================================================== #
@@ -36,6 +37,35 @@ __all__ = [
     'TransformRef',
     'ValidationRef',
 ]
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_VALIDATION_PHASE_CHOICES = {
+    'before_transform': 'before_transform',
+    'after_transform': 'after_transform',
+    'both': 'both',
+}
+_VALIDATION_SEVERITY_CHOICES = {
+    'warn': 'warn',
+    'error': 'error',
+}
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _normalize_optional_choice(
+    value: object,
+    *,
+    mapping: dict[str, str],
+) -> str | None:
+    """Return one optional canonical choice string when recognized."""
+    text = ValueParser.optional_str(value)
+    if text is None:
+        return None
+    return TextNormalizer.resolve_choice(text, mapping=mapping, default=text)
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -364,6 +394,12 @@ class ValidationRef:
             return None
         return cls(
             ruleset=ruleset,
-            severity=ValueParser.optional_str(data.get('severity')),
-            phase=ValueParser.optional_str(data.get('phase')),
+            severity=_normalize_optional_choice(
+                data.get('severity'),
+                mapping=_VALIDATION_SEVERITY_CHOICES,
+            ),
+            phase=_normalize_optional_choice(
+                data.get('phase'),
+                mapping=_VALIDATION_PHASE_CHOICES,
+            ),
         )
