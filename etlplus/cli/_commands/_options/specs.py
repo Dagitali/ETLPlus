@@ -28,8 +28,6 @@ __all__ = [
     'RenderTemplateOption',
     'RenderTemplatePathOption',
     'RulesOption',
-    'SchemaFormatOption',
-    'SchemaOption',
     'StrictOption',
     'SourcesOption',
     'SummaryOption',
@@ -120,22 +118,6 @@ RulesOption = typer_value_option_alias(
     str,
     '--rules',
     help_text='Validation rules as JSON string.',
-    show_default=None,
-)
-
-SchemaOption = typer_value_option_alias(
-    str | None,
-    '--schema',
-    help_text='Schema path used for schema-based validation.',
-    metavar='PATH',
-    show_default=None,
-)
-
-SchemaFormatOption = typer_value_option_alias(
-    Literal['xsd'] | None,
-    '--schema-format',
-    help_text='Schema format override for schema-based validation.',
-    metavar='FORMAT',
     show_default=None,
 )
 
