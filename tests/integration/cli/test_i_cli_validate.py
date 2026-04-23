@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import io
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
 
@@ -36,6 +37,123 @@ pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 class TestCliValidate:
     """Smoke tests for the ``etlplus validate`` CLI command."""
+
+    def test_schema_option_conflicts_with_rules(
+        self,
+        cli_invoke: CliInvoke,
+        rules_json: str,
+    ) -> None:
+        """Schema mode should reject simultaneous field-rule validation flags."""
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--rules',
+                rules_json,
+                '--schema',
+                'sample.xsd',
+                'sample.xml',
+            ),
+        )
+        assert code == 2
+        assert out.strip() == ''
+        assert 'Use either --rules or --schema/--schema-format' in err
+
+    def test_schema_validation(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should emit the structured validation result payload."""
+        pytest.importorskip('lxml.etree')
+        xml_path = tmp_path / 'sample.xml'
+        xsd_path = tmp_path / 'sample.xsd'
+        xml_path.write_text(
+            '<note><title>Hello</title></note>',
+            encoding='utf-8',
+        )
+        xsd_path.write_text(
+            '\n'.join(
+                [
+                    '<?xml version="1.0" encoding="UTF-8"?>',
+                    '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">',
+                    '  <xs:element name="note">',
+                    '    <xs:complexType>',
+                    '      <xs:sequence>',
+                    '        <xs:element name="title" type="xs:string" />',
+                    '      </xs:sequence>',
+                    '    </xs:complexType>',
+                    '  </xs:element>',
+                    '</xs:schema>',
+                ],
+            ),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            ('validate', '--schema', str(xsd_path), str(xml_path)),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is True
+        assert payload['errors'] == []
+        assert payload['field_errors'] == {}
+        assert payload['data'] is None
+
+    def test_schema_validation_output_file(
+        self,
+        cli_invoke: CliInvoke,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should write the JSON result payload when requested."""
+        pytest.importorskip('lxml.etree')
+        xml_path = tmp_path / 'sample.xml'
+        xsd_path = tmp_path / 'sample.xsd'
+        output_path = tmp_path / 'validation.json'
+        xml_path.write_text(
+            '<note><title>Hello</title></note>',
+            encoding='utf-8',
+        )
+        xsd_path.write_text(
+            '\n'.join(
+                [
+                    '<?xml version="1.0" encoding="UTF-8"?>',
+                    '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">',
+                    '  <xs:element name="note">',
+                    '    <xs:complexType>',
+                    '      <xs:sequence>',
+                    '        <xs:element name="title" type="xs:string" />',
+                    '      </xs:sequence>',
+                    '    </xs:complexType>',
+                    '  </xs:element>',
+                    '</xs:schema>',
+                ],
+            ),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(xsd_path),
+                '--output',
+                str(output_path),
+                str(xml_path),
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        assert out.strip() == f'ValidationDict result saved to {output_path}'
+        assert File(output_path, FileFormat.JSON).read() == {
+            'valid': True,
+            'errors': [],
+            'field_errors': {},
+            'data': None,
+        }
 
     def test_stdin_payload(
         self,
