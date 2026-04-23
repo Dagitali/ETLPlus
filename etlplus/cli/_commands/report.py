@@ -21,7 +21,6 @@ from ._options.history import HistoryTableOption
 from ._options.history import HistoryUntilOption
 from ._options.history import ReportGroupByOption
 from ._options.history import RunIdOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -85,7 +84,6 @@ def report_cmd(
     return CommandHelperPolicy.call_history_command(
         report_handler,
         ctx=ctx,
-        state=ensure_state(ctx),
         level=level,
         group_by=group_by,
         job=job,
