@@ -9,18 +9,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from ..utils import MappingParser
-
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
-    'index_named_items',
     'merge_mapping_options',
 ]
-
-
-index_named_items = MappingParser.index_named_items
 
 
 # SECTION: FUNCTIONS ======================================================== #
