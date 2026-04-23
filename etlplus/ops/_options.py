@@ -13,6 +13,7 @@ from typing import cast
 
 from ..file.base import ReadOptions
 from ..file.base import WriteOptions
+from ..utils import ValueParser
 from ..utils._types import JSONDict
 from ._types import FileOptionsArg
 
@@ -49,24 +50,13 @@ _WRITE_OPTION_DEFAULTS: Final[dict[str, object]] = {
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _coerce_optional_text(
-    value: object,
-) -> str | None:
-    """Return ``None`` unchanged and stringify non-string values."""
-    if value is None:
-        return None
-    return value if isinstance(value, str) else str(value)
-
-
 def _coerce_required_text(
     value: object,
     *,
     default: str,
 ) -> str:
     """Return a required text value with a string default."""
-    if value is None:
-        return default
-    return value if isinstance(value, str) else str(value)
+    return default if (text := ValueParser.optional_str(value)) is None else text
 
 
 def _coerce_file_options[OptionsT](
@@ -97,7 +87,7 @@ def _coerce_file_options[OptionsT](
             default='root',
         )
     for key in _OPTIONAL_TEXT_FIELDS:
-        normalized[key] = _coerce_optional_text(normalized.get(key))
+        normalized[key] = ValueParser.optional_str(normalized.get(key))
 
     return factory(
         **normalized,
