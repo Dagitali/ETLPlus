@@ -748,8 +748,7 @@ def _validate_xsd(
             return _validation_result(data=None)
 
         errors = [
-            f'Line {error.line}: {error.message}'
-            for error in compiled_schema.error_log
+            f'Line {error.line}: {error.message}' for error in compiled_schema.error_log
         ]
         if not errors:
             errors.append('XML failed schema validation')
