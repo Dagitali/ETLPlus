@@ -88,6 +88,19 @@ class TestMappingHelpers:
             'valid': items[0],
         }
 
+    def test_merge_mappings_excludes_reserved_keys(self) -> None:
+        """Test that later mappings win and excluded keys are removed."""
+        merged = MappingParser.merge_mappings(
+            {'encoding': 'utf-8', 'path': '/tmp/a.json'},
+            {'delimiter': ';', 'path': '/tmp/b.json', 'format': 'csv'},
+            excluded_keys=frozenset({'path', 'format'}),
+        )
+
+        assert merged == {
+            'delimiter': ';',
+            'encoding': 'utf-8',
+        }
+
     def test_maybe_mapping_returns_same_object_for_mappings(self) -> None:
         """
         Test that :meth:`MappingParser.optional` preserves mapping identity when
