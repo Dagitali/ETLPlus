@@ -10,7 +10,7 @@ import typer
 
 from .._handlers.history import report_handler
 from ._app import app
-from ._helpers import call_history_command
+from ._helpers import CommandHelperPolicy
 from ._options.common import JobOption
 from ._options.history import HistoryJsonOption
 from ._options.history import HistoryLevelOption
@@ -21,7 +21,6 @@ from ._options.history import HistoryTableOption
 from ._options.history import HistoryUntilOption
 from ._options.history import ReportGroupByOption
 from ._options.history import RunIdOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -82,10 +81,9 @@ def report_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    return call_history_command(
+    return CommandHelperPolicy.call_history_command(
         report_handler,
         ctx=ctx,
-        state=ensure_state(ctx),
         level=level,
         group_by=group_by,
         job=job,

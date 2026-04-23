@@ -6,14 +6,10 @@ Source and target Typer option aliases for CLI command modules.
 
 from __future__ import annotations
 
-from typing import Annotated
-
-import typer
-
 from ....file import FileFormat
 from .helpers import typer_connector_option_alias
 from .helpers import typer_format_option_alias
-from .helpers import typer_resource_argument_kwargs
+from .helpers import typer_resource_argument_alias
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -32,13 +28,11 @@ __all__ = [
 # SECTION: TYPES ============================================================ #
 
 
-SourceArg = Annotated[
+SourceArg = typer_resource_argument_alias(
     str,
-    typer.Argument(
-        ...,
-        **typer_resource_argument_kwargs(context='source'),
-    ),
-]
+    ...,
+    context='source',
+)
 
 SourceFormatOption = typer_format_option_alias(
     FileFormat | None,
@@ -52,13 +46,11 @@ SourceTypeOption = typer_connector_option_alias(
     context='source',
 )
 
-TargetArg = Annotated[
+TargetArg = typer_resource_argument_alias(
     str,
-    typer.Argument(
-        ...,
-        **typer_resource_argument_kwargs(context='target'),
-    ),
-]
+    ...,
+    context='target',
+)
 
 TargetFormatOption = typer_format_option_alias(
     FileFormat | None,

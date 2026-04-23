@@ -123,32 +123,17 @@ class TestHelperOptionKwargs:
     def test_helper_module_exports_intended_public_api(self) -> None:
         """Option helper exports should reflect the public helper surface."""
         assert cli_options.__all__ == [
-            'typer_connector_option_kwargs',
             'typer_connector_option_alias',
             'typer_flag_option_alias',
             'typer_flag_option_kwargs',
             'typer_format_option_alias',
-            'typer_format_option_kwargs',
             'typer_option_alias',
             'typer_resource_argument_alias',
             'typer_resource_argument_kwargs',
             'typer_timestamp_option_alias',
-            'typer_timestamp_option_kwargs',
             'typer_value_option_alias',
             'typer_value_option_kwargs',
         ]
-
-    def test_public_kwargs_wrappers_match_internal_implementations(self) -> None:
-        """Public kwargs helpers should forward to their internal sources."""
-        assert cli_options.typer_connector_option_kwargs(context='source') == (
-            cli_options._typer_connector_option_kwargs(context='source')
-        )
-        assert cli_options.typer_format_option_kwargs(context='target') == (
-            cli_options._typer_format_option_kwargs(context='target')
-        )
-        assert cli_options.typer_timestamp_option_kwargs(bound='since') == (
-            cli_options._typer_timestamp_option_kwargs(bound='since')
-        )
 
     def test_resource_argument_alias_builds_typer_argument_metadata(self) -> None:
         """Resource argument aliases should wrap one Typer argument metadata object."""

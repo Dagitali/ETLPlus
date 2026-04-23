@@ -10,9 +10,7 @@ import typer
 
 from .._handlers.run import run_handler
 from ._app import app
-from ._helpers import call_handler
-from ._helpers import fail_usage
-from ._helpers import require_value
+from ._helpers import CommandHelperPolicy
 from ._options.common import CaptureTracebacksOption
 from ._options.common import ConfigOption
 from ._options.common import ContinueOnFailOption
@@ -90,14 +88,16 @@ def run_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    config = require_value(
+    config = CommandHelperPolicy.require_value(
         config,
         message="Missing required option '--config'.",
     )
     if run_all and (job or pipeline):
-        fail_usage('--all cannot be combined with --job or --pipeline.')
+        CommandHelperPolicy.fail_usage(
+            '--all cannot be combined with --job or --pipeline.',
+        )
 
-    return call_handler(
+    return CommandHelperPolicy.call_handler(
         run_handler,
         state=ensure_state(ctx),
         config=config,

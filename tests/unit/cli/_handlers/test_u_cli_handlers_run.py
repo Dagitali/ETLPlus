@@ -17,11 +17,17 @@ from etlplus.history._config import ResolvedHistoryConfig
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: HELPERS ========================================================== #
+
+
+POLICY = run_mod.RunHistoryPolicy
+
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestFailureMessage:
-    """Unit tests for :func:`etlplus.cli._handlers.run._failure_message`."""
+    """Unit tests for the run-history failure-message policy method."""
 
     @pytest.mark.parametrize(
         ('result', 'expected'),
@@ -60,7 +66,7 @@ class TestFailureMessage:
         Test that failure messaging covers non-mapping, plural, and fallback
         cases.
         """
-        assert run_mod._failure_message(result) == expected
+        assert POLICY.failure_message(result) == expected
 
 
 class TestJobRunPersistence:
@@ -129,7 +135,7 @@ class TestJobRunPersistence:
         expected: object,
     ) -> None:
         """Fallback job summaries should normalize only supported payloads."""
-        assert run_mod._coerce_job_result_summary(item) == expected
+        assert POLICY.coerce_job_result_summary(item) == expected
 
     @pytest.mark.parametrize(
         'item',
@@ -144,7 +150,7 @@ class TestJobRunPersistence:
     ) -> None:
         """Job-run records require both non-empty job names and statuses."""
         assert (
-            run_mod._job_run_record(
+            POLICY.job_run_record(
                 fallback_index=0,
                 item=item,
                 pipeline_name='pipeline-a',
@@ -178,7 +184,7 @@ class TestJobRunPersistence:
 
         history_store = _FakeHistoryStore()
 
-        run_mod._persist_job_runs(
+        POLICY.persist_job_runs(
             history_store,
             pipeline_name='pipeline-a',
             result=result,
@@ -214,7 +220,7 @@ class TestJobRunPersistence:
         )
 
         try:
-            run_mod._persist_job_runs(
+            POLICY.persist_job_runs(
                 history_store,
                 pipeline_name='pipeline-a',
                 result={
@@ -334,7 +340,7 @@ class TestHistoryStoreSelection:
             ),
         )
 
-        assert run_mod._open_history_store(settings) is sentinel
+        assert POLICY.open_history_store(settings) is sentinel
 
     def test_open_history_store_uses_explicit_settings_when_environment_differs(
         self,
@@ -376,7 +382,7 @@ class TestHistoryStoreSelection:
 
         monkeypatch.setattr(run_mod.HistoryStore, 'from_settings', fake_from_settings)
 
-        assert run_mod._open_history_store(settings) is sentinel
+        assert POLICY.open_history_store(settings) is sentinel
         assert captured == {
             'backend': 'jsonl',
             'state_dir': tmp_path / 'cli',
@@ -388,7 +394,7 @@ class TestPersistedRunSummary:
 
     def test_persisted_run_summary_compacts_dag_results(self) -> None:
         """DAG results should persist only the aggregate run-level summary."""
-        assert run_mod._persisted_run_summary(
+        assert POLICY.persisted_run_summary(
             {
                 'continue_on_fail': True,
                 'executed_job_count': 1,
@@ -454,7 +460,7 @@ class TestPersistedRunSummary:
     def test_persisted_run_summary_preserves_non_dag_results(self) -> None:
         """Single-job results should keep their existing persisted summary."""
         result = {'job': 'seed', 'status': 'success'}
-        assert run_mod._persisted_run_summary(result) == result
+        assert POLICY.persisted_run_summary(result) == result
 
 
 class TestRunSummaryHelpers:
@@ -476,7 +482,7 @@ class TestRunSummaryHelpers:
         """
         Test that string-list coercion discards non-list and non-string inputs.
         """
-        assert run_mod._coerce_string_list(value) == expected
+        assert POLICY.coerce_string_list(value) == expected
 
     @pytest.mark.parametrize(
         (
@@ -540,7 +546,7 @@ class TestRunSummaryHelpers:
         success cases.
         """
         assert (
-            run_mod._dag_run_status(
+            POLICY.dag_run_status(
                 result,
                 continue_on_fail=continue_on_fail,
                 failed_jobs=failed_jobs,
@@ -579,7 +585,7 @@ class TestRunSummaryHelpers:
         Test that trailing-job field lookup ignores invalid rows and requires
         non-empty strings.
         """
-        assert run_mod._last_job_field(executed_jobs, field_name=field_name) == expected
+        assert POLICY.last_job_field(executed_jobs, field_name=field_name) == expected
 
     @pytest.mark.parametrize(
         ('result', 'expected'),
@@ -596,7 +602,7 @@ class TestRunSummaryHelpers:
         """
         Test that persisted run summaries preserve null and non-mapping shapes.
         """
-        assert run_mod._persisted_run_summary(result) == expected
+        assert POLICY.persisted_run_summary(result) == expected
 
 
 class TestTelemetryConfiguration:
@@ -692,7 +698,7 @@ class TestTelemetryConfiguration:
             'complete_output',
             lambda *_args, **_kwargs: 0,
         )
-        monkeypatch.setattr(run_mod, '_open_history_store', lambda _settings: None)
+        monkeypatch.setattr(POLICY, 'open_history_store', lambda _settings: None)
 
         def _fake_run(**kwargs: object) -> dict[str, object]:
             captured.update(kwargs)

@@ -10,8 +10,7 @@ import typer
 
 from .._handlers.dataops import extract_handler
 from ._app import app
-from ._helpers import call_handler
-from ._helpers import resolve_command_resource
+from ._helpers import CommandHelperPolicy
 from ._options.common import StructuredEventFormatOption
 from ._options.resources import SourceArg
 from ._options.resources import SourceFormatOption
@@ -60,7 +59,7 @@ def extract_cmd(
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
     state = ensure_state(ctx)
-    _, resolved_source = resolve_command_resource(
+    _, resolved_source = CommandHelperPolicy.resolve_command_resource(
         ctx,
         state=state,
         role='source',
@@ -70,7 +69,7 @@ def extract_cmd(
         positional=True,
     )
 
-    return call_handler(
+    return CommandHelperPolicy.call_handler(
         extract_handler,
         state=state,
         source=resolved_source.value,

@@ -43,169 +43,357 @@ __all__ = [
 type _ResolvedSourcePayload = JSONData | str
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
+# SECTION: CLASSES ========================================================== #
 
 
-@contextmanager
-def _command_scope(
-    *,
-    command: str,
-    event_format: str | None,
-    fields: dict[str, Any],
-) -> Iterator[_lifecycle.CommandContext]:
-    """Start a command context and wrap it in the shared failure boundary."""
-    context = _lifecycle.start_command(
-        command=command,
-        event_format=event_format,
-        **fields,
-    )
-    try:
-        yield context
-    except Exception as exc:
-        _lifecycle.fail_command(context, exc, **fields)
-        raise
+class DataCommandPolicy:
+    """Own shared command lifecycle, payload resolution, and completion helpers."""
 
+    # -- Static Methods -- #
 
-def _complete_success(
-    context: _lifecycle.CommandContext,
-    payload: Any,
-    *,
-    mode: str,
-    pretty: bool = True,
-    result_status: str = 'ok',
-    **fields: Any,
-) -> int:
-    """Complete a command using the shared successful-status fields."""
-    return _completion.complete_output(
-        context,
-        payload,
-        mode=mode,
-        pretty=pretty,
-        result_status=result_status,
-        status='ok',
-        **fields,
-    )
+    @staticmethod
+    @contextmanager
+    def command_scope(
+        *,
+        command: str,
+        event_format: str | None,
+        fields: dict[str, Any],
+    ) -> Iterator[_lifecycle.CommandContext]:
+        """
+        Start a command context and wrap it in the shared failure boundary.
 
+        Parameters
+        ----------
+        command : str
+            Command name for lifecycle events.
+        event_format : str | None
+            Structured event output format, or ``None`` to disable structured
+            events.
+        fields : dict[str, Any]
+            Additional fields to include in lifecycle events.
 
-def _complete_file_success(
-    context: _lifecycle.CommandContext,
-    payload: JSONData,
-    *,
-    output_path: str,
-    format_hint: str | None = None,
-    success_message: str,
-    **fields: Any,
-) -> int:
-    """Complete one command by writing a payload to a concrete target."""
-    return _complete_success(
-        context,
-        payload,
-        mode='file',
-        output_path=output_path,
-        format_hint=format_hint,
-        success_message=success_message,
-        **fields,
-    )
+        Yields
+        ------
+        _lifecycle.CommandContext
+            Command context for the active command scope.
 
+        Raises
+        ------
+        Exception
+            Any exception raised within the command scope will be caught,
+            logged as a command failure event, and re-raised.
+        """
+        context = _lifecycle.start_command(
+            command=command,
+            event_format=event_format,
+            **fields,
+        )
+        try:
+            yield context
+        except Exception as exc:
+            _lifecycle.fail_command(context, exc, **fields)
+            raise
 
-def _complete_json_success(
-    context: _lifecycle.CommandContext,
-    payload: Any,
-    *,
-    pretty: bool = True,
-    **fields: Any,
-) -> int:
-    """Complete one command by emitting its payload as JSON."""
-    return _complete_success(
-        context,
-        payload,
-        mode='json',
-        pretty=pretty,
-        **fields,
-    )
+    @staticmethod
+    def complete_success(
+        context: _lifecycle.CommandContext,
+        payload: Any,
+        *,
+        mode: str,
+        pretty: bool = True,
+        result_status: str = 'ok',
+        **fields: Any,
+    ) -> int:
+        """
+        Complete a command using the shared successful-status fields.
 
+        Parameters
+        ----------
+        context : _lifecycle.CommandContext
+            Command context for the active command scope.
+        payload : Any
+            Payload to include in the command output.
+        mode : str
+            Output mode for the command.
+        pretty : bool, optional
+            Whether to pretty-print the output.
+        result_status : str, optional
+            Result status for the command.
+        **fields : Any
+            Additional fields to include in the command output.
 
-def _display_target(
-    target: str | None,
-) -> str:
-    """Return a human-readable target label for lifecycle events."""
-    if target in (None, '-'):
-        return 'stdout'
-    assert target is not None
-    return target
+        Returns
+        -------
+        int
+            Exit code for the command.
+        """
+        return _completion.complete_output(
+            context,
+            payload,
+            mode=mode,
+            pretty=pretty,
+            result_status=result_status,
+            status='ok',
+            **fields,
+        )
 
+    @classmethod
+    def complete_file_success(
+        cls,
+        context: _lifecycle.CommandContext,
+        payload: JSONData,
+        *,
+        output_path: str,
+        format_hint: str | None = None,
+        success_message: str,
+        **fields: Any,
+    ) -> int:
+        """
+        Complete one command by writing a payload to a concrete target.
 
-def _has_named_target(
-    target: str | None,
-) -> TypeGuard[str]:
-    """Return whether *target* names a concrete non-STDOUT destination."""
-    return target not in (None, '-')
+        Parameters
+        ----------
+        context : _lifecycle.CommandContext
+            Command context for the active command scope.
+        payload : JSONData
+            Payload to include in the command output.
+        output_path : str
+            Path to the output file.
+        format_hint : str | None, optional
+            Hint for the output format.
+        success_message : str
+            Message to display on successful completion.
+        **fields : Any
+            Additional fields to include in the command output.
 
+        Returns
+        -------
+        int
+            Exit code for the command.
+        """
+        return cls.complete_success(
+            context,
+            payload,
+            mode='file',
+            output_path=output_path,
+            format_hint=format_hint,
+            success_message=success_message,
+            **fields,
+        )
 
-def _is_explicit_format(
-    *,
-    format_hint: str | None,
-    explicit: bool,
-) -> bool:
-    """Return True when a format hint should be treated as explicit."""
-    return format_hint is not None or explicit
+    @classmethod
+    def complete_json_success(
+        cls,
+        context: _lifecycle.CommandContext,
+        payload: Any,
+        *,
+        pretty: bool = True,
+        **fields: Any,
+    ) -> int:
+        """Complete one command by emitting its payload as JSON.
 
+        Parameters
+        ----------
+        context : _lifecycle.CommandContext
+            Command context for the active command scope.
+        payload : Any
+            Payload to include in the command output.
+        pretty : bool, optional
+            Whether to pretty-print the output.
+        **fields : Any
+            Additional fields to include in the command output.
 
-def _resolve_source_mapping_inputs(
-    *,
-    source: str,
-    mapping_payload: JSONData | str,
-    source_format: str | None,
-    format_explicit: bool,
-    error_message: str,
-) -> tuple[JSONData | str, dict[str, Any]]:
-    """Resolve a source payload plus a required mapping-style side payload."""
-    source_format_explicit = _is_explicit_format(
-        format_hint=source_format,
-        explicit=format_explicit,
-    )
-    payload = _resolve_source_payload(
-        source,
-        source_format=source_format,
-        format_explicit=source_format_explicit,
-    )
-    mapping = _payload.resolve_mapping_payload(
-        mapping_payload,
-        format_explicit=source_format_explicit,
-        error_message=error_message,
-    )
-    return payload, mapping
+        Returns
+        -------
+        int
+            Exit code for the command.
+        """
+        return cls.complete_success(
+            context,
+            payload,
+            mode='json',
+            pretty=pretty,
+            **fields,
+        )
 
+    @staticmethod
+    def display_target(
+        target: str | None,
+    ) -> str:
+        """
+        Return a human-readable target label for lifecycle events.
 
-def _resolve_source_payload(
-    source: str,
-    *,
-    source_format: str | None,
-    format_explicit: bool,
-    hydrate_files: bool = True,
-) -> _ResolvedSourcePayload:
-    """Resolve one CLI source argument into a loadable payload."""
-    return cast(
-        _ResolvedSourcePayload,
-        _payload.resolve_payload(
-            source,
+        Parameters
+        ----------
+        target : str | None
+            Target identifier, which can be a path, URI, or special value like
+            '-' for STDOUT.
+
+        Returns
+        -------
+        str
+            Human-readable label for the target.
+        """
+        if target in (None, '-'):
+            return 'stdout'
+        assert target is not None
+        return target
+
+    @staticmethod
+    def has_named_target(
+        target: str | None,
+    ) -> TypeGuard[str]:
+        """
+        Return whether *target* names a concrete non-STDOUT destination.
+
+        Parameters
+        ----------
+        target : str | None
+            Target identifier, which can be a path, URI, or special value like
+            '-' for STDOUT.
+
+        Returns
+        -------
+        TypeGuard[str]
+            ``True`` if *target* names a concrete non-STDOUT destination,
+            narrowing *target* to ``str`` in the guarded branch.
+        """
+        return target not in (None, '-')
+
+    @staticmethod
+    def is_explicit_format(
+        *,
+        format_hint: str | None,
+        explicit: bool,
+    ) -> bool:
+        """
+        Return True when a format hint should be treated as explicit.
+
+        Parameters
+        ----------
+        format_hint : str | None
+            Format hint for the payload.
+        explicit : bool
+            Whether the format was explicitly provided.
+
+        Returns
+        -------
+        bool
+            True if the format hint should be treated as explicit, False otherwise.
+        """
+        return format_hint is not None or explicit
+
+    @classmethod
+    def resolve_source_mapping_inputs(
+        cls,
+        *,
+        source: str,
+        mapping_payload: JSONData | str,
+        source_format: str | None,
+        format_explicit: bool,
+        error_message: str,
+    ) -> tuple[JSONData | str, dict[str, Any]]:
+        """
+        Resolve a source payload plus a required mapping-style side payload.
+
+        Parameters
+        ----------
+        source : str
+            Source identifier, which can be a path, URI, or special value like
+            '-' for STDIN.
+        mapping_payload : JSONData | str
+            Mapping-style side payload.
+        source_format : str | None
+            Format hint for the source payload.
+        format_explicit : bool
+            Whether the format was explicitly provided.
+        error_message : str
+            Error message to use if resolution fails.
+
+        Returns
+        -------
+        tuple[JSONData | str, dict[str, Any]]
+            Resolved source payload and mapping.
+        """
+        source_format_explicit = cls.is_explicit_format(
             format_hint=source_format,
-            format_explicit=format_explicit,
-            hydrate_files=hydrate_files,
-        ),
-    )
+            explicit=format_explicit,
+        )
+        payload = cls.resolve_source_payload(
+            source,
+            source_format=source_format,
+            format_explicit=source_format_explicit,
+        )
+        mapping = _payload.resolve_mapping_payload(
+            mapping_payload,
+            format_explicit=source_format_explicit,
+            error_message=error_message,
+        )
+        return payload, mapping
 
+    @staticmethod
+    def resolve_source_payload(
+        source: str,
+        *,
+        source_format: str | None,
+        format_explicit: bool,
+        hydrate_files: bool = True,
+    ) -> _ResolvedSourcePayload:
+        """
+        Resolve one CLI source argument into a loadable payload.
 
-def _result_status(
-    result: object,
-    *,
-    default: str = 'ok',
-) -> str:
-    """Extract a string status field from one result payload."""
-    if not isinstance(result, dict):
-        return default
-    status = result.get('status')
-    return cast(str, status) if isinstance(status, str) else default
+        Parameters
+        ----------
+        source : str
+            Source identifier, which can be a path, URI, or special value like
+            '-' for STDIN.
+        source_format : str | None
+            Format hint for the source payload.
+        format_explicit : bool
+            Whether the format was explicitly provided.
+        hydrate_files : bool, optional
+            Whether to hydrate file references. Default is ``True``.
+
+        Returns
+        -------
+        _ResolvedSourcePayload
+            Resolved source payload.
+        """
+        return cast(
+            _ResolvedSourcePayload,
+            _payload.resolve_payload(
+                source,
+                format_hint=source_format,
+                format_explicit=format_explicit,
+                hydrate_files=hydrate_files,
+            ),
+        )
+
+    @staticmethod
+    def result_status(
+        result: object,
+        *,
+        default: str = 'ok',
+    ) -> str:
+        """
+        Extract a string status field from one result payload.
+
+        Parameters
+        ----------
+        result : object
+            Result payload, typically a dictionary.
+        default : str, optional
+            Default status to return if extraction fails. Default is ``'ok'``.
+
+        Returns
+        -------
+        str
+            Extracted status or the default value.
+        """
+        if not isinstance(result, dict):
+            return default
+        status = result.get('status')
+        return cast(str, status) if isinstance(status, str) else default
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -256,7 +444,7 @@ def extract_handler(
         'source_type': source_type,
     }
 
-    with _command_scope(
+    with DataCommandPolicy.command_scope(
         command='extract',
         event_format=event_format,
         fields=command_fields,
@@ -266,7 +454,7 @@ def extract_handler(
                 _input.read_stdin_text(),
                 source_format,
             )
-            return _complete_json_success(
+            return DataCommandPolicy.complete_json_success(
                 context,
                 payload,
                 pretty=pretty,
@@ -274,7 +462,7 @@ def extract_handler(
             )
 
         output_path = target or output
-        return _complete_success(
+        return DataCommandPolicy.complete_success(
             context,
             extract(
                 source_type,
@@ -332,26 +520,26 @@ def load_handler(
     int
         Exit code indicating success (``0``) or failure (non-zero).
     """
-    source_format_explicit = _is_explicit_format(
+    source_format_explicit = DataCommandPolicy.is_explicit_format(
         format_hint=source_format,
         explicit=False,
     )
-    target_format_explicit = _is_explicit_format(
+    target_format_explicit = DataCommandPolicy.is_explicit_format(
         format_hint=target_format,
         explicit=format_explicit,
     )
     command_fields: dict[str, Any] = {
         'source': source,
-        'target': _display_target(target),
+        'target': DataCommandPolicy.display_target(target),
         'target_type': target_type,
     }
 
-    with _command_scope(
+    with DataCommandPolicy.command_scope(
         command='load',
         event_format=event_format,
         fields=command_fields,
     ) as context:
-        source_value = _resolve_source_payload(
+        source_value = DataCommandPolicy.resolve_source_payload(
             source,
             source_format=source_format,
             format_explicit=source_format_explicit,
@@ -359,7 +547,7 @@ def load_handler(
         )
 
         if target_type == 'file' and target == '-':
-            return _complete_json_success(
+            return DataCommandPolicy.complete_json_success(
                 context,
                 _input.materialize_file_payload(
                     source_value,
@@ -377,7 +565,7 @@ def load_handler(
             file_format=target_format if target_format_explicit else None,
         )
 
-        return _complete_success(
+        return DataCommandPolicy.complete_success(
             context,
             result,
             mode='or_write',
@@ -385,7 +573,7 @@ def load_handler(
             pretty=pretty,
             success_message='Load result saved to',
             destination=output or 'stdout',
-            result_status=_result_status(result),
+            result_status=DataCommandPolicy.result_status(result),
             **command_fields,
         )
 
@@ -435,16 +623,16 @@ def transform_handler(
     target_format_explicit = target_format is not None or format_explicit
     command_fields: dict[str, Any] = {
         'source': source,
-        'target': _display_target(target),
+        'target': DataCommandPolicy.display_target(target),
         'target_type': target_type,
     }
 
-    with _command_scope(
+    with DataCommandPolicy.command_scope(
         command='transform',
         event_format=event_format,
         fields=command_fields,
     ) as context:
-        payload, operations_payload = _resolve_source_mapping_inputs(
+        payload, operations_payload = DataCommandPolicy.resolve_source_mapping_inputs(
             source=source,
             mapping_payload=operations,
             source_format=source_format,
@@ -453,10 +641,10 @@ def transform_handler(
         )
         data = transform(payload, cast(PipelineConfig, operations_payload))
 
-        if _has_named_target(target):
+        if DataCommandPolicy.has_named_target(target):
             if target_type not in (None, 'file'):
                 resolved_target_type = cast(str, target_type)
-                return _complete_json_success(
+                return DataCommandPolicy.complete_json_success(
                     context,
                     load(
                         data,
@@ -470,7 +658,7 @@ def transform_handler(
                     target_type=resolved_target_type,
                 )
 
-            return _complete_file_success(
+            return DataCommandPolicy.complete_file_success(
                 context,
                 cast(JSONData, data),
                 output_path=target,
@@ -481,7 +669,7 @@ def transform_handler(
                 target_type=target_type or 'file',
             )
 
-        return _complete_json_success(
+        return DataCommandPolicy.complete_json_success(
             context,
             data,
             pretty=pretty,
@@ -527,15 +715,15 @@ def validate_handler(
     """
     command_fields: dict[str, Any] = {
         'source': source,
-        'target': _display_target(target),
+        'target': DataCommandPolicy.display_target(target),
     }
 
-    with _command_scope(
+    with DataCommandPolicy.command_scope(
         command='validate',
         event_format=event_format,
         fields=command_fields,
     ) as context:
-        payload, rules_payload = _resolve_source_mapping_inputs(
+        payload, rules_payload = DataCommandPolicy.resolve_source_mapping_inputs(
             source=source,
             mapping_payload=rules,
             source_format=source_format,
@@ -547,10 +735,10 @@ def validate_handler(
             cast(dict[str, FieldRulesDict], rules_payload),
         )
 
-        if _has_named_target(target):
+        if DataCommandPolicy.has_named_target(target):
             validated_data = result.get('data')
             if validated_data is not None:
-                return _complete_success(
+                return DataCommandPolicy.complete_success(
                     context,
                     validated_data,
                     mode='json_file',
@@ -567,7 +755,7 @@ def validate_handler(
             )
             return 0
 
-        return _complete_json_success(
+        return DataCommandPolicy.complete_json_success(
             context,
             result,
             pretty=pretty,

@@ -10,9 +10,7 @@ import typer
 
 from .._handlers.dataops import validate_handler
 from ._app import app
-from ._helpers import call_handler
-from ._helpers import parse_json_option
-from ._helpers import resolve_command_resource
+from ._helpers import CommandHelperPolicy
 from ._options.common import OutputOption
 from ._options.common import StructuredEventFormatOption
 from ._options.resources import SourceArg
@@ -69,7 +67,7 @@ def validate_cmd(
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
     state = ensure_state(ctx)
-    _, resolved_source = resolve_command_resource(
+    _, resolved_source = CommandHelperPolicy.resolve_command_resource(
         ctx,
         state=state,
         role='source',
@@ -79,11 +77,11 @@ def validate_cmd(
         soft_inference=True,
     )
 
-    return call_handler(
+    return CommandHelperPolicy.call_handler(
         validate_handler,
         state=state,
         source=resolved_source.value,
-        rules=parse_json_option(rules, '--rules'),
+        rules=CommandHelperPolicy.parse_json_option(rules, '--rules'),
         target=output,
         source_format=resolved_source.format_hint,
         event_format=event_format,

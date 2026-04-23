@@ -19,17 +19,14 @@ from .._types import DataConnectorContext
 
 __all__ = [
     # Functions
-    'typer_connector_option_kwargs',
     'typer_connector_option_alias',
     'typer_flag_option_alias',
     'typer_flag_option_kwargs',
     'typer_format_option_alias',
-    'typer_format_option_kwargs',
     'typer_option_alias',
     'typer_resource_argument_alias',
     'typer_resource_argument_kwargs',
     'typer_timestamp_option_alias',
-    'typer_timestamp_option_kwargs',
     'typer_value_option_alias',
     'typer_value_option_kwargs',
 ]
@@ -123,18 +120,6 @@ def typer_option_alias(
         value_type,
         typer.Option(*param_decls, **kwargs),  # type: ignore[call-overload]
     ]
-
-
-def typer_connector_option_kwargs(
-    *,
-    context: DataConnectorContext,
-    rich_help_panel: str = 'I/O overrides',
-) -> dict[str, object]:
-    """Return common Typer option kwargs for source/target connector types."""
-    return _typer_connector_option_kwargs(
-        context=context,
-        rich_help_panel=rich_help_panel,
-    )
 
 
 def typer_connector_option_alias(
@@ -236,18 +221,6 @@ def typer_flag_option_alias(
             is_eager=is_eager,
             show_default=show_default,
         ),
-    )
-
-
-def typer_format_option_kwargs(
-    *,
-    context: DataConnectorContext,
-    rich_help_panel: str = 'Format overrides',
-) -> dict[str, object]:
-    """Return common Typer option kwargs for format overrides."""
-    return _typer_format_option_kwargs(
-        context=context,
-        rich_help_panel=rich_help_panel,
     )
 
 
@@ -360,14 +333,6 @@ def typer_timestamp_option_alias(
         *param_decls,
         **_typer_timestamp_option_kwargs(bound=bound),
     )
-
-
-def typer_timestamp_option_kwargs(
-    *,
-    bound: Literal['since', 'until'],
-) -> dict[str, object]:
-    """Return common Typer option kwargs for ISO-8601 history bounds."""
-    return _typer_timestamp_option_kwargs(bound=bound)
 
 
 def typer_value_option_kwargs(

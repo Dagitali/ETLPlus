@@ -17,6 +17,11 @@ from etlplus.cli._handlers import dataops as dataops_mod
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: HELPERS ========================================================== #
+
+
+POLICY = dataops_mod.DataCommandPolicy
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -51,9 +56,9 @@ class TestDataops:
             captured['params'] = (context, payload, mode, pretty, fields)
             return 9
 
-        monkeypatch.setattr(dataops_mod, '_complete_success', fake_complete)
+        monkeypatch.setattr(POLICY, 'complete_success', fake_complete)
 
-        result = dataops_mod._complete_json_success(
+        result = POLICY.complete_json_success(
             cast(lifecycle_mod.CommandContext, object()),
             {'ok': True},
             pretty=False,
@@ -81,7 +86,7 @@ class TestDataops:
         expected: str,
     ) -> None:
         """Target display labels should normalize STDOUT-style targets."""
-        assert dataops_mod._display_target(target) == expected
+        assert POLICY.display_target(target) == expected
 
     @pytest.mark.parametrize(
         ('target', 'expected'),
@@ -97,7 +102,7 @@ class TestDataops:
         expected: bool,
     ) -> None:
         """Concrete-target detection should exclude STDOUT-style targets."""
-        assert dataops_mod._has_named_target(target) is expected
+        assert POLICY.has_named_target(target) is expected
 
     @pytest.mark.parametrize(
         ('format_hint', 'explicit', 'expected'),
@@ -115,7 +120,7 @@ class TestDataops:
     ) -> None:
         """Explicit-format detection should honor hints and override flags."""
         assert (
-            dataops_mod._is_explicit_format(
+            POLICY.is_explicit_format(
                 format_hint=format_hint,
                 explicit=explicit,
             )
@@ -136,7 +141,7 @@ class TestDataops:
         expected: str,
     ) -> None:
         """Result-status extraction should degrade cleanly for bad payloads."""
-        assert dataops_mod._result_status(result) == expected
+        assert POLICY.result_status(result) == expected
 
     def test_resolve_source_payload_forwards_resolution_flags(
         self,
@@ -162,7 +167,7 @@ class TestDataops:
 
         monkeypatch.setattr(dataops_mod._payload, 'resolve_payload', fake_resolve)
 
-        result = dataops_mod._resolve_source_payload(
+        result = POLICY.resolve_source_payload(
             'data.json',
             source_format='json',
             format_explicit=True,
@@ -201,14 +206,14 @@ class TestDataops:
             mapping_calls.append((payload, format_explicit, error_message))
             return {'select': ['id']}
 
-        monkeypatch.setattr(dataops_mod, '_resolve_source_payload', fake_source)
+        monkeypatch.setattr(POLICY, 'resolve_source_payload', fake_source)
         monkeypatch.setattr(
             dataops_mod._payload,
             'resolve_mapping_payload',
             fake_mapping,
         )
 
-        payload, mapping = dataops_mod._resolve_source_mapping_inputs(
+        payload, mapping = POLICY.resolve_source_mapping_inputs(
             source='data.json',
             mapping_payload='ops.json',
             source_format='json',
