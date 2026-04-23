@@ -2375,6 +2375,7 @@ class TestRunInternals:
         Test that summary generation skips any non-mapping executed rows
         defensively.
         """
+
         class _NonMappingRow:
             def get(self, _key: str, default: Any = None) -> Any:
                 """Mimic ``dict.get`` while remaining non-mapping."""
