@@ -12,7 +12,6 @@ from .helpers import typer_flag_option_alias
 from .helpers import typer_flag_option_kwargs
 from .helpers import typer_option_alias
 from .helpers import typer_value_option_alias
-from .helpers import typer_value_option_kwargs
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -49,15 +48,13 @@ CheckConfigOption = typer_value_option_alias(
     metavar='PATH',
 )
 
-ConfigOption = typer_option_alias(
+ConfigOption = typer_value_option_alias(
     str,
     ...,
     '--config',
-    **typer_value_option_kwargs(
-        'Path to YAML-formatted configuration file.',
-        metavar='PATH',
-        show_default=None,
-    ),
+    help_text='Path to YAML-formatted configuration file.',
+    metavar='PATH',
+    show_default=None,
 )
 
 ContinueOnFailOption = typer_flag_option_alias(
