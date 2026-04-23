@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import pytest
 
-from etlplus.workflow._dag import _ready
 from etlplus.workflow._dag import topological_sort_jobs
 from etlplus.workflow._errors import DagError
 from etlplus.workflow._jobs import JobConfig
@@ -48,10 +47,6 @@ class TestDagHelpers:
         message.
         """
         assert str(DagError(message='boom')) == 'boom'
-
-    def test_ready_returns_sorted_zero_indegree_nodes(self) -> None:
-        """Test that :func:`_ready` sorts node names with zero indegree."""
-        assert _ready({'b': 0, 'a': 0, 'c': 1}) == ['a', 'b']
 
     @pytest.mark.parametrize(
         ('jobs', 'expected'),

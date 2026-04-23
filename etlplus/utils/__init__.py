@@ -9,6 +9,8 @@ from __future__ import annotations
 from ._data import JsonCodec
 from ._data import RecordCounter
 from ._enums import CoercibleStrEnum
+from ._graph import NamedDependencyGraph
+from ._graph import topological_sort_names
 from ._mapping import MappingParser
 from ._mixins import BoundsWarningsMixin
 from ._numbers import FloatParser
@@ -31,11 +33,14 @@ __all__ = [
     'IntParser',
     'JsonCodec',
     'MappingParser',
+    'NamedDependencyGraph',
     'RecordCounter',
     'SubstitutionResolver',
     'TextNormalizer',
     # Enums
     'CoercibleStrEnum',
+    # Functions
+    'topological_sort_names',
     # Mixins
     'BoundsWarningsMixin',
 ]

@@ -86,6 +86,20 @@ class TestReferenceParsing(WorkflowAssertions):
                 {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'},
                 id='validation-ref',
             ),
+            pytest.param(
+                ValidationRef,
+                {
+                    'ruleset': 'rs',
+                    'severity': ' WARN ',
+                    'phase': ' After_Transform ',
+                },
+                {
+                    'ruleset': 'rs',
+                    'severity': 'warn',
+                    'phase': 'after_transform',
+                },
+                id='validation-ref-normalizes-known-choices',
+            ),
         ],
     )
     def test_ref_from_obj_valid(
