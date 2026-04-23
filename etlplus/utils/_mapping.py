@@ -6,8 +6,11 @@ Mapping-oriented utility helpers.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from collections.abc import Mapping
+from collections.abc import Set
 from typing import Any
+from typing import TypeVar
 
 from ._types import StrAnyMap
 
@@ -20,6 +23,12 @@ __all__ = [
 ]
 
 
+# SECTION: TYPE VARIABLES =================================================== #
+
+
+ItemT = TypeVar('ItemT')
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -27,6 +36,71 @@ class MappingParser:
     """Normalize optionally mapping-like inputs into concrete mapping shapes."""
 
     # -- Static Methods -- #
+
+    @staticmethod
+    def index_named_items(
+        items: Iterable[ItemT],
+        *,
+        item_label: str,
+    ) -> dict[str, ItemT]:
+        """
+        Index named items and reject duplicates with a descriptive error.
+
+        Parameters
+        ----------
+        items : Iterable[ItemT]
+            Items to index. Only entries with a non-empty string ``name``
+            attribute are included.
+        item_label : str
+            Human-readable label used in duplicate-name error messages.
+
+        Returns
+        -------
+        dict[str, ItemT]
+            Mapping of item names to their corresponding objects.
+
+        Raises
+        ------
+        ValueError
+            If duplicate names are found.
+        """
+        indexed: dict[str, ItemT] = {}
+        for item in items:
+            if not isinstance(name := getattr(item, 'name', None), str) or not name:
+                continue
+            if name in indexed:
+                raise ValueError(f'Duplicate {item_label} name: {name}')
+            indexed[name] = item
+        return indexed
+
+    @staticmethod
+    def merge_to_dict(
+        *mapping_sets: object,
+        excluded_keys: Set[str] = frozenset(),
+    ) -> dict[str, Any]:
+        """
+        Merge mapping-like values with later mappings taking precedence.
+
+        Parameters
+        ----------
+        *mapping_sets : object
+            Any number of mapping-like values to merge. Non-mappings are
+            ignored.
+        excluded_keys : Set[str], optional
+            Keys to remove from the merged result after merging.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing the merged key-value pairs.
+        """
+        merged: dict[str, Any] = {}
+        for mapping_set in mapping_sets:
+            if isinstance(mapping_set, Mapping):
+                merged.update(mapping_set)
+        for key in excluded_keys:
+            merged.pop(key, None)
+        return merged
 
     @staticmethod
     def to_str_dict(

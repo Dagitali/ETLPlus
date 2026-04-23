@@ -31,12 +31,11 @@ from ..file._core import FileFormatArg
 from ..utils import FloatParser
 from ..utils import IntParser
 from ..utils import JsonCodec
+from ..utils import MappingParser
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import StrPath
 from ..workflow import topological_sort_jobs
-from ._mappings import index_named_items
-from ._mappings import merge_mapping_options
 from ._types import DataSourceArg
 from ._types import OptionalConnectorTypeArg
 from ._types import OptionalPathArg
@@ -481,7 +480,10 @@ def _index_connectors(
     dict[str, Any]
         Mapping of connector names to connector objects.
     """
-    return index_named_items(connectors, item_label=f'{label} connector')
+    return MappingParser.index_named_items(
+        connectors,
+        item_label=f'{label} connector',
+    )
 
 
 def _index_jobs(
@@ -500,7 +502,7 @@ def _index_jobs(
     dict[str, Any]
         Mapping of job name to job object.
     """
-    return index_named_items(jobs, item_label='job')
+    return MappingParser.index_named_items(jobs, item_label='job')
 
 
 def _job_dependencies(
@@ -641,7 +643,7 @@ def _merge_file_options(
     *option_sets: object,
 ) -> dict[str, Any]:
     """Merge connector-level and job-level file options with later wins."""
-    return merge_mapping_options(
+    return MappingParser.merge_to_dict(
         *option_sets,
         excluded_keys=frozenset({'path', 'format'}),
     )
