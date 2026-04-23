@@ -74,7 +74,7 @@ class MappingParser:
         return indexed
 
     @staticmethod
-    def merge_mappings(
+    def merge_to_dict(
         *mapping_sets: object,
         excluded_keys: Set[str] = frozenset(),
     ) -> dict[str, Any]:
