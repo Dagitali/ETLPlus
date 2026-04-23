@@ -60,6 +60,7 @@ from etlplus.ops.validate import FieldRulesDict
 from etlplus.ops.validate import FieldValidationDict
 from etlplus.ops.validate import ValidationDict
 from etlplus.ops.validate import validate
+from etlplus.ops.validate import validate_schema
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -102,6 +103,7 @@ EXPECTED_OPS_EXPORTS = [
     'run_pipeline',
     'transform',
     'validate',
+    'validate_schema',
     'FieldRulesDict',
     'FieldValidationDict',
     'ValidationDict',
@@ -177,6 +179,7 @@ class TestStableImportSurface:
         assert ops_pkg.run_pipeline is run_pipeline
         assert ops_pkg.transform is transform
         assert ops_pkg.validate is validate
+        assert ops_pkg.validate_schema is validate_schema
 
     def test_ops_package_keeps_documented_validation_shapes(self) -> None:
         """Test that :mod:`etlplus.ops` re-exports validation typed dicts."""
