@@ -201,6 +201,105 @@ class TestValidate:
         assert result['valid'] is False
         assert any(error.startswith('Line ') for error in result['errors'])
 
+    def test_validate_schema_with_jsonschema_json(self) -> None:
+        """Schema validation should accept valid JSON against JSON Schema."""
+        pytest.importorskip('jsonschema')
+
+        schema = '\n'.join(
+            [
+                '{',
+                '  "type": "object",',
+                '  "properties": {"name": {"type": "string"}},',
+                '  "required": ["name"]',
+                '}',
+            ],
+        )
+        payload = '{"name": "Ada"}'
+
+        result = validate_schema(
+            payload,
+            schema,
+            schema_format='jsonschema',
+        )
+
+        assert result['valid'] is True
+        assert result['errors'] == []
+        assert result['field_errors'] == {}
+        assert result['data'] is None
+
+    def test_validate_schema_with_jsonschema_yaml(self) -> None:
+        """Schema validation should accept valid YAML against JSON Schema."""
+        pytest.importorskip('jsonschema')
+
+        schema = '\n'.join(
+            [
+                '{',
+                '  "type": "object",',
+                '  "properties": {',
+                '    "name": {"type": "string"},',
+                '    "age": {"type": "integer", "minimum": 0}',
+                '  },',
+                '  "required": ["name", "age"]',
+                '}',
+            ],
+        )
+        payload = 'name: Ada\nage: 37\n'
+
+        result = validate_schema(
+            payload,
+            schema,
+            schema_format='jsonschema',
+            source_format='yaml',
+        )
+
+        assert result['valid'] is True
+        assert result['errors'] == []
+        assert result['field_errors'] == {}
+        assert result['data'] is None
+
+    def test_validate_schema_with_jsonschema_collects_field_errors(self) -> None:
+        """Schema validation should retain field paths for JSON Schema errors."""
+        pytest.importorskip('jsonschema')
+
+        schema = '\n'.join(
+            [
+                '{',
+                '  "type": "object",',
+                '  "properties": {"name": {"type": "string"}},',
+                '  "required": ["name"]',
+                '}',
+            ],
+        )
+        payload = '{"name": 42}'
+
+        result = validate_schema(
+            payload,
+            schema,
+            schema_format='jsonschema',
+        )
+
+        assert result['valid'] is False
+        assert result['field_errors'] == {'name': ["42 is not of type 'string'"]}
+        assert any(error.startswith('name: ') for error in result['errors'])
+
+    def test_validate_schema_with_jsonschema_rejects_bad_source_format(self) -> None:
+        """Schema validation should reject unsupported JSON Schema payload formats."""
+        pytest.importorskip('jsonschema')
+
+        schema = '{"type": "object"}'
+        result = validate_schema(
+            '{"name": "Ada"}',
+            schema,
+            schema_format='jsonschema',
+            source_format='csv',
+        )
+
+        assert result['valid'] is False
+        assert any(
+            'Unsupported JSON Schema source format: csv' in error
+            for error in result['errors']
+        )
+
     def test_validate_schema_with_xsd(
         self,
         tmp_path: Path,
