@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.utils._mapping`.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from types import SimpleNamespace
 from typing import Any
 from typing import cast
 
@@ -67,6 +68,38 @@ class TestMappingHelpers:
         non-mappings.
         """
         assert MappingParser.to_dict(value) == expected
+
+    def test_index_named_items_rejects_duplicates(self) -> None:
+        """Test that duplicate named items raise a descriptive error."""
+        items = [SimpleNamespace(name='dup'), SimpleNamespace(name='dup')]
+
+        with pytest.raises(ValueError, match='Duplicate source connector name'):
+            MappingParser.index_named_items(items, item_label='source connector')
+
+    def test_index_named_items_skips_blank_or_missing_names(self) -> None:
+        """Test that only objects with usable names are included in the index."""
+        items = [
+            SimpleNamespace(name='valid'),
+            SimpleNamespace(name=''),
+            SimpleNamespace(),
+        ]
+
+        assert MappingParser.index_named_items(items, item_label='job') == {
+            'valid': items[0],
+        }
+
+    def test_merge_to_dict_excludes_reserved_keys(self) -> None:
+        """Test that later mappings win and excluded keys are removed."""
+        merged = MappingParser.merge_to_dict(
+            {'encoding': 'utf-8', 'path': '/tmp/a.json'},
+            {'delimiter': ';', 'path': '/tmp/b.json', 'format': 'csv'},
+            excluded_keys=frozenset({'path', 'format'}),
+        )
+
+        assert merged == {
+            'delimiter': ';',
+            'encoding': 'utf-8',
+        }
 
     def test_maybe_mapping_returns_same_object_for_mappings(self) -> None:
         """
