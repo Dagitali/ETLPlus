@@ -643,7 +643,7 @@ def _merge_file_options(
     *option_sets: object,
 ) -> dict[str, Any]:
     """Merge connector-level and job-level file options with later wins."""
-    return MappingParser.merge_mappings(
+    return MappingParser.merge_to_dict(
         *option_sets,
         excluded_keys=frozenset({'path', 'format'}),
     )
