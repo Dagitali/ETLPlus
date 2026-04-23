@@ -46,16 +46,7 @@ class TestCommandsInternalHelpers:
     def test_helpers_export_intentional_public_api(self) -> None:
         """Command helpers should expose only the intended public surface."""
         assert helpers_mod.__all__ == [
-            'call_handler',
-            'call_history_command',
-            'call_history_handler',
-            'fail_usage',
-            'normalize_file_format',
-            'parse_json_option',
-            'require_any',
-            'require_value',
-            'resolve_command_resource',
-            'resolve_resource',
+            'CommandHelperPolicy',
         ]
 
     def test_call_handler_injects_requested_state_fields(self) -> None:
@@ -66,7 +57,7 @@ class TestCommandsInternalHelpers:
             captured.update(kwargs)
             return 7
 
-        result = helpers_mod.call_handler(
+        result = helpers_mod.CommandHelperPolicy.call_handler(
             _handler,
             state=CliState(pretty=False, quiet=True, verbose=True),
             state_fields=('pretty', 'quiet'),
@@ -90,7 +81,7 @@ class TestCommandsInternalHelpers:
             captured.update(kwargs)
             return 11
 
-        result = helpers_mod.call_history_handler(
+        result = helpers_mod.CommandHelperPolicy.call_history_handler(
             _handler,
             state=CliState(pretty=False),
             level='job',
@@ -116,7 +107,7 @@ class TestCommandsInternalHelpers:
             captured.update(kwargs)
             return 13
 
-        result = helpers_mod.call_history_command(
+        result = helpers_mod.CommandHelperPolicy.call_history_command(
             _handler,
             ctx=cast(typer.Context, object()),
             state=CliState(pretty=False),
@@ -133,8 +124,12 @@ class TestCommandsInternalHelpers:
 
     def test_normalize_file_format_returns_enum_member(self) -> None:
         """Shared format normalization should preserve ``FileFormat`` typing."""
-        assert helpers_mod.normalize_file_format('json', label='source') is (
-            FileFormat.JSON
+        assert (
+            helpers_mod.CommandHelperPolicy.normalize_file_format(
+                'json',
+                label='source',
+            )
+            is FileFormat.JSON
         )
 
     def test_parse_json_option_wraps_value_errors(
@@ -154,19 +149,24 @@ class TestCommandsInternalHelpers:
             _parse_json,
         )
         with pytest.raises(typer.BadParameter, match='Invalid JSON for --ops'):
-            helpers_mod.parse_json_option('not-json', '--ops')
+            helpers_mod.CommandHelperPolicy.parse_json_option(
+                'not-json',
+                '--ops',
+            )
 
     def test_resolve_command_resource_reuses_supplied_state(self) -> None:
         """Command resource resolution should reuse the injected CLI state."""
         state = CliState(pretty=False)
 
-        resolved_state, resolved = helpers_mod.resolve_command_resource(
-            cast(typer.Context, object()),
-            state=state,
-            role='source',
-            value='payload.json',
-            connector_type='file',
-            format_value='json',
+        resolved_state, resolved = (
+            helpers_mod.CommandHelperPolicy.resolve_command_resource(
+                cast(typer.Context, object()),
+                state=state,
+                role='source',
+                value='payload.json',
+                connector_type='file',
+                format_value='json',
+            )
         )
 
         assert resolved_state is state
@@ -184,7 +184,7 @@ class TestCommandsInternalHelpers:
 
     def test_resolve_resource_normalizes_type_and_format(self) -> None:
         """Shared resource resolution should normalize type and format hints."""
-        resolved = helpers_mod.resolve_resource(
+        resolved = helpers_mod.CommandHelperPolicy.resolve_resource(
             CliState(),
             role='source',
             value='payload.json',
@@ -412,9 +412,15 @@ class TestDelegatingCommands:
         Test that thin command wrappers forward normalized kwargs verbatim.
         """
         monkeypatch.setattr(
+            helpers_mod,
+            'ensure_state',
+            lambda _ctx: CliState(pretty=False),
+        )
+        monkeypatch.setattr(
             module,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
+            raising=False,
         )
         captured = stub_handler(
             module,
@@ -432,7 +438,7 @@ class TestDelegatingCommands:
     ) -> None:
         """Graph mode should reject section-inspection flag combinations."""
         monkeypatch.setattr(
-            check_mod,
+            check_mod.CommandHelperPolicy,
             'fail_usage',
             lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
         )
@@ -455,7 +461,7 @@ class TestDelegatingCommands:
     ) -> None:
         """Readiness mode should reject inspection-flag combinations."""
         monkeypatch.setattr(
-            check_mod,
+            check_mod.CommandHelperPolicy,
             'fail_usage',
             lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
         )
@@ -478,7 +484,7 @@ class TestDelegatingCommands:
     ) -> None:
         """Run mode should reject ``--all`` combined with job selection."""
         monkeypatch.setattr(
-            run_mod,
+            run_mod.CommandHelperPolicy,
             'fail_usage',
             lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
         )
@@ -767,7 +773,7 @@ class TestTransformCommand:
             lambda _ctx: CliState(),
         )
         monkeypatch.setattr(
-            transform_mod,
+            transform_mod.CommandHelperPolicy,
             'parse_json_option',
             lambda value, flag: {},
         )

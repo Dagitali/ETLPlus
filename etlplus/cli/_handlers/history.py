@@ -22,9 +22,7 @@ from ._history_view import HistoryView
 
 __all__ = [
     # Functions
-    'emit_follow_history',
     'history_handler',
-    'load_history_records',
     'report_handler',
     'status_handler',
 ]
@@ -48,6 +46,26 @@ class _HistoryQuery:
     status: str | None = None
 
     # -- Instance Methods -- #
+
+    def follow(
+        self,
+        *,
+        limit: int | None = None,
+    ) -> int:
+        """Stream newly observed raw history records until interrupted."""
+        seen: set[str] = set()
+        try:
+            while True:
+                records = self.load(raw=True, limit=limit)
+                for record in reversed(records):
+                    fingerprint = HistoryView.fingerprint(record)
+                    if fingerprint in seen:
+                        continue
+                    seen.add(fingerprint)
+                    _output.emit_json_payload(record, pretty=False)
+                sleep(1.0)
+        except KeyboardInterrupt:
+            return 0
 
     def load(
         self,
@@ -132,141 +150,6 @@ def _emit_history_payload(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def load_history_records(
-    *,
-    level: Literal['run', 'job'] = 'run',
-    job: str | None = None,
-    pipeline: str | None = None,
-    run_id: str | None = None,
-    since: str | None = None,
-    until: str | None = None,
-    status: str | None = None,
-    limit: int | None = None,
-    raw: bool = False,
-) -> list[dict[str, Any]]:
-    """
-    Load filtered history records for CLI read commands.
-
-    Parameters
-    ----------
-    level : Literal['run', 'job'], optional
-        Whether to load run-level or job-level history rows. Default is
-        ``'run'``.
-    job : str | None, optional
-        Optional job name to filter records. Default is ``None``.
-    pipeline : str | None, optional
-        Optional pipeline name to filter records. Default is ``None``.
-    run_id : str | None, optional
-        Optional run ID to filter records. Default is ``None``.
-    since : str | None, optional
-        Optional ISO 8601 timestamp to filter records created after the given
-        time.  Default is ``None``.
-    until : str | None, optional
-        Optional ISO 8601 timestamp to filter records created before the given
-        time.  Default is ``None``.
-    status : str | None, optional
-        Optional status to filter records. Default is ``None``.
-    limit : int | None, optional
-        Optional maximum number of records to load. Default is ``None``.
-    raw : bool, optional
-        Whether to load raw records instead of normalized runs. Default is
-        ``False``.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        History records matching the specified filters.
-    """
-    return _HistoryQuery(
-        level=level,
-        job=job,
-        pipeline=pipeline,
-        run_id=run_id,
-        since=since,
-        until=until,
-        status=status,
-    ).load(
-        raw=raw,
-        limit=limit,
-    )
-
-
-def emit_follow_history(
-    *,
-    level: Literal['run', 'job'] = 'run',
-    job: str | None = None,
-    pipeline: str | None = None,
-    run_id: str | None = None,
-    since: str | None = None,
-    until: str | None = None,
-    status: str | None = None,
-    limit: int | None = None,
-) -> int:
-    """
-    Stream newly observed raw history records until interrupted.
-
-    Parameters
-    ----------
-    level : Literal['run', 'job'], optional
-        Whether to stream run-level or job-level raw records. Default is
-        ``'run'``.
-    job : str | None, optional
-        Optional job name filter. Default is ``None``.
-    pipeline : str | None, optional
-        Optional pipeline name filter. Default is ``None``.
-    run_id : str | None, optional
-        Optional run ID filter. Default is ``None``.
-    since : str | None, optional
-        Optional ISO 8601 timestamp filter to load records created after the
-        given time.  Default is ``None``.
-    until : str | None, optional
-        Optional ISO 8601 timestamp filter to load records created before the
-        given time.  Default is ``None``.
-    status : str | None, optional
-        Optional status filter. Default is ``None``.
-    limit : int | None, optional
-        Optional maximum number of records to load per iteration. Default is
-        ``None``.
-
-    Returns
-    -------
-    int
-        CLI exit code indicating success (``0``) or failure (non-zero).
-    """
-    query = _HistoryQuery(
-        level=level,
-        job=job,
-        pipeline=pipeline,
-        run_id=run_id,
-        since=since,
-        until=until,
-        status=status,
-    )
-    seen: set[str] = set()
-    try:
-        while True:
-            records = load_history_records(
-                level=query.level,
-                job=query.job,
-                raw=True,
-                limit=limit,
-                pipeline=query.pipeline,
-                run_id=query.run_id,
-                since=query.since,
-                status=query.status,
-                until=query.until,
-            )
-            for record in reversed(records):
-                fingerprint = HistoryView.fingerprint(record)
-                if fingerprint in seen:
-                    continue
-                seen.add(fingerprint)
-                _output.emit_json_payload(record, pretty=False)
-            sleep(1.0)
-    except KeyboardInterrupt:
-        return 0
-
-
 def history_handler(
     *,
     level: Literal['run', 'job'] = 'run',
@@ -337,16 +220,7 @@ def history_handler(
         status=status,
     )
     if follow:
-        return emit_follow_history(
-            level=query.level,
-            job=query.job,
-            limit=limit,
-            pipeline=query.pipeline,
-            run_id=query.run_id,
-            since=query.since,
-            until=query.until,
-            status=query.status,
-        )
+        return query.follow(limit=limit)
 
     return _emit_history_payload(
         query.load(

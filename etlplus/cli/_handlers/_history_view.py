@@ -248,11 +248,10 @@ class HistoryView:
         if json_output and table:
             raise ValueError('choose either json output or table output, not both')
 
-    # -- Internal Class Methods -- #
+    # -- Internal Static Methods -- #
 
-    @classmethod
+    @staticmethod
     def _matching_records(
-        cls,
         *,
         raw: bool,
         level: HistoryLevel,
@@ -292,14 +291,14 @@ class HistoryView:
         """
         history_store = HistoryStore.from_environment()
         matching: list[dict[str, Any]] = []
-        for record in cls._records_iter(
+        for record in HistoryView._records_iter(
             history_store,
             raw=raw,
             level=level,
         ):
             payload = dict(record)
             payload.setdefault('record_level', level if not raw else 'run')
-            if not cls.matches(
+            if not HistoryView.matches(
                 payload,
                 level=level,
                 job=job,
@@ -329,11 +328,10 @@ class HistoryView:
             return history_store.iter_job_runs()
         return history_store.iter_runs()
 
-    # -- Class Methods -- #
+    # -- Static Methods -- #
 
-    @classmethod
+    @staticmethod
     def load_records(
-        cls,
         *,
         raw: bool,
         level: HistoryLevel = 'run',
@@ -375,26 +373,25 @@ class HistoryView:
             A list of filtered and sorted history records.
         """
         records = sorted(
-            cls._matching_records(
+            HistoryView._matching_records(
                 raw=raw,
                 level=level,
                 job=job,
                 pipeline=pipeline,
                 run_id=run_id,
-                since=cls.parse_timestamp(since),
-                until=cls.parse_timestamp(until),
+                since=HistoryView.parse_timestamp(since),
+                until=HistoryView.parse_timestamp(until),
                 status=status,
             ),
-            key=cls.sort_key,
+            key=HistoryView.sort_key,
             reverse=True,
         )
         if limit is None:
             return records
         return records[:limit]
 
-    @classmethod
+    @staticmethod
     def matches(
-        cls,
         record: HistoryRecord,
         *,
         level: HistoryLevel = 'run',
@@ -443,7 +440,7 @@ class HistoryView:
             return False
         if status is not None and record.get('status') != status:
             return False
-        record_timestamp = cls.record_timestamp(record)
+        record_timestamp = HistoryView.record_timestamp(record)
         if since is not None:
             if record_timestamp is None or record_timestamp < since:
                 return False

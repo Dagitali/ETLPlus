@@ -10,8 +10,7 @@ import typer
 
 from .._handlers.render import render_handler
 from ._app import app
-from ._helpers import call_handler
-from ._helpers import require_any
+from ._helpers import CommandHelperPolicy
 from ._options.specs import RenderConfigOption
 from ._options.specs import RenderOutputOption
 from ._options.specs import RenderSpecOption
@@ -67,12 +66,12 @@ def render_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    require_any(
+    CommandHelperPolicy.require_any(
         (config, spec),
         message="Missing required option '--config' or '--spec'.",
     )
 
-    return call_handler(
+    return CommandHelperPolicy.call_handler(
         render_handler,
         state=ensure_state(ctx),
         state_fields=('pretty', 'quiet'),

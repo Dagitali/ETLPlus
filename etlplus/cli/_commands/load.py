@@ -10,9 +10,7 @@ import typer
 
 from .._handlers.dataops import load_handler
 from ._app import app
-from ._helpers import call_handler
-from ._helpers import normalize_file_format
-from ._helpers import resolve_command_resource
+from ._helpers import CommandHelperPolicy
 from ._options.common import StructuredEventFormatOption
 from ._options.resources import SourceFormatOption
 from ._options.resources import TargetArg
@@ -65,11 +63,11 @@ def load_cmd(
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
     state = ensure_state(ctx)
-    source_format_hint = normalize_file_format(
+    source_format_hint = CommandHelperPolicy.normalize_file_format(
         source_format,
         label='source_format',
     )
-    _, resolved_target = resolve_command_resource(
+    _, resolved_target = CommandHelperPolicy.resolve_command_resource(
         ctx,
         state=state,
         role='target',
@@ -78,7 +76,7 @@ def load_cmd(
         format_value=target_format,
         positional=True,
     )
-    _, resolved_source = resolve_command_resource(
+    _, resolved_source = CommandHelperPolicy.resolve_command_resource(
         ctx,
         state=state,
         role='source',
@@ -86,7 +84,7 @@ def load_cmd(
         soft_inference=True,
     )
 
-    return call_handler(
+    return CommandHelperPolicy.call_handler(
         load_handler,
         state=state,
         source=resolved_source.value,

@@ -6,16 +6,12 @@ Common Typer option aliases shared across CLI command modules.
 
 from __future__ import annotations
 
-from typing import Annotated
 from typing import Literal
-
-import typer
 
 from .helpers import typer_flag_option_alias
 from .helpers import typer_flag_option_kwargs
 from .helpers import typer_option_alias
 from .helpers import typer_value_option_alias
-from .helpers import typer_value_option_kwargs
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -52,18 +48,14 @@ CheckConfigOption = typer_value_option_alias(
     metavar='PATH',
 )
 
-ConfigOption = Annotated[
+ConfigOption = typer_value_option_alias(
     str,
-    typer.Option(
-        ...,
-        '--config',
-        **typer_value_option_kwargs(
-            'Path to YAML-formatted configuration file.',
-            metavar='PATH',
-            show_default=None,
-        ),
-    ),
-]
+    ...,
+    '--config',
+    help_text='Path to YAML-formatted configuration file.',
+    metavar='PATH',
+    show_default=None,
+)
 
 ContinueOnFailOption = typer_flag_option_alias(
     '--continue-on-fail',
