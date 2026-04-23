@@ -10,7 +10,7 @@ import typer
 
 from .._handlers.init import init_handler
 from ._app import app
-from ._helpers import call_handler
+from ._helpers import CommandHelperPolicy
 from ._options.init import InitDirectoryArgument
 from ._options.init import InitForceOption
 from ._state import ensure_state
@@ -50,7 +50,7 @@ def init_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    return call_handler(
+    return CommandHelperPolicy.call_handler(
         init_handler,
         state=ensure_state(ctx),
         directory=directory,

@@ -13,7 +13,6 @@ from typing import Any
 from typing import Final
 from typing import Literal
 from typing import NoReturn
-from typing import overload
 
 import typer
 
@@ -31,17 +30,8 @@ from ._types import DataConnectorContext
 
 
 __all__ = [
-    # Functions
-    'call_handler',
-    'call_history_command',
-    'call_history_handler',
-    'fail_usage',
-    'normalize_file_format',
-    'parse_json_option',
-    'require_any',
-    'require_value',
-    'resolve_command_resource',
-    'resolve_resource',
+    # Classes
+    'CommandHelperPolicy',
 ]
 
 
@@ -109,33 +99,13 @@ class _ResolvedResource:
 class CommandHelperPolicy:
     """Own shared command dispatch, validation, and resource normalization."""
 
-    @overload
     @staticmethod
     def normalize_optional_choice(
         value: object | None,
         choices: Collection[str],
         *,
         label: str,
-    ) -> str | None: ...
-
-    @overload
-    @staticmethod
-    def normalize_optional_choice[T](
-        value: object | None,
-        choices: Collection[str],
-        *,
-        label: str,
-        coerce: Callable[[str], T],
-    ) -> T | None: ...
-
-    @staticmethod
-    def normalize_optional_choice[T](
-        value: object | None,
-        choices: Collection[str],
-        *,
-        label: str,
-        coerce: Callable[[str], T] | None = None,
-    ) -> str | T | None:
+    ) -> str | None:
         """
         Normalize one optional CLI value against *choices*.
 
@@ -147,24 +117,18 @@ class CommandHelperPolicy:
             The valid choices to normalize against.
         label : str
             The human-friendly name of the value for error messages.
-        coerce : Callable[[str], T], optional
-            Optional coercion function to apply to the normalized value before
-            returning.
 
         Returns
         -------
-        str | T | None
-            The normalized (and optionally coerced) value, or ``None`` if the
-            input value is ``None`` or invalid.
+        str | None
+            The normalized value, or ``None`` if the input value is ``None``
+            or invalid.
         """
-        normalized = ResourceTypeResolver.optional_choice(
+        return ResourceTypeResolver.optional_choice(
             None if value is None else str(value),
             choices,
             label=label,
         )
-        if normalized is None or coerce is None:
-            return normalized
-        return coerce(normalized)
 
     @staticmethod
     def normalize_resource_type(
@@ -384,12 +348,12 @@ class CommandHelperPolicy:
         FileFormat | None
             The normalized file format value.
         """
-        return CommandHelperPolicy.normalize_optional_choice(
+        normalized = CommandHelperPolicy.normalize_optional_choice(
             value,
             FILE_FORMATS,
             label=label,
-            coerce=FileFormat.coerce,
         )
+        return None if normalized is None else FileFormat.coerce(normalized)
 
     @staticmethod
     def parse_json_option(
@@ -492,7 +456,7 @@ class CommandHelperPolicy:
         state : CliState
             The CLI state.
         role : DataConnectorContext
-        The resource role for error messages ('source' or 'target').
+            The resource role for error messages ('source' or 'target').
         value : str | None
             The raw CLI value to resolve.
         connector_type : str | None, optional
@@ -506,11 +470,11 @@ class CommandHelperPolicy:
         positional : bool, optional
             Whether the value comes from a positional argument, which requires
             additional validation to reject option-like values. Defaults to
-        ``False``.
+            ``False``.
         soft_inference : bool, optional
             Whether to allow soft inference of the connector type based on the
             value when an explicit *connector_type* is not provided. Defaults
-            to``False``, which means the type will be ``None`` when not
+            to ``False``, which means the type will be ``None`` when not
             explicitly provided.
         default_value : str, optional
             The default value to use when *value* is ``None``. Defaults to '-',
@@ -602,18 +566,3 @@ class CommandHelperPolicy:
             soft_inference=soft_inference,
             default_value=default_value,
         )
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
-call_handler = CommandHelperPolicy.call_handler
-call_history_command = CommandHelperPolicy.call_history_command
-call_history_handler = CommandHelperPolicy.call_history_handler
-fail_usage = CommandHelperPolicy.fail_usage
-normalize_file_format = CommandHelperPolicy.normalize_file_format
-parse_json_option = CommandHelperPolicy.parse_json_option
-require_any = CommandHelperPolicy.require_any
-require_value = CommandHelperPolicy.require_value
-resolve_command_resource = CommandHelperPolicy.resolve_command_resource
-resolve_resource = CommandHelperPolicy.resolve_resource

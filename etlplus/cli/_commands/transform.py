@@ -10,9 +10,7 @@ import typer
 
 from .._handlers.dataops import transform_handler
 from ._app import app
-from ._helpers import call_handler
-from ._helpers import parse_json_option
-from ._helpers import resolve_command_resource
+from ._helpers import CommandHelperPolicy
 from ._options.common import StructuredEventFormatOption
 from ._options.resources import SourceArg
 from ._options.resources import SourceFormatOption
@@ -77,7 +75,7 @@ def transform_cmd(
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
     state = ensure_state(ctx)
-    _, resolved_source = resolve_command_resource(
+    _, resolved_source = CommandHelperPolicy.resolve_command_resource(
         ctx,
         state=state,
         role='source',
@@ -86,7 +84,7 @@ def transform_cmd(
         format_value=source_format,
         soft_inference=True,
     )
-    _, resolved_target = resolve_command_resource(
+    _, resolved_target = CommandHelperPolicy.resolve_command_resource(
         ctx,
         state=state,
         role='target',
@@ -95,13 +93,16 @@ def transform_cmd(
         format_value=target_format,
     )
 
-    return call_handler(
+    return CommandHelperPolicy.call_handler(
         transform_handler,
         state=state,
         source=resolved_source.value,
         source_format=resolved_source.format_hint,
         target=resolved_target.value,
-        operations=parse_json_option(operations, '--operations'),
+        operations=CommandHelperPolicy.parse_json_option(
+            operations,
+            '--operations',
+        ),
         target_format=resolved_target.format_hint,
         target_type=resolved_target.require_resource_type(),
         event_format=event_format,

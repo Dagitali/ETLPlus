@@ -10,9 +10,7 @@ import typer
 
 from .._handlers.check import check_handler
 from ._app import app
-from ._helpers import call_handler
-from ._helpers import fail_usage
-from ._helpers import require_value
+from ._helpers import CommandHelperPolicy
 from ._options.common import CheckConfigOption
 from ._options.specs import GraphOption
 from ._options.specs import JobsOption
@@ -98,17 +96,21 @@ def check_cmd(
     )
 
     if readiness and inspection_requested:
-        fail_usage('--readiness cannot be combined with inspection flags.')
+        CommandHelperPolicy.fail_usage(
+            '--readiness cannot be combined with inspection flags.',
+        )
     if graph and section_inspection_requested:
-        fail_usage('--graph cannot be combined with inspection flags.')
+        CommandHelperPolicy.fail_usage(
+            '--graph cannot be combined with inspection flags.',
+        )
 
     if not readiness and not config:
-        require_value(
+        CommandHelperPolicy.require_value(
             config,
             message="Missing required option '--config'.",
         )
 
-    return call_handler(
+    return CommandHelperPolicy.call_handler(
         check_handler,
         state=ensure_state(ctx),
         config=config,

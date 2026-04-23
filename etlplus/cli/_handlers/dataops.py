@@ -76,6 +76,12 @@ class DataCommandPolicy:
         ------
         _lifecycle.CommandContext
             Command context for the active command scope.
+
+        Raises
+        ------
+        Exception
+            Any exception raised within the command scope will be caught,
+            logged as a command failure event, and re-raised.
         """
         context = _lifecycle.start_command(
             command=command,
@@ -109,9 +115,9 @@ class DataCommandPolicy:
             Payload to include in the command output.
         mode : str
             Output mode for the command.
-        pretty : bool, default=True
+        pretty : bool, optional
             Whether to pretty-print the output.
-        result_status : str, default='ok'
+        result_status : str, optional
             Result status for the command.
         **fields : Any
             Additional fields to include in the command output.
@@ -153,7 +159,7 @@ class DataCommandPolicy:
             Payload to include in the command output.
         output_path : str
             Path to the output file.
-        format_hint : str | None, default=None
+        format_hint : str | None, optional
             Hint for the output format.
         success_message : str
             Message to display on successful completion.
@@ -192,7 +198,7 @@ class DataCommandPolicy:
             Command context for the active command scope.
         payload : Any
             Payload to include in the command output.
-        pretty : bool, default=True
+        pretty : bool, optional
             Whether to pretty-print the output.
         **fields : Any
             Additional fields to include in the command output.
