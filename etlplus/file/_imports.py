@@ -189,6 +189,7 @@ def _resolve_with_module_override(
 # SECTION: FUNCTIONS ======================================================== #
 
 
+# TODO: Generalize package importing and promote to utils if needed elsewhere.
 def get_dependency(
     module_name: str,
     *,
