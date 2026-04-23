@@ -1599,24 +1599,6 @@ class TestRun:
 class TestRunInternals:
     """Unit tests for internal run() helpers."""
 
-    def test_selected_job_names_skips_already_visited_nodes(self) -> None:
-        """Test that dependency-closure expansion tolerates self-referential jobs."""
-        jobs_by_name = {'seed': SimpleNamespace(depends_on='seed')}
-
-        assert run_mod._selected_job_names(jobs_by_name, 'seed') == {'seed'}
-
-    def test_planned_jobs_requires_job_name_when_not_running_all(self) -> None:
-        """Test that planned-job selection requires a job unless run-all is enabled."""
-        cfg = SimpleNamespace(
-            jobs=[_make_job(name='job-a', source='src', target='tgt')],
-        )
-
-        with pytest.raises(
-            ValueError,
-            match='job is required unless run_all is True',
-        ):
-            run_mod._planned_jobs(cfg, job_name=None, run_all=False)
-
     def test_delegates_to_load_when_target_is_provided(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -1787,6 +1769,29 @@ class TestRunInternals:
         assert result == {'ok': True}
         assert calls == [(cfg, connector, {'timeout': 3.0}, payload)]
 
+    def test_execute_job_with_retries_raises_for_zero_attempt_budget(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that the defensive unreachable-retry guard raises for zero
+        attempts.
+        """
+        monkeypatch.setattr(
+            run_mod,
+            '_job_retry_settings',
+            lambda _job: run_mod._ResolvedJobRetry(
+                max_attempts=0,
+                backoff_seconds=0.0,
+            ),
+        )
+
+        with pytest.raises(RuntimeError, match='unreachable retry state'):
+            run_mod._execute_job_with_retries(
+                cast(Any, SimpleNamespace()),
+                SimpleNamespace(name='seed'),
+            )
+
     def test_extract_transform_then_return_when_no_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -1899,6 +1904,95 @@ class TestRunInternals:
             run_mod._job_dependencies(SimpleNamespace(depends_on=depends_on))
             == expected
         )
+
+    def test_job_retry_settings_accepts_mapping_retry_config(self) -> None:
+        """
+        Test that retry settings read mapping-style retry configuration values.
+        """
+        settings = run_mod._job_retry_settings(
+            SimpleNamespace(
+                retry={
+                    'max_attempts': '3',
+                    'backoff_seconds': '1.25',
+                },
+            ),
+        )
+
+        assert settings.enabled is True
+        assert settings.max_attempts == 3
+        assert settings.backoff_seconds == pytest.approx(1.25)
+
+    def test_maybe_sleep_for_retry_sleeps_for_positive_backoff(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that positive retry backoff values are forwarded to :func:`sleep`.
+        """
+        sleep_calls: list[float] = []
+
+        monkeypatch.setattr(run_mod, 'sleep', sleep_calls.append)
+
+        run_mod._maybe_sleep_for_retry(0.25)
+
+        assert sleep_calls == [0.25]
+
+    def test_planned_jobs_requires_job_name_when_not_running_all(self) -> None:
+        """Test that planned-job selection requires a job unless run-all is enabled."""
+        cfg = SimpleNamespace(
+            jobs=[_make_job(name='job-a', source='src', target='tgt')],
+        )
+
+        with pytest.raises(
+            ValueError,
+            match='job is required unless run_all is True',
+        ):
+            run_mod._planned_jobs(cfg, job_name=None, run_all=False)
+
+    def test_refresh_ready_jobs_records_blocked_jobs_and_respects_schedule_gate(
+        self,
+    ) -> None:
+        """Blocked jobs should be skipped, and scheduling can be suppressed entirely."""
+        tracker = run_mod._RunPlanTracker(
+            ordered_job_names=['blocked', 'ready'],
+            requested_job=None,
+            continue_on_fail=True,
+            mode='all',
+        )
+        tracker._failed_lookup.add('seed')
+        completed_job_names: set[str] = set()
+        ready_queue: list[str] = []
+        seen_job_names: set[str] = set()
+
+        run_mod._refresh_ready_jobs(
+            allow_scheduling=False,
+            completed_job_names=completed_job_names,
+            jobs_by_name={
+                'blocked': SimpleNamespace(depends_on=['seed']),
+                'ready': SimpleNamespace(depends_on=[]),
+            },
+            ordered_job_names=['blocked', 'ready'],
+            ready_queue=ready_queue,
+            seen_job_names=seen_job_names,
+            sequence_lookup={'blocked': 0, 'ready': 1},
+            tracker=tracker,
+        )
+
+        assert completed_job_names == {'blocked'}
+        assert seen_job_names == {'blocked'}
+        assert ready_queue == []
+        assert tracker.executed_jobs == [
+            {
+                'duration_ms': 0,
+                'finished_at': tracker.executed_jobs[0]['finished_at'],
+                'job': 'blocked',
+                'reason': 'upstream_failed',
+                'sequence_index': 0,
+                'skipped_due_to': ['seed'],
+                'started_at': tracker.executed_jobs[0]['started_at'],
+                'status': 'skipped',
+            },
+        ]
 
     def test_require_job_name_rejects_missing_names(self) -> None:
         """Test that job-name extraction requires a non-empty string name."""
@@ -2013,6 +2107,40 @@ class TestRunInternals:
         assert isinstance(failed_job['started_at'], str)
         assert isinstance(failed_job['finished_at'], str)
 
+    def test_run_plan_tracker_result_ignores_non_mapping_rows(self) -> None:
+        """
+        Test that summary generation skips any non-mapping executed rows
+        defensively.
+        """
+        class _NonMappingRow:
+            def get(self, _key: str, default: Any = None) -> Any:
+                return default
+
+        tracker = run_mod._RunPlanTracker(
+            ordered_job_names=['seed'],
+            requested_job=None,
+            continue_on_fail=False,
+            mode='all',
+        )
+        tracker._executed_lookup = {
+            0: cast(Any, _NonMappingRow()),
+            1: {
+                'job': 'seed',
+                'result': {'status': 'success'},
+                'result_status': 'success',
+                'retry': {'attempt_count': 2},
+                'status': 'succeeded',
+            },
+        }
+
+        result = tracker.result()
+
+        assert result['status'] == 'success'
+        assert result['final_job'] == 'seed'
+        assert result['final_result_status'] == 'success'
+        assert result['retried_job_count'] == 1
+        assert result['total_retry_count'] == 1
+
     def test_run_treats_missing_transform_registry_as_noop(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -2125,6 +2253,12 @@ class TestRunInternals:
             kwargs['phase'] == 'after_transform' for _, kwargs in validation_calls
         )
         assert all(kwargs['severity'] == 'warn' for _, kwargs in validation_calls)
+
+    def test_selected_job_names_skips_already_visited_nodes(self) -> None:
+        """Test that dependency-closure expansion tolerates self-referential jobs."""
+        jobs_by_name = {'seed': SimpleNamespace(depends_on='seed')}
+
+        assert run_mod._selected_job_names(jobs_by_name, 'seed') == {'seed'}
 
     def test_validate_payload_adapts_validator_call(
         self,
