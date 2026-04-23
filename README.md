@@ -670,6 +670,12 @@ Validate from file:
 etlplus validate examples/data/sample.json --rules '{"email": {"type": "string", "pattern": "^[\\w.-]+@[\\w.-]+\\.\\w+$"}}'
 ```
 
+Validate JSON or YAML against a JSON Schema:
+```bash
+etlplus validate examples/data/sample.json --schema schemas/customer.schema.json --schema-format jsonschema
+etlplus validate --source-format yaml --schema schemas/pipeline.schema.json --schema-format jsonschema -
+```
+
 #### Transform Data
 
 When piping data through `etlplus transform`, use `--source-format` whenever the SOURCE argument is
@@ -950,6 +956,10 @@ Supported validation rules:
 - `maxLength`: Maximum length for strings
 - `pattern`: Regex pattern for strings
 - `enum`: List of allowed values
+
+Schema-based validation is also supported through `etlplus validate --schema ...`.
+Use `--schema-format xsd` for XML documents and `--schema-format jsonschema`
+for JSON or YAML documents.
 
 Example:
 ```json
