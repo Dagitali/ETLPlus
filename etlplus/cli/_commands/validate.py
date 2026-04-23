@@ -64,7 +64,8 @@ def validate_cmd(
     schema : SchemaOption, optional
         Schema path used for schema-based validation.
     schema_format : SchemaFormatOption, optional
-        Schema format override for schema-based validation.
+        Schema format override for schema-based validation. Supported values
+        are ``xsd`` for XML Schema and ``jsonschema`` for JSON Schema.
     output : OutputOption, optional
         Optional output path for validation results.
     event_format : StructuredEventFormatOption, optional
@@ -80,6 +81,11 @@ def validate_cmd(
     typer.BadParameter
         If the schema option family is incomplete or conflicts with
         ``--rules``.
+
+    Notes
+    -----
+    Use ``--schema-format jsonschema`` for JSON or YAML source documents and
+    ``--schema-format xsd`` for XML documents.
     """
     rules_supplied = ctx.get_parameter_source('rules') is not ParameterSource.DEFAULT
     if schema_format is not None and schema is None:
