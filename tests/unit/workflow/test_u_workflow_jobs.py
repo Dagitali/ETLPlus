@@ -121,6 +121,21 @@ class TestReferenceParsing(WorkflowAssertions):
         """Test that invalid reference payloads yield `None`."""
         assert ref_cls.from_obj(obj) is None
 
+    @pytest.mark.parametrize(
+        ('config', 'expected'),
+        [
+            pytest.param(JobRetryConfig(max_attempts=1), False, id='disabled'),
+            pytest.param(JobRetryConfig(max_attempts=2), True, id='enabled'),
+        ],
+    )
+    def test_retry_config_enabled_reflects_attempt_budget(
+        self,
+        config: JobRetryConfig,
+        expected: bool,
+    ) -> None:
+        """Test that retry enablement reflects whether retries are allowed."""
+        assert config.enabled is expected
+
 
 class TestJobConfigParsing(WorkflowAssertions):
     """Unit tests for job configuration parsing."""
