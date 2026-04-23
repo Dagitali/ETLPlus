@@ -254,9 +254,9 @@ class DataCommandPolicy:
 
         Returns
         -------
-        bool
+        TypeGuard[str]
             ``True`` if *target* names a concrete non-STDOUT destination,
-            ``False`` if not.
+            narrowing *target* to ``str`` in the guarded branch.
         """
         return target not in (None, '-')
 
