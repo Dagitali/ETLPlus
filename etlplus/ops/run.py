@@ -36,7 +36,6 @@ from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import StrPath
 from ..workflow import topological_sort_jobs
-from ._mappings import merge_mapping_options
 from ._types import DataSourceArg
 from ._types import OptionalConnectorTypeArg
 from ._types import OptionalPathArg
@@ -644,7 +643,7 @@ def _merge_file_options(
     *option_sets: object,
 ) -> dict[str, Any]:
     """Merge connector-level and job-level file options with later wins."""
-    return merge_mapping_options(
+    return MappingParser.merge_mappings(
         *option_sets,
         excluded_keys=frozenset({'path', 'format'}),
     )
