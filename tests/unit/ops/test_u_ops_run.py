@@ -2108,6 +2108,99 @@ class TestRunInternals:
         }
         assert result.connector_obj is connector
 
+    def test_run_job_plan_parallel_continues_after_failure_when_configured(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that parallel planning continues scheduling after a failure when
+        continue-on-fail mode is enabled.
+        """
+        jobs = [
+            _make_job(name='seed', source='src', target='tgt'),
+            _make_job(name='notify', source='src', target='tgt'),
+        ]
+        call_order: list[str] = []
+        wait_calls: list[tuple[int, object]] = []
+
+        def _execute_job_with_retries(_context: Any, job_obj: Any) -> Any:
+            name = cast(str, job_obj.name)
+            call_order.append(name)
+            if name == 'seed':
+                return run_mod._JobExecutionOutcome(
+                    started_at='2026-03-23T00:00:00Z',
+                    finished_at='2026-03-23T00:00:01Z',
+                    duration_ms=10,
+                    exc=ValueError('boom'),
+                )
+            return run_mod._JobExecutionOutcome(
+                started_at='2026-03-23T00:00:01Z',
+                finished_at='2026-03-23T00:00:02Z',
+                duration_ms=10,
+                result={'status': 'success'},
+            )
+
+        class _FakeFuture:
+            def __init__(self, outcome: Any) -> None:
+                self._outcome = outcome
+
+            def result(self) -> Any:
+                """Return the precomputed fake future outcome."""
+                return self._outcome
+
+        class _FakeExecutor:
+            def __init__(self, *, max_workers: int) -> None:
+                self.max_workers = max_workers
+
+            def __enter__(self) -> Self:
+                return self
+
+            def __exit__(
+                self,
+                exc_type: object,
+                exc: object,
+                tb: object,
+            ):
+                del exc_type, exc, tb
+                return False
+
+            def submit(self, fn: Any, context: Any, job_obj: Any) -> _FakeFuture:
+                """Execute the submitted callable synchronously."""
+                return _FakeFuture(fn(context, job_obj))
+
+        def _wait(
+            futures: tuple[_FakeFuture, ...],
+            return_when: object,
+        ) -> tuple[set[_FakeFuture], set[_FakeFuture]]:
+            wait_calls.append((len(futures), return_when))
+            return (set(futures), set())
+
+        monkeypatch.setattr(
+            run_mod,
+            '_execute_job_with_retries',
+            _execute_job_with_retries,
+        )
+        monkeypatch.setattr(run_mod, 'ThreadPoolExecutor', _FakeExecutor)
+        monkeypatch.setattr(run_mod, 'wait', _wait)
+
+        result = run_mod._run_job_plan_parallel(
+            cast(Any, SimpleNamespace()),
+            jobs,
+            requested_job=None,
+            continue_on_fail=True,
+            mode='all',
+            max_concurrency=1,
+        )
+
+        assert call_order == ['seed', 'notify']
+        assert wait_calls == [
+            (1, run_mod.FIRST_COMPLETED),
+            (1, run_mod.FIRST_COMPLETED),
+        ]
+        assert result['status'] == 'partial_success'
+        assert result['failed_jobs'] == ['seed']
+        assert result['succeeded_jobs'] == ['notify']
+
     def test_run_job_plan_parallel_stops_scheduling_after_first_failure(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -2144,6 +2237,7 @@ class TestRunInternals:
                 self._outcome = outcome
 
             def result(self) -> Any:
+                """Return the precomputed fake future outcome."""
                 return self._outcome
 
         class _FakeExecutor:
@@ -2163,6 +2257,7 @@ class TestRunInternals:
                 return False
 
             def submit(self, fn: Any, context: Any, job_obj: Any) -> _FakeFuture:
+                """Execute the submitted callable synchronously."""
                 return _FakeFuture(fn(context, job_obj))
 
         def _wait(
@@ -2282,6 +2377,7 @@ class TestRunInternals:
         """
         class _NonMappingRow:
             def get(self, _key: str, default: Any = None) -> Any:
+                """Mimic ``dict.get`` while remaining non-mapping."""
                 return default
 
         tracker = run_mod._RunPlanTracker(
