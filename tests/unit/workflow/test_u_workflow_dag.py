@@ -36,6 +36,12 @@ def _ordered_names(jobs: list[JobConfig]) -> list[str]:
 class TestDagHelpers:
     """Unit tests for DAG helpers and sorting behavior."""
 
+    def test_dag_error_as_dict_returns_structured_payload(self) -> None:
+        """
+        Test that :meth:`DagError.as_dict` returns the error message payload.
+        """
+        assert DagError(message='boom').as_dict() == {'message': 'boom'}
+
     def test_dag_error_string_representation(self) -> None:
         """
         Test that :class:`DagError` string conversion returns the original
