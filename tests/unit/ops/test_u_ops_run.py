@@ -1792,6 +1792,52 @@ class TestRunInternals:
                 SimpleNamespace(name='seed'),
             )
 
+    def test_execute_job_with_retries_omits_non_string_result_status(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that successful retry metadata omits non-string result statuses.
+        """
+        monkeypatch.setattr(
+            run_mod,
+            '_job_retry_settings',
+            lambda _job: run_mod._ResolvedJobRetry(
+                max_attempts=2,
+                backoff_seconds=0.0,
+            ),
+        )
+        monkeypatch.setattr(
+            run_mod,
+            '_run_job_config',
+            lambda _context, _job: {'status': 1, 'rows': 2},
+        )
+        monkeypatch.setattr(
+            run_mod,
+            '_utc_now_iso',
+            lambda: '2026-03-23T00:00:00Z',
+        )
+        monkeypatch.setattr(run_mod, '_duration_ms', lambda _started_perf: 5)
+
+        outcome = run_mod._execute_job_with_retries(
+            cast(Any, SimpleNamespace()),
+            SimpleNamespace(name='seed'),
+        )
+
+        assert outcome.result == {'status': 1, 'rows': 2}
+        assert outcome.retry_summary is not None
+        assert outcome.retry_summary['attempt_count'] == 1
+        assert outcome.retry_summary['retried'] is False
+        assert outcome.retry_summary['attempts'] == [
+            {
+                'attempt': 1,
+                'duration_ms': 5,
+                'finished_at': '2026-03-23T00:00:00Z',
+                'started_at': '2026-03-23T00:00:00Z',
+                'status': 'succeeded',
+            },
+        ]
+
     def test_extract_transform_then_return_when_no_target(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -2062,6 +2108,93 @@ class TestRunInternals:
         }
         assert result.connector_obj is connector
 
+    def test_run_job_plan_parallel_stops_scheduling_after_first_failure(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that fail-fast parallel planning stops before scheduling later jobs.
+        """
+        jobs = [
+            _make_job(name='seed', source='src', target='tgt'),
+            _make_job(name='notify', source='src', target='tgt'),
+        ]
+        call_order: list[str] = []
+        wait_calls: list[tuple[int, object]] = []
+
+        def _execute_job_with_retries(_context: Any, job_obj: Any) -> Any:
+            name = cast(str, job_obj.name)
+            call_order.append(name)
+            if name == 'seed':
+                return run_mod._JobExecutionOutcome(
+                    started_at='2026-03-23T00:00:00Z',
+                    finished_at='2026-03-23T00:00:01Z',
+                    duration_ms=10,
+                    exc=ValueError('boom'),
+                )
+            return run_mod._JobExecutionOutcome(
+                started_at='2026-03-23T00:00:01Z',
+                finished_at='2026-03-23T00:00:02Z',
+                duration_ms=10,
+                result={'status': 'success'},
+            )
+
+        class _FakeFuture:
+            def __init__(self, outcome: Any) -> None:
+                self._outcome = outcome
+
+            def result(self) -> Any:
+                return self._outcome
+
+        class _FakeExecutor:
+            def __init__(self, *, max_workers: int) -> None:
+                self.max_workers = max_workers
+
+            def __enter__(self) -> Self:
+                return self
+
+            def __exit__(
+                self,
+                exc_type: object,
+                exc: object,
+                tb: object,
+            ):
+                del exc_type, exc, tb
+                return False
+
+            def submit(self, fn: Any, context: Any, job_obj: Any) -> _FakeFuture:
+                return _FakeFuture(fn(context, job_obj))
+
+        def _wait(
+            futures: tuple[_FakeFuture, ...],
+            return_when: object,
+        ) -> tuple[set[_FakeFuture], set[_FakeFuture]]:
+            wait_calls.append((len(futures), return_when))
+            return (set(futures), set())
+
+        monkeypatch.setattr(
+            run_mod,
+            '_execute_job_with_retries',
+            _execute_job_with_retries,
+        )
+        monkeypatch.setattr(run_mod, 'ThreadPoolExecutor', _FakeExecutor)
+        monkeypatch.setattr(run_mod, 'wait', _wait)
+
+        result = run_mod._run_job_plan_parallel(
+            cast(Any, SimpleNamespace()),
+            jobs,
+            requested_job=None,
+            continue_on_fail=False,
+            mode='all',
+            max_concurrency=1,
+        )
+
+        assert call_order == ['seed']
+        assert wait_calls == [(1, run_mod.FIRST_COMPLETED)]
+        assert result['status'] == 'failed'
+        assert result['failed_jobs'] == ['seed']
+        assert result['succeeded_jobs'] == []
+
     def test_run_job_plan_stops_after_first_failure_when_not_continuing(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -2106,6 +2239,41 @@ class TestRunInternals:
         assert failed_job['status'] == 'failed'
         assert isinstance(failed_job['started_at'], str)
         assert isinstance(failed_job['finished_at'], str)
+
+    def test_run_plan_tracker_result_collects_final_fields_across_rows(
+        self,
+    ) -> None:
+        """
+        Test that final job and status can be discovered from distinct rows.
+        """
+        tracker = run_mod._RunPlanTracker(
+            ordered_job_names=['seed'],
+            requested_job=None,
+            continue_on_fail=False,
+            mode='all',
+        )
+        tracker._executed_lookup = {
+            0: {
+                'job': 'seed',
+                'result': {'rows': 1},
+                'result_status': 0,
+                'retry': {'attempt_count': 1},
+                'status': 'succeeded',
+            },
+            1: {
+                'job': '',
+                'result_status': 'success',
+                'status': 'succeeded',
+            },
+        }
+
+        result = tracker.result()
+
+        assert result['final_job'] == 'seed'
+        assert result['final_result'] == {'rows': 1}
+        assert result['final_result_status'] == 'success'
+        assert 'retried_job_count' not in result
+        assert 'total_retry_count' not in result
 
     def test_run_plan_tracker_result_ignores_non_mapping_rows(self) -> None:
         """
