@@ -91,6 +91,46 @@ class TestJobRunPersistence:
             pytest.param(
                 {
                     'result': {'status': 'success'},
+                    'retry': {'unsupported': object()},
+                },
+                {'status': 'success'},
+                id='ignores-empty-filtered-retry-payload',
+            ),
+            pytest.param(
+                {
+                    'result': 'success',
+                    'retry': {
+                        'attempt_count': 2,
+                        'retried': True,
+                    },
+                },
+                {
+                    'result': 'success',
+                    'retry': {
+                        'attempt_count': 2,
+                        'retried': True,
+                    },
+                },
+                id='wraps-scalar-summary-with-retry',
+            ),
+            pytest.param(
+                {
+                    'retry': {
+                        'attempt_count': 2,
+                        'retried': True,
+                    },
+                },
+                {
+                    'retry': {
+                        'attempt_count': 2,
+                        'retried': True,
+                    },
+                },
+                id='returns-retry-only-summary',
+            ),
+            pytest.param(
+                {
+                    'result': {'status': 'success'},
                     'retry': {
                         'attempt_count': 2,
                         'attempts': [
