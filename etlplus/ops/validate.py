@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.ops.validate` module.
 
-Validate dicts/lists with field rules and XML documents with XML schemas.
+Validate dicts/lists with field rules and documents with external schemas.
 
 This module provides a very small validation primitive that is intentionally
 runtime-friendly (no heavy schema engines) and pairs with ETLPlus' JSON-like
@@ -11,7 +11,8 @@ Highlights
 ----------
 - Centralized type map and helpers for clarity and reuse.
 - Consistent error wording; field and item paths like ``[2].email``.
-- Small, focused public API with :func:`validate_field` and :func:`validate`.
+- Small, focused public API with :func:`validate_field`, :func:`validate`,
+    and :func:`validate_schema`.
 
 Examples
 --------
@@ -35,6 +36,9 @@ from typing import Any
 from typing import Literal
 from typing import TypedDict
 
+from ..file import File
+from ..file import FileFormat
+from ..utils import JsonCodec
 from ..utils._types import JSONData
 from ..utils._types import Record
 from ..utils._types import StrAnyMap
@@ -126,7 +130,7 @@ type FieldErrors = dict[str, list[str]]
 type FieldRuleInput = StrAnyMap | FieldRulesDict
 type FieldRuleValidator = Callable[[Any, FieldRuleInput, list[str]], None]
 type RulesMap = Mapping[str, FieldRulesDict]
-type SchemaFormat = Literal['xsd']
+type SchemaFormat = Literal['jsonschema', 'xsd']
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
@@ -255,6 +259,18 @@ def _get_numeric_rule(
 
 
 # TODO: Generalize package importing and promote to utils if needed elsewhere.
+def _import_jsonschema() -> Any:
+    """Import and return :mod:`jsonschema` lazily."""
+    try:
+        return import_module('jsonschema')
+    except Exception as exc:  # pragma: no cover - import shape varies by env
+        raise RuntimeError(
+            'jsonschema is required for JSON Schema validation. '
+            'Install with: pip install jsonschema',
+        ) from exc
+
+
+# TODO: Generalize package importing and promote to utils if needed elsewhere.
 def _import_lxml_etree() -> Any:
     """Import and return :mod:`lxml.etree` lazily."""
     try:
@@ -266,6 +282,18 @@ def _import_lxml_etree() -> Any:
         ) from exc
 
 
+def _import_yaml() -> Any:
+    """Import and return :mod:`yaml` lazily."""
+    try:
+        return import_module('yaml')
+    except Exception as exc:  # pragma: no cover - import shape varies by env
+        raise RuntimeError(
+            'PyYAML is required for YAML schema validation. '
+            'Install with: pip install PyYAML',
+        ) from exc
+
+
+# TODO: Generalize package importing and promote to utils if needed elsewhere.
 def _is_integer(
     value: Any,
 ) -> bool:
@@ -283,6 +311,103 @@ def _is_integer(
         ``True`` if value is an integer, else ``False``.
     """
     return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _format_jsonschema_path(
+    path: Any,
+) -> str | None:
+    """Return a stable dotted/indexed path for one JSON Schema error."""
+    parts: list[str] = []
+    for part in path:
+        if isinstance(part, int):
+            parts.append(f'[{part}]')
+            continue
+        if not parts:
+            parts.append(str(part))
+            continue
+        parts.append(f'.{part}')
+    return ''.join(parts) or None
+
+
+def _infer_structured_text_format(
+    text: str,
+) -> Literal['json', 'yaml']:
+    """Infer JSON vs YAML from raw text."""
+    return 'json' if text.lstrip().startswith(('{', '[')) else 'yaml'
+
+
+def _normalize_jsonschema_format_hint(
+    format_hint: str | None,
+) -> FileFormat | None:
+    """Normalize the supported JSON Schema source formats."""
+    if format_hint is None:
+        return None
+
+    normalized = FileFormat.coerce(format_hint)
+    if normalized not in (FileFormat.JSON, FileFormat.YAML):
+        raise ValueError(
+            f'Unsupported JSON Schema source format: {format_hint}. '
+            'Supported source formats: json, yaml',
+        )
+    return normalized
+
+
+def _parse_structured_text(
+    text: str,
+    *,
+    format_hint: str | None,
+    label: str,
+) -> Any:
+    """Parse raw JSON or YAML text for JSON Schema validation."""
+    resolved_format = _normalize_jsonschema_format_hint(format_hint)
+    if resolved_format is FileFormat.JSON:
+        try:
+            return JsonCodec.parse(text)
+        except ValueError as exc:
+            raise ValueError(f'Failed to parse {label} as JSON: {exc}') from exc
+
+    if resolved_format is FileFormat.YAML or resolved_format is None:
+        if resolved_format is None and _infer_structured_text_format(text) == 'json':
+            try:
+                return JsonCodec.parse(text)
+            except ValueError:
+                pass
+        try:
+            yaml = _import_yaml()
+            return yaml.safe_load(text)
+        except RuntimeError:
+            raise
+        except Exception as exc:
+            raise ValueError(f'Failed to parse {label} as YAML: {exc}') from exc
+
+    raise ValueError(
+        f'Unsupported JSON Schema {label.lower()} format: {format_hint}',
+    )
+
+
+def _load_jsonschema_document(
+    value: str | Path,
+    *,
+    format_hint: str | None,
+    label: str,
+) -> Any:
+    """Load a JSON Schema document or source instance from path or text."""
+    resolved_format = _normalize_jsonschema_format_hint(format_hint)
+
+    if isinstance(value, Path):
+        try:
+            return File(value, resolved_format).read()
+        except FileNotFoundError as exc:
+            raise ValueError(f'{label} not found: {value}') from exc
+
+    candidate = Path(value)
+    if candidate.exists():
+        try:
+            return File(candidate, resolved_format).read()
+        except FileNotFoundError as exc:
+            raise ValueError(f'{label} not found: {candidate}') from exc
+
+    return _parse_structured_text(value, format_hint=format_hint, label=label)
 
 
 def _is_number(value: Any) -> bool:
@@ -462,75 +587,66 @@ def _validate_pattern_rule(
         errors.append(f'Value does not match pattern {pattern}')
 
 
-def _validation_result(
-    *,
-    data: JSONData | None,
-    errors: list[str] | None = None,
-    field_errors: FieldErrors | None = None,
-) -> ValidationDict:
-    """Build a stable validation result payload."""
-    resolved_errors = list(errors or [])
-    resolved_field_errors = dict(field_errors or {})
-    return {
-        'valid': not resolved_errors,
-        'errors': resolved_errors,
-        'field_errors': resolved_field_errors,
-        'data': data,
-    }
-
-
-def _validate_xsd(
+def _validate_jsonschema(
     source: str | Path,
     schema: str | Path,
+    *,
+    source_format: str | None = None,
 ) -> ValidationDict:
-    """Validate one XML document against one XSD schema."""
+    """Validate one JSON or YAML document against one JSON Schema."""
     try:
-        etree = _import_lxml_etree()
+        jsonschema = _import_jsonschema()
     except RuntimeError as exc:
         return _validation_result(data=None, errors=[str(exc)])
 
-    source_path, source_text = _resolve_local_path_or_text(source)
-    schema_path, schema_text = _resolve_local_path_or_text(schema)
-
-    if source_path is not None and not source_path.exists():
-        return _validation_result(
-            data=None,
-            errors=[f'XML not found: {source_path}'],
+    try:
+        schema_doc = _load_jsonschema_document(
+            schema,
+            format_hint=None,
+            label='Schema',
         )
-    if schema_path is not None and not schema_path.exists():
+    except (RuntimeError, ValueError) as exc:
+        return _validation_result(data=None, errors=[str(exc)])
+
+    try:
+        validator_cls = jsonschema.validators.validator_for(schema_doc)
+        validator_cls.check_schema(schema_doc)
+    except jsonschema.exceptions.SchemaError as exc:
         return _validation_result(
             data=None,
-            errors=[f'XSD not found: {schema_path}'],
+            errors=[f'Invalid JSON Schema: {exc.message}'],
         )
 
     try:
-        if schema_path is not None:
-            with schema_path.open('rb') as handle:
-                schema_doc = etree.parse(handle)
-        else:
-            schema_doc = etree.fromstring(schema_text)
-        compiled_schema = etree.XMLSchema(schema_doc)
+        instance = _load_jsonschema_document(
+            source,
+            format_hint=source_format,
+            label='Source',
+        )
+    except (RuntimeError, ValueError) as exc:
+        return _validation_result(data=None, errors=[str(exc)])
 
-        if source_path is not None:
-            with source_path.open('rb') as handle:
-                xml_doc = etree.parse(handle)
-        else:
-            xml_doc = etree.fromstring(source_text)
+    errors: list[str] = []
+    field_errors: FieldErrors = {}
+    validator = validator_cls(schema_doc)
+    validation_errors = sorted(
+        validator.iter_errors(instance),
+        key=lambda error: list(error.absolute_path),
+    )
 
-        if compiled_schema.validate(xml_doc):
-            return _validation_result(data=None)
+    for error in validation_errors:
+        path = _format_jsonschema_path(error.absolute_path)
+        if path is None:
+            errors.append(error.message)
+            continue
+        errors.append(f'{path}: {error.message}')
+        field_errors.setdefault(path, []).append(error.message)
 
-        errors = [
-            f'Line {error.line}: {error.message}'
-            for error in compiled_schema.error_log
-        ]
-        if not errors:
-            errors.append('XML failed schema validation')
-        return _validation_result(data=None, errors=errors)
-    except etree.XMLSchemaParseError as exc:
-        return _validation_result(data=None, errors=[f'Invalid XSD: {exc}'])
-    except etree.XMLSyntaxError as exc:
-        return _validation_result(data=None, errors=[f'Invalid XML: {exc}'])
+    return _validation_result(
+        data=None,
+        errors=errors,
+        field_errors=field_errors,
+    )
 
 
 def _validate_sequence(
@@ -588,6 +704,80 @@ def _validate_type_rule(
         errors.append(
             f'Expected type {expected_type}, got {type(value).__name__}',
         )
+
+
+def _validate_xsd(
+    source: str | Path,
+    schema: str | Path,
+) -> ValidationDict:
+    """Validate one XML document against one XSD schema."""
+    try:
+        etree = _import_lxml_etree()
+    except RuntimeError as exc:
+        return _validation_result(data=None, errors=[str(exc)])
+
+    source_path, source_text = _resolve_local_path_or_text(source)
+    schema_path, schema_text = _resolve_local_path_or_text(schema)
+
+    if source_path is not None and not source_path.exists():
+        return _validation_result(
+            data=None,
+            errors=[f'XML not found: {source_path}'],
+        )
+    if schema_path is not None and not schema_path.exists():
+        return _validation_result(
+            data=None,
+            errors=[f'XSD not found: {schema_path}'],
+        )
+
+    try:
+        if schema_path is not None:
+            with schema_path.open('rb') as handle:
+                schema_doc = etree.parse(handle)
+        else:
+            schema_doc = etree.fromstring(schema_text)
+        compiled_schema = etree.XMLSchema(schema_doc)
+
+        if source_path is not None:
+            with source_path.open('rb') as handle:
+                xml_doc = etree.parse(handle)
+        else:
+            xml_doc = etree.fromstring(source_text)
+
+        if compiled_schema.validate(xml_doc):
+            return _validation_result(data=None)
+
+        errors = [
+            f'Line {error.line}: {error.message}'
+            for error in compiled_schema.error_log
+        ]
+        if not errors:
+            errors.append('XML failed schema validation')
+        return _validation_result(data=None, errors=errors)
+    except etree.XMLSchemaParseError as exc:
+        return _validation_result(data=None, errors=[f'Invalid XSD: {exc}'])
+    except etree.XMLSyntaxError as exc:
+        return _validation_result(data=None, errors=[f'Invalid XML: {exc}'])
+
+
+def _validation_result(
+    *,
+    data: JSONData | None,
+    errors: list[str] | None = None,
+    field_errors: FieldErrors | None = None,
+) -> ValidationDict:
+    """Build a stable validation result payload."""
+    resolved_errors = list(errors or [])
+    resolved_field_errors = dict(field_errors or {})
+    return {
+        'valid': not resolved_errors,
+        'errors': resolved_errors,
+        'field_errors': resolved_field_errors,
+        'data': data,
+    }
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 
 _FIELD_RULE_VALIDATORS: tuple[FieldRuleValidator, ...] = (
@@ -655,6 +845,7 @@ def validate_schema(
     schema: str | Path,
     *,
     schema_format: SchemaFormat | str | None = None,
+    source_format: str | None = None,
 ) -> ValidationDict:
     """
     Validate one source document against one external schema.
@@ -666,7 +857,10 @@ def validate_schema(
     schema : str | Path
         Schema path or raw schema text.
     schema_format : SchemaFormat | str | None, optional
-        Schema format override. Only ``'xsd'`` is currently supported.
+        Schema format override. Supported values are ``'xsd'`` and
+        ``'jsonschema'``.
+    source_format : str | None, optional
+        Optional source payload format override for JSON Schema validation.
 
     Returns
     -------
@@ -675,15 +869,27 @@ def validate_schema(
         ``field_errors``, and ``data``.
     """
     resolved_schema_format = (schema_format or 'xsd').lower()
-    if resolved_schema_format != 'xsd':
-        return _validation_result(
-            data=None,
-            errors=[
-                f'Unsupported schema format: {schema_format}. '
-                'Supported formats: xsd',
-            ],
+    if resolved_schema_format == 'xsd':
+        return _validate_xsd(source, schema)
+    if resolved_schema_format == 'jsonschema':
+        return _validate_jsonschema(
+            source,
+            schema,
+            source_format=source_format,
         )
-    return _validate_xsd(source, schema)
+
+    supported_formats = 'jsonschema, xsd'
+    if schema_format is None:
+        resolved_label = 'None'
+    else:
+        resolved_label = str(schema_format)
+    return _validation_result(
+        data=None,
+        errors=[
+            f'Unsupported schema format: {resolved_label}. '
+            f'Supported formats: {supported_formats}',
+        ],
+    )
 
 
 def validate(
