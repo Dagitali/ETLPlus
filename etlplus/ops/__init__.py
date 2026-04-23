@@ -57,6 +57,7 @@ from .validate import FieldRulesDict
 from .validate import FieldValidationDict
 from .validate import ValidationDict
 from .validate import validate
+from .validate import validate_schema
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -76,6 +77,7 @@ __all__ = [
     'run_pipeline',
     'transform',
     'validate',
+    'validate_schema',
     # Typed Dicts
     'FieldRulesDict',
     'FieldValidationDict',

@@ -19,6 +19,7 @@ from ...ops import transform
 from ...ops import validate
 from ...ops._types import PipelineConfig
 from ...ops.validate import FieldRulesDict
+from ...ops.validate import validate_schema
 from ...utils._types import JSONData
 from . import _completion
 from . import _input
@@ -681,6 +682,8 @@ def validate_handler(
     *,
     source: str,
     rules: JSONData | str,
+    schema: str | None = None,
+    schema_format: str | None = None,
     target: str | None = None,
     source_format: str | None = None,
     format_explicit: bool = False,
@@ -696,6 +699,10 @@ def validate_handler(
         Source path, URI/URL, connector reference, or ``-`` for STDIN.
     rules : JSONData | str
         Validation rules to apply to the source payload.
+    schema : str | None, optional
+        Schema path used for schema-based validation.
+    schema_format : str | None, optional
+        Schema format override used for schema-based validation.
     target : str | None, optional
         Optional destination for validated output. Default is ``None``.
     source_format : str | None, optional
@@ -717,12 +724,46 @@ def validate_handler(
         'source': source,
         'target': DataCommandPolicy.display_target(target),
     }
+    if schema is not None:
+        command_fields['schema'] = schema
+        if schema_format is not None:
+            command_fields['schema_format'] = schema_format
 
     with DataCommandPolicy.command_scope(
         command='validate',
         event_format=event_format,
         fields=command_fields,
     ) as context:
+        if schema is not None:
+            schema_source = _input.read_stdin_text() if source == '-' else source
+            result = validate_schema(
+                schema_source,
+                schema,
+                schema_format=schema_format,
+            )
+
+            if DataCommandPolicy.has_named_target(target):
+                return DataCommandPolicy.complete_success(
+                    context,
+                    result,
+                    mode='json_file',
+                    output_path=target,
+                    success_message='ValidationDict result saved to',
+                    source=source,
+                    target=target,
+                    valid=result.get('valid'),
+                    schema=schema,
+                    schema_format=schema_format,
+                )
+
+            return DataCommandPolicy.complete_json_success(
+                context,
+                result,
+                pretty=pretty,
+                **command_fields,
+                valid=result.get('valid'),
+            )
+
         payload, rules_payload = DataCommandPolicy.resolve_source_mapping_inputs(
             source=source,
             mapping_payload=rules,
