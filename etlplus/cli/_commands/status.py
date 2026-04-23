@@ -15,7 +15,6 @@ from ._options.common import JobOption
 from ._options.history import HistoryLevelOption
 from ._options.history import HistoryPipelineOption
 from ._options.history import RunIdOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -62,7 +61,6 @@ def status_cmd(
     return CommandHelperPolicy.call_history_command(
         status_handler,
         ctx=ctx,
-        state=ensure_state(ctx),
         level=level,
         job=job,
         pipeline=pipeline,
