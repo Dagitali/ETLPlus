@@ -38,6 +38,97 @@ pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 class TestCliValidate:
     """Smoke tests for the ``etlplus validate`` CLI command."""
 
+    def test_jsonschema_validation_for_json_file(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should validate JSON files with JSON Schema."""
+        pytest.importorskip('jsonschema')
+        source_path = tmp_path / 'sample.json'
+        schema_path = tmp_path / 'schema.json'
+        source_path.write_text('{"name": "Ada"}', encoding='utf-8')
+        schema_path.write_text(
+            '\n'.join(
+                [
+                    '{',
+                    '  "type": "object",',
+                    '  "properties": {"name": {"type": "string"}},',
+                    '  "required": ["name"]',
+                    '}',
+                ],
+            ),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                '--schema-format',
+                'jsonschema',
+                str(source_path),
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is True
+        assert payload['errors'] == []
+        assert payload['field_errors'] == {}
+        assert payload['data'] is None
+
+    def test_jsonschema_validation_for_yaml_stdin(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should honor the source format hint for YAML STDIN."""
+        pytest.importorskip('jsonschema')
+        schema_path = tmp_path / 'schema.json'
+        schema_path.write_text(
+            '\n'.join(
+                [
+                    '{',
+                    '  "type": "object",',
+                    '  "properties": {',
+                    '    "name": {"type": "string"},',
+                    '    "age": {"type": "integer", "minimum": 0}',
+                    '  },',
+                    '  "required": ["name", "age"]',
+                    '}',
+                ],
+            ),
+            encoding='utf-8',
+        )
+        monkeypatch.setattr(sys, 'stdin', io.StringIO('name: Ada\nage: 37\n'))
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                '--schema-format',
+                'jsonschema',
+                '--source-format',
+                'yaml',
+                '-',
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is True
+        assert payload['errors'] == []
+        assert payload['field_errors'] == {}
+        assert payload['data'] is None
+
     def test_schema_option_conflicts_with_rules(
         self,
         cli_invoke: CliInvoke,
