@@ -740,6 +740,7 @@ def validate_handler(
                 schema_source,
                 schema,
                 schema_format=schema_format,
+                source_format=source_format,
             )
 
             if DataCommandPolicy.has_named_target(target):
