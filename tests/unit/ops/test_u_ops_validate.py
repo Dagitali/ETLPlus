@@ -15,12 +15,14 @@ import importlib
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+from typing import cast
 
 import pytest
 
 from etlplus.ops.validate import FieldRulesDict
 from etlplus.ops.validate import validate
 from etlplus.ops.validate import validate_field
+from etlplus.ops.validate import validate_schema
 from etlplus.utils._types import JSONData
 
 # SECTION: PRAGMAS ========================================================== #
@@ -159,6 +161,82 @@ class TestValidate:
         assert result['data'] is None
         assert any('Failed to load data' in err for err in result['errors'])
 
+    def test_validate_schema_reports_unsupported_format(self) -> None:
+        """Schema validation should reject unsupported schema formats."""
+        result = validate_schema('<root />', '<schema />', schema_format='rng')
+        assert result['valid'] is False
+        assert any('Unsupported schema format' in err for err in result['errors'])
+
+    def test_validate_schema_reports_validation_errors(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Schema validation should report XSD validation failures."""
+        pytest.importorskip('lxml.etree')
+        xml_path = tmp_path / 'sample.xml'
+        xsd_path = tmp_path / 'sample.xsd'
+        xml_path.write_text(
+            '<note><body>Hello</body></note>',
+            encoding='utf-8',
+        )
+        xsd_path.write_text(
+            '\n'.join(
+                [
+                    '<?xml version="1.0" encoding="UTF-8"?>',
+                    '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">',
+                    '  <xs:element name="note">',
+                    '    <xs:complexType>',
+                    '      <xs:sequence>',
+                    '        <xs:element name="title" type="xs:string" />',
+                    '      </xs:sequence>',
+                    '    </xs:complexType>',
+                    '  </xs:element>',
+                    '</xs:schema>',
+                ],
+            ),
+            encoding='utf-8',
+        )
+
+        result = validate_schema(xml_path, xsd_path)
+        assert result['valid'] is False
+        assert any(error.startswith('Line ') for error in result['errors'])
+
+    def test_validate_schema_with_xsd(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Schema validation should accept matching XML/XSD pairs."""
+        pytest.importorskip('lxml.etree')
+        xml_path = tmp_path / 'sample.xml'
+        xsd_path = tmp_path / 'sample.xsd'
+        xml_path.write_text(
+            '<note><title>Hello</title></note>',
+            encoding='utf-8',
+        )
+        xsd_path.write_text(
+            '\n'.join(
+                [
+                    '<?xml version="1.0" encoding="UTF-8"?>',
+                    '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">',
+                    '  <xs:element name="note">',
+                    '    <xs:complexType>',
+                    '      <xs:sequence>',
+                    '        <xs:element name="title" type="xs:string" />',
+                    '      </xs:sequence>',
+                    '    </xs:complexType>',
+                    '  </xs:element>',
+                    '</xs:schema>',
+                ],
+            ),
+            encoding='utf-8',
+        )
+
+        result = validate_schema(xml_path, xsd_path)
+        assert result['valid'] is True
+        assert result['errors'] == []
+        assert result['field_errors'] == {}
+        assert result['data'] is None
+
 
 class TestValidateField:
     """Unit tests for :func:`validate_field`."""
@@ -190,7 +268,10 @@ class TestValidateField:
         matched = validate_field('abc', {'pattern': '^a'})
         assert matched['valid'] is True
 
-        invalid_type = validate_field('abc', {'pattern': 123})
+        invalid_type = validate_field(
+            'abc',
+            cast(dict[str, Any], {'pattern': 123}),
+        )
         assert invalid_type['valid'] is False
         assert any('must be a string' in err for err in invalid_type['errors'])
 

@@ -1,12 +1,13 @@
 """
 :mod:`etlplus.cli._commands.validate` module.
 
-Typer command for validating data against JSON-described rules.
+Typer command for validating data against field rules or schemas.
 """
 
 from __future__ import annotations
 
 import typer
+from click.core import ParameterSource
 
 from .._handlers.dataops import validate_handler
 from ._app import app
@@ -17,6 +18,8 @@ from ._options.resources import SourceArg
 from ._options.resources import SourceFormatOption
 from ._options.resources import SourceTypeOption
 from ._options.specs import RulesOption
+from ._options.specs import SchemaFormatOption
+from ._options.specs import SchemaOption
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
@@ -38,11 +41,13 @@ def validate_cmd(
     source_format: SourceFormatOption = None,
     source_type: SourceTypeOption = None,
     rules: RulesOption = '{}',
+    schema: SchemaOption = None,
+    schema_format: SchemaFormatOption = None,
     output: OutputOption = '-',
     event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
-    Validate data against JSON-described rules.
+    Validate data against JSON-described rules or an external schema.
 
     Parameters
     ----------
@@ -56,6 +61,10 @@ def validate_cmd(
         Source connector type override.
     rules : RulesOption, optional
         JSON string describing the validation rules.
+    schema : SchemaOption, optional
+        Schema path used for schema-based validation.
+    schema_format : SchemaFormatOption, optional
+        Schema format override for schema-based validation.
     output : OutputOption, optional
         Optional output path for validation results.
     event_format : StructuredEventFormatOption, optional
@@ -65,7 +74,21 @@ def validate_cmd(
     -------
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
+
+    Raises
+    ------
+    typer.BadParameter
+        If the schema option family is incomplete or conflicts with
+        ``--rules``.
     """
+    rules_supplied = ctx.get_parameter_source('rules') is not ParameterSource.DEFAULT
+    if schema_format is not None and schema is None:
+        raise typer.BadParameter('--schema-format requires --schema')
+    if schema is not None and rules_supplied:
+        raise typer.BadParameter(
+            'Use either --rules or --schema/--schema-format, not both.',
+        )
+
     state = ensure_state(ctx)
     _, resolved_source = CommandHelperPolicy.resolve_command_resource(
         ctx,
@@ -81,7 +104,13 @@ def validate_cmd(
         validate_handler,
         state=state,
         source=resolved_source.value,
-        rules=CommandHelperPolicy.parse_json_option(rules, '--rules'),
+        rules=(
+            {}
+            if schema is not None
+            else CommandHelperPolicy.parse_json_option(rules, '--rules')
+        ),
+        schema=schema,
+        schema_format=schema_format,
         target=output,
         source_format=resolved_source.format_hint,
         event_format=event_format,

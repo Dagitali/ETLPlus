@@ -24,6 +24,7 @@ from etlplus.ops.validate import FieldRulesDict
 from etlplus.ops.validate import FieldValidationDict
 from etlplus.ops.validate import ValidationDict
 from etlplus.ops.validate import validate
+from etlplus.ops.validate import validate_schema
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -47,6 +48,7 @@ OPS_EXPORTS = [
     ('run_pipeline', run_pipeline),
     ('transform', transform),
     ('validate', validate),
+    ('validate_schema', validate_schema),
     # Typed Dicts
     ('FieldRulesDict', FieldRulesDict),
     ('FieldValidationDict', FieldValidationDict),
