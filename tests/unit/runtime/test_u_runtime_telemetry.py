@@ -6,6 +6,7 @@ Unit tests for :mod:`etlplus.runtime._telemetry`.
 
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass
 from types import ModuleType
@@ -295,6 +296,52 @@ class TestRuntimeTelemetry:
 
         assert telemetry_mod.RuntimeTelemetry._adapter is None
         assert 'optional OpenTelemetry dependencies are not installed' in caplog.text
+
+    def test_emit_event_auto_configures_from_process_env_when_uninitialized(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """First event export should lazily configure telemetry from ``os.environ``."""
+        captured: dict[str, object] = {}
+
+        def _configure(
+            cls,
+            config: object | None = None,
+            *,
+            env: object | None = None,
+            enabled: bool | None = None,
+            exporter: str | None = None,
+            service_name: str | None = None,
+            force: bool = False,
+        ) -> telemetry_mod.ResolvedTelemetryConfig:
+            del config, enabled, exporter, service_name, force
+            captured['env'] = env
+            cls._settings = telemetry_mod.ResolvedTelemetryConfig(
+                enabled=False,
+                exporter='none',
+                service_name='etlplus',
+            )
+            cls._adapter = None
+            return cls._settings
+
+        monkeypatch.setattr(
+            telemetry_mod.RuntimeTelemetry,
+            'configure',
+            classmethod(_configure),
+        )
+        telemetry_mod.RuntimeTelemetry.reset()
+
+        telemetry_mod.RuntimeTelemetry.emit_event({'event': 'run.started'})
+
+        assert captured['env'] is os.environ
+        assert telemetry_mod.RuntimeTelemetry._settings == (
+            telemetry_mod.ResolvedTelemetryConfig(
+                enabled=False,
+                exporter='none',
+                service_name='etlplus',
+            )
+        )
+        assert telemetry_mod.RuntimeTelemetry._adapter is None
 
     def test_emit_event_completed_without_started_span_creates_ok_span(
         self,
