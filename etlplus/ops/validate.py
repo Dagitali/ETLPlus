@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.ops.validate` module.
 
-Validate dicts and lists of dicts using simple, schema-like rules.
+Validate dicts/lists with field rules and XML documents with XML schemas.
 
 This module provides a very small validation primitive that is intentionally
 runtime-friendly (no heavy schema engines) and pairs with ETLPlus' JSON-like
@@ -29,6 +29,8 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from collections.abc import Mapping
+from importlib import import_module
+from pathlib import Path
 from typing import Any
 from typing import Literal
 from typing import TypedDict
@@ -47,6 +49,7 @@ __all__ = [
     'FieldValidationDict',
     'ValidationDict',
     'validate_field',
+    'validate_schema',
     'validate',
 ]
 
@@ -122,20 +125,20 @@ class ValidationDict(TypedDict):
 type FieldErrors = dict[str, list[str]]
 type FieldRuleInput = StrAnyMap | FieldRulesDict
 type FieldRuleValidator = Callable[[Any, FieldRuleInput, list[str]], None]
-type RuleCoercer[T] = Callable[[Any], T]
 type RulesMap = Mapping[str, FieldRulesDict]
+type SchemaFormat = Literal['xsd']
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
-def _coerce_rule[T](
+def _coerce_rule[CoercedT](
     rules: StrAnyMap,
     key: str,
-    coercer: RuleCoercer[T],
+    coercer: Callable[[Any], CoercedT],
     type_desc: str,
     errors: list[str],
-) -> T | None:
+) -> CoercedT | None:
     """
     Extract and coerce a rule value, recording an error.
 
@@ -147,7 +150,7 @@ def _coerce_rule[T](
         The rules dictionary.
     key : str
         The key to extract.
-    coercer : RuleCoercer[T]
+    coercer : Callable[[Any], CoercedT]
         Callable used to coerce the value.
     type_desc : str
         Description of the expected type for error messages.
@@ -156,7 +159,7 @@ def _coerce_rule[T](
 
     Returns
     -------
-    T | None
+    CoercedT | None
         The coerced value, or None if the key is absent.
     """
     if key not in rules:
@@ -251,6 +254,18 @@ def _get_numeric_rule(
     return float(coerced) if coerced is not None else None
 
 
+# TODO: Generalize package importing and promote to utils if needed elsewhere.
+def _import_lxml_etree() -> Any:
+    """Import and return :mod:`lxml.etree` lazily."""
+    try:
+        return import_module('lxml.etree')
+    except Exception as exc:  # pragma: no cover - import shape varies by env
+        raise RuntimeError(
+            'lxml is required for XML schema validation. '
+            'Install with: pip install lxml',
+        ) from exc
+
+
 def _is_integer(
     value: Any,
 ) -> bool:
@@ -285,6 +300,19 @@ def _is_number(value: Any) -> bool:
         ``True`` if value is a number, else ``False``.
     """
     return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _resolve_local_path_or_text(
+    value: str | Path,
+) -> tuple[Path | None, bytes]:
+    """Return a local path when one exists, else UTF-8 encoded text."""
+    if isinstance(value, Path):
+        return value, b''
+
+    candidate = Path(value)
+    if candidate.exists():
+        return candidate, b''
+    return None, value.encode('utf-8')
 
 
 def _type_matches(
@@ -451,6 +479,60 @@ def _validation_result(
     }
 
 
+def _validate_xsd(
+    source: str | Path,
+    schema: str | Path,
+) -> ValidationDict:
+    """Validate one XML document against one XSD schema."""
+    try:
+        etree = _import_lxml_etree()
+    except RuntimeError as exc:
+        return _validation_result(data=None, errors=[str(exc)])
+
+    source_path, source_text = _resolve_local_path_or_text(source)
+    schema_path, schema_text = _resolve_local_path_or_text(schema)
+
+    if source_path is not None and not source_path.exists():
+        return _validation_result(
+            data=None,
+            errors=[f'XML not found: {source_path}'],
+        )
+    if schema_path is not None and not schema_path.exists():
+        return _validation_result(
+            data=None,
+            errors=[f'XSD not found: {schema_path}'],
+        )
+
+    try:
+        if schema_path is not None:
+            with schema_path.open('rb') as handle:
+                schema_doc = etree.parse(handle)
+        else:
+            schema_doc = etree.fromstring(schema_text)
+        compiled_schema = etree.XMLSchema(schema_doc)
+
+        if source_path is not None:
+            with source_path.open('rb') as handle:
+                xml_doc = etree.parse(handle)
+        else:
+            xml_doc = etree.fromstring(source_text)
+
+        if compiled_schema.validate(xml_doc):
+            return _validation_result(data=None)
+
+        errors = [
+            f'Line {error.line}: {error.message}'
+            for error in compiled_schema.error_log
+        ]
+        if not errors:
+            errors.append('XML failed schema validation')
+        return _validation_result(data=None, errors=errors)
+    except etree.XMLSchemaParseError as exc:
+        return _validation_result(data=None, errors=[f'Invalid XSD: {exc}'])
+    except etree.XMLSyntaxError as exc:
+        return _validation_result(data=None, errors=[f'Invalid XML: {exc}'])
+
+
 def _validate_sequence(
     data: list[Any],
     rules: RulesMap,
@@ -566,6 +648,42 @@ def validate_field(
 
 
 # -- Orchestration -- #
+
+
+def validate_schema(
+    source: str | Path,
+    schema: str | Path,
+    *,
+    schema_format: SchemaFormat | str | None = None,
+) -> ValidationDict:
+    """
+    Validate one source document against one external schema.
+
+    Parameters
+    ----------
+    source : str | Path
+        XML source path or raw XML text.
+    schema : str | Path
+        Schema path or raw schema text.
+    schema_format : SchemaFormat | str | None, optional
+        Schema format override. Only ``'xsd'`` is currently supported.
+
+    Returns
+    -------
+    ValidationDict
+        Structured validation result with ``valid``, ``errors``,
+        ``field_errors``, and ``data``.
+    """
+    resolved_schema_format = (schema_format or 'xsd').lower()
+    if resolved_schema_format != 'xsd':
+        return _validation_result(
+            data=None,
+            errors=[
+                f'Unsupported schema format: {schema_format}. '
+                'Supported formats: xsd',
+            ],
+        )
+    return _validate_xsd(source, schema)
 
 
 def validate(
