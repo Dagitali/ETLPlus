@@ -132,7 +132,7 @@ SchemaOption = typer_value_option_alias(
 )
 
 SchemaFormatOption = typer_value_option_alias(
-    Literal['xsd'] | None,
+    Literal['jsonschema', 'xsd'] | None,
     '--schema-format',
     help_text='Schema format override for schema-based validation.',
     metavar='FORMAT',
