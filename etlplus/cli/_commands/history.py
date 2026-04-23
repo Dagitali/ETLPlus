@@ -22,7 +22,6 @@ from ._options.history import HistoryStatusOption
 from ._options.history import HistoryTableOption
 from ._options.history import HistoryUntilOption
 from ._options.history import RunIdOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -93,7 +92,6 @@ def history_cmd(
     return CommandHelperPolicy.call_history_command(
         history_handler,
         ctx=ctx,
-        state=ensure_state(ctx),
         level=level,
         job=job,
         limit=limit,
