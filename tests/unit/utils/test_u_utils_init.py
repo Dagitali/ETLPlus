@@ -12,6 +12,8 @@ from etlplus import utils as utils_pkg
 from etlplus.utils._data import JsonCodec
 from etlplus.utils._data import RecordCounter
 from etlplus.utils._enums import CoercibleStrEnum
+from etlplus.utils._graph import NamedDependencyGraph
+from etlplus.utils._graph import topological_sort_names
 from etlplus.utils._mapping import MappingParser
 from etlplus.utils._mixins import BoundsWarningsMixin
 from etlplus.utils._numbers import FloatParser
@@ -40,7 +42,9 @@ UTILS_EXPORTS = [
     ('RecordCounter', RecordCounter),
     ('SubstitutionResolver', SubstitutionResolver),
     ('TextNormalizer', TextNormalizer),
+    ('NamedDependencyGraph', NamedDependencyGraph),
     ('CoercibleStrEnum', CoercibleStrEnum),
+    ('topological_sort_names', topological_sort_names),
     ('BoundsWarningsMixin', BoundsWarningsMixin),
 ]
 
