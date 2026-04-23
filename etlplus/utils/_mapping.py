@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from collections.abc import Mapping
+from collections.abc import Set
 from typing import Any
 from typing import TypeVar
 
@@ -71,6 +72,35 @@ class MappingParser:
                 raise ValueError(f'Duplicate {item_label} name: {name}')
             indexed[name] = item
         return indexed
+
+    @staticmethod
+    def merge_mappings(
+        *mapping_sets: object,
+        excluded_keys: Set[str] = frozenset(),
+    ) -> dict[str, Any]:
+        """
+        Merge mapping-like values with later mappings taking precedence.
+
+        Parameters
+        ----------
+        *mapping_sets : object
+            Any number of mapping-like values to merge. Non-mappings are
+            ignored.
+        excluded_keys : Set[str], optional
+            Keys to remove from the merged result after merging.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary containing the merged key-value pairs.
+        """
+        merged: dict[str, Any] = {}
+        for mapping_set in mapping_sets:
+            if isinstance(mapping_set, Mapping):
+                merged.update(mapping_set)
+        for key in excluded_keys:
+            merged.pop(key, None)
+        return merged
 
     @staticmethod
     def to_str_dict(
