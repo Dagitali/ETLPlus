@@ -391,9 +391,16 @@ class TestHistoryHandler:
         """
         call_count = {'value': 0}
 
-        def fake_load_history_records(**kwargs: object) -> list[dict[str, object]]:
+        def fake_load(
+            self: history_mod._HistoryQuery,
+            *,
+            raw: bool = False,
+            limit: int | None = None,
+        ) -> list[dict[str, object]]:
             call_count['value'] += 1
-            assert kwargs['raw'] is True
+            assert raw is True
+            assert limit is None
+            assert self == history_mod._HistoryQuery()
             if call_count['value'] == 1:
                 return [
                     {
@@ -420,9 +427,9 @@ class TestHistoryHandler:
                 raise KeyboardInterrupt
 
         monkeypatch.setattr(
-            history_mod,
-            'load_history_records',
-            fake_load_history_records,
+            history_mod._HistoryQuery,
+            'load',
+            fake_load,
         )
         monkeypatch.setattr(history_mod, 'sleep', fake_sleep)
 
@@ -460,14 +467,25 @@ class TestHistoryHandler:
         """
         recorded_calls: list[dict[str, object]] = []
 
-        def fake_load_history_records(**kwargs: object) -> list[dict[str, object]]:
-            recorded_calls.append(dict(kwargs))
+        def fake_load(
+            self: history_mod._HistoryQuery,
+            *,
+            raw: bool = False,
+            limit: int | None = None,
+        ) -> list[dict[str, object]]:
+            recorded_calls.append(
+                {
+                    'limit': limit,
+                    'query': self,
+                    'raw': raw,
+                },
+            )
             raise KeyboardInterrupt
 
         monkeypatch.setattr(
-            history_mod,
-            'load_history_records',
-            fake_load_history_records,
+            history_mod._HistoryQuery,
+            'load',
+            fake_load,
         )
 
         assert (
@@ -483,15 +501,13 @@ class TestHistoryHandler:
         )
         assert recorded_calls == [
             {
-                'level': 'job',
-                'job': None,
                 'limit': None,
-                'pipeline': 'pipeline-a',
+                'query': history_mod._HistoryQuery(
+                    level='job',
+                    pipeline='pipeline-a',
+                    status='skipped',
+                ),
                 'raw': True,
-                'run_id': None,
-                'since': None,
-                'status': 'skipped',
-                'until': None,
             },
         ]
 
@@ -506,46 +522,31 @@ class TestHistoryHandler:
             history_mod.history_handler(json_output=True, table=True)
 
 
-class TestHistoryHelperFunctions:
-    """Unit tests for direct history helper seams."""
+class TestHistoryQuery:
+    """Unit tests for direct history query seams."""
 
-    def test_load_history_records_delegates_through_query_loader(
+    def test_load_delegates_through_history_view_loader(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
-        Test that top-level history loading delegates through
-        :class:`_HistoryQuery`.
+        Test that query loading delegates through :class:`HistoryView`.
         """
         recorded: dict[str, object] = {}
 
-        def fake_load(
-            self: history_mod._HistoryQuery,
-            *,
-            raw: bool = False,
-            limit: int | None = None,
+        def fake_load_records(
+            **kwargs: object,
         ) -> list[dict[str, object]]:
-            recorded['query'] = self
-            recorded['raw'] = raw
-            recorded['limit'] = limit
+            recorded.update(kwargs)
             return [{'run_id': 'run-1'}]
 
-        monkeypatch.setattr(history_mod._HistoryQuery, 'load', fake_load)
+        monkeypatch.setattr(
+            history_mod.HistoryView,
+            'load_records',
+            fake_load_records,
+        )
 
-        assert history_mod.load_history_records(
-            level='job',
-            job='seed',
-            pipeline='pipeline-a',
-            run_id='run-1',
-            since='2026-03-23T00:00:00Z',
-            until='2026-03-24T00:00:00Z',
-            status='skipped',
-            limit=3,
-            raw=True,
-        ) == [{'run_id': 'run-1'}]
-        query = recorded['query']
-        assert isinstance(query, history_mod._HistoryQuery)
-        assert query == history_mod._HistoryQuery(
+        query = history_mod._HistoryQuery(
             level='job',
             job='seed',
             pipeline='pipeline-a',
@@ -554,8 +555,18 @@ class TestHistoryHelperFunctions:
             until='2026-03-24T00:00:00Z',
             status='skipped',
         )
-        assert recorded['raw'] is True
-        assert recorded['limit'] == 3
+        assert query.load(limit=3, raw=True) == [{'run_id': 'run-1'}]
+        assert recorded == {
+            'job': 'seed',
+            'level': 'job',
+            'limit': 3,
+            'pipeline': 'pipeline-a',
+            'raw': True,
+            'run_id': 'run-1',
+            'since': '2026-03-23T00:00:00Z',
+            'status': 'skipped',
+            'until': '2026-03-24T00:00:00Z',
+        }
 
 
 class TestStatusHandler:
