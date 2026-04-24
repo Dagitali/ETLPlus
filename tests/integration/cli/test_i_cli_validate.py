@@ -128,6 +128,66 @@ class TestCliValidate:
         assert payload['field_errors'] == {}
         assert payload['data'] is None
 
+    def test_frictionless_validation_for_csv_constraint_failures(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should surface CSV constraint failures with row paths."""
+        pytest.importorskip('frictionless')
+        source_path = tmp_path / 'sample.csv'
+        schema_path = tmp_path / 'schema.json'
+        source_path.write_text(
+            'email,status\nada@example.com,active\nada@example.com,\n',
+            encoding='utf-8',
+        )
+        schema_path.write_text(
+            '\n'.join(
+                [
+                    '{',
+                    '  "fields": [',
+                    (
+                        '    {"name": "email", "type": "string", "constraints": '
+                        '{"required": true, "unique": true}},'
+                    ),
+                    (
+                        '    {"name": "status", "type": "string", "constraints": '
+                        '{"required": true, "enum": ["active", "inactive"]}}'
+                    ),
+                    '  ]',
+                    '}',
+                ],
+            ),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                '--schema-format',
+                'frictionless',
+                str(source_path),
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is False
+        assert 'row[3].email' in payload['field_errors']
+        assert 'row[3].status' in payload['field_errors']
+        assert any(
+            'unique constraint violation' in message
+            for message in payload['field_errors']['row[3].email']
+        )
+        assert any(
+            'constraint "required" is "True"' in message
+            for message in payload['field_errors']['row[3].status']
+        )
+
     def test_jsonschema_validation_for_json_file(
         self,
         cli_invoke: CliInvoke,
