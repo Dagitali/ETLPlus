@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string"
+    },
+    "jobs": {
+      "type": "array"
+    }
+  },
+  "required": [
+    "name",
+    "version"
+  ]
+}
