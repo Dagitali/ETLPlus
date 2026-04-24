@@ -31,7 +31,6 @@ _DEPENDENCY_IMPORTER = DependencyImporter(
     error_type=RuntimeError,
     import_exceptions=Exception,
 )
-_MODULE_CACHE = _DEPENDENCY_IMPORTER.cache
 
 
 # SECTION: FUNCTIONS ======================================================== #
