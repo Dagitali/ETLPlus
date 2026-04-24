@@ -15,8 +15,20 @@ from typing import NoReturn
 
 
 __all__ = [
+    # Functions
+    'build_dependency_error_message',
+    'dependency_label',
     'import_package',
+    'normalize_dependency_names',
+    # Type Aliases
+    'DependencyNames',
 ]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type DependencyNames = str | tuple[str, ...]
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -39,6 +51,54 @@ def _reraise(
 
 
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def dependency_label(
+    dependency_names: tuple[str, ...],
+) -> str:
+    """Return one quoted dependency label string for an error message."""
+    if not dependency_names:
+        raise ValueError('dependency_names must not be empty')
+    quoted = tuple(f'"{name}"' for name in dependency_names)
+    if len(quoted) == 1:
+        return quoted[0]
+    if len(quoted) == 2:
+        first, second = quoted
+        return f'{first} or {second}'
+    return f'{", ".join(quoted[:-1])}, or {quoted[-1]}'
+
+
+def normalize_dependency_names(
+    module_name: DependencyNames,
+    pip_name: str | None,
+) -> tuple[tuple[str, ...], str]:
+    """Normalize dependency names and install target for message formatting."""
+    if isinstance(module_name, str):
+        dependency_display_name = pip_name or module_name
+        return (dependency_display_name,), dependency_display_name
+    if not module_name:
+        raise ValueError('module_name must not be an empty tuple')
+    return module_name, pip_name or module_name[0]
+
+
+def build_dependency_error_message(
+    module_name: DependencyNames,
+    format_name: str,
+    pip_name: str | None = None,
+    *,
+    required: bool = False,
+) -> str:
+    """Build an import error message for one dependency."""
+    dependency_names, dependency_target = normalize_dependency_names(
+        module_name,
+        pip_name,
+    )
+    label = 'dependency' if required else 'optional dependency'
+    return (
+        f'{format_name} support requires '
+        f'{label} {dependency_label(dependency_names)}.\n'
+        f'Install with: pip install {dependency_target}'
+    )
 
 
 def import_package(
