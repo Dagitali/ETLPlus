@@ -79,7 +79,7 @@ def make_records_frame_fixture() -> Callable[
 @pytest.fixture(name='optional_module_stub')
 def optional_module_stub_fixture() -> Generator[OptionalModuleInstaller]:
     """Install dependency stubs and restore import cache afterward."""
-    cache = import_helpers._MODULE_CACHE
+    cache = import_helpers._DEPENDENCY_IMPORTER.cache
     original = dict(cache)
     cache.clear()
 
