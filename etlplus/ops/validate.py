@@ -40,10 +40,13 @@ from typing import TypedDict
 from ..file import File
 from ..file import FileFormat
 from ..utils import JsonCodec
-from ..utils._imports import import_package
 from ..utils._types import JSONData
 from ..utils._types import Record
 from ..utils._types import StrAnyMap
+from ._imports import _import_frictionless
+from ._imports import _import_jsonschema
+from ._imports import _import_lxml_etree
+from ._imports import _import_yaml
 from ._types import DataSourceArg
 from .load import load_data as _load_data
 
@@ -289,57 +292,6 @@ def _get_numeric_rule(
     coerced = _coerce_rule(rules, key, float, 'numeric', errors)
 
     return float(coerced) if coerced is not None else None
-
-
-def _import_frictionless() -> Any:
-    """Import and return :mod:`frictionless` lazily."""
-    return import_package(
-        'frictionless',
-        error_message=(
-            'frictionless is required for CSV schema validation. '
-            'Install with: pip install frictionless'
-        ),
-        error_type=RuntimeError,
-        import_exceptions=Exception,
-    )
-
-
-def _import_jsonschema() -> Any:
-    """Import and return :mod:`jsonschema` lazily."""
-    return import_package(
-        'jsonschema',
-        error_message=(
-            'jsonschema is required for JSON Schema validation. '
-            'Install with: pip install jsonschema'
-        ),
-        error_type=RuntimeError,
-        import_exceptions=Exception,
-    )
-
-
-def _import_lxml_etree() -> Any:
-    """Import and return :mod:`lxml.etree` lazily."""
-    return import_package(
-        'lxml.etree',
-        error_message=(
-            'lxml is required for XML schema validation. Install with: pip install lxml'
-        ),
-        error_type=RuntimeError,
-        import_exceptions=Exception,
-    )
-
-
-def _import_yaml() -> Any:
-    """Import and return :mod:`yaml` lazily."""
-    return import_package(
-        'yaml',
-        error_message=(
-            'PyYAML is required for YAML schema validation. '
-            'Install with: pip install PyYAML'
-        ),
-        error_type=RuntimeError,
-        import_exceptions=Exception,
-    )
 
 
 def _infer_structured_text_format(
