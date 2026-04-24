@@ -79,8 +79,7 @@ def get_lxml_etree() -> Any:
     return get_dependency(
         'lxml.etree',
         error_message=(
-            'lxml is required for XML schema validation. '
-            'Install with: pip install lxml'
+            'lxml is required for XML schema validation. Install with: pip install lxml'
         ),
     )
 
