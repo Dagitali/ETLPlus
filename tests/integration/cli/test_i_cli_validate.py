@@ -38,6 +38,96 @@ pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 class TestCliValidate:
     """Smoke tests for the ``etlplus validate`` CLI command."""
 
+    def test_frictionless_validation_for_csv_file(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should validate CSV files with Frictionless Table Schema."""
+        pytest.importorskip('frictionless')
+        source_path = tmp_path / 'sample.csv'
+        schema_path = tmp_path / 'schema.json'
+        source_path.write_text('name,age\nAda,37\n', encoding='utf-8')
+        schema_path.write_text(
+            '\n'.join(
+                [
+                    '{',
+                    '  "fields": [',
+                    '    {"name": "name", "type": "string"},',
+                    '    {"name": "age", "type": "integer"}',
+                    '  ]',
+                    '}',
+                ],
+            ),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                '--schema-format',
+                'frictionless',
+                str(source_path),
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is True
+        assert payload['errors'] == []
+        assert payload['field_errors'] == {}
+        assert payload['data'] is None
+
+    def test_frictionless_validation_for_csv_stdin(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should honor the source format hint for CSV STDIN."""
+        pytest.importorskip('frictionless')
+        schema_path = tmp_path / 'schema.json'
+        schema_path.write_text(
+            '\n'.join(
+                [
+                    '{',
+                    '  "fields": [',
+                    '    {"name": "name", "type": "string"},',
+                    '    {"name": "age", "type": "integer"}',
+                    '  ]',
+                    '}',
+                ],
+            ),
+            encoding='utf-8',
+        )
+        monkeypatch.setattr(sys, 'stdin', io.StringIO('name,age\nAda,37\n'))
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                '--schema-format',
+                'frictionless',
+                '--source-format',
+                'csv',
+                '-',
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is True
+        assert payload['errors'] == []
+        assert payload['field_errors'] == {}
+        assert payload['data'] is None
+
     def test_jsonschema_validation_for_json_file(
         self,
         cli_invoke: CliInvoke,
