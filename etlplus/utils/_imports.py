@@ -7,6 +7,8 @@ Shared helpers for safe lazy imports.
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
+from dataclasses import field
 from importlib import import_module
 from typing import Any
 from typing import NoReturn
@@ -15,6 +17,8 @@ from typing import NoReturn
 
 
 __all__ = [
+    # Classes
+    'DependencyImporter',
     # Functions
     'build_dependency_error_message',
     'dependency_label',
@@ -48,6 +52,65 @@ def _reraise(
 ) -> NoReturn:
     """Re-raise one original import error."""
     raise error
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+@dataclass(slots=True)
+class DependencyImporter:
+    """Configurable cached dependency importer."""
+
+    # -- Instance Attributes -- #
+
+    error_type: Callable[[str], Exception] = ImportError
+    import_exceptions: type[BaseException] | tuple[type[BaseException], ...] = (
+        ImportError
+    )
+    strict_missing_name: bool = False
+    importer: Callable[[str], Any] = import_module
+    cache: dict[str, Any] = field(default_factory=dict)
+
+    # -- Instance Methods -- #
+
+    def get(
+        self,
+        module_name: str,
+        *,
+        format_name: str,
+        pip_name: str | None = None,
+        required: bool = False,
+    ) -> Any:
+        """
+        Import one dependency module using this import policy.
+
+        Parameters
+        ----------
+        module_name : str
+            Name of the module to import.
+        format_name : str
+            Human-readable format name for error messages.
+        pip_name : str | None, optional
+            Package name to suggest for installation (defaults to
+            *module_name*).
+        required : bool, optional
+            Whether to use required-dependency message wording. Defaults to
+            ``False`` (optional dependency wording).
+        """
+        return import_package(
+            module_name,
+            error_message=build_dependency_error_message(
+                module_name,
+                format_name=format_name,
+                pip_name=pip_name,
+                required=required,
+            ),
+            cache=self.cache,
+            importer=self.importer,
+            error_type=self.error_type,
+            import_exceptions=self.import_exceptions,
+            strict_missing_name=self.strict_missing_name,
+        )
 
 
 # SECTION: FUNCTIONS ======================================================== #
