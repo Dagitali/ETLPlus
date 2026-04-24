@@ -110,9 +110,9 @@ release.
   exports `PaginationInput` and `RateLimitOverrides`, and `etlplus.history` exports
   `HISTORY_SCHEMA_VERSION`.
 - The documented stable validate surface now also includes schema-based validation through `etlplus
-  validate --schema ...`, with `--schema-format xsd` for XML and `--schema-format jsonschema` for
-  JSON/YAML, and the `etlplus.ops` facade now exports `validate_schema` alongside the existing
-  field-rule validator.
+  validate --schema ...`, with `--schema-format xsd` for XML, `--schema-format jsonschema` for
+  JSON/YAML, and `--schema-format frictionless` for CSV Table Schema validation, and the
+  `etlplus.ops` facade now exports `validate_schema` alongside the existing field-rule validator.
 - The `etlplus.history` facade no longer exports the redundant `build_run_record` helper; the
   supported constructor path is now `RunRecord.build(...)`.
 - The stable package facades also expose adjacent public contract types and exceptions where the
