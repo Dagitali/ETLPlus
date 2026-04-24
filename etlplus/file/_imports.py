@@ -89,7 +89,7 @@ def get_dependency(
     required: bool = False,
 ) -> Any:
     """
-    Return a dependency module with a standardized error message.
+    Return a dependency module with a standardized runtime error message.
 
     Parameters
     ----------
@@ -107,7 +107,6 @@ def get_dependency(
     -------
     Any
         The imported module.
-
     """
     error_message = build_dependency_error_message(
         module_name,
@@ -140,7 +139,7 @@ def get_pandas(
     Returns
     -------
     Any
-        The pandas module.
+        The :mod:`pandas` module.
     """
     return get_dependency('pandas', format_name=format_name, required=True)
 
@@ -310,7 +309,7 @@ def resolve_pandas(
     Returns
     -------
     Any
-        The resolved pandas module.
+        The resolved :mod:`pandas` module.
     """
     return _resolve_with_module_override(
         handler,
