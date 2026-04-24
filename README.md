@@ -672,8 +672,13 @@ etlplus validate examples/data/sample.json --rules '{"email": {"type": "string",
 
 Validate JSON or YAML against a JSON Schema:
 ```bash
-etlplus validate examples/data/sample.json --schema schemas/customer.schema.json --schema-format jsonschema
-etlplus validate --source-format yaml --schema schemas/pipeline.schema.json --schema-format jsonschema -
+etlplus validate examples/data/sample.json --schema examples/schemas/customer.schema.json --schema-format jsonschema
+etlplus validate --source-format yaml --schema examples/schemas/pipeline.schema.json --schema-format jsonschema -
+```
+
+Validate CSV against a Frictionless Table Schema:
+```bash
+etlplus validate data/customers.csv --schema examples/schemas/customers.table-schema.json --schema-format frictionless
 ```
 
 #### Transform Data
@@ -957,9 +962,9 @@ Supported validation rules:
 - `pattern`: Regex pattern for strings
 - `enum`: List of allowed values
 
-Schema-based validation is also supported through `etlplus validate --schema ...`.
-Use `--schema-format xsd` for XML documents and `--schema-format jsonschema`
-for JSON or YAML documents.
+Schema-based validation is also supported through `etlplus validate --schema ...`. Use
+`--schema-format xsd` for XML documents, `--schema-format jsonschema` for JSON or YAML documents,
+and `--schema-format frictionless` for CSV documents.
 
 Example:
 ```json
