@@ -165,12 +165,12 @@ class TestValidate:
             format_name: str,
             pip_name: str | None = None,
             *,
-            required: bool = True,
+            required: bool = False,
         ) -> str:
             assert module_name == 'jsonschema'
             assert format_name == 'JSON Schema'
             assert pip_name is None
-            assert required is True
+            assert required is False
             return 'jsonschema is required'
 
         def _import_package(
@@ -266,7 +266,7 @@ class TestValidate:
             *,
             format_name: str,
             pip_name: str | None = None,
-            required: bool = True,
+            required: bool = False,
         ) -> object:
             calls.append((dependency_name, format_name, pip_name, required))
             return sentinel
