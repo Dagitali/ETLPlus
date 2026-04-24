@@ -160,46 +160,31 @@ class TestValidate:
         sentinel = object()
         calls: list[tuple[str, str, object, object, object, object]] = []
 
-        def _message_builder(
-            module_name: str,
-            format_name: str,
-            pip_name: str | None = None,
-            *,
-            required: bool = False,
-        ) -> str:
-            assert module_name == 'jsonschema'
-            assert format_name == 'JSON Schema'
-            assert pip_name is None
-            assert required is False
-            return 'jsonschema is required'
+        class _ImporterStub:
+            error_type = RuntimeError
+            import_exceptions = Exception
 
-        def _import_package(
-            dependency_name: str,
-            *,
-            error_message: str,
-            cache: object,
-            importer: object,
-            error_type: object,
-            import_exceptions: object,
-        ) -> object:
-            calls.append(
-                (
-                    dependency_name,
-                    error_message,
-                    cache,
-                    importer,
-                    error_type,
-                    import_exceptions,
-                ),
-            )
-            return sentinel
+            def get(
+                self,
+                dependency_name: str,
+                *,
+                format_name: str,
+                pip_name: str | None = None,
+                required: bool = False,
+            ) -> object:
+                calls.append(
+                    (
+                        dependency_name,
+                        format_name,
+                        pip_name,
+                        required,
+                        self.error_type,
+                        self.import_exceptions,
+                    ),
+                )
+                return sentinel
 
-        monkeypatch.setattr(
-            ops_imports_mod,
-            'build_dependency_error_message',
-            _message_builder,
-        )
-        monkeypatch.setattr(ops_imports_mod, 'import_package', _import_package)
+        monkeypatch.setattr(ops_imports_mod, '_DEPENDENCY_IMPORTER', _ImporterStub())
 
         assert (
             ops_imports_mod.get_dependency(
@@ -211,9 +196,9 @@ class TestValidate:
         assert calls == [
             (
                 'jsonschema',
-                'jsonschema is required',
-                ops_imports_mod._MODULE_CACHE,
-                ops_imports_mod.import_module,
+                'JSON Schema',
+                None,
+                False,
                 RuntimeError,
                 Exception,
             ),
