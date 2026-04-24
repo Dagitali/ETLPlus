@@ -9,6 +9,7 @@ from __future__ import annotations
 from importlib import import_module
 from typing import Any
 
+from ..utils._imports import build_dependency_error_message
 from ..utils._imports import import_package
 
 # SECTION: EXPORTS ========================================================== #
@@ -27,18 +28,46 @@ __all__ = [
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
+# Dependency module support (lazy-loaded to avoid hard dependency)
 _MODULE_CACHE: dict[str, Any] = {}
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
+# SECTION: FUNCTIONS ======================================================== #
 
 
 def get_dependency(
     module_name: str,
     *,
-    error_message: str,
+    format_name: str,
+    pip_name: str | None = None,
+    required: bool = True,
 ) -> Any:
-    """Import one validation dependency with a runtime-oriented error."""
+    """
+    Return a dependency module with a standardized runtime error message.
+
+    Parameters
+    ----------
+    module_name : str
+        Name of the module to import.
+    format_name : str
+        Human-readable format name for error messages.
+    pip_name : str | None, optional
+        Package name to suggest for installation (defaults to *module_name*).
+    required : bool, optional
+        Whether to use required-dependency message wording.
+        Defaults to ``False`` (optional dependency wording).
+
+    Returns
+    -------
+    Any
+        The imported module.
+    """
+    error_message = build_dependency_error_message(
+        module_name,
+        format_name=format_name,
+        pip_name=pip_name,
+        required=required,
+    )
     return import_package(
         module_name,
         error_message=error_message,
@@ -49,47 +78,63 @@ def get_dependency(
     )
 
 
-# SECTION: FUNCTIONS ======================================================== #
-
-
 def get_frictionless() -> Any:
-    """Import and return :mod:`frictionless` lazily."""
+    """
+    Import and return :mod:`frictionless` lazily.
+
+    Returns
+    -------
+    Any
+        The :mod:`frictionless` module.
+    """
     return get_dependency(
         'frictionless',
-        error_message=(
-            'frictionless is required for CSV schema validation. '
-            'Install with: pip install frictionless'
-        ),
+        format_name='CSV schema',
     )
 
 
 def get_jsonschema() -> Any:
-    """Import and return :mod:`jsonschema` lazily."""
+    """
+    Import and return :mod:`jsonschema` lazily.
+
+    Returns
+    -------
+    Any
+        The :mod:`jsonschema` module.
+    """
     return get_dependency(
         'jsonschema',
-        error_message=(
-            'jsonschema is required for JSON Schema validation. '
-            'Install with: pip install jsonschema'
-        ),
+        format_name='JSON Schema',
     )
 
 
 def get_lxml_etree() -> Any:
-    """Import and return :mod:`lxml.etree` lazily."""
+    """
+    Import and return :mod:`lxml.etree` lazily.
+
+    Returns
+    -------
+    Any
+        The :mod:`lxml.etree` module.
+    """
     return get_dependency(
         'lxml.etree',
-        error_message=(
-            'lxml is required for XML schema validation. Install with: pip install lxml'
-        ),
+        format_name='XML schema',
+        pip_name='lxml',
     )
 
 
 def get_yaml() -> Any:
-    """Import and return :mod:`yaml` lazily."""
+    """
+    Import and return :mod:`yaml` lazily.
+
+    Returns
+    -------
+    Any
+        The :mod:`yaml` module.
+    """
     return get_dependency(
         'yaml',
-        error_message=(
-            'PyYAML is required for YAML schema validation. '
-            'Install with: pip install PyYAML'
-        ),
+        format_name='YAML schema',
+        pip_name='PyYAML',
     )
