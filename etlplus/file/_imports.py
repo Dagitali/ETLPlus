@@ -13,7 +13,10 @@ from typing import Any
 from typing import ClassVar
 from typing import NoReturn
 
+from ..utils._imports import build_dependency_error_message
+from ..utils._imports import dependency_label
 from ..utils._imports import import_package
+from ..utils._imports import normalize_dependency_names
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -40,118 +43,16 @@ __all__ = [
 # Dependency module support (lazy-loaded to avoid hard dependency)
 _MODULE_CACHE: dict[str, Any] = {}
 
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type DependencyNames = str | tuple[str, ...]
-
-
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _dependency_label(
-    dependency_names: tuple[str, ...],
-) -> str:
-    """
-    Return one quoted dependency label string for an error message.
-
-    Parameters
-    ----------
-    dependency_names : tuple[str, ...]
-        One or more dependency names.
-
-    Returns
-    -------
-    str
-        One label suitable for insertion into error text.
-
-    Raises
-    ------
-    ValueError
-        If *dependency_names* is empty.
-    """
-    if not dependency_names:
-        raise ValueError('dependency_names must not be empty')
-    quoted = tuple(f'"{name}"' for name in dependency_names)
-    if len(quoted) == 1:
-        return quoted[0]
-    if len(quoted) == 2:
-        first, second = quoted
-        return f'{first} or {second}'
-    return f'{", ".join(quoted[:-1])}, or {quoted[-1]}'
+_dependency_label = dependency_label
 
 
-def _error_message(
-    module_name: DependencyNames,
-    format_name: str,
-    pip_name: str | None = None,
-    *,
-    required: bool = False,
-) -> str:
-    """
-    Build an import error message for a dependency.
-
-    Parameters
-    ----------
-    module_name : DependencyNames
-        One module name or a tuple of alternative module names.
-    format_name : str
-        Human-readable format name for templated messages.
-    pip_name : str | None, optional
-        Package name to suggest for installation. Defaults to *module_name*.
-    required : bool, optional
-        Whether the dependency should be labeled as required in the message.
-        Defaults to ``False`` (optional dependency wording).
-
-    Returns
-    -------
-    str
-        Formatted error message.
-    """
-    dependency_names, dependency_target = _normalize_dependency_names(
-        module_name,
-        pip_name,
-    )
-    dependency_label = _dependency_label(dependency_names)
-    label = 'dependency' if required else 'optional dependency'
-    return (
-        f'{format_name} support requires '
-        f'{label} {dependency_label}.\n'
-        f'Install with: pip install {dependency_target}'
-    )
+_error_message = build_dependency_error_message
 
 
-def _normalize_dependency_names(
-    module_name: DependencyNames,
-    pip_name: str | None,
-) -> tuple[tuple[str, ...], str]:
-    """
-    Normalize dependency names and install target for message formatting.
-
-    Parameters
-    ----------
-    module_name : DependencyNames
-        One module name or tuple of alternative module names.
-    pip_name : str | None
-        Optional package name hint for install instructions.
-
-    Returns
-    -------
-    tuple[tuple[str, ...], str]
-        ``(dependency_names, dependency_target)``.
-
-    Raises
-    ------
-    ValueError
-        If *module_name* is an empty tuple.
-    """
-    if isinstance(module_name, str):
-        dependency_display_name = pip_name or module_name
-        return (dependency_display_name,), dependency_display_name
-    if not module_name:
-        raise ValueError('module_name must not be an empty tuple')
-    return module_name, pip_name or module_name[0]
+_normalize_dependency_names = normalize_dependency_names
 
 
 def _resolve_with_module_override(
