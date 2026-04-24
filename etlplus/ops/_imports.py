@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.ops._imports` module.
 
-Internal dependency helpers for ops modules.
+Internal dependency import helpers for :mod:`ops` modules.
 """
 
 from __future__ import annotations
@@ -14,17 +14,18 @@ from ..utils._imports import import_package
 
 
 __all__ = [
-    '_import_frictionless',
-    '_import_jsonschema',
-    '_import_lxml_etree',
-    '_import_yaml',
+    # Functions
+    'import_frictionless',
+    'import_jsonschema',
+    'import_lxml_etree',
+    'import_yaml',
 ]
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _import_validation_dependency(
+def import_validation_dependency(
     module_name: str,
     *,
     error_message: str,
@@ -41,9 +42,9 @@ def _import_validation_dependency(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def _import_frictionless() -> Any:
+def import_frictionless() -> Any:
     """Import and return :mod:`frictionless` lazily."""
-    return _import_validation_dependency(
+    return import_validation_dependency(
         'frictionless',
         error_message=(
             'frictionless is required for CSV schema validation. '
@@ -52,9 +53,9 @@ def _import_frictionless() -> Any:
     )
 
 
-def _import_jsonschema() -> Any:
+def import_jsonschema() -> Any:
     """Import and return :mod:`jsonschema` lazily."""
-    return _import_validation_dependency(
+    return import_validation_dependency(
         'jsonschema',
         error_message=(
             'jsonschema is required for JSON Schema validation. '
@@ -63,9 +64,9 @@ def _import_jsonschema() -> Any:
     )
 
 
-def _import_lxml_etree() -> Any:
+def import_lxml_etree() -> Any:
     """Import and return :mod:`lxml.etree` lazily."""
-    return _import_validation_dependency(
+    return import_validation_dependency(
         'lxml.etree',
         error_message=(
             'lxml is required for XML schema validation. '
@@ -74,9 +75,9 @@ def _import_lxml_etree() -> Any:
     )
 
 
-def _import_yaml() -> Any:
+def import_yaml() -> Any:
     """Import and return :mod:`yaml` lazily."""
-    return _import_validation_dependency(
+    return import_validation_dependency(
         'yaml',
         error_message=(
             'PyYAML is required for YAML schema validation. '
