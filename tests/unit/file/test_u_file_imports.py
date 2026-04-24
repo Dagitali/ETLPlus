@@ -120,8 +120,16 @@ class TestImportsHelpers:
             calls.append((module_name, format_name, pip_name, required))
             return 'built message'
 
-        monkeypatch.setattr(mod, 'build_dependency_error_message', _message_builder)
-        monkeypatch.setattr(mod, 'import_package', lambda *args, **kwargs: sentinel)
+        monkeypatch.setattr(
+            utils_imports,
+            'build_dependency_error_message',
+            _message_builder,
+        )
+        monkeypatch.setattr(
+            utils_imports,
+            'import_package',
+            lambda *args, **kwargs: sentinel,
+        )
 
         assert (
             mod.get_dependency(
@@ -141,10 +149,10 @@ class TestImportsHelpers:
         Test that optional dependency failures using normalized format
         messages.
         """
-        monkeypatch.setattr(mod, '_MODULE_CACHE', {})
+        monkeypatch.setattr(mod._DEPENDENCY_IMPORTER, 'cache', {})
         monkeypatch.setattr(
-            mod,
-            'import_module',
+            mod._DEPENDENCY_IMPORTER,
+            'importer',
             lambda _name: (_ for _ in ()).throw(ImportError('missing')),
         )
         expected = (
@@ -165,10 +173,10 @@ class TestImportsHelpers:
         Test that required dependency failures using normalized format
         messages.
         """
-        monkeypatch.setattr(mod, '_MODULE_CACHE', {})
+        monkeypatch.setattr(mod._DEPENDENCY_IMPORTER, 'cache', {})
         monkeypatch.setattr(
-            mod,
-            'import_module',
+            mod._DEPENDENCY_IMPORTER,
+            'importer',
             lambda _name: (_ for _ in ()).throw(ImportError('missing')),
         )
         expected = (
@@ -191,8 +199,12 @@ class TestImportsHelpers:
         cache: dict[str, object] = {}
         sentinel = object()
 
-        monkeypatch.setattr(mod, '_MODULE_CACHE', cache)
-        monkeypatch.setattr(mod, 'import_module', lambda _name: sentinel)
+        monkeypatch.setattr(mod._DEPENDENCY_IMPORTER, 'cache', cache)
+        monkeypatch.setattr(
+            mod._DEPENDENCY_IMPORTER,
+            'importer',
+            lambda _name: sentinel,
+        )
         result = mod.get_dependency(
             'example_dep',
             format_name='EXAMPLE',
@@ -205,9 +217,10 @@ class TestImportsHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that missing dependency errors use formatted messages."""
+        monkeypatch.setattr(mod._DEPENDENCY_IMPORTER, 'cache', {})
         monkeypatch.setattr(
-            mod,
-            'import_module',
+            mod._DEPENDENCY_IMPORTER,
+            'importer',
             lambda _name: (_ for _ in ()).throw(ImportError('missing')),
         )
         expected = (
@@ -226,10 +239,10 @@ class TestImportsHelpers:
     ) -> None:
         """Test that cache-first behavior avoids import lookups."""
         sentinel = object()
-        monkeypatch.setitem(mod._MODULE_CACHE, 'cached_mod', sentinel)
+        monkeypatch.setattr(mod._DEPENDENCY_IMPORTER, 'cache', {'cached_mod': sentinel})
         monkeypatch.setattr(
-            mod,
-            'import_module',
+            mod._DEPENDENCY_IMPORTER,
+            'importer',
             lambda _name: (_ for _ in ()).throw(AssertionError('unexpected')),
         )
         assert (
