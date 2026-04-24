@@ -8,13 +8,12 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable
-from importlib import import_module
 from typing import Any
 from typing import ClassVar
 from typing import NoReturn
 
+from ..utils._imports import DependencyImporter
 from ..utils._imports import build_dependency_error_message
-from ..utils._imports import import_package
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -39,7 +38,10 @@ __all__ = [
 
 
 # Dependency module support (lazy-loaded to avoid hard dependency)
-_MODULE_CACHE: dict[str, Any] = {}
+_DEPENDENCY_IMPORTER = DependencyImporter(
+    strict_missing_name=True,
+)
+_MODULE_CACHE = _DEPENDENCY_IMPORTER.cache
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
@@ -108,20 +110,11 @@ def get_dependency(
     Any
         The imported module.
     """
-    error_message = build_dependency_error_message(
+    return _DEPENDENCY_IMPORTER.get(
         module_name,
         format_name=format_name,
         pip_name=pip_name,
         required=required,
-    )
-    return import_package(
-        module_name,
-        error_message=error_message,
-        cache=_MODULE_CACHE,
-        importer=import_module,
-        error_type=ImportError,
-        import_exceptions=ImportError,
-        strict_missing_name=True,
     )
 
 
@@ -129,7 +122,7 @@ def get_pandas(
     format_name: str,
 ) -> Any:
     """
-    Return the pandas module, importing it on first use.
+    Return :mod:`pandas` for one format, importing it on first use.
 
     Parameters
     ----------
@@ -148,7 +141,7 @@ def get_pyarrow(
     format_name: str,
 ) -> Any:
     """
-    Return the pyarrow module, importing it on first use.
+    Return :mod:`pyarrow` for one format, importing it on first use.
 
     Parameters
     ----------
@@ -158,14 +151,14 @@ def get_pyarrow(
     Returns
     -------
     Any
-        The pyarrow module.
+        The :mod:`pyarrow` module.
     """
     return get_dependency('pyarrow', format_name=format_name, required=True)
 
 
 def get_yaml() -> Any:
     """
-    Return the required PyYAML module, importing it on first use.
+    Return required :mod:`yaml` support, importing it on first use.
 
     Returns
     -------
