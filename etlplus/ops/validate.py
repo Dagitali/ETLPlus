@@ -30,8 +30,10 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from collections.abc import Mapping
+from contextlib import suppress
 from importlib import import_module
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 from typing import Literal
 from typing import TypedDict
@@ -130,7 +132,7 @@ type FieldErrors = dict[str, list[str]]
 type FieldRuleInput = StrAnyMap | FieldRulesDict
 type FieldRuleValidator = Callable[[Any, FieldRuleInput, list[str]], None]
 type RulesMap = Mapping[str, FieldRulesDict]
-type SchemaFormat = Literal['jsonschema', 'xsd']
+type SchemaFormat = Literal['frictionless', 'jsonschema', 'xsd']
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
@@ -200,6 +202,37 @@ def _field_result(
     }
 
 
+def _format_jsonschema_path(
+    path: Any,
+) -> str | None:
+    """Return a stable dotted/indexed path for one JSON Schema error."""
+    parts: list[str] = []
+    for part in path:
+        if isinstance(part, int):
+            parts.append(f'[{part}]')
+            continue
+        if not parts:
+            parts.append(str(part))
+            continue
+        parts.append(f'.{part}')
+    return ''.join(parts) or None
+
+
+def _format_tabular_error_path(
+    *,
+    field_name: str | None,
+    row_number: int | None,
+) -> str | None:
+    """Return a stable path for one tabular validation error."""
+    if row_number is not None and field_name is not None:
+        return f'row[{row_number}].{field_name}'
+    if row_number is not None:
+        return f'row[{row_number}]'
+    if field_name is not None:
+        return field_name
+    return None
+
+
 def _get_int_rule(
     rules: StrAnyMap,
     key: str,
@@ -259,6 +292,18 @@ def _get_numeric_rule(
 
 
 # TODO: Generalize package importing and promote to utils if needed elsewhere.
+def _import_frictionless() -> Any:
+    """Import and return :mod:`frictionless` lazily."""
+    try:
+        return import_module('frictionless')
+    except Exception as exc:  # pragma: no cover - import shape varies by env
+        raise RuntimeError(
+            'frictionless is required for CSV schema validation. '
+            'Install with: pip install frictionless',
+        ) from exc
+
+
+# TODO: Generalize package importing and promote to utils if needed elsewhere.
 def _import_jsonschema() -> Any:
     """Import and return :mod:`jsonschema` lazily."""
     try:
@@ -282,6 +327,7 @@ def _import_lxml_etree() -> Any:
         ) from exc
 
 
+# TODO: Generalize package importing and promote to utils if needed elsewhere.
 def _import_yaml() -> Any:
     """Import and return :mod:`yaml` lazily."""
     try:
@@ -293,7 +339,13 @@ def _import_yaml() -> Any:
         ) from exc
 
 
-# TODO: Generalize package importing and promote to utils if needed elsewhere.
+def _infer_structured_text_format(
+    text: str,
+) -> Literal['json', 'yaml']:
+    """Infer JSON vs YAML from raw text."""
+    return 'json' if text.lstrip().startswith(('{', '[')) else 'yaml'
+
+
 def _is_integer(
     value: Any,
 ) -> bool:
@@ -313,27 +365,37 @@ def _is_integer(
     return isinstance(value, int) and not isinstance(value, bool)
 
 
-def _format_jsonschema_path(
-    path: Any,
-) -> str | None:
-    """Return a stable dotted/indexed path for one JSON Schema error."""
-    parts: list[str] = []
-    for part in path:
-        if isinstance(part, int):
-            parts.append(f'[{part}]')
-            continue
-        if not parts:
-            parts.append(str(part))
-            continue
-        parts.append(f'.{part}')
-    return ''.join(parts) or None
+def _is_number(value: Any) -> bool:
+    """
+    Return True if value is an int/float but not a bool.
+
+    Parameters
+    ----------
+    value : Any
+        Value to test.
+
+    Returns
+    -------
+    bool
+        ``True`` if value is a number, else ``False``.
+    """
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
-def _infer_structured_text_format(
-    text: str,
-) -> Literal['json', 'yaml']:
-    """Infer JSON vs YAML from raw text."""
-    return 'json' if text.lstrip().startswith(('{', '[')) else 'yaml'
+def _normalize_frictionless_source_format(
+    format_hint: str | None,
+) -> FileFormat | None:
+    """Normalize the supported CSV schema source formats."""
+    if format_hint is None:
+        return None
+
+    normalized = FileFormat.coerce(format_hint)
+    if normalized is not FileFormat.CSV:
+        raise ValueError(
+            f'Unsupported CSV schema source format: {format_hint}. '
+            'Supported source formats: csv',
+        )
+    return normalized
 
 
 def _normalize_jsonschema_format_hint(
@@ -410,21 +472,18 @@ def _load_jsonschema_document(
     return _parse_structured_text(value, format_hint=format_hint, label=label)
 
 
-def _is_number(value: Any) -> bool:
-    """
-    Return True if value is an int/float but not a bool.
+def _resolve_existing_local_path(
+    value: str | Path,
+) -> Path | None:
+    """Return an existing local path, if *value* points at one."""
+    if isinstance(value, Path):
+        return value
 
-    Parameters
-    ----------
-    value : Any
-        Value to test.
-
-    Returns
-    -------
-    bool
-        ``True`` if value is a number, else ``False``.
-    """
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    with suppress(OSError, ValueError):
+        candidate = Path(value)
+        if candidate.exists():
+            return candidate
+    return None
 
 
 def _resolve_local_path_or_text(
@@ -649,6 +708,83 @@ def _validate_jsonschema(
     )
 
 
+def _validate_frictionless(
+    source: str | Path,
+    schema: str | Path,
+    *,
+    source_format: str | None = None,
+) -> ValidationDict:
+    """Validate one CSV document against one Frictionless Table Schema."""
+    try:
+        frictionless = _import_frictionless()
+    except RuntimeError as exc:
+        return _validation_result(data=None, errors=[str(exc)])
+
+    frictionless_exception = frictionless.FrictionlessException
+
+    try:
+        schema_doc = _load_jsonschema_document(
+            schema,
+            format_hint=None,
+            label='Schema',
+        )
+    except (RuntimeError, ValueError) as exc:
+        return _validation_result(data=None, errors=[str(exc)])
+
+    try:
+        _normalize_frictionless_source_format(source_format)
+    except ValueError as exc:
+        return _validation_result(data=None, errors=[str(exc)])
+
+    temp_dir: TemporaryDirectory[str] | None = None
+    try:
+        source_path = _resolve_existing_local_path(source)
+        if source_path is None:
+            temp_dir = TemporaryDirectory()
+            source_path = Path(temp_dir.name) / 'source.csv'
+            source_path.write_text(str(source), encoding='utf-8')
+
+        schema_obj = frictionless.Schema.from_descriptor(schema_doc)
+        resource = frictionless.Resource(
+            path=source_path.name,
+            basepath=str(source_path.parent),
+            schema=schema_obj,
+        )
+        report = resource.validate()
+    except (frictionless_exception, OSError, TypeError, ValueError) as exc:
+        if temp_dir is not None:
+            temp_dir.cleanup()
+        return _validation_result(
+            data=None,
+            errors=[f'CSV schema validation failed: {exc}'],
+        )
+
+    errors: list[str] = []
+    field_errors: FieldErrors = {}
+    for task in report.tasks:
+        for error in task.errors:
+            descriptor = error.to_descriptor()
+            message = str(descriptor.get('message') or error)
+            path = _format_tabular_error_path(
+                field_name=descriptor.get('fieldName'),
+                row_number=descriptor.get('rowNumber'),
+            )
+            if path is None:
+                errors.append(message)
+                continue
+            errors.append(f'{path}: {message}')
+            field_errors.setdefault(path, []).append(message)
+
+    if temp_dir is not None:
+        temp_dir.cleanup()
+
+    return _validation_result(
+        data=None,
+        errors=errors,
+        field_errors=field_errors,
+    )
+
+
 def _validate_sequence(
     data: list[Any],
     rules: RulesMap,
@@ -856,10 +992,10 @@ def validate_schema(
     schema : str | Path
         Schema path or raw schema text.
     schema_format : SchemaFormat | str | None, optional
-        Schema format override. Supported values are ``'xsd'`` and
-        ``'jsonschema'``.
+        Schema format override. Supported values are ``'xsd'``,
+        ``'jsonschema'``, and ``'frictionless'``.
     source_format : str | None, optional
-        Optional source payload format override for JSON Schema validation.
+        Optional source payload format override for schema-based validation.
 
     Returns
     -------
@@ -876,8 +1012,14 @@ def validate_schema(
             schema,
             source_format=source_format,
         )
+    if resolved_schema_format == 'frictionless':
+        return _validate_frictionless(
+            source,
+            schema,
+            source_format=source_format,
+        )
 
-    supported_formats = 'jsonschema, xsd'
+    supported_formats = 'frictionless, jsonschema, xsd'
     if schema_format is None:
         resolved_label = 'None'
     else:
