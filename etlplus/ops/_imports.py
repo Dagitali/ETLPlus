@@ -40,7 +40,7 @@ def get_dependency(
     *,
     format_name: str,
     pip_name: str | None = None,
-    required: bool = True,
+    required: bool = False,
 ) -> Any:
     """
     Return a dependency module with a standardized runtime error message.
@@ -90,6 +90,7 @@ def get_frictionless() -> Any:
     return get_dependency(
         'frictionless',
         format_name='CSV schema',
+        required=True,
     )
 
 
@@ -105,6 +106,7 @@ def get_jsonschema() -> Any:
     return get_dependency(
         'jsonschema',
         format_name='JSON Schema',
+        required=True,
     )
 
 
@@ -121,6 +123,7 @@ def get_lxml_etree() -> Any:
         'lxml.etree',
         format_name='XML schema',
         pip_name='lxml',
+        required=True,
     )
 
 
@@ -137,4 +140,5 @@ def get_yaml() -> Any:
         'yaml',
         format_name='YAML schema',
         pip_name='PyYAML',
+        required=True,
     )
