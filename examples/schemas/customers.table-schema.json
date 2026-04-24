@@ -6,11 +6,19 @@
     },
     {
       "name": "name",
-      "type": "string"
+      "type": "string",
+      "constraints": {
+        "required": true
+      }
     },
     {
       "name": "email",
-      "type": "string"
+      "type": "string",
+      "constraints": {
+        "required": true,
+        "unique": true,
+        "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+      }
     },
     {
       "name": "signup_date",
@@ -18,7 +26,14 @@
     },
     {
       "name": "status",
-      "type": "string"
+      "type": "string",
+      "constraints": {
+        "required": true,
+        "enum": [
+          "active",
+          "inactive"
+        ]
+      }
     }
   ]
 }
