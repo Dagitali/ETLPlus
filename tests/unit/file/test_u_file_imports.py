@@ -65,7 +65,7 @@ class TestImportsHelpers:
         Test that dependency-label helper formatting 3+ dependency
         alternatives.
         """
-        label = mod._dependency_label(('netCDF4', 'h5netcdf', 'xarray'))
+        label = utils_imports.dependency_label(('netCDF4', 'h5netcdf', 'xarray'))
         assert label == '"netCDF4", "h5netcdf", or "xarray"'
 
     def test_dependency_label_raises_for_empty_names(self) -> None:
@@ -73,7 +73,7 @@ class TestImportsHelpers:
         Test that dependency-label helper rejecting empty dependency sets.
         """
         with pytest.raises(ValueError, match='must not be empty'):
-            mod._dependency_label(())
+            utils_imports.dependency_label(())
 
     @pytest.mark.parametrize(
         ('module_name', 'format_name', 'pip_name', 'dependency_name'),
@@ -91,7 +91,7 @@ class TestImportsHelpers:
         dependency_name: str,
     ) -> None:
         """Test import-error messages with dependency and ``pip`` hints."""
-        message = mod._error_message(
+        message = utils_imports.build_dependency_error_message(
             module_name,
             format_name=format_name,
             pip_name=pip_name,
@@ -102,14 +102,36 @@ class TestImportsHelpers:
         )
         assert f'pip install {dependency_name}' in message
 
-    def test_file_helpers_alias_shared_utils_helpers(self) -> None:
-        """Test that file import helpers alias the shared utils helpers."""
-        assert mod._dependency_label is utils_imports.dependency_label
+    def test_get_dependency_uses_shared_message_builder(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that file dependency imports build messages via utils."""
+        calls: list[tuple[object, str, str | None, bool]] = []
+        sentinel = object()
+
+        def _message_builder(
+            module_name: object,
+            format_name: str,
+            pip_name: str | None = None,
+            *,
+            required: bool = False,
+        ) -> str:
+            calls.append((module_name, format_name, pip_name, required))
+            return 'built message'
+
+        monkeypatch.setattr(mod, 'build_dependency_error_message', _message_builder)
+        monkeypatch.setattr(mod, 'import_package', lambda *args, **kwargs: sentinel)
+
         assert (
-            mod._normalize_dependency_names
-            is utils_imports.normalize_dependency_names
+            mod.get_dependency(
+                'yaml',
+                format_name='YAML',
+                pip_name='PyYAML',
+            )
+            is sentinel
         )
-        assert mod._error_message is utils_imports.build_dependency_error_message
+        assert calls == [('yaml', 'YAML', 'PyYAML', False)]
 
     def test_get_dependency_raises_optional_standard_message(
         self,
@@ -221,7 +243,7 @@ class TestImportsHelpers:
     def test_normalize_dependency_names_rejects_empty_tuple(self) -> None:
         """Test that dependency-name normalization rejects empty tuples."""
         with pytest.raises(ValueError, match='must not be an empty tuple'):
-            mod._normalize_dependency_names((), None)
+            utils_imports.normalize_dependency_names((), None)
 
     @pytest.mark.parametrize(
         ('module_name', 'format_name', 'pip_name', 'dependency_name'),
@@ -241,7 +263,7 @@ class TestImportsHelpers:
         """
         Test that required import error messages renders dependency hints.
         """
-        message = mod._error_message(
+        message = utils_imports.build_dependency_error_message(
             module_name,
             format_name=format_name,
             pip_name=pip_name,
