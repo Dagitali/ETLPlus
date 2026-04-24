@@ -160,6 +160,19 @@ class TestValidate:
         sentinel = object()
         calls: list[tuple[str, str, object, object, object, object]] = []
 
+        def _message_builder(
+            module_name: str,
+            format_name: str,
+            pip_name: str | None = None,
+            *,
+            required: bool = True,
+        ) -> str:
+            assert module_name == 'jsonschema'
+            assert format_name == 'JSON Schema'
+            assert pip_name is None
+            assert required is True
+            return 'jsonschema is required'
+
         def _import_package(
             dependency_name: str,
             *,
@@ -181,12 +194,17 @@ class TestValidate:
             )
             return sentinel
 
+        monkeypatch.setattr(
+            ops_imports_mod,
+            'build_dependency_error_message',
+            _message_builder,
+        )
         monkeypatch.setattr(ops_imports_mod, 'import_package', _import_package)
 
         assert (
             ops_imports_mod.get_dependency(
                 'jsonschema',
-                error_message='jsonschema is required',
+                format_name='JSON Schema',
             )
             is sentinel
         )
@@ -202,31 +220,31 @@ class TestValidate:
         ]
 
     @pytest.mark.parametrize(
-        ('helper_name', 'module_name', 'error_message'),
+        ('helper_name', 'module_name', 'format_name', 'pip_name'),
         [
             (
                 'get_frictionless',
                 'frictionless',
-                'frictionless is required for CSV schema validation. '
-                'Install with: pip install frictionless',
+                'CSV schema',
+                None,
             ),
             (
                 'get_jsonschema',
                 'jsonschema',
-                'jsonschema is required for JSON Schema validation. '
-                'Install with: pip install jsonschema',
+                'JSON Schema',
+                None,
             ),
             (
                 'get_lxml_etree',
                 'lxml.etree',
-                'lxml is required for XML schema validation. '
-                'Install with: pip install lxml',
+                'XML schema',
+                'lxml',
             ),
             (
                 'get_yaml',
                 'yaml',
-                'PyYAML is required for YAML schema validation. '
-                'Install with: pip install PyYAML',
+                'YAML schema',
+                'PyYAML',
             ),
         ],
         ids=['frictionless', 'jsonschema', 'lxml', 'yaml'],
@@ -236,24 +254,27 @@ class TestValidate:
         monkeypatch: pytest.MonkeyPatch,
         helper_name: str,
         module_name: str,
-        error_message: str,
+        format_name: str,
+        pip_name: str | None,
     ) -> None:
         """Schema-specific ops helpers should delegate to ``get_dependency``."""
         sentinel = object()
-        calls: list[tuple[str, str]] = []
+        calls: list[tuple[str, str, str | None, bool]] = []
 
         def _get_dependency(
             dependency_name: str,
             *,
-            error_message: str,
+            format_name: str,
+            pip_name: str | None = None,
+            required: bool = True,
         ) -> object:
-            calls.append((dependency_name, error_message))
+            calls.append((dependency_name, format_name, pip_name, required))
             return sentinel
 
         monkeypatch.setattr(ops_imports_mod, 'get_dependency', _get_dependency)
 
         assert getattr(ops_imports_mod, helper_name)() is sentinel
-        assert calls == [(module_name, error_message)]
+        assert calls == [(module_name, format_name, pip_name, True)]
 
     def test_validate_handles_load_errors(self) -> None:
         """
