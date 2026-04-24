@@ -122,7 +122,7 @@ def get_pandas(
     format_name: str,
 ) -> Any:
     """
-    Return :mod:`pandas` for one format, importing it on first use.
+    Return :mod:`pandas` lazily (i.e, importing it on first use).
 
     Parameters
     ----------
@@ -141,7 +141,7 @@ def get_pyarrow(
     format_name: str,
 ) -> Any:
     """
-    Return :mod:`pyarrow` for one format, importing it on first use.
+    Return :mod:`pyarrow` lazily (i.e, importing it on first use).
 
     Parameters
     ----------
@@ -158,7 +158,7 @@ def get_pyarrow(
 
 def get_yaml() -> Any:
     """
-    Return required :mod:`yaml` support, importing it on first use.
+    Return :mod:`yaml` lazily (i.e, importing it on first use).
 
     Returns
     -------
