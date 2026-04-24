@@ -6,11 +6,9 @@ Internal dependency import helpers for :mod:`ops` modules.
 
 from __future__ import annotations
 
-from importlib import import_module
 from typing import Any
 
-from ..utils._imports import build_dependency_error_message
-from ..utils._imports import import_package
+from ..utils._imports import DependencyImporter
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -29,7 +27,11 @@ __all__ = [
 
 
 # Dependency module support (lazy-loaded to avoid hard dependency)
-_MODULE_CACHE: dict[str, Any] = {}
+_DEPENDENCY_IMPORTER = DependencyImporter(
+    error_type=RuntimeError,
+    import_exceptions=Exception,
+)
+_MODULE_CACHE = _DEPENDENCY_IMPORTER.cache
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -62,25 +64,17 @@ def get_dependency(
     Any
         The imported module.
     """
-    error_message = build_dependency_error_message(
+    return _DEPENDENCY_IMPORTER.get(
         module_name,
         format_name=format_name,
         pip_name=pip_name,
         required=required,
     )
-    return import_package(
-        module_name,
-        error_message=error_message,
-        cache=_MODULE_CACHE,
-        importer=import_module,
-        error_type=RuntimeError,
-        import_exceptions=Exception,
-    )
 
 
 def get_frictionless() -> Any:
     """
-    Import and return :mod:`frictionless` lazily.
+    Return :mod:`frictionless` lazily (i.e, importing it on first use).
 
     Returns
     -------
@@ -96,7 +90,7 @@ def get_frictionless() -> Any:
 
 def get_jsonschema() -> Any:
     """
-    Import and return :mod:`jsonschema` lazily.
+    Return :mod:`jsonschema` lazily (i.e, importing it on first use).
 
     Returns
     -------
@@ -112,7 +106,7 @@ def get_jsonschema() -> Any:
 
 def get_lxml_etree() -> Any:
     """
-    Import and return :mod:`lxml.etree` lazily.
+    Return :mod:`lxml.etree` lazily (i.e, importing it on first use).
 
     Returns
     -------
@@ -129,7 +123,7 @@ def get_lxml_etree() -> Any:
 
 def get_yaml() -> Any:
     """
-    Import and return :mod:`yaml` lazily.
+    Return :mod:`yaml` lazily (i.e, importing it on first use)
 
     Returns
     -------
