@@ -31,7 +31,6 @@ import re
 from collections.abc import Callable
 from collections.abc import Mapping
 from contextlib import suppress
-from importlib import import_module
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
@@ -41,6 +40,7 @@ from typing import TypedDict
 from ..file import File
 from ..file import FileFormat
 from ..utils import JsonCodec
+from ..utils._imports import import_package
 from ..utils._types import JSONData
 from ..utils._types import Record
 from ..utils._types import StrAnyMap
@@ -291,52 +291,55 @@ def _get_numeric_rule(
     return float(coerced) if coerced is not None else None
 
 
-# TODO: Generalize package importing and promote to utils if needed elsewhere.
 def _import_frictionless() -> Any:
     """Import and return :mod:`frictionless` lazily."""
-    try:
-        return import_module('frictionless')
-    except Exception as exc:  # pragma: no cover - import shape varies by env
-        raise RuntimeError(
+    return import_package(
+        'frictionless',
+        error_message=(
             'frictionless is required for CSV schema validation. '
-            'Install with: pip install frictionless',
-        ) from exc
+            'Install with: pip install frictionless'
+        ),
+        error_type=RuntimeError,
+        import_exceptions=Exception,
+    )
 
 
-# TODO: Generalize package importing and promote to utils if needed elsewhere.
 def _import_jsonschema() -> Any:
     """Import and return :mod:`jsonschema` lazily."""
-    try:
-        return import_module('jsonschema')
-    except Exception as exc:  # pragma: no cover - import shape varies by env
-        raise RuntimeError(
+    return import_package(
+        'jsonschema',
+        error_message=(
             'jsonschema is required for JSON Schema validation. '
-            'Install with: pip install jsonschema',
-        ) from exc
+            'Install with: pip install jsonschema'
+        ),
+        error_type=RuntimeError,
+        import_exceptions=Exception,
+    )
 
 
-# TODO: Generalize package importing and promote to utils if needed elsewhere.
 def _import_lxml_etree() -> Any:
     """Import and return :mod:`lxml.etree` lazily."""
-    try:
-        return import_module('lxml.etree')
-    except Exception as exc:  # pragma: no cover - import shape varies by env
-        raise RuntimeError(
-            'lxml is required for XML schema validation. '
-            'Install with: pip install lxml',
-        ) from exc
+    return import_package(
+        'lxml.etree',
+        error_message=(
+            'lxml is required for XML schema validation. Install with: pip install lxml'
+        ),
+        error_type=RuntimeError,
+        import_exceptions=Exception,
+    )
 
 
-# TODO: Generalize package importing and promote to utils if needed elsewhere.
 def _import_yaml() -> Any:
     """Import and return :mod:`yaml` lazily."""
-    try:
-        return import_module('yaml')
-    except Exception as exc:  # pragma: no cover - import shape varies by env
-        raise RuntimeError(
+    return import_package(
+        'yaml',
+        error_message=(
             'PyYAML is required for YAML schema validation. '
-            'Install with: pip install PyYAML',
-        ) from exc
+            'Install with: pip install PyYAML'
+        ),
+        error_type=RuntimeError,
+        import_exceptions=Exception,
+    )
 
 
 def _infer_structured_text_format(
