@@ -43,10 +43,10 @@ from ..utils import JsonCodec
 from ..utils._types import JSONData
 from ..utils._types import Record
 from ..utils._types import StrAnyMap
-from ._imports import import_frictionless
-from ._imports import import_jsonschema
-from ._imports import import_lxml_etree
-from ._imports import import_yaml
+from ._imports import get_frictionless
+from ._imports import get_jsonschema
+from ._imports import get_lxml_etree
+from ._imports import get_yaml
 from ._types import DataSourceArg
 from .load import load_data as _load_data
 
@@ -392,7 +392,7 @@ def _parse_structured_text(
             except ValueError:
                 pass
         try:
-            yaml = import_yaml()
+            yaml = get_yaml()
             return yaml.safe_load(text)
         except RuntimeError:
             raise
@@ -611,7 +611,7 @@ def _validate_jsonschema(
 ) -> ValidationDict:
     """Validate one JSON or YAML document against one JSON Schema."""
     try:
-        jsonschema = import_jsonschema()
+        jsonschema = get_jsonschema()
     except RuntimeError as exc:
         return _validation_result(data=None, errors=[str(exc)])
 
@@ -673,7 +673,7 @@ def _validate_frictionless(
 ) -> ValidationDict:
     """Validate one CSV document against one Frictionless Table Schema."""
     try:
-        frictionless = import_frictionless()
+        frictionless = get_frictionless()
     except RuntimeError as exc:
         return _validation_result(data=None, errors=[str(exc)])
 
@@ -805,7 +805,7 @@ def _validate_xsd(
 ) -> ValidationDict:
     """Validate one XML document against one XSD schema."""
     try:
-        etree = import_lxml_etree()
+        etree = get_lxml_etree()
     except RuntimeError as exc:
         return _validation_result(data=None, errors=[str(exc)])
 
