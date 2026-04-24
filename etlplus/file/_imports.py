@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.file._imports` module.
 
-Shared helpers for dependency imports.
+Internal dependency import helpers for :mod:`file` modules.
 """
 
 from __future__ import annotations
