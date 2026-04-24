@@ -151,6 +151,76 @@ class TestValidate:
         assert result['valid']
         assert result['data'] == data
 
+    @pytest.mark.parametrize(
+        ('helper_name', 'module_name', 'error_message'),
+        [
+            (
+                '_import_frictionless',
+                'frictionless',
+                'frictionless is required for CSV schema validation. '
+                'Install with: pip install frictionless',
+            ),
+            (
+                '_import_jsonschema',
+                'jsonschema',
+                'jsonschema is required for JSON Schema validation. '
+                'Install with: pip install jsonschema',
+            ),
+            (
+                '_import_lxml_etree',
+                'lxml.etree',
+                'lxml is required for XML schema validation. '
+                'Install with: pip install lxml',
+            ),
+            (
+                '_import_yaml',
+                'yaml',
+                'PyYAML is required for YAML schema validation. '
+                'Install with: pip install PyYAML',
+            ),
+        ],
+        ids=['frictionless', 'jsonschema', 'lxml', 'yaml'],
+    )
+    def test_schema_import_helpers_delegate_to_shared_importer(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        helper_name: str,
+        module_name: str,
+        error_message: str,
+    ) -> None:
+        """Schema import helpers should delegate to the shared import helper."""
+        sentinel = object()
+        calls: list[tuple[str, str, object, object]] = []
+
+        def _import_package(
+            dependency_name: str,
+            *,
+            error_message: str,
+            error_type: object,
+            import_exceptions: object,
+        ) -> object:
+            calls.append(
+                (
+                    dependency_name,
+                    error_message,
+                    error_type,
+                    import_exceptions,
+                ),
+            )
+            return sentinel
+
+        monkeypatch.setattr(validate_mod, 'import_package', _import_package)
+
+        assert getattr(validate_mod, helper_name)() is sentinel
+        assert calls == [
+            (
+                module_name,
+                error_message,
+                RuntimeError,
+                Exception,
+            ),
+        ]
+
     def test_validate_handles_load_errors(self) -> None:
         """
         Test that invalid sources report errors via the errors collection.
