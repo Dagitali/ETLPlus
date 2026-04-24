@@ -201,6 +201,91 @@ class TestValidate:
         assert result['valid'] is False
         assert any(error.startswith('Line ') for error in result['errors'])
 
+    def test_validate_schema_with_frictionless_collects_field_errors(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """CSV schema validation should retain row and field error paths."""
+        pytest.importorskip('frictionless')
+
+        schema_path = tmp_path / 'schema.json'
+        csv_path = tmp_path / 'sample.csv'
+        schema_path.write_text(
+            '\n'.join(
+                [
+                    '{',
+                    '  "fields": [',
+                    '    {"name": "name", "type": "string"},',
+                    '    {"name": "age", "type": "integer"}',
+                    '  ]',
+                    '}',
+                ],
+            ),
+            encoding='utf-8',
+        )
+        csv_path.write_text(
+            'name,age\nAda,37\nBob,not-a-number\n',
+            encoding='utf-8',
+        )
+
+        result = validate_schema(
+            csv_path,
+            schema_path,
+            schema_format='frictionless',
+        )
+
+        assert result['valid'] is False
+        assert 'row[3].age' in result['field_errors']
+        assert any(error.startswith('row[3].age: ') for error in result['errors'])
+
+    def test_validate_schema_with_frictionless_csv_text(self) -> None:
+        """Schema validation should accept valid CSV text against Table Schema."""
+        pytest.importorskip('frictionless')
+
+        schema = '\n'.join(
+            [
+                '{',
+                '  "fields": [',
+                '    {"name": "name", "type": "string"},',
+                '    {"name": "age", "type": "integer"}',
+                '  ]',
+                '}',
+            ],
+        )
+        payload = 'name,age\nAda,37\n'
+
+        result = validate_schema(
+            payload,
+            schema,
+            schema_format='frictionless',
+            source_format='csv',
+        )
+
+        assert result['valid'] is True
+        assert result['errors'] == []
+        assert result['field_errors'] == {}
+        assert result['data'] is None
+
+    def test_validate_schema_with_frictionless_rejects_bad_source_format(
+        self,
+    ) -> None:
+        """CSV schema validation should reject unsupported payload formats."""
+        pytest.importorskip('frictionless')
+
+        schema = '{"fields": [{"name": "name", "type": "string"}]}'
+        result = validate_schema(
+            'name\nAda\n',
+            schema,
+            schema_format='frictionless',
+            source_format='yaml',
+        )
+
+        assert result['valid'] is False
+        assert any(
+            'Unsupported CSV schema source format: yaml' in error
+            for error in result['errors']
+        )
+
     def test_validate_schema_with_jsonschema_json(self) -> None:
         """Schema validation should accept valid JSON against JSON Schema."""
         pytest.importorskip('jsonschema')
