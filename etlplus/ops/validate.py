@@ -54,12 +54,14 @@ from .load import load_data as _load_data
 
 
 __all__ = [
-    'FieldRulesDict',
-    'FieldValidationDict',
-    'ValidationDict',
+    # Functions
     'validate_field',
     'validate_schema',
     'validate',
+    # Typed Dicts
+    'FieldRulesDict',
+    'FieldValidationDict',
+    'ValidationDict',
 ]
 
 
