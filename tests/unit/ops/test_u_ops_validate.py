@@ -29,13 +29,14 @@ from etlplus.utils._types import JSONData
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: TESTS ============================================================ #
-
-
-# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+# SECTION: HELPERS ========================================================== #
 
 
 validate_mod = importlib.import_module('etlplus.ops.validate')
+ops_imports_mod = importlib.import_module('etlplus.ops._imports')
+
+
+# SECTION: TESTS ============================================================ #
 
 
 class TestValidate:
@@ -209,9 +210,9 @@ class TestValidate:
             )
             return sentinel
 
-        monkeypatch.setattr(validate_mod, 'import_package', _import_package)
+        monkeypatch.setattr(ops_imports_mod, 'import_package', _import_package)
 
-        assert getattr(validate_mod, helper_name)() is sentinel
+        assert getattr(ops_imports_mod, helper_name)() is sentinel
         assert calls == [
             (
                 module_name,
