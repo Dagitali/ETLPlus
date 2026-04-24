@@ -11,6 +11,7 @@ import re
 import pytest
 
 from etlplus.file import _imports as mod
+from etlplus.utils import _imports as utils_imports
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -100,6 +101,15 @@ class TestImportsHelpers:
             f'"{dependency_name}"' in message
         )
         assert f'pip install {dependency_name}' in message
+
+    def test_file_helpers_alias_shared_utils_helpers(self) -> None:
+        """Test that file import helpers alias the shared utils helpers."""
+        assert mod._dependency_label is utils_imports.dependency_label
+        assert (
+            mod._normalize_dependency_names
+            is utils_imports.normalize_dependency_names
+        )
+        assert mod._error_message is utils_imports.build_dependency_error_message
 
     def test_get_dependency_raises_optional_standard_message(
         self,
