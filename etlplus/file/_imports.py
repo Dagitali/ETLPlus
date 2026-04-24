@@ -14,9 +14,7 @@ from typing import ClassVar
 from typing import NoReturn
 
 from ..utils._imports import build_dependency_error_message
-from ..utils._imports import dependency_label
 from ..utils._imports import import_package
-from ..utils._imports import normalize_dependency_names
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -44,15 +42,6 @@ __all__ = [
 _MODULE_CACHE: dict[str, Any] = {}
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-_dependency_label = dependency_label
-
-
-_error_message = build_dependency_error_message
-
-
-_normalize_dependency_names = normalize_dependency_names
 
 
 def _resolve_with_module_override(
@@ -120,7 +109,7 @@ def get_dependency(
         The imported module.
 
     """
-    error_message = _error_message(
+    error_message = build_dependency_error_message(
         module_name,
         format_name=format_name,
         pip_name=pip_name,
@@ -227,7 +216,7 @@ def raise_engine_import_error(
     """
     if dependency_names is None:
         raise error
-    message = _error_message(
+    message = build_dependency_error_message(
         dependency_names,
         format_name=format_name,
         pip_name=pip_name,
