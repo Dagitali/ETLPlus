@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from dataclasses import field
 from importlib import import_module
 from typing import Any
-from typing import NoReturn
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -33,25 +32,6 @@ __all__ = [
 
 
 type DependencyNames = str | tuple[str, ...]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _raise_import_failure(
-    error_factory: Callable[[str], Exception],
-    error_message: str,
-    error: BaseException,
-) -> NoReturn:
-    """Raise one wrapped dependency import error."""
-    raise error_factory(error_message) from error
-
-
-def _reraise(
-    error: BaseException,
-) -> NoReturn:
-    """Re-raise one original import error."""
-    raise error
 
 
 # SECTION: CLASSES ========================================================== #
@@ -96,6 +76,11 @@ class DependencyImporter:
         required : bool, optional
             Whether to use required-dependency message wording. Defaults to
             ``False`` (optional dependency wording).
+
+        Returns
+        -------
+        Any
+            The imported module.
         """
         return import_package(
             module_name,
@@ -204,6 +189,14 @@ def import_package(
     Any
         The imported module.
 
+    Raises
+    ------
+    import_exceptions
+        Propagated when ``strict_missing_name`` is enabled and the importer
+        fails on a different nested module name.
+    error_type
+        Raised with *error_message* when the configured import fails.
+
     """
     if cache is not None:
         try:
@@ -217,8 +210,8 @@ def import_package(
         if strict_missing_name and isinstance(exc, ImportError):
             missing_name = getattr(exc, 'name', None)
             if missing_name is not None and missing_name != module_name:
-                _reraise(exc)
-        _raise_import_failure(error_type, error_message, exc)
+                raise
+        raise error_type(error_message) from exc
 
     if cache is not None:
         cache[module_name] = module
