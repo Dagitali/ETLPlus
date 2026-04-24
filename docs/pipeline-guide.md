@@ -331,10 +331,10 @@ validations:
       maxLength: 320
 ```
 
-For document-oriented checks outside the in-pipeline ruleset model, the stable
-CLI also supports schema-based validation through `etlplus validate --schema`.
-Use `--schema-format jsonschema` for JSON or YAML payloads and
-`--schema-format xsd` for XML payloads.
+For document-oriented checks outside the in-pipeline ruleset model, the stable CLI also supports
+schema-based validation through `etlplus validate --schema`. Use `--schema-format jsonschema` for
+JSON or YAML payloads, `--schema-format frictionless` for CSV payloads, and `--schema-format xsd`
+for XML payloads.
 
 ## Transforms
 
