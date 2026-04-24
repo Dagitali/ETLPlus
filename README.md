@@ -681,6 +681,26 @@ Validate CSV against a Frictionless Table Schema:
 etlplus validate data/customers.csv --schema examples/schemas/customers.table-schema.json --schema-format frictionless
 ```
 
+CSV schema failures preserve row and field paths in the same result envelope:
+```json
+{
+  "valid": false,
+  "errors": [
+    "row[3].email: Row at position \"3\" has unique constraint violation in field \"email\" at position \"1\": the same as in the row at position 2",
+    "row[3].status: The cell \"\" in row at position \"3\" and field \"status\" at position \"2\" does not conform to a constraint: constraint \"required\" is \"True\""
+  ],
+  "field_errors": {
+    "row[3].email": [
+      "Row at position \"3\" has unique constraint violation in field \"email\" at position \"1\": the same as in the row at position 2"
+    ],
+    "row[3].status": [
+      "The cell \"\" in row at position \"3\" and field \"status\" at position \"2\" does not conform to a constraint: constraint \"required\" is \"True\""
+    ]
+  },
+  "data": null
+}
+```
+
 #### Transform Data
 
 When piping data through `etlplus transform`, use `--source-format` whenever the SOURCE argument is
