@@ -13,6 +13,8 @@ from typing import Any
 from typing import ClassVar
 from typing import NoReturn
 
+from ..utils._imports import import_package
+
 # SECTION: EXPORTS ========================================================== #
 
 
@@ -189,7 +191,6 @@ def _resolve_with_module_override(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-# TODO: Generalize package importing and promote to utils if needed elsewhere.
 def get_dependency(
     module_name: str,
     *,
@@ -217,10 +218,6 @@ def get_dependency(
     Any
         The imported module.
 
-    Raises
-    ------
-    ImportError
-        If the dependency is missing.
     """
     error_message = _error_message(
         module_name,
@@ -228,19 +225,15 @@ def get_dependency(
         pip_name=pip_name,
         required=required,
     )
-    try:
-        return _MODULE_CACHE[module_name]
-    except KeyError:
-        pass
-    try:
-        module = import_module(module_name)
-    except ImportError as e:  # pragma: no cover
-        missing_name = getattr(e, 'name', None)
-        if missing_name is not None and missing_name != module_name:
-            raise
-        raise ImportError(error_message) from e
-    _MODULE_CACHE[module_name] = module
-    return module
+    return import_package(
+        module_name,
+        error_message=error_message,
+        cache=_MODULE_CACHE,
+        importer=import_module,
+        error_type=ImportError,
+        import_exceptions=ImportError,
+        strict_missing_name=True,
+    )
 
 
 def get_pandas(
