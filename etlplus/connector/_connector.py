@@ -14,7 +14,7 @@ from ._file import ConnectorFile
 
 
 __all__ = [
-    # Type aliases
+    # Type Aliases
     'Connector',
 ]
 
