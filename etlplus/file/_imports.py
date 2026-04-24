@@ -41,7 +41,6 @@ __all__ = [
 _DEPENDENCY_IMPORTER = DependencyImporter(
     strict_missing_name=True,
 )
-_MODULE_CACHE = _DEPENDENCY_IMPORTER.cache
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
