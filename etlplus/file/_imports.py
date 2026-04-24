@@ -53,30 +53,11 @@ def _resolve_with_module_override(
     *args: Any,
     **kwargs: Any,
 ) -> Any:
-    """
-    Resolve one dependency call via module override with fallback.
-
-    Parameters
-    ----------
-    handler : object
-        The handler instance whose concrete module may override resolution.
-    override_name : str
-        Callable name to resolve from the concrete module.
-    fallback : Callable[..., Any]
-        Fallback resolver when no override callable is present.
-    *args : Any
-        Positional arguments forwarded to the resolver.
-    **kwargs : Any
-        Keyword arguments forwarded to the resolver.
-
-    Returns
-    -------
-    Any
-        The resolved dependency/module value.
-    """
-    if resolver := resolve_module_callable(handler, override_name):
-        return resolver(*args, **kwargs)
-    return fallback(*args, **kwargs)
+    """Resolve one module override or fall back."""
+    return (resolve_module_callable(handler, override_name) or fallback)(
+        *args,
+        **kwargs,
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -162,7 +143,7 @@ def get_yaml() -> Any:
     Returns
     -------
     Any
-        The PyYAML module.
+        The :mod:`pyarrow` module.
     """
     return get_dependency(
         'yaml',
@@ -262,7 +243,7 @@ def resolve_module_callable(
     name: str,
 ) -> Callable[..., Any] | None:
     """
-    Resolve one callable from the concrete handler module when present.
+    Return a callable override from the handler module when present.
 
     Parameters
     ----------
@@ -289,7 +270,7 @@ def resolve_pandas(
     format_name: str,
 ) -> Any:
     """
-    Resolve pandas with module-level override support.
+    Resolve :mod:`pandas` with module-level override support.
 
     Parameters
     ----------
