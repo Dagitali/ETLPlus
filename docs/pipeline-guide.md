@@ -334,7 +334,9 @@ validations:
 For document-oriented checks outside the in-pipeline ruleset model, the stable CLI also supports
 schema-based validation through `etlplus validate --schema`. Use `--schema-format jsonschema` for
 JSON or YAML payloads, `--schema-format frictionless` for CSV payloads, and `--schema-format xsd`
-for XML payloads.
+for XML payloads. CSV validation failures keep stable row-aware keys such as `row[3].email`, so the
+same `errors` and `field_errors` contract remains useful when uniqueness or required-cell
+constraints fail.
 
 ## Transforms
 
