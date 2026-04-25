@@ -247,11 +247,55 @@ class TestValidate:
         assert result['data'] is None
         assert any('Failed to load data' in err for err in result['errors'])
 
+    def test_validate_schema_infers_frictionless_from_csv_source_path(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Schema validation should infer Frictionless from a CSV source path."""
+        pytest.importorskip('frictionless')
+
+        schema_path = tmp_path / 'schema.json'
+        csv_path = tmp_path / 'sample.csv'
+        schema_path.write_text(
+            '{"fields": [{"name": "name", "type": "string"}]}',
+            encoding='utf-8',
+        )
+        csv_path.write_text('name\nAda\n', encoding='utf-8')
+
+        result = validate_schema(csv_path, schema_path)
+
+        assert result['valid'] is True
+        assert result['errors'] == []
+
+    def test_validate_schema_infers_jsonschema_from_source_format(self) -> None:
+        """Schema validation should infer JSON Schema from a JSON-like source hint."""
+        pytest.importorskip('jsonschema')
+
+        result = validate_schema(
+            '{"name": "Ada"}',
+            '{"type": "object", "properties": {"name": {"type": "string"}}}',
+            source_format='json',
+        )
+
+        assert result['valid'] is True
+        assert result['errors'] == []
+
     def test_validate_schema_reports_unsupported_format(self) -> None:
         """Schema validation should reject unsupported schema formats."""
         result = validate_schema('<root />', '<schema />', schema_format='rng')
         assert result['valid'] is False
         assert any('Unsupported schema format' in err for err in result['errors'])
+
+    def test_validate_schema_requires_explicit_format_when_ambiguous(self) -> None:
+        """Schema validation should fail clearly when format inference is ambiguous."""
+        result = validate_schema(
+            '{"name": "Ada"}',
+            '{"type": "object"}',
+        )
+        assert result['valid'] is False
+        assert any(
+            'Schema format could not be inferred' in err for err in result['errors']
+        )
 
     def test_validate_schema_reports_validation_errors(
         self,
@@ -471,6 +515,19 @@ class TestValidate:
         assert result['errors'] == []
         assert result['field_errors'] == {}
         assert result['data'] is None
+
+    def test_validate_schema_with_jsonschema_reports_missing_source_path(self) -> None:
+        """JSON Schema validation should report missing path-like sources clearly."""
+        pytest.importorskip('jsonschema')
+
+        result = validate_schema(
+            'missing.json',
+            '{"type": "object"}',
+            schema_format='jsonschema',
+        )
+
+        assert result['valid'] is False
+        assert any('Source not found: missing.json' in err for err in result['errors'])
 
     def test_validate_schema_with_jsonschema_yaml(self) -> None:
         """Schema validation should accept valid YAML against JSON Schema."""
