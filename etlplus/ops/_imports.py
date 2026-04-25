@@ -57,7 +57,7 @@ def get_frictionless() -> Any:
 
 def get_jsonschema() -> Any:
     """
-    Return :mod:`jsonschema` lazily (i.e, importing it on first use).
+    Return :mod:`jsonschema` lazily, importing on first use.
 
     Returns
     -------
