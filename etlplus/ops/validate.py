@@ -138,6 +138,7 @@ type FieldRuleInput = StrAnyMap | FieldRulesDict
 type FieldRuleValidator = Callable[[Any, FieldRuleInput, list[str]], None]
 type RulesMap = Mapping[str, FieldRulesDict]
 type SchemaFormat = Literal['frictionless', 'jsonschema', 'xsd']
+type SchemaValidator = Callable[[str | Path, str | Path, str | None], ValidationDict]
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
@@ -339,6 +340,18 @@ def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
+def _looks_like_inline_text(
+    value: str,
+) -> bool:
+    """Return whether one raw string is more likely inline content than a path."""
+    stripped = value.lstrip()
+    return (
+        any(char in value for char in ('\n', '\r', '\x00'))
+        or stripped.startswith(('{', '[', '<', '---'))
+        or ': ' in value
+    )
+
+
 def _normalize_frictionless_source_format(
     format_hint: str | None,
 ) -> FileFormat | None:
@@ -369,6 +382,93 @@ def _normalize_jsonschema_format_hint(
             'Supported source formats: json, yaml',
         )
     return normalized
+
+
+def _resolve_declared_local_path(
+    value: str | Path,
+) -> Path | None:
+    """Return a path candidate when *value* looks like a local path."""
+    if isinstance(value, Path):
+        return value
+    if _looks_like_inline_text(value):
+        return None
+    with suppress(OSError, ValueError):
+        return Path(value)
+    return None
+
+
+def _infer_source_file_format(
+    source: str | Path,
+    source_format: str | None,
+) -> FileFormat | None:
+    """Infer one source file format from an explicit hint or path suffix."""
+    if source_format is not None:
+        return FileFormat.coerce(source_format)
+
+    candidate = _resolve_declared_local_path(source)
+    if candidate is None or not candidate.suffix:
+        return None
+
+    with suppress(ValueError):
+        return FileFormat.coerce(candidate.suffix.lower())
+    return None
+
+
+def _infer_schema_format_from_path(
+    schema: str | Path,
+) -> SchemaFormat | None:
+    """Infer one schema format from a schema path-like value."""
+    candidate = _resolve_declared_local_path(schema)
+    if candidate is None:
+        return None
+
+    if candidate.suffix.lower() == '.xsd':
+        return 'xsd'
+
+    filename = candidate.name.lower()
+    if any(
+        token in filename for token in ('table-schema', 'table_schema', 'tableschema')
+    ):
+        return 'frictionless'
+
+    return None
+
+
+def _resolve_schema_format(
+    source: str | Path,
+    schema: str | Path,
+    *,
+    schema_format: SchemaFormat | str | None,
+    source_format: str | None,
+) -> SchemaFormat:
+    """Resolve one schema format from explicit input or stable inference rules."""
+    supported_formats = ', '.join(_SCHEMA_VALIDATORS)
+
+    if schema_format is not None:
+        normalized = schema_format.lower()
+        if normalized in _SCHEMA_VALIDATORS:
+            return normalized  # type: ignore[return-value]
+        raise ValueError(
+            f'Unsupported schema format: {schema_format}. '
+            f'Supported formats: {supported_formats}',
+        )
+
+    if (path_format := _infer_schema_format_from_path(schema)) is not None:
+        return path_format
+
+    match _infer_source_file_format(source, source_format):
+        case FileFormat.CSV:
+            return 'frictionless'
+        case FileFormat.JSON | FileFormat.YAML:
+            return 'jsonschema'
+        case FileFormat.XML:
+            return 'xsd'
+        case _:
+            raise ValueError(
+                'Schema format could not be inferred from '
+                'the schema path or source format. '
+                f'Provide one of the supported formats explicitly: {supported_formats}',
+            )
 
 
 def _parse_structured_text(
@@ -419,12 +519,15 @@ def _load_jsonschema_document(
         except FileNotFoundError as exc:
             raise ValueError(f'{label} not found: {value}') from exc
 
-    candidate = Path(value)
-    if candidate.exists():
+    candidate = _resolve_declared_local_path(value)
+    if candidate is not None and candidate.exists():
         try:
             return File(candidate, resolved_format).read()
         except FileNotFoundError as exc:
             raise ValueError(f'{label} not found: {candidate}') from exc
+
+    if candidate is not None and candidate.suffix:
+        raise ValueError(f'{label} not found: {candidate}')
 
     return _parse_structured_text(value, format_hint=format_hint, label=label)
 
@@ -433,13 +536,10 @@ def _resolve_existing_local_path(
     value: str | Path,
 ) -> Path | None:
     """Return an existing local path, if *value* points at one."""
-    if isinstance(value, Path):
-        return value
-
-    with suppress(OSError, ValueError):
-        candidate = Path(value)
-        if candidate.exists():
-            return candidate
+    if (
+        candidate := _resolve_declared_local_path(value)
+    ) is not None and candidate.exists():
+        return candidate
     return None
 
 
@@ -447,12 +547,10 @@ def _resolve_local_path_or_text(
     value: str | Path,
 ) -> tuple[Path | None, bytes]:
     """Return a local path when one exists, else UTF-8 encoded text."""
+    if (candidate := _resolve_declared_local_path(value)) is not None:
+        return candidate, b''
     if isinstance(value, Path):
         return value, b''
-
-    candidate = Path(value)
-    if candidate.exists():
-        return candidate, b''
     return None, value.encode('utf-8')
 
 
@@ -606,7 +704,6 @@ def _validate_pattern_rule(
 def _validate_jsonschema(
     source: str | Path,
     schema: str | Path,
-    *,
     source_format: str | None = None,
 ) -> ValidationDict:
     """Validate one JSON or YAML document against one JSON Schema."""
@@ -668,7 +765,6 @@ def _validate_jsonschema(
 def _validate_frictionless(
     source: str | Path,
     schema: str | Path,
-    *,
     source_format: str | None = None,
 ) -> ValidationDict:
     """Validate one CSV document against one Frictionless Table Schema."""
@@ -802,8 +898,11 @@ def _validate_type_rule(
 def _validate_xsd(
     source: str | Path,
     schema: str | Path,
+    source_format: str | None = None,
 ) -> ValidationDict:
     """Validate one XML document against one XSD schema."""
+    del source_format
+
     try:
         etree = get_lxml_etree()
     except RuntimeError as exc:
@@ -870,6 +969,13 @@ def _validation_result(
 
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_SCHEMA_VALIDATORS: dict[SchemaFormat, SchemaValidator] = {
+    'frictionless': _validate_frictionless,
+    'jsonschema': _validate_jsonschema,
+    'xsd': _validate_xsd,
+}
 
 
 _FIELD_RULE_VALIDATORS: tuple[FieldRuleValidator, ...] = (
@@ -960,33 +1066,20 @@ def validate_schema(
         Structured validation result with ``valid``, ``errors``,
         ``field_errors``, and ``data``.
     """
-    resolved_schema_format = (schema_format or 'xsd').lower()
-    if resolved_schema_format == 'xsd':
-        return _validate_xsd(source, schema)
-    if resolved_schema_format == 'jsonschema':
-        return _validate_jsonschema(
+    try:
+        resolved_schema_format = _resolve_schema_format(
             source,
             schema,
+            schema_format=schema_format,
             source_format=source_format,
         )
-    if resolved_schema_format == 'frictionless':
-        return _validate_frictionless(
-            source,
-            schema,
-            source_format=source_format,
-        )
+    except (ValueError, RuntimeError) as exc:
+        return _validation_result(data=None, errors=[str(exc)])
 
-    supported_formats = 'frictionless, jsonschema, xsd'
-    if schema_format is None:
-        resolved_label = 'None'
-    else:
-        resolved_label = str(schema_format)
-    return _validation_result(
-        data=None,
-        errors=[
-            f'Unsupported schema format: {resolved_label}. '
-            f'Supported formats: {supported_formats}',
-        ],
+    return _SCHEMA_VALIDATORS[resolved_schema_format](
+        source,
+        schema,
+        source_format,
     )
 
 
