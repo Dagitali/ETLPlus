@@ -63,46 +63,14 @@ def _resolve_with_module_override(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def get_dependency(
-    module_name: str,
-    *,
-    format_name: str,
-    pip_name: str | None = None,
-    required: bool = False,
-) -> Any:
-    """
-    Return a dependency module with a standardized runtime error message.
-
-    Parameters
-    ----------
-    module_name : str
-        Name of the module to import.
-    format_name : str
-        Human-readable format name for error messages.
-    pip_name : str | None, optional
-        Package name to suggest for installation (defaults to *module_name*).
-    required : bool, optional
-        Whether to use required-dependency message wording.
-        Defaults to ``False`` (optional dependency wording).
-
-    Returns
-    -------
-    Any
-        The imported module.
-    """
-    return _DEPENDENCY_IMPORTER.get(
-        module_name,
-        format_name=format_name,
-        pip_name=pip_name,
-        required=required,
-    )
+get_dependency = _DEPENDENCY_IMPORTER.get
 
 
 def get_pandas(
     format_name: str,
 ) -> Any:
     """
-    Return :mod:`pandas` lazily (i.e, importing it on first use).
+    Return :mod:`pandas` lazily, importing on first use.
 
     Parameters
     ----------
@@ -121,7 +89,7 @@ def get_pyarrow(
     format_name: str,
 ) -> Any:
     """
-    Return :mod:`pyarrow` lazily (i.e, importing it on first use).
+    Return :mod:`pyarrow` lazily, importing on first use.
 
     Parameters
     ----------
@@ -138,12 +106,12 @@ def get_pyarrow(
 
 def get_yaml() -> Any:
     """
-    Return :mod:`yaml` lazily (i.e, importing it on first use).
+    Return :mod:`yaml` lazily, importing on first use.
 
     Returns
     -------
     Any
-        The :mod:`pyarrow` module.
+        The :mod:`yaml` module.
     """
     return get_dependency(
         'yaml',
