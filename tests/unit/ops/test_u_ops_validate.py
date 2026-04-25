@@ -158,33 +158,18 @@ class TestValidate:
     ) -> None:
         """Ops dependency imports should delegate to the shared import helper."""
         sentinel = object()
-        calls: list[tuple[str, str, object, object, object, object]] = []
+        calls: list[tuple[str, str, str | None, bool]] = []
 
-        class _ImporterStub:
-            error_type = RuntimeError
-            import_exceptions = Exception
+        def _importer(dependency_name: str) -> object:
+            calls.append((dependency_name, 'JSON Schema', None, False))
+            return sentinel
 
-            def get(
-                self,
-                dependency_name: str,
-                *,
-                format_name: str,
-                pip_name: str | None = None,
-                required: bool = False,
-            ) -> object:
-                calls.append(
-                    (
-                        dependency_name,
-                        format_name,
-                        pip_name,
-                        required,
-                        self.error_type,
-                        self.import_exceptions,
-                    ),
-                )
-                return sentinel
-
-        monkeypatch.setattr(ops_imports_mod, '_DEPENDENCY_IMPORTER', _ImporterStub())
+        monkeypatch.setattr(ops_imports_mod._DEPENDENCY_IMPORTER, 'cache', {})
+        monkeypatch.setattr(
+            ops_imports_mod._DEPENDENCY_IMPORTER,
+            'importer',
+            _importer,
+        )
 
         assert (
             ops_imports_mod.get_dependency(
@@ -193,16 +178,7 @@ class TestValidate:
             )
             is sentinel
         )
-        assert calls == [
-            (
-                'jsonschema',
-                'JSON Schema',
-                None,
-                False,
-                RuntimeError,
-                Exception,
-            ),
-        ]
+        assert calls == [('jsonschema', 'JSON Schema', None, False)]
 
     @pytest.mark.parametrize(
         ('helper_name', 'module_name', 'format_name', 'pip_name'),
