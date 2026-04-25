@@ -279,6 +279,67 @@ class TestCliValidate:
         assert payload['field_errors'] == {}
         assert payload['data'] is None
 
+    def test_jsonschema_validation_infers_format_for_json_file(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should infer JSON Schema for JSON file validation."""
+        pytest.importorskip('jsonschema')
+        source_path = tmp_path / 'sample.json'
+        schema_path = tmp_path / 'schema.json'
+        source_path.write_text('{"name": "Ada"}', encoding='utf-8')
+        schema_path.write_text(
+            '{"type": "object", "properties": {"name": {"type": "string"}}}',
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                str(source_path),
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is True
+        assert payload['errors'] == []
+
+    def test_schema_validation_reports_ambiguous_inference(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should report when schema-format inference is ambiguous."""
+        schema_path = tmp_path / 'schema.json'
+        schema_path.write_text('{"type": "object"}', encoding='utf-8')
+        monkeypatch.setattr(sys, 'stdin', io.StringIO('{"name": "Ada"}'))
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                '-',
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is False
+        assert any(
+            'Schema format could not be inferred' in message
+            for message in payload['errors']
+        )
+
     def test_schema_option_conflicts_with_rules(
         self,
         cli_invoke: CliInvoke,
