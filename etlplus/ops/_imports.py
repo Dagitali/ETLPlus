@@ -36,44 +36,12 @@ _DEPENDENCY_IMPORTER = DependencyImporter(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def get_dependency(
-    module_name: str,
-    *,
-    format_name: str,
-    pip_name: str | None = None,
-    required: bool = False,
-) -> Any:
-    """
-    Return a dependency module with a standardized runtime error message.
-
-    Parameters
-    ----------
-    module_name : str
-        Name of the module to import.
-    format_name : str
-        Human-readable format name for error messages.
-    pip_name : str | None, optional
-        Package name to suggest for installation (defaults to *module_name*).
-    required : bool, optional
-        Whether to use required-dependency message wording.
-        Defaults to ``False`` (optional dependency wording).
-
-    Returns
-    -------
-    Any
-        The imported module.
-    """
-    return _DEPENDENCY_IMPORTER.get(
-        module_name,
-        format_name=format_name,
-        pip_name=pip_name,
-        required=required,
-    )
+get_dependency = _DEPENDENCY_IMPORTER.get
 
 
 def get_frictionless() -> Any:
     """
-    Return :mod:`frictionless` lazily (i.e, importing it on first use).
+    Return :mod:`frictionless` lazily, importing on first use.
 
     Returns
     -------
@@ -105,7 +73,7 @@ def get_jsonschema() -> Any:
 
 def get_lxml_etree() -> Any:
     """
-    Return :mod:`lxml.etree` lazily (i.e, importing it on first use).
+    Return :mod:`lxml.etree` lazily, importing on first use.
 
     Returns
     -------
@@ -122,7 +90,7 @@ def get_lxml_etree() -> Any:
 
 def get_yaml() -> Any:
     """
-    Return :mod:`yaml` lazily (i.e, importing it on first use)
+    Return :mod:`yaml` lazily, importing on first use.
 
     Returns
     -------
