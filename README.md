@@ -676,10 +676,25 @@ etlplus validate examples/data/sample.json --schema examples/schemas/customer.sc
 etlplus validate --source-format yaml --schema examples/schemas/pipeline.schema.json --schema-format jsonschema -
 ```
 
+When the source or schema path already makes the schema family clear, the CLI can infer it without
+`--schema-format`:
+```bash
+etlplus validate examples/data/sample.json --schema examples/schemas/customer.schema.json
+etlplus validate examples/data/sample.xml --schema examples/data/sample.xsd
+```
+
 Validate CSV against a Frictionless Table Schema:
 ```bash
 etlplus validate data/customers.csv --schema examples/schemas/customers.table-schema.json --schema-format frictionless
 ```
+
+Inference rules are intentionally narrow and predictable:
+
+- An explicit `--schema-format` always wins
+- `.xsd` schemas resolve to XSD validation
+- JSON or YAML source hints resolve to JSON Schema validation
+- CSV source hints resolve to Frictionless validation
+- Ambiguous inline or STDIN cases require `--schema-format`
 
 CSV schema failures preserve row and field paths in the same result envelope:
 ```json
@@ -984,7 +999,9 @@ Supported validation rules:
 
 Schema-based validation is also supported through `etlplus validate --schema ...`. Use
 `--schema-format xsd` for XML documents, `--schema-format jsonschema` for JSON or YAML documents,
-and `--schema-format frictionless` for CSV documents.
+and `--schema-format frictionless` for CSV documents. When the file path already makes the schema
+family unambiguous, ETLPlus can infer it; ambiguous inline text and STDIN cases still require an
+explicit schema format.
 
 Example:
 ```json
