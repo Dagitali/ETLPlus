@@ -49,15 +49,7 @@ jobs:
         with:
           python-version: '3.13'
           python-bootstrap: 'build twine'
-      - name: Build distributions
-        run: |
-          python -m build
-      - name: Audit release artifacts
-        run: |
-          python tools/check_release_artifacts.py dist/*
-      - name: Validate distributions
-        run: |
-          python -m twine check dist/*
+      - uses: ./.github/actions/build-and-verify-dist
       - uses: ./.github/actions/wheel-smoke
       - name: Upload distributions
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # Pinned v7.0.0
@@ -79,15 +71,9 @@ jobs:
         with:
           python-version: '3.13'
           python-bootstrap: "-e .[docs]"
-      - name: Build Sphinx docs
-        run: |
-          find docs/source/api/generated -type f -name '*.rst' -delete 2>/dev/null || true
-          rm -rf docs/build/${{ matrix.builder }} docs/build/doctrees/${{ matrix.builder }}
-          python -m sphinx -T -W --keep-going \
-            -b ${{ matrix.builder }} \
-            -d docs/build/doctrees/${{ matrix.builder }} \
-            docs/source \
-            docs/build/${{ matrix.builder }}
+      - uses: ./.github/actions/sphinx-build
+        with:
+          builder: ${{ matrix.builder }}
 
   release:
     name: Publish GitHub release

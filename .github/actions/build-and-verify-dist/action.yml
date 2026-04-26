@@ -1,0 +1,45 @@
+# action.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Composite GitHub Action for building and validating release distributions.
+#
+# Responsibilities
+# - Build source and wheel distributions from the checked-out repository.
+# - Audit built artifacts against the repository's release-artifact policy.
+# - Run `twine check` against the built distributions.
+#
+# Maintainer Notes
+# - This action intentionally stops short of wheel smoke testing so workflows
+#   can decide whether and how to run additional packaged-runtime checks.
+
+---
+
+name: Build And Verify Distributions
+
+description: >-
+  Builds ETLPlus distributions, audits the resulting artifacts, and validates
+  them with twine.
+
+inputs:
+  dist-glob:
+    description: Glob or path expression used to select built distributions
+    required: false
+    default: dist/*
+
+runs:
+  using: composite
+  steps:
+    - name: Build distributions
+      shell: bash
+      run: |
+        python -m build
+    - name: Audit release artifacts
+      shell: bash
+      run: |
+        python tools/check_release_artifacts.py ${{ inputs.dist-glob }}
+    - name: Validate distributions
+      shell: bash
+      run: |
+        python -m twine check ${{ inputs.dist-glob }}
