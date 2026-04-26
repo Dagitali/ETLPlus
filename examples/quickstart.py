@@ -74,7 +74,7 @@ def main() -> None:
     print(f'Wrote {OUTPUT_PATH}')
 
 
-# SECTION: ENTRY POINT ====================================================== #
+# SECTION: MAIN ENTRY POINT ====================================================== #
 
 
 if __name__ == '__main__':

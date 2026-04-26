@@ -153,7 +153,7 @@ def main(argv: list[str]) -> int:
     return exit_code
 
 
-# SECTION: MAIN EXECUTION =================================================== #
+# SECTION: MAIN ENTRY POINT ================================================= #
 
 
 if __name__ == '__main__':
