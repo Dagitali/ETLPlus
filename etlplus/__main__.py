@@ -15,7 +15,7 @@ def _run() -> int:
     return main()
 
 
-# SECTION: MAIN EXECUTION =================================================== #
+# SECTION: MAIN ENTRY POINT ================================================= #
 
 
 if __name__ == '__main__':  # pragma: no cover - exercised via CLI
