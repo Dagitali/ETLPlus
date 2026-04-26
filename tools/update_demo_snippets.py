@@ -179,7 +179,7 @@ def main() -> None:
     print(f'Updated {SNIPPET_FILE.relative_to(ROOT)} and DEMO.md')
 
 
-# SECTION: MAIN EXECUTION =================================================== #
+# SECTION: MAIN ENTRY POINT ================================================= #
 
 
 if __name__ == '__main__':
