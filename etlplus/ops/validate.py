@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.ops.validate` module.
 
-Validate dicts/lists with field rules and XML documents with XML schemas.
+Validate dicts/lists with field rules and documents with external schemas.
 
 This module provides a very small validation primitive that is intentionally
 runtime-friendly (no heavy schema engines) and pairs with ETLPlus' JSON-like
@@ -11,7 +11,8 @@ Highlights
 ----------
 - Centralized type map and helpers for clarity and reuse.
 - Consistent error wording; field and item paths like ``[2].email``.
-- Small, focused public API with :func:`validate_field` and :func:`validate`.
+- Small, focused public API with :func:`validate_field`, :func:`validate`,
+    and :func:`validate_schema`.
 
 Examples
 --------
@@ -29,15 +30,23 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from collections.abc import Mapping
-from importlib import import_module
+from contextlib import suppress
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 from typing import Literal
 from typing import TypedDict
 
+from ..file import File
+from ..file import FileFormat
+from ..utils import JsonCodec
 from ..utils._types import JSONData
 from ..utils._types import Record
 from ..utils._types import StrAnyMap
+from ._imports import get_frictionless
+from ._imports import get_jsonschema
+from ._imports import get_lxml_etree
+from ._imports import get_yaml
 from ._types import DataSourceArg
 from .load import load_data as _load_data
 
@@ -45,12 +54,14 @@ from .load import load_data as _load_data
 
 
 __all__ = [
-    'FieldRulesDict',
-    'FieldValidationDict',
-    'ValidationDict',
+    # Functions
     'validate_field',
     'validate_schema',
     'validate',
+    # Typed Dicts
+    'FieldRulesDict',
+    'FieldValidationDict',
+    'ValidationDict',
 ]
 
 
@@ -126,7 +137,8 @@ type FieldErrors = dict[str, list[str]]
 type FieldRuleInput = StrAnyMap | FieldRulesDict
 type FieldRuleValidator = Callable[[Any, FieldRuleInput, list[str]], None]
 type RulesMap = Mapping[str, FieldRulesDict]
-type SchemaFormat = Literal['xsd']
+type SchemaFormat = Literal['frictionless', 'jsonschema', 'xsd']
+type SchemaValidator = Callable[[str | Path, str | Path, str | None], ValidationDict]
 
 
 # SECTION: INTERNAL FUNCTIONS ============================================== #
@@ -196,6 +208,37 @@ def _field_result(
     }
 
 
+def _format_jsonschema_path(
+    path: Any,
+) -> str | None:
+    """Return a stable dotted/indexed path for one JSON Schema error."""
+    parts: list[str] = []
+    for part in path:
+        if isinstance(part, int):
+            parts.append(f'[{part}]')
+            continue
+        if not parts:
+            parts.append(str(part))
+            continue
+        parts.append(f'.{part}')
+    return ''.join(parts) or None
+
+
+def _format_tabular_error_path(
+    *,
+    field_name: str | None,
+    row_number: int | None,
+) -> str | None:
+    """Return a stable path for one tabular validation error."""
+    if row_number is not None and field_name is not None:
+        return f'row[{row_number}].{field_name}'
+    if row_number is not None:
+        return f'row[{row_number}]'
+    if field_name is not None:
+        return field_name
+    return None
+
+
 def _get_int_rule(
     rules: StrAnyMap,
     key: str,
@@ -254,16 +297,11 @@ def _get_numeric_rule(
     return float(coerced) if coerced is not None else None
 
 
-# TODO: Generalize package importing and promote to utils if needed elsewhere.
-def _import_lxml_etree() -> Any:
-    """Import and return :mod:`lxml.etree` lazily."""
-    try:
-        return import_module('lxml.etree')
-    except Exception as exc:  # pragma: no cover - import shape varies by env
-        raise RuntimeError(
-            'lxml is required for XML schema validation. '
-            'Install with: pip install lxml',
-        ) from exc
+def _infer_structured_text_format(
+    text: str,
+) -> Literal['json', 'yaml']:
+    """Infer JSON vs YAML from raw text."""
+    return 'json' if text.lstrip().startswith(('{', '[')) else 'yaml'
 
 
 def _is_integer(
@@ -302,16 +340,217 @@ def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
+def _looks_like_inline_text(
+    value: str,
+) -> bool:
+    """Return whether one raw string is more likely inline content than a path."""
+    stripped = value.lstrip()
+    return (
+        any(char in value for char in ('\n', '\r', '\x00'))
+        or stripped.startswith(('{', '[', '<', '---'))
+        or ': ' in value
+    )
+
+
+def _normalize_frictionless_source_format(
+    format_hint: str | None,
+) -> FileFormat | None:
+    """Normalize the supported CSV schema source formats."""
+    if format_hint is None:
+        return None
+
+    normalized = FileFormat.coerce(format_hint)
+    if normalized is not FileFormat.CSV:
+        raise ValueError(
+            f'Unsupported CSV schema source format: {format_hint}. '
+            'Supported source formats: csv',
+        )
+    return normalized
+
+
+def _normalize_jsonschema_format_hint(
+    format_hint: str | None,
+) -> FileFormat | None:
+    """Normalize the supported JSON Schema source formats."""
+    if format_hint is None:
+        return None
+
+    normalized = FileFormat.coerce(format_hint)
+    if normalized not in (FileFormat.JSON, FileFormat.YAML):
+        raise ValueError(
+            f'Unsupported JSON Schema source format: {format_hint}. '
+            'Supported source formats: json, yaml',
+        )
+    return normalized
+
+
+def _resolve_declared_local_path(
+    value: str | Path,
+) -> Path | None:
+    """Return a path candidate when *value* looks like a local path."""
+    if isinstance(value, Path):
+        return value
+    if _looks_like_inline_text(value):
+        return None
+    with suppress(OSError, ValueError):
+        return Path(value)
+    return None
+
+
+def _infer_source_file_format(
+    source: str | Path,
+    source_format: str | None,
+) -> FileFormat | None:
+    """Infer one source file format from an explicit hint or path suffix."""
+    if source_format is not None:
+        return FileFormat.coerce(source_format)
+
+    candidate = _resolve_declared_local_path(source)
+    if candidate is None or not candidate.suffix:
+        return None
+
+    with suppress(ValueError):
+        return FileFormat.coerce(candidate.suffix.lower())
+    return None
+
+
+def _infer_schema_format_from_path(
+    schema: str | Path,
+) -> SchemaFormat | None:
+    """Infer one schema format from a schema path-like value."""
+    candidate = _resolve_declared_local_path(schema)
+    if candidate is None:
+        return None
+
+    if candidate.suffix.lower() == '.xsd':
+        return 'xsd'
+
+    filename = candidate.name.lower()
+    if any(
+        token in filename for token in ('table-schema', 'table_schema', 'tableschema')
+    ):
+        return 'frictionless'
+
+    return None
+
+
+def _resolve_schema_format(
+    source: str | Path,
+    schema: str | Path,
+    *,
+    schema_format: SchemaFormat | str | None,
+    source_format: str | None,
+) -> SchemaFormat:
+    """Resolve one schema format from explicit input or stable inference rules."""
+    supported_formats = ', '.join(_SCHEMA_VALIDATORS)
+
+    if schema_format is not None:
+        normalized = schema_format.lower()
+        if normalized in _SCHEMA_VALIDATORS:
+            return normalized  # type: ignore[return-value]
+        raise ValueError(
+            f'Unsupported schema format: {schema_format}. '
+            f'Supported formats: {supported_formats}',
+        )
+
+    if (path_format := _infer_schema_format_from_path(schema)) is not None:
+        return path_format
+
+    match _infer_source_file_format(source, source_format):
+        case FileFormat.CSV:
+            return 'frictionless'
+        case FileFormat.JSON | FileFormat.YAML:
+            return 'jsonschema'
+        case FileFormat.XML:
+            return 'xsd'
+        case _:
+            raise ValueError(
+                'Schema format could not be inferred from '
+                'the schema path or source format. '
+                f'Provide one of the supported formats explicitly: {supported_formats}',
+            )
+
+
+def _parse_structured_text(
+    text: str,
+    *,
+    format_hint: str | None,
+    label: str,
+) -> Any:
+    """Parse raw JSON or YAML text for JSON Schema validation."""
+    resolved_format = _normalize_jsonschema_format_hint(format_hint)
+    if resolved_format is FileFormat.JSON:
+        try:
+            return JsonCodec.parse(text)
+        except ValueError as exc:
+            raise ValueError(f'Failed to parse {label} as JSON: {exc}') from exc
+
+    if resolved_format is FileFormat.YAML or resolved_format is None:
+        if resolved_format is None and _infer_structured_text_format(text) == 'json':
+            try:
+                return JsonCodec.parse(text)
+            except ValueError:
+                pass
+        try:
+            yaml = get_yaml()
+            return yaml.safe_load(text)
+        except RuntimeError:
+            raise
+        except Exception as exc:
+            raise ValueError(f'Failed to parse {label} as YAML: {exc}') from exc
+
+    raise ValueError(
+        f'Unsupported JSON Schema {label.lower()} format: {format_hint}',
+    )
+
+
+def _load_jsonschema_document(
+    value: str | Path,
+    *,
+    format_hint: str | None,
+    label: str,
+) -> Any:
+    """Load a JSON Schema document or source instance from path or text."""
+    resolved_format = _normalize_jsonschema_format_hint(format_hint)
+
+    if isinstance(value, Path):
+        try:
+            return File(value, resolved_format).read()
+        except FileNotFoundError as exc:
+            raise ValueError(f'{label} not found: {value}') from exc
+
+    candidate = _resolve_declared_local_path(value)
+    if candidate is not None and candidate.exists():
+        try:
+            return File(candidate, resolved_format).read()
+        except FileNotFoundError as exc:
+            raise ValueError(f'{label} not found: {candidate}') from exc
+
+    if candidate is not None and candidate.suffix:
+        raise ValueError(f'{label} not found: {candidate}')
+
+    return _parse_structured_text(value, format_hint=format_hint, label=label)
+
+
+def _resolve_existing_local_path(
+    value: str | Path,
+) -> Path | None:
+    """Return an existing local path, if *value* points at one."""
+    if (
+        candidate := _resolve_declared_local_path(value)
+    ) is not None and candidate.exists():
+        return candidate
+    return None
+
+
 def _resolve_local_path_or_text(
     value: str | Path,
 ) -> tuple[Path | None, bytes]:
     """Return a local path when one exists, else UTF-8 encoded text."""
+    if (candidate := _resolve_declared_local_path(value)) is not None:
+        return candidate, b''
     if isinstance(value, Path):
         return value, b''
-
-    candidate = Path(value)
-    if candidate.exists():
-        return candidate, b''
     return None, value.encode('utf-8')
 
 
@@ -462,75 +701,141 @@ def _validate_pattern_rule(
         errors.append(f'Value does not match pattern {pattern}')
 
 
-def _validation_result(
-    *,
-    data: JSONData | None,
-    errors: list[str] | None = None,
-    field_errors: FieldErrors | None = None,
-) -> ValidationDict:
-    """Build a stable validation result payload."""
-    resolved_errors = list(errors or [])
-    resolved_field_errors = dict(field_errors or {})
-    return {
-        'valid': not resolved_errors,
-        'errors': resolved_errors,
-        'field_errors': resolved_field_errors,
-        'data': data,
-    }
-
-
-def _validate_xsd(
+def _validate_jsonschema(
     source: str | Path,
     schema: str | Path,
+    source_format: str | None = None,
 ) -> ValidationDict:
-    """Validate one XML document against one XSD schema."""
+    """Validate one JSON or YAML document against one JSON Schema."""
     try:
-        etree = _import_lxml_etree()
+        jsonschema = get_jsonschema()
     except RuntimeError as exc:
         return _validation_result(data=None, errors=[str(exc)])
 
-    source_path, source_text = _resolve_local_path_or_text(source)
-    schema_path, schema_text = _resolve_local_path_or_text(schema)
-
-    if source_path is not None and not source_path.exists():
-        return _validation_result(
-            data=None,
-            errors=[f'XML not found: {source_path}'],
+    try:
+        schema_doc = _load_jsonschema_document(
+            schema,
+            format_hint=None,
+            label='Schema',
         )
-    if schema_path is not None and not schema_path.exists():
+    except (RuntimeError, ValueError) as exc:
+        return _validation_result(data=None, errors=[str(exc)])
+
+    try:
+        validator_cls = jsonschema.validators.validator_for(schema_doc)
+        validator_cls.check_schema(schema_doc)
+    except jsonschema.exceptions.SchemaError as exc:
         return _validation_result(
             data=None,
-            errors=[f'XSD not found: {schema_path}'],
+            errors=[f'Invalid JSON Schema: {exc.message}'],
         )
 
     try:
-        if schema_path is not None:
-            with schema_path.open('rb') as handle:
-                schema_doc = etree.parse(handle)
-        else:
-            schema_doc = etree.fromstring(schema_text)
-        compiled_schema = etree.XMLSchema(schema_doc)
+        instance = _load_jsonschema_document(
+            source,
+            format_hint=source_format,
+            label='Source',
+        )
+    except (RuntimeError, ValueError) as exc:
+        return _validation_result(data=None, errors=[str(exc)])
 
-        if source_path is not None:
-            with source_path.open('rb') as handle:
-                xml_doc = etree.parse(handle)
-        else:
-            xml_doc = etree.fromstring(source_text)
+    errors: list[str] = []
+    field_errors: FieldErrors = {}
+    validator = validator_cls(schema_doc)
+    validation_errors = sorted(
+        validator.iter_errors(instance),
+        key=lambda error: list(error.absolute_path),
+    )
 
-        if compiled_schema.validate(xml_doc):
-            return _validation_result(data=None)
+    for error in validation_errors:
+        path = _format_jsonschema_path(error.absolute_path)
+        if path is None:
+            errors.append(error.message)
+            continue
+        errors.append(f'{path}: {error.message}')
+        field_errors.setdefault(path, []).append(error.message)
 
-        errors = [
-            f'Line {error.line}: {error.message}'
-            for error in compiled_schema.error_log
-        ]
-        if not errors:
-            errors.append('XML failed schema validation')
-        return _validation_result(data=None, errors=errors)
-    except etree.XMLSchemaParseError as exc:
-        return _validation_result(data=None, errors=[f'Invalid XSD: {exc}'])
-    except etree.XMLSyntaxError as exc:
-        return _validation_result(data=None, errors=[f'Invalid XML: {exc}'])
+    return _validation_result(
+        data=None,
+        errors=errors,
+        field_errors=field_errors,
+    )
+
+
+def _validate_frictionless(
+    source: str | Path,
+    schema: str | Path,
+    source_format: str | None = None,
+) -> ValidationDict:
+    """Validate one CSV document against one Frictionless Table Schema."""
+    try:
+        frictionless = get_frictionless()
+    except RuntimeError as exc:
+        return _validation_result(data=None, errors=[str(exc)])
+
+    frictionless_exception = frictionless.FrictionlessException
+
+    try:
+        schema_doc = _load_jsonschema_document(
+            schema,
+            format_hint=None,
+            label='Schema',
+        )
+    except (RuntimeError, ValueError) as exc:
+        return _validation_result(data=None, errors=[str(exc)])
+
+    try:
+        _normalize_frictionless_source_format(source_format)
+    except ValueError as exc:
+        return _validation_result(data=None, errors=[str(exc)])
+
+    temp_dir: TemporaryDirectory[str] | None = None
+    try:
+        source_path = _resolve_existing_local_path(source)
+        if source_path is None:
+            temp_dir = TemporaryDirectory()
+            source_path = Path(temp_dir.name) / 'source.csv'
+            source_path.write_text(str(source), encoding='utf-8')
+
+        schema_obj = frictionless.Schema.from_descriptor(schema_doc)
+        resource = frictionless.Resource(
+            path=source_path.name,
+            basepath=str(source_path.parent),
+            schema=schema_obj,
+        )
+        report = resource.validate()
+    except (frictionless_exception, OSError, TypeError, ValueError) as exc:
+        if temp_dir is not None:
+            temp_dir.cleanup()
+        return _validation_result(
+            data=None,
+            errors=[f'CSV schema validation failed: {exc}'],
+        )
+
+    errors: list[str] = []
+    field_errors: FieldErrors = {}
+    for task in report.tasks:
+        for error in task.errors:
+            descriptor = error.to_descriptor()
+            message = str(descriptor.get('message') or error)
+            path = _format_tabular_error_path(
+                field_name=descriptor.get('fieldName'),
+                row_number=descriptor.get('rowNumber'),
+            )
+            if path is None:
+                errors.append(message)
+                continue
+            errors.append(f'{path}: {message}')
+            field_errors.setdefault(path, []).append(message)
+
+    if temp_dir is not None:
+        temp_dir.cleanup()
+
+    return _validation_result(
+        data=None,
+        errors=errors,
+        field_errors=field_errors,
+    )
 
 
 def _validate_sequence(
@@ -588,6 +893,89 @@ def _validate_type_rule(
         errors.append(
             f'Expected type {expected_type}, got {type(value).__name__}',
         )
+
+
+def _validate_xsd(
+    source: str | Path,
+    schema: str | Path,
+    source_format: str | None = None,
+) -> ValidationDict:
+    """Validate one XML document against one XSD schema."""
+    del source_format
+
+    try:
+        etree = get_lxml_etree()
+    except RuntimeError as exc:
+        return _validation_result(data=None, errors=[str(exc)])
+
+    source_path, source_text = _resolve_local_path_or_text(source)
+    schema_path, schema_text = _resolve_local_path_or_text(schema)
+
+    if source_path is not None and not source_path.exists():
+        return _validation_result(
+            data=None,
+            errors=[f'XML not found: {source_path}'],
+        )
+    if schema_path is not None and not schema_path.exists():
+        return _validation_result(
+            data=None,
+            errors=[f'XSD not found: {schema_path}'],
+        )
+
+    try:
+        if schema_path is not None:
+            with schema_path.open('rb') as handle:
+                schema_doc = etree.parse(handle)
+        else:
+            schema_doc = etree.fromstring(schema_text)
+        compiled_schema = etree.XMLSchema(schema_doc)
+
+        if source_path is not None:
+            with source_path.open('rb') as handle:
+                xml_doc = etree.parse(handle)
+        else:
+            xml_doc = etree.fromstring(source_text)
+
+        if compiled_schema.validate(xml_doc):
+            return _validation_result(data=None)
+
+        errors = [
+            f'Line {error.line}: {error.message}' for error in compiled_schema.error_log
+        ]
+        if not errors:
+            errors.append('XML failed schema validation')
+        return _validation_result(data=None, errors=errors)
+    except etree.XMLSchemaParseError as exc:
+        return _validation_result(data=None, errors=[f'Invalid XSD: {exc}'])
+    except etree.XMLSyntaxError as exc:
+        return _validation_result(data=None, errors=[f'Invalid XML: {exc}'])
+
+
+def _validation_result(
+    *,
+    data: JSONData | None,
+    errors: list[str] | None = None,
+    field_errors: FieldErrors | None = None,
+) -> ValidationDict:
+    """Build a stable validation result payload."""
+    resolved_errors = list(errors or [])
+    resolved_field_errors = dict(field_errors or {})
+    return {
+        'valid': not resolved_errors,
+        'errors': resolved_errors,
+        'field_errors': resolved_field_errors,
+        'data': data,
+    }
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_SCHEMA_VALIDATORS: dict[SchemaFormat, SchemaValidator] = {
+    'frictionless': _validate_frictionless,
+    'jsonschema': _validate_jsonschema,
+    'xsd': _validate_xsd,
+}
 
 
 _FIELD_RULE_VALIDATORS: tuple[FieldRuleValidator, ...] = (
@@ -655,6 +1043,7 @@ def validate_schema(
     schema: str | Path,
     *,
     schema_format: SchemaFormat | str | None = None,
+    source_format: str | None = None,
 ) -> ValidationDict:
     """
     Validate one source document against one external schema.
@@ -666,7 +1055,10 @@ def validate_schema(
     schema : str | Path
         Schema path or raw schema text.
     schema_format : SchemaFormat | str | None, optional
-        Schema format override. Only ``'xsd'`` is currently supported.
+        Schema format override. Supported values are ``'xsd'``,
+        ``'jsonschema'``, and ``'frictionless'``.
+    source_format : str | None, optional
+        Optional source payload format override for schema-based validation.
 
     Returns
     -------
@@ -674,16 +1066,21 @@ def validate_schema(
         Structured validation result with ``valid``, ``errors``,
         ``field_errors``, and ``data``.
     """
-    resolved_schema_format = (schema_format or 'xsd').lower()
-    if resolved_schema_format != 'xsd':
-        return _validation_result(
-            data=None,
-            errors=[
-                f'Unsupported schema format: {schema_format}. '
-                'Supported formats: xsd',
-            ],
+    try:
+        resolved_schema_format = _resolve_schema_format(
+            source,
+            schema,
+            schema_format=schema_format,
+            source_format=source_format,
         )
-    return _validate_xsd(source, schema)
+    except (ValueError, RuntimeError) as exc:
+        return _validation_result(data=None, errors=[str(exc)])
+
+    return _SCHEMA_VALIDATORS[resolved_schema_format](
+        source,
+        schema,
+        source_format,
+    )
 
 
 def validate(

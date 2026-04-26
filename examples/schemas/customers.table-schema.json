@@ -1,0 +1,39 @@
+{
+  "fields": [
+    {
+      "name": "id",
+      "type": "integer"
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "constraints": {
+        "required": true
+      }
+    },
+    {
+      "name": "email",
+      "type": "string",
+      "constraints": {
+        "required": true,
+        "unique": true,
+        "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+      }
+    },
+    {
+      "name": "signup_date",
+      "type": "date"
+    },
+    {
+      "name": "status",
+      "type": "string",
+      "constraints": {
+        "required": true,
+        "enum": [
+          "active",
+          "inactive"
+        ]
+      }
+    }
+  ]
+}

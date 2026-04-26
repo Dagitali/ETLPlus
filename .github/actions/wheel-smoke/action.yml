@@ -1,0 +1,47 @@
+# action.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Composite GitHub Action for clean-environment wheel smoke testing.
+#
+# Responsibilities
+# - Create an isolated virtual environment for a built wheel.
+# - Install the provided wheel artifact and verify the CLI entrypoint.
+# - Run the schema-validation smoke checks against the installed package.
+#
+# Maintainer Notes
+# - This action is intentionally release-oriented: it verifies the packaged
+#   artifact rather than the checked-out editable workspace.
+
+---
+
+name: Smoke-Test Built Wheel
+
+description: >-
+  Creates an isolated virtual environment, installs the built ETLPlus wheel,
+  verifies the CLI entrypoint, and runs schema-validation smoke checks.
+
+inputs:
+  wheel-path:
+    description: Glob or path passed to pip install for the built wheel
+    required: false
+    default: dist/*.whl
+  venv-path:
+    description: >-
+      Path to the temporary virtual environment used for smoke testing
+    required: false
+    default: .wheel-venv
+
+runs:
+  using: composite
+  steps:
+    - name: Smoke-test wheel install
+      shell: bash
+      run: |
+        python -m venv "${{ inputs.venv-path }}"
+        "${{ inputs.venv-path }}/bin/python" -m pip install --upgrade pip
+        smoke_python="${{ inputs.venv-path }}/bin/python"
+        "$smoke_python" -m pip install ${{ inputs.wheel-path }}
+        "${{ inputs.venv-path }}/bin/etlplus" --version
+        "$smoke_python" tools/smoke_test_schema_validation.py "$smoke_python"

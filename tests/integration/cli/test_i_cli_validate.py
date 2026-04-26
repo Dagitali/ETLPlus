@@ -38,6 +38,308 @@ pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 class TestCliValidate:
     """Smoke tests for the ``etlplus validate`` CLI command."""
 
+    def test_frictionless_validation_for_csv_file(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should validate CSV files with Frictionless Table Schema."""
+        pytest.importorskip('frictionless')
+        source_path = tmp_path / 'sample.csv'
+        schema_path = tmp_path / 'schema.json'
+        source_path.write_text('name,age\nAda,37\n', encoding='utf-8')
+        schema_path.write_text(
+            '\n'.join(
+                [
+                    '{',
+                    '  "fields": [',
+                    '    {"name": "name", "type": "string"},',
+                    '    {"name": "age", "type": "integer"}',
+                    '  ]',
+                    '}',
+                ],
+            ),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                '--schema-format',
+                'frictionless',
+                str(source_path),
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is True
+        assert payload['errors'] == []
+        assert payload['field_errors'] == {}
+        assert payload['data'] is None
+
+    def test_frictionless_validation_for_csv_stdin(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should honor the source format hint for CSV STDIN."""
+        pytest.importorskip('frictionless')
+        schema_path = tmp_path / 'schema.json'
+        schema_path.write_text(
+            '\n'.join(
+                [
+                    '{',
+                    '  "fields": [',
+                    '    {"name": "name", "type": "string"},',
+                    '    {"name": "age", "type": "integer"}',
+                    '  ]',
+                    '}',
+                ],
+            ),
+            encoding='utf-8',
+        )
+        monkeypatch.setattr(sys, 'stdin', io.StringIO('name,age\nAda,37\n'))
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                '--schema-format',
+                'frictionless',
+                '--source-format',
+                'csv',
+                '-',
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is True
+        assert payload['errors'] == []
+        assert payload['field_errors'] == {}
+        assert payload['data'] is None
+
+    def test_frictionless_validation_for_csv_constraint_failures(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should surface CSV constraint failures with row paths."""
+        pytest.importorskip('frictionless')
+        source_path = tmp_path / 'sample.csv'
+        schema_path = tmp_path / 'schema.json'
+        source_path.write_text(
+            'email,status\nada@example.com,active\nada@example.com,\n',
+            encoding='utf-8',
+        )
+        schema_path.write_text(
+            '\n'.join(
+                [
+                    '{',
+                    '  "fields": [',
+                    (
+                        '    {"name": "email", "type": "string", "constraints": '
+                        '{"required": true, "unique": true}},'
+                    ),
+                    (
+                        '    {"name": "status", "type": "string", "constraints": '
+                        '{"required": true, "enum": ["active", "inactive"]}}'
+                    ),
+                    '  ]',
+                    '}',
+                ],
+            ),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                '--schema-format',
+                'frictionless',
+                str(source_path),
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is False
+        assert 'row[3].email' in payload['field_errors']
+        assert 'row[3].status' in payload['field_errors']
+        assert any(
+            'unique constraint violation' in message
+            for message in payload['field_errors']['row[3].email']
+        )
+        assert any(
+            'constraint "required" is "True"' in message
+            for message in payload['field_errors']['row[3].status']
+        )
+
+    def test_jsonschema_validation_for_json_file(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should validate JSON files with JSON Schema."""
+        pytest.importorskip('jsonschema')
+        source_path = tmp_path / 'sample.json'
+        schema_path = tmp_path / 'schema.json'
+        source_path.write_text('{"name": "Ada"}', encoding='utf-8')
+        schema_path.write_text(
+            '\n'.join(
+                [
+                    '{',
+                    '  "type": "object",',
+                    '  "properties": {"name": {"type": "string"}},',
+                    '  "required": ["name"]',
+                    '}',
+                ],
+            ),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                '--schema-format',
+                'jsonschema',
+                str(source_path),
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is True
+        assert payload['errors'] == []
+        assert payload['field_errors'] == {}
+        assert payload['data'] is None
+
+    def test_jsonschema_validation_for_yaml_stdin(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should honor the source format hint for YAML STDIN."""
+        pytest.importorskip('jsonschema')
+        schema_path = tmp_path / 'schema.json'
+        schema_path.write_text(
+            '\n'.join(
+                [
+                    '{',
+                    '  "type": "object",',
+                    '  "properties": {',
+                    '    "name": {"type": "string"},',
+                    '    "age": {"type": "integer", "minimum": 0}',
+                    '  },',
+                    '  "required": ["name", "age"]',
+                    '}',
+                ],
+            ),
+            encoding='utf-8',
+        )
+        monkeypatch.setattr(sys, 'stdin', io.StringIO('name: Ada\nage: 37\n'))
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                '--schema-format',
+                'jsonschema',
+                '--source-format',
+                'yaml',
+                '-',
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is True
+        assert payload['errors'] == []
+        assert payload['field_errors'] == {}
+        assert payload['data'] is None
+
+    def test_jsonschema_validation_infers_format_for_json_file(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should infer JSON Schema for JSON file validation."""
+        pytest.importorskip('jsonschema')
+        source_path = tmp_path / 'sample.json'
+        schema_path = tmp_path / 'schema.json'
+        source_path.write_text('{"name": "Ada"}', encoding='utf-8')
+        schema_path.write_text(
+            '{"type": "object", "properties": {"name": {"type": "string"}}}',
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                str(source_path),
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is True
+        assert payload['errors'] == []
+
+    def test_schema_validation_reports_ambiguous_inference(
+        self,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Schema mode should report when schema-format inference is ambiguous."""
+        schema_path = tmp_path / 'schema.json'
+        schema_path.write_text('{"type": "object"}', encoding='utf-8')
+        monkeypatch.setattr(sys, 'stdin', io.StringIO('{"name": "Ada"}'))
+
+        code, out, err = cli_invoke(
+            (
+                'validate',
+                '--schema',
+                str(schema_path),
+                '-',
+            ),
+        )
+
+        assert code == 0
+        assert err.strip() == ''
+        payload = parse_json_output(out)
+        assert payload['valid'] is False
+        assert any(
+            'Schema format could not be inferred' in message
+            for message in payload['errors']
+        )
+
     def test_schema_option_conflicts_with_rules(
         self,
         cli_invoke: CliInvoke,

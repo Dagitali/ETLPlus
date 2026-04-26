@@ -27,7 +27,7 @@ Back to project overview: see the top-level [README](../../README.md).
 - **log**: Inspect raw persisted local run events
 - **render**: Render SQL DDL from table specs
 - **report**: Aggregate persisted local run history
-- **validate**: Validate data against rules
+- **validate**: Validate data against rules, JSON/XML schemas, or CSV table schemas
 - **run**: Execute a pipeline or job
 - **status**: Show the latest persisted local run
 

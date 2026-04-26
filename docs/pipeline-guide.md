@@ -331,6 +331,15 @@ validations:
       maxLength: 320
 ```
 
+For document-oriented checks outside the in-pipeline ruleset model, the stable CLI also supports
+schema-based validation through `etlplus validate --schema`. Use `--schema-format jsonschema` for
+JSON or YAML payloads, `--schema-format frictionless` for CSV payloads, and `--schema-format xsd`
+for XML payloads. When the source or schema path already makes the schema family clear, ETLPlus can
+infer it without `--schema-format`; ambiguous inline text and STDIN cases still require the explicit
+format. CSV validation failures keep stable row-aware keys such as `row[3].email`, so the same
+`errors` and `field_errors` contract remains useful when uniqueness or required-cell constraints
+fail.
+
 ## Transforms
 
 Transformation pipelines follow `etlplus.ops.transform.transform()` shapes exactly:
