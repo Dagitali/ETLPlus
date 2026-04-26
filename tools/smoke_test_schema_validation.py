@@ -39,6 +39,7 @@ def _run_validation(command: list[str]) -> None:
 
 # SECTION: FUNCTIONS ======================================================== #
 
+
 def main(argv: list[str]) -> int:
     """
     Run schema-validation smoke checks through one installed CLI executable.
