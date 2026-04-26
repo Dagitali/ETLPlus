@@ -93,10 +93,7 @@ class TestLoadTableSpec:
             yaml.safe_dump(sample_spec, sort_keys=False),
             encoding='utf-8',
         )
-        import etlplus.file._imports as import_helpers
         import etlplus.file.yaml as file_mod
-
-        import_helpers._MODULE_CACHE.clear()
 
         def _raise_import_error() -> None:
             raise ImportError('forced failure for test')
