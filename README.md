@@ -670,6 +670,52 @@ Validate from file:
 etlplus validate examples/data/sample.json --rules '{"email": {"type": "string", "pattern": "^[\\w.-]+@[\\w.-]+\\.\\w+$"}}'
 ```
 
+Validate JSON or YAML against a JSON Schema:
+```bash
+etlplus validate examples/data/sample.json --schema examples/schemas/customer.schema.json --schema-format jsonschema
+etlplus validate --source-format yaml --schema examples/schemas/pipeline.schema.json --schema-format jsonschema -
+```
+
+When the source or schema path already makes the schema family clear, the CLI can infer it without
+`--schema-format`:
+```bash
+etlplus validate examples/data/sample.json --schema examples/schemas/customer.schema.json
+etlplus validate examples/data/sample.xml --schema examples/data/sample.xsd
+```
+
+Validate CSV against a Frictionless Table Schema:
+```bash
+etlplus validate data/customers.csv --schema examples/schemas/customers.table-schema.json --schema-format frictionless
+```
+
+Inference rules are intentionally narrow and predictable:
+
+- An explicit `--schema-format` always wins
+- `.xsd` schemas resolve to XSD validation
+- JSON or YAML source hints resolve to JSON Schema validation
+- CSV source hints resolve to Frictionless validation
+- Ambiguous inline or STDIN cases require `--schema-format`
+
+CSV schema failures preserve row and field paths in the same result envelope:
+```json
+{
+  "valid": false,
+  "errors": [
+    "row[3].email: Row at position \"3\" has unique constraint violation in field \"email\" at position \"1\": the same as in the row at position 2",
+    "row[3].status: The cell \"\" in row at position \"3\" and field \"status\" at position \"2\" does not conform to a constraint: constraint \"required\" is \"True\""
+  ],
+  "field_errors": {
+    "row[3].email": [
+      "Row at position \"3\" has unique constraint violation in field \"email\" at position \"1\": the same as in the row at position 2"
+    ],
+    "row[3].status": [
+      "The cell \"\" in row at position \"3\" and field \"status\" at position \"2\" does not conform to a constraint: constraint \"required\" is \"True\""
+    ]
+  },
+  "data": null
+}
+```
+
 #### Transform Data
 
 When piping data through `etlplus transform`, use `--source-format` whenever the SOURCE argument is
@@ -950,6 +996,12 @@ Supported validation rules:
 - `maxLength`: Maximum length for strings
 - `pattern`: Regex pattern for strings
 - `enum`: List of allowed values
+
+Schema-based validation is also supported through `etlplus validate --schema ...`. Use
+`--schema-format xsd` for XML documents, `--schema-format jsonschema` for JSON or YAML documents,
+and `--schema-format frictionless` for CSV documents. When the file path already makes the schema
+family unambiguous, ETLPlus can infer it; ambiguous inline text and STDIN cases still require an
+explicit schema format.
 
 Example:
 ```json

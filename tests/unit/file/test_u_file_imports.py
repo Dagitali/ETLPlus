@@ -11,6 +11,7 @@ import re
 import pytest
 
 from etlplus.file import _imports as mod
+from etlplus.utils import _imports as utils_imports
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -64,7 +65,7 @@ class TestImportsHelpers:
         Test that dependency-label helper formatting 3+ dependency
         alternatives.
         """
-        label = mod._dependency_label(('netCDF4', 'h5netcdf', 'xarray'))
+        label = utils_imports.dependency_label(('netCDF4', 'h5netcdf', 'xarray'))
         assert label == '"netCDF4", "h5netcdf", or "xarray"'
 
     def test_dependency_label_raises_for_empty_names(self) -> None:
@@ -72,7 +73,7 @@ class TestImportsHelpers:
         Test that dependency-label helper rejecting empty dependency sets.
         """
         with pytest.raises(ValueError, match='must not be empty'):
-            mod._dependency_label(())
+            utils_imports.dependency_label(())
 
     @pytest.mark.parametrize(
         ('module_name', 'format_name', 'pip_name', 'dependency_name'),
@@ -90,7 +91,7 @@ class TestImportsHelpers:
         dependency_name: str,
     ) -> None:
         """Test import-error messages with dependency and ``pip`` hints."""
-        message = mod._error_message(
+        message = utils_imports.build_dependency_error_message(
             module_name,
             format_name=format_name,
             pip_name=pip_name,
@@ -101,6 +102,45 @@ class TestImportsHelpers:
         )
         assert f'pip install {dependency_name}' in message
 
+    def test_get_dependency_uses_shared_message_builder(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that file dependency imports build messages via utils."""
+        calls: list[tuple[object, str, str | None, bool]] = []
+        sentinel = object()
+
+        def _message_builder(
+            module_name: object,
+            format_name: str,
+            pip_name: str | None = None,
+            *,
+            required: bool = False,
+        ) -> str:
+            calls.append((module_name, format_name, pip_name, required))
+            return 'built message'
+
+        monkeypatch.setattr(
+            utils_imports,
+            'build_dependency_error_message',
+            _message_builder,
+        )
+        monkeypatch.setattr(
+            utils_imports,
+            'import_package',
+            lambda *args, **kwargs: sentinel,
+        )
+
+        assert (
+            mod.get_dependency(
+                'yaml',
+                format_name='YAML',
+                pip_name='PyYAML',
+            )
+            is sentinel
+        )
+        assert calls == [('yaml', 'YAML', 'PyYAML', False)]
+
     def test_get_dependency_raises_optional_standard_message(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -109,10 +149,10 @@ class TestImportsHelpers:
         Test that optional dependency failures using normalized format
         messages.
         """
-        monkeypatch.setattr(mod, '_MODULE_CACHE', {})
+        monkeypatch.setattr(mod._DEPENDENCY_IMPORTER, 'cache', {})
         monkeypatch.setattr(
-            mod,
-            'import_module',
+            mod._DEPENDENCY_IMPORTER,
+            'importer',
             lambda _name: (_ for _ in ()).throw(ImportError('missing')),
         )
         expected = (
@@ -133,10 +173,10 @@ class TestImportsHelpers:
         Test that required dependency failures using normalized format
         messages.
         """
-        monkeypatch.setattr(mod, '_MODULE_CACHE', {})
+        monkeypatch.setattr(mod._DEPENDENCY_IMPORTER, 'cache', {})
         monkeypatch.setattr(
-            mod,
-            'import_module',
+            mod._DEPENDENCY_IMPORTER,
+            'importer',
             lambda _name: (_ for _ in ()).throw(ImportError('missing')),
         )
         expected = (
@@ -159,8 +199,12 @@ class TestImportsHelpers:
         cache: dict[str, object] = {}
         sentinel = object()
 
-        monkeypatch.setattr(mod, '_MODULE_CACHE', cache)
-        monkeypatch.setattr(mod, 'import_module', lambda _name: sentinel)
+        monkeypatch.setattr(mod._DEPENDENCY_IMPORTER, 'cache', cache)
+        monkeypatch.setattr(
+            mod._DEPENDENCY_IMPORTER,
+            'importer',
+            lambda _name: sentinel,
+        )
         result = mod.get_dependency(
             'example_dep',
             format_name='EXAMPLE',
@@ -173,9 +217,10 @@ class TestImportsHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that missing dependency errors use formatted messages."""
+        monkeypatch.setattr(mod._DEPENDENCY_IMPORTER, 'cache', {})
         monkeypatch.setattr(
-            mod,
-            'import_module',
+            mod._DEPENDENCY_IMPORTER,
+            'importer',
             lambda _name: (_ for _ in ()).throw(ImportError('missing')),
         )
         expected = (
@@ -194,10 +239,10 @@ class TestImportsHelpers:
     ) -> None:
         """Test that cache-first behavior avoids import lookups."""
         sentinel = object()
-        monkeypatch.setitem(mod._MODULE_CACHE, 'cached_mod', sentinel)
+        monkeypatch.setattr(mod._DEPENDENCY_IMPORTER, 'cache', {'cached_mod': sentinel})
         monkeypatch.setattr(
-            mod,
-            'import_module',
+            mod._DEPENDENCY_IMPORTER,
+            'importer',
             lambda _name: (_ for _ in ()).throw(AssertionError('unexpected')),
         )
         assert (
@@ -211,7 +256,7 @@ class TestImportsHelpers:
     def test_normalize_dependency_names_rejects_empty_tuple(self) -> None:
         """Test that dependency-name normalization rejects empty tuples."""
         with pytest.raises(ValueError, match='must not be an empty tuple'):
-            mod._normalize_dependency_names((), None)
+            utils_imports.normalize_dependency_names((), None)
 
     @pytest.mark.parametrize(
         ('module_name', 'format_name', 'pip_name', 'dependency_name'),
@@ -231,7 +276,7 @@ class TestImportsHelpers:
         """
         Test that required import error messages renders dependency hints.
         """
-        message = mod._error_message(
+        message = utils_imports.build_dependency_error_message(
             module_name,
             format_name=format_name,
             pip_name=pip_name,
