@@ -165,15 +165,9 @@ jobs:
         with:
           python-version: '3.13'
           python-bootstrap: "-e .[docs]"
-      - name: Build Sphinx docs
-        run: |
-          find docs/source/api/generated -type f -name '*.rst' -delete 2>/dev/null || true
-          rm -rf docs/build/${{ matrix.builder }} docs/build/doctrees/${{ matrix.builder }}
-          python -m sphinx -T -W --keep-going \
-            -b ${{ matrix.builder }} \
-            -d docs/build/doctrees/${{ matrix.builder }} \
-            docs/source \
-            docs/build/${{ matrix.builder }}
+      - uses: ./.github/actions/sphinx-build
+        with:
+          builder: ${{ matrix.builder }}
 
   smoke-cross-platform:
     name: Smoke install on ${{ matrix.os }}
