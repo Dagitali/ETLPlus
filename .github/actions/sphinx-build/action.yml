@@ -1,0 +1,44 @@
+# action.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Composite GitHub Action for building Sphinx documentation targets.
+#
+# Responsibilities
+# - Clear generated API stubs and prior output for the selected builder.
+# - Build a specific Sphinx builder target with warnings treated as errors.
+#
+# Maintainer Notes
+# - Workflow jobs remain responsible for Python setup and docs dependency
+#   installation before invoking this action.
+
+---
+
+name: Build Sphinx Docs
+
+description: >-
+  Removes stale generated docs output and builds a selected Sphinx target.
+
+inputs:
+  builder:
+    description: Sphinx builder to run, such as html, epub, or linkcheck
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Build Sphinx docs
+      shell: bash
+      run: |
+        find docs/source/api/generated \
+          -type f \
+          -name '*.rst' \
+          -delete 2>/dev/null || true
+        builder="${{ inputs.builder }}"
+        rm -rf "docs/build/$builder" "docs/build/doctrees/$builder"
+        python -m sphinx -T -W --keep-going \
+          -b "$builder" \
+          -d "docs/build/doctrees/$builder" \
+          docs/source \
+          "docs/build/$builder"
