@@ -49,15 +49,7 @@ jobs:
         with:
           python-version: '3.13'
           python-bootstrap: 'build twine'
-      - name: Build distributions
-        run: |
-          python -m build
-      - name: Audit release artifacts
-        run: |
-          python tools/check_release_artifacts.py dist/*
-      - name: Validate distributions
-        run: |
-          python -m twine check dist/*
+      - uses: ./.github/actions/build-and-verify-dist
       - uses: ./.github/actions/wheel-smoke
       - name: Upload distributions
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # Pinned v7.0.0
