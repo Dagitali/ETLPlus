@@ -81,7 +81,7 @@ release.
 - The CI quality-bar item is now closed: lint, docstring lint, type-checking, tests, docs builds,
   distribution validation, artifact audits, and clean-environment wheel smoke checks are enforced
   or verified in the release path.
-- The Python Package Index (PyPI) trusted publisher must point at `.github/workflows/release.yml`
+- The Python Package Index (PyPI) trusted publisher must point at `.github/workflows/cd.yml`
   with the `pypi` GitHub environment; pointing it at other GitHub Actions workflows will cause
   trusted publishing to fail.
 - The shipped-files item is now closed for the release path because distribution builds and artifact
