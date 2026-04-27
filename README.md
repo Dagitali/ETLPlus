@@ -1136,9 +1136,9 @@ release text is drafted from the template and category config in the `.github/` 
     git push origin v1.4.0
     ```
 
-3. GitHub Actions runs the tagged release workflow in [.github/workflows/release.yml][release wf],
-  builds the sdist/wheel, validates the artifacts, validates the tagged docs build, publishes the
-  GitHub Release, and then publishes to [PyPI][PyPI].
+3. GitHub Actions runs the tagged release workflow in [.github/workflows/cd.yml][release wf], builds
+   the sdist/wheel, validates the artifacts, validates the tagged docs build, publishes the GitHub
+   Release, and then publishes to [PyPI][PyPI].
 4. Draft the GitHub Release notes using [.github/RELEASE-NOTES-TEMPLATE.md][release notes] together
    with the categorized notes configured in [.github/release.yml][release cfg].
 
@@ -1235,4 +1235,4 @@ contributions are always appreciated!
 [PyPI package]: https://pypi.org/project/etlplus/
 [release cfg]: .github/release.yml
 [release notes]: .github/RELEASE-NOTES-TEMPLATE.md
-[release wf]: .github/workflows/release.yml
+[release wf]: .github/workflows/cd.yml

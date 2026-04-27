@@ -46,14 +46,16 @@ reproducible bug reports are often as valuable as small code changes.
    variables, exposed ports, useful file locations and container parameters.
 3. For release-affecting changes (packaging, CI, published docs, install snippets, or stable public
    surface decisions), consult [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
-4. For the protected-branch ruleset, required CI checks, and the exact GitHub settings to disable
-   direct pushes, consult [.github/BRANCH-RULESETS.md](.github/BRANCH-RULESETS.md).
+4. For the protected-branch protection settings, required CI checks, and the exact GitHub
+   configuration needed to disable direct pushes, consult
+   [.github/BRANCH-PROTECTION.md](.github/BRANCH-PROTECTION.md).
 5. ETLPlus uses `setuptools-scm`, so do not hand-edit version numbers in `pyproject.toml`,
    `setup.py`, or `etlplus/__version__.py`. If a change affects recorded version output, refresh the
    generated demo/version snippets instead.
-6. You may merge once the protected-branch ruleset has been satisfied. The recommended baseline is
-   one approval for `develop` and two approvals (one approval for small teams) for `main`. If you do
-   not have permission to merge, request a maintainer review and handoff.
+6. You may merge once the protected-branch protection requirements have been satisfied. The
+   recommended baseline is one approval for `develop` and two approvals (one approval for small
+   teams) for `main`. If you do not have permission to merge, request a maintainer review and
+   handoff.
 
 ## Code of Conduct
 
