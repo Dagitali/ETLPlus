@@ -18,9 +18,9 @@ authoritative enforcement layer.
 
 Choose the required-check baseline that matches how the repository accepts pull requests.
 
-Because `.github/workflows/pr.yml` and `.github/workflows/ci.yml` both use matrices for Python
-versions and docs builders, GitHub exposes expanded matrix job names in the ruleset UI rather than
-the template names shown in the YAML. Select those expanded names when configuring required checks.
+Because `.github/workflows/pr.yml` and `.github/workflows/ci.yml` use matrix-expanded job names,
+GitHub exposes the expanded names in the ruleset UI rather than the template names shown in the
+YAML. Select those expanded names when configuring required checks.
 
 The heavier post-merge validation now lives in `.github/workflows/ci.yml`, where it
 chains from successful push completions of `PR Gates`. Those checks should usually stay advisory
@@ -38,8 +38,6 @@ Use this baseline for protected-branch merge gates. It covers the checks that ru
 - Tests on the primary supported Python line
 - Type-checking on the primary supported Python line
 - HTML docs build
-- One non-Linux smoke install job
-- Distribution build validation
 
 These categories define the minimum merge gate for protected branches.
 
@@ -52,7 +50,6 @@ In the current PR-gates workflow, the baseline above resolves to:
 - `Doclint on Python 3.13`
 - `Type-check on Python 3.13`
 - `Build docs (html)`
-- `Smoke install on macos-latest`
 
 Additional CI jobs are still useful, but they should usually stay advisory unless you intentionally
 want a stricter gate.
@@ -61,7 +58,6 @@ want a stricter gate.
 
 - Lint on additional supported Python lines
 - Tests on additional supported Python lines
-- Docstring linting
 - Non-HTML docs builders
 - Cross-platform smoke install jobs
 - Distribution build validation
@@ -85,10 +81,11 @@ If you want a stricter protected-branch gate, the natural next checks to add are
 
 - Lint on the next supported Python line
 - Tests on the next supported Python line
+- One non-Linux smoke install job from `ci.yml`
 - The post-merge `Build docs (epub)` job
 
-That keeps the staged CI and branch-validation layout intact without collapsing everything back
-into a single required workflow.
+That keeps the staged PR-gates and CI layout intact without collapsing everything back into a single
+required workflow.
 
 ## Shared Ruleset Baseline
 
