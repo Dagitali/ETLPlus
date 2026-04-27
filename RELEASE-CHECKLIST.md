@@ -81,7 +81,7 @@ release.
 - The CI quality-bar item is now closed: lint, docstring lint, type-checking, tests, docs builds,
   distribution validation, artifact audits, and clean-environment wheel smoke checks are enforced
   or verified in the release path.
-- The Python Package Index (PyPI) trusted publisher must point at `.github/workflows/release.yml`
+- The Python Package Index (PyPI) trusted publisher must point at `.github/workflows/cd.yml`
   with the `pypi` GitHub environment; pointing it at other GitHub Actions workflows will cause
   trusted publishing to fail.
 - The shipped-files item is now closed for the release path because distribution builds and artifact
@@ -211,7 +211,7 @@ These are the active follow-up items for the `v1.x` line.
     available across releases.
 - [x] Tighten release workflow and release-doc wording drift.
   - Keep release automation comments, README release steps, and docs pages consistent with the actual
-    `pr.yml` / `ci.yml` / `release.yml` workflow split.
+    `pr.yml` / `ci.yml` / `cd.yml` workflow split.
 - [x] Clarify the `v1.x` maintenance promise beyond the initial support baseline.
   - Define the expected role of patch releases versus minor releases.
   - Clarify what kinds of fixes are expected to be backported, if any.
