@@ -11,8 +11,8 @@ These rulesets exist to enforce three repository policies:
 - No direct pushes to `develop`
 - No merge into either protected branch unless the required CI checks pass
 
-Local hooks in `.pre-commit-config.yaml` complement this policy, but GitHub rulesets are the
-authoritative enforcement layer.
+Local hooks in `.pre-commit-config.yaml` complement this policy, but GitHub branch protection is
+the authoritative enforcement layer in the current repository configuration.
 
 ## Recommended Required Checks
 
@@ -101,7 +101,7 @@ If you want a stricter protected-branch gate, the natural next checks to add are
 That keeps the staged CI and branch-validation layout intact without collapsing everything back
 into a single required workflow.
 
-## Shared Ruleset Baseline
+## Shared Protection Baseline
 
 Apply this baseline to both protected branches:
 
@@ -176,13 +176,14 @@ The reliable way to disallow direct pushes is to protect the branch and require 
 alone cannot block a normal direct push after the fact, because GitHub Actions runs only after the
 push exists.
 
+This repository currently applies these controls with classic branch protection on `main` and
+`develop`, not repository rulesets.
+
 In GitHub:
 
 1. Open repository `Settings`.
-2. Open `Rules`.
-3. Open `Rulesets`.
-4. Create one ruleset for `main` and one for `develop`.
-5. Target the corresponding branch name.
+2. Open `Branches`.
+3. Open the branch protection rule for `main` or `develop`.
 6. Enable `Require a pull request before merging`.
 7. For `main`, enable `Require review from Code Owners`.
 8. Enable `Require status checks to pass before merging`.
@@ -199,19 +200,18 @@ only PR-gate jobs are required.
 In GitHub:
 
 1. Open repository `Settings`.
-2. Open `Rules`.
-3. Open `Rulesets`.
-4. Open the `main` ruleset.
-5. Under `Require status checks to pass`, remove any stale checks emitted by the heavier CI or old
+2. Open `Branches`.
+3. Open the branch protection rule for `main`.
+4. Under `Require status checks to pass`, remove any stale checks emitted by the heavier CI or old
   workflow filenames.
-6. Add these required checks:
+5. Add these required checks:
   - `Lint on Python 3.13`
   - `Test on Python 3.13`
   - `Doclint on Python 3.13`
   - `Type-check on Python 3.13`
   - `Build docs (html)`
-7. Save the `main` ruleset.
-8. Repeat the same status-check set for the `develop` ruleset unless you intentionally want a
+6. Save the `main` branch protection rule.
+7. Repeat the same status-check set for the `develop` branch protection rule unless you intentionally want a
   different protected-branch policy.
 
 Do not mark post-merge checks from `ci.yml` as required PR checks unless you also change their
