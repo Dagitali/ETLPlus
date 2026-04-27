@@ -47,7 +47,7 @@ reproducible bug reports are often as valuable as small code changes.
 3. For release-affecting changes (packaging, CI, published docs, install snippets, or stable public
    surface decisions), consult [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md).
 4. For the protected-branch ruleset, required CI checks, and the exact GitHub settings to disable
-   direct pushes, consult [.github/BRANCH-RULESETS.md](.github/BRANCH-RULESETS.md).
+   direct pushes, consult [.github/BRANCH-PROTECTION.md](.github/BRANCH-PROTECTION.md).
 5. ETLPlus uses `setuptools-scm`, so do not hand-edit version numbers in `pyproject.toml`,
    `setup.py`, or `etlplus/__version__.py`. If a change affects recorded version output, refresh the
    generated demo/version snippets instead.
