@@ -211,7 +211,7 @@ These are the active follow-up items for the `v1.x` line.
     available across releases.
 - [x] Tighten release workflow and release-doc wording drift.
   - Keep release automation comments, README release steps, and docs pages consistent with the actual
-    `pr.yml` / `ci.yml` / `release.yml` workflow split.
+    `pr.yml` / `ci.yml` / `cd.yml` workflow split.
 - [x] Clarify the `v1.x` maintenance promise beyond the initial support baseline.
   - Define the expected role of patch releases versus minor releases.
   - Clarify what kinds of fixes are expected to be backported, if any.
