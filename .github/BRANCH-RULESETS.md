@@ -38,8 +38,6 @@ Use this baseline for protected-branch merge gates. It covers the checks that ru
 - Tests on the primary supported Python line
 - Type-checking on the primary supported Python line
 - HTML docs build
-- One non-Linux smoke install job
-- Distribution build validation
 
 These categories define the minimum merge gate for protected branches.
 
@@ -52,7 +50,6 @@ In the current PR-gates workflow, the baseline above resolves to:
 - `Doclint on Python 3.13`
 - `Type-check on Python 3.13`
 - `Build docs (html)`
-- `Smoke install on macos-latest`
 
 Additional CI jobs are still useful, but they should usually stay advisory unless you intentionally
 want a stricter gate.
@@ -98,8 +95,8 @@ If you want a stricter protected-branch gate, the natural next checks to add are
 - Tests on the next supported Python line
 - The post-merge `Build docs (epub)` job
 
-That keeps the staged CI and branch-validation layout intact without collapsing everything back
-into a single required workflow.
+That keeps the staged PR-gates and heavier-CI layout intact without collapsing everything back into
+a single required workflow.
 
 ## Shared Protection Baseline
 
@@ -194,8 +191,8 @@ In GitHub:
 
 ## How To Update Required Checks In GitHub
 
-After the workflow split and rename to `pr.yml`, update the protected-branch rulesets in GitHub so
-only PR-gate jobs are required.
+After the workflow split and rename to `pr.yml`, update the protected-branch protections in GitHub
+so only PR-gate jobs are required.
 
 In GitHub:
 
