@@ -1,0 +1,175 @@
+# pr.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub Actions workflow for required pull-request (PR) gates.
+#
+# Responsibilities
+# - Run required pull-request and merge-queue integration gates: linting,
+#   docstring linting, type-checking, tests, and docs builds.
+# - Run the lightweight baseline on GitFlow branches so post-merge validation
+#   can chain from successful push completions.
+#
+# Maintainer Notes
+# - Global permissions are intentionally omitted; each job declares the minimum
+#   permissions it needs.
+# - External GitHub Actions are pinned to full commit SHAs to reduce supply-
+#   chain risk.
+# - Heavier post-merge validation lives in `ci.yml` and should be triggered
+#   from successful push runs of this workflow.
+
+---
+
+name: PR Gates
+
+on:
+  push:
+    branches:
+      # Protected and release-oriented GitFlow branches
+      - main
+      - develop
+      - '**/release/**'
+      - '**/hotfix/**'
+
+      # GitFlow working branches
+      - '**/feature/**'
+      - '**/bugfix/**'
+
+      # Extended working branches
+      - '**/chore/**'
+      - '**/ci/**'
+      - '**/docs/**'
+  pull_request:
+    branches: [ main, develop ]
+  merge_group:
+    branches: [ main, develop ]
+
+permissions: {}
+
+env:
+  # Keep this width aligned with .ruff.toml:line-length.
+  PY_LINE_LENGTH: '88'
+
+jobs:
+  lint:
+    name: Lint on Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy: &python-matrix
+      matrix:
+        python-version: ['3.13', '3.14']
+    permissions: &permissions_read
+      contents: read
+    steps:
+      - &checkout_step
+        name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: ${{ matrix.python-version }}
+          python-bootstrap: ".[dev]"
+      - name: Ruff check
+        run: |
+          ruff version
+          ruff check .
+          # ruff format --check .
+          files="$(git ls-files '*.py')"
+          if [ -n "$files" ]; then
+            autopep8 --diff --exit-code --max-line-length=${PY_LINE_LENGTH} $files
+          fi
+
+  test:
+    name: Test on Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy: *python-matrix
+    permissions: *permissions_read
+    steps:
+      - *checkout_step
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: ${{ matrix.python-version }}
+          python-bootstrap: "-e .[dev,file]"
+      - name: Run meta guardrails
+        run: |
+          pytest -q \
+            tests/meta/test_m_test_layout.py \
+            tests/meta/test_m_test_filenames.py \
+            tests/meta/test_m_marker_coverage.py \
+            tests/meta/test_m_integration_file_conventions.py \
+            tests/meta/test_m_contract_readme.py
+      - name: Run tests (with coverage)
+        run: |
+          pytest -q \
+            -m "not perf" \
+            --cov \
+            --cov-branch \
+            --cov-config=.coveragerc \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            tests/
+      - name: Upload coverage reports to Codecov
+        if: github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de  # Pinned v5.5.2
+        with:
+          fail_ci_if_error: true
+          files: coverage.xml
+          flags: unit
+          name: etlplus
+          token: ${{ secrets.CODECOV_TOKEN }}  # Omit for public repo
+          verbose: true
+
+  doclint:
+    name: Doclint on Python 3.13
+    runs-on: ubuntu-latest
+    permissions: *permissions_read
+    steps:
+      - *checkout_step
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: '3.13'
+          python-bootstrap: "-e .[dev,file]"
+      - name: Run pydocstyle
+        run: |
+          find etlplus -type f -name '*.py' \
+            ! -path '*/__pycache__/*' \
+            -print0 | xargs -0 pydocstyle
+      - name: Run pydoclint
+        run: |
+          pydoclint --style numpy \
+            --exclude 'config_DEFUNCT|database_DEFUNCT' \
+            etlplus
+
+  typecheck:
+    name: Type-check on Python 3.13
+    runs-on: ubuntu-latest
+    permissions: *permissions_read
+    steps:
+      - *checkout_step
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: '3.13'
+          python-bootstrap: "-e .[dev,file]"
+      - name: Run mypy
+        run: |
+          mypy --version
+          mypy etlplus
+
+  document:
+    name: Build docs (${{ matrix.builder }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        builder: [html]
+    permissions: *permissions_read
+    steps:
+      - *checkout_step
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: '3.13'
+          python-bootstrap: "-e .[docs]"
+      - uses: ./.github/actions/sphinx-build
+        with:
+          builder: ${{ matrix.builder }}

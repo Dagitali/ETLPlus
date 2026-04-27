@@ -5,6 +5,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/etlplus)][PyPI package]
 [![License](https://img.shields.io/github/license/Dagitali/ETLPlus.svg)](LICENSE)
 [![CI](https://github.com/Dagitali/ETLPlus/actions/workflows/ci.yml/badge.svg?branch=main)][GitHub Actions CI workflow]
+[![PR Gates](https://github.com/Dagitali/ETLPlus/actions/workflows/pr.yml/badge.svg?branch=main)][GitHub Actions PR Gates workflow]
 [![Coverage](https://img.shields.io/codecov/c/github/Dagitali/ETLPlus?branch=main)][Codecov project]
 [![Issues](https://img.shields.io/github/issues/Dagitali/ETLPlus)][GitHub issues]
 [![PRs](https://img.shields.io/github/issues-pr/Dagitali/ETLPlus)][GitHub PRs]
@@ -1224,6 +1225,7 @@ contributions are always appreciated!
 [Buy Me a Coffee]: https://buymeacoffee.com/djrlj694
 [Codecov project]: https://codecov.io/github/Dagitali/ETLPlus?branch=main
 [GitHub Actions CI workflow]: https://github.com/Dagitali/ETLPlus/actions/workflows/ci.yml
+[GitHub Actions PR Gates workflow]: https://github.com/Dagitali/ETLPlus/actions/workflows/pr.yml
 [GitHub Sponsors]: https://github.com/sponsors/Dagitali
 [GitHub contributors]: https://github.com/Dagitali/ETLPlus/graphs/contributors
 [GitHub issues]: https://github.com/Dagitali/ETLPlus/issues
