@@ -1,58 +1,53 @@
 # ci.yml
 # ETLPlus
 #
-# Copyright © 2025 Dagitali LLC. All rights reserved.
+# Copyright © 2026 Dagitali LLC. All rights reserved.
 #
 # GitHub Actions workflow for continuous integration (CI).
 #
 # Responsibilities
-# - Run linting, docstring linting, type-checking, tests, docs builds, and
-#   cross-platform smoke validation on branch and pull-request changes.
-# - Build and validate distribution artifacts for trusted in-repo CI runs.
+# - Run slower post-merge validation after the PR-gate workflow succeeds on
+#   protected or release-oriented GitFlow branches.
+# - Build non-PR docs targets, cross-platform install smoke coverage, and
+#   packaged distribution validation.
 #
 # Maintainer Notes
 # - Global permissions are intentionally omitted; each job declares the minimum
 #   permissions it needs.
 # - External GitHub Actions are pinned to full commit SHAs to reduce supply-
 #   chain risk.
+# - Keep required pull-request and merge-queue gates in `pr.yml`.
+# - This workflow intentionally complements, rather than replaces, the lighter
+#   integration checks that run earlier in the development loop.
 
 ---
 
 name: CI
 
 on:
-  push:
+  workflow_run:
+    workflows: ["PR Gates"]
+    types: [completed]
     branches:
-      # GitFlow branches
+      # Protected and release-oriented GitFlow branches
       - main
       - develop
-      - '**/feature/**'
-      - '**/bugfix/**'
       - '**/release/**'
       - '**/hotfix/**'
-
-      # Extended branches
-      - '**/chore/**'
-      - '**/ci/**'
-      - '**/docs/**'
-  pull_request:
-    branches: [ main, develop ]
-  merge_group:
-    branches: [ main, develop ]
+  workflow_dispatch:
 
 permissions: {}
 
-env:
-  # Keep this width aligned with .ruff.toml:line-length.
-  PY_LINE_LENGTH: '88'
-
 jobs:
-  lint:
-    name: Lint on Python ${{ matrix.python-version }}
+  document:
+    name: Build docs (${{ matrix.builder }})
     runs-on: ubuntu-latest
-    strategy: &python-matrix
+    if: github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push')
+    strategy:
       matrix:
-        python-version: ['3.13', '3.14']
+        builder: [epub, linkcheck]
     permissions: &permissions_read
       contents: read
     steps:
@@ -61,106 +56,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
         with:
           fetch-depth: 0
-      - uses: ./.github/actions/python-bootstrap
-        with:
-          python-version: ${{ matrix.python-version }}
-          python-bootstrap: ".[dev]"
-      - name: Ruff check
-        run: |
-          ruff version
-          ruff check .
-          # ruff format --check .
-          files="$(git ls-files '*.py')"
-          if [ -n "$files" ]; then
-            autopep8 --diff --exit-code --max-line-length=${PY_LINE_LENGTH} $files
-          fi
-
-  test:
-    name: Test on Python ${{ matrix.python-version }}
-    runs-on: ubuntu-latest
-    strategy: *python-matrix
-    permissions: *permissions_read
-    steps:
-      - *checkout_step
-      - uses: ./.github/actions/python-bootstrap
-        with:
-          python-version: ${{ matrix.python-version }}
-          python-bootstrap: "-e .[dev,file]"
-      - name: Run meta guardrails
-        run: |
-          pytest -q \
-            tests/meta/test_m_test_layout.py \
-            tests/meta/test_m_test_filenames.py \
-            tests/meta/test_m_marker_coverage.py \
-            tests/meta/test_m_integration_file_conventions.py \
-            tests/meta/test_m_contract_readme.py
-      - name: Run tests (with coverage)
-        run: |
-          pytest -q \
-            -m "not perf" \
-            --cov \
-            --cov-branch \
-            --cov-config=.coveragerc \
-            --cov-report=term-missing \
-            --cov-report=xml \
-            tests/
-      - name: Upload coverage reports to Codecov
-        if: github.event_name != 'pull_request' ||
-          github.event.pull_request.head.repo.full_name == github.repository
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de  # Pinned v5.5.2
-        with:
-          fail_ci_if_error: true
-          files: coverage.xml
-          flags: unit
-          name: etlplus
-          token: ${{ secrets.CODECOV_TOKEN }}  # Omit for public repo
-          verbose: true
-
-  doclint:
-    name: Doclint on Python 3.13
-    runs-on: ubuntu-latest
-    permissions: *permissions_read
-    steps:
-      - *checkout_step
-      - uses: ./.github/actions/python-bootstrap
-        with:
-          python-version: '3.13'
-          python-bootstrap: "-e .[dev,file]"
-      - name: Run pydocstyle
-        run: |
-          find etlplus -type f -name '*.py' \
-            ! -path '*/__pycache__/*' \
-            -print0 | xargs -0 pydocstyle
-      - name: Run pydoclint
-        run: |
-          pydoclint --style numpy \
-            --exclude 'config_DEFUNCT|database_DEFUNCT' \
-            etlplus
-
-  typecheck:
-    name: Type-check on Python 3.13
-    runs-on: ubuntu-latest
-    permissions: *permissions_read
-    steps:
-      - *checkout_step
-      - uses: ./.github/actions/python-bootstrap
-        with:
-          python-version: '3.13'
-          python-bootstrap: "-e .[dev,file]"
-      - name: Run mypy
-        run: |
-          mypy --version
-          mypy etlplus
-
-  document:
-    name: Build docs (${{ matrix.builder }})
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        builder: [html, epub, linkcheck]
-    permissions: *permissions_read
-    steps:
-      - *checkout_step
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: '3.13'
@@ -172,6 +68,9 @@ jobs:
   smoke-cross-platform:
     name: Smoke install on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    if: github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push')
     strategy:
       matrix:
         os: [macos-latest, windows-latest]
@@ -191,9 +90,10 @@ jobs:
   build:
     name: Build distributions
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
-    needs: [lint, doclint, typecheck, test, document, smoke-cross-platform]
+    if: github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push')
+    needs: [document, smoke-cross-platform]
     permissions: *permissions_read
     steps:
       - *checkout_step
