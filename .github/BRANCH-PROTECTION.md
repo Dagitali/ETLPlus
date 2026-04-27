@@ -1,11 +1,28 @@
-# Branch Rulesets
+# Branch Protection
 
-This document defines the recommended GitHub rulesets for the protected
+This document defines the recommended GitHub branch protection configuration for the protected
 `main` and `develop` branches when ETLPlus is operated with GitFlow.
+
+- [Branch Protection](#branch-protection)
+  - [Purpose](#purpose)
+  - [Recommended Required Checks](#recommended-required-checks)
+    - [Pull Request Baseline](#pull-request-baseline)
+      - [Policy Categories](#policy-categories)
+      - [Current Resolved Check Names](#current-resolved-check-names)
+      - [Current Required Check Names To Select In GitHub](#current-required-check-names-to-select-in-github)
+    - [Advisory Categories](#advisory-categories)
+    - [Current Advisory Examples](#current-advisory-examples)
+  - [Shared Protection Baseline](#shared-protection-baseline)
+    - [Branch Protections](#branch-protections)
+  - [Branch Protection Checklist For `main`](#branch-protection-checklist-for-main)
+  - [Branch Protection Checklist For `develop`](#branch-protection-checklist-for-develop)
+  - [How To Disallow Direct Pushes](#how-to-disallow-direct-pushes)
+  - [How To Update Required Checks In GitHub](#how-to-update-required-checks-in-github)
+  - [Maintenance Notes](#maintenance-notes)
 
 ## Purpose
 
-These rulesets exist to enforce three repository policies:
+These protections exist to enforce three repository policies:
 
 - No direct pushes to `main`
 - No direct pushes to `develop`
@@ -19,12 +36,13 @@ the authoritative enforcement layer in the current repository configuration.
 Choose the required-check baseline that matches how the repository accepts pull requests.
 
 Because `.github/workflows/pr.yml` and `.github/workflows/ci.yml` both use matrices for Python
-versions and docs builders, GitHub exposes expanded matrix job names in the ruleset UI rather than
-the template names shown in the YAML. Select those expanded names when configuring required checks.
+versions and docs builders, GitHub exposes expanded matrix job names in the branch protection UI
+rather than the template names shown in the YAML. Select those expanded names when configuring
+required checks.
 
-The heavier post-merge validation now lives in `.github/workflows/ci.yml`, where it
-chains from successful push completions of `PR Gates`. Those checks should usually stay advisory
-for pull-request rulesets because they do not run on `pull_request`.
+The heavier post-merge validation now lives in `.github/workflows/ci.yml`, where it chains from
+successful push completions of `PR Gates`. Those checks should usually stay advisory for
+pull-request branch protections because they do not run on `pull_request`.
 
 ### Pull Request Baseline
 
@@ -56,8 +74,8 @@ want a stricter gate.
 
 #### Current Required Check Names To Select In GitHub
 
-When configuring `main` or `develop` branch rulesets in the GitHub UI, select only these PR-gate
-job names as required checks:
+When configuring `main` or `develop` branch protection rules in the GitHub UI, select only these
+PR-gate job names as required checks:
 
 - `Lint on Python 3.13`
 - `Test on Python 3.13`
@@ -121,7 +139,7 @@ branch protections.
 - Keep bypass actors empty if possible
 - If bypass cannot be empty, restrict it to a very small maintainer/admin set
 
-## Ruleset Checklist For `main`
+## Branch Protection Checklist For `main`
 
 Target:
 
@@ -137,14 +155,14 @@ Recommended baseline:
 
 - Require the full pull-request baseline from `pr.yml`.
 - Keep `Build distributions` and the cross-platform smoke jobs advisory unless you intentionally
-  want post-merge validation to block promotion decisions outside the ruleset.
+  want post-merge validation to block promotion decisions outside branch protection.
 
 Optional hardening:
 
 - Require signed commits
 - Require merge queue
 
-## Ruleset Checklist For `develop`
+## Branch Protection Checklist For `develop`
 
 Target:
 
@@ -200,7 +218,7 @@ In GitHub:
 2. Open `Branches`.
 3. Open the branch protection rule for `main`.
 4. Under `Require status checks to pass`, remove any stale checks emitted by the heavier CI or old
-  workflow filenames.
+   workflow filenames.
 5. Add these required checks:
   - `Lint on Python 3.13`
   - `Test on Python 3.13`
@@ -208,8 +226,8 @@ In GitHub:
   - `Type-check on Python 3.13`
   - `Build docs (html)`
 6. Save the `main` branch protection rule.
-7. Repeat the same status-check set for the `develop` branch protection rule unless you intentionally want a
-  different protected-branch policy.
+7. Repeat the same status-check set for the `develop` branch protection rule unless you
+   intentionally want a different protected-branch policy.
 
 Do not mark post-merge checks from `ci.yml` as required PR checks unless you also change their
 trigger model away from `workflow_run`.
@@ -223,14 +241,14 @@ With that configuration in place:
 
 ## Maintenance Notes
 
-- GitHub required checks are tied to the exact job names emitted by the PR-gates workflow after matrix
-  expansion. In this repository, that means the ruleset should reference concrete names such as
-  `Lint on Python 3.13`, not the template string shown in the YAML.
+- GitHub required checks are tied to the exact job names emitted by the PR-gates workflow after
+  matrix expansion. In this repository, that means branch protection should reference concrete names
+  such as `Lint on Python 3.13`, not the template string shown in the YAML.
 - Treat version-specific and OS-specific names in this document as current examples, not permanent
-  policy. When the support matrix changes, refresh the exact examples here and in the GitHub ruleset
-  UI to match the emitted checks.
+  policy. When the support matrix changes, refresh the exact examples here and in the GitHub branch
+  protection UI to match the emitted checks.
 - The heavier CI jobs run only after successful push completions of `PR Gates` on `main`, `develop`,
   `release/*`, and `hotfix/*`. Do not configure those job names as required PR checks unless you
   also change their trigger model.
 - The local `no-commit-to-branch` pre-commit hook should protect `main` and `develop`, but it is
-  only a contributor convenience. GitHub rulesets remain authoritative.
+  only a contributor convenience. GitHub branch protection remains authoritative.
