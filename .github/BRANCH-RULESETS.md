@@ -18,59 +18,38 @@ authoritative enforcement layer.
 
 Choose the required-check baseline that matches how the repository accepts pull requests.
 
-Because `.github/workflows/ci.yml` uses matrices for Python versions, docs builders, and operating
-systems, GitHub exposes expanded matrix job names in the ruleset UI rather than the template names
-shown in the YAML. Select those expanded names when configuring required checks.
+Because `.github/workflows/pr.yml` and `.github/workflows/ci.yml` use matrix-expanded job names,
+GitHub exposes the expanded names in the ruleset UI rather than the template names shown in the
+YAML. Select those expanded names when configuring required checks.
 
-### Internal Or Trusted Baseline
+The heavier post-merge validation now lives in `.github/workflows/ci.yml`, where it
+chains from successful push completions of `PR Gates`. Those checks should usually stay advisory
+for pull-request rulesets because they do not run on `pull_request`.
 
-Use this baseline when protected branches primarily receive pushes and pull requests from trusted
-repository collaborators, where the distribution build job is expected to run.
+### Pull Request Baseline
+
+Use this baseline for protected-branch merge gates. It covers the checks that run for both
+`pull_request` and `merge_group` in `pr.yml`.
 
 #### Policy Categories
 
-- Lint on the primary supported Python line
+- Linting on the primary supported Python line
+- Docstring linting on the primary supported Python line
 - Tests on the primary supported Python line
 - Type-checking on the primary supported Python line
 - HTML docs build
-- One non-Linux smoke install job
-- Distribution build validation
 
 These categories define the minimum merge gate for protected branches.
 
 #### Current Resolved Check Names
 
-In the current CI workflow, the baseline above resolves to:
+In the current PR-gates workflow, the baseline above resolves to:
 
 - `Lint on Python 3.13`
 - `Test on Python 3.13`
+- `Doclint on Python 3.13`
 - `Type-check on Python 3.13`
 - `Build docs (html)`
-- `Smoke install on macos-latest`
-- `Build distributions`
-
-### Public Or Fork-Friendly Baseline
-
-Use this baseline when protected branches regularly receive pull requests from forks, because the
-`Build distributions` job is conditionally skipped for fork-origin pull requests in CI.
-
-#### Policy Categories
-
-- Lint on the primary supported Python line
-- Tests on the primary supported Python line
-- Type-checking on the primary supported Python line
-- HTML docs build
-- One non-Linux smoke install job
-
-#### Current Resolved Check Names
-
-In the current CI workflow, the fork-friendly baseline resolves to:
-
-- `Lint on Python 3.13`
-- `Test on Python 3.13`
-- `Type-check on Python 3.13`
-- `Build docs (html)`
-- `Smoke install on macos-latest`
 
 Additional CI jobs are still useful, but they should usually stay advisory unless you intentionally
 want a stricter gate.
@@ -79,28 +58,34 @@ want a stricter gate.
 
 - Lint on additional supported Python lines
 - Tests on additional supported Python lines
-- Docstring linting
 - Non-HTML docs builders
-- The second cross-platform smoke install job
+- Cross-platform smoke install jobs
+- Distribution build validation
 
 ### Current Advisory Examples
 
-In the current CI workflow, those advisory categories resolve to:
+In the current PR-gates workflow, those advisory categories resolve to:
 
 - `Lint on Python 3.14`
 - `Test on Python 3.14`
-- `Doclint on Python 3.13`
+
+In the current CI workflow, those advisory categories also include:
+
 - `Build docs (epub)`
 - `Build docs (linkcheck)`
+- `Smoke install on macos-latest`
 - `Smoke install on windows-latest`
+- `Build distributions`
 
 If you want a stricter protected-branch gate, the natural next checks to add are:
 
 - Lint on the next supported Python line
 - Tests on the next supported Python line
-- The second cross-platform smoke install job
+- One non-Linux smoke install job from `ci.yml`
+- The post-merge `Build docs (epub)` job
 
-That keeps the matrix-driven coverage intact without abandoning the DRY CI layout.
+That keeps the staged PR-gates and CI layout intact without collapsing everything back into a single
+required workflow.
 
 ## Shared Ruleset Baseline
 
@@ -112,7 +97,7 @@ Apply this baseline to both protected branches:
 - Require status checks to pass before merging
 - Require branches to be up to date before merging
 - Add the required checks listed above
-- If merge queue is enabled, keep the `merge_group` trigger in CI so the same checks run for queued
+- If merge queue is enabled, keep the `merge_group` trigger in PR Gates so the same checks run for queued
   merges
 
 In GitHub, these controls are typically split across pull request rules, status check rules, and
@@ -139,10 +124,9 @@ Branch-specific additions:
 
 Recommended baseline:
 
-- Prefer the internal or trusted baseline when `main` is maintained by repository collaborators and
-  release-gating checks are expected to run.
-- If `main` regularly accepts fork-origin pull requests, use the public or fork-friendly baseline
-  instead.
+- Require the full pull-request baseline from `pr.yml`.
+- Keep `Build distributions` and the cross-platform smoke jobs advisory unless you intentionally
+  want post-merge validation to block promotion decisions outside the ruleset.
 
 Optional hardening:
 
@@ -162,8 +146,9 @@ Branch-specific additions:
 
 Recommended baseline:
 
-- Prefer the public or fork-friendly baseline unless `develop` is restricted to trusted in-repo
-  collaborators.
+- Require the full pull-request baseline from `pr.yml`.
+- Keep the heavier CI workflow advisory so `develop` stays fast enough for normal GitFlow
+  integration traffic.
 
 Optional hardening:
 
@@ -201,13 +186,14 @@ With that configuration in place:
 
 ## Maintenance Notes
 
-- GitHub required checks are tied to the exact job names emitted by the CI workflow after matrix
+- GitHub required checks are tied to the exact job names emitted by the PR-gates workflow after matrix
   expansion. In this repository, that means the ruleset should reference concrete names such as
   `Lint on Python 3.13`, not the template string shown in the YAML.
 - Treat version-specific and OS-specific names in this document as current examples, not permanent
   policy. When the support matrix changes, refresh the exact examples here and in the GitHub ruleset
   UI to match the emitted checks.
-- The `Build distributions` job is conditionally skipped for pull requests from forks. Prefer the
-  public or fork-friendly baseline for branches that regularly accept external fork PRs.
+- The heavier CI jobs run only after successful push completions of `PR Gates` on `main`, `develop`,
+  `release/*`, and `hotfix/*`. Do not configure those job names as required PR checks unless you
+  also change their trigger model.
 - The local `no-commit-to-branch` pre-commit hook should protect `main` and `develop`, but it is
   only a contributor convenience. GitHub rulesets remain authoritative.
