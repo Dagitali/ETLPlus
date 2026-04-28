@@ -33,7 +33,7 @@ the authoritative enforcement layer in the current repository configuration.
 
 ## Recommended Required Checks
 
-Choose the required-check baseline that matches how the repository accepts pull requests.
+Choose the required-check baseline that matches how the repository accepts pull requests (PRs).
 
 Because `.github/workflows/pr.yml` and `.github/workflows/ci.yml` both use matrices for Python
 versions and docs builders, GitHub exposes expanded matrix job names in the branch protection UI
@@ -87,7 +87,6 @@ PR-gate job names as required checks:
 
 - Lint on additional supported Python lines
 - Tests on additional supported Python lines
-- Docstring linting
 - Non-HTML docs builders
 - Cross-platform smoke install jobs
 - Distribution build validation
@@ -120,7 +119,7 @@ a single required workflow.
 
 Apply this baseline to both protected branches:
 
-- Require a pull request before merging
+- Require a PR before merging
 - Dismiss stale approvals when new commits are pushed
 - Require conversation resolution before merging
 - Require status checks to pass before merging
@@ -129,7 +128,7 @@ Apply this baseline to both protected branches:
 - If merge queue is enabled, keep the `merge_group` trigger in PR Gates so the same checks run for queued
   merges
 
-In GitHub, these controls are typically split across pull request rules, status check rules, and
+In GitHub, these controls are typically split across PR rules, status check rules, and
 branch protections.
 
 ### Branch Protections
@@ -187,9 +186,8 @@ Optional hardening:
 
 ## How To Disallow Direct Pushes
 
-The reliable way to disallow direct pushes is to protect the branch and require pull requests. CI
-alone cannot block a normal direct push after the fact, because GitHub Actions runs only after the
-push exists.
+The reliable way to disallow direct pushes is to protect the branch and require PRs. CI alone cannot
+block a normal direct push after the fact, because GitHub Actions runs only after the push exists.
 
 This repository currently applies these controls with classic branch protection on `main` and
 `develop`, not repository rulesets.
@@ -199,13 +197,13 @@ In GitHub:
 1. Open repository `Settings`.
 2. Open `Branches`.
 3. Open the branch protection rule for `main` or `develop`.
-6. Enable `Require a pull request before merging`.
-7. For `main`, enable `Require review from Code Owners`.
-8. Enable `Require status checks to pass before merging`.
-9. Enable `Require branches to be up to date before merging`.
-10. Enable `Block force pushes`.
-11. Enable `Block deletions`.
-12. Remove bypass actors unless there is a strict operational need.
+4. Enable `Require a PR before merging`.
+5. For `main`, enable `Require review from Code Owners`.
+6. Enable `Require status checks to pass before merging`.
+7. Enable `Require branches to be up to date before merging`.
+8. Enable `Block force pushes`.
+9. Enable `Block deletions`.
+10. Remove bypass actors unless there is a strict operational need.
 
 ## How To Update Required Checks In GitHub
 

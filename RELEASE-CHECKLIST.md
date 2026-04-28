@@ -84,6 +84,8 @@ release.
 - The Python Package Index (PyPI) trusted publisher must point at `.github/workflows/cd.yml`
   with the `pypi` GitHub environment; pointing it at other GitHub Actions workflows will cause
   trusted publishing to fail.
+- Release expectations and versioning rules are documented in `RELEASE-POLICY.md`.
+- The workflow split and trigger model are documented in `CI-CD-WORKFLOWS.md`.
 - The shipped-files item is now closed for the release path because distribution builds and artifact
   audits run in CI from a tracked checkout, so defunct, backup, and scratch files that are not part
   of the committed tree are not part of tagged release artifacts.
@@ -91,6 +93,9 @@ release.
   for the latest published stable version number when preparing a tag.
 - The completed items in the archived sections landed across the path to `v1.0.0` and the early
   stable releases; they are retained here as audit history rather than as pending work.
+- Protected branches change the release maintainer workflow: treat GitHub pull requests as the
+  authoritative path for landing `release/*` and `hotfix/*` branches on `main`, and then sync
+  `main` back into `develop` intentionally after the protected `main` update is complete.
 - The stable-surface trimming work now treats CLI support modules and command wiring, storage
   registry/base plumbing, connector support modules, the file-handler registry, database typing
   helpers, API request manager plumbing, and the top-level `etlplus.api` support modules (`auth`,
@@ -235,6 +240,24 @@ These are the active follow-up items for the `v1.x` line.
   query affordances.
 - Prefer low-risk follow-up that reduces support load without narrowing the stable surface by
   accident.
+
+### Protected-Branch Release Sequence
+
+When `main` and `develop` are protected, use this sequence instead of treating a local GitFlow
+finish command as the final source of truth:
+
+1. Stabilize the `release/*` branch locally.
+2. Open and merge a pull request from `release/*` into `main`.
+3. Create or move the release tag so it points at the merged `main` commit that GitHub now treats
+   as authoritative.
+4. Push the annotated tag so `.github/workflows/cd.yml` runs from the released `main` commit.
+5. Sync the resulting `main` state back into `develop` explicitly.
+
+That sequence keeps branch protection, PR checks, release tagging, and the tag-triggered CD
+workflow aligned.
+
+See also `.github/MAINTAINER-RUNBOOKS.md` for the maintainer playbook covering feature, release,
+hotfix, and post-release sync flows.
 
 ### Next Minor Release
 
