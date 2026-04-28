@@ -57,11 +57,11 @@ Use for release stabilization and promotion.
 3. Push the release branch to the remote GitHub repository.
 4. Open a PR from the remote `release/*` branch into the remote `main` branch.
 5. Merge the PR on GitHub after the required checks pass.
-6. Create or move the annotated release tag locally so it points at the merged `main` commit that
-  now exists on the remote repository.
-7. Push the annotated release tag to GitHub.
-8. Confirm `.github/workflows/cd.yml` runs on GitHub from that pushed tag.
-9. Sync the resulting remote `main` state back into `develop` explicitly.
+6. Fetch the newly merged remote `main` commit into your local repository.
+7. Create or move the annotated release tag locally so it points at that fetched `main` commit.
+8. Push the annotated release tag to GitHub.
+9. Confirm `.github/workflows/cd.yml` runs on GitHub from that pushed tag.
+10. Sync the resulting remote `main` state back into `develop` explicitly.
 
 ## Hotfix Branch Runbook
 
@@ -72,10 +72,10 @@ Use for production fixes that must land on `main` first.
 3. Push the hotfix branch to the remote GitHub repository.
 4. Open a PR from the remote `hotfix/*` branch into the remote `main` branch.
 5. Merge the PR in GitHub after the required checks pass.
-6. Create or move the annotated hotfix tag locally so it points at the merged `main` commit that
-  now exists on the remote repository.
-7. Push the annotated hotfix tag to GitHub.
-8. Sync the resulting remote `main` state back into `develop` explicitly.
+6. Fetch the newly merged remote `main` commit into your local repository.
+7. Create or move the annotated hotfix tag locally so it points at that fetched `main` commit.
+8. Push the annotated hotfix tag to GitHub.
+9. Sync the resulting remote `main` state back into `develop` explicitly.
 
 ## Sync Main Back To Develop
 
@@ -87,7 +87,8 @@ Preferred sequence:
 1. Fetch or pull the latest remote `main` and `develop` state into your local repository.
 2. Create a temporary local sync branch from your updated local `develop` branch if you want a
   reviewable sync PR.
-3. Merge local `main` into that local sync branch or directly into your local `develop` branch.
+3. Merge your updated local tracking copy of `main` into that local sync branch or directly into
+   your local `develop` branch.
 4. If branch protection or review policy requires GitHub review, push the sync branch to GitHub and
    open a PR into the remote `develop` branch.
 5. Merge on GitHub once checks pass, or push the updated local `develop` branch only if your branch
