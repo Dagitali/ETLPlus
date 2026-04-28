@@ -11,6 +11,8 @@ email, or any other method with the owners of this repository before making a ch
 - [Contributing Guidelines](#contributing-guidelines)
   - [Ways to Contribute](#ways-to-contribute)
   - [Merge Request Process](#merge-request-process)
+  - [Protected-Branch GitFlow Workflow](#protected-branch-gitflow-workflow)
+  - [Maintainer Runbooks](#maintainer-runbooks)
   - [Code of Conduct](#code-of-conduct)
   - [Type Checking](#type-checking)
   - [Typing Philosophy](#typing-philosophy)
@@ -56,6 +58,59 @@ reproducible bug reports are often as valuable as small code changes.
    recommended baseline is one approval for `develop` and two approvals (one approval for small
    teams) for `main`. If you do not have permission to merge, request a maintainer review and
    handoff.
+7. For release expectations and versioning rules, consult [RELEASE-POLICY.md](RELEASE-POLICY.md).
+8. For the workflow split and trigger model, consult [CI-CD-WORKFLOWS.md](CI-CD-WORKFLOWS.md).
+
+## Protected-Branch GitFlow Workflow
+
+ETLPlus uses GitFlow-style branch roles, but protected branches change how those branches should be
+finished.
+
+- Treat `feature/*`, `release/*`, and `hotfix/*` as working branches.
+- Treat `develop` and `main` as GitHub-managed integration branches.
+- Do not rely on `git flow feature finish` or `git flow release finish` as the authoritative way
+  to update protected branches. Those commands create local merges, but protected branches and
+  required checks are enforced in GitHub.
+
+Preferred flow:
+
+1. Create a topic branch from the correct base branch.
+2. Push the topic branch.
+3. Open a pull request into the protected target branch.
+4. Let `.github/workflows/pr.yml` provide the required PR checks.
+5. Merge the pull request in GitHub after the branch protection requirements pass.
+
+Recommended branch mapping:
+
+- `feature/*` -> pull request into `develop`
+- `release/*` -> pull request into `main`
+- `hotfix/*` -> pull request into `main`
+
+After a release or hotfix lands on `main`, sync that change back into `develop` deliberately rather
+than assuming a local GitFlow finish command already made both protected branches authoritative.
+
+For small/solo maintainer teams, using pull requests for both feature and release branches is still
+normal once protected branches are enabled. The repository owner can keep the PR workflow while
+choosing lower-friction settings, such as fewer required approvals on `develop`, or an admin bypass
+policy that is intentionally narrow and documented.
+
+## Maintainer Runbooks
+
+The repository keeps maintainer runbooks in
+[.github/MAINTAINER-RUNBOOKS.md](.github/MAINTAINER-RUNBOOKS.md).
+
+That file is intended for project-local operating procedures, such as:
+
+- Feature branch integration under protected branches
+- Release and hotfix branch finishing
+- Syncing `main` back into `develop`
+- Tagging and tag-triggered CD behavior
+
+It lives outside `docs/source/` on purpose so it is version-controlled with the repository without
+being published to Read the Docs.
+
+Private operator procedures, credentials, incident-response steps, and recovery playbooks should
+live outside the repository.
 
 ## Code of Conduct
 
