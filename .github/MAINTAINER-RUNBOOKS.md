@@ -32,8 +32,9 @@ Local `git flow feature finish` and `git flow release finish` may still be usefu
 shortcuts for branch cleanup or experimentation, but they should not be treated as the final source
 of truth for protected branches.
 
-Prefer `git flow ... start` for creating working branches. Treat `git flow ... finish` as optional
-local cleanup only after the authoritative GitHub PR merge is complete.
+Prefer `git flow ... start` for creating working branches. Do not treat `git flow ... finish` as a
+cleanup step for this protected-branch workflow, because it performs local merges into integration
+branches. After the authoritative GitHub PR merge, prefer manual local branch cleanup instead.
 
 This file stays at the policy and high-level workflow layer. Sensitive operator details should live
 outside the public repository.
@@ -52,8 +53,8 @@ Use for normal development work.
 6. Merge the PR in GitHub.
 7. Delete the remote feature branch on GitHub after merge if it is no longer needed, and clean up
    your local branch when convenient.
-   Optional local cleanup: `git flow feature finish my-change` only after the GitHub merge, or
-   delete the local branch manually.
+   Preferred local cleanup: delete the local feature branch manually after updating your local
+   branch state.
 
 ## Release Branch Runbook
 
