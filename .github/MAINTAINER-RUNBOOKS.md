@@ -1,6 +1,6 @@
 # Maintainer Runbooks
 
-Maintainer-facing runbooks for working with protected branches, GitHub pull requests, and
+Maintainer-facing runbooks for working with protected branches, GitHub pull requests (PRs), and
 tag-triggered releases.
 
 This file is intentionally kept outside `docs/source/` so it lives with the repository without
@@ -23,8 +23,8 @@ branches.
 
 The important consequence is:
 
-- working happens on `feature/*`, `release/*`, and `hotfix/*`
-- authoritative integration happens through GitHub pull requests
+- Working happens on `feature/*`, `release/*`, and `hotfix/*`
+- Authoritative integration happens through PRs
 - `develop` and `main` should be treated as GitHub-managed integration branches, not as branches
   that are finished locally and pushed afterward
 
@@ -39,37 +39,43 @@ outside the public repository.
 
 Use for normal development work.
 
-1. Create a feature branch from `develop`.
-2. Commit and push the branch.
-3. Open a pull request from `feature/*` into `develop`.
-4. Let `.github/workflows/pr.yml` satisfy the required PR checks.
-5. Merge the PR in GitHub.
-6. Delete the feature branch after merge if it is no longer needed.
+1. Create a local feature branch from your local `develop` branch.
+2. Commit your changes locally on that feature branch.
+3. Push the feature branch to the remote GitHub repository.
+4. Open a PR from the remote `feature/*` branch into the remote `develop` branch.
+5. Let `.github/workflows/pr.yml` run and satisfy the required checks on GitHub.
+6. Merge the PR in GitHub.
+7. Delete the remote feature branch on GitHub after merge if it is no longer needed, and clean up
+   your local branch when convenient.
 
 ## Release Branch Runbook
 
 Use for release stabilization and promotion.
 
-1. Create `release/<version>` from `develop`.
-2. Stabilize the release branch with only release-targeted changes.
-3. Open a pull request from `release/*` into `main`.
-4. Merge the PR in GitHub after the required checks pass.
-5. Create or move the annotated release tag so it points at the merged `main` commit.
-6. Push the tag.
-7. Confirm `.github/workflows/cd.yml` runs from that tag.
-8. Sync the resulting `main` state back into `develop` explicitly.
+1. Create a local `release/<version>` branch from your local `develop` branch.
+2. Commit release-targeted stabilization changes locally on that release branch.
+3. Push the release branch to the remote GitHub repository.
+4. Open a PR from the remote `release/*` branch into the remote `main` branch.
+5. Merge the PR on GitHub after the required checks pass.
+6. Create or move the annotated release tag locally so it points at the merged `main` commit that
+  now exists on the remote repository.
+7. Push the annotated release tag to GitHub.
+8. Confirm `.github/workflows/cd.yml` runs on GitHub from that pushed tag.
+9. Sync the resulting remote `main` state back into `develop` explicitly.
 
 ## Hotfix Branch Runbook
 
 Use for production fixes that must land on `main` first.
 
-1. Create `hotfix/<version>` from `main`.
-2. Apply and validate the fix.
-3. Open a pull request from `hotfix/*` into `main`.
-4. Merge the PR in GitHub after the required checks pass.
-5. Create or move the annotated hotfix tag so it points at the merged `main` commit.
-6. Push the tag.
-7. Sync the resulting `main` state back into `develop` explicitly.
+1. Create a local `hotfix/<version>` branch from your local `main` branch.
+2. Apply and validate the fix locally on that hotfix branch.
+3. Push the hotfix branch to the remote GitHub repository.
+4. Open a PR from the remote `hotfix/*` branch into the remote `main` branch.
+5. Merge the PR in GitHub after the required checks pass.
+6. Create or move the annotated hotfix tag locally so it points at the merged `main` commit that
+  now exists on the remote repository.
+7. Push the annotated hotfix tag to GitHub.
+8. Sync the resulting remote `main` state back into `develop` explicitly.
 
 ## Sync Main Back To Develop
 
@@ -78,27 +84,31 @@ protected branches are already aligned.
 
 Preferred sequence:
 
-1. Pull the latest `main` and `develop` locally.
-2. Create a temporary sync branch from `develop` if you want a reviewable sync PR.
-3. Merge `main` into that sync branch or directly into local `develop`.
-4. If branch protection or review policy requires it, open a PR into `develop`.
-5. Merge once checks pass.
+1. Fetch or pull the latest remote `main` and `develop` state into your local repository.
+2. Create a temporary local sync branch from your updated local `develop` branch if you want a
+  reviewable sync PR.
+3. Merge local `main` into that local sync branch or directly into your local `develop` branch.
+4. If branch protection or review policy requires GitHub review, push the sync branch to GitHub and
+   open a PR into the remote `develop` branch.
+5. Merge on GitHub once checks pass, or push the updated local `develop` branch only if your branch
+  protection model intentionally allows that path.
 
 ## Tagging And CD
 
 `cd.yml` is tag-driven.
 
 - A successful `ci.yml` run does not trigger `cd.yml`.
-- `cd.yml` runs only when a `v*.*.*` tag is pushed.
-- The tag should point at the authoritative merged `main` commit for the release.
-- Use annotated tags for releases.
+- `cd.yml` runs only when a local `v*.*.*` tag is pushed to GitHub.
+- The local tag should point at the authoritative merged `main` commit that already exists on the
+  remote repository for the release.
+- Use annotated tags for releases before pushing them to GitHub.
 
 ## Solo-Maintainer Notes
 
-It is normal for a solo maintainer to use pull requests for both feature and release branches once
-protected branches are enabled.
+It is normal for a solo maintainer to use PRs for both feature and release branches once protected
+branches are enabled.
 
-The pull request still provides value even without another human reviewer:
+The PR still provides value even without another human reviewer:
 
 - Required checks run on the proposed branch change before the protected branch moves
 - GitHub becomes the authoritative merge surface for protected branches
