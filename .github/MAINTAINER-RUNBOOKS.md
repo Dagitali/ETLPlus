@@ -28,9 +28,9 @@ The important consequence is:
 - `develop` and `main` should be treated as GitHub-managed integration branches, not as branches
   that are finished locally and pushed afterward
 
-Local `git flow feature finish` and `git flow release finish` may still be useful as personal
-shortcuts for branch cleanup or experimentation, but they should not be treated as the final source
-of truth for protected branches.
+Local `git flow feature finish` and `git flow release finish` may still be useful for personal
+experimentation in a local clone, but they should not be treated as the final source of truth for
+protected branches.
 
 Prefer `git flow ... start` for creating working branches. Do not treat `git flow ... finish` as a
 cleanup step for this protected-branch workflow, because it performs local merges into integration
