@@ -71,6 +71,7 @@ package and command-line interface for data extraction, validation, transformati
   - [Contributing](#contributing)
   - [Documentation](#documentation)
     - [Python Packages/Subpackage](#python-packagessubpackage)
+    - [Maintainer Docs](#maintainer-docs)
     - [Community Health](#community-health)
     - [Other](#other)
   - [Acknowledgments](#acknowledgments)
@@ -132,6 +133,10 @@ The following are not part of the stable execution surface unless explicitly pro
 
 Maintainers handling packaging, CI, versioned docs, or release gating should consult
 [`RELEASE-CHECKLIST.md`](RELEASE-CHECKLIST.md).
+
+Maintainer-facing policy and automation references are also available in
+[`RELEASE-POLICY.md`](RELEASE-POLICY.md), [`CI-CD-WORKFLOWS.md`](CI-CD-WORKFLOWS.md), and
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Features
 
@@ -1196,6 +1201,15 @@ Navigate to detailed documentation for each subpackage:
 - [etlplus.templates](etlplus/templates/README.md): SQL and DDL template helpers
 - [etlplus.workflow](etlplus/workflow/README.md): Helpers for data connectors, pipelines, jobs, and
   profiles
+
+### Maintainer Docs
+
+- [Release Policy And Versioning](RELEASE-POLICY.md): Release expectations, semantic-version-style
+  rules, and deprecation posture
+- [CI/CD Workflow Map](CI-CD-WORKFLOWS.md): Explanation of `pr.yml`, `ci.yml`, and `cd.yml`
+- [Release Checklist And Stable-Line Maintenance](RELEASE-CHECKLIST.md): Release-readiness execution guidance and stable-line follow-up tracking
+- [Maintainer Runbooks](.github/MAINTAINER-RUNBOOKS.md): Maintainer workflow guidance for protected
+  branches and tag-driven releases
 
 ### Community Health
 
