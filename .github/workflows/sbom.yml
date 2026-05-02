@@ -32,6 +32,9 @@ on:
 
 permissions: {}
 
+env:
+  DEFAULT_PYTHON_VERSION: '3.13'
+
 jobs:
   generate-sbom:
     name: Generate CycloneDX SBOM
@@ -41,7 +44,7 @@ jobs:
     steps:
       - uses: ./.github/actions/checkout-and-bootstrap
         with:
-          python-version: '3.13'
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
           python-bootstrap: "."
       - name: Install SBOM generator
         run: |
