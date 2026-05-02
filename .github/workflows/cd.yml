@@ -44,6 +44,7 @@ jobs:
     permissions: &permissions_read
       contents: read
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
       - uses: ./.github/actions/build-and-upload-dist
         with:
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
@@ -56,6 +57,7 @@ jobs:
         builder: [html, epub]
     permissions: *permissions_read
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
       - uses: ./.github/actions/build-docs-target
         with:
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
@@ -68,10 +70,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: ./.github/actions/checkout-and-bootstrap
-        with:
-          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
-          python-bootstrap: '.'
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
       - &download_dist_step
         uses: ./.github/actions/download-dist-artifacts
       - name: Publish GitHub release
@@ -92,10 +91,7 @@ jobs:
       name: pypi
       url: https://pypi.org/project/etlplus/
     steps:
-      - uses: ./.github/actions/checkout-and-bootstrap
-        with:
-          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
-          python-bootstrap: '.'
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
       - *download_dist_step
       - name: Publish to PyPI
         # PyPI must trust `.github/workflows/cd.yml`.
