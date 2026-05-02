@@ -34,6 +34,9 @@ on:
 
 permissions: {}
 
+env:
+  DEFAULT_PYTHON_VERSION: '3.13'
+
 jobs:
   build:
     name: Build tagged distributions
@@ -41,23 +44,9 @@ jobs:
     permissions: &permissions_read
       contents: read
     steps:
-      - &checkout_step
-        name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
+      - uses: ./.github/actions/build-and-upload-dist
         with:
-          fetch-depth: 0
-      - uses: ./.github/actions/python-bootstrap
-        with:
-          python-version: '3.13'
-          python-bootstrap: 'build twine'
-      - uses: ./.github/actions/build-and-verify-dist
-      - uses: ./.github/actions/wheel-smoke
-      - name: Upload distributions
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # Pinned v7.0.0
-        with:
-          name: dist-artifacts
-          path: dist/*
-          if-no-files-found: error
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
 
   document:
     name: Build docs (${{ matrix.builder }})
@@ -67,13 +56,9 @@ jobs:
         builder: [html, epub]
     permissions: *permissions_read
     steps:
-      - *checkout_step
-      - uses: ./.github/actions/python-bootstrap
+      - uses: ./.github/actions/build-docs-target
         with:
-          python-version: '3.13'
-          python-bootstrap: "-e .[docs]"
-      - uses: ./.github/actions/sphinx-build
-        with:
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
           builder: ${{ matrix.builder }}
 
   release:
@@ -83,13 +68,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - *checkout_step
-      - &download_dist_step
-        name: Download distributions
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # Pinned v8.0.1
+      - uses: ./.github/actions/checkout-and-bootstrap
         with:
-          name: dist-artifacts
-          path: dist
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
+          python-bootstrap: '.'
+      - &download_dist_step
+        uses: ./.github/actions/download-dist-artifacts
       - name: Publish GitHub release
         uses: softprops/action-gh-release@1853d73993c8ca1b2c9c1a7fede39682d0ab5c2a  # Pinned v2.5.3
         with:
@@ -108,7 +92,10 @@ jobs:
       name: pypi
       url: https://pypi.org/project/etlplus/
     steps:
-      - *checkout_step
+      - uses: ./.github/actions/checkout-and-bootstrap
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
+          python-bootstrap: '.'
       - *download_dist_step
       - name: Publish to PyPI
         # PyPI must trust `.github/workflows/cd.yml`.
