@@ -6,10 +6,10 @@
 # GitHub Actions workflow for continuous integration (CI).
 #
 # Responsibilities
-# - Run slower post-merge validation after the PR-gate workflow succeeds on
-#   protected or release-oriented GitFlow branches.
-# - Build non-PR docs targets, cross-platform install smoke coverage, and
-#   packaged distribution validation.
+# - Run pre-merge validation for pull requests targeting the long-lived GitFlow
+#   branches.
+# - Build non-HTML docs targets, cross-platform install smoke coverage, and
+#   packaged distribution validation before those changes land.
 #
 # Maintainer Notes
 # - Global permissions are intentionally omitted; each job declares the minimum
@@ -19,36 +19,38 @@
 # - Keep required pull-request and merge-queue gates in `pr.yml`.
 # - This workflow intentionally complements, rather than replaces, the lighter
 #   integration checks that run earlier in the development loop.
+# - The dynamic run name is part of the workflow contract: it should identify
+#   the short-lived source branch and the long-running target branch for PR
+#   review clarity.
 
 ---
 
 name: CI
 
+run-name: >-
+  ${{
+    github.event_name == 'pull_request' &&
+    format('CI: {0} -> {1}', github.head_ref, github.base_ref) ||
+    'CI: manual dispatch'
+  }}
+
 on:
-  workflow_run:
-    workflows: ["PR Gates"]
-    types: [completed]
+  pull_request:
     branches:
-      # Protected and release-oriented GitFlow branches
+      # Long-lived GitFlow branches
       - main
       - develop
-      - '**/release/**'
-      - '**/hotfix/**'
   workflow_dispatch:
 
 permissions: {}
 
 env:
   DEFAULT_PYTHON_VERSION: '3.13'
-  WORKFLOW_REF: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   document:
     name: Build docs (${{ matrix.builder }})
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push')
     strategy:
       matrix:
         builder: [epub, linkcheck]
@@ -56,8 +58,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
-        with:
-          ref: ${{ env.WORKFLOW_REF }}
       - uses: ./.github/actions/build-docs-target
         with:
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
@@ -66,17 +66,12 @@ jobs:
   smoke-cross-platform:
     name: Smoke install on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    if: github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push')
     strategy:
       matrix:
         os: [macos-latest, windows-latest]
     permissions: *permissions_read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
-        with:
-          ref: ${{ env.WORKFLOW_REF }}
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
@@ -90,15 +85,10 @@ jobs:
   build:
     name: Build distributions
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push')
     needs: [document, smoke-cross-platform]
     permissions: *permissions_read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
-        with:
-          ref: ${{ env.WORKFLOW_REF }}
       - uses: ./.github/actions/build-and-upload-dist
         with:
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
