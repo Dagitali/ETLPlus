@@ -38,6 +38,10 @@ on:
 
 permissions: {}
 
+env:
+  DEFAULT_PYTHON_VERSION: '3.13'
+  WORKFLOW_REF: ${{ github.event.workflow_run.head_sha || github.sha }}
+
 jobs:
   document:
     name: Build docs (${{ matrix.builder }})
@@ -51,13 +55,10 @@ jobs:
     permissions: &permissions_read
       contents: read
     steps:
-      - uses: ./.github/actions/checkout-and-bootstrap
+      - uses: ./.github/actions/build-docs-target
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-          python-version: '3.13'
-          python-bootstrap: "-e .[docs]"
-      - uses: ./.github/actions/sphinx-build
-        with:
+          ref: ${{ env.WORKFLOW_REF }}
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
           builder: ${{ matrix.builder }}
 
   smoke-cross-platform:
@@ -73,8 +74,8 @@ jobs:
     steps:
       - uses: ./.github/actions/checkout-and-bootstrap
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-          python-version: '3.13'
+          ref: ${{ env.WORKFLOW_REF }}
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
           python-bootstrap: '.'
       - name: Verify CLI entrypoint
         shell: bash
@@ -91,16 +92,7 @@ jobs:
     needs: [document, smoke-cross-platform]
     permissions: *permissions_read
     steps:
-      - uses: ./.github/actions/checkout-and-bootstrap
+      - uses: ./.github/actions/build-and-upload-dist
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-          python-version: '3.13'
-          python-bootstrap: "build twine"
-      - uses: ./.github/actions/build-and-verify-dist
-      - uses: ./.github/actions/wheel-smoke
-      - name: Upload distributions
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # Pinned v7.0.0
-        with:
-          name: dist-artifacts
-          path: dist/*
-          if-no-files-found: error
+          ref: ${{ env.WORKFLOW_REF }}
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
