@@ -25,6 +25,7 @@ The important consequence is:
 
 - Working happens on `feature/*`, `release/*`, and `hotfix/*`
 - Authoritative integration happens through PRs
+- PR targets should follow the GitFlow branch map enforced by the PR-gates workflow
 - `develop` and `main` should be treated as GitHub-managed integration branches, not as branches
   that are finished locally and pushed afterward
 
@@ -48,7 +49,8 @@ Use for normal development work.
 2. Commit your changes locally on that feature branch.
 3. Push the feature branch to the remote GitHub repository.
    Example: `git push -u origin feature/my-change`
-4. Open a PR from the remote `feature/*` branch into the remote `develop` branch.
+4. Open a PR from the remote `feature/*` branch into the remote `develop` branch. The PR-gates
+   workflow rejects `feature/*` pull requests that target `main`.
 5. Let `.github/workflows/pr.yml` run and satisfy the required checks on GitHub.
 6. Merge the PR in GitHub.
 7. Delete the remote feature branch on GitHub after merge if it is no longer needed, and clean up
@@ -65,7 +67,8 @@ Use for release stabilization and promotion.
 2. Commit release-targeted stabilization changes locally on that release branch.
 3. Push the release branch to the remote GitHub repository.
    Example: `git push -u origin release/1.13.6`
-4. Open a PR from the remote `release/*` branch into the remote `main` branch.
+4. Open a PR from the remote `release/*` branch into the remote `main` branch. The PR-gates workflow
+   reserves `main` for `release/*` and `hotfix/*` pull requests.
 5. Merge the PR on GitHub after the required checks pass.
 6. Fetch the newly merged remote `main` commit into your local repository.
    Example: `git fetch origin main`
@@ -86,7 +89,8 @@ Use for production fixes that must land on `main` first.
 2. Apply and validate the fix locally on that hotfix branch.
 3. Push the hotfix branch to the remote GitHub repository.
    Example: `git push -u origin hotfix/1.13.7`
-4. Open a PR from the remote `hotfix/*` branch into the remote `main` branch.
+4. Open a PR from the remote `hotfix/*` branch into the remote `main` branch. The PR-gates workflow
+   reserves `main` for `release/*` and `hotfix/*` pull requests.
 5. Merge the PR in GitHub after the required checks pass.
 6. Fetch the newly merged remote `main` commit into your local repository.
    Example: `git fetch origin main`

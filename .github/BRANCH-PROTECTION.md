@@ -51,6 +51,7 @@ Use this baseline for protected-branch merge gates. It covers the checks that ru
 
 #### Policy Categories
 
+- GitFlow target-branch enforcement for pull requests
 - Linting on the primary supported Python line
 - Docstring linting on the primary supported Python line
 - Tests on the primary supported Python line
@@ -63,6 +64,7 @@ These categories define the minimum merge gate for protected branches.
 
 In the current PR-gates workflow, the baseline above resolves to:
 
+- `Guard PR target branch`
 - `Lint on Python 3.13`
 - `Test on Python 3.13`
 - `Doclint on Python 3.13`
@@ -77,6 +79,7 @@ want a stricter gate.
 When configuring `main` or `develop` branch protection rules in the GitHub UI, select only these
 PR-gate job names as required checks:
 
+- `Guard PR target branch`
 - `Lint on Python 3.13`
 - `Test on Python 3.13`
 - `Doclint on Python 3.13`
@@ -233,6 +236,7 @@ trigger model away from `workflow_run`.
 With that configuration in place:
 
 - Contributors push to feature, bugfix, hotfix, release, chore, ci, or docs branches
+- Feature branches cannot merge into `main` while `Guard PR target branch` is required
 - Pull requests carry the CI results
 - `main` and `develop` cannot be updated directly by ordinary pushes
 - Merges remain blocked until the required checks pass
@@ -241,12 +245,15 @@ With that configuration in place:
 
 - GitHub required checks are tied to the exact job names emitted by the PR-gates workflow after
   matrix expansion. In this repository, that means branch protection should reference concrete names
-  such as `Lint on Python 3.13`, not the template string shown in the YAML.
+  such as `Guard PR target branch` and `Lint on Python 3.13`, not the template strings shown in the
+  YAML.
 - Treat version-specific and OS-specific names in this document as current examples, not permanent
   policy. When the support matrix changes, refresh the exact examples here and in the GitHub branch
   protection UI to match the emitted checks.
 - The heavier CI jobs run only after successful push completions of `PR Gates` on `main`, `develop`,
   `release/*`, and `hotfix/*`. Do not configure those job names as required PR checks unless you
   also change their trigger model.
+- The PR-target guard intentionally enforces these GitFlow merge paths: `feature/* -> develop`,
+  `release/* -> main`, and `hotfix/* -> main`.
 - The local `no-commit-to-branch` pre-commit hook should protect `main` and `develop`, but it is
   only a contributor convenience. GitHub branch protection remains authoritative.
