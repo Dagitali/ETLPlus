@@ -23,6 +23,17 @@
 
 name: PR Gates
 
+run-name: >-
+  ${{
+    github.event_name == 'pull_request' &&
+    format('PR Gates: {0} -> {1}', github.head_ref, github.base_ref) ||
+    github.event_name == 'push' &&
+    format('PR Gates: push on {0}', github.ref_name) ||
+    github.event_name == 'merge_group' &&
+    format('PR Gates: merge queue for {0}', github.ref_name) ||
+    'PR Gates'
+  }}
+
 on:
   push:
     branches:
