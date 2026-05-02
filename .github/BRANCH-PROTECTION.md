@@ -221,6 +221,7 @@ In GitHub:
 4. Under `Require status checks to pass`, remove any stale checks emitted by the heavier CI or old
    workflow filenames.
 5. Add these required checks:
+  - `Guard PR target branch`
   - `Lint on Python 3.13`
   - `Test on Python 3.13`
   - `Doclint on Python 3.13`
