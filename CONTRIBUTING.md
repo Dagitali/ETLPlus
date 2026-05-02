@@ -76,7 +76,8 @@ Preferred flow:
 
 1. Create a topic branch from the correct base branch.
 2. Push the topic branch.
-3. Open a pull request into the protected target branch.
+3. Open a pull request into the protected target branch. Feature branches should target `develop`;
+   only `release/*` and `hotfix/*` should target `main`.
 4. Let `.github/workflows/pr.yml` provide the required PR checks.
 5. Merge the pull request in GitHub after the branch protection requirements pass.
 
@@ -272,7 +273,8 @@ If a test calls `etlplus.cli.main()` or `etlplus.ops.run.run()`, it is integrati
 - Add `@pytest.mark.smoke` and `@pytest.mark.contract` directly on modules/tests
   where intent applies.
 - Markers are declared in `pytest.ini`. Avoid introducing ad-hoc markers without adding them there.
-- For optional dependencies, prefer `pytest.importorskip("module")` so tests skip cleanly when the extra isn’t installed.
+- For optional dependencies, prefer `pytest.importorskip("module")` so tests skip cleanly when the
+  extra isn’t installed.
 - The default install includes the dependencies used by the built-in file handlers that are covered
   by the default test matrix.
 - For full local/CI coverage across the remaining scientific and specialty optional formats, install `pip install -e
