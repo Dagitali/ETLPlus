@@ -48,6 +48,7 @@ on:
 permissions: {}
 
 env:
+  DEFAULT_PYTHON_VERSION: '3.13'
   # Keep this width aligned with .ruff.toml:line-length.
   PY_LINE_LENGTH: '88'
 
@@ -135,7 +136,7 @@ jobs:
     steps:
       - uses: ./.github/actions/checkout-and-bootstrap
         with:
-          python-version: '3.13'
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
           python-bootstrap: "-e .[dev,file]"
       - name: Run pydocstyle
         run: |
@@ -155,7 +156,7 @@ jobs:
     steps:
       - uses: ./.github/actions/checkout-and-bootstrap
         with:
-          python-version: '3.13'
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
           python-bootstrap: "-e .[dev,file]"
       - name: Run mypy
         run: |
@@ -170,10 +171,7 @@ jobs:
         builder: [html]
     permissions: *permissions_read
     steps:
-      - uses: ./.github/actions/checkout-and-bootstrap
+      - uses: ./.github/actions/build-docs-target
         with:
-          python-version: '3.13'
-          python-bootstrap: "-e .[docs]"
-      - uses: ./.github/actions/sphinx-build
-        with:
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
           builder: ${{ matrix.builder }}
