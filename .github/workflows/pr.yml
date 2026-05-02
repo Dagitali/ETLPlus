@@ -59,36 +59,11 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Enforce GitFlow PR target rules
-        shell: bash
-        run: |
-          if [[ '${{ github.event_name }}' == 'merge_group' ]]; then
-            echo 'Merge group event inherits PR target validation from the queued pull requests.'
-            exit 0
-          fi
-
-          head_ref='${{ github.head_ref }}'
-          base_ref='${{ github.base_ref }}'
-
-          echo "head_ref=$head_ref"
-          echo "base_ref=$base_ref"
-
-          if [[ "$base_ref" == 'main' ]]; then
-            if [[ "$head_ref" == hotfix/* || "$head_ref" == release/* ]]; then
-              echo 'PR target is valid for main.'
-              exit 0
-            fi
-
-            echo 'Only release/* and hotfix/* branches may target main.'
-            exit 1
-          fi
-
-          if [[ "$base_ref" == 'develop' && "$head_ref" == feature/* ]]; then
-            echo 'Feature branch PR target is valid for develop.'
-            exit 0
-          fi
-
-          echo 'No GitFlow target-branch restriction matched for this PR target.'
+      - uses: ./.github/actions/pr-target-guard
+        with:
+          event-name: ${{ github.event_name }}
+          head-ref: ${{ github.head_ref }}
+          base-ref: ${{ github.base_ref }}
 
   lint:
     name: Lint on Python ${{ matrix.python-version }}
@@ -99,12 +74,7 @@ jobs:
     permissions: &permissions_read
       contents: read
     steps:
-      - &checkout_step
-        name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/python-bootstrap
+      - uses: ./.github/actions/checkout-and-bootstrap
         with:
           python-version: ${{ matrix.python-version }}
           python-bootstrap: ".[dev]"
@@ -124,8 +94,7 @@ jobs:
     strategy: *python-matrix
     permissions: *permissions_read
     steps:
-      - *checkout_step
-      - uses: ./.github/actions/python-bootstrap
+      - uses: ./.github/actions/checkout-and-bootstrap
         with:
           python-version: ${{ matrix.python-version }}
           python-bootstrap: "-e .[dev,file]"
@@ -164,8 +133,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: *permissions_read
     steps:
-      - *checkout_step
-      - uses: ./.github/actions/python-bootstrap
+      - uses: ./.github/actions/checkout-and-bootstrap
         with:
           python-version: '3.13'
           python-bootstrap: "-e .[dev,file]"
@@ -185,8 +153,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: *permissions_read
     steps:
-      - *checkout_step
-      - uses: ./.github/actions/python-bootstrap
+      - uses: ./.github/actions/checkout-and-bootstrap
         with:
           python-version: '3.13'
           python-bootstrap: "-e .[dev,file]"
@@ -203,8 +170,7 @@ jobs:
         builder: [html]
     permissions: *permissions_read
     steps:
-      - *checkout_step
-      - uses: ./.github/actions/python-bootstrap
+      - uses: ./.github/actions/checkout-and-bootstrap
         with:
           python-version: '3.13'
           python-bootstrap: "-e .[docs]"
