@@ -4,16 +4,18 @@
 # Copyright © 2026 Dagitali LLC. All rights reserved.
 #
 # Composite GitHub Action for building, validating, smoke-testing, and
-# uploading distributions.
+# uploading distributions from a checked-out workspace.
 #
 # Responsibilities
-# - Check out the requested repository ref.
+# - Install the requested Python runtime and build dependency set.
 # - Build and verify distributions from the checked-out repository.
 # - Smoke-test the built wheel and upload the resulting artifacts.
 #
 # Maintainer Notes
 # - This action preserves the repository's release safeguards by composing the
 #   existing distribution build, wheel smoke, and artifact upload steps.
+# - Workflow jobs must check out the repository before invoking this local
+#   action.
 # - External GitHub Actions are pinned to full commit SHAs to reduce supply-
 #   chain risk.
 
@@ -22,8 +24,9 @@
 name: Build And Upload Distributions
 
 description: >-
-  Checks out the requested ref, builds ETLPlus distributions, validates them,
-  smoke-tests the wheel, and uploads the artifacts.
+  Installs build dependencies, builds ETLPlus distributions, validates them,
+  smoke-tests the wheel, and uploads the artifacts from the checked-out
+  repository.
 
 inputs:
   artifact-name:
@@ -42,10 +45,6 @@ inputs:
     description: Arguments passed to "pip install" for build dependencies
     required: false
     default: 'build twine'
-  ref:
-    description: Optional git ref to check out
-    required: false
-    default: ''
   wheel-path:
     description: Glob or path passed to pip install for the built wheel
     required: false
@@ -54,11 +53,10 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: ./.github/actions/checkout-and-bootstrap
+    - uses: ./.github/actions/python-bootstrap
       with:
         python-version: ${{ inputs.python-version }}
         python-bootstrap: ${{ inputs.python-bootstrap }}
-        ref: ${{ inputs.ref }}
 
     - uses: ./.github/actions/build-and-verify-dist
       with:
