@@ -1,0 +1,54 @@
+# action.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Composite GitHub Action for checked-out Sphinx documentation builds.
+#
+# Responsibilities
+# - Check out the requested repository ref.
+# - Install the requested Python runtime and docs dependency set.
+# - Build the selected Sphinx target with warnings treated as errors.
+#
+# Maintainer Notes
+# - This action intentionally composes `checkout-and-bootstrap` and
+#   `sphinx-build` so workflow files can focus on orchestration rather than
+#   step wiring.
+
+---
+
+name: Build Docs Target
+
+description: >-
+  Checks out the requested ref, installs docs dependencies, and builds the
+  selected Sphinx target.
+
+inputs:
+  builder:
+    description: Sphinx builder to run, such as html, epub, or linkcheck
+    required: true
+  python-version:
+    description: Python version to install via actions/setup-python
+    required: false
+    default: '3.13'
+  python-bootstrap:
+    description: Arguments passed to "pip install" for docs dependencies
+    required: false
+    default: '-e .[docs]'
+  ref:
+    description: Optional git ref to check out
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/checkout-and-bootstrap
+      with:
+        python-version: ${{ inputs.python-version }}
+        python-bootstrap: ${{ inputs.python-bootstrap }}
+        ref: ${{ inputs.ref }}
+
+    - uses: ./.github/actions/sphinx-build
+      with:
+        builder: ${{ inputs.builder }}
