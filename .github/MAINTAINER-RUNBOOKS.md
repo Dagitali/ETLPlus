@@ -51,8 +51,9 @@ Use for normal development work.
    Example: `git push -u origin feature/my-change`
 4. Open a PR from the remote `feature/*` branch into the remote `develop` branch. The PR-gates
    workflow rejects `feature/*` pull requests that target `main`.
-5. Let `.github/workflows/pr.yml` run and satisfy the required checks on GitHub.
-6. Merge the PR in GitHub.
+5. Let `.github/workflows/pr.yml` and `.github/workflows/ci.yml` run on GitHub. For feature work,
+   the heavier `ci.yml` checks run because the PR targets `develop`.
+6. Merge the PR in GitHub once both workflows report the required checks for your target branch.
 7. Delete the remote feature branch on GitHub after merge if it is no longer needed, and clean up
    your local branch when convenient.
    Preferred local cleanup: delete the local feature branch manually after updating your local
@@ -69,7 +70,8 @@ Use for release stabilization and promotion.
    Example: `git push -u origin release/1.13.6`
 4. Open a PR from the remote `release/*` branch into the remote `main` branch. The PR-gates workflow
    reserves `main` for `release/*` and `hotfix/*` pull requests.
-5. Merge the PR on GitHub after the required checks pass.
+5. Merge the PR on GitHub after both `.github/workflows/pr.yml` and `.github/workflows/ci.yml`
+   report the required checks for `main`.
 6. Fetch the newly merged remote `main` commit into your local repository.
    Example: `git fetch origin main`
 7. Create or move the annotated release tag locally so it points at that fetched `main` commit.
@@ -91,7 +93,8 @@ Use for production fixes that must land on `main` first.
    Example: `git push -u origin hotfix/1.13.7`
 4. Open a PR from the remote `hotfix/*` branch into the remote `main` branch. The PR-gates workflow
    reserves `main` for `release/*` and `hotfix/*` pull requests.
-5. Merge the PR in GitHub after the required checks pass.
+5. Merge the PR in GitHub after both `.github/workflows/pr.yml` and `.github/workflows/ci.yml`
+   report the required checks for `main`.
 6. Fetch the newly merged remote `main` commit into your local repository.
    Example: `git fetch origin main`
 7. Create or move the annotated hotfix tag locally so it points at that fetched `main` commit.
@@ -119,8 +122,10 @@ Preferred sequence:
 4. If branch protection or review policy requires GitHub review, push the sync branch to GitHub and
    open a PR into the remote `develop` branch.
    Example: `git push -u origin sync/main-into-develop`
-5. Merge on GitHub once checks pass, or push the updated local `develop` branch only if your branch
-   protection model intentionally allows that path.
+5. Merge on GitHub once the required checks for `develop` pass, including `.github/workflows/ci.yml`
+   if that heavier pre-merge workflow is part of your `develop` branch-protection rule, or push the
+   updated local `develop` branch only if your branch protection model intentionally allows that
+   path.
 
 ## Tagging And CD
 
