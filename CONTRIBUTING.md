@@ -195,15 +195,16 @@ Use NumPy-style docstrings for public APIs.
 - For `etlplus/file` module-level wrappers (`read`/`write`) specifically, preserve full
   `Parameters` and `Returns` sections.
 
-## Linting And Formatting
+## Local Quality Gates
 
-ETLPlus maintains one supported contributor lint/format workflow. Contributors should use:
+ETLPlus maintains one supported contributor local quality workflow. Contributors should use:
 
 ```bash
 make fmt
 make lint
 make doclint
 make typecheck
+make test
 ```
 
 For local Git hooks, ETLPlus uses a staged workflow:
