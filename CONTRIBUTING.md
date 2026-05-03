@@ -206,6 +206,33 @@ make doclint
 make typecheck
 ```
 
+For local Git hooks, ETLPlus uses a staged workflow:
+
+```bash
+pre-commit install --install-hooks
+```
+
+- `pre-commit` runs the fast hygiene and auto-fix hooks before a commit is created.
+- `commit-msg` validates the commit message format.
+- `pre-push` runs `make check-pre-push`, which is the mandatory local push gate for linting,
+  docstring linting, type-checking, and the repository meta guardrail tests before a branch is
+  pushed.
+- `manual` includes `make check-ci-local`, an opt-in local CI-parity pass for contributors who want
+  a heavier pre-PR run covering the default non-perf test suite, non-HTML docs builds, and
+  distribution validation.
+
+You can invoke the heavier local CI-parity path explicitly with:
+
+```bash
+pre-commit run make-check-ci-local --hook-stage manual
+```
+
+Or directly through `make`:
+
+```bash
+make check-ci-local
+```
+
 - Ruff is the authoritative source-code lint gate for imports, pyupgrade-style rewrites, and core
   static checks.
 - `.ruff.toml` is the canonical source for the Python line-length policy, currently 88 characters.
