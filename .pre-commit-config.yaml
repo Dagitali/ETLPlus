@@ -1,7 +1,7 @@
 # .pre-commit-config.yaml
 # ETLPlus
 #
-# Copyright © 2025 Dagitali LLC. All rights reserved.
+# Copyright © 2026 Dagitali LLC. All rights reserved.
 #
 # The pre-commit (multi-language package manager configuration file for Git
 # pre-commit hook scripts -- i.e., hooks) configuration file. Specifies which
@@ -18,7 +18,7 @@
 
 ---
 
-# All commands by default will run on every commit.
+# Install the default commit, commit-message, and push hook types.
 default_install_hook_types:
   - commit-msg
   - pre-commit
@@ -176,7 +176,7 @@ repos:
         always_run: true
         stages: [pre-push]
       - id: make-check-ci-local
-        name: make check-ci-local (full local CI parity)
+        name: make check-ci-local (local CI-parity subset)
         entry: make check-ci-local
         language: system
         pass_filenames: false
