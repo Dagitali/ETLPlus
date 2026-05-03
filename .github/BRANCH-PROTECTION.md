@@ -40,9 +40,16 @@ versions and docs builders, GitHub exposes expanded matrix job names in the bran
 rather than the template names shown in the YAML. Select those expanded names when configuring
 required checks.
 
-The heavier post-merge validation now lives in `.github/workflows/ci.yml`, where it chains from
-successful push completions of `PR Gates`. Those checks should usually stay advisory for
-pull-request branch protections because they do not run on `pull_request`.
+The current workflow model is staged rather than post-merge:
+
+- `.github/workflows/pr.yml` provides the lighter required pull-request baseline and the
+  `merge_group` coverage used by merge queue.
+- `.github/workflows/ci.yml` provides heavier pre-merge validation for pull requests targeting the
+  protected `main` and `develop` branches.
+
+That means the GitHub branch-protection policy should distinguish between the minimum merge gate
+that always runs and the heavier pre-merge checks that you may choose to require for protected
+branches.
 
 ### Pull Request Baseline
 
@@ -71,13 +78,13 @@ In the current PR-gates workflow, the baseline above resolves to:
 - `Type-check on Python 3.13`
 - `Build docs (html)`
 
-Additional CI jobs are still useful, but they should usually stay advisory unless you intentionally
-want a stricter gate.
+Additional CI jobs are still useful, and they can be made required for normal pull-request merges
+into `main` and `develop` if you want the heavier pre-merge workflow to block those merges.
 
 #### Current Required Check Names To Select In GitHub
 
-When configuring `main` or `develop` branch protection rules in the GitHub UI, select only these
-PR-gate job names as required checks:
+When configuring `main` or `develop` branch protection rules in the GitHub UI, select these PR-gate
+job names as the minimum required checks:
 
 - `Guard PR target branch`
 - `Lint on Python 3.13`
@@ -109,14 +116,21 @@ In the current CI workflow, those advisory categories also include:
 - `Smoke install on windows-latest`
 - `Build distributions`
 
-If you want a stricter protected-branch gate, the natural next checks to add are:
+If you want the heavier pre-merge workflow to block normal pull-request merges into `main` and
+`develop`, the natural next checks to add are:
 
 - Lint on the next supported Python line
 - Tests on the next supported Python line
-- The post-merge `Build docs (epub)` job
+- `Build docs (epub)`
+- `Build docs (linkcheck)`
+- `Smoke install on macos-latest`
+- `Smoke install on windows-latest`
+- `Build distributions`
 
 That keeps the staged PR-gates and heavier-CI layout intact without collapsing everything back into
-a single required workflow.
+a single workflow. If merge queue is enabled, keep in mind that `ci.yml` currently runs only on
+`pull_request`; add equivalent `merge_group` coverage there before making those heavier CI checks a
+hard requirement for queued merges.
 
 ## Shared Protection Baseline
 
@@ -156,8 +170,9 @@ Branch-specific additions:
 Recommended baseline:
 
 - Require the full pull-request baseline from `pr.yml`.
-- Keep `Build distributions` and the cross-platform smoke jobs advisory unless you intentionally
-  want post-merge validation to block promotion decisions outside branch protection.
+- Consider also requiring the heavier `ci.yml` jobs on `main` if you want release-oriented pull
+  requests into `main` to satisfy the extended docs, smoke, and distribution validation before
+  merge.
 
 Optional hardening:
 
@@ -178,8 +193,8 @@ Branch-specific additions:
 Recommended baseline:
 
 - Require the full pull-request baseline from `pr.yml`.
-- Keep the heavier CI workflow advisory so `develop` stays fast enough for normal GitFlow
-  integration traffic.
+- Consider also requiring the heavier `ci.yml` jobs on `develop` if you want the extended docs,
+  smoke, and distribution validation to block feature integration into `develop`.
 
 Optional hardening:
 
@@ -210,8 +225,10 @@ In GitHub:
 
 ## How To Update Required Checks In GitHub
 
-After the workflow split and rename to `pr.yml`, update the protected-branch protections in GitHub
-so only PR-gate jobs are required.
+After the workflow split and the later `ci.yml` trigger redesign, update the protected-branch
+protections in GitHub so the minimum required checks come from `pr.yml`, then add the heavier
+`ci.yml` checks if you want that extended pre-merge validation to be blocking on `main` and
+`develop`.
 
 In GitHub:
 
@@ -220,25 +237,33 @@ In GitHub:
 3. Open the branch protection rule for `main`.
 4. Under `Require status checks to pass`, remove any stale checks emitted by the heavier CI or old
    workflow filenames.
-5. Add these required checks:
+5. Add these minimum required checks from `pr.yml`:
   - `Guard PR target branch`
   - `Lint on Python 3.13`
   - `Test on Python 3.13`
   - `Doclint on Python 3.13`
   - `Type-check on Python 3.13`
   - `Build docs (html)`
-6. Save the `main` branch protection rule.
-7. Repeat the same status-check set for the `develop` branch protection rule unless you
-   intentionally want a different protected-branch policy.
+6. If you want the heavier pre-merge `ci.yml` workflow to block ordinary PR merges into `main` and
+   `develop`, also add these checks:
+  - `Build docs (epub)`
+  - `Build docs (linkcheck)`
+  - `Smoke install on macos-latest`
+  - `Smoke install on windows-latest`
+  - `Build distributions`
+7. Save the `main` branch protection rule.
+8. Repeat the same status-check set for the `develop` branch protection rule unless you
+  intentionally want a different protected-branch policy.
 
-Do not mark post-merge checks from `ci.yml` as required PR checks unless you also change their
-trigger model away from `workflow_run`.
+Do not mark the heavier `ci.yml` checks as required if you rely on merge queue and have not added
+matching `merge_group` coverage there.
 
 With that configuration in place:
 
 - Contributors push to feature, bugfix, hotfix, release, chore, ci, or docs branches
 - Feature branches cannot merge into `main` while `Guard PR target branch` is required
-- Pull requests carry the CI results
+- Pull requests into `main` and `develop` carry both the PR-gates results and the heavier CI
+  results
 - `main` and `develop` cannot be updated directly by ordinary pushes
 - Merges remain blocked until the required checks pass
 
@@ -251,9 +276,9 @@ With that configuration in place:
 - Treat version-specific and OS-specific names in this document as current examples, not permanent
   policy. When the support matrix changes, refresh the exact examples here and in the GitHub branch
   protection UI to match the emitted checks.
-- The heavier CI jobs run only after successful push completions of `PR Gates` on `main`, `develop`,
-  `release/*`, and `hotfix/*`. Do not configure those job names as required PR checks unless you
-  also change their trigger model.
+- The heavier CI jobs now run on `pull_request` into `main` and `develop`. If you depend on merge
+  queue and want those jobs to remain required there, add equivalent `merge_group` coverage before
+  enforcing them for queued merges.
 - The PR-target guard intentionally enforces these GitFlow merge paths: `feature/* -> develop`,
   `release/* -> main`, and `hotfix/* -> main`.
 - The local `no-commit-to-branch` pre-commit hook should protect `main` and `develop`, but it is
