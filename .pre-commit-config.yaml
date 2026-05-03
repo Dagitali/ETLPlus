@@ -53,10 +53,7 @@ repos:
       - id: commitizen
         stages: [commit-msg]
       - id: commitizen-branch
-        stages:
-          - post-commit
-          - post-rewrite
-          - pre-push
+        stages: [pre-push]
 
   ### Git, Polyglot ###
 
@@ -172,7 +169,7 @@ repos:
   - repo: local
     hooks:
       - id: make-check-pre-push
-        name: make check-pre-push (lint, doclint, typecheck, tests, meta tests)
+        name: make check-pre-push (lint, doclint, typecheck, tests)
         entry: make check-pre-push
         language: system
         pass_filenames: false
