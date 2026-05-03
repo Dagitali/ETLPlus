@@ -1,7 +1,7 @@
 # .pre-commit-config.yaml
 # ETLPlus
 #
-# Copyright © 2025 Dagitali LLC. All rights reserved.
+# Copyright © 2026 Dagitali LLC. All rights reserved.
 #
 # The pre-commit (multi-language package manager configuration file for Git
 # pre-commit hook scripts -- i.e., hooks) configuration file. Specifies which
@@ -18,16 +18,17 @@
 
 ---
 
-# All commands by default will run on every commit.
+# Install the default commit, commit-message, and push hook types.
 default_install_hook_types:
+  - commit-msg
   - pre-commit
+  - pre-push
 
 default_language_version:
   python: python3
 
 default_stages:
   - pre-commit
-  - pre-push
 
 # Some configs are only available after v2.16
 minimum_pre_commit_version: "2.16"
@@ -52,10 +53,7 @@ repos:
       - id: commitizen
         stages: [commit-msg]
       - id: commitizen-branch
-        stages:
-          - post-commit
-          - post-rewrite
-          - pre-push
+        stages: [pre-push]
 
   ### Git, Polyglot ###
 
@@ -138,13 +136,13 @@ repos:
     rev: v0.15.6
     hooks:
       - id: ruff
-        args:
-          - --fix
-          - --exit-non-zero-on-fix
         # Ruff will:
         # - enforce E/F/W/B/I/UP as configured in .ruff.toml
         # - sort imports (isort-like)
         # - apply pyupgrade-like rules for py313
+        args:
+          - --fix
+          - --exit-non-zero-on-fix
       # - id: ruff-format
 
   # Python: compatibility formatting; align with .ruff.toml.
@@ -161,6 +159,7 @@ repos:
     rev: v1.19.1
     hooks:
       - id: mypy
+        stages: [manual]
         args:
           - --cache-dir=.mypy_cache/pre-commit
           - --ignore-missing-imports
@@ -169,16 +168,17 @@ repos:
 
   - repo: local
     hooks:
-      - id: pytest-meta-guardrails
-        name: pytest meta guardrails
-        entry: >-
-          python -m pytest -q
-          tests/meta/test_m_test_layout.py
-          tests/meta/test_m_test_filenames.py
-          tests/meta/test_m_marker_coverage.py
-          tests/meta/test_m_integration_file_conventions.py
-          tests/meta/test_m_contract_readme.py
+      - id: make-check-pre-push
+        name: make check-pre-push (lint, doclint, typecheck, tests)
+        entry: make check-pre-push
         language: system
         pass_filenames: false
         always_run: true
         stages: [pre-push]
+      - id: make-check-ci-local
+        name: make check-ci-local (local CI-parity subset)
+        entry: make check-ci-local
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [manual]
