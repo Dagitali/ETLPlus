@@ -139,13 +139,13 @@ repos:
     rev: v0.15.6
     hooks:
       - id: ruff
-        args:
-          - --fix
-          - --exit-non-zero-on-fix
         # Ruff will:
         # - enforce E/F/W/B/I/UP as configured in .ruff.toml
         # - sort imports (isort-like)
         # - apply pyupgrade-like rules for py313
+        args:
+          - --fix
+          - --exit-non-zero-on-fix
       # - id: ruff-format
 
   # Python: compatibility formatting; align with .ruff.toml.
@@ -172,7 +172,7 @@ repos:
   - repo: local
     hooks:
       - id: make-check-pre-push
-        name: make check-pre-push (lint, doclint, typecheck, meta tests)
+        name: make check-pre-push (lint, doclint, typecheck, tests, meta tests)
         entry: make check-pre-push
         language: system
         pass_filenames: false
@@ -185,16 +185,3 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [manual]
-      - id: pytest-meta-guardrails
-        name: pytest meta guardrails
-        entry: >-
-          python -m pytest -q
-          tests/meta/test_m_test_layout.py
-          tests/meta/test_m_test_filenames.py
-          tests/meta/test_m_marker_coverage.py
-          tests/meta/test_m_integration_file_conventions.py
-          tests/meta/test_m_contract_readme.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-push]
