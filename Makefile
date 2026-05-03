@@ -183,10 +183,10 @@ bootstrap: ## Create .env.postgres and standard dirs (one-time)
 check: doclint lint typecheck test ## Run docstring lint, code lint, type-check, and tests
 
 .PHONY: check-pre-push
-check-pre-push: doclint lint typecheck test-meta ## Run the fast mandatory local pre-push guardrails
+check-pre-push: doclint lint typecheck test test-meta ## Run the fast mandatory local pre-push guardrails
 
 .PHONY: check-ci-local
-check-ci-local: check test-full docs-epub docs-linkcheck dist ## Run the heavier opt-in local CI-parity workflow
+check-ci-local: doclint lint typecheck test-full docs-epub docs-linkcheck dist ## Run the heavier opt-in local CI-parity workflow
 
 .PHONY: clean
 clean: ## Remove build artifacts and caches
