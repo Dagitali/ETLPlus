@@ -20,14 +20,15 @@
 
 # All commands by default will run on every commit.
 default_install_hook_types:
+  - commit-msg
   - pre-commit
+  - pre-push
 
 default_language_version:
   python: python3
 
 default_stages:
   - pre-commit
-  - pre-push
 
 # Some configs are only available after v2.16
 minimum_pre_commit_version: "2.16"
@@ -161,6 +162,7 @@ repos:
     rev: v1.19.1
     hooks:
       - id: mypy
+        stages: [manual]
         args:
           - --cache-dir=.mypy_cache/pre-commit
           - --ignore-missing-imports
@@ -169,6 +171,20 @@ repos:
 
   - repo: local
     hooks:
+      - id: make-check-pre-push
+        name: make check-pre-push (lint, doclint, typecheck, meta tests)
+        entry: make check-pre-push
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+      - id: make-check-ci-local
+        name: make check-ci-local (full local CI parity)
+        entry: make check-ci-local
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [manual]
       - id: pytest-meta-guardrails
         name: pytest meta guardrails
         entry: >-
