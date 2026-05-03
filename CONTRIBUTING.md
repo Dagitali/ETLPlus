@@ -215,11 +215,10 @@ pre-commit install --install-hooks
 - `pre-commit` runs the fast hygiene and auto-fix hooks before a commit is created.
 - `commit-msg` validates the commit message format.
 - `pre-push` runs `make check-pre-push`, which is the mandatory local push gate for linting,
-  docstring linting, type-checking, the default non-perf test suite, and the repository meta
-  guardrail tests before a branch is pushed.
+  docstring linting, type-checking, and the default non-perf test suite before a branch is pushed.
 - `manual` includes `make check-ci-local`, an opt-in local CI-parity pass for contributors who want
-  a heavier pre-PR run covering the full test matrix, non-HTML docs builds, and distribution
-  validation.
+  a heavier pre-PR run covering the default non-perf CI-parity suite, non-HTML docs builds, and
+  distribution validation.
 
 You can invoke the heavier local CI-parity path explicitly with:
 
