@@ -90,6 +90,24 @@ class TestIntCoercion:
     """Unit tests for integer-oriented coercion helpers."""
 
     @pytest.mark.parametrize(
+        ('func', 'args', 'expected'),
+        [
+            pytest.param(IntParser.at_least, ('7', 10), 10, id='at_least'),
+            pytest.param(IntParser.at_most, ('2', 5), 2, id='at_most'),
+        ],
+    )
+    def test_int_parser_bound_variants(
+        self,
+        func: Callable[..., int],
+        args: tuple[object, ...],
+        expected: int,
+    ) -> None:
+        """
+        Test that parser bound helpers preserve their numeric semantics.
+        """
+        assert func(*args) == expected
+
+    @pytest.mark.parametrize(
         ('value', 'expected'),
         [
             pytest.param(10, 10, id='int'),
@@ -116,30 +134,24 @@ class TestIntCoercion:
         """
         assert IntParser.parse(value) == expected
 
-    def test_int_parser_parse_raises_on_invalid_bounds(self) -> None:
-        """
-        Test that :meth:`IntParser.parse` rejects invalid minimum and maximum bounds.
-        """
-        with pytest.raises(ValueError, match='minimum cannot exceed maximum'):
-            IntParser.parse(5, minimum=10, maximum=1)
-
     @pytest.mark.parametrize(
-        ('func', 'args', 'expected'),
+        ('value', 'default'),
         [
-            pytest.param(IntParser.at_least, ('7', 10), 10, id='at_least'),
-            pytest.param(IntParser.at_most, ('2', 5), 2, id='at_most'),
+            pytest.param(5, None, id='parsed-value'),
+            pytest.param('not-an-int', None, id='unparsed-no-default'),
+            pytest.param('not-an-int', 5, id='unparsed-with-default'),
         ],
     )
-    def test_int_parser_bound_variants(
+    def test_int_parser_parse_raises_on_invalid_bounds(
         self,
-        func: Callable[..., int],
-        args: tuple[object, ...],
-        expected: int,
+        value: object,
+        default: int | None,
     ) -> None:
         """
-        Test that parser bound helpers preserve their numeric semantics.
+        Test that :meth:`IntParser.parse` always rejects invalid bounds.
         """
-        assert func(*args) == expected
+        with pytest.raises(ValueError, match='minimum cannot exceed maximum'):
+            IntParser.parse(value, default=default, minimum=10, maximum=1)
 
     def test_int_parser_positive_minimum_fallback(self) -> None:
         """

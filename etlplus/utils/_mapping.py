@@ -66,7 +66,10 @@ class MappingParser:
         """
         indexed: dict[str, ItemT] = {}
         for item in items:
-            if not isinstance(name := getattr(item, 'name', None), str) or not name:
+            if not isinstance(raw_name := getattr(item, 'name', None), str):
+                continue
+            name = raw_name.strip()
+            if not name:
                 continue
             if name in indexed:
                 raise ValueError(f'Duplicate {item_label} name: {name}')

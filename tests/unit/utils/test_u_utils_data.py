@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.utils._data`.
 from __future__ import annotations
 
 from collections.abc import Callable
+from io import StringIO
 
 import pytest
 
@@ -17,6 +18,16 @@ from etlplus.utils._types import JSONData
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+class _FalseyStringIO(StringIO):
+    """String buffer that intentionally evaluates false."""
+
+    def __bool__(self) -> bool:
+        return False
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -68,6 +79,18 @@ class TestDataHelpers:
 
         assert '\\u2603' not in captured
         assert_json_output(captured, unicode_payload)
+
+    def test_print_json_honors_falsey_stream(
+        self,
+        assert_json_output: Callable[[str, object], None],
+    ) -> None:
+        """Test that explicit streams are used even when they evaluate false."""
+        stream = _FalseyStringIO()
+        payload = {'ok': True}
+
+        JsonCodec.print(payload, stream=stream)
+
+        assert_json_output(stream.getvalue(), payload)
 
     def test_serialize_json_compacts_by_default(self) -> None:
         """Test that :meth:`JsonCodec.serialize` emits compact JSON by default."""
