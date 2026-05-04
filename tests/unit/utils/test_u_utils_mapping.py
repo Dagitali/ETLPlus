@@ -91,6 +91,7 @@ class TestMappingHelpers:
     def test_merge_to_dict_excludes_reserved_keys(self) -> None:
         """Test that later mappings win and excluded keys are removed."""
         merged = MappingParser.merge_to_dict(
+            'not-a-mapping',
             {'encoding': 'utf-8', 'path': '/tmp/a.json'},
             {'delimiter': ';', 'path': '/tmp/b.json', 'format': 'csv'},
             excluded_keys=frozenset({'path', 'format'}),
