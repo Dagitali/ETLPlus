@@ -256,12 +256,86 @@ class _RunPlanTracker:
     continue_on_fail: bool
     mode: str
     max_concurrency: int = 1
+
+    # -- Internal Instance Attributes -- #
+
     _executed_lookup: dict[int, dict[str, Any]] = field(
         default_factory=dict,
         repr=False,
     )
     _failed_lookup: set[str] = field(default_factory=set, repr=False)
     _skipped_lookup: set[str] = field(default_factory=set, repr=False)
+
+    # -- Getters -- #
+
+    @property
+    def executed_jobs(
+        self,
+    ) -> list[dict[str, Any]]:
+        """Return executed-job rows in deterministic DAG order."""
+        return [self._executed_lookup[index] for index in sorted(self._executed_lookup)]
+
+    # -- Internal Instance Attributes -- #
+
+    def _job_names_with_status(
+        self,
+        executed_jobs: list[dict[str, Any]],
+        status: str,
+    ) -> list[str]:
+        """Return recorded job names matching one terminal status."""
+        return [
+            cast(str, item['job'])
+            for item in executed_jobs
+            if item.get('status') == status and isinstance(item.get('job'), str)
+        ]
+
+    def _last_mapping_value(
+        self,
+        executed_jobs: list[dict[str, Any]],
+        key: str,
+    ) -> JSONDict | None:
+        """Return the last mapping value stored under *key*."""
+        for item in reversed(executed_jobs):
+            value = item.get(key)
+            if isinstance(value, Mapping):
+                return cast(JSONDict, value)
+        return None
+
+    def _last_text_value(
+        self,
+        executed_jobs: list[dict[str, Any]],
+        key: str,
+    ) -> str | None:
+        """Return the last non-empty string value stored under *key*."""
+        for item in reversed(executed_jobs):
+            value = item.get(key)
+            if isinstance(value, str) and value:
+                return value
+        return None
+
+    def _retry_stats(
+        self,
+        executed_jobs: list[dict[str, Any]],
+    ) -> tuple[list[str], int]:
+        """Return retried job names and aggregate retry count."""
+        retried_jobs: list[str] = []
+        total_retry_count = 0
+
+        for item in executed_jobs:
+            job_name = item.get('job')
+            retry_summary = item.get('retry')
+            if not isinstance(job_name, str) or not isinstance(
+                retry_summary,
+                Mapping,
+            ):
+                continue
+
+            attempt_count = retry_summary.get('attempt_count')
+            if isinstance(attempt_count, int) and attempt_count > 1:
+                retried_jobs.append(job_name)
+                total_retry_count += attempt_count - 1
+
+        return retried_jobs, total_retry_count
 
     # -- Instance Methods -- #
 
@@ -351,50 +425,13 @@ class _RunPlanTracker:
             job_record['retry'] = retry_summary
         self._executed_lookup[sequence_index] = job_record
 
-    @property
-    def executed_jobs(
-        self,
-    ) -> list[dict[str, Any]]:
-        """Return executed-job rows in deterministic DAG order."""
-        return [self._executed_lookup[index] for index in sorted(self._executed_lookup)]
-
     def result(self) -> JSONDict:
         """Return the stable summary payload for the run."""
         executed_jobs = self.executed_jobs
-        failed_job_names = [
-            cast(str, item['job'])
-            for item in executed_jobs
-            if item.get('status') == 'failed' and isinstance(item.get('job'), str)
-        ]
-        skipped_job_names = [
-            cast(str, item['job'])
-            for item in executed_jobs
-            if item.get('status') == 'skipped' and isinstance(item.get('job'), str)
-        ]
-        succeeded_job_names = [
-            cast(str, item['job'])
-            for item in executed_jobs
-            if item.get('status') == 'succeeded' and isinstance(item.get('job'), str)
-        ]
-        retried_jobs = [
-            item['job']
-            for item in executed_jobs
-            if isinstance(item, Mapping)
-            and isinstance(item.get('job'), str)
-            and isinstance(item.get('retry'), Mapping)
-            and isinstance(item['retry'].get('attempt_count'), int)
-            and item['retry']['attempt_count'] > 1
-        ]
-        total_retry_count = 0
-        for item in executed_jobs:
-            if not isinstance(item, Mapping):
-                continue
-            retry_summary = item.get('retry')
-            if not isinstance(retry_summary, Mapping):
-                continue
-            attempt_count = retry_summary.get('attempt_count')
-            if isinstance(attempt_count, int) and attempt_count > 1:
-                total_retry_count += attempt_count - 1
+        failed_job_names = self._job_names_with_status(executed_jobs, 'failed')
+        skipped_job_names = self._job_names_with_status(executed_jobs, 'skipped')
+        succeeded_job_names = self._job_names_with_status(executed_jobs, 'succeeded')
+        retried_jobs, total_retry_count = self._retry_stats(executed_jobs)
 
         summary_status = (
             'success'
@@ -404,37 +441,18 @@ class _RunPlanTracker:
             else 'failed'
         )
 
-        final_job_name = None
-        final_result_status = None
-        for item in reversed(executed_jobs):
-            if final_job_name is None:
-                job_name = item.get('job') if isinstance(item, Mapping) else None
-                if isinstance(job_name, str) and job_name:
-                    final_job_name = job_name
-            if final_result_status is None:
-                result_status = (
-                    item.get('result_status') if isinstance(item, Mapping) else None
-                )
-                if isinstance(result_status, str) and result_status:
-                    final_result_status = result_status
-            if final_job_name is not None and final_result_status is not None:
-                break
-        final_result = None
-        for item in reversed(executed_jobs):
-            item_result = item.get('result') if isinstance(item, Mapping) else None
-            if isinstance(item_result, Mapping):
-                final_result = cast(JSONDict, item_result)
-                break
-
         summary: JSONDict = {
             'continue_on_fail': self.continue_on_fail,
             'executed_job_count': len(failed_job_names) + len(succeeded_job_names),
             'executed_jobs': executed_jobs,
             'failed_job_count': len(failed_job_names),
             'failed_jobs': failed_job_names,
-            'final_job': final_job_name,
-            'final_result': final_result,
-            'final_result_status': final_result_status,
+            'final_job': self._last_text_value(executed_jobs, 'job'),
+            'final_result': self._last_mapping_value(executed_jobs, 'result'),
+            'final_result_status': self._last_text_value(
+                executed_jobs,
+                'result_status',
+            ),
             'job_count': len(self.ordered_job_names),
             'mode': self.mode,
             'ordered_jobs': self.ordered_job_names,

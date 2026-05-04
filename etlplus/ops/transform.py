@@ -190,16 +190,16 @@ def _normalize_operation_keys(ops: Mapping[Any, Any]) -> dict[str, Any]:
         Dictionary whose keys are normalized step names.
     """
     normalized: dict[str, Any] = {}
-    for k, v in ops.items():
-        if isinstance(k, str):
-            normalized[k] = v
-        elif isinstance(k, PipelineStep):
-            normalized[k.value] = v
-        else:
-            # Fallback: try `.value`, else use string form
-            name = getattr(k, 'value', str(k))
-            if isinstance(name, str):
-                normalized[name] = v
+    for key, value in ops.items():
+        match key:
+            case str() as name:
+                normalized[name] = value
+            case PipelineStep() as step:
+                normalized[step.value] = value
+            case _:
+                name = getattr(key, 'value', str(key))
+                if isinstance(name, str):
+                    normalized[name] = value
     return normalized
 
 
@@ -310,7 +310,7 @@ def transform(
     # Convert single dict to list for uniform processing.
     is_single_dict = isinstance(data, dict)
     if is_single_dict:
-        data = [data]  # type: ignore[list-item]
+        data = [cast(JSONDict, data)]
 
     # All record-wise ops require a list of dicts.
     if isinstance(data, list):
