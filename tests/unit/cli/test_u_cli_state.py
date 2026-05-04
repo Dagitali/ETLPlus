@@ -105,6 +105,40 @@ class TestCliLoadState:
         ('argv', 'expected'),
         [
             pytest.param(
+                ('validate', '--schema-format', 'jsonschema'),
+                '--schema-format requires --schema',
+                id='schema-format-without-schema',
+            ),
+            pytest.param(
+                (
+                    'validate',
+                    'data.json',
+                    '--schema',
+                    'schema.json',
+                    '--rules',
+                    '{"id": {"required": true}}',
+                ),
+                'Use either --rules or --schema/--schema-format, not both.',
+                id='rules-and-schema-conflict',
+            ),
+        ],
+    )
+    def test_rejects_invalid_schema_option_combinations(
+        self,
+        invoke_cli: InvokeCli,
+        argv: tuple[str, ...],
+        expected: str,
+    ) -> None:
+        """Test validate command rejects conflicting schema option families."""
+        result = invoke_cli(*argv)
+
+        assert result.exit_code != 0
+        assert expected in strip_ansi(result.output)
+
+    @pytest.mark.parametrize(
+        ('argv', 'expected'),
+        [
+            pytest.param(
                 ('load', '--target-type', 'file', '/path/to/out.json'),
                 {
                     'target': '/path/to/out.json',
