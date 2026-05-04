@@ -8,16 +8,16 @@
 # Responsibilities
 # - Run required pull-request and merge-queue integration gates: linting,
 #   docstring linting, type-checking, tests, and docs builds.
-# - Run the lightweight baseline on GitFlow branches so post-merge validation
-#   can chain from successful push completions.
+# - Run the lightweight baseline on GitFlow branches so working-branch pushes
+#   get fast remote feedback before a PR is opened.
 #
 # Maintainer Notes
 # - Global permissions are intentionally omitted; each job declares the minimum
 #   permissions it needs.
 # - External GitHub Actions are pinned to full commit SHAs to reduce supply-
 #   chain risk.
-# - Heavier post-merge validation lives in `ci.yml` and should be triggered
-#   from successful push runs of this workflow.
+# - Heavier protected-branch validation lives in `ci.yml`; keep this workflow
+#   focused on the faster required baseline used by branch protection.
 
 ---
 
