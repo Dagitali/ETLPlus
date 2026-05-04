@@ -88,6 +88,7 @@ class _NumberParser:
         Num | None
             Coerced and optionally clamped value.
         """
+        minimum, maximum = cls._validate_bounds(minimum, maximum)
         result = coercer(value)
         if result is None:
             result = default
