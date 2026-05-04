@@ -31,6 +31,8 @@ run-name: >-
   ${{
     github.event_name == 'pull_request' &&
     format('CI: {0} -> {1}', github.head_ref, github.base_ref) ||
+    github.event_name == 'merge_group' &&
+    format('CI: merge queue for {0}', github.ref_name) ||
     'CI: manual dispatch'
   }}
 
@@ -38,6 +40,10 @@ on:
   pull_request:
     branches:
       # Long-lived GitFlow branches
+      - main
+      - develop
+  merge_group:
+    branches:
       - main
       - develop
   workflow_dispatch:
