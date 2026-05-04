@@ -146,7 +146,7 @@ def _resolve_aggregator(
 
     Returns
     -------
-    Callable
+    AggregateFunc
         Function of signature ``(xs: list[float], n: int) -> Any``.
 
     Raises
