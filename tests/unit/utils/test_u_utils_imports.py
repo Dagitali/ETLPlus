@@ -199,6 +199,33 @@ class TestImportPackage:
         assert result is sentinel
         assert cache == {'new_module': sentinel}
 
+    def test_import_package_rejects_blank_module_name(self) -> None:
+        """Test direct imports reject blank module names before import."""
+        calls: list[str] = []
+
+        with pytest.raises(ValueError, match='module_name must not be empty'):
+            import_package(
+                ' ',
+                error_message='unused',
+                importer=lambda name: calls.append(name),
+            )
+        assert not calls
+
+    def test_import_package_strips_module_name_for_import_and_cache(self) -> None:
+        """Test direct imports normalize module names before cache/import use."""
+        calls: list[str] = []
+        sentinel = object()
+
+        result = import_package(
+            ' new_module ',
+            error_message='unused',
+            cache={},
+            importer=lambda name: calls.append(name) or sentinel,
+        )
+
+        assert result is sentinel
+        assert calls == ['new_module']
+
     def test_import_package_supports_uncached_imports(self) -> None:
         """Test successful imports do not require a cache object."""
         sentinel = object()
