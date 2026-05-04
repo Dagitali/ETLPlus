@@ -72,10 +72,32 @@ class TestDependencyMessages:
             dependency_label(())
 
     @pytest.mark.parametrize(
+        'dependency_names',
+        [
+            pytest.param(('',), id='empty-name'),
+            pytest.param(('yaml', '   '), id='blank-name'),
+        ],
+    )
+    def test_dependency_label_rejects_blank_names(
+        self,
+        dependency_names: tuple[str, ...],
+    ) -> None:
+        """Test that dependency labels reject blank dependency names."""
+        with pytest.raises(ValueError, match='dependency name must not be empty'):
+            dependency_label(dependency_names)
+
+    @pytest.mark.parametrize(
         ('module_name', 'pip_name', 'expected_names', 'expected_target'),
         [
             pytest.param('yaml', None, ('yaml',), 'yaml', id='string-default'),
             pytest.param('yaml', 'PyYAML', ('PyYAML',), 'PyYAML', id='string-pip'),
+            pytest.param(
+                ' yaml ',
+                ' PyYAML ',
+                ('PyYAML',),
+                'PyYAML',
+                id='strip-string-and-pip',
+            ),
             pytest.param(
                 ('netCDF4', 'h5netcdf'),
                 None,
@@ -104,6 +126,40 @@ class TestDependencyMessages:
             expected_names,
             expected_target,
         )
+
+    @pytest.mark.parametrize(
+        ('module_name', 'pip_name', 'match'),
+        [
+            pytest.param('', None, 'module_name must not be empty', id='empty-string'),
+            pytest.param(
+                '   ',
+                None,
+                'module_name must not be empty',
+                id='blank-string',
+            ),
+            pytest.param(
+                ('yaml', ''),
+                None,
+                'module_name must not be empty',
+                id='blank-tuple-member',
+            ),
+            pytest.param(
+                'yaml',
+                ' ',
+                'pip_name must not be empty',
+                id='blank-pip-name',
+            ),
+        ],
+    )
+    def test_normalize_dependency_names_rejects_blank_names(
+        self,
+        module_name: str | tuple[str, ...],
+        pip_name: str | None,
+        match: str,
+    ) -> None:
+        """Test that dependency-name normalization rejects blank names."""
+        with pytest.raises(ValueError, match=match):
+            normalize_dependency_names(module_name, pip_name)
 
     def test_normalize_dependency_names_rejects_empty_tuple(self) -> None:
         """Test that tuple dependency names cannot be empty."""
