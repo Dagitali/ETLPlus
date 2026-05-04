@@ -10,8 +10,9 @@ consumed by :func:`etlplus.ops.transform.transform`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Mapping
 from typing import Any
+from typing import cast
 
 from ...utils._types import JSONDict
 from ...utils._types import JSONList
@@ -134,7 +135,7 @@ def _agg_sum(
 
 def _resolve_aggregator(
     func: AggregateName | AggregateFunc | str,
-) -> Callable:
+) -> AggregateFunc:
     """
     Resolve an aggregate specifier to a callable.
 
@@ -145,7 +146,7 @@ def _resolve_aggregator(
 
     Returns
     -------
-    Callable
+    AggregateFunc
         Function of signature ``(xs: list[float], n: int) -> Any``.
 
     Raises
@@ -158,7 +159,7 @@ def _resolve_aggregator(
     if isinstance(func, str):
         return AggregateName.coerce(func).func
     if callable(func):
-        return func
+        return cast(AggregateFunc, func)
 
     raise TypeError(f'Invalid aggregate func: {func!r}')
 
@@ -194,7 +195,7 @@ def _collect_numeric_and_presence(
         if field in record:
             present += 1
             value = record.get(field)
-            if isinstance(value, (int, float)):
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
                 nums.append(float(value))
     return nums, present
 
@@ -306,6 +307,9 @@ def apply_aggregate_step(
         A list containing one mapping ``[{alias: value}]`` so callers can reuse
         the same adapter shape as :func:`etlplus.ops.transform.transform`.
     """
+    if not isinstance(spec, Mapping):
+        return rows
+
     field: FieldName | None = spec.get('field')  # type: ignore[assignment]
     func_raw = spec.get('func', 'count')
     alias = spec.get('alias')
