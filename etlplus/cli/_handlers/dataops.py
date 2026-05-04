@@ -397,6 +397,45 @@ class DataCommandPolicy:
         return cast(str, status) if isinstance(status, str) else default
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _complete_validation_output(
+    context: _lifecycle.CommandContext,
+    result: dict[str, Any],
+    *,
+    target: str | None,
+    file_payload: Any,
+    pretty: bool,
+    json_fields: dict[str, Any],
+    file_fields: dict[str, Any],
+) -> int:
+    """Complete validation output to a file target or JSON stdout."""
+    if DataCommandPolicy.has_named_target(target):
+        if file_payload is not None:
+            return DataCommandPolicy.complete_success(
+                context,
+                file_payload,
+                mode='json_file',
+                output_path=target,
+                success_message='ValidationDict result saved to',
+                **file_fields,
+            )
+
+        print(
+            f'ValidationDict failed, no data to save for {target}',
+            file=sys.stderr,
+        )
+        return 0
+
+    return DataCommandPolicy.complete_json_success(
+        context,
+        result,
+        pretty=pretty,
+        **json_fields,
+    )
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -743,26 +782,20 @@ def validate_handler(
                 source_format=source_format,
             )
 
-            if DataCommandPolicy.has_named_target(target):
-                return DataCommandPolicy.complete_success(
-                    context,
-                    result,
-                    mode='json_file',
-                    output_path=target,
-                    success_message='ValidationDict result saved to',
-                    source=source,
-                    target=target,
-                    valid=result.get('valid'),
-                    schema=schema,
-                    schema_format=schema_format,
-                )
-
-            return DataCommandPolicy.complete_json_success(
+            return _complete_validation_output(
                 context,
                 result,
+                target=target,
+                file_payload=result,
                 pretty=pretty,
-                **command_fields,
-                valid=result.get('valid'),
+                json_fields=command_fields | {'valid': result.get('valid')},
+                file_fields={
+                    'source': source,
+                    'target': target,
+                    'valid': result.get('valid'),
+                    'schema': schema,
+                    'schema_format': schema_format,
+                },
             )
 
         payload, rules_payload = DataCommandPolicy.resolve_source_mapping_inputs(
@@ -777,30 +810,16 @@ def validate_handler(
             cast(dict[str, FieldRulesDict], rules_payload),
         )
 
-        if DataCommandPolicy.has_named_target(target):
-            validated_data = result.get('data')
-            if validated_data is not None:
-                return DataCommandPolicy.complete_success(
-                    context,
-                    validated_data,
-                    mode='json_file',
-                    output_path=target,
-                    success_message='ValidationDict result saved to',
-                    source=source,
-                    target=target,
-                    valid=result.get('valid'),
-                )
-
-            print(
-                f'ValidationDict failed, no data to save for {target}',
-                file=sys.stderr,
-            )
-            return 0
-
-        return DataCommandPolicy.complete_json_success(
+        return _complete_validation_output(
             context,
             result,
+            target=target,
+            file_payload=result.get('data'),
             pretty=pretty,
-            valid=result.get('valid'),
-            **command_fields,
+            json_fields=command_fields | {'valid': result.get('valid')},
+            file_fields={
+                'source': source,
+                'target': target,
+                'valid': result.get('valid'),
+            },
         )
