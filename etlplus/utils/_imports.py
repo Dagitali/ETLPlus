@@ -98,6 +98,21 @@ class DependencyImporter:
         )
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _clean_dependency_name(
+    value: str,
+    *,
+    label: str,
+) -> str:
+    """Return one stripped dependency name or raise a clear error."""
+    cleaned = value.strip()
+    if not cleaned:
+        raise ValueError(f'{label} must not be empty')
+    return cleaned
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -107,7 +122,11 @@ def dependency_label(
     """Return one quoted dependency label string for an error message."""
     if not dependency_names:
         raise ValueError('dependency_names must not be empty')
-    quoted = tuple(f'"{name}"' for name in dependency_names)
+    cleaned_names = tuple(
+        _clean_dependency_name(name, label='dependency name')
+        for name in dependency_names
+    )
+    quoted = tuple(f'"{name}"' for name in cleaned_names)
     if len(quoted) == 1:
         return quoted[0]
     if len(quoted) == 2:
@@ -121,12 +140,24 @@ def normalize_dependency_names(
     pip_name: str | None,
 ) -> tuple[tuple[str, ...], str]:
     """Normalize dependency names and install target for message formatting."""
+    normalized_pip_name = (
+        _clean_dependency_name(pip_name, label='pip_name')
+        if pip_name is not None
+        else None
+    )
     if isinstance(module_name, str):
-        dependency_display_name = pip_name or module_name
+        dependency_display_name = normalized_pip_name or _clean_dependency_name(
+            module_name,
+            label='module_name',
+        )
         return (dependency_display_name,), dependency_display_name
     if not module_name:
         raise ValueError('module_name must not be an empty tuple')
-    return module_name, pip_name or module_name[0]
+    dependency_names = tuple(
+        _clean_dependency_name(name, label='module_name')
+        for name in module_name
+    )
+    return dependency_names, normalized_pip_name or dependency_names[0]
 
 
 def build_dependency_error_message(
@@ -198,11 +229,10 @@ def import_package(
         Raised with *error_message* when the configured import fails.
 
     """
-    if cache is not None:
-        try:
-            return cache[module_name]
-        except KeyError:
-            pass
+    module_name = _clean_dependency_name(module_name, label='module_name')
+
+    if cache is not None and module_name in cache:
+        return cache[module_name]
 
     try:
         module = importer(module_name)

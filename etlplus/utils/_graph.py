@@ -6,10 +6,12 @@ Generic graph-ordering helpers.
 
 from __future__ import annotations
 
-from collections import deque
 from collections.abc import Iterable
 from collections.abc import Mapping
 from dataclasses import dataclass
+from heapq import heapify
+from heapq import heappop
+from heapq import heappush
 from typing import Self
 
 # SECTION: EXPORTS ========================================================== #
@@ -110,8 +112,6 @@ class NamedDependencyGraph:
             )
         if dependency_name == name:
             raise ValueError(f'Node "{name}" depends on itself')
-        if name in self.edges[dependency_name]:
-            return
         self.edges[dependency_name].add(name)
         self.indegree[name] += 1
 
@@ -134,16 +134,17 @@ class NamedDependencyGraph:
             If a dependency cycle is detected.
         """
         remaining_indegree = dict(self.indegree)
-        queue = deque(self.zero_indegree_names(remaining_indegree))
+        queue = self.zero_indegree_names(remaining_indegree)
+        heapify(queue)
         ordered: list[str] = []
 
         while queue:
-            name = queue.popleft()
+            name = heappop(queue)
             ordered.append(name)
             for child in sorted(self.edges[name]):
                 remaining_indegree[child] -= 1
                 if remaining_indegree[child] == 0:
-                    queue.append(child)
+                    heappush(queue, child)
 
         if len(ordered) != len(self.names):
             raise ValueError('Dependency cycle detected')

@@ -132,3 +132,9 @@ class TestDeepSubstitute:
             'c': {'1', 'x'},
             'd': frozenset({'2', 'y'}),
         }
+
+    def test_no_substitutions_returns_original_object(self) -> None:
+        """Test that no-op substitution avoids unnecessary container copies."""
+        value = {'a': ['${MISSING}']}
+
+        assert SubstitutionResolver.deep(value, None, None) is value

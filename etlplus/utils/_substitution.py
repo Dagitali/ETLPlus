@@ -69,8 +69,6 @@ def _replace_tokens(
     str
         Updated text with replacements applied.
     """
-    if not substitutions:
-        return text
     out = text
     for name, replacement in substitutions:
         token = f'${{{name}}}'
@@ -115,6 +113,8 @@ class SubstitutionResolver:
             New structure with substitutions applied where tokens were found.
         """
         substitutions = _prepare_substitutions(vars_map, env_map)
+        if not substitutions:
+            return value
 
         def _apply(node: Any) -> Any:
             match node:
@@ -123,8 +123,8 @@ class SubstitutionResolver:
                 case Mapping():
                     return {k: _apply(v) for k, v in node.items()}
                 case list() | tuple() as seq:
-                    apply = [_apply(item) for item in seq]
-                    return apply if isinstance(seq, list) else tuple(apply)
+                    resolved = [_apply(item) for item in seq]
+                    return resolved if isinstance(seq, list) else tuple(resolved)
                 case set():
                     return {_apply(item) for item in node}
                 case frozenset():

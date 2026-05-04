@@ -38,6 +38,23 @@ class CoercibleStrEnum(enum.StrEnum):
     - Error messages enumerate allowed values for easier debugging.
     """
 
+    # -- Internal Class Methods -- #
+
+    @classmethod
+    def _from_value_or_name(
+        cls,
+        value: object,
+        *,
+        name: str | None = None,
+    ) -> Self:
+        """Return a member by enum value first, then by member name."""
+        if isinstance(value, cls):
+            return value
+        try:
+            return cls(str(value))
+        except ValueError:
+            return cls[name or str(value)]
+
     # -- Class Methods -- #
 
     @classmethod
@@ -103,17 +120,8 @@ class CoercibleStrEnum(enum.StrEnum):
             }
             resolved = aliases.get(normalized)
             if resolved is None:
-                try:
-                    return cls(normalized)  # type: ignore[arg-type]
-                except (ValueError, TypeError):
-                    return cls[raw]  # type: ignore[index]
-            if isinstance(resolved, cls):
-                return resolved
-            try:
-                return cls(resolved)  # type: ignore[arg-type]
-            except (ValueError, TypeError):
-                # Allow aliases to reference member names.
-                return cls[resolved]  # type: ignore[index]
+                return cls._from_value_or_name(normalized, name=raw)
+            return cls._from_value_or_name(resolved)
         except (ValueError, TypeError, KeyError) as e:
             allowed = ', '.join(cls.choices())
             raise ValueError(
