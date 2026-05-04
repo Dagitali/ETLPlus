@@ -229,11 +229,10 @@ def import_package(
         Raised with *error_message* when the configured import fails.
 
     """
-    if cache is not None:
-        try:
-            return cache[module_name]
-        except KeyError:
-            pass
+    module_name = _clean_dependency_name(module_name, label='module_name')
+
+    if cache is not None and module_name in cache:
+        return cache[module_name]
 
     try:
         module = importer(module_name)
