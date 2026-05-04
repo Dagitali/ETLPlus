@@ -69,6 +69,14 @@ class TestMappingHelpers:
         """
         assert MappingParser.to_dict(value) == expected
 
+    def test_index_named_items_normalizes_names(self) -> None:
+        """Test that usable names are stripped before indexing."""
+        item = SimpleNamespace(name=' valid ')
+
+        assert MappingParser.index_named_items([item], item_label='job') == {
+            'valid': item,
+        }
+
     def test_index_named_items_rejects_duplicates(self) -> None:
         """Test that duplicate named items raise a descriptive error."""
         items = [SimpleNamespace(name='dup'), SimpleNamespace(name='dup')]
@@ -76,17 +84,28 @@ class TestMappingHelpers:
         with pytest.raises(ValueError, match='Duplicate source connector name'):
             MappingParser.index_named_items(items, item_label='source connector')
 
-    def test_index_named_items_skips_blank_or_missing_names(self) -> None:
-        """Test that only objects with usable names are included in the index."""
+    def test_index_named_items_rejects_duplicates_after_stripping(self) -> None:
+        """Test duplicate detection after name normalization."""
         items = [
-            SimpleNamespace(name='valid'),
-            SimpleNamespace(name=''),
-            SimpleNamespace(),
+            SimpleNamespace(name='dup'),
+            SimpleNamespace(name=' dup '),
         ]
 
-        assert MappingParser.index_named_items(items, item_label='job') == {
-            'valid': items[0],
-        }
+        with pytest.raises(ValueError, match='Duplicate job name: dup'):
+            MappingParser.index_named_items(items, item_label='job')
+
+    @pytest.mark.parametrize(
+        'item',
+        [
+            pytest.param(SimpleNamespace(name=''), id='empty-string'),
+            pytest.param(SimpleNamespace(name='   '), id='blank-string'),
+            pytest.param(SimpleNamespace(), id='missing-name'),
+            pytest.param(SimpleNamespace(name=123), id='non-string-name'),
+        ],
+    )
+    def test_index_named_items_skips_unusable_names(self, item: object) -> None:
+        """Test that objects without usable names are not indexed."""
+        assert MappingParser.index_named_items([item], item_label='job') == {}
 
     def test_merge_to_dict_excludes_reserved_keys(self) -> None:
         """Test that later mappings win and excluded keys are removed."""
