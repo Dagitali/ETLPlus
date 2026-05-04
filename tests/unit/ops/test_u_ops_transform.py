@@ -648,6 +648,12 @@ class TestTransformInternalHelpers:
         result = apply_aggregate_step(rows, spec)
         assert result == [{'total': 3}]
 
+    def test_apply_aggregate_step_non_mapping_is_noop(self) -> None:
+        """Test that aggregate step ignores non-mapping specs."""
+        rows = [{'a': 1}]
+
+        assert apply_aggregate_step(rows, cast(Any, 'sum')) is rows
+
     def test_apply_aggregate_unknown_function_returns_error(self) -> None:
         """Test that unknown aggregate functions return structured errors."""
         result = apply_aggregate(
@@ -693,6 +699,20 @@ class TestTransformInternalHelpers:
         spec = {'field': 'a', 'op': 'gt', 'value': 1}
         result = apply_filter_step(rows, spec)
         assert result == [{'a': 2}]
+
+    @pytest.mark.parametrize(
+        'spec',
+        [
+            pytest.param('age', id='non-mapping'),
+            pytest.param({'field': 'a', 'value': 1}, id='missing-op'),
+            pytest.param({'field': 'a', 'op': object(), 'value': 1}, id='bad-op'),
+        ],
+    )
+    def test_apply_filter_step_invalid_specs_are_noop(self, spec: Any) -> None:
+        """Test that invalid filter step specs leave rows unchanged."""
+        rows = [{'a': 1}]
+
+        assert apply_filter_step(rows, spec) is rows
 
     def test_apply_filter_step_returns_input_when_field_missing(self) -> None:
         """
@@ -800,10 +820,10 @@ class TestTransformInternalHelpers:
         """
         Test that presence increments even when values are non-numeric.
         """
-        rows: list[dict[str, Any]] = [{'a': 'x'}, {'a': 2}]
+        rows: list[dict[str, Any]] = [{'a': 'x'}, {'a': True}, {'a': 2}]
         nums, present = _collect_numeric_and_presence(rows, 'a')
         assert nums == [2.0]
-        assert present == 2
+        assert present == 3
 
     def test_contains(self) -> None:
         """
