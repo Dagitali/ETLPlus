@@ -45,7 +45,7 @@ The current workflow model is staged rather than post-merge:
 - `.github/workflows/pr.yml` provides the lighter required pull-request baseline and the
   `merge_group` coverage used by merge queue.
 - `.github/workflows/ci.yml` provides heavier pre-merge validation for pull requests targeting the
-  protected `main` and `develop` branches.
+  protected `main` and `develop` branches and also runs on `merge_group` for merge queue.
 
 That means the GitHub branch-protection policy should distinguish between the minimum merge gate
 that always runs and the heavier pre-merge checks that you may choose to require for protected
@@ -128,9 +128,8 @@ If you want the heavier pre-merge workflow to block normal pull-request merges i
 - `Build distributions`
 
 That keeps the staged PR-gates and heavier-CI layout intact without collapsing everything back into
-a single workflow. If merge queue is enabled, keep in mind that `ci.yml` currently runs only on
-`pull_request`; add equivalent `merge_group` coverage there before making those heavier CI checks a
-hard requirement for queued merges.
+a single workflow. Because `ci.yml` also runs on `merge_group`, those heavier checks can be made
+required for queued merges too when merge queue is enabled.
 
 ## Shared Protection Baseline
 
@@ -255,8 +254,8 @@ In GitHub:
 8. Repeat the same status-check set for the `develop` branch protection rule unless you
   intentionally want a different protected-branch policy.
 
-Do not mark the heavier `ci.yml` checks as required if you rely on merge queue and have not added
-matching `merge_group` coverage there.
+If merge queue is enabled, keep the heavier `ci.yml` checks aligned with the same required-check
+policy you use for normal pull requests into `main` and `develop`.
 
 With that configuration in place:
 
@@ -276,9 +275,8 @@ With that configuration in place:
 - Treat version-specific and OS-specific names in this document as current examples, not permanent
   policy. When the support matrix changes, refresh the exact examples here and in the GitHub branch
   protection UI to match the emitted checks.
-- The heavier CI jobs now run on `pull_request` into `main` and `develop`. If you depend on merge
-  queue and want those jobs to remain required there, add equivalent `merge_group` coverage before
-  enforcing them for queued merges.
+- The heavier CI jobs now run on both `pull_request` and `merge_group` for `main` and `develop`, so
+  protected-branch required checks can stay aligned between normal PR merges and merge queue.
 - The PR-target guard intentionally enforces these GitFlow merge paths: `feature/* -> develop`,
   `release/* -> main`, and `hotfix/* -> main`.
 - The local `no-commit-to-branch` pre-commit hook should protect `main` and `develop`, but it is
