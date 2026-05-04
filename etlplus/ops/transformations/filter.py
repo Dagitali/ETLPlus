@@ -10,7 +10,7 @@ Use :func:`apply_filter` for direct record filtering. Use
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Mapping
 from typing import Any
 from typing import cast
 
@@ -60,6 +60,76 @@ def _contains(
         return False
 
 
+def _eval_condition(
+    record: JSONDict,
+    field: FieldName,
+    op_func: OperatorFunc,
+    value: Any,
+    catch_all: bool,
+) -> bool:
+    """
+    Evaluate a filter condition on a record.
+
+    Returns False if the field is missing or if the operator raises.
+
+    Parameters
+    ----------
+    record : JSONDict
+        The input record.
+    field : FieldName
+        The field name to check.
+    op_func : OperatorFunc
+        The binary operator function.
+    value : Any
+        The value to compare against.
+    catch_all : bool
+        If True, catch all exceptions and return False; if False, propagate
+        exceptions.
+
+    Returns
+    -------
+    bool
+        True if the condition is met; False if not.
+
+    Raises
+    ------
+    Exception
+        If *catch_all* is False and the operator raises.
+    """
+    try:
+        lhs = record[field]
+    except KeyError:
+        return False
+
+    try:
+        return bool(op_func(lhs, value))
+    except Exception:  # noqa: BLE001 - controlled by flag
+        if catch_all:
+            return False
+        raise
+
+
+def _filter_records(
+    records: JSONList,
+    *,
+    field: FieldName,
+    op_func: OperatorFunc,
+    value: Any,
+    catch_all: bool,
+) -> JSONList:
+    """Return records matching one resolved predicate."""
+    result: JSONList = []
+    for record in records:
+        if field not in record:
+            continue
+        try:
+            if _eval_condition(record, field, op_func, value, catch_all=catch_all):
+                result.append(record)
+        except TypeError:
+            continue
+    return result
+
+
 def _has(
     member: Any,
     container: Any,
@@ -75,7 +145,7 @@ def _has(
 
 def _resolve_operator(
     op: OperatorName | OperatorFunc | str,
-) -> Callable:
+) -> OperatorFunc:
     """
     Resolve an operator specifier to a binary predicate.
 
@@ -95,7 +165,7 @@ def _resolve_operator(
         If *op* cannot be interpreted as an operator.
     """
 
-    def _wrap_numeric(op_name: OperatorName) -> Callable[[Any, Any], bool]:
+    def _wrap_numeric(op_name: OperatorName) -> OperatorFunc:
         base = op_name.func
         if op_name in {
             OperatorName.GT,
@@ -121,58 +191,9 @@ def _resolve_operator(
     if isinstance(op, str):
         return _wrap_numeric(OperatorName.coerce(op))
     if callable(op):
-        return op
+        return cast(OperatorFunc, op)
 
     raise TypeError(f'Invalid operator: {op!r}')
-
-
-def _eval_condition(
-    record: JSONDict,
-    field: FieldName,
-    op_func: OperatorFunc,
-    value: Any,
-    catch_all: bool,
-) -> bool:
-    """
-    Evaluate a filter condition on a record.
-
-    Returns False if the field is missing or if the operator raises.
-
-    Parameters
-    ----------
-    record : JSONDict
-        The input record.
-    field : FieldName
-        The field name to check.
-    op_func : OperatorFunc
-        The binary operator function.
-    value : Any
-        The value to compare against.
-    catch_all : bool
-        If True, catch all exceptions and return; if False, propagate
-        exceptions.
-
-    Returns
-    -------
-    bool
-        True if the condition is met; False if not.
-
-    Raises
-    ------
-    Exception
-        If *catch_all* is False and the operator raises.
-    """
-    try:
-        lhs = record[field]
-    except KeyError:
-        return False
-
-    try:
-        return bool(op_func(lhs, value))
-    except Exception:  # noqa: BLE001 - controlled by flag
-        if catch_all:
-            return False
-        raise
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -208,21 +229,17 @@ def apply_filter(
         return records
 
     try:
-        op_func = cast(OperatorFunc, _resolve_operator(op_raw))
+        op_func = _resolve_operator(op_raw)
     except TypeError:
         return records
 
-    result: JSONList = []
-    for record in records:
-        if field not in record:
-            continue
-        try:
-            if _eval_condition(record, field, op_func, value, catch_all=False):
-                result.append(record)
-        except TypeError:
-            continue
-
-    return result
+    return _filter_records(
+        records,
+        field=cast(FieldName, field),
+        op_func=op_func,
+        value=value,
+        catch_all=False,
+    )
 
 
 def apply_filter_step(
@@ -246,16 +263,25 @@ def apply_filter_step(
         Filtered records using the same step semantics as
         :func:`etlplus.ops.transform.transform`.
     """
+    if not isinstance(spec, Mapping):
+        return records
+
     field: FieldName = spec.get('field')  # type: ignore[assignment]
     op = spec.get('op')
     value = spec.get('value')
 
-    if not field:
+    if not field or op is None:
         return records
 
-    op_func = _resolve_operator(op)
-    return [
-        record
-        for record in records
-        if _eval_condition(record, field, op_func, value, catch_all=True)
-    ]
+    try:
+        op_func = _resolve_operator(op)
+    except TypeError:
+        return records
+
+    return _filter_records(
+        records,
+        field=field,
+        op_func=op_func,
+        value=value,
+        catch_all=True,
+    )
