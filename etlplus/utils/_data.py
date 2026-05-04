@@ -120,7 +120,10 @@ class JsonCodec:
         None
             This helper writes directly to STDOUT.
         """
-        print(cls.serialize(obj, pretty=True), file=stream or sys.stdout)
+        print(
+            cls.serialize(obj, pretty=True),
+            file=sys.stdout if stream is None else stream,
+        )
 
     @classmethod
     def serialize(
