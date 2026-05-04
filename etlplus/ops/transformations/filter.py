@@ -156,7 +156,7 @@ def _resolve_operator(
 
     Returns
     -------
-    Callable
+    OperatorFunc
         Function of signature ``(a: Any, b: Any) -> bool``.
 
     Raises
