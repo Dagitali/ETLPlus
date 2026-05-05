@@ -25,6 +25,7 @@ __all__ = [
     'emit_markdown_table',
     'emit_json_payload',
     'emit_or_write',
+    'is_stdout_target',
     'write_json_output',
     'write_file_payload',
 ]
@@ -121,6 +122,26 @@ def emit_or_write(
     emit_json(data, pretty=pretty)
 
 
+def is_stdout_target(
+    output_path: str | None,
+) -> bool:
+    """
+    Return whether an output path represents STDOUT.
+
+    Parameters
+    ----------
+    output_path : str | None
+        Output destination supplied by the CLI.
+
+    Returns
+    -------
+    bool
+        ``True`` for ``None``, blank strings, or ``"-"`` with surrounding
+        whitespace.
+    """
+    return output_path is None or output_path.strip() in {'', '-'}
+
+
 def emit_json_payload(
     payload: Any,
     *,
@@ -171,7 +192,7 @@ def write_json_output(
     bool
         True if data was written to disk; False if not.
     """
-    if not output_path or output_path == '-':
+    if is_stdout_target(output_path):
         return False
     File(output_path, FileFormat.JSON).write(data)
     print(f'{success_message} {output_path}')
