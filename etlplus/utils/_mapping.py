@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from collections.abc import Mapping
-from collections.abc import Set
 from typing import Any
 from typing import TypeVar
 
@@ -118,7 +117,7 @@ class MappingParser:
     @staticmethod
     def merge_to_dict(
         *mapping_sets: object,
-        excluded_keys: Set[str] = frozenset(),
+        excluded_keys: frozenset[str] = frozenset(),
     ) -> dict[str, Any]:
         """
         Merge mapping-like values with later mappings taking precedence.
@@ -128,7 +127,7 @@ class MappingParser:
         *mapping_sets : object
             Any number of mapping-like values to merge. Non-mappings are
             ignored.
-        excluded_keys : Set[str], optional
+        excluded_keys : frozenset[str], optional
             Keys to remove from the merged result after merging.
 
         Returns
@@ -167,14 +166,14 @@ class MappingParser:
 
     @staticmethod
     def to_dict(
-        value: Any,
+        value: object,
     ) -> dict[str, Any]:
         """
         Return a ``dict`` copy when *value* is mapping-like.
 
         Parameters
         ----------
-        value : Any
+        value : object
             Mapping-like object to copy. ``None`` returns an empty dict.
 
         Returns
@@ -186,14 +185,14 @@ class MappingParser:
 
     @staticmethod
     def optional(
-        value: Any,
+        value: object,
     ) -> StrAnyMap | None:
         """
         Return *value* when it is mapping-like; otherwise ``None``.
 
         Parameters
         ----------
-        value : Any
+        value : object
             Value to test.
 
         Returns
