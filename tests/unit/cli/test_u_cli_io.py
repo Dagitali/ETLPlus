@@ -655,17 +655,36 @@ class TestWriteJsonOutput:
     @pytest.mark.parametrize(
         ('output_path', 'expected'),
         [
+            pytest.param(None, False, id='none'),
+            pytest.param('', False, id='empty'),
+            pytest.param(' - ', False, id='spaced-dash'),
+            pytest.param('out.json', True, id='file'),
+            pytest.param(Path('out.json'), True, id='pathlike'),
+        ],
+    )
+    def test_is_file_target(
+        self,
+        output_path: str | Path | None,
+        expected: bool,
+    ) -> None:
+        """Concrete-target detection should exclude STDOUT destinations."""
+        assert output_mod.is_file_target(output_path) is expected
+
+    @pytest.mark.parametrize(
+        ('output_path', 'expected'),
+        [
             pytest.param(None, True, id='none'),
             pytest.param('', True, id='empty'),
             pytest.param('   ', True, id='blank'),
             pytest.param('-', True, id='dash'),
             pytest.param(' - ', True, id='spaced-dash'),
             pytest.param('out.json', False, id='file'),
+            pytest.param(Path('out.json'), False, id='pathlike'),
         ],
     )
     def test_is_stdout_target(
         self,
-        output_path: str | None,
+        output_path: str | Path | None,
         expected: bool,
     ) -> None:
         """Test output target normalization for STDOUT destinations."""
