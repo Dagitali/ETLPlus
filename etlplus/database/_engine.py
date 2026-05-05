@@ -17,6 +17,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from ..file import File
+from ..utils import MappingParser
 from ..utils._types import StrAnyMap
 from ..utils._types import StrPath
 
@@ -68,18 +69,11 @@ def _resolve_url_from_mapping(
     str | None
         Resolved URL/DSN string, if present.
     """
-    for key in _CONNECTION_KEYS:
-        value = cfg.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-
-    # Some configs nest defaults.
-    # E.g., databases: { mssql: { default: {...} } }
-    default_cfg = cfg.get('default')
-    if isinstance(default_cfg, Mapping):
-        return _resolve_url_from_mapping(default_cfg)
-
-    return None
+    return MappingParser.first_non_empty_str(
+        cfg,
+        _CONNECTION_KEYS,
+        nested_key='default',
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
