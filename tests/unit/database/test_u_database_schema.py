@@ -184,6 +184,21 @@ class TestModels:
             )
 
     @pytest.mark.parametrize(
+        'payload',
+        [
+            pytest.param({'name': '', 'type': 'INT'}, id='blank-name'),
+            pytest.param({'name': 'id', 'type': ''}, id='blank-type'),
+        ],
+    )
+    def test_column_spec_requires_non_empty_strings(
+        self,
+        payload: dict[str, object],
+    ) -> None:
+        """Test that required column text fields cannot be empty."""
+        with pytest.raises(ValidationError):
+            ColumnSpec.model_validate(payload)
+
+    @pytest.mark.parametrize(
         ('raw', 'expected'),
         [
             ('set_null', 'SET NULL'),
@@ -219,6 +234,43 @@ class TestModels:
                     'ondelete': 'explode',
                 },
             )
+
+    @pytest.mark.parametrize(
+        'payload',
+        [
+            pytest.param(
+                {
+                    'columns': [],
+                    'ref_table': 'accounts',
+                    'ref_columns': ['id'],
+                },
+                id='empty-columns',
+            ),
+            pytest.param(
+                {
+                    'columns': ['account_id'],
+                    'ref_table': '',
+                    'ref_columns': ['id'],
+                },
+                id='empty-ref-table',
+            ),
+            pytest.param(
+                {
+                    'columns': ['account_id', 'tenant_id'],
+                    'ref_table': 'accounts',
+                    'ref_columns': ['id'],
+                },
+                id='mismatched-column-counts',
+            ),
+        ],
+    )
+    def test_foreign_key_spec_requires_valid_reference_shape(
+        self,
+        payload: dict[str, object],
+    ) -> None:
+        """Test that foreign keys require non-empty matching column lists."""
+        with pytest.raises(ValidationError):
+            ForeignKeySpec.model_validate(payload)
 
     @pytest.mark.parametrize(
         ('field', 'value'),
@@ -287,3 +339,29 @@ class TestModels:
 
         assert spec.fq_name == expected
         assert spec.create_schema is True
+
+    @pytest.mark.parametrize(
+        'payload',
+        [
+            pytest.param(
+                {'name': '', 'columns': [{'name': 'id', 'type': 'INT'}]},
+                id='empty-name',
+            ),
+            pytest.param({'name': 'events', 'columns': []}, id='empty-columns'),
+            pytest.param(
+                {
+                    'name': 'events',
+                    'schema': '',
+                    'columns': [{'name': 'id', 'type': 'INT'}],
+                },
+                id='empty-schema',
+            ),
+        ],
+    )
+    def test_table_spec_requires_valid_table_shape(
+        self,
+        payload: dict[str, object],
+    ) -> None:
+        """Test that table specs require non-empty table metadata."""
+        with pytest.raises(ValidationError):
+            TableSpec.model_validate(payload)
