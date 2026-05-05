@@ -14,7 +14,6 @@ from datetime import datetime
 from datetime import time
 from decimal import Decimal
 from typing import TextIO
-from typing import cast
 
 from ._types import JSONData
 
@@ -108,11 +107,14 @@ class JsonCodec:
         internal JSON codec when decoding fails.`
         """
         try:
-            return cast(JSONData, json.loads(text))
+            data = json.loads(text)
         except json.JSONDecodeError as exc:
             raise ValueError(
                 f'Invalid JSON payload: {exc.msg} (pos {exc.pos})',
             ) from exc
+        if not isinstance(data, dict | list):
+            raise ValueError('JSON payload must be an object or array')
+        return data
 
     @classmethod
     def print(
