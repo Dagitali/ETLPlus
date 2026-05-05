@@ -13,7 +13,6 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from decimal import Decimal
-from typing import Any
 from typing import TextIO
 from typing import cast
 
@@ -71,8 +70,8 @@ class JsonCodec:
     @classmethod
     def default(
         cls,
-        value: Any,
-    ) -> Any:
+        value: object,
+    ) -> object:
         """Return a JSON fallback for common ETL scalar types."""
         if isinstance(value, date | datetime | time):
             return cls.isoformat(value)
@@ -118,7 +117,7 @@ class JsonCodec:
     @classmethod
     def print(
         cls,
-        obj: Any,
+        obj: object,
         *,
         stream: TextIO | None = None,
     ) -> None:
@@ -127,7 +126,7 @@ class JsonCodec:
 
         Parameters
         ----------
-        obj : Any
+        obj : object
             Object to serialize as JSON.
         stream : TextIO | None, optional
             Destination stream. Defaults to :data:`sys.stdout`.
@@ -145,10 +144,10 @@ class JsonCodec:
     @classmethod
     def serialize(
         cls,
-        obj: Any,
+        obj: object,
         *,
         compact: bool = True,
-        default: Callable[[Any], Any] | None = None,
+        default: Callable[[object], object] | None = None,
         pretty: bool = False,
         sort_keys: bool = False,
     ) -> str:
@@ -157,12 +156,12 @@ class JsonCodec:
 
         Parameters
         ----------
-        obj : Any
+        obj : object
             Object to serialize as JSON.
         compact : bool, optional
             Whether to remove optional whitespace when not pretty-printing.
             Default is ``True``.
-        default : Callable[[Any], Any] | None, optional
+        default : Callable[[object], object] | None, optional
             Optional JSON fallback serializer for non-standard values.
         pretty : bool, optional
             Whether to format output with indentation. Default is ``False``.
@@ -174,7 +173,7 @@ class JsonCodec:
         str
             Serialized JSON text.
         """
-        kwargs: dict[str, Any] = {
+        kwargs: dict[str, object] = {
             'default': default,
             'ensure_ascii': False,
             'sort_keys': sort_keys,
