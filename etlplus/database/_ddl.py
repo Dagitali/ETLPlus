@@ -125,13 +125,9 @@ def _resolve_template(
     ValueError
         If the template key is unknown.
     """
-    file_override = (
-        str(template_path)
-        if template_path is not None
-        else os.environ.get('TEMPLATE_NAME')
-    )
-    if file_override:
-        path = Path(file_override)
+    override_path = template_path or os.environ.get('TEMPLATE_NAME')
+    if override_path:
+        path = Path(override_path)
         if not path.exists():
             raise FileNotFoundError(f'Template file not found: {path}')
         payload = _JINJA2_HANDLER.at(path).read()
@@ -149,9 +145,7 @@ def _resolve_template(
             f'Unknown template key "{key}". Choose from: {choices}',
         )
 
-    # Load template from package data.
-    template_filename = TEMPLATES[key]
-    return _load_template_text(template_filename)
+    return _load_template_text(TEMPLATES[key])
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -209,7 +203,7 @@ def render_table_sql(
     spec: StrAnyMap,
     *,
     template: TemplateKey | None = 'ddl',
-    template_path: str | None = None,
+    template_path: StrPath | None = None,
 ) -> str:
     """
     Render a single table spec into SQL text.
@@ -220,7 +214,7 @@ def render_table_sql(
         Table specification mapping.
     template : TemplateKey | None, optional
         Template key to use (default: 'ddl').
-    template_path : str | None, optional
+    template_path : StrPath | None, optional
         Path to a custom template file (overrides *template*).
 
     Returns
@@ -246,7 +240,7 @@ def render_tables(
     specs: Iterable[StrAnyMap],
     *,
     template: TemplateKey | None = 'ddl',
-    template_path: str | None = None,
+    template_path: StrPath | None = None,
 ) -> list[str]:
     """
     Render multiple table specs into a list of SQL payloads.
@@ -257,7 +251,7 @@ def render_tables(
         Table specification mappings.
     template : TemplateKey | None, optional
         Template key to use (default: 'ddl').
-    template_path : str | None, optional
+    template_path : StrPath | None, optional
         Path to a custom template file (overrides *template*).
 
     Returns
@@ -294,16 +288,11 @@ def render_tables_to_string(
     str
         Concatenated SQL payload suitable for writing to disk or STDOUT.
     """
-    resolved_template_path = str(template_path) if template_path is not None else None
-    rendered_sql: list[str] = []
-    for spec_path in spec_paths:
-        spec = load_table_spec(spec_path)
-        rendered_sql.append(
-            render_table_sql(
-                spec,
-                template=template,
-                template_path=resolved_template_path,
-            ),
+    return ''.join(
+        render_table_sql(
+            load_table_spec(spec_path),
+            template=template,
+            template_path=template_path,
         )
-
-    return ''.join(rendered_sql)
+        for spec_path in spec_paths
+    )
