@@ -22,6 +22,8 @@ from pydantic import model_validator
 from ..file import File
 from ..utils import MappingParser
 from ..utils import SequenceParser
+from ..utils._types import NonEmptyStr
+from ..utils._types import NonEmptyStrList
 from ..utils._types import StrPath
 from ._enums import ReferentialAction
 
@@ -40,13 +42,6 @@ __all__ = [
     # Functions
     'load_table_specs',
 ]
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type NonEmptyStr = Annotated[str, Field(min_length=1)]
-type NonEmptyStrList = Annotated[list[NonEmptyStr], Field(min_length=1)]
 
 
 # SECTION: INTERNAL CLASSES ================================================= #
