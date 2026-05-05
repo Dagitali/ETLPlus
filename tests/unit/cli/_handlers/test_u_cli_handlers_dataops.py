@@ -77,6 +77,8 @@ class TestDataops:
         [
             (None, 'stdout'),
             ('-', 'stdout'),
+            (' - ', 'stdout'),
+            ('   ', 'stdout'),
             ('out.json', 'out.json'),
         ],
     )
@@ -93,6 +95,8 @@ class TestDataops:
         [
             (None, False),
             ('-', False),
+            (' - ', False),
+            ('   ', False),
             ('out.json', True),
         ],
     )
