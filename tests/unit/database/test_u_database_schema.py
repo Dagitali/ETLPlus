@@ -111,6 +111,14 @@ class TestLoadTableSpecs:
         patch_read_file(None)
         assert schema_mod.load_table_specs('missing.yml') == []
 
+    def test_empty_table_schemas_payload(
+        self,
+        patch_read_file: Callable[[Any], None],
+    ) -> None:
+        """Test that null ``table_schemas`` yields no specs."""
+        patch_read_file({'table_schemas': None})
+        assert schema_mod.load_table_specs('empty.yml') == []
+
     @pytest.mark.parametrize(
         ('payload_factory', 'expected_names'),
         [
@@ -148,6 +156,16 @@ class TestLoadTableSpecs:
 
         assert [spec.table for spec in specs] == expected_names
         assert captured_paths[0] == Path('input.yml')
+
+    def test_table_schemas_requires_list(
+        self,
+        patch_read_file: Callable[[Any], None],
+    ) -> None:
+        """Test that wrapped table schemas must be list-shaped."""
+        patch_read_file({'table_schemas': {'name': 'users'}})
+
+        with pytest.raises(TypeError, match='table_schemas must be a list'):
+            schema_mod.load_table_specs('bad.yml')
 
 
 class TestModels:
