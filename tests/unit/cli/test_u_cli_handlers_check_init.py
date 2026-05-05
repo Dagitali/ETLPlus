@@ -490,6 +490,42 @@ class TestCliHandlersInternalHelpers:
         assert result['jobs'] == ['j1']
         assert result['transforms'] == ['trim', 'dedupe']
 
+    def test_complete_output_json_file_emits_for_stdout_target(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        command_context: lifecycle_mod.CommandContext,
+    ) -> None:
+        """JSON-file completion should emit JSON when no file target is supplied."""
+        emitted: dict[str, object] = {}
+        monkeypatch.setattr(
+            lifecycle_mod,
+            'complete_command',
+            lambda _context, **_fields: None,
+        )
+        monkeypatch.setattr(
+            handlers._output,
+            'emit_json_payload',
+            lambda payload, *, pretty: (
+                emitted.update(
+                    {'payload': payload, 'pretty': pretty},
+                )
+                or 7
+            ),
+        )
+
+        assert (
+            handlers._complete_output(
+                command_context,
+                {'ok': True},
+                mode='json_file',
+                output_path=None,
+                pretty=False,
+                success_message='Saved to',
+            )
+            == 7
+        )
+        assert emitted == {'payload': {'ok': True}, 'pretty': False}
+
     @pytest.mark.parametrize(
         ('kwargs', 'expected_message'),
         [
