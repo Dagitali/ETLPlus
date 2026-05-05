@@ -9,6 +9,7 @@ from __future__ import annotations
 import enum
 from typing import Self
 
+from ._text import TextNormalizer
 from ._types import StrStrMap
 
 # SECTION: EXPORTS ========================================================== #
@@ -113,9 +114,9 @@ class CoercibleStrEnum(enum.StrEnum):
             return value
         try:
             raw = str(value).strip()
-            normalized = raw.casefold()
+            normalized = TextNormalizer.normalize(raw)
             aliases = {
-                str(key).strip().casefold(): alias
+                TextNormalizer.normalize(str(key)): alias
                 for key, alias in cls.aliases().items()
             }
             resolved = aliases.get(normalized)
