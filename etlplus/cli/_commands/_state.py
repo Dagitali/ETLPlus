@@ -118,7 +118,7 @@ class ResourceTypeResolver:
         label: str,
     ) -> str:
         """Validate CLI input against a whitelist of choices."""
-        normalized_value = TextNormalizer.normalize(str(value or ''))
+        normalized_value = TextNormalizer.normalize(str(value))
         normalized_choices = {
             TextNormalizer.normalize(choice): choice for choice in choices
         }
