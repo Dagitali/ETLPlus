@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
+from typing import TypeGuard
 
 from ...file import File
 from ...file import FileFormat
@@ -25,6 +26,7 @@ __all__ = [
     'emit_markdown_table',
     'emit_json_payload',
     'emit_or_write',
+    'is_file_target',
     'is_stdout_target',
     'write_json_output',
     'write_file_payload',
@@ -167,6 +169,25 @@ def is_stdout_target(
     )
 
 
+def is_file_target(
+    output_path: str | None,
+) -> TypeGuard[str]:
+    """
+    Return whether an output path names a concrete file target.
+
+    Parameters
+    ----------
+    output_path : str | None
+        Output destination supplied by the CLI.
+
+    Returns
+    -------
+    TypeGuard[str]
+        ``True`` when *output_path* can be passed to :class:`File`.
+    """
+    return not is_stdout_target(output_path)
+
+
 def write_json_output(
     data: Any,
     output_path: str | None,
@@ -190,7 +211,7 @@ def write_json_output(
     bool
         True if data was written to disk; False if not.
     """
-    if is_stdout_target(output_path) or output_path is None:
+    if not is_file_target(output_path):
         return False
     File(output_path, FileFormat.JSON).write(data)
     print(f'{success_message} {output_path}')
