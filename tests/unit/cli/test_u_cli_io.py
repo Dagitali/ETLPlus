@@ -609,6 +609,45 @@ class TestResolveCliPayload:
         assert result == {'ok': True}
         assert captured == [('payload.json', 'json', True)]
 
+    @pytest.mark.parametrize(
+        ('source', 'expected'),
+        [
+            pytest.param('-', True, id='dash'),
+            pytest.param(' - ', True, id='spaced-dash'),
+            pytest.param('', False, id='empty'),
+            pytest.param(None, False, id='none'),
+            pytest.param(Path('-'), False, id='pathlike-dash'),
+        ],
+    )
+    def test_is_stdin_source(
+        self,
+        source: object,
+        expected: bool,
+    ) -> None:
+        """Test source normalization for STDIN destinations."""
+        assert input_mod.is_stdin_source(source) is expected
+
+    @pytest.mark.parametrize(
+        'source',
+        [
+            pytest.param('-', id='dash'),
+            pytest.param(' - ', id='spaced-dash'),
+        ],
+    )
+    def test_reads_stdin_source(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        source: str,
+    ) -> None:
+        """Test STDIN source sentinels read and parse STDIN."""
+        monkeypatch.setattr(input_mod, 'read_stdin_text', lambda: '{"ok": true}')
+
+        assert input_mod.resolve_cli_payload(
+            source,
+            format_hint='json',
+            format_explicit=True,
+        ) == {'ok': True}
+
 
 class TestWriteJsonOutput:
     """Unit tests for :func:`write_json_output`."""
