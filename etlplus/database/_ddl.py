@@ -14,11 +14,14 @@ import importlib.resources
 import os
 from collections.abc import Iterable
 from collections.abc import Mapping
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Final
 
 from ..file import File
 from ..file.jinja2 import Jinja2File
+from ..utils import MappingParser
+from ..utils import topological_sort_names
 from ..utils._types import StrAnyMap
 from ..utils._types import StrPath
 from ..utils._types import TemplateKey
@@ -96,6 +99,42 @@ def _load_template_text(
         ) from exc
 
 
+def _ordered_specs(
+    specs: Iterable[StrAnyMap],
+) -> list[StrAnyMap]:
+    """Return specs ordered by in-batch foreign-key dependencies."""
+    materialized = list(specs)
+    names = [_spec_table_name(spec) for spec in materialized]
+    if any(name is None for name in names):
+        return materialized
+
+    known_names = frozenset(name for name in names if name is not None)
+    dependencies_by_name: dict[str, tuple[str, ...]] = {}
+    specs_by_name: dict[str, StrAnyMap] = {}
+
+    for spec, name in zip(materialized, names, strict=True):
+        if name is None:
+            continue
+        specs_by_name[name] = spec
+        foreign_keys = spec.get('foreign_keys')
+        if not isinstance(foreign_keys, Sequence) or isinstance(foreign_keys, str):
+            dependencies_by_name[name] = ()
+            continue
+
+        dependencies_by_name[name] = tuple(
+            ref_table
+            for foreign_key in foreign_keys
+            if (fk_mapping := MappingParser.optional(foreign_key)) is not None
+            and isinstance(ref_table := fk_mapping.get('ref_table'), str)
+            and ref_table in known_names
+        )
+
+    return [
+        specs_by_name[name]
+        for name in topological_sort_names(dependencies_by_name)
+    ]
+
+
 def _resolve_template(
     *,
     template_key: TemplateKey | None,
@@ -138,6 +177,17 @@ def _resolve_template(
         )
 
     return _load_template_text(TEMPLATES[key])
+
+
+def _spec_table_name(
+    spec: StrAnyMap,
+) -> str | None:
+    """Return a table-spec name used for dependency ordering."""
+    for key in ('table', 'name'):
+        value = spec.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
 
 
 def _template_text_from_override_payload(
@@ -199,10 +249,11 @@ def load_table_spec(
             ) from e
         raise
 
-    if not isinstance(spec, Mapping):
+    spec_mapping = MappingParser.optional(spec)
+    if spec_mapping is None:
         raise TypeError('Table spec must be a mapping')
 
-    return dict(spec)
+    return dict(spec_mapping)
 
 
 def render_table_sql(
@@ -267,7 +318,7 @@ def render_tables(
     """
     return [
         render_table_sql(spec, template=template, template_path=template_path)
-        for spec in specs
+        for spec in _ordered_specs(specs)
     ]
 
 
@@ -295,10 +346,9 @@ def render_tables_to_string(
         Concatenated SQL payload suitable for writing to disk or STDOUT.
     """
     return ''.join(
-        render_table_sql(
-            load_table_spec(spec_path),
+        render_tables(
+            [load_table_spec(spec_path) for spec_path in spec_paths],
             template=template,
             template_path=template_path,
-        )
-        for spec_path in spec_paths
+        ),
     )
