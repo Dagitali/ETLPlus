@@ -18,7 +18,10 @@ import etlplus.database._schema as schema_mod
 from etlplus.database._schema import ColumnSpec
 from etlplus.database._schema import ForeignKeySpec
 from etlplus.database._schema import IdentitySpec
+from etlplus.database._schema import IndexSpec
+from etlplus.database._schema import PrimaryKeySpec
 from etlplus.database._schema import TableSpec
+from etlplus.database._schema import UniqueConstraintSpec
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -197,6 +200,58 @@ class TestModels:
         """Test that required column text fields cannot be empty."""
         with pytest.raises(ValidationError):
             ColumnSpec.model_validate(payload)
+
+    @pytest.mark.parametrize(
+        ('model', 'payload', 'attr'),
+        [
+            pytest.param(
+                IndexSpec,
+                {'name': 'ix_events_id', 'columns': 'id'},
+                'columns',
+                id='index',
+            ),
+            pytest.param(
+                PrimaryKeySpec,
+                {'columns': 'id'},
+                'columns',
+                id='primary-key',
+            ),
+            pytest.param(
+                UniqueConstraintSpec,
+                {'columns': 'email'},
+                'columns',
+                id='unique-constraint',
+            ),
+        ],
+    )
+    def test_constraint_specs_accept_scalar_column_names(
+        self,
+        model: type[IndexSpec | PrimaryKeySpec | UniqueConstraintSpec],
+        payload: dict[str, object],
+        attr: str,
+    ) -> None:
+        """Test scalar column fields normalize to single-item lists."""
+        spec = model.model_validate(payload)
+
+        assert getattr(spec, attr) == [payload['columns']]
+
+    def test_constraint_specs_reject_mixed_column_sequences(self) -> None:
+        """Test non-string sequence entries are not silently dropped."""
+        with pytest.raises(ValidationError):
+            PrimaryKeySpec.model_validate({'columns': ['id', 1]})
+
+    def test_foreign_key_spec_accepts_scalar_column_names(self) -> None:
+        """Test scalar foreign-key columns normalize to single-item lists."""
+        spec = ForeignKeySpec.model_validate(
+            {
+                'columns': 'account_id',
+                'ref_table': 'accounts',
+                'ref_columns': 'id',
+            },
+        )
+
+        assert spec.columns == ['account_id']
+        assert spec.ref_columns == ['id']
 
     @pytest.mark.parametrize(
         ('raw', 'expected'),
