@@ -82,14 +82,20 @@ class _ResolvedResource:
 
     def require_resource_type(self) -> str:
         """
-        Return the resolved connector type, asserting it is available.
+        Return the resolved connector type, failing if it is unavailable.
 
         Returns
         -------
         str
             The resolved connector type.
+
+        Raises
+        ------
+        ValueError
+            If no connector type was resolved.
         """
-        assert self.resource_type is not None
+        if self.resource_type is None:
+            raise ValueError(f'No connector type resolved for {self.value!r}')
         return self.resource_type
 
 

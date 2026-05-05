@@ -717,6 +717,109 @@ class TestValidateHandler:
             pretty=False,
         )
 
+    def test_schema_validation_reads_stdin_and_emits_json(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test schema validation reads STDIN sources and emits the full result."""
+        calls: dict[str, object] = {}
+        result = {'valid': True, 'errors': [], 'field_errors': {}, 'data': None}
+
+        monkeypatch.setattr(handlers._input, 'read_stdin_text', lambda: '{"id": 1}')
+
+        def fake_validate_schema(
+            source: str,
+            schema: str,
+            *,
+            schema_format: str | None,
+            source_format: str | None,
+        ) -> dict[str, object]:
+            calls['params'] = (source, schema, schema_format, source_format)
+            return result
+
+        monkeypatch.setattr(dataops_mod, 'validate_schema', fake_validate_schema)
+
+        assert (
+            handlers.validate_handler(
+                source='-',
+                rules={},
+                schema='schema.json',
+                schema_format='jsonschema',
+                source_format='json',
+                pretty=False,
+            )
+            == 0
+        )
+        assert calls['params'] == ('{"id": 1}', 'schema.json', 'jsonschema', 'json')
+        assert_emit_json(capture_io, result, pretty=False)
+
+    def test_schema_validation_without_schema_format_emits_json(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Test schema validation works when schema format is inferred."""
+        result = {'valid': True, 'errors': [], 'field_errors': {}, 'data': None}
+
+        monkeypatch.setattr(
+            dataops_mod,
+            'validate_schema',
+            lambda *_args, **_kwargs: result,
+        )
+
+        assert (
+            handlers.validate_handler(
+                source='data.json',
+                rules={},
+                schema='schema.json',
+                pretty=False,
+            )
+            == 0
+        )
+        assert_emit_json(capture_io, result, pretty=False)
+
+    def test_schema_validation_writes_result_to_target(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test schema validation writes the complete validation result."""
+        result = {'valid': False, 'errors': ['bad'], 'field_errors': {}, 'data': None}
+        write_calls: dict[str, object] = {}
+
+        monkeypatch.setattr(
+            dataops_mod,
+            'validate_schema',
+            lambda *_args, **_kwargs: result,
+        )
+
+        def fake_write(
+            data: object,
+            path: str | None,
+            *,
+            success_message: str,
+        ) -> bool:
+            write_calls['params'] = (data, path, success_message)
+            return True
+
+        monkeypatch.setattr(handlers._output, 'write_json_output', fake_write)
+
+        assert (
+            handlers.validate_handler(
+                source='data.json',
+                rules={},
+                schema='schema.json',
+                schema_format='jsonschema',
+                target='result.json',
+            )
+            == 0
+        )
+        assert write_calls['params'] == (
+            result,
+            'result.json',
+            'ValidationDict result saved to',
+        )
+
     def test_writes_target_file(
         self,
         monkeypatch: pytest.MonkeyPatch,

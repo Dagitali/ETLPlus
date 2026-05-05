@@ -609,9 +609,86 @@ class TestResolveCliPayload:
         assert result == {'ok': True}
         assert captured == [('payload.json', 'json', True)]
 
+    @pytest.mark.parametrize(
+        ('source', 'expected'),
+        [
+            pytest.param('-', True, id='dash'),
+            pytest.param(' - ', True, id='spaced-dash'),
+            pytest.param('', False, id='empty'),
+            pytest.param(None, False, id='none'),
+            pytest.param(Path('-'), False, id='pathlike-dash'),
+        ],
+    )
+    def test_is_stdin_source(
+        self,
+        source: object,
+        expected: bool,
+    ) -> None:
+        """Test source normalization for STDIN destinations."""
+        assert input_mod.is_stdin_source(source) is expected
+
+    @pytest.mark.parametrize(
+        'source',
+        [
+            pytest.param('-', id='dash'),
+            pytest.param(' - ', id='spaced-dash'),
+        ],
+    )
+    def test_reads_stdin_source(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        source: str,
+    ) -> None:
+        """Test STDIN source sentinels read and parse STDIN."""
+        monkeypatch.setattr(input_mod, 'read_stdin_text', lambda: '{"ok": true}')
+
+        assert input_mod.resolve_cli_payload(
+            source,
+            format_hint='json',
+            format_explicit=True,
+        ) == {'ok': True}
+
 
 class TestWriteJsonOutput:
     """Unit tests for :func:`write_json_output`."""
+
+    @pytest.mark.parametrize(
+        ('output_path', 'expected'),
+        [
+            pytest.param(None, False, id='none'),
+            pytest.param('', False, id='empty'),
+            pytest.param(' - ', False, id='spaced-dash'),
+            pytest.param('out.json', True, id='file'),
+            pytest.param(Path('out.json'), True, id='pathlike'),
+        ],
+    )
+    def test_is_file_target(
+        self,
+        output_path: str | Path | None,
+        expected: bool,
+    ) -> None:
+        """Concrete-target detection should exclude STDOUT destinations."""
+        assert output_mod.is_file_target(output_path) is expected
+
+    @pytest.mark.parametrize(
+        ('output_path', 'expected'),
+        [
+            pytest.param(None, True, id='none'),
+            pytest.param('', True, id='empty'),
+            pytest.param('   ', True, id='blank'),
+            pytest.param('-', True, id='dash'),
+            pytest.param(' - ', True, id='spaced-dash'),
+            pytest.param('out.json', False, id='file'),
+            pytest.param(Path('out.json'), False, id='pathlike'),
+        ],
+    )
+    def test_is_stdout_target(
+        self,
+        output_path: str | Path | None,
+        expected: bool,
+    ) -> None:
+        """Test output target normalization for STDOUT destinations."""
+        assert output_mod.is_stdout_target(output_path) is expected
 
     @pytest.mark.parametrize(
         'output_path',
@@ -642,7 +719,15 @@ class TestWriteJsonOutput:
         }
         assert capsys.readouterr().out.strip() == f'msg {output_path}'
 
-    def test_writing_to_stdout(self) -> None:
+    @pytest.mark.parametrize(
+        'output_path',
+        [
+            pytest.param(None, id='none'),
+            pytest.param('', id='empty'),
+            pytest.param(' - ', id='spaced-dash'),
+        ],
+    )
+    def test_writing_to_stdout(self, output_path: str | None) -> None:
         """
         Test that returning ``False`` signals STDOUT emission when no output
         path.
@@ -650,7 +735,7 @@ class TestWriteJsonOutput:
         assert (
             output_mod.write_json_output(
                 {'x': 1},
-                None,
+                output_path,
                 success_message='msg',
             )
             is False

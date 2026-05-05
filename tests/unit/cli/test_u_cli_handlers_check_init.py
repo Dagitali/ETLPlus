@@ -29,6 +29,21 @@ from .pytest_cli_handlers_support import patch_config_from_yaml
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='command_context')
+def command_context_fixture() -> lifecycle_mod.CommandContext:
+    """Return one command context for shared completion-helper tests."""
+    return handlers._CommandContext(
+        command='extract',
+        event_format=None,
+        run_id='run-123',
+        started_at='2026-03-23T00:00:00Z',
+        started_perf=0.0,
+    )
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -475,18 +490,55 @@ class TestCliHandlersInternalHelpers:
         assert result['jobs'] == ['j1']
         assert result['transforms'] == ['trim', 'dedupe']
 
-    def test_complete_output_rejects_unknown_modes(self) -> None:
+    @pytest.mark.parametrize(
+        ('kwargs', 'expected_message'),
+        [
+            pytest.param(
+                {'mode': 'file'},
+                "'file' completion requires an output path",
+                id='file-missing-target',
+            ),
+            pytest.param(
+                {'mode': 'file', 'output_path': '-'},
+                "'file' completion requires an output path",
+                id='file-stdout-target',
+            ),
+            pytest.param(
+                {'mode': 'or_write', 'output_path': 'out.json'},
+                "'or_write' completion requires a success message",
+                id='or-write-missing-message',
+            ),
+            pytest.param(
+                {'mode': 'json_file', 'output_path': 'out.json'},
+                "'json_file' completion requires a success message",
+                id='json-file-missing-message',
+            ),
+        ],
+    )
+    def test_complete_output_rejects_incomplete_file_modes(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        command_context: lifecycle_mod.CommandContext,
+        kwargs: dict[str, object],
+        expected_message: str,
+    ) -> None:
+        """File-writing completion modes should fail before writing bad values."""
+        monkeypatch.setattr(
+            lifecycle_mod,
+            'complete_command',
+            lambda _context, **_fields: None,
+        )
+
+        with pytest.raises(ValueError, match=expected_message):
+            handlers._complete_output(command_context, {'ok': True}, **kwargs)
+
+    def test_complete_output_rejects_unknown_modes(
+        self,
+        command_context: lifecycle_mod.CommandContext,
+    ) -> None:
         """
         Test that unknown completion modes fail fast with an assertion.
         """
-        context = handlers._CommandContext(
-            command='extract',
-            event_format=None,
-            run_id='run-123',
-            started_at='2026-03-23T00:00:00Z',
-            started_perf=0.0,
-        )
-
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(
                 lifecycle_mod,
@@ -495,7 +547,7 @@ class TestCliHandlersInternalHelpers:
             )
             with pytest.raises(AssertionError, match='Unsupported completion mode'):
                 handlers._complete_output(
-                    context,
+                    command_context,
                     {'ok': True},
                     mode=cast(Any, 'unsupported'),
                 )

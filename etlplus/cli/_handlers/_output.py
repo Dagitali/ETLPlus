@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
+from typing import TypeGuard
 
 from ...file import File
 from ...file import FileFormat
@@ -25,6 +26,8 @@ __all__ = [
     'emit_markdown_table',
     'emit_json_payload',
     'emit_or_write',
+    'is_file_target',
+    'is_stdout_target',
     'write_json_output',
     'write_file_payload',
 ]
@@ -112,11 +115,7 @@ def emit_or_write(
     success_message : str
         Message printed when writing to disk succeeds.
     """
-    if write_json_output(
-        data,
-        output_path,
-        success_message=success_message,
-    ):
+    if write_json_output(data, output_path, success_message=success_message):
         return
     emit_json(data, pretty=pretty)
 
@@ -148,6 +147,47 @@ def emit_json_payload(
     return exit_code
 
 
+def is_stdout_target(
+    output_path: str | None,
+) -> bool:
+    """
+    Return whether an output path represents STDOUT.
+
+    Parameters
+    ----------
+    output_path : str | None
+        Output destination supplied by the CLI.
+
+    Returns
+    -------
+    bool
+        ``True`` for ``None``, blank strings, or ``"-"`` with surrounding
+        whitespace.
+    """
+    return output_path is None or (
+        isinstance(output_path, str) and output_path.strip() in {'', '-'}
+    )
+
+
+def is_file_target(
+    output_path: str | None,
+) -> TypeGuard[str]:
+    """
+    Return whether an output path names a concrete file target.
+
+    Parameters
+    ----------
+    output_path : str | None
+        Output destination supplied by the CLI.
+
+    Returns
+    -------
+    TypeGuard[str]
+        ``True`` when *output_path* can be passed to :class:`File`.
+    """
+    return not is_stdout_target(output_path)
+
+
 def write_json_output(
     data: Any,
     output_path: str | None,
@@ -171,7 +211,7 @@ def write_json_output(
     bool
         True if data was written to disk; False if not.
     """
-    if not output_path or output_path == '-':
+    if not is_file_target(output_path):
         return False
     File(output_path, FileFormat.JSON).write(data)
     print(f'{success_message} {output_path}')

@@ -25,6 +25,7 @@ from ...utils._types import JSONData
 __all__ = [
     # Functions
     'infer_payload_format',
+    'is_stdin_source',
     'materialize_file_payload',
     'parse_text_payload',
     'read_csv_rows',
@@ -56,6 +57,25 @@ def infer_payload_format(
     if stripped.startswith('{') or stripped.startswith('['):
         return 'json'
     return 'csv'
+
+
+def is_stdin_source(
+    source: object,
+) -> bool:
+    """
+    Return whether a CLI source represents STDIN.
+
+    Parameters
+    ----------
+    source : object
+        Source value supplied by the CLI.
+
+    Returns
+    -------
+    bool
+        ``True`` for ``"-"`` with optional surrounding whitespace.
+    """
+    return isinstance(source, str) and source.strip() == '-'
 
 
 def materialize_file_payload(
@@ -199,7 +219,7 @@ def resolve_cli_payload(
     JSONData | object
         The resolved payload.
     """
-    if isinstance(source, (os.PathLike, str)) and str(source) == '-':
+    if is_stdin_source(source):
         text = read_stdin_text()
         return parse_text_payload(text, format_hint)
 
