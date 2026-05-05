@@ -24,6 +24,7 @@ from ...utils._types import JSONData
 from . import _completion
 from . import _input
 from . import _lifecycle
+from . import _output
 from . import _payload
 
 # SECTION: EXPORTS ========================================================== #
@@ -235,7 +236,7 @@ class DataCommandPolicy:
         str
             Human-readable label for the target.
         """
-        if target in (None, '-'):
+        if _output.is_stdout_target(target):
             return 'stdout'
         assert target is not None
         return target
@@ -259,7 +260,7 @@ class DataCommandPolicy:
             ``True`` if *target* names a concrete non-STDOUT destination,
             narrowing *target* to ``str`` in the guarded branch.
         """
-        return target not in (None, '-')
+        return not _output.is_stdout_target(target)
 
     @staticmethod
     def is_explicit_format(
