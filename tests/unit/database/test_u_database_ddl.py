@@ -296,6 +296,16 @@ class TestRenderTables:
 
         assert rendered == ['accounts\n', 'orders\n']
 
+    def test_rejects_duplicate_table_names(
+        self,
+        sample_spec: dict[str, object],
+    ) -> None:
+        """Test duplicate table specs fail instead of being overwritten."""
+        duplicate = deepcopy(sample_spec)
+
+        with pytest.raises(ValueError, match='Duplicate table spec name'):
+            ddl.render_tables([sample_spec, duplicate])
+
 
 class TestRenderTablesToString:
     """
