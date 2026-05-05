@@ -42,6 +42,7 @@ _DATABASE_URL: Final[str] = (
     or os.getenv('DATABASE_DSN')
     or 'sqlite+pysqlite:///:memory:'
 )
+DATABASE_URL: Final[str] = _DATABASE_URL
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
