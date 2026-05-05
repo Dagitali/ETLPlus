@@ -7,6 +7,9 @@ Numeric coercion utility helpers.
 from __future__ import annotations
 
 from collections.abc import Callable
+from decimal import Decimal
+from decimal import InvalidOperation
+from typing import Any
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -15,7 +18,38 @@ __all__ = [
     # Classes
     'FloatParser',
     'IntParser',
+    # Functions
+    'finite_decimal_or_none',
 ]
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def finite_decimal_or_none(
+    value: Any,
+) -> Decimal | None:
+    """
+    Return a finite :class:`Decimal` for numeric-like values.
+
+    Parameters
+    ----------
+    value : Any
+        Value to coerce.
+
+    Returns
+    -------
+    Decimal | None
+        Finite :class:`Decimal` or ``None`` when coercion fails or value is
+        non-finite.
+    """
+    if not isinstance(value, int | float | Decimal | str):
+        return None
+    try:
+        decimal = value if isinstance(value, Decimal) else Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        return None
+    return decimal if decimal.is_finite() else None
 
 
 # SECTION: INTERNAL CLASSES ================================================= #
