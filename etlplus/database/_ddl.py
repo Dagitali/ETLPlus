@@ -130,13 +130,7 @@ def _resolve_template(
         path = Path(override_path)
         if not path.exists():
             raise FileNotFoundError(f'Template file not found: {path}')
-        payload = _JINJA2_HANDLER.at(path).read()
-        template_value = None
-        if isinstance(payload, list) and payload:
-            template_value = payload[0].get('template')
-        if not isinstance(template_value, str):
-            raise TypeError('JINJA2 template payload must include text')
-        return template_value
+        return _template_text_from_override_payload(_JINJA2_HANDLER.at(path).read())
 
     key: TemplateKey = template_key or 'ddl'
     if key not in TEMPLATES:
@@ -146,6 +140,20 @@ def _resolve_template(
         )
 
     return _load_template_text(TEMPLATES[key])
+
+
+def _template_text_from_override_payload(
+    payload: object,
+) -> str:
+    """Return template text from a file-handler override payload."""
+    if (
+        isinstance(payload, list)
+        and payload
+        and isinstance(payload[0], Mapping)
+        and isinstance(payload[0].get('template'), str)
+    ):
+        return payload[0]['template']
+    raise TypeError('JINJA2 template payload must include text')
 
 
 # SECTION: FUNCTIONS ======================================================== #
