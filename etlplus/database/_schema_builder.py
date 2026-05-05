@@ -42,11 +42,6 @@ class SchemaBuilder:
     ----------
     type_resolver : TypeResolver
         Strategy for mapping Python types to SQL type affinity.
-
-    Methods
-    -------
-    infer_columns : list[InferredColumn]
-        Return ordered inferred columns from the provided records.
     """
 
     # -- Attributes -- #
@@ -70,6 +65,11 @@ class SchemaBuilder:
             List of dict-like records to analyze.
         type_hints : TypeHints | None
             Optional mapping of column name to forced SQL type affinity.
+
+        Returns
+        -------
+        list[InferredColumn]
+            Inferred columns with name, SQL type affinity, and nullability.
         """
         names = sorted({key for record in recs for key in record})
         hints = _coerce_type_hints(type_hints)
