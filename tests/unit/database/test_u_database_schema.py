@@ -16,6 +16,7 @@ from pydantic import ValidationError
 
 import etlplus.database._schema as schema_mod
 from etlplus.database._schema import ColumnSpec
+from etlplus.database._schema import ForeignKeySpec
 from etlplus.database._schema import IdentitySpec
 from etlplus.database._schema import TableSpec
 
@@ -165,6 +166,43 @@ class TestModels:
             )
 
     @pytest.mark.parametrize(
+        ('raw', 'expected'),
+        [
+            ('set_null', 'SET NULL'),
+            ('noaction', 'NO ACTION'),
+            ('restrict', 'RESTRICT'),
+        ],
+    )
+    def test_foreign_key_spec_normalizes_ondelete(
+        self,
+        raw: str,
+        expected: str,
+    ) -> None:
+        """Test that foreign key referential actions normalize to SQL form."""
+        spec = ForeignKeySpec.model_validate(
+            {
+                'columns': ['account_id'],
+                'ref_table': 'accounts',
+                'ref_columns': ['id'],
+                'ondelete': raw,
+            },
+        )
+
+        assert spec.ondelete == expected
+
+    def test_foreign_key_spec_rejects_invalid_ondelete(self) -> None:
+        """Test that unsupported referential actions fail validation."""
+        with pytest.raises(ValidationError):
+            ForeignKeySpec.model_validate(
+                {
+                    'columns': ['account_id'],
+                    'ref_table': 'accounts',
+                    'ref_columns': ['id'],
+                    'ondelete': 'explode',
+                },
+            )
+
+    @pytest.mark.parametrize(
         ('field', 'value'),
         [('seed', 0), ('increment', 0)],
     )
@@ -194,6 +232,7 @@ class TestModels:
         assert spec.columns[0].identity is not None
         assert spec.columns[1].unique is True
         assert spec.primary_key is not None
+        assert spec.foreign_keys[0].ondelete == 'CASCADE'
 
     def test_table_spec_defaults_populate_lists(self) -> None:
         """
