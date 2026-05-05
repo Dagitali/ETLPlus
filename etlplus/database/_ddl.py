@@ -120,8 +120,6 @@ def _resolve_template(
     ------
     FileNotFoundError
         If the provided template path does not exist.
-    TypeError
-        If the template payload is invalid.
     ValueError
         If the template key is unknown.
     """
