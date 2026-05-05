@@ -96,11 +96,12 @@ def complete_output(
             print(f'{cast(str, success_message)} {target}')
             return 0
         case 'json_file':
-            _output.write_json_output(
+            if not _output.write_json_output(
                 payload,
-                cast(str, output_path),
+                output_path,
                 success_message=cast(str, success_message),
-            )
+            ):
+                return _output.emit_json_payload(payload, pretty=pretty)
             return 0
         case _:
             raise AssertionError(f'Unsupported completion mode: {mode!r}')
