@@ -18,6 +18,7 @@ from etlplus.utils._mapping import MappingParser
 from etlplus.utils._mixins import BoundsWarningsMixin
 from etlplus.utils._numbers import FloatParser
 from etlplus.utils._numbers import IntParser
+from etlplus.utils._numbers import finite_decimal_or_none
 from etlplus.utils._parsing import MappingFieldParser
 from etlplus.utils._parsing import SequenceParser
 from etlplus.utils._parsing import ValueParser
@@ -44,6 +45,7 @@ UTILS_EXPORTS = [
     ('SubstitutionResolver', SubstitutionResolver),
     ('TextNormalizer', TextNormalizer),
     ('CoercibleStrEnum', CoercibleStrEnum),
+    ('finite_decimal_or_none', finite_decimal_or_none),
     ('topological_sort_names', topological_sort_names),
     ('BoundsWarningsMixin', BoundsWarningsMixin),
 ]
