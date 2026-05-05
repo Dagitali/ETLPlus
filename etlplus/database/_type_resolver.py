@@ -54,13 +54,8 @@ class TypeResolver:
 
     Attributes
     ----------
-    prefer_text_on_mixed : bool
-        If True, TEXT is chosen for mixed-type columns.
-
-    Methods
-    -------
-    resolve : SqlTypeAffinity
-        Return a portable SQL type affinity.
+    prefer_text_on_mixed : bool, optional
+        If ``True``, TEXT is chosen for mixed-type columns.
     """
 
     # -- Attributes -- #
