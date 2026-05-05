@@ -38,11 +38,6 @@ class ValueCodec:
     ----------
     keep_unknown_as_json : bool
         If True, complex values become JSON (TEXT). Else str(value).
-
-    Methods
-    -------
-    to_db : Any
-        Convert `value` into a representation compatible with `sql_type`.
     """
 
     # -- Attributes -- #
