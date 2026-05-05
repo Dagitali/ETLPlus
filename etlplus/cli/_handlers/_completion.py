@@ -7,9 +7,8 @@ Shared command-completion helpers for CLI handler implementations.
 from __future__ import annotations
 
 from typing import Any
-from typing import cast
+from typing import Literal
 
-from ...utils._types import JSONData
 from . import _lifecycle
 from . import _output
 
@@ -19,17 +18,47 @@ from . import _output
 __all__ = [
     # Functions
     'complete_output',
+    # Type Aliases
+    'CompletionMode',
 ]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type CompletionMode = Literal['json', 'or_write', 'file', 'json_file']
+
+
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def _require_file_target(
+    output_path: str | None,
+    *,
+    mode: CompletionMode,
+) -> str:
+    """Return a concrete file target or fail with a clear completion error."""
+    if _output.is_file_target(output_path):
+        return output_path
+    raise ValueError(f'{mode!r} completion requires an output path')
+
+
+def _require_success_message(
+    success_message: str | None,
+    *,
+    mode: CompletionMode,
+) -> str:
+    """Return a completion success message or fail with a clear error."""
+    if success_message:
+        return success_message
+    raise ValueError(f'{mode!r} completion requires a success message')
 
 
 def complete_output(
     context: _lifecycle.CommandContext,
     payload: Any,
     *,
-    mode: str,
+    mode: CompletionMode,
     pretty: bool = True,
     output_path: str | None = None,
     format_hint: str | None = None,
@@ -45,7 +74,7 @@ def complete_output(
         The command context for the completed command.
     payload : Any
         The JSON-serializable payload to emit or write.
-    mode : str
+    mode : CompletionMode
         The output mode, one of "json", "or_write", "file", or "json_file".
     pretty : bool, optional
         Whether to pretty-print the JSON output when *mode* is "json" or
@@ -83,23 +112,29 @@ def complete_output(
                 payload,
                 output_path,
                 pretty=pretty,
-                success_message=cast(str, success_message),
+                success_message=_require_success_message(
+                    success_message,
+                    mode=mode,
+                ),
             )
             return 0
         case 'file':
-            target = cast(str, output_path)
+            target = _require_file_target(output_path, mode=mode)
             _output.write_file_payload(
-                cast(JSONData, payload),
+                payload,
                 target,
                 format_hint=format_hint,
             )
-            print(f'{cast(str, success_message)} {target}')
+            print(f'{_require_success_message(success_message, mode=mode)} {target}')
             return 0
         case 'json_file':
             if not _output.write_json_output(
                 payload,
                 output_path,
-                success_message=cast(str, success_message),
+                success_message=_require_success_message(
+                    success_message,
+                    mode=mode,
+                ),
             ):
                 return _output.emit_json_payload(payload, pretty=pretty)
             return 0
