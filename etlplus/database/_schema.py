@@ -10,7 +10,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated
-from typing import Any
 from typing import ClassVar
 from typing import Self
 
@@ -48,6 +47,19 @@ __all__ = [
 
 type NonEmptyStr = Annotated[str, Field(min_length=1)]
 type NonEmptyStrList = Annotated[list[NonEmptyStr], Field(min_length=1)]
+
+
+# SECTION: INTERNAL CLASSES ================================================= #
+
+
+class _ColumnListModel(BaseModel):
+    """Base model for specs with a column-name list field."""
+
+    @field_validator('columns', mode='before', check_fields=False)
+    @classmethod
+    def _normalize_column_list(cls, value: object) -> object:
+        """Normalize scalar column names to single-item lists."""
+        return _coerce_non_empty_str_list(value)
 
 
 # SECTION: CLASSES ========================================================== #
@@ -91,7 +103,7 @@ class ColumnSpec(BaseModel):
     unique: bool = False
 
 
-class ForeignKeySpec(BaseModel):
+class ForeignKeySpec(_ColumnListModel):
     """
     Foreign key specification.
 
@@ -118,10 +130,10 @@ class ForeignKeySpec(BaseModel):
 
     # -- Validators -- #
 
-    @field_validator('columns', 'ref_columns', mode='before')
+    @field_validator('ref_columns', mode='before')
     @classmethod
-    def _normalize_column_list(cls, value: object) -> object:
-        """Normalize scalar column names to single-item lists."""
+    def _normalize_ref_column_list(cls, value: object) -> object:
+        """Normalize scalar referenced column names to single-item lists."""
         return _coerce_non_empty_str_list(value)
 
     @field_validator('ondelete', mode='before')
@@ -160,7 +172,7 @@ class IdentitySpec(BaseModel):
     increment: int | None = Field(default=None, ge=1)
 
 
-class IndexSpec(BaseModel):
+class IndexSpec(_ColumnListModel):
     """
     Index specification.
 
@@ -185,16 +197,8 @@ class IndexSpec(BaseModel):
     unique: bool = False
     where: str | None = None
 
-    # -- Validators -- #
 
-    @field_validator('columns', mode='before')
-    @classmethod
-    def _normalize_column_list(cls, value: object) -> object:
-        """Normalize scalar column names to single-item lists."""
-        return _coerce_non_empty_str_list(value)
-
-
-class PrimaryKeySpec(BaseModel):
+class PrimaryKeySpec(_ColumnListModel):
     """
     Primary key specification.
 
@@ -213,16 +217,8 @@ class PrimaryKeySpec(BaseModel):
     name: str | None = None
     columns: NonEmptyStrList
 
-    # -- Validators -- #
 
-    @field_validator('columns', mode='before')
-    @classmethod
-    def _normalize_column_list(cls, value: object) -> object:
-        """Normalize scalar column names to single-item lists."""
-        return _coerce_non_empty_str_list(value)
-
-
-class UniqueConstraintSpec(BaseModel):
+class UniqueConstraintSpec(_ColumnListModel):
     """
     Unique constraint specification.
 
@@ -240,14 +236,6 @@ class UniqueConstraintSpec(BaseModel):
 
     name: str | None = None
     columns: NonEmptyStrList
-
-    # -- Validators -- #
-
-    @field_validator('columns', mode='before')
-    @classmethod
-    def _normalize_column_list(cls, value: object) -> object:
-        """Normalize scalar column names to single-item lists."""
-        return _coerce_non_empty_str_list(value)
 
 
 class TableSpec(BaseModel):
@@ -314,7 +302,7 @@ def _coerce_non_empty_str_list(value: object) -> object:
     return value
 
 
-def _table_spec_items(data: Any) -> Sequence[Any]:
+def _table_spec_items(data: object) -> Sequence[object]:
     """Normalize loaded table-spec payloads to a sequence of items."""
     if not data:
         return ()
