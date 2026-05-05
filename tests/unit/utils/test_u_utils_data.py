@@ -110,16 +110,30 @@ class TestDataHelpers:
             pytest.param('1', id='number'),
             pytest.param('true', id='boolean'),
             pytest.param('null', id='null'),
+            pytest.param('[1, 2]', id='scalar-array'),
+            pytest.param('[{"id": 1}, 2]', id='mixed-array'),
         ],
     )
     def test_parse_json_rejects_scalar_payloads(self, text: str) -> None:
         """Test that parsed ETL payloads must be JSON objects or arrays."""
-        with pytest.raises(ValueError, match='object or array'):
+        with pytest.raises(ValueError, match='object or array of objects'):
             JsonCodec.parse(text)
 
-    def test_parse_json_returns_json_payload(self) -> None:
+    @pytest.mark.parametrize(
+        ('text', 'expected'),
+        [
+            pytest.param('{"name": "Ada"}', {'name': 'Ada'}, id='object'),
+            pytest.param('[{"id": 1}]', [{'id': 1}], id='record-array'),
+            pytest.param('[]', [], id='empty-array'),
+        ],
+    )
+    def test_parse_json_returns_json_payload(
+        self,
+        text: str,
+        expected: JSONData,
+    ) -> None:
         """Test that :meth:`JsonCodec.parse` returns decoded JSON data."""
-        assert JsonCodec.parse('{"name": "Ada"}') == {'name': 'Ada'}
+        assert JsonCodec.parse(text) == expected
 
     def test_print_json_uses_utf8_without_ascii_escaping(
         self,
