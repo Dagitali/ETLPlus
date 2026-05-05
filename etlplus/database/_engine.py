@@ -37,12 +37,16 @@ __all__ = [
 
 
 _CONNECTION_KEYS: Final[tuple[str, ...]] = ('connection_string', 'url', 'dsn')
-_DATABASE_URL: Final[str] = (
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+DATABASE_URL: Final[str] = (
     os.getenv('DATABASE_URL')
     or os.getenv('DATABASE_DSN')
     or 'sqlite+pysqlite:///:memory:'
 )
-DATABASE_URL: Final[str] = _DATABASE_URL
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -158,7 +162,7 @@ def make_engine(
     Engine
         Configured SQLAlchemy engine instance.
     """
-    resolved_url = url or _DATABASE_URL
+    resolved_url = url or DATABASE_URL
     return create_engine(resolved_url, pool_pre_ping=True, **engine_kwargs)
 
 
