@@ -93,6 +93,11 @@ class TestMappingHelpers:
                 None,
                 id='non-mapping-nested',
             ),
+            pytest.param(
+                {'default': {'url': 'sqlite:///nested.db'}},
+                'sqlite:///nested.db',
+                id='nested-with-key-generator',
+            ),
         ],
     )
     def test_first_non_empty_str(
@@ -101,10 +106,12 @@ class TestMappingHelpers:
         expected: str | None,
     ) -> None:
         """Test ordered string lookup with optional nested defaults."""
+        keys = (key for key in ('connection_string', 'url', 'dsn'))
+
         assert (
             MappingParser.first_non_empty_str(
                 mapping,
-                ('connection_string', 'url', 'dsn'),
+                keys,
                 nested_key='default',
             )
             == expected
