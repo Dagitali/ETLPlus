@@ -14,6 +14,7 @@ from datetime import datetime
 from datetime import time
 from decimal import Decimal
 from typing import TextIO
+from typing import TypeGuard
 
 from ._types import JSONData
 
@@ -27,7 +28,19 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL CLASSES ================================================= #
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _is_json_data(
+    value: object,
+) -> TypeGuard[JSONData]:
+    """Return whether *value* matches the JSONData runtime shape."""
+    return isinstance(value, dict) or (
+        isinstance(value, list) and all(isinstance(item, dict) for item in value)
+    )
+
+
+# SECTION: CLASSES ========================================================== #
 
 
 class RecordCounter:
@@ -112,8 +125,8 @@ class JsonCodec:
             raise ValueError(
                 f'Invalid JSON payload: {exc.msg} (pos {exc.pos})',
             ) from exc
-        if not isinstance(data, dict | list):
-            raise ValueError('JSON payload must be an object or array')
+        if not _is_json_data(data):
+            raise ValueError('JSON payload must be an object or array of objects')
         return data
 
     @classmethod
