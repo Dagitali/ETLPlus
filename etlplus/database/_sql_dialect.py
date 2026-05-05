@@ -54,7 +54,10 @@ class SqlDialect:
 
     # -- Instance Methods -- #
 
-    def quote_ident(self, name: str) -> str:
+    def quote_ident(
+        self,
+        name: str,
+    ) -> str:
         """
         Return identifier quoted with double quotes.
 
@@ -62,13 +65,21 @@ class SqlDialect:
         ----------
         name : str
             The identifier to quote.
+
+        Returns
+        -------
+        str
+            The quoted identifier.
         """
         safe = name.replace('"', '""')
 
         # We quote everything for simplicity/safety (valid in SQLite/ANSI).
         return f'"{safe}"'
 
-    def quote_table(self, name: str) -> str:
+    def quote_table(
+        self,
+        name: str,
+    ) -> str:
         """
         Quote a possibly-qualified table reference.
 
@@ -76,6 +87,21 @@ class SqlDialect:
         database aliases (i.e., not "main" or "temp"), the prefix is considered
         a foreign schema name (e.g., "dbo") and is dropped so the reference
         remains valid in SQLite.
+
+        Parameters
+        ----------
+        name : str
+            The table reference to quote.
+
+        Returns
+        -------
+        str
+            The quoted table reference.
+
+        Raises
+        ------
+        ValueError
+            If the table reference is invalid.
 
         Examples
         --------
