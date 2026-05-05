@@ -17,6 +17,16 @@ from etlplus.utils._enums import CoercibleStrEnum
 # SECTION: HELPERS ========================================================== #
 
 
+class _German(CoercibleStrEnum):
+    """Test enum with Unicode-sensitive aliases."""
+
+    STREET = 'street'
+
+    @classmethod
+    def aliases(cls) -> dict[str, str]:
+        return {'straße': cls.STREET}
+
+
 class _Palette(CoercibleStrEnum):
     """Test enum with alias variants for branch coverage."""
 
@@ -56,6 +66,10 @@ class TestCoercibleStrEnum:
     def test_alias_resolving_direct_member(self) -> None:
         """Test that aliases resolve directly to enum members."""
         assert _Palette.coerce('r') is _Palette.RED
+
+    def test_alias_resolving_uses_casefolding(self) -> None:
+        """Test that alias matching follows shared text normalization."""
+        assert _German.coerce('STRASSE') is _German.STREET
 
     def test_choices_returns_member_values(self) -> None:
         """Test that choices expose enum values in declaration order."""

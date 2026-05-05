@@ -8,9 +8,13 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any
+from collections.abc import Callable
+from datetime import date
+from datetime import datetime
+from datetime import time
+from decimal import Decimal
 from typing import TextIO
-from typing import cast
+from typing import TypeGuard
 
 from ._types import JSONData
 
@@ -24,7 +28,19 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL CLASSES ================================================= #
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _is_json_data(
+    value: object,
+) -> TypeGuard[JSONData]:
+    """Return whether *value* matches the JSONData runtime shape."""
+    return isinstance(value, dict) or (
+        isinstance(value, list) and all(isinstance(item, dict) for item in value)
+    )
+
+
+# SECTION: CLASSES ========================================================== #
 
 
 class RecordCounter:
@@ -64,6 +80,18 @@ class JsonCodec:
     # -- Class Methods -- #
 
     @classmethod
+    def default(
+        cls,
+        value: object,
+    ) -> object:
+        """Return a JSON fallback for common ETL scalar types."""
+        if isinstance(value, date | datetime | time):
+            return cls.isoformat(value)
+        if isinstance(value, Decimal):
+            return str(value)
+        return str(value)
+
+    @classmethod
     def parse(
         cls,
         text: str,
@@ -92,16 +120,19 @@ class JsonCodec:
         internal JSON codec when decoding fails.`
         """
         try:
-            return cast(JSONData, json.loads(text))
+            data = json.loads(text)
         except json.JSONDecodeError as exc:
             raise ValueError(
                 f'Invalid JSON payload: {exc.msg} (pos {exc.pos})',
             ) from exc
+        if not _is_json_data(data):
+            raise ValueError('JSON payload must be an object or array of objects')
+        return data
 
     @classmethod
     def print(
         cls,
-        obj: Any,
+        obj: object,
         *,
         stream: TextIO | None = None,
     ) -> None:
@@ -110,7 +141,7 @@ class JsonCodec:
 
         Parameters
         ----------
-        obj : Any
+        obj : object
             Object to serialize as JSON.
         stream : TextIO | None, optional
             Destination stream. Defaults to :data:`sys.stdout`.
@@ -128,8 +159,10 @@ class JsonCodec:
     @classmethod
     def serialize(
         cls,
-        obj: Any,
+        obj: object,
         *,
+        compact: bool = True,
+        default: Callable[[object], object] | None = None,
         pretty: bool = False,
         sort_keys: bool = False,
     ) -> str:
@@ -138,8 +171,13 @@ class JsonCodec:
 
         Parameters
         ----------
-        obj : Any
+        obj : object
             Object to serialize as JSON.
+        compact : bool, optional
+            Whether to remove optional whitespace when not pretty-printing.
+            Default is ``True``.
+        default : Callable[[object], object] | None, optional
+            Optional JSON fallback serializer for non-standard values.
         pretty : bool, optional
             Whether to format output with indentation. Default is ``False``.
         sort_keys : bool, optional
@@ -150,11 +188,26 @@ class JsonCodec:
         str
             Serialized JSON text.
         """
-        kwargs: dict[str, Any] = {
+        kwargs: dict[str, object] = {
             'ensure_ascii': False,
             'sort_keys': sort_keys,
             'indent': 2 if pretty else None,
         }
-        if not pretty:
+        if compact and not pretty:
             kwargs['separators'] = (',', ':')
-        return json.dumps(obj, **kwargs)
+        return json.dumps(
+            obj,
+            default=default,
+            **kwargs,  # type: ignore[arg-type]
+        )
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def isoformat(value: date | datetime | time) -> str:
+        """Return stable ISO text for date-like values."""
+        match value:
+            case datetime() | time():
+                return value.isoformat(timespec='microseconds')
+            case _:
+                return value.isoformat()

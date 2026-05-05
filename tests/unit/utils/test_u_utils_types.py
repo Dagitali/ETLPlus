@@ -9,6 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import cast
 
+import pytest
+from pydantic import BaseModel
+from pydantic import ValidationError
+
 from etlplus.utils import _types as core_types
 
 # SECTION: PRAGMAS ========================================================== #
@@ -40,6 +44,8 @@ class TestTypesModule:
             'JSONRecords',
             'JSONScalar',
             'JSONValue',
+            'NonEmptyStr',
+            'NonEmptyStrList',
             'Record',
             'Records',
             'Sleeper',
@@ -62,3 +68,36 @@ class TestTypesModule:
         }
         typed = cast(dict[str, object], value)
         assert typed['c'] is None
+
+    def test_non_empty_validation_aliases_work_with_pydantic(self) -> None:
+        """Test shared non-empty aliases enforce Pydantic constraints."""
+
+        class Model(BaseModel):
+            name: core_types.NonEmptyStr
+            columns: core_types.NonEmptyStrList
+
+        model = Model.model_validate({'name': 'users', 'columns': ['id']})
+
+        assert model.name == 'users'
+        assert model.columns == ['id']
+
+    @pytest.mark.parametrize(
+        'payload',
+        [
+            pytest.param({'name': '', 'columns': ['id']}, id='empty-string'),
+            pytest.param({'name': 'users', 'columns': []}, id='empty-list'),
+            pytest.param({'name': 'users', 'columns': ['']}, id='empty-item'),
+        ],
+    )
+    def test_non_empty_validation_aliases_reject_invalid_values(
+        self,
+        payload: dict[str, object],
+    ) -> None:
+        """Test shared non-empty aliases reject blank or empty values."""
+
+        class Model(BaseModel):
+            name: core_types.NonEmptyStr
+            columns: core_types.NonEmptyStrList
+
+        with pytest.raises(ValidationError):
+            Model.model_validate(payload)

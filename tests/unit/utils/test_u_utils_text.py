@@ -25,6 +25,7 @@ class TestNormalizeText:
         ('value', 'expected'),
         [
             pytest.param('  HeLLo  ', 'hello', id='trim-and-lower'),
+            pytest.param('  STRAẞE  ', 'strasse', id='unicode-casefold'),
             pytest.param('', '', id='empty-string'),
             pytest.param(None, '', id='none'),
         ],

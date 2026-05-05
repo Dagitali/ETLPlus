@@ -7,6 +7,10 @@ Numeric coercion utility helpers.
 from __future__ import annotations
 
 from collections.abc import Callable
+from decimal import Decimal
+from decimal import InvalidOperation
+from math import isfinite
+from typing import cast
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -15,7 +19,44 @@ __all__ = [
     # Classes
     'FloatParser',
     'IntParser',
+    # Functions
+    'finite_decimal_or_none',
 ]
+
+
+# SECTION: INTERNAL TYPE ALIASES ============================================ #
+
+
+type _Floatable = float | str | int
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def finite_decimal_or_none(
+    value: object,
+) -> Decimal | None:
+    """
+    Return a finite :class:`Decimal` for numeric-like values.
+
+    Parameters
+    ----------
+    value : object
+        Value to coerce.
+
+    Returns
+    -------
+    Decimal | None
+        Finite :class:`Decimal` or ``None`` when coercion fails or value is
+        non-finite.
+    """
+    if not isinstance(value, int | float | Decimal | str):
+        return None
+    try:
+        decimal = value if isinstance(value, Decimal) else Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        return None
+    return decimal if decimal.is_finite() else None
 
 
 # SECTION: INTERNAL CLASSES ================================================= #
@@ -25,6 +66,19 @@ class _NumberParser:
     """Shared normalization helpers for numeric parser classes."""
 
     # -- Internal Class Methods -- #
+
+    @classmethod
+    def _bounded[Num: (int, float)](
+        cls,
+        parser: Callable[[object, Num | None], Num | None],
+        value: object,
+        default: Num,
+        *,
+        bound: Callable[[Num, Num], Num],
+    ) -> Num:
+        """Parse a value and compare it with a required default bound."""
+        result = parser(value, default)
+        return bound(cls._value_or_default(result, default), default)
 
     @classmethod
     def _clamp[Num: (int, float)](
@@ -97,13 +151,6 @@ class _NumberParser:
         return cls._clamp(result, minimum, maximum)
 
     # -- Internal Static Methods -- #
-
-    @staticmethod
-    def _strip_text(
-        value: str,
-    ) -> str:
-        """Return trimmed text used by numeric coercion helpers."""
-        return value.strip()
 
     @staticmethod
     def _validate_bounds[Num: (int, float)](
@@ -186,8 +233,7 @@ class FloatParser(_NumberParser):
         float
             Greater of *default* and parsed float value.
         """
-        result = cls.parse(value, default)
-        return max(cls._value_or_default(result, default), default)
+        return cls._bounded(cls.parse, value, default, bound=max)
 
     @classmethod
     def at_most(
@@ -210,8 +256,7 @@ class FloatParser(_NumberParser):
         float
             Lesser of *default* and parsed float value.
         """
-        result = cls.parse(value, default)
-        return min(cls._value_or_default(result, default), default)
+        return cls._bounded(cls.parse, value, default, bound=min)
 
     @classmethod
     def coerce(
@@ -235,23 +280,27 @@ class FloatParser(_NumberParser):
         match value:
             case None | bool():
                 return None
-            case float():
+            case float() if isfinite(value):
                 return value
+            case float():
+                return None
             case int():
                 return float(value)
             case str():
-                text = cls._strip_text(value)
+                text = value.strip()
                 if not text:
                     return None
                 try:
-                    return float(text)
+                    parsed = float(text)
                 except ValueError:
                     return None
+                return parsed if isfinite(parsed) else None
             case _:
                 try:
-                    return float(value)  # type: ignore[arg-type]
+                    parsed = float(cast(_Floatable, value))
                 except (TypeError, ValueError):
                     return None
+                return parsed if isfinite(parsed) else None
 
     @classmethod
     def parse(
@@ -349,8 +398,7 @@ class IntParser(_NumberParser):
         int
             Greater of *default* and the parsed integer value.
         """
-        result = cls.parse(value, default)
-        return max(cls._value_or_default(result, default), default)
+        return cls._bounded(cls.parse, value, default, bound=max)
 
     @classmethod
     def at_most(
@@ -373,8 +421,7 @@ class IntParser(_NumberParser):
         int
             Lesser of *default* and the parsed integer value.
         """
-        result = cls.parse(value, default)
-        return min(cls._value_or_default(result, default), default)
+        return cls._bounded(cls.parse, value, default, bound=min)
 
     @classmethod
     def coerce(
@@ -402,7 +449,7 @@ class IntParser(_NumberParser):
             case float() if value.is_integer():
                 return int(value)
             case str():
-                text = cls._strip_text(value)
+                text = value.strip()
                 if not text:
                     return None
                 try:

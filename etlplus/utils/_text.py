@@ -31,7 +31,7 @@ class TextNormalizer:
         value: str | None,
     ) -> str:
         """
-        Return lower-cased, trimmed text for normalization helpers.
+        Return case-folded, trimmed text for normalization helpers.
 
         Parameters
         ----------
@@ -41,10 +41,10 @@ class TextNormalizer:
         Returns
         -------
         str
-            Normalized string with surrounding whitespace removed and converted
-            to lowercase. ``""`` when *value* is ``None``.
+            Normalized string with surrounding whitespace removed and case-
+            folded. ``""`` when *value* is ``None``.
         """
-        return (value or '').strip().lower()
+        return (value or '').strip().casefold()
 
     # -- Class Methods -- #
 
