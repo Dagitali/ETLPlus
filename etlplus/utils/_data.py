@@ -189,14 +189,17 @@ class JsonCodec:
             Serialized JSON text.
         """
         kwargs: dict[str, object] = {
-            'default': default,
             'ensure_ascii': False,
             'sort_keys': sort_keys,
             'indent': 2 if pretty else None,
         }
         if compact and not pretty:
             kwargs['separators'] = (',', ':')
-        return json.dumps(obj, **kwargs)
+        return json.dumps(
+            obj,
+            default=default,
+            **kwargs,  # type: ignore[arg-type]
+        )
 
     # -- Static Methods -- #
 
