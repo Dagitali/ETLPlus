@@ -15,6 +15,7 @@ from ._mapping import MappingParser
 from ._mixins import BoundsWarningsMixin
 from ._numbers import FloatParser
 from ._numbers import IntParser
+from ._numbers import finite_decimal_or_none
 from ._parsing import MappingFieldParser
 from ._parsing import SequenceParser
 from ._parsing import ValueParser
@@ -40,6 +41,7 @@ __all__ = [
     # Enums
     'CoercibleStrEnum',
     # Functions
+    'finite_decimal_or_none',
     'topological_sort_names',
     # Mixins
     'BoundsWarningsMixin',
