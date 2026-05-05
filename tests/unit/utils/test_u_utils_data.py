@@ -103,6 +103,20 @@ class TestDataHelpers:
         with pytest.raises(ValueError, match=r'^Invalid JSON payload:'):
             JsonCodec.parse('{bad json}')
 
+    @pytest.mark.parametrize(
+        'text',
+        [
+            pytest.param('"scalar"', id='string'),
+            pytest.param('1', id='number'),
+            pytest.param('true', id='boolean'),
+            pytest.param('null', id='null'),
+        ],
+    )
+    def test_parse_json_rejects_scalar_payloads(self, text: str) -> None:
+        """Test that parsed ETL payloads must be JSON objects or arrays."""
+        with pytest.raises(ValueError, match='object or array'):
+            JsonCodec.parse(text)
+
     def test_parse_json_returns_json_payload(self) -> None:
         """Test that :meth:`JsonCodec.parse` returns decoded JSON data."""
         assert JsonCodec.parse('{"name": "Ada"}') == {'name': 'Ada'}
