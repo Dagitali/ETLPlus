@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Iterator
+from collections.abc import Mapping
 from contextlib import contextmanager
 from typing import Any
 from typing import TypeGuard
@@ -24,6 +25,7 @@ from ...utils._types import JSONData
 from . import _completion
 from . import _input
 from . import _lifecycle
+from . import _output
 from . import _payload
 
 # SECTION: EXPORTS ========================================================== #
@@ -100,7 +102,7 @@ class DataCommandPolicy:
         context: _lifecycle.CommandContext,
         payload: Any,
         *,
-        mode: str,
+        mode: _completion.CompletionMode,
         pretty: bool = True,
         result_status: str = 'ok',
         **fields: Any,
@@ -114,7 +116,7 @@ class DataCommandPolicy:
             Command context for the active command scope.
         payload : Any
             Payload to include in the command output.
-        mode : str
+        mode : _completion.CompletionMode
             Output mode for the command.
         pretty : bool, optional
             Whether to pretty-print the output.
@@ -235,10 +237,7 @@ class DataCommandPolicy:
         str
             Human-readable label for the target.
         """
-        if target in (None, '-'):
-            return 'stdout'
-        assert target is not None
-        return target
+        return target if DataCommandPolicy.has_named_target(target) else 'stdout'
 
     @staticmethod
     def has_named_target(
@@ -259,7 +258,7 @@ class DataCommandPolicy:
             ``True`` if *target* names a concrete non-STDOUT destination,
             narrowing *target* to ``str`` in the guarded branch.
         """
-        return target not in (None, '-')
+        return not _output.is_stdout_target(target)
 
     @staticmethod
     def is_explicit_format(
@@ -395,6 +394,45 @@ class DataCommandPolicy:
             return default
         status = result.get('status')
         return cast(str, status) if isinstance(status, str) else default
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _complete_validation_output(
+    context: _lifecycle.CommandContext,
+    result: Mapping[str, Any],
+    *,
+    target: str | None,
+    file_payload: Any,
+    pretty: bool,
+    json_fields: dict[str, Any],
+    file_fields: dict[str, Any],
+) -> int:
+    """Complete validation output to a file target or JSON stdout."""
+    if DataCommandPolicy.has_named_target(target):
+        if file_payload is not None:
+            return DataCommandPolicy.complete_success(
+                context,
+                file_payload,
+                mode='json_file',
+                output_path=target,
+                success_message='ValidationDict result saved to',
+                **file_fields,
+            )
+
+        print(
+            f'ValidationDict failed, no data to save for {target}',
+            file=sys.stderr,
+        )
+        return 0
+
+    return DataCommandPolicy.complete_json_success(
+        context,
+        result,
+        pretty=pretty,
+        **json_fields,
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -735,7 +773,9 @@ def validate_handler(
         fields=command_fields,
     ) as context:
         if schema is not None:
-            schema_source = _input.read_stdin_text() if source == '-' else source
+            schema_source = (
+                _input.read_stdin_text() if _input.is_stdin_source(source) else source
+            )
             result = validate_schema(
                 schema_source,
                 schema,
@@ -743,26 +783,20 @@ def validate_handler(
                 source_format=source_format,
             )
 
-            if DataCommandPolicy.has_named_target(target):
-                return DataCommandPolicy.complete_success(
-                    context,
-                    result,
-                    mode='json_file',
-                    output_path=target,
-                    success_message='ValidationDict result saved to',
-                    source=source,
-                    target=target,
-                    valid=result.get('valid'),
-                    schema=schema,
-                    schema_format=schema_format,
-                )
-
-            return DataCommandPolicy.complete_json_success(
+            return _complete_validation_output(
                 context,
                 result,
+                target=target,
+                file_payload=result,
                 pretty=pretty,
-                **command_fields,
-                valid=result.get('valid'),
+                json_fields=command_fields | {'valid': result.get('valid')},
+                file_fields={
+                    'source': source,
+                    'target': target,
+                    'valid': result.get('valid'),
+                    'schema': schema,
+                    'schema_format': schema_format,
+                },
             )
 
         payload, rules_payload = DataCommandPolicy.resolve_source_mapping_inputs(
@@ -777,30 +811,16 @@ def validate_handler(
             cast(dict[str, FieldRulesDict], rules_payload),
         )
 
-        if DataCommandPolicy.has_named_target(target):
-            validated_data = result.get('data')
-            if validated_data is not None:
-                return DataCommandPolicy.complete_success(
-                    context,
-                    validated_data,
-                    mode='json_file',
-                    output_path=target,
-                    success_message='ValidationDict result saved to',
-                    source=source,
-                    target=target,
-                    valid=result.get('valid'),
-                )
-
-            print(
-                f'ValidationDict failed, no data to save for {target}',
-                file=sys.stderr,
-            )
-            return 0
-
-        return DataCommandPolicy.complete_json_success(
+        return _complete_validation_output(
             context,
             result,
+            target=target,
+            file_payload=result.get('data'),
             pretty=pretty,
-            valid=result.get('valid'),
-            **command_fields,
+            json_fields=command_fields | {'valid': result.get('valid')},
+            file_fields={
+                'source': source,
+                'target': target,
+                'valid': result.get('valid'),
+            },
         )
