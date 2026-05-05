@@ -132,8 +132,7 @@ def _ordered_specs(
         )
 
     return [
-        specs_by_name[name]
-        for name in topological_sort_names(dependencies_by_name)
+        specs_by_name[name] for name in topological_sort_names(dependencies_by_name)
     ]
 
 
