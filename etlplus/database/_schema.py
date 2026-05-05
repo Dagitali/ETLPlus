@@ -227,7 +227,7 @@ class TableSpec(BaseModel):
     indexes: list[IndexSpec] = Field(default_factory=list)
     foreign_keys: list[ForeignKeySpec] = Field(default_factory=list)
 
-    # -- Properties -- #
+    # -- Getters -- #
 
     @property
     def fq_name(self) -> str:
