@@ -9,11 +9,13 @@ from __future__ import annotations
 import json
 import math
 import re
+from dataclasses import dataclass
 from datetime import date
 from datetime import datetime
 from datetime import time
 from decimal import Decimal
 from typing import Any
+from typing import ClassVar
 
 from ._enums import SqlTypeAffinity
 
@@ -29,6 +31,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
+@dataclass(slots=True)
 class ValueCodec:
     """
     Normalizes Python values to DB-friendly representations.
@@ -44,14 +47,13 @@ class ValueCodec:
         Convert `value` into a representation compatible with `sql_type`.
     """
 
+    # -- Internal Class Attributes -- #
+
+    _num_re: ClassVar[re.Pattern[str]] = re.compile(r'^-?\d+(\.\d+)?$')
+
     # -- Attributes -- #
 
-    _num_re = re.compile(r'^-?\d+(\.\d+)?$')
-
-    # -- Magic Methods -- #
-
-    def __init__(self, *, keep_unknown_as_json: bool = True) -> None:
-        self.keep_unknown_as_json = keep_unknown_as_json
+    keep_unknown_as_json: bool = True
 
     # -- Instance Methods -- #
 
