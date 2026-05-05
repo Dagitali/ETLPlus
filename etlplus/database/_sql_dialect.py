@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ..utils import TextNormalizer
 from ._enums import DatabaseDialect
 
 # SECTION: EXPORTS ========================================================== #
@@ -137,7 +138,7 @@ class SqlDialect:
         if self.dialect is not DatabaseDialect.SQLITE:
             return '.'.join(self.quote_ident(part) for part in parts)
 
-        if len(parts) == 2 and parts[0].lower() in ('main', 'temp'):
+        if len(parts) == 2 and TextNormalizer.normalize(parts[0]) in ('main', 'temp'):
             return f'{self.quote_ident(parts[0])}.{self.quote_ident(parts[1])}'
 
         # Unknown prefix (e.g., "dbo"): treat as schema and drop it.
