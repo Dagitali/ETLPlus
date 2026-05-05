@@ -10,6 +10,7 @@ from collections.abc import Callable
 from decimal import Decimal
 from decimal import InvalidOperation
 from math import isfinite
+from typing import cast
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -21,6 +22,12 @@ __all__ = [
     # Functions
     'finite_decimal_or_none',
 ]
+
+
+# SECTION: INTERNAL TYPE ALIASES ============================================ #
+
+
+type _Floatable = float | str | int
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -290,7 +297,7 @@ class FloatParser(_NumberParser):
                 return parsed if isfinite(parsed) else None
             case _:
                 try:
-                    parsed = float(value)
+                    parsed = float(cast(_Floatable, value))
                 except (TypeError, ValueError):
                     return None
                 return parsed if isfinite(parsed) else None
