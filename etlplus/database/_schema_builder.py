@@ -117,7 +117,12 @@ def _column_types(
     name: str,
 ) -> tuple[set[type], bool]:
     """Return observed non-null Python types and nullability for a column."""
-    values = [record.get(name) for record in records]
-    return {type(value) for value in values if value is not None}, any(
-        value is None for value in values
-    )
+    py_types: set[type] = set()
+    nullable = False
+    for record in records:
+        value = record.get(name)
+        if value is None:
+            nullable = True
+        else:
+            py_types.add(type(value))
+    return py_types, nullable
