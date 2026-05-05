@@ -61,7 +61,8 @@ class MappingParser:
         str | None
             Trimmed string value if found; otherwise ``None``.
         """
-        for key in keys:
+        candidates = tuple(keys)
+        for key in candidates:
             value = mapping.get(key)
             if isinstance(value, str) and value.strip():
                 return value.strip()
@@ -69,7 +70,7 @@ class MappingParser:
         if nested_key and isinstance(nested := mapping.get(nested_key), Mapping):
             return MappingParser.first_non_empty_str(
                 nested,
-                keys,
+                candidates,
                 nested_key=nested_key,
             )
 
