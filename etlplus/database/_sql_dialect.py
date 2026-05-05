@@ -70,8 +70,17 @@ class SqlDialect:
         -------
         str
             The quoted identifier.
+
+        Raises
+        ------
+        ValueError
+            If the identifier is empty or blank.
         """
-        safe = name.replace('"', '""')
+        stripped_name = name.strip()
+        if not stripped_name:
+            raise ValueError(f'Invalid identifier: {name!r}')
+
+        safe = stripped_name.replace('"', '""')
 
         # We quote everything for simplicity/safety (valid in SQLite/ANSI).
         return f'"{safe}"'
