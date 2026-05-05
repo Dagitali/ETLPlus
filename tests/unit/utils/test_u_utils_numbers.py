@@ -198,6 +198,9 @@ class TestGenericNumberCoercion:
             pytest.param('abc', None, id='invalid-string'),
             pytest.param('', None, id='blank-string'),
             pytest.param('3.14.15', None, id='malformed-number'),
+            pytest.param(float('nan'), None, id='nan'),
+            pytest.param(float('inf'), None, id='inf'),
+            pytest.param('-inf', None, id='negative-inf-string'),
             pytest.param(True, None, id='bool-rejected'),
         ],
     )
