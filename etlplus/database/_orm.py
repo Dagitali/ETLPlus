@@ -206,8 +206,7 @@ def _append_table_constraints(
         )
 
     table_args.extend(
-        UniqueConstraint(*uc.columns, name=uc.name)
-        for uc in spec.unique_constraints
+        UniqueConstraint(*uc.columns, name=uc.name) for uc in spec.unique_constraints
     )
     table_args.extend(
         Index(
