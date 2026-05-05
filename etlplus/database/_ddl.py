@@ -13,7 +13,6 @@ from __future__ import annotations
 import importlib.resources
 import os
 from collections.abc import Iterable
-from collections.abc import Mapping
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Final
@@ -197,10 +196,10 @@ def _template_text_from_override_payload(
     if (
         isinstance(payload, list)
         and payload
-        and isinstance(payload[0], Mapping)
-        and isinstance(payload[0].get('template'), str)
+        and (template_mapping := MappingParser.optional(payload[0])) is not None
+        and isinstance(template_mapping.get('template'), str)
     ):
-        return payload[0]['template']
+        return template_mapping['template']
     raise TypeError('JINJA2 template payload must include text')
 
 
@@ -253,7 +252,7 @@ def load_table_spec(
     if spec_mapping is None:
         raise TypeError('Table spec must be a mapping')
 
-    return dict(spec_mapping)
+    return MappingParser.to_dict(spec_mapping)
 
 
 def render_table_sql(
