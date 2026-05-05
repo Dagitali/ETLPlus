@@ -22,7 +22,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class InferredColumn:
     """
     Inferred column specification suitable for portable database writes.
