@@ -139,9 +139,7 @@ class ValueCodec:
             return None
         try:
             decimal = (
-                value
-                if isinstance(value, Decimal)
-                else Decimal(str(value).strip())
+                value if isinstance(value, Decimal) else Decimal(str(value).strip())
             )
         except (InvalidOperation, ValueError):
             return None
