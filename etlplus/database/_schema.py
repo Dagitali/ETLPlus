@@ -7,6 +7,7 @@ specifications into Pydantic models for dynamic SQLAlchemy generation.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
@@ -247,6 +248,25 @@ class TableSpec(BaseModel):
         return f'{self.schema_name}.{self.table}' if self.schema_name else self.table
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _table_spec_items(data: Any) -> Sequence[Any]:
+    """Normalize loaded table-spec payloads to a sequence of items."""
+    if not data:
+        return ()
+    if isinstance(data, dict) and 'table_schemas' in data:
+        table_schemas = data['table_schemas']
+        if table_schemas is None:
+            return ()
+        if not isinstance(table_schemas, list):
+            raise TypeError('table_schemas must be a list')
+        return table_schemas
+    if isinstance(data, list):
+        return data
+    return (data,)
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -267,14 +287,4 @@ def load_table_specs(
         A list of TableSpec instances parsed from the YAML file.
     """
     data = File(Path(path)).read()
-    if not data:
-        return []
-
-    if isinstance(data, dict) and 'table_schemas' in data:
-        items: list[Any] = data['table_schemas'] or []
-    elif isinstance(data, list):
-        items = data
-    else:
-        items = [data]
-
-    return [TableSpec.model_validate(item) for item in items]
+    return [TableSpec.model_validate(item) for item in _table_spec_items(data)]
