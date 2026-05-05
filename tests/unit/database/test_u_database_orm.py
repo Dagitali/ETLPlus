@@ -156,18 +156,18 @@ class TestHelpers:
     @pytest.mark.parametrize(
         ('type_str', 'name', 'params'),
         [
-            ('VARCHAR(12)', 'varchar', [12]),
-            ('decimal(10, 4)', 'decimal', [10, 4]),
-            ('decimal(10, foo, 4)', 'decimal', [10, 4]),
-            ('text', 'text', []),
-            ('invalid(type', 'invalid(type', []),
+            ('VARCHAR(12)', 'varchar', (12,)),
+            ('decimal(10, 4)', 'decimal', (10, 4)),
+            ('decimal(10, foo, 4)', 'decimal', (10, 4)),
+            ('text', 'text', ()),
+            ('invalid(type', 'invalid(type', ()),
         ],
     )
     def test_parse_type_decl_and_class_name(
         self,
         type_str: str,
         name: str,
-        params: list[int],
+        params: tuple[int, ...],
     ) -> None:
         """
         Test that type parsing returns expected names/params and class names

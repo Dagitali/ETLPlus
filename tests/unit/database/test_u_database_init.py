@@ -17,6 +17,9 @@ from etlplus.database._engine import engine
 from etlplus.database._engine import load_database_url_from_config
 from etlplus.database._engine import make_engine
 from etlplus.database._engine import session
+from etlplus.database._enums import DatabaseDialect
+from etlplus.database._enums import ReferentialAction
+from etlplus.database._enums import SqlTypeAffinity
 from etlplus.database._orm import Base
 from etlplus.database._orm import build_models
 from etlplus.database._orm import load_and_build_models
@@ -40,10 +43,13 @@ from etlplus.database._schema import load_table_specs
 DATABASE_EXPORTS = [
     ('Base', Base),
     ('ColumnSpec', ColumnSpec),
+    ('DatabaseDialect', DatabaseDialect),
     ('ForeignKeySpec', ForeignKeySpec),
     ('IdentitySpec', IdentitySpec),
     ('IndexSpec', IndexSpec),
     ('PrimaryKeySpec', PrimaryKeySpec),
+    ('ReferentialAction', ReferentialAction),
+    ('SqlTypeAffinity', SqlTypeAffinity),
     ('TableSpec', TableSpec),
     ('UniqueConstraintSpec', UniqueConstraintSpec),
     ('build_models', build_models),

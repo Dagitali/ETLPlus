@@ -18,6 +18,9 @@ from ._engine import engine
 from ._engine import load_database_url_from_config
 from ._engine import make_engine
 from ._engine import session
+from ._enums import DatabaseDialect
+from ._enums import ReferentialAction
+from ._enums import SqlTypeAffinity
 from ._orm import Base
 from ._orm import build_models
 from ._orm import load_and_build_models
@@ -38,10 +41,13 @@ __all__ = [
     # Classes
     'Base',
     'ColumnSpec',
+    'DatabaseDialect',
     'ForeignKeySpec',
     'IdentitySpec',
     'IndexSpec',
     'PrimaryKeySpec',
+    'ReferentialAction',
+    'SqlTypeAffinity',
     'TableSpec',
     'UniqueConstraintSpec',
     # Functions
