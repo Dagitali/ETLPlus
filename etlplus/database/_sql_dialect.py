@@ -6,6 +6,8 @@ SQL identifier quoting and small dialect-aware helpers.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from ._enums import DatabaseDialect
 
 # SECTION: EXPORTS ========================================================== #
@@ -20,6 +22,7 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
+@dataclass(slots=True)
 class SqlDialect:
     """
     SQL identifier quoting and small dialect-aware helpers.
@@ -39,13 +42,15 @@ class SqlDialect:
         ("main", "temp") are preserved.
     """
 
+    # -- Attributes -- #
+
+    dialect: DatabaseDialect | str = DatabaseDialect.SQLITE
+
     # -- Magic Methods (Object Lifecycle) -- #
 
-    def __init__(
-        self,
-        dialect: DatabaseDialect | str = DatabaseDialect.SQLITE,
-    ) -> None:
-        self.dialect = DatabaseDialect.coerce(dialect)
+    def __post_init__(self) -> None:
+        """Normalize the configured database dialect."""
+        self.dialect = DatabaseDialect.coerce(self.dialect)
 
     # -- Instance Methods -- #
 
@@ -83,11 +88,11 @@ class SqlDialect:
         >>> SqlDialect().quote_table('server.db.dbo.Absences')
         '"Absences"'
         """
-        n = name.strip()
-        if '.' not in n:
-            return self.quote_ident(n)
+        stripped_name = name.strip()
+        if '.' not in stripped_name:
+            return self.quote_ident(stripped_name)
 
-        parts = [p.strip() for p in n.split('.') if p.strip()]
+        parts = [part.strip() for part in stripped_name.split('.') if part.strip()]
         if not parts:
             raise ValueError(f'Invalid table reference: {name!r}')
 
