@@ -7,6 +7,8 @@ Helpers for inferring schema from records.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
+from dataclasses import field
 from typing import Any
 
 from ._enums import SqlTypeAffinity
@@ -31,6 +33,7 @@ type TypeHints = Mapping[str, SqlTypeAffinity | str]
 # SECTION: CLASSES ========================================================== #
 
 
+@dataclass(slots=True)
 class SchemaBuilder:
     """
     Infers columns with SQL types and nullability from records.
@@ -46,10 +49,9 @@ class SchemaBuilder:
         Return ordered inferred columns from the provided records.
     """
 
-    # -- Magic Methods -- #
+    # -- Attributes -- #
 
-    def __init__(self, type_resolver: TypeResolver | None = None) -> None:
-        self.type_resolver = type_resolver or TypeResolver()
+    type_resolver: TypeResolver = field(default_factory=TypeResolver)
 
     # -- Instance Methods -- #
 
@@ -69,14 +71,14 @@ class SchemaBuilder:
         type_hints : TypeHints | None
             Optional mapping of column name to forced SQL type affinity.
         """
-        names = sorted({k for r in recs for k in r.keys()})
+        names = sorted({key for record in recs for key in record})
         hints = _coerce_type_hints(type_hints)
 
-        cols: list[InferredColumn] = []
+        columns: list[InferredColumn] = []
         for name in names:
             if name in hints:
                 nullable = any(r.get(name) is None for r in recs)
-                cols.append(
+                columns.append(
                     InferredColumn(
                         name=name,
                         type_affinity=hints[name],
@@ -85,25 +87,16 @@ class SchemaBuilder:
                 )
                 continue
 
-            py_types: set[type] = set()
-            has_none = False
-            for r in recs:
-                v = r.get(name, None)
-                if v is None:
-                    has_none = True
-                    continue
-                py_types.add(type(v))
-
-            sql_type = self.type_resolver.resolve(py_types)
-            cols.append(
+            py_types, nullable = _column_types(recs, name)
+            columns.append(
                 InferredColumn(
                     name=name,
-                    type_affinity=sql_type,
-                    nullable=has_none,
+                    type_affinity=self.type_resolver.resolve(py_types),
+                    nullable=nullable,
                 ),
             )
 
-        return cols
+        return columns
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -117,3 +110,14 @@ def _coerce_type_hints(
         name: SqlTypeAffinity.coerce(value)
         for name, value in (type_hints or {}).items()
     }
+
+
+def _column_types(
+    records: list[Mapping[str, Any]],
+    name: str,
+) -> tuple[set[type], bool]:
+    """Return observed non-null Python types and nullability for a column."""
+    values = [record.get(name) for record in records]
+    return {type(value) for value in values if value is not None}, any(
+        value is None for value in values
+    )
