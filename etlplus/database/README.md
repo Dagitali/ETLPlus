@@ -44,5 +44,5 @@ print(sql)
 ## See Also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
-- Schema helpers in [schema.py](schema.py)
-- ORM utilities in [orm.py](orm.py)
+- Schema helpers in [`_schema.py`](_schema.py)
+- ORM utilities in [`_orm.py`](_orm.py)
