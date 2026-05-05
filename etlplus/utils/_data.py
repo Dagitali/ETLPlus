@@ -8,6 +8,11 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Callable
+from datetime import date
+from datetime import datetime
+from datetime import time
+from decimal import Decimal
 from typing import Any
 from typing import TextIO
 from typing import cast
@@ -62,6 +67,18 @@ class JsonCodec:
     """Centralize JSON parse, render, and print behavior."""
 
     # -- Class Methods -- #
+
+    @classmethod
+    def default(
+        cls,
+        value: Any,
+    ) -> Any:
+        """Return a JSON fallback for common ETL scalar types."""
+        if isinstance(value, date | datetime | time):
+            return cls.isoformat(value)
+        if isinstance(value, Decimal):
+            return str(value)
+        return str(value)
 
     @classmethod
     def parse(
@@ -130,6 +147,8 @@ class JsonCodec:
         cls,
         obj: Any,
         *,
+        compact: bool = True,
+        default: Callable[[Any], Any] | None = None,
         pretty: bool = False,
         sort_keys: bool = False,
     ) -> str:
@@ -140,6 +159,11 @@ class JsonCodec:
         ----------
         obj : Any
             Object to serialize as JSON.
+        compact : bool, optional
+            Whether to remove optional whitespace when not pretty-printing.
+            Default is ``True``.
+        default : Callable[[Any], Any] | None, optional
+            Optional JSON fallback serializer for non-standard values.
         pretty : bool, optional
             Whether to format output with indentation. Default is ``False``.
         sort_keys : bool, optional
@@ -151,10 +175,22 @@ class JsonCodec:
             Serialized JSON text.
         """
         kwargs: dict[str, Any] = {
+            'default': default,
             'ensure_ascii': False,
             'sort_keys': sort_keys,
             'indent': 2 if pretty else None,
         }
-        if not pretty:
+        if compact and not pretty:
             kwargs['separators'] = (',', ':')
         return json.dumps(obj, **kwargs)
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def isoformat(value: date | datetime | time) -> str:
+        """Return stable ISO text for date-like values."""
+        match value:
+            case datetime() | time():
+                return value.isoformat(timespec='microseconds')
+            case _:
+                return value.isoformat()
