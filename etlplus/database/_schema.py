@@ -21,6 +21,7 @@ from pydantic import field_validator
 from pydantic import model_validator
 
 from ..file import File
+from ..utils import MappingParser
 from ..utils._types import StrPath
 from ._enums import ReferentialAction
 
@@ -272,8 +273,9 @@ def _table_spec_items(data: Any) -> Sequence[Any]:
     """Normalize loaded table-spec payloads to a sequence of items."""
     if not data:
         return ()
-    if isinstance(data, dict) and 'table_schemas' in data:
-        table_schemas = data['table_schemas']
+    data_mapping = MappingParser.optional(data)
+    if data_mapping is not None and 'table_schemas' in data_mapping:
+        table_schemas = data_mapping['table_schemas']
         if table_schemas is None:
             return ()
         if not isinstance(table_schemas, list):
