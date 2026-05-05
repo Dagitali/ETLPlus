@@ -22,6 +22,7 @@ from pydantic import model_validator
 
 from ..file import File
 from ..utils import MappingParser
+from ..utils import SequenceParser
 from ..utils._types import StrPath
 from ._enums import ReferentialAction
 
@@ -117,6 +118,12 @@ class ForeignKeySpec(BaseModel):
 
     # -- Validators -- #
 
+    @field_validator('columns', 'ref_columns', mode='before')
+    @classmethod
+    def _normalize_column_list(cls, value: object) -> object:
+        """Normalize scalar column names to single-item lists."""
+        return _coerce_non_empty_str_list(value)
+
     @field_validator('ondelete', mode='before')
     @classmethod
     def _normalize_ondelete(cls, value: object) -> str | None:
@@ -178,6 +185,14 @@ class IndexSpec(BaseModel):
     unique: bool = False
     where: str | None = None
 
+    # -- Validators -- #
+
+    @field_validator('columns', mode='before')
+    @classmethod
+    def _normalize_column_list(cls, value: object) -> object:
+        """Normalize scalar column names to single-item lists."""
+        return _coerce_non_empty_str_list(value)
+
 
 class PrimaryKeySpec(BaseModel):
     """
@@ -198,6 +213,14 @@ class PrimaryKeySpec(BaseModel):
     name: str | None = None
     columns: NonEmptyStrList
 
+    # -- Validators -- #
+
+    @field_validator('columns', mode='before')
+    @classmethod
+    def _normalize_column_list(cls, value: object) -> object:
+        """Normalize scalar column names to single-item lists."""
+        return _coerce_non_empty_str_list(value)
+
 
 class UniqueConstraintSpec(BaseModel):
     """
@@ -217,6 +240,14 @@ class UniqueConstraintSpec(BaseModel):
 
     name: str | None = None
     columns: NonEmptyStrList
+
+    # -- Validators -- #
+
+    @field_validator('columns', mode='before')
+    @classmethod
+    def _normalize_column_list(cls, value: object) -> object:
+        """Normalize scalar column names to single-item lists."""
+        return _coerce_non_empty_str_list(value)
 
 
 class TableSpec(BaseModel):
@@ -267,6 +298,20 @@ class TableSpec(BaseModel):
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _coerce_non_empty_str_list(value: object) -> object:
+    """Return a string list only when coercion is lossless."""
+    parsed = SequenceParser.str_list(value)
+    if isinstance(value, str):
+        return parsed
+    if (
+        isinstance(value, Sequence)
+        and not isinstance(value, str | bytes | bytearray)
+        and len(parsed) == len(value)
+    ):
+        return parsed
+    return value
 
 
 def _table_spec_items(data: Any) -> Sequence[Any]:
