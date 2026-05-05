@@ -6,6 +6,7 @@ Maps observed Python runtime types to portable SQL types.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -25,17 +26,28 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
-_INTEGER_TYPES = {bool, int}
-_REAL_TYPES = {float}
-_NUMERIC_TYPES = {Decimal}
-_BINARY_TYPES = {bytes, bytearray, memoryview}
-_DATE_TYPES = {date}
-_DATETIME_TYPES = {datetime}
-_TIME_TYPES = {time}
-_TEXT_TYPES = {str}
+_INTEGER_TYPES = frozenset({bool, int})
+_REAL_TYPES = frozenset({float})
+_NUMERIC_TYPES = frozenset({Decimal})
+_BINARY_TYPES = frozenset({bytes, bytearray, memoryview})
+_DATE_TYPES = frozenset({date})
+_DATETIME_TYPES = frozenset({datetime})
+_TIME_TYPES = frozenset({time})
+_TEXT_TYPES = frozenset({str})
 _NUMERIC_FAMILY_TYPES = _INTEGER_TYPES | _REAL_TYPES | _NUMERIC_TYPES
+_SIMPLE_TYPE_RULES = (
+    (_INTEGER_TYPES, SqlTypeAffinity.INTEGER),
+    (_REAL_TYPES, SqlTypeAffinity.REAL),
+    (_NUMERIC_TYPES, SqlTypeAffinity.NUMERIC),
+    (_BINARY_TYPES, SqlTypeAffinity.BINARY),
+    (_DATE_TYPES, SqlTypeAffinity.DATE),
+    (_DATETIME_TYPES, SqlTypeAffinity.DATETIME),
+    (_TIME_TYPES, SqlTypeAffinity.TIME),
+    (_TEXT_TYPES, SqlTypeAffinity.TEXT),
+)
 
 
+@dataclass(frozen=True, slots=True)
 class TypeResolver:
     """
     Maps observed Python runtime types to portable SQL types.
@@ -51,10 +63,9 @@ class TypeResolver:
         Return a portable SQL type affinity.
     """
 
-    # -- Magic Methods (Object Lifecycle) -- #
+    # -- Attributes -- #
 
-    def __init__(self, *, prefer_text_on_mixed: bool = True) -> None:
-        self.prefer_text_on_mixed = prefer_text_on_mixed
+    prefer_text_on_mixed: bool = True
 
     # -- Instance Methods -- #
 
@@ -75,34 +86,16 @@ class TypeResolver:
         if not py_types:
             return SqlTypeAffinity.TEXT
 
-        if py_types <= _INTEGER_TYPES:
-            return SqlTypeAffinity.INTEGER
+        observed_types = frozenset(py_types)
 
-        if py_types <= _REAL_TYPES:
-            return SqlTypeAffinity.REAL
+        for expected_types, affinity in _SIMPLE_TYPE_RULES:
+            if observed_types <= expected_types:
+                return affinity
 
-        if py_types <= _NUMERIC_TYPES:
-            return SqlTypeAffinity.NUMERIC
-
-        if py_types <= _BINARY_TYPES:
-            return SqlTypeAffinity.BINARY
-
-        if py_types <= _DATE_TYPES:
-            return SqlTypeAffinity.DATE
-
-        if py_types <= _DATETIME_TYPES:
-            return SqlTypeAffinity.DATETIME
-
-        if py_types <= _TIME_TYPES:
-            return SqlTypeAffinity.TIME
-
-        if py_types <= _TEXT_TYPES:
-            return SqlTypeAffinity.TEXT
-
-        if py_types <= _NUMERIC_FAMILY_TYPES:
+        if observed_types <= _NUMERIC_FAMILY_TYPES:
             return (
                 SqlTypeAffinity.REAL
-                if py_types <= (_INTEGER_TYPES | _REAL_TYPES)
+                if observed_types <= (_INTEGER_TYPES | _REAL_TYPES)
                 else SqlTypeAffinity.NUMERIC
             )
 
