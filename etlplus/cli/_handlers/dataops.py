@@ -102,7 +102,7 @@ class DataCommandPolicy:
         context: _lifecycle.CommandContext,
         payload: Any,
         *,
-        mode: str,
+        mode: _completion.CompletionMode,
         pretty: bool = True,
         result_status: str = 'ok',
         **fields: Any,
@@ -116,7 +116,7 @@ class DataCommandPolicy:
             Command context for the active command scope.
         payload : Any
             Payload to include in the command output.
-        mode : str
+        mode : _completion.CompletionMode
             Output mode for the command.
         pretty : bool, optional
             Whether to pretty-print the output.
@@ -237,10 +237,7 @@ class DataCommandPolicy:
         str
             Human-readable label for the target.
         """
-        if _output.is_stdout_target(target):
-            return 'stdout'
-        assert target is not None
-        return target
+        return target if DataCommandPolicy.has_named_target(target) else 'stdout'
 
     @staticmethod
     def has_named_target(
