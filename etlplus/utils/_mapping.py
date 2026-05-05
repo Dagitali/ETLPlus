@@ -38,6 +38,45 @@ class MappingParser:
     # -- Static Methods -- #
 
     @staticmethod
+    def first_non_empty_str(
+        mapping: StrAnyMap,
+        keys: Iterable[str],
+        *,
+        nested_key: str | None = None,
+    ) -> str | None:
+        """
+        Return the first non-empty string found for candidate keys.
+
+        Parameters
+        ----------
+        mapping : StrAnyMap
+            Mapping to inspect.
+        keys : Iterable[str]
+            Candidate keys checked in order.
+        nested_key : str | None, optional
+            Optional nested mapping key to inspect recursively after the
+            top-level keys are checked.
+
+        Returns
+        -------
+        str | None
+            Trimmed string value if found; otherwise ``None``.
+        """
+        for key in keys:
+            value = mapping.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+
+        if nested_key and isinstance(nested := mapping.get(nested_key), Mapping):
+            return MappingParser.first_non_empty_str(
+                nested,
+                keys,
+                nested_key=nested_key,
+            )
+
+        return None
+
+    @staticmethod
     def index_named_items(
         items: Iterable[ItemT],
         *,
