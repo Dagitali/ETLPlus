@@ -90,6 +90,7 @@ class TestSqlTypeAffinity:
         ('affinity', 'expected'),
         [
             (SqlTypeAffinity.BINARY, 'BLOB'),
+            (SqlTypeAffinity.BOOLEAN, 'BOOLEAN'),
             (SqlTypeAffinity.INTEGER, 'INTEGER'),
             (SqlTypeAffinity.TEXT, 'TEXT'),
         ],
