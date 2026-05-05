@@ -41,6 +41,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.types import TypeEngine
 
+from ..utils import TextNormalizer
 from ..utils._types import StrPath
 from ._schema import ColumnSpec
 from ._schema import ForeignKeySpec
@@ -157,9 +158,9 @@ def _parse_type_decl(
     """
     match = _TYPE_DECL_RE.match(type_str.strip())
     if not match:
-        return type_str.lower(), ()
+        return TextNormalizer.normalize(type_str), ()
     params_raw = match.group('params')
-    return match.group('name').lower(), _parse_type_params(params_raw)
+    return TextNormalizer.normalize(match.group('name')), _parse_type_params(params_raw)
 
 
 def _parse_type_params(params_raw: str | None) -> tuple[int, ...]:
