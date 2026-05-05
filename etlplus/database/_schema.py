@@ -14,9 +14,11 @@ from typing import ClassVar
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
+from pydantic import field_validator
 
 from ..file import File
 from ..utils._types import StrPath
+from ._enums import ReferentialAction
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -100,6 +102,16 @@ class ForeignKeySpec(BaseModel):
     ref_table: str
     ref_columns: list[str]
     ondelete: str | None = None
+
+    # -- Validators -- #
+
+    @field_validator('ondelete', mode='before')
+    @classmethod
+    def _normalize_ondelete(cls, value: object) -> str | None:
+        """Normalize foreign key referential actions to SQL spelling."""
+        if value is None:
+            return None
+        return ReferentialAction.coerce(value).sql
 
 
 class IdentitySpec(BaseModel):
