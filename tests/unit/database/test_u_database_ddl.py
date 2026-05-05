@@ -212,6 +212,7 @@ class TestRenderTableSql:
         'payload',
         [
             [],
+            ['not a mapping'],
             [{'not_template': 'value'}],
             {'template': 'wrong shape'},
         ],
