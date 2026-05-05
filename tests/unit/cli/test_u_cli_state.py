@@ -701,3 +701,22 @@ class TestOptionalChoice:
                 {'json'},
                 label='format',
             )
+
+    @pytest.mark.parametrize(
+        'invalid',
+        [
+            pytest.param(0, id='zero'),
+            pytest.param(False, id='false'),
+        ],
+    )
+    def test_validate_preserves_falsey_invalid_values(
+        self,
+        invalid: object,
+    ) -> None:
+        """Choice validation should report falsey invalid values faithfully."""
+        with pytest.raises(typer.BadParameter, match=repr(invalid)):
+            cli_state_mod.ResourceTypeResolver.validate(
+                invalid,
+                {'json'},
+                label='format',
+            )
