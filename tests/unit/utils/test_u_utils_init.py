@@ -24,6 +24,8 @@ from etlplus.utils._parsing import SequenceParser
 from etlplus.utils._parsing import ValueParser
 from etlplus.utils._substitution import SubstitutionResolver
 from etlplus.utils._text import TextNormalizer
+from etlplus.utils._types import NonEmptyStr
+from etlplus.utils._types import NonEmptyStrList
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -48,6 +50,8 @@ UTILS_EXPORTS = [
     ('finite_decimal_or_none', finite_decimal_or_none),
     ('topological_sort_names', topological_sort_names),
     ('BoundsWarningsMixin', BoundsWarningsMixin),
+    ('NonEmptyStr', NonEmptyStr),
+    ('NonEmptyStrList', NonEmptyStrList),
 ]
 
 
