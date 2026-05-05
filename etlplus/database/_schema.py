@@ -9,13 +9,16 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Annotated
 from typing import Any
 from typing import ClassVar
+from typing import Self
 
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import field_validator
+from pydantic import model_validator
 
 from ..file import File
 from ..utils._types import StrPath
@@ -38,6 +41,13 @@ __all__ = [
 ]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type NonEmptyStr = Annotated[str, Field(min_length=1)]
+type NonEmptyStrList = Annotated[list[NonEmptyStr], Field(min_length=1)]
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -49,9 +59,9 @@ class ColumnSpec(BaseModel):
     ----------
     model_config : ClassVar[ConfigDict]
         Pydantic model configuration.
-    name : str
+    name : NonEmptyStr
         Unquoted column name.
-    type : str
+    type : NonEmptyStr
         SQL type string, e.g., INT, NVARCHAR(100).
     nullable : bool
         True if NULL values are allowed.
@@ -69,8 +79,8 @@ class ColumnSpec(BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra='forbid')
 
-    name: str
-    type: str = Field(description='SQL type string, e.g., INT, NVARCHAR(100)')
+    name: NonEmptyStr
+    type: NonEmptyStr = Field(description='SQL type string, e.g., INT, NVARCHAR(100)')
     nullable: bool = True
     default: str | None = None
     identity: IdentitySpec | None = None
@@ -87,11 +97,11 @@ class ForeignKeySpec(BaseModel):
     ----------
     model_config : ClassVar[ConfigDict]
         Pydantic model configuration.
-    columns : list[str]
+    columns : NonEmptyStrList
         List of local column names.
-    ref_table : str
+    ref_table : NonEmptyStr
         Referenced table name.
-    ref_columns : list[str]
+    ref_columns : NonEmptyStrList
         List of referenced column names.
     ondelete : str | None
         ON DELETE action, or None.
@@ -99,9 +109,9 @@ class ForeignKeySpec(BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra='forbid')
 
-    columns: list[str]
-    ref_table: str
-    ref_columns: list[str]
+    columns: NonEmptyStrList
+    ref_table: NonEmptyStr
+    ref_columns: NonEmptyStrList
     ondelete: str | None = None
 
     # -- Validators -- #
@@ -113,6 +123,13 @@ class ForeignKeySpec(BaseModel):
         if value is None:
             return None
         return ReferentialAction.coerce(value).sql
+
+    @model_validator(mode='after')
+    def _validate_column_counts(self) -> Self:
+        """Validate local and referenced foreign-key column arity."""
+        if len(self.columns) != len(self.ref_columns):
+            raise ValueError('foreign key columns and ref_columns must match')
+        return self
 
 
 class IdentitySpec(BaseModel):
@@ -143,9 +160,9 @@ class IndexSpec(BaseModel):
     ----------
     model_config : ClassVar[ConfigDict]
         Pydantic model configuration.
-    name : str
+    name : NonEmptyStr
         Index name.
-    columns : list[str]
+    columns : NonEmptyStrList
         List of column names included in the index.
     unique : bool
         True if the index is unique.
@@ -155,8 +172,8 @@ class IndexSpec(BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra='forbid')
 
-    name: str
-    columns: list[str]
+    name: NonEmptyStr
+    columns: NonEmptyStrList
     unique: bool = False
     where: str | None = None
 
@@ -171,14 +188,14 @@ class PrimaryKeySpec(BaseModel):
         Pydantic model configuration.
     name : str | None
         Primary key constraint name, or None if unnamed.
-    columns : list[str]
+    columns : NonEmptyStrList
         List of column names included in the primary key.
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra='forbid')
 
     name: str | None = None
-    columns: list[str]
+    columns: NonEmptyStrList
 
 
 class UniqueConstraintSpec(BaseModel):
@@ -191,14 +208,14 @@ class UniqueConstraintSpec(BaseModel):
         Pydantic model configuration.
     name : str | None
         Unique constraint name, or None if unnamed.
-    columns : list[str]
+    columns : NonEmptyStrList
         List of column names included in the unique constraint.
     """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra='forbid')
 
     name: str | None = None
-    columns: list[str]
+    columns: NonEmptyStrList
 
 
 class TableSpec(BaseModel):
@@ -209,13 +226,13 @@ class TableSpec(BaseModel):
     ----------
     model_config : ClassVar[ConfigDict]
         Pydantic model configuration.
-    table : str
+    table : NonEmptyStr
         Table name.
-    schema_name : str | None
+    schema_name : NonEmptyStr | None
         Schema name, or None if not specified.
     create_schema : bool
         Whether to create the schema if it does not exist.
-    columns : list[ColumnSpec]
+    columns : Annotated[list[ColumnSpec], Field(min_length=1)]
         List of column specifications.
     primary_key : PrimaryKeySpec | None
         Primary key specification, or None if no primary key.
@@ -229,10 +246,10 @@ class TableSpec(BaseModel):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra='forbid')
 
-    table: str = Field(alias='name')
-    schema_name: str | None = Field(default=None, alias='schema')
+    table: NonEmptyStr = Field(alias='name')
+    schema_name: NonEmptyStr | None = Field(default=None, alias='schema')
     create_schema: bool = False
-    columns: list[ColumnSpec]
+    columns: Annotated[list[ColumnSpec], Field(min_length=1)]
     primary_key: PrimaryKeySpec | None = None
     unique_constraints: list[UniqueConstraintSpec] = Field(
         default_factory=list,
