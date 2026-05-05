@@ -7,11 +7,13 @@ Unit tests for :mod:`etlplus.utils._numbers`.
 from __future__ import annotations
 
 from collections.abc import Callable
+from decimal import Decimal
 
 import pytest
 
 from etlplus.utils import FloatParser
 from etlplus.utils import IntParser
+from etlplus.utils import finite_decimal_or_none
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -164,6 +166,27 @@ class TestIntCoercion:
 
 class TestGenericNumberCoercion:
     """Unit tests for generic number coercion."""
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(1, Decimal('1'), id='int'),
+            pytest.param(1.5, Decimal('1.5'), id='float'),
+            pytest.param(Decimal('1.20'), Decimal('1.20'), id='decimal'),
+            pytest.param(' 1e3 ', Decimal('1E+3'), id='scientific-string'),
+            pytest.param(float('nan'), None, id='nan'),
+            pytest.param(float('inf'), None, id='inf'),
+            pytest.param('bad', None, id='invalid-string'),
+            pytest.param(object(), None, id='object'),
+        ],
+    )
+    def test_finite_decimal_or_none(
+        self,
+        value: object,
+        expected: Decimal | None,
+    ) -> None:
+        """Test finite decimal coercion for numeric-like values."""
+        assert finite_decimal_or_none(value) == expected
 
     @pytest.mark.parametrize(
         ('value', 'expected'),
