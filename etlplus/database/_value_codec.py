@@ -6,15 +6,15 @@ Normalizes Python values to DB-friendly representations.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from datetime import date
 from datetime import datetime
 from datetime import time
 from decimal import Decimal
-from decimal import InvalidOperation
 from typing import Any
 
+from ..utils import JsonCodec
+from ..utils import finite_decimal_or_none
 from ._enums import SqlTypeAffinity
 
 # SECTION: EXPORTS ========================================================== #
@@ -87,7 +87,11 @@ class ValueCodec:
             case SqlTypeAffinity.BINARY:
                 return self._to_blob(value)
             case SqlTypeAffinity.JSON:
-                return json.dumps(value, default=self._json_default)
+                return JsonCodec.serialize(
+                    value,
+                    compact=False,
+                    default=JsonCodec.default,
+                )
             case _:
                 return self._to_text(value)
 
@@ -112,46 +116,28 @@ class ValueCodec:
     def _to_blob(self, v: Any) -> bytes:
         if isinstance(v, (bytes, bytearray, memoryview)):
             return bytes(v)
-        enc = json.dumps(v, default=self._json_default)
+        enc = JsonCodec.serialize(v, compact=False, default=JsonCodec.default)
         return enc.encode('utf-8')
 
     def _to_text(self, value: Any) -> str:
         """Return a portable text representation for a Python value."""
         match value:
             case datetime() | date() | time():
-                return self._iso(value)
+                return JsonCodec.isoformat(value)
             case list() | dict() | tuple() | set() if self.keep_unknown_as_json:
-                return json.dumps(value, default=self._json_default)
+                return JsonCodec.serialize(
+                    value,
+                    compact=False,
+                    default=JsonCodec.default,
+                )
             case _:
                 return str(value)
 
     # -- Internal Static Methods -- #
 
     @staticmethod
-    def _decimal_or_none(value: Any) -> Decimal | None:
+    def _decimal_or_none(
+        value: Any,
+    ) -> Decimal | None:
         """Return a finite :class:`Decimal` for numeric-like values."""
-        if not isinstance(value, (int, float, Decimal, str)):
-            return None
-        try:
-            decimal = (
-                value if isinstance(value, Decimal) else Decimal(str(value).strip())
-            )
-        except (InvalidOperation, ValueError):
-            return None
-        return decimal if decimal.is_finite() else None
-
-    @staticmethod
-    def _iso(v: date | datetime | time) -> str:
-        if isinstance(v, datetime):
-            return v.isoformat(timespec='microseconds')
-        if isinstance(v, time):
-            return v.isoformat(timespec='microseconds')
-        return v.isoformat()
-
-    @staticmethod
-    def _json_default(o: Any) -> Any:
-        if isinstance(o, (date, datetime, time)):
-            return ValueCodec._iso(o)
-        if isinstance(o, Decimal):
-            return str(o)
-        return str(o)
+        return finite_decimal_or_none(value)
