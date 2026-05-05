@@ -11,15 +11,13 @@ Notes
 
 from __future__ import annotations
 
-from typing import Final
-
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = ['BoundsWarningsMixin']
 
 
-# SECTION: EXPORTS ========================================================== #
+# SECTION: MIXINS =========================================================== #
 
 
 class BoundsWarningsMixin:
@@ -35,8 +33,6 @@ class BoundsWarningsMixin:
     """
 
     __slots__ = ()
-
-    _APPEND: Final = list.append
 
     # -- Static Methods -- #
 
@@ -59,4 +55,4 @@ class BoundsWarningsMixin:
             Target list for collected warnings.
         """
         if condition:
-            BoundsWarningsMixin._APPEND(bucket, message)
+            bucket.append(message)

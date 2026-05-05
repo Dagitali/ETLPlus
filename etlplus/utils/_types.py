@@ -35,8 +35,11 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from os import PathLike
 from pathlib import Path
+from typing import Annotated
 from typing import Any
 from typing import Literal
+
+from pydantic import Field
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -63,6 +66,9 @@ __all__ = [
     'Timeout',
     # Type Aliases (Templates)
     'TemplateKey',
+    # Type Aliases (Validation)
+    'NonEmptyStr',
+    'NonEmptyStrList',
 ]
 
 
@@ -134,3 +140,11 @@ type Timeout = float | None
 
 # Allowed template keys for bundled DDL rendering.
 type TemplateKey = Literal['ddl', 'view']
+
+# -- Validation -- #
+
+# Pydantic-compatible non-empty string field alias.
+type NonEmptyStr = Annotated[str, Field(min_length=1)]
+
+# Pydantic-compatible non-empty list of non-empty strings.
+type NonEmptyStrList = Annotated[list[NonEmptyStr], Field(min_length=1)]

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from collections.abc import Mapping
-from collections.abc import Set
 from typing import Any
 from typing import TypeVar
 
@@ -36,6 +35,46 @@ class MappingParser:
     """Normalize optionally mapping-like inputs into concrete mapping shapes."""
 
     # -- Static Methods -- #
+
+    @staticmethod
+    def first_non_empty_str(
+        mapping: StrAnyMap,
+        keys: Iterable[str],
+        *,
+        nested_key: str | None = None,
+    ) -> str | None:
+        """
+        Return the first non-empty string found for candidate keys.
+
+        Parameters
+        ----------
+        mapping : StrAnyMap
+            Mapping to inspect.
+        keys : Iterable[str]
+            Candidate keys checked in order.
+        nested_key : str | None, optional
+            Optional nested mapping key to inspect recursively after the
+            top-level keys are checked.
+
+        Returns
+        -------
+        str | None
+            Trimmed string value if found; otherwise ``None``.
+        """
+        candidates = tuple(keys)
+        for key in candidates:
+            value = mapping.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+
+        if nested_key and isinstance(nested := mapping.get(nested_key), Mapping):
+            return MappingParser.first_non_empty_str(
+                nested,
+                candidates,
+                nested_key=nested_key,
+            )
+
+        return None
 
     @staticmethod
     def index_named_items(
@@ -79,7 +118,7 @@ class MappingParser:
     @staticmethod
     def merge_to_dict(
         *mapping_sets: object,
-        excluded_keys: Set[str] = frozenset(),
+        excluded_keys: Iterable[str] = (),
     ) -> dict[str, Any]:
         """
         Merge mapping-like values with later mappings taking precedence.
@@ -89,7 +128,7 @@ class MappingParser:
         *mapping_sets : object
             Any number of mapping-like values to merge. Non-mappings are
             ignored.
-        excluded_keys : Set[str], optional
+        excluded_keys : Iterable[str], optional
             Keys to remove from the merged result after merging.
 
         Returns
@@ -128,14 +167,14 @@ class MappingParser:
 
     @staticmethod
     def to_dict(
-        value: Any,
+        value: object,
     ) -> dict[str, Any]:
         """
         Return a ``dict`` copy when *value* is mapping-like.
 
         Parameters
         ----------
-        value : Any
+        value : object
             Mapping-like object to copy. ``None`` returns an empty dict.
 
         Returns
@@ -147,14 +186,14 @@ class MappingParser:
 
     @staticmethod
     def optional(
-        value: Any,
+        value: object,
     ) -> StrAnyMap | None:
         """
         Return *value* when it is mapping-like; otherwise ``None``.
 
         Parameters
         ----------
-        value : Any
+        value : object
             Value to test.
 
         Returns

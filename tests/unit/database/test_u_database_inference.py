@@ -105,6 +105,11 @@ class TestSqlDialect:
         """Test identifier quote escaping."""
         assert SqlDialect().quote_ident('bad"name') == '"bad""name"'
 
+    def test_quote_ident_rejects_empty_identifier(self) -> None:
+        """Test that blank identifiers are rejected before quoting."""
+        with pytest.raises(ValueError, match='Invalid identifier'):
+            SqlDialect().quote_ident('  ')
+
     @pytest.mark.parametrize(
         ('dialect', 'table_name', 'expected'),
         [
@@ -130,8 +135,12 @@ class TestSqlDialect:
 
     def test_quote_table_rejects_empty_reference(self) -> None:
         """Test dotted empty table references are rejected."""
-        with pytest.raises(ValueError, match='Invalid table reference'):
-            SqlDialect().quote_table('...')
+        for table_name, match in [
+            ('...', 'Invalid table reference'),
+            ('   ', 'Invalid identifier'),
+        ]:
+            with pytest.raises(ValueError, match=match):
+                SqlDialect().quote_table(table_name)
 
 
 class TestValueCodec:

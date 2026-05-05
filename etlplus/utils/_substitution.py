@@ -10,6 +10,7 @@ from collections.abc import Iterable
 from collections.abc import Mapping
 from typing import Any
 
+from ._mapping import MappingParser
 from ._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
@@ -26,7 +27,7 @@ __all__ = [
 
 def _prepare_substitutions(
     vars_map: StrAnyMap | None,
-    env_map: Mapping[str, Any] | None,
+    env_map: Mapping[str, object] | None,
 ) -> tuple[tuple[str, Any], ...]:
     """
     Merge variable and environment maps into an ordered substitutions list.
@@ -35,7 +36,7 @@ def _prepare_substitutions(
     ----------
     vars_map : StrAnyMap | None
         Mapping of variable names to replacement values (lower precedence).
-    env_map : Mapping[str, Any] | None
+    env_map : Mapping[str, object] | None
         Environment-backed values that override entries from *vars_map*.
 
     Returns
@@ -46,8 +47,7 @@ def _prepare_substitutions(
     """
     if not vars_map and not env_map:
         return ()
-    merged: dict[str, Any] = {**(vars_map or {}), **(env_map or {})}
-    return tuple(merged.items())
+    return tuple(MappingParser.merge_to_dict(vars_map, env_map).items())
 
 
 def _replace_tokens(
@@ -90,7 +90,7 @@ class SubstitutionResolver:
         cls,
         value: Any,
         vars_map: StrAnyMap | None,
-        env_map: Mapping[str, str] | None,
+        env_map: Mapping[str, object] | None,
     ) -> Any:
         """
         Recursively substitute ``${VAR}`` tokens in nested structures.
@@ -103,7 +103,7 @@ class SubstitutionResolver:
             The value to perform substitutions on.
         vars_map : StrAnyMap | None
             Mapping of variable names to replacement values (lower precedence).
-        env_map : Mapping[str, str] | None
+        env_map : Mapping[str, object] | None
             Mapping of environment variables overriding *vars_map* values (higher
             precedence).
 

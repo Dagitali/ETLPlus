@@ -7,6 +7,10 @@ Unit tests for :mod:`etlplus.utils._data`.
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
+from datetime import datetime
+from datetime import time
+from decimal import Decimal
 from io import StringIO
 
 import pytest
@@ -56,14 +60,80 @@ class TestDataHelpers:
         """
         assert RecordCounter.count(payload) == expected
 
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(date(2026, 1, 2), '"2026-01-02"', id='date'),
+            pytest.param(Decimal('1.20'), '"1.20"', id='decimal'),
+            pytest.param(object(), '"<object object at ', id='fallback-prefix'),
+        ],
+    )
+    def test_default_supports_common_non_json_values(
+        self,
+        value: object,
+        expected: str,
+    ) -> None:
+        """Test the shared fallback serializer used by database codecs."""
+        serialized = JsonCodec.serialize(value, default=JsonCodec.default)
+
+        assert serialized.startswith(expected)
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(date(2026, 1, 2), '2026-01-02', id='date'),
+            pytest.param(
+                datetime(2026, 1, 2, 3, 4, 5, 6),
+                '2026-01-02T03:04:05.000006',
+                id='datetime',
+            ),
+            pytest.param(time(3, 4, 5, 6), '03:04:05.000006', id='time'),
+        ],
+    )
+    def test_isoformat_uses_stable_precision(
+        self,
+        value: date | datetime | time,
+        expected: str,
+    ) -> None:
+        """Test that date-like values render with stable ISO precision."""
+        assert JsonCodec.isoformat(value) == expected
+
     def test_parse_json_raises_concise_value_error(self) -> None:
         """Test that :meth:`JsonCodec.parse` wraps JSON decode failures cleanly."""
         with pytest.raises(ValueError, match=r'^Invalid JSON payload:'):
             JsonCodec.parse('{bad json}')
 
-    def test_parse_json_returns_json_payload(self) -> None:
+    @pytest.mark.parametrize(
+        'text',
+        [
+            pytest.param('"scalar"', id='string'),
+            pytest.param('1', id='number'),
+            pytest.param('true', id='boolean'),
+            pytest.param('null', id='null'),
+            pytest.param('[1, 2]', id='scalar-array'),
+            pytest.param('[{"id": 1}, 2]', id='mixed-array'),
+        ],
+    )
+    def test_parse_json_rejects_scalar_payloads(self, text: str) -> None:
+        """Test that parsed ETL payloads must be JSON objects or arrays."""
+        with pytest.raises(ValueError, match='object or array of objects'):
+            JsonCodec.parse(text)
+
+    @pytest.mark.parametrize(
+        ('text', 'expected'),
+        [
+            pytest.param('{"name": "Ada"}', {'name': 'Ada'}, id='object'),
+            pytest.param('[{"id": 1}]', [{'id': 1}], id='record-array'),
+            pytest.param('[]', [], id='empty-array'),
+        ],
+    )
+    def test_parse_json_returns_json_payload(
+        self,
+        text: str,
+        expected: JSONData,
+    ) -> None:
         """Test that :meth:`JsonCodec.parse` returns decoded JSON data."""
-        assert JsonCodec.parse('{"name": "Ada"}') == {'name': 'Ada'}
+        assert JsonCodec.parse(text) == expected
 
     def test_print_json_uses_utf8_without_ascii_escaping(
         self,
@@ -91,6 +161,10 @@ class TestDataHelpers:
         JsonCodec.print(payload, stream=stream)
 
         assert_json_output(stream.getvalue(), payload)
+
+    def test_serialize_json_can_use_standard_spacing(self) -> None:
+        """Test that compact output can be disabled for standard JSON spacing."""
+        assert JsonCodec.serialize({'a': 1}, compact=False) == '{"a": 1}'
 
     def test_serialize_json_compacts_by_default(self) -> None:
         """Test that :meth:`JsonCodec.serialize` emits compact JSON by default."""
