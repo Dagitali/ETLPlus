@@ -21,6 +21,8 @@ from ._parsing import SequenceParser
 from ._parsing import ValueParser
 from ._substitution import SubstitutionResolver
 from ._text import TextNormalizer
+from ._types import NonEmptyStr
+from ._types import NonEmptyStrList
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -45,4 +47,7 @@ __all__ = [
     'topological_sort_names',
     # Mixins
     'BoundsWarningsMixin',
+    # Type Aliases
+    'NonEmptyStr',
+    'NonEmptyStrList',
 ]
