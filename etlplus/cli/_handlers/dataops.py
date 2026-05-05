@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Iterator
+from collections.abc import Mapping
 from contextlib import contextmanager
 from typing import Any
 from typing import TypeGuard
@@ -403,7 +404,7 @@ class DataCommandPolicy:
 
 def _complete_validation_output(
     context: _lifecycle.CommandContext,
-    result: dict[str, Any],
+    result: Mapping[str, Any],
     *,
     target: str | None,
     file_payload: Any,
@@ -775,7 +776,9 @@ def validate_handler(
         fields=command_fields,
     ) as context:
         if schema is not None:
-            schema_source = _input.read_stdin_text() if source == '-' else source
+            schema_source = (
+                _input.read_stdin_text() if _input.is_stdin_source(source) else source
+            )
             result = validate_schema(
                 schema_source,
                 schema,
