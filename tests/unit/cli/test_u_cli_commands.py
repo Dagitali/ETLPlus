@@ -182,6 +182,37 @@ class TestCommandsInternalHelpers:
             is state_mod.resolve_logged_resource_type
         )
 
+    @pytest.mark.parametrize(
+        'value',
+        [
+            pytest.param(None, id='missing'),
+            pytest.param('', id='empty'),
+        ],
+    )
+    def test_require_value_rejects_missing_values(
+        self,
+        value: str | None,
+    ) -> None:
+        """Required CLI values should fail through Typer usage errors."""
+        with pytest.raises(typer.Exit) as exc_info:
+            helpers_mod.CommandHelperPolicy.require_value(
+                value,
+                message="Missing required argument 'SOURCE'.",
+            )
+
+        assert exc_info.value.exit_code == 2
+
+    def test_require_value_rejects_option_like_positionals(self) -> None:
+        """Positionals should not silently consume option-looking values."""
+        with pytest.raises(typer.Exit) as exc_info:
+            helpers_mod.CommandHelperPolicy.require_value(
+                '--target',
+                message="Missing required argument 'SOURCE'.",
+                positional_name='SOURCE',
+            )
+
+        assert exc_info.value.exit_code == 2
+
     def test_resolve_resource_normalizes_type_and_format(self) -> None:
         """Shared resource resolution should normalize type and format hints."""
         resolved = helpers_mod.CommandHelperPolicy.resolve_resource(
@@ -195,6 +226,32 @@ class TestCommandsInternalHelpers:
         assert resolved.value == 'payload.json'
         assert resolved.resource_type == 'api'
         assert resolved.format_hint is FileFormat.JSON
+
+    @pytest.mark.parametrize(
+        ('value', 'expected_message'),
+        [
+            pytest.param(
+                'payload.json',
+                "No connector type resolved for 'payload.json'",
+                id='file-path',
+            ),
+            pytest.param(
+                '-',
+                "No connector type resolved for '-'",
+                id='stdio',
+            ),
+        ],
+    )
+    def test_resolved_resource_requires_resource_type(
+        self,
+        value: str,
+        expected_message: str,
+    ) -> None:
+        """Missing connector types should fail explicitly instead of asserting."""
+        resolved = helpers_mod._ResolvedResource(value=value)
+
+        with pytest.raises(ValueError, match=expected_message):
+            resolved.require_resource_type()
 
 
 class TestDelegatingCommands:
