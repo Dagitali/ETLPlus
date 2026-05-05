@@ -113,33 +113,9 @@ def emit_or_write(
     success_message : str
         Message printed when writing to disk succeeds.
     """
-    if write_json_output(
-        data,
-        output_path,
-        success_message=success_message,
-    ):
+    if write_json_output(data, output_path, success_message=success_message):
         return
     emit_json(data, pretty=pretty)
-
-
-def is_stdout_target(
-    output_path: str | None,
-) -> bool:
-    """
-    Return whether an output path represents STDOUT.
-
-    Parameters
-    ----------
-    output_path : str | None
-        Output destination supplied by the CLI.
-
-    Returns
-    -------
-    bool
-        ``True`` for ``None``, blank strings, or ``"-"`` with surrounding
-        whitespace.
-    """
-    return output_path is None or output_path.strip() in {'', '-'}
 
 
 def emit_json_payload(
@@ -169,6 +145,28 @@ def emit_json_payload(
     return exit_code
 
 
+def is_stdout_target(
+    output_path: str | None,
+) -> bool:
+    """
+    Return whether an output path represents STDOUT.
+
+    Parameters
+    ----------
+    output_path : str | None
+        Output destination supplied by the CLI.
+
+    Returns
+    -------
+    bool
+        ``True`` for ``None``, blank strings, or ``"-"`` with surrounding
+        whitespace.
+    """
+    return output_path is None or (
+        isinstance(output_path, str) and output_path.strip() in {'', '-'}
+    )
+
+
 def write_json_output(
     data: Any,
     output_path: str | None,
@@ -192,7 +190,7 @@ def write_json_output(
     bool
         True if data was written to disk; False if not.
     """
-    if is_stdout_target(output_path):
+    if is_stdout_target(output_path) or output_path is None:
         return False
     File(output_path, FileFormat.JSON).write(data)
     print(f'{success_message} {output_path}')
