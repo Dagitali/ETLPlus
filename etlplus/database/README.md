@@ -28,8 +28,8 @@ Back to project overview: see the top-level [README](../../README.md).
 
 ## ORM Utilities
 
-- Map rows to Python objects
-- Simple CRUD helpers for tabular data
+- Build dynamic SQLAlchemy declarative models from validated table specs
+- Resolve portable SQL type declarations to SQLAlchemy type objects
 
 ## Example: Rendering DDL From a Spec
 
@@ -44,5 +44,5 @@ print(sql)
 ## See Also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
-- Schema helpers in [schema.py](schema.py)
-- ORM utilities in [orm.py](orm.py)
+- Schema helpers in [`_schema.py`](_schema.py)
+- ORM utilities in [`_orm.py`](_orm.py)

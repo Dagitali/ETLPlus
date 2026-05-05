@@ -7,6 +7,7 @@ specifications into Pydantic models for dynamic SQLAlchemy generation.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 from typing import ClassVar
@@ -14,9 +15,11 @@ from typing import ClassVar
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
+from pydantic import field_validator
 
 from ..file import File
 from ..utils._types import StrPath
+from ._enums import ReferentialAction
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -100,6 +103,16 @@ class ForeignKeySpec(BaseModel):
     ref_table: str
     ref_columns: list[str]
     ondelete: str | None = None
+
+    # -- Validators -- #
+
+    @field_validator('ondelete', mode='before')
+    @classmethod
+    def _normalize_ondelete(cls, value: object) -> str | None:
+        """Normalize foreign key referential actions to SQL spelling."""
+        if value is None:
+            return None
+        return ReferentialAction.coerce(value).sql
 
 
 class IdentitySpec(BaseModel):
@@ -227,12 +240,31 @@ class TableSpec(BaseModel):
     indexes: list[IndexSpec] = Field(default_factory=list)
     foreign_keys: list[ForeignKeySpec] = Field(default_factory=list)
 
-    # -- Properties -- #
+    # -- Getters -- #
 
     @property
     def fq_name(self) -> str:
         """Fully qualified table name, including schema if specified."""
         return f'{self.schema_name}.{self.table}' if self.schema_name else self.table
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _table_spec_items(data: Any) -> Sequence[Any]:
+    """Normalize loaded table-spec payloads to a sequence of items."""
+    if not data:
+        return ()
+    if isinstance(data, dict) and 'table_schemas' in data:
+        table_schemas = data['table_schemas']
+        if table_schemas is None:
+            return ()
+        if not isinstance(table_schemas, list):
+            raise TypeError('table_schemas must be a list')
+        return table_schemas
+    if isinstance(data, list):
+        return data
+    return (data,)
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -255,14 +287,4 @@ def load_table_specs(
         A list of TableSpec instances parsed from the YAML file.
     """
     data = File(Path(path)).read()
-    if not data:
-        return []
-
-    if isinstance(data, dict) and 'table_schemas' in data:
-        items: list[Any] = data['table_schemas'] or []
-    elif isinstance(data, list):
-        items = data
-    else:
-        items = [data]
-
-    return [TableSpec.model_validate(item) for item in items]
+    return [TableSpec.model_validate(item) for item in _table_spec_items(data)]

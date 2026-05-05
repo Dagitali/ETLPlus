@@ -36,6 +36,12 @@ __all__ = [
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
+_CONNECTION_KEYS: Final[tuple[str, ...]] = ('connection_string', 'url', 'dsn')
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
 DATABASE_URL: Final[str] = (
     os.getenv('DATABASE_URL')
     or os.getenv('DATABASE_DSN')
@@ -62,9 +68,10 @@ def _resolve_url_from_mapping(
     str | None
         Resolved URL/DSN string, if present.
     """
-    conn = cfg.get('connection_string') or cfg.get('url') or cfg.get('dsn')
-    if isinstance(conn, str) and conn.strip():
-        return conn.strip()
+    for key in _CONNECTION_KEYS:
+        value = cfg.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
 
     # Some configs nest defaults.
     # E.g., databases: { mssql: { default: {...} } }
@@ -117,7 +124,7 @@ def load_database_url_from_config(
     if not isinstance(cfg, Mapping):
         raise TypeError('Database config must be a mapping')
 
-    databases = cfg.get('databases') if isinstance(cfg, Mapping) else None
+    databases = cfg.get('databases')
     if not isinstance(databases, Mapping):
         raise KeyError('Config missing top-level "databases" mapping')
 

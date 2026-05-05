@@ -16,6 +16,7 @@ from pydantic import ValidationError
 
 import etlplus.database._schema as schema_mod
 from etlplus.database._schema import ColumnSpec
+from etlplus.database._schema import ForeignKeySpec
 from etlplus.database._schema import IdentitySpec
 from etlplus.database._schema import TableSpec
 
@@ -110,6 +111,14 @@ class TestLoadTableSpecs:
         patch_read_file(None)
         assert schema_mod.load_table_specs('missing.yml') == []
 
+    def test_empty_table_schemas_payload(
+        self,
+        patch_read_file: Callable[[Any], None],
+    ) -> None:
+        """Test that null ``table_schemas`` yields no specs."""
+        patch_read_file({'table_schemas': None})
+        assert schema_mod.load_table_specs('empty.yml') == []
+
     @pytest.mark.parametrize(
         ('payload_factory', 'expected_names'),
         [
@@ -148,6 +157,16 @@ class TestLoadTableSpecs:
         assert [spec.table for spec in specs] == expected_names
         assert captured_paths[0] == Path('input.yml')
 
+    def test_table_schemas_requires_list(
+        self,
+        patch_read_file: Callable[[Any], None],
+    ) -> None:
+        """Test that wrapped table schemas must be list-shaped."""
+        patch_read_file({'table_schemas': {'name': 'users'}})
+
+        with pytest.raises(TypeError, match='table_schemas must be a list'):
+            schema_mod.load_table_specs('bad.yml')
+
 
 class TestModels:
     """Unit tests for Pydantic models in :mod:`schema`."""
@@ -161,6 +180,43 @@ class TestModels:
                     'type': 'INT',
                     'nullable': False,
                     'unexpected': True,
+                },
+            )
+
+    @pytest.mark.parametrize(
+        ('raw', 'expected'),
+        [
+            ('set_null', 'SET NULL'),
+            ('noaction', 'NO ACTION'),
+            ('restrict', 'RESTRICT'),
+        ],
+    )
+    def test_foreign_key_spec_normalizes_ondelete(
+        self,
+        raw: str,
+        expected: str,
+    ) -> None:
+        """Test that foreign key referential actions normalize to SQL form."""
+        spec = ForeignKeySpec.model_validate(
+            {
+                'columns': ['account_id'],
+                'ref_table': 'accounts',
+                'ref_columns': ['id'],
+                'ondelete': raw,
+            },
+        )
+
+        assert spec.ondelete == expected
+
+    def test_foreign_key_spec_rejects_invalid_ondelete(self) -> None:
+        """Test that unsupported referential actions fail validation."""
+        with pytest.raises(ValidationError):
+            ForeignKeySpec.model_validate(
+                {
+                    'columns': ['account_id'],
+                    'ref_table': 'accounts',
+                    'ref_columns': ['id'],
+                    'ondelete': 'explode',
                 },
             )
 
@@ -194,6 +250,7 @@ class TestModels:
         assert spec.columns[0].identity is not None
         assert spec.columns[1].unique is True
         assert spec.primary_key is not None
+        assert spec.foreign_keys[0].ondelete == 'CASCADE'
 
     def test_table_spec_defaults_populate_lists(self) -> None:
         """

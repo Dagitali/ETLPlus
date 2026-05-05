@@ -212,6 +212,7 @@ class TestRenderTableSql:
         'payload',
         [
             [],
+            ['not a mapping'],
             [{'not_template': 'value'}],
             {'template': 'wrong shape'},
         ],
@@ -319,13 +320,5 @@ class TestRenderTablesToString:
         assert 'widgets_history' in sql
 
     def test_templates_constant_exposes_builtin_keys(self) -> None:
-        """Test that TEMPLATES constant includes expected built-in keys."""
-        assert {'ddl', 'view'}.issubset(set(ddl.TEMPLATES))
-
-
-class TestTemplate:
-    """Unit tests for ``TEMPLATE``."""
-
-    def test_builtin_keys_exposure(self) -> None:
-        """Test that TEMPLATES constant includes expected built-in keys."""
+        """Test that ``TEMPLATES`` constant includes expected built-in keys."""
         assert {'ddl', 'view'}.issubset(set(ddl.TEMPLATES))
