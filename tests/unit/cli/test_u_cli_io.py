@@ -614,6 +614,25 @@ class TestWriteJsonOutput:
     """Unit tests for :func:`write_json_output`."""
 
     @pytest.mark.parametrize(
+        ('output_path', 'expected'),
+        [
+            pytest.param(None, True, id='none'),
+            pytest.param('', True, id='empty'),
+            pytest.param('   ', True, id='blank'),
+            pytest.param('-', True, id='dash'),
+            pytest.param(' - ', True, id='spaced-dash'),
+            pytest.param('out.json', False, id='file'),
+        ],
+    )
+    def test_is_stdout_target(
+        self,
+        output_path: str | None,
+        expected: bool,
+    ) -> None:
+        """Test output target normalization for STDOUT destinations."""
+        assert output_mod.is_stdout_target(output_path) is expected
+
+    @pytest.mark.parametrize(
         'output_path',
         [
             pytest.param('out.json', id='local-file'),
@@ -642,7 +661,15 @@ class TestWriteJsonOutput:
         }
         assert capsys.readouterr().out.strip() == f'msg {output_path}'
 
-    def test_writing_to_stdout(self) -> None:
+    @pytest.mark.parametrize(
+        'output_path',
+        [
+            pytest.param(None, id='none'),
+            pytest.param('', id='empty'),
+            pytest.param(' - ', id='spaced-dash'),
+        ],
+    )
+    def test_writing_to_stdout(self, output_path: str | None) -> None:
         """
         Test that returning ``False`` signals STDOUT emission when no output
         path.
@@ -650,7 +677,7 @@ class TestWriteJsonOutput:
         assert (
             output_mod.write_json_output(
                 {'x': 1},
-                None,
+                output_path,
                 success_message='msg',
             )
             is False
