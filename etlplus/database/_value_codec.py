@@ -7,15 +7,13 @@ Normalizes Python values to DB-friendly representations.
 from __future__ import annotations
 
 import json
-import math
-import re
 from dataclasses import dataclass
 from datetime import date
 from datetime import datetime
 from datetime import time
 from decimal import Decimal
+from decimal import InvalidOperation
 from typing import Any
-from typing import ClassVar
 
 from ._enums import SqlTypeAffinity
 
@@ -46,10 +44,6 @@ class ValueCodec:
     to_db : Any
         Convert `value` into a representation compatible with `sql_type`.
     """
-
-    # -- Internal Class Attributes -- #
-
-    _num_re: ClassVar[re.Pattern[str]] = re.compile(r'^-?\d+(\.\d+)?$')
 
     # -- Attributes -- #
 
@@ -105,31 +99,19 @@ class ValueCodec:
     # -- Internal Instance Methods -- #
 
     def _to_int(self, v: Any) -> int | None:
-        if isinstance(v, (int, bool)):
-            return int(v)
-        if isinstance(v, (float, Decimal)) and not self._isnan(v):
-            return int(v)
-        if isinstance(v, str) and self._num_re.match(v.strip()):
-            return int(float(v))
-        # Stable fallback: hashed surrogate or NULL
-        return None
+        value = self._decimal_or_none(v)
+        return int(value) if value is not None else None
 
     def _to_real(self, v: Any) -> float | None:
-        if isinstance(v, (int, bool, float)):
-            return float(v)
-        if isinstance(v, Decimal):
-            return float(v)
-        if isinstance(v, str) and self._num_re.match(v.strip()):
-            return float(v)
-        return None
+        value = self._decimal_or_none(v)
+        return float(value) if value is not None else None
 
     def _to_numeric_text(self, v: Any) -> str | None:
-        if isinstance(v, Decimal):
-            return str(v)
-        if isinstance(v, (int, bool, float)):
-            return str(Decimal(str(v)))
         if isinstance(v, str):
             return v
+        value = self._decimal_or_none(v)
+        if value is not None:
+            return str(value)
         return None
 
     def _to_blob(self, v: Any) -> bytes:
@@ -151,6 +133,21 @@ class ValueCodec:
     # -- Internal Static Methods -- #
 
     @staticmethod
+    def _decimal_or_none(value: Any) -> Decimal | None:
+        """Return a finite :class:`Decimal` for numeric-like values."""
+        if not isinstance(value, (int, float, Decimal, str)):
+            return None
+        try:
+            decimal = (
+                value
+                if isinstance(value, Decimal)
+                else Decimal(str(value).strip())
+            )
+        except (InvalidOperation, ValueError):
+            return None
+        return decimal if decimal.is_finite() else None
+
+    @staticmethod
     def _iso(v: date | datetime | time) -> str:
         if isinstance(v, datetime):
             return v.isoformat(timespec='microseconds')
@@ -165,10 +162,3 @@ class ValueCodec:
         if isinstance(o, Decimal):
             return str(o)
         return str(o)
-
-    @staticmethod
-    def _isnan(x: float | Decimal) -> bool:
-        try:
-            return math.isnan(float(x))
-        except (ValueError, TypeError):
-            return False
