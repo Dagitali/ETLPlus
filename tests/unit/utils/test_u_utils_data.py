@@ -7,6 +7,10 @@ Unit tests for :mod:`etlplus.utils._data`.
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
+from datetime import datetime
+from datetime import time
+from decimal import Decimal
 from io import StringIO
 
 import pytest
@@ -56,6 +60,44 @@ class TestDataHelpers:
         """
         assert RecordCounter.count(payload) == expected
 
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(date(2026, 1, 2), '"2026-01-02"', id='date'),
+            pytest.param(Decimal('1.20'), '"1.20"', id='decimal'),
+            pytest.param(object(), '"<object object at ', id='fallback-prefix'),
+        ],
+    )
+    def test_default_supports_common_non_json_values(
+        self,
+        value: object,
+        expected: str,
+    ) -> None:
+        """Test the shared fallback serializer used by database codecs."""
+        serialized = JsonCodec.serialize(value, default=JsonCodec.default)
+
+        assert serialized.startswith(expected)
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(date(2026, 1, 2), '2026-01-02', id='date'),
+            pytest.param(
+                datetime(2026, 1, 2, 3, 4, 5, 6),
+                '2026-01-02T03:04:05.000006',
+                id='datetime',
+            ),
+            pytest.param(time(3, 4, 5, 6), '03:04:05.000006', id='time'),
+        ],
+    )
+    def test_isoformat_uses_stable_precision(
+        self,
+        value: date | datetime | time,
+        expected: str,
+    ) -> None:
+        """Test that date-like values render with stable ISO precision."""
+        assert JsonCodec.isoformat(value) == expected
+
     def test_parse_json_raises_concise_value_error(self) -> None:
         """Test that :meth:`JsonCodec.parse` wraps JSON decode failures cleanly."""
         with pytest.raises(ValueError, match=r'^Invalid JSON payload:'):
@@ -91,6 +133,10 @@ class TestDataHelpers:
         JsonCodec.print(payload, stream=stream)
 
         assert_json_output(stream.getvalue(), payload)
+
+    def test_serialize_json_can_use_standard_spacing(self) -> None:
+        """Test that compact output can be disabled for standard JSON spacing."""
+        assert JsonCodec.serialize({'a': 1}, compact=False) == '{"a": 1}'
 
     def test_serialize_json_compacts_by_default(self) -> None:
         """Test that :meth:`JsonCodec.serialize` emits compact JSON by default."""
