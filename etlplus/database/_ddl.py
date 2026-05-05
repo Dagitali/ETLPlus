@@ -108,6 +108,9 @@ def _ordered_specs(
         return materialized
 
     known_names = frozenset(name for name in names if name is not None)
+    if len(known_names) != len(names):
+        raise ValueError('Duplicate table spec name')
+
     dependencies_by_name: dict[str, tuple[str, ...]] = {}
     specs_by_name: dict[str, StrAnyMap] = {}
 
