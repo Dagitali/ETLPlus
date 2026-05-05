@@ -69,6 +69,47 @@ class TestMappingHelpers:
         """
         assert MappingParser.to_dict(value) == expected
 
+    @pytest.mark.parametrize(
+        ('mapping', 'expected'),
+        [
+            pytest.param(
+                {'url': ' sqlite:///db.sqlite '},
+                'sqlite:///db.sqlite',
+                id='direct',
+            ),
+            pytest.param(
+                {'url': ' ', 'dsn': 'odbc://dsn'},
+                'odbc://dsn',
+                id='blank-skipped',
+            ),
+            pytest.param(
+                {'default': {'connection_string': 'postgresql://db'}},
+                'postgresql://db',
+                id='nested',
+            ),
+            pytest.param({'default': {'url': ' '}}, None, id='nested-blank'),
+            pytest.param(
+                {'default': 'sqlite:///ignored'},
+                None,
+                id='non-mapping-nested',
+            ),
+        ],
+    )
+    def test_first_non_empty_str(
+        self,
+        mapping: Mapping[str, Any],
+        expected: str | None,
+    ) -> None:
+        """Test ordered string lookup with optional nested defaults."""
+        assert (
+            MappingParser.first_non_empty_str(
+                mapping,
+                ('connection_string', 'url', 'dsn'),
+                nested_key='default',
+            )
+            == expected
+        )
+
     def test_index_named_items_normalizes_names(self) -> None:
         """Test that usable names are stripped before indexing."""
         item = SimpleNamespace(name=' valid ')
