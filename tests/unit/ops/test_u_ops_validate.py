@@ -1049,8 +1049,7 @@ class TestValidateInternalHelpers:
                 raise ValueError('bad path')
 
         assert (
-            validate_mod._resolve_declared_local_path(cast(Any, BadPathLike()))
-            is None
+            validate_mod._resolve_declared_local_path(cast(Any, BadPathLike())) is None
         )
 
     def test_resolve_local_path_or_text_preserves_path_after_suppressed_candidate(
