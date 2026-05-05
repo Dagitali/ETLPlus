@@ -272,6 +272,30 @@ class TestRenderTables:
         assert 'widgets' in rendered[0]
         assert 'widgets_history' in rendered[1]
 
+    def test_renders_specs_in_foreign_key_dependency_order(
+        self,
+        tmp_path: Path,
+        sample_spec: dict[str, object],
+    ) -> None:
+        """Test that in-batch foreign-key dependencies render first."""
+        template_path = tmp_path / 'names.sql.j2'
+        template_path.write_text('{{ spec.table }}', encoding='utf-8')
+        parent = deepcopy(sample_spec)
+        child = deepcopy(sample_spec)
+        parent['table'] = 'accounts'
+        child['table'] = 'orders'
+        child['foreign_keys'] = [
+            {
+                'columns': ['account_id'],
+                'ref_table': 'accounts',
+                'ref_columns': ['id'],
+            },
+        ]
+
+        rendered = ddl.render_tables([child, parent], template_path=template_path)
+
+        assert rendered == ['accounts\n', 'orders\n']
+
 
 class TestRenderTablesToString:
     """
