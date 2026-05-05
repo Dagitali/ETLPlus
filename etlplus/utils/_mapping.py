@@ -117,7 +117,7 @@ class MappingParser:
     @staticmethod
     def merge_to_dict(
         *mapping_sets: object,
-        excluded_keys: frozenset[str] = frozenset(),
+        excluded_keys: Iterable[str] = (),
     ) -> dict[str, Any]:
         """
         Merge mapping-like values with later mappings taking precedence.
@@ -127,7 +127,7 @@ class MappingParser:
         *mapping_sets : object
             Any number of mapping-like values to merge. Non-mappings are
             ignored.
-        excluded_keys : frozenset[str], optional
+        excluded_keys : Iterable[str], optional
             Keys to remove from the merged result after merging.
 
         Returns
