@@ -28,13 +28,10 @@ from ._types import JSONList
 __all__ = [
     # Classes
     'JsonCodec',
-    'RecordCounter',
     # Data Classes
     'RecordPayloadParser',
     # Functions
-    'coerce_record_payload',
     'count_records',
-    'normalize_records',
     'stringify_value',
 ]
 
@@ -59,29 +56,6 @@ def _is_object_list(
 # SECTION: FUNCTIONS ======================================================== #
 
 
-def coerce_record_payload(
-    payload: object,
-    *,
-    format_name: str,
-) -> JSONData:
-    """
-    Validate that *payload* is an object or list of objects.
-
-    Parameters
-    ----------
-    payload : object
-        Parsed payload to validate.
-    format_name : str
-        Human-readable format name for error messages.
-
-    Returns
-    -------
-    JSONData
-        *payload* when it is a dict or a list of dicts.
-    """
-    return RecordPayloadParser(format_name).coerce(payload)
-
-
 def count_records(
     data: JSONData,
 ) -> int:
@@ -99,28 +73,6 @@ def count_records(
         Lists count as multiple records; dictionaries count as one record.
     """
     return len(data) if isinstance(data, list) else 1
-
-
-def normalize_records(
-    data: object,
-    format_name: str,
-) -> JSONList:
-    """
-    Normalize payloads into a list of dictionaries.
-
-    Parameters
-    ----------
-    data : object
-        Input payload to normalize.
-    format_name : str
-        Human-readable format name for error messages.
-
-    Returns
-    -------
-    JSONList
-        Normalized list of dictionaries.
-    """
-    return RecordPayloadParser(format_name).normalize(data)
 
 
 def stringify_value(value: object) -> str:
@@ -477,34 +429,3 @@ class RecordPayloadParser:
                 f'{self.format_name} payloads must include a "{key}" string',
             )
         return value
-
-
-# SECTION: CLASSES ========================================================== #
-
-
-class RecordCounter:
-    """Compatibility facade for JSON-like record-count semantics."""
-
-    # -- Static Methods -- #
-
-    @staticmethod
-    def count(
-        data: JSONData,
-    ) -> int:
-        """
-        Return a consistent record count for JSON-like data payloads.
-
-        Lists are treated as multiple records; dicts as a single record.
-        :func:`count_records` is returned for backward-compatible callers.
-
-        Parameters
-        ----------
-        data : JSONData
-            Data payload to count records for.
-
-        Returns
-        -------
-        int
-            Number of records in `data`.
-        """
-        return count_records(data)
