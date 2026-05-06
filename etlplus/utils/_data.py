@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import sys
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -28,6 +29,8 @@ __all__ = [
     # Classes
     'JsonCodec',
     'RecordCounter',
+    # Data Classes
+    'RecordPayloadParser',
     # Functions
     'coerce_record_payload',
     'normalize_records',
@@ -76,23 +79,8 @@ def coerce_record_payload(
     -------
     JSONData
         *payload* when it is a dict or a list of dicts.
-
-    Raises
-    ------
-    TypeError
-        If the payload is not a dict or list of dicts.
     """
-    if isinstance(payload, dict):
-        return cast(JSONDict, payload)
-    if _is_object_list(payload):
-        return payload
-    if isinstance(payload, list):
-        raise TypeError(
-            f'{format_name} array must contain only objects (dicts)',
-        )
-    raise TypeError(
-        f'{format_name} root must be an object or an array of objects',
-    )
+    return RecordPayloadParser(format_name).coerce(payload)
 
 
 def normalize_records(
@@ -113,23 +101,8 @@ def normalize_records(
     -------
     JSONList
         Normalized list of dictionaries.
-
-    Raises
-    ------
-    TypeError
-        If the payload is not a dict or a list of dicts.
     """
-    if _is_object_list(data):
-        return data
-    if isinstance(data, list):
-        raise TypeError(
-            f'{format_name} payloads must contain only objects (dicts)',
-        )
-    if isinstance(data, dict):
-        return [cast(JSONDict, data)]
-    raise TypeError(
-        f'{format_name} payloads must be an object or an array of objects',
-    )
+    return RecordPayloadParser(format_name).normalize(data)
 
 
 def require_dict_payload(
@@ -151,15 +124,8 @@ def require_dict_payload(
     -------
     JSONDict
         Validated dictionary payload.
-
-    Raises
-    ------
-    TypeError
-        If the payload is not a dictionary.
     """
-    if isinstance(data, dict):
-        return cast(JSONDict, data)
-    raise TypeError(f'{format_name} payloads must be a dict')
+    return RecordPayloadParser(format_name).require_dict(data)
 
 
 def require_str_key(
@@ -184,18 +150,8 @@ def require_str_key(
     -------
     str
         The string value for *key*.
-
-    Raises
-    ------
-    TypeError
-        If the key is missing or not a string.
     """
-    value = payload.get(key)
-    if not isinstance(value, str):
-        raise TypeError(
-            f'{format_name} payloads must include a "{key}" string',
-        )
-    return value
+    return RecordPayloadParser(format_name).require_str_key(payload, key)
 
 
 def stringify_value(value: object) -> str:
@@ -402,3 +358,146 @@ class JsonCodec:
                 return value.isoformat(timespec='microseconds')
             case _:
                 return value.isoformat()
+
+
+# SECTION: DATA CLASSESS ==================================================== #
+
+
+@dataclass(frozen=True, slots=True)
+class RecordPayloadParser:
+    """
+    Validate and normalize JSON-record payloads for one data format.
+
+    Attributes
+    ----------
+    format_name : str
+        Human-readable format name used in validation error messages.
+    """
+
+    format_name: str
+
+    def coerce(
+        self,
+        payload: object,
+    ) -> JSONData:
+        """
+        Validate that *payload* is an object or list of objects.
+
+        Parameters
+        ----------
+        payload : object
+            Parsed payload to validate.
+
+        Returns
+        -------
+        JSONData
+            *payload* when it is a dict or a list of dicts.
+
+        Raises
+        ------
+        TypeError
+            If the payload is not a dict or list of dicts.
+        """
+        if isinstance(payload, dict):
+            return cast(JSONDict, payload)
+        if _is_object_list(payload):
+            return payload
+        if isinstance(payload, list):
+            raise TypeError(
+                f'{self.format_name} array must contain only objects (dicts)',
+            )
+        raise TypeError(
+            f'{self.format_name} root must be an object or an array of objects',
+        )
+
+    def normalize(
+        self,
+        data: object,
+    ) -> JSONList:
+        """
+        Normalize a payload into a list of dictionaries.
+
+        Parameters
+        ----------
+        data : object
+            Input payload to normalize.
+
+        Returns
+        -------
+        JSONList
+            Normalized list of dictionaries.
+
+        Raises
+        ------
+        TypeError
+            If the payload is not a dict or a list of dicts.
+        """
+        if _is_object_list(data):
+            return data
+        if isinstance(data, list):
+            raise TypeError(
+                f'{self.format_name} payloads must contain only objects (dicts)',
+            )
+        if isinstance(data, dict):
+            return [cast(JSONDict, data)]
+        raise TypeError(
+            f'{self.format_name} payloads must be an object or an array of objects',
+        )
+
+    def require_dict(
+        self,
+        data: object,
+    ) -> JSONDict:
+        """
+        Validate that *data* is a dictionary payload.
+
+        Parameters
+        ----------
+        data : object
+            Input payload to validate.
+
+        Returns
+        -------
+        JSONDict
+            Validated dictionary payload.
+
+        Raises
+        ------
+        TypeError
+            If the payload is not a dictionary.
+        """
+        if isinstance(data, dict):
+            return cast(JSONDict, data)
+        raise TypeError(f'{self.format_name} payloads must be a dict')
+
+    def require_str_key(
+        self,
+        payload: JSONDict,
+        key: str,
+    ) -> str:
+        """
+        Require a string value for *key* in *payload*.
+
+        Parameters
+        ----------
+        payload : JSONDict
+            Dictionary payload to inspect.
+        key : str
+            Key to extract.
+
+        Returns
+        -------
+        str
+            The string value for *key*.
+
+        Raises
+        ------
+        TypeError
+            If the key is missing or not a string.
+        """
+        value = payload.get(key)
+        if not isinstance(value, str):
+            raise TypeError(
+                f'{self.format_name} payloads must include a "{key}" string',
+            )
+        return value
