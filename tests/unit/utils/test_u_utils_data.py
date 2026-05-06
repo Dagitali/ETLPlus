@@ -20,8 +20,6 @@ from etlplus.utils import RecordCounter
 from etlplus.utils import RecordPayloadParser
 from etlplus.utils import coerce_record_payload
 from etlplus.utils import normalize_records
-from etlplus.utils import require_dict_payload
-from etlplus.utils import require_str_key
 from etlplus.utils import stringify_value
 from etlplus.utils._types import JSONData
 
@@ -258,13 +256,6 @@ class TestDataHelpers:
         """Test compatibility wrappers delegate to the stateful parser."""
         assert coerce_record_payload({'id': 1}, format_name='JSON') == {'id': 1}
         assert normalize_records({'id': 1}, 'JSON') == [{'id': 1}]
-        assert require_dict_payload({'key': 'value'}, format_name='JSON') == {
-            'key': 'value',
-        }
-        assert (
-            require_str_key({'key': 'value'}, format_name='JSON', key='key')
-            == 'value'
-        )
 
     def test_require_dict_payload_and_require_str_key(
         self,
