@@ -102,39 +102,27 @@ class TextNormalizer:
         """
         return _normalize_text(value)
 
-    # -- Class Methods -- #
-
-    @classmethod
-    def resolve_choice(
-        cls,
-        value: str | None,
+    @staticmethod
+    def truncate(
+        text: str | None,
         *,
-        mapping: Mapping[str, str],
-        default: str,
-        normalize: Callable[[str | None], str] | None = None,
+        limit: int,
     ) -> str:
         """
-        Normalize a string choice using a mapping and fallback.
+        Return *text* shortened to *limit* characters.
 
         Parameters
         ----------
-        value : str | None
-            Input value to normalize.
-        mapping : Mapping[str, str]
-            Mapping of acceptable normalized inputs to output values.
-        default : str
-            Default return value when input is missing or unrecognized.
-        normalize : Callable[[str | None], str] | None, optional
-            Normalization function applied to *value*. Defaults to
-            :meth:`normalize`.
+        text : str | None
+            Text to shorten.
+        limit : int
+            Maximum number of characters to keep.
 
         Returns
         -------
         str
-            Normalized mapped value or *default*.
+            Truncated text, or ``""`` when *text* is falsey.
         """
-        return TextChoiceResolver(
-            mapping=mapping,
-            default=default,
-            normalize=normalize or cls.normalize,
-        ).resolve(value)
+        if not text:
+            return ''
+        return text[:limit]
