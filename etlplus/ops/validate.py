@@ -40,6 +40,8 @@ from typing import TypedDict
 from ..file import File
 from ..file import FileFormat
 from ..utils import JsonCodec
+from ..utils import is_integer_value
+from ..utils import is_number_value
 from ..utils._types import JSONData
 from ..utils._types import Record
 from ..utils._types import StrAnyMap
@@ -320,7 +322,7 @@ def _is_integer(
     bool
         ``True`` if value is an integer, else ``False``.
     """
-    return isinstance(value, int) and not isinstance(value, bool)
+    return is_integer_value(value)
 
 
 def _is_number(value: Any) -> bool:
@@ -337,7 +339,7 @@ def _is_number(value: Any) -> bool:
     bool
         ``True`` if value is a number, else ``False``.
     """
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return is_number_value(value)
 
 
 def _looks_like_inline_text(
