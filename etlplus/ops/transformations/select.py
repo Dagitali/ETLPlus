@@ -17,6 +17,7 @@ from collections.abc import Sequence
 from typing import Any
 from typing import cast
 
+from ...utils import SequenceParser
 from ...utils._types import JSONList
 from .._types import Fields
 
@@ -50,10 +51,7 @@ def is_sequence_not_text(
     bool
         ``True`` when *obj* is a non-text sequence.
     """
-    return isinstance(obj, Sequence) and not isinstance(
-        obj,
-        (str, bytes, bytearray),
-    )
+    return SequenceParser.is_non_text(obj)
 
 
 def is_plain_fields_list(
