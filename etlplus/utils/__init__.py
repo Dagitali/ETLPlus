@@ -10,6 +10,7 @@ from ._data import JsonCodec
 from ._data import RecordCounter
 from ._data import RecordPayloadParser
 from ._data import coerce_record_payload
+from ._data import count_records
 from ._data import normalize_records
 from ._data import stringify_value
 from ._enums import CoercibleStrEnum
@@ -51,6 +52,7 @@ __all__ = [
     'CoercibleStrEnum',
     # Functions
     'coerce_record_payload',
+    'count_records',
     'finite_decimal_or_none',
     'normalize_records',
     'stringify_value',
