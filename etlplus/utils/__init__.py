@@ -24,6 +24,7 @@ from ._parsing import MappingFieldParser
 from ._parsing import SequenceParser
 from ._parsing import ValueParser
 from ._substitution import SubstitutionResolver
+from ._text import TextChoiceResolver
 from ._text import TextNormalizer
 from ._types import NonEmptyStr
 from ._types import NonEmptyStrList
@@ -44,6 +45,7 @@ __all__ = [
     'RecordCounter',
     'RecordPayloadParser',
     'SubstitutionResolver',
+    'TextChoiceResolver',
     'TextNormalizer',
     # Enums
     'CoercibleStrEnum',
