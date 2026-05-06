@@ -19,6 +19,7 @@ from etlplus.utils import JsonCodec
 from etlplus.utils import RecordCounter
 from etlplus.utils import RecordPayloadParser
 from etlplus.utils import coerce_record_payload
+from etlplus.utils import count_records
 from etlplus.utils import normalize_records
 from etlplus.utils import stringify_value
 from etlplus.utils._types import JSONData
@@ -101,9 +102,9 @@ class TestDataHelpers:
         expected: int,
     ) -> None:
         """
-        Test that :meth:`RecordCounter.count` counts dict and list payloads
-        consistently.
+        Test that record counting treats dict and list payloads consistently.
         """
+        assert count_records(payload) == expected
         assert RecordCounter.count(payload) == expected
 
     @pytest.mark.parametrize(
@@ -120,7 +121,8 @@ class TestDataHelpers:
         expected: str,
     ) -> None:
         """Test the shared fallback serializer used by database codecs."""
-        serialized = JsonCodec(default_serializer=JsonCodec.default).serialize(value)
+        codec = JsonCodec()
+        serialized = JsonCodec(default_serializer=codec.default).serialize(value)
 
         assert serialized.startswith(expected)
 
