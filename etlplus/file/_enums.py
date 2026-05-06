@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import PurePath
 
+from ..utils import TextNormalizer
 from ..utils._enums import CoercibleStrEnum
 from ..utils._types import StrStrMap
 
@@ -325,7 +326,7 @@ def infer_file_format_and_compression(
     if not text:
         return None, None
 
-    normalized = text.casefold()
+    normalized = TextNormalizer.normalize(text)
     mime = normalized.split(';', 1)[0].strip()
 
     is_octet_stream = mime == 'application/octet-stream'
@@ -350,7 +351,7 @@ def infer_file_format_and_compression(
         PurePath(str(suffix_source)).suffixes if suffix_source is not None else []
     )
     if suffixes:
-        normalized_suffixes = [suffix.casefold() for suffix in suffixes]
+        normalized_suffixes = [TextNormalizer.normalize(suffix) for suffix in suffixes]
         compression = (
             CompressionFormat.try_coerce(normalized_suffixes[-1]) or compression
         )
