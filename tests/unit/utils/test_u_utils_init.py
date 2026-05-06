@@ -11,6 +11,11 @@ import pytest
 from etlplus import utils as utils_pkg
 from etlplus.utils._data import JsonCodec
 from etlplus.utils._data import RecordCounter
+from etlplus.utils._data import coerce_record_payload
+from etlplus.utils._data import normalize_records
+from etlplus.utils._data import require_dict_payload
+from etlplus.utils._data import require_str_key
+from etlplus.utils._data import stringify_value
 from etlplus.utils._enums import CoercibleStrEnum
 from etlplus.utils._graph import NamedDependencyGraph
 from etlplus.utils._graph import topological_sort_names
@@ -47,7 +52,12 @@ UTILS_EXPORTS = [
     ('SubstitutionResolver', SubstitutionResolver),
     ('TextNormalizer', TextNormalizer),
     ('CoercibleStrEnum', CoercibleStrEnum),
+    ('coerce_record_payload', coerce_record_payload),
     ('finite_decimal_or_none', finite_decimal_or_none),
+    ('normalize_records', normalize_records),
+    ('require_dict_payload', require_dict_payload),
+    ('require_str_key', require_str_key),
+    ('stringify_value', stringify_value),
     ('topological_sort_names', topological_sort_names),
     ('BoundsWarningsMixin', BoundsWarningsMixin),
     ('NonEmptyStr', NonEmptyStr),
