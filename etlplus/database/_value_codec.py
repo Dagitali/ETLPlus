@@ -87,11 +87,10 @@ class ValueCodec:
             case SqlTypeAffinity.BINARY:
                 return self._to_blob(value)
             case SqlTypeAffinity.JSON:
-                return JsonCodec.serialize(
-                    value,
+                return JsonCodec(
                     compact=False,
-                    default=JsonCodec.default,
-                )
+                    default_serializer=JsonCodec.default,
+                ).serialize(value)
             case _:
                 return self._to_text(value)
 
@@ -116,7 +115,10 @@ class ValueCodec:
     def _to_blob(self, v: Any) -> bytes:
         if isinstance(v, (bytes, bytearray, memoryview)):
             return bytes(v)
-        enc = JsonCodec.serialize(v, compact=False, default=JsonCodec.default)
+        enc = JsonCodec(
+            compact=False,
+            default_serializer=JsonCodec.default,
+        ).serialize(v)
         return enc.encode('utf-8')
 
     def _to_text(self, value: Any) -> str:
@@ -125,11 +127,10 @@ class ValueCodec:
             case datetime() | date() | time():
                 return JsonCodec.isoformat(value)
             case list() | dict() | tuple() | set() if self.keep_unknown_as_json:
-                return JsonCodec.serialize(
-                    value,
+                return JsonCodec(
                     compact=False,
-                    default=JsonCodec.default,
-                )
+                    default_serializer=JsonCodec.default,
+                ).serialize(value)
             case _:
                 return str(value)
 
