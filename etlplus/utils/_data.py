@@ -33,6 +33,7 @@ __all__ = [
     'RecordPayloadParser',
     # Functions
     'coerce_record_payload',
+    'count_records',
     'normalize_records',
     'stringify_value',
 ]
@@ -79,6 +80,25 @@ def coerce_record_payload(
         *payload* when it is a dict or a list of dicts.
     """
     return RecordPayloadParser(format_name).coerce(payload)
+
+
+def count_records(
+    data: JSONData,
+) -> int:
+    """
+    Return a consistent record count for JSON-like data payloads.
+
+    Parameters
+    ----------
+    data : JSONData
+        Data payload to count records for.
+
+    Returns
+    -------
+    int
+        Lists count as multiple records; dictionaries count as one record.
+    """
+    return len(data) if isinstance(data, list) else 1
 
 
 def normalize_records(
@@ -292,8 +312,22 @@ class JsonCodec:
         return str(value)
 
     @staticmethod
-    def isoformat(value: date | datetime | time) -> str:
-        """Return stable ISO text for date-like values."""
+    def isoformat(
+        value: date | datetime | time,
+    ) -> str:
+        """
+        Return stable ISO text for date-like values.
+
+        Parameters
+        ----------
+        value : date | datetime | time
+            The date-like value to serialize.
+
+        Returns
+        -------
+        str
+            The ISO-formatted string representation of *value*.
+        """
         match value:
             case datetime() | time():
                 return value.isoformat(timespec='microseconds')
@@ -316,7 +350,7 @@ class RecordPayloadParser:
 
     format_name: str
 
-    # -- Instance MEthods -- #
+    # -- Instance Methods -- #
 
     def coerce(
         self,
@@ -449,7 +483,7 @@ class RecordPayloadParser:
 
 
 class RecordCounter:
-    """Centralize record-count semantics for JSON-like ETL payloads."""
+    """Compatibility facade for JSON-like record-count semantics."""
 
     # -- Static Methods -- #
 
@@ -461,6 +495,7 @@ class RecordCounter:
         Return a consistent record count for JSON-like data payloads.
 
         Lists are treated as multiple records; dicts as a single record.
+        :func:`count_records` is returned for backward-compatible callers.
 
         Parameters
         ----------
@@ -472,6 +507,4 @@ class RecordCounter:
         int
             Number of records in `data`.
         """
-        if isinstance(data, list):
-            return len(data)
-        return 1
+        return count_records(data)
