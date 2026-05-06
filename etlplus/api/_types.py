@@ -27,6 +27,7 @@ from typing import Self
 from typing import TypedDict
 from typing import cast
 
+from ..utils import MappingParser
 from ..utils._types import JSONData
 from ..utils._types import StrAnyMap
 from ..utils._types import StrStrMap
@@ -75,9 +76,7 @@ def _to_dict(
     dict[str, Any] | None
         New ``dict`` instance or ``None`` when the input is ``None``.
     """
-    if value is None:
-        return None
-    return cast(dict[str, Any], value)
+    return None if value is None else MappingParser.to_dict(value)
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -252,13 +251,11 @@ class RequestOptions:
         if params is _UNSET:
             next_params = self.params
         else:
-            # next_params = _to_dict(params) if params is not None else None
             next_params = _to_dict(params)
 
         if headers is _UNSET:
             next_headers = self.headers
         else:
-            # next_headers = _to_dict(headers) if headers is not None else None
             next_headers = _to_dict(headers)
         if timeout is _UNSET:
             next_timeout = self.timeout
