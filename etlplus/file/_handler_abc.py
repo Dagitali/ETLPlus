@@ -15,7 +15,7 @@ from typing import Any
 from typing import ClassVar
 
 from ..utils import RecordCounter
-from ..utils import normalize_records
+from ..utils import RecordPayloadParser
 from ..utils._types import JSONData
 from ..utils._types import JSONList
 from ._io import EmbeddedDatabaseTableOption
@@ -47,7 +47,7 @@ def _prepare_rows_for_write(
 
     Returns ``None`` when there are no rows to write.
     """
-    rows = normalize_records(data, format_name)
+    rows = RecordPayloadParser(format_name).normalize(data)
     if not rows:
         return None
     ensure_parent_dir(path)
@@ -635,7 +635,7 @@ class RowReadWriteABC(ABC):
         """
         return self.write_rows(
             path,
-            normalize_records(data, self.format_name),
+            RecordPayloadParser(self.format_name).normalize(data),
             options=options,
         )
 
