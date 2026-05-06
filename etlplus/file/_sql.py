@@ -6,10 +6,10 @@ Shared helpers for lightweight SQL-backed file formats.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from typing import Any
 
+from ..utils import JsonCodec
 from ..utils._types import JSONList
 
 # SECTION: EXPORTS ========================================================== #
@@ -97,7 +97,7 @@ def coerce_sql_value(value: Any) -> Any:
     """
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
-    return json.dumps(value, ensure_ascii=True)
+    return JsonCodec.serialize(value, compact=False)
 
 
 def collect_column_values(
