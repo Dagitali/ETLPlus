@@ -13,6 +13,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from ...utils import is_number_value
 from ...utils._types import JSONList
 from .._types import FieldName
 from .._types import SortKey
@@ -53,7 +54,7 @@ def _sort_key(
     """
     if value is None:
         return (2, '')
-    if isinstance(value, (int, float)):
+    if is_number_value(value):
         return (0, float(value))
 
     return (1, str(value))

@@ -14,6 +14,8 @@ import pytest
 from etlplus.utils import FloatParser
 from etlplus.utils import IntParser
 from etlplus.utils import finite_decimal_or_none
+from etlplus.utils import is_integer_value
+from etlplus.utils import is_number_value
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -223,3 +225,38 @@ class TestGenericNumberCoercion:
         Test that shared non-mapping fixture values remain safe for coercion.
         """
         assert FloatParser.coerce(non_mapping_value) is None
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(1, True, id='int'),
+            pytest.param(False, False, id='bool'),
+            pytest.param(1.0, False, id='float'),
+            pytest.param('1', False, id='string'),
+        ],
+    )
+    def test_is_integer_value(
+        self,
+        value: object,
+        expected: bool,
+    ) -> None:
+        """Test JSON-style integer predicate semantics."""
+        assert is_integer_value(value) is expected
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(1, True, id='int'),
+            pytest.param(1.5, True, id='float'),
+            pytest.param(True, False, id='bool'),
+            pytest.param(Decimal('1.0'), False, id='decimal'),
+            pytest.param('1', False, id='string'),
+        ],
+    )
+    def test_is_number_value(
+        self,
+        value: object,
+        expected: bool,
+    ) -> None:
+        """Test JSON-style number predicate semantics."""
+        assert is_number_value(value) is expected

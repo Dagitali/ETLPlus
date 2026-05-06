@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from collections.abc import Sequence
+from typing import TypeGuard
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -98,6 +99,28 @@ class SequenceParser(ValueParser):
     # -- Static Methods -- #
 
     @staticmethod
+    def is_non_text(
+        value: object,
+    ) -> TypeGuard[Sequence[object]]:
+        """
+        Return ``True`` for sequences excluding text and byte strings.
+
+        Parameters
+        ----------
+        value : object
+            Input value to test.
+
+        Returns
+        -------
+        TypeGuard[Sequence[object]]
+            ``True`` when *value* is a non-text sequence.
+        """
+        return isinstance(value, Sequence) and not isinstance(
+            value,
+            str | bytes | bytearray,
+        )
+
+    @staticmethod
     def str_list(
         value: object,
     ) -> list[str]:
@@ -117,7 +140,7 @@ class SequenceParser(ValueParser):
         match value:
             case str():
                 return [value]
-            case Sequence() if not isinstance(value, str | bytes | bytearray):
+            case Sequence() if SequenceParser.is_non_text(value):
                 return [entry for entry in value if isinstance(entry, str)]
             case _:
                 return []

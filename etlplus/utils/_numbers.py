@@ -21,6 +21,8 @@ __all__ = [
     'IntParser',
     # Functions
     'finite_decimal_or_none',
+    'is_integer_value',
+    'is_number_value',
 ]
 
 
@@ -57,6 +59,44 @@ def finite_decimal_or_none(
     except (InvalidOperation, ValueError):
         return None
     return decimal if decimal.is_finite() else None
+
+
+def is_integer_value(
+    value: object,
+) -> bool:
+    """
+    Return whether *value* is an integer, excluding booleans.
+
+    Parameters
+    ----------
+    value : object
+        Value to test.
+
+    Returns
+    -------
+    bool
+        ``True`` when *value* is an integer but not a boolean.
+    """
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def is_number_value(
+    value: object,
+) -> bool:
+    """
+    Return whether *value* is an ``int`` or ``float``, excluding booleans.
+
+    Parameters
+    ----------
+    value : object
+        Value to test.
+
+    Returns
+    -------
+    bool
+        ``True`` when *value* is numeric but not a boolean.
+    """
+    return isinstance(value, int | float) and not isinstance(value, bool)
 
 
 # SECTION: INTERNAL CLASSES ================================================= #
