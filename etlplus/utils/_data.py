@@ -122,38 +122,6 @@ def stringify_value(value: object) -> str:
     return str(value)
 
 
-# SECTION: CLASSES ========================================================== #
-
-
-class RecordCounter:
-    """Centralize record-count semantics for JSON-like ETL payloads."""
-
-    # -- Static Methods -- #
-
-    @staticmethod
-    def count(
-        data: JSONData,
-    ) -> int:
-        """
-        Return a consistent record count for JSON-like data payloads.
-
-        Lists are treated as multiple records; dicts as a single record.
-
-        Parameters
-        ----------
-        data : JSONData
-            Data payload to count records for.
-
-        Returns
-        -------
-        int
-            Number of records in `data`.
-        """
-        if isinstance(data, list):
-            return len(data)
-        return 1
-
-
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -475,3 +443,35 @@ class RecordPayloadParser:
                 f'{self.format_name} payloads must include a "{key}" string',
             )
         return value
+
+
+# SECTION: CLASSES ========================================================== #
+
+
+class RecordCounter:
+    """Centralize record-count semantics for JSON-like ETL payloads."""
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def count(
+        data: JSONData,
+    ) -> int:
+        """
+        Return a consistent record count for JSON-like data payloads.
+
+        Lists are treated as multiple records; dicts as a single record.
+
+        Parameters
+        ----------
+        data : JSONData
+            Data payload to count records for.
+
+        Returns
+        -------
+        int
+            Number of records in `data`.
+        """
+        if isinstance(data, list):
+            return len(data)
+        return 1
