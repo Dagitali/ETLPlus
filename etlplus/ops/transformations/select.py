@@ -6,7 +6,8 @@ Select helpers shared by :mod:`etlplus.ops.transform` and custom runners.
 Use :func:`apply_select` for direct field projection. Use
 :func:`apply_select_step` when you need the pipeline-style adapter consumed by
 :func:`etlplus.ops.transform.transform`. The normalization helper
-:func:`is_plain_fields_list` is public for callers that need to validate
+:func:`is_plain_fields_list` and compatibility alias
+:func:`is_sequence_not_text` are public for callers that need to validate
 select-step configs before orchestration.
 """
 
@@ -28,35 +29,11 @@ __all__ = [
     'apply_select',
     'apply_select_step',
     'is_plain_fields_list',
+    'is_sequence_not_text',
 ]
 
 
 # SECTION: FUNCTIONS ======================================================== #
-
-
-def is_plain_fields_list(
-    obj: Any,
-) -> bool:
-    """
-    Return ``True`` if *obj* is a non-text sequence of non-mapping items.
-
-    Used to detect a list or tuple of field names such as ``['name', 'age']``
-    when normalizing select specs for :func:`etlplus.ops.transform.transform`.
-
-    Parameters
-    ----------
-    obj : Any
-        The object to check.
-
-    Returns
-    -------
-    bool
-        ``True`` if *obj* is a non-text sequence of non-mapping items;
-        ``False`` otherwise.
-    """
-    return SequenceParser.is_non_text(obj) and not any(
-        isinstance(x, Mapping) for x in obj
-    )
 
 
 def apply_select(
@@ -114,3 +91,50 @@ def apply_select_step(
         return records
 
     return apply_select(records, [str(field) for field in fields])
+
+
+def is_plain_fields_list(
+    obj: Any,
+) -> bool:
+    """
+    Return ``True`` if *obj* is a non-text sequence of non-mapping items.
+
+    Used to detect a list or tuple of field names such as ``['name', 'age']``
+    when normalizing select specs for :func:`etlplus.ops.transform.transform`.
+
+    Parameters
+    ----------
+    obj : Any
+        The object to check.
+
+    Returns
+    -------
+    bool
+        ``True`` if *obj* is a non-text sequence of non-mapping items;
+        ``False`` otherwise.
+    """
+    return SequenceParser.is_non_text(obj) and not any(
+        isinstance(x, Mapping) for x in obj
+    )
+
+
+def is_sequence_not_text(
+    obj: object,
+) -> bool:
+    """
+    Return ``True`` for non-text sequences.
+
+    Used as a compatibility alias for callers that want to check for a sequence
+    excluding text and byte strings without importing :class:`SequenceParser`.
+
+    Parameters
+    ----------
+    obj : object
+        Input value to test.
+
+    Returns
+    -------
+    bool
+        ``True`` if *obj* is a non-text sequence; ``False`` otherwise.
+    """
+    return SequenceParser.is_non_text(obj)
