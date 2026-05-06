@@ -17,16 +17,16 @@ Notes
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import cast
 
+from ..utils import JsonCodec
 from ..utils import RecordCounter
+from ..utils import normalize_records
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import JSONList
 from ._enums import FileFormat
-from ._io import normalize_records
 from ._io import read_text
 from ._io import write_text
 from .base import ReadOptions
@@ -78,7 +78,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
             Serialized NDJSON line including the trailing newline.
         """
         _ = options
-        return f'{json.dumps(data, ensure_ascii=False)}\n'
+        return f'{JsonCodec.serialize(data, compact=False)}\n'
 
     def dumps(
         self,
@@ -139,7 +139,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         stripped = text.strip()
         if not stripped:
             raise ValueError('NDJSON line cannot be blank')
-        payload = json.loads(stripped)
+        payload = JsonCodec.decode(stripped)
         if not isinstance(payload, dict):
             suffix = f' (line {line_number})' if line_number is not None else ''
             raise TypeError(f'NDJSON lines must be objects (dicts){suffix}')
