@@ -7,11 +7,8 @@ Small shared helpers used across modules.
 from __future__ import annotations
 
 from ._data import JsonCodec
-from ._data import RecordCounter
 from ._data import RecordPayloadParser
-from ._data import coerce_record_payload
 from ._data import count_records
-from ._data import normalize_records
 from ._data import stringify_value
 from ._enums import CoercibleStrEnum
 from ._graph import NamedDependencyGraph
@@ -45,7 +42,6 @@ __all__ = [
     'JsonCodec',
     'MappingParser',
     'NamedDependencyGraph',
-    'RecordCounter',
     'RecordPayloadParser',
     'SubstitutionResolver',
     'TextChoiceResolver',
@@ -53,12 +49,10 @@ __all__ = [
     # Enums
     'CoercibleStrEnum',
     # Functions
-    'coerce_record_payload',
     'count_records',
     'finite_decimal_or_none',
     'is_integer_value',
     'is_number_value',
-    'normalize_records',
     'stringify_value',
     'topological_sort_names',
     # Mixins

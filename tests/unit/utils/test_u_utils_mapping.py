@@ -117,6 +117,16 @@ class TestMappingHelpers:
             == expected
         )
 
+    def test_freeze_returns_read_only_copy_with_optional_key_cast(self) -> None:
+        """Test immutable mapping snapshots with optional key normalization."""
+        source = {1: 'a'}
+        frozen = MappingParser.freeze(source, key_cast=str)
+        source[2] = 'b'
+
+        assert dict(frozen) == {'1': 'a'}
+        with pytest.raises(TypeError):
+            frozen['2'] = 'b'  # type: ignore[index]
+
     def test_index_named_items_normalizes_names(self) -> None:
         """Test that usable names are stripped before indexing."""
         item = SimpleNamespace(name=' valid ')

@@ -610,7 +610,7 @@ class TestUtilsInternalBranches:
         assert env['url'] == 'https://override.test/u'
         assert env['headers'] == {'T': '1'}
 
-    def test_internal_mapping_helpers_handle_non_mapping_inputs(
+    def test_internal_helpers_handle_non_mapping_inputs(
         self,
         base_url: str,
     ) -> None:
@@ -619,10 +619,6 @@ class TestUtilsInternalBranches:
         """
         assert _utils._build_session_optional(cast(Any, 'bad')) is None
         assert _utils._coalesce(None, None) is None
-
-        target: dict[str, Any] = {'a': 1}
-        _utils._update_mapping(target, cast(Any, ['not', 'mapping']))
-        assert target == {'a': 1}
 
         api_cfg = _ApiCfg(base_url)
         ep = _Endpoint()

@@ -50,6 +50,7 @@ from requests import PreparedRequest  # type: ignore
 from requests import Response  # type: ignore
 from requests.auth import AuthBase  # type: ignore
 
+from ..utils import TextNormalizer
 from ._types import Url
 
 logger = logging.getLogger(__name__)
@@ -130,33 +131,10 @@ def _response_excerpt(
     str
         The first ``MAX_LOG_BODY`` characters of the response body.
     """
-    return _truncate(resp.text if resp is not None else '')
-
-
-def _truncate(
-    text: str | None,
-    *,
-    limit: int = MAX_LOG_BODY,
-) -> str:
-    """
-    Return *text* shortened to *limit* characters for logging.
-
-    Parameters
-    ----------
-    text : str | None
-        The text to truncate.
-    limit : int, optional
-        The maximum length of the returned string (default is
-        ``MAX_LOG_BODY``).
-
-    Returns
-    -------
-    str
-        The truncated text.
-    """
-    if not text:
-        return ''
-    return text[:limit]
+    return TextNormalizer.truncate(
+        resp.text if resp is not None else '',
+        limit=MAX_LOG_BODY,
+    )
 
 
 # SECTION: CLASSES ========================================================== #
@@ -313,7 +291,7 @@ class EndpointCredentialsBearer(AuthBase):
         except ValueError:
             logger.error(
                 'Token response is not valid JSON. Body: %s',
-                _truncate(resp.text),
+                TextNormalizer.truncate(resp.text, limit=MAX_LOG_BODY),
             )
             raise
 

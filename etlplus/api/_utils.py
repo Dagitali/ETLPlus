@@ -287,34 +287,12 @@ def _merge_session_cfg_three(
     SessionConfigDict | None
         Merged session configuration.
     """
-    api_sess = getattr(api_cfg, 'session', None)
-    ep_sess = getattr(ep, 'session', None)
-    merged: dict[str, Any] = {}
-    if isinstance(api_sess, Mapping):
-        merged.update(api_sess)
-    if isinstance(ep_sess, Mapping):
-        merged.update(ep_sess)
-    if isinstance(source_session_cfg, Mapping):
-        merged.update(source_session_cfg)
-    return cast(SessionConfigDict | None, (merged or None))
-
-
-def _update_mapping(
-    target: dict[str, Any],
-    extra: Mapping[str, Any] | None,
-) -> None:
-    """
-    Update *target* with *extra* when provided.
-
-    Parameters
-    ----------
-    target : dict[str, Any]
-        The target mapping to update.
-    extra : Mapping[str, Any] | None
-        The extra mapping to update the target with.
-    """
-    if isinstance(extra, Mapping):
-        target.update(extra)
+    merged = MappingParser.merge_to_dict(
+        getattr(api_cfg, 'session', None),
+        getattr(ep, 'session', None),
+        source_session_cfg,
+    )
+    return cast(SessionConfigDict | None, merged or None)
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -424,7 +402,7 @@ def compose_api_request_env(
         ep_params: dict[str, Any] = MappingParser.to_dict(
             cast(Mapping[str, Any] | None, getattr(ep, 'query_params', None)),
         )
-        _update_mapping(ep_params, params)
+        ep_params.update(params)
         params = ep_params
         pagination = _coalesce(
             pagination,
@@ -454,14 +432,8 @@ def compose_api_request_env(
         client_base_path = api_cfg.effective_base_path()
         client_endpoints_map = {k: v.path for k, v in api_cfg.endpoints.items()}
         selected_endpoint_key = endpoint_name
-    _update_mapping(
-        params,
-        cast(Mapping[str, Any] | None, ex_opts.get('query_params')),
-    )
-    _update_mapping(
-        headers,
-        cast(Mapping[str, str] | None, ex_opts.get('headers')),
-    )
+    params.update(MappingParser.to_dict(ex_opts.get('query_params')))
+    headers.update(MappingParser.to_dict(ex_opts.get('headers')))
     timeout: Timeout = ex_opts.get('timeout')
     pag_ov = ex_opts.get('pagination', {})
     rl_ov = ex_opts.get('rate_limit', {})
@@ -481,11 +453,10 @@ def compose_api_request_env(
     if rne_ov is not None:
         retry_network_errors = bool(rne_ov)
     if isinstance(sess_ov, Mapping):
-        base_cfg: dict[str, Any] = dict(
-            cast(Mapping[str, Any], session_cfg or {}),
+        session_cfg = cast(
+            SessionConfigDict,
+            MappingParser.merge_to_dict(session_cfg, sess_ov),
         )
-        base_cfg.update(sess_ov)
-        session_cfg = cast(SessionConfigDict, base_cfg)
     pag_cfg: PaginationConfigDict | None = build_pagination_cfg(
         pagination,
         pag_ov,
@@ -549,7 +520,7 @@ def compose_api_target_env(
             ),
         ),
     )
-    _update_mapping(headers, cast(Mapping[str, str] | None, ov.get('headers')))
+    headers.update(MappingParser.to_dict(ov.get('headers')))
     timeout: Timeout = cast(Timeout, ov.get('timeout')) if 'timeout' in ov else None
     sess_cfg: SessionConfigDict | None = cast(
         SessionConfigDict | None,

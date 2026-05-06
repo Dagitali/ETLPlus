@@ -16,11 +16,8 @@ from io import StringIO
 import pytest
 
 from etlplus.utils import JsonCodec
-from etlplus.utils import RecordCounter
 from etlplus.utils import RecordPayloadParser
-from etlplus.utils import coerce_record_payload
 from etlplus.utils import count_records
-from etlplus.utils import normalize_records
 from etlplus.utils import stringify_value
 from etlplus.utils._types import JSONData
 
@@ -105,7 +102,6 @@ class TestDataHelpers:
         Test that record counting treats dict and list payloads consistently.
         """
         assert count_records(payload) == expected
-        assert RecordCounter.count(payload) == expected
 
     @pytest.mark.parametrize(
         ('value', 'expected'),
@@ -260,11 +256,6 @@ class TestDataHelpers:
 
         with pytest.raises(AttributeError):
             parser.format_name = 'CSV'  # type: ignore[misc]
-
-    def test_record_payload_parser_wrappers_preserve_function_api(self) -> None:
-        """Test compatibility wrappers delegate to the stateful parser."""
-        assert coerce_record_payload({'id': 1}, format_name='JSON') == {'id': 1}
-        assert normalize_records({'id': 1}, 'JSON') == [{'id': 1}]
 
     def test_require_dict_payload_and_require_str_key(
         self,
