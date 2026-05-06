@@ -92,6 +92,39 @@ class MappingFieldParser(ValueParser):
         value = data.get(key)
         return value if isinstance(value, str) else None
 
+    @staticmethod
+    def require_str(
+        data: Mapping[str, object],
+        key: str,
+        *,
+        label: str,
+    ) -> str:
+        """
+        Return a required string field or raise a descriptive ``TypeError``.
+
+        Parameters
+        ----------
+        data : Mapping[str, object]
+            Mapping payload to extract the field from.
+        key : str
+            Key of the required string field.
+        label : str
+            Human-readable payload label used in the error message.
+
+        Returns
+        -------
+        str
+            The string value for *key*.
+
+        Raises
+        ------
+        TypeError
+            If *key* is missing or its value is not a string.
+        """
+        if isinstance(value := data.get(key), str):
+            return value
+        raise TypeError(f'{label} requires a "{key}" (str)')
+
 
 class SequenceParser(ValueParser):
     """Parse sequence-style payloads into concrete sequence types."""
