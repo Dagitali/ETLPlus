@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..utils import normalize_records
+from ..utils import RecordPayloadParser
 from ..utils._types import JSONData
 from ..utils._types import JSONList
 
@@ -43,7 +43,7 @@ def dataframe_from_data(
     """Normalize JSON-like payload and build one DataFrame-like table."""
     return dataframe_from_records(
         pandas,
-        normalize_records(data, format_name),
+        RecordPayloadParser(format_name).normalize(data),
     )
 
 
@@ -54,5 +54,5 @@ def dataframe_and_count_from_data(
     format_name: str,
 ) -> tuple[Any, int]:
     """Normalize JSON-like payload and return one table plus record count."""
-    records = normalize_records(data, format_name)
+    records = RecordPayloadParser(format_name).normalize(data)
     return dataframe_from_records(pandas, records), len(records)
