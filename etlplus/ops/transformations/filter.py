@@ -120,8 +120,6 @@ def _filter_records(
     """Return records matching one resolved predicate."""
     result: JSONList = []
     for record in records:
-        if field not in record:
-            continue
         try:
             if _eval_condition(record, field, op_func, value, catch_all=catch_all):
                 result.append(record)
