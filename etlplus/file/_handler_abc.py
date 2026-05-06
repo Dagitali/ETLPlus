@@ -14,7 +14,8 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import ClassVar
 
-from ..utils import RecordCounter
+from ..utils import RecordPayloadParser
+from ..utils import count_records
 from ..utils._types import JSONData
 from ..utils._types import JSONList
 from ._io import EmbeddedDatabaseTableOption
@@ -22,7 +23,6 @@ from ._io import FileHandlerOption
 from ._io import ScientificDatasetOption
 from ._io import SpreadsheetSheetOption
 from ._io import ensure_parent_dir
-from ._io import normalize_records
 from ._io import read_bytes
 from ._io import read_text
 from ._io import write_bytes
@@ -47,7 +47,7 @@ def _prepare_rows_for_write(
 
     Returns ``None`` when there are no rows to write.
     """
-    rows = normalize_records(data, format_name)
+    rows = RecordPayloadParser(format_name).normalize(data)
     if not rows:
         return None
     ensure_parent_dir(path)
@@ -163,7 +163,7 @@ class BinarySerializationABC(ABC):
         """
         payload = self.dumps_bytes(data, options=options)
         write_bytes(path, payload)
-        return RecordCounter.count(data)
+        return count_records(data)
 
 
 class ColumnarABC(ABC):
@@ -635,7 +635,7 @@ class RowReadWriteABC(ABC):
         """
         return self.write_rows(
             path,
-            normalize_records(data, self.format_name),
+            RecordPayloadParser(self.format_name).normalize(data),
             options=options,
         )
 
@@ -727,7 +727,7 @@ class SemiStructuredTextABC(FileHandlerOption, ABC):
             encoding=self.encoding_from_options(options),
             trailing_newline=self.write_trailing_newline,
         )
-        return RecordCounter.count(data)
+        return count_records(data)
 
 
 class ScientificDatasetABC(ScientificDatasetOption, ABC):

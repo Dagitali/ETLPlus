@@ -178,7 +178,7 @@ class _JobValidationConfig:
             phase=self.phase,
             severity=self.severity,
             validate_fn=_validate_payload,
-            print_json_fn=JsonCodec.print,
+            print_json_fn=JsonCodec(pretty=True).print,
         )
 
 

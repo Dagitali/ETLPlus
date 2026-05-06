@@ -87,7 +87,7 @@ class HistoryView:
         should be stable for related events of the same run and different
         enough across unrelated runs to avoid collisions in practice.
         """
-        return JsonCodec.serialize(record, sort_keys=True)
+        return JsonCodec(sort_keys=True).serialize(record)
 
     @staticmethod
     def parse_timestamp(

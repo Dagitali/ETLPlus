@@ -216,7 +216,7 @@ class ReadinessBaseMixin:
         effective_env = cls.effective_environment(cfg, env)
         resolved = cast(
             StrAnyMap,
-            SubstitutionResolver.deep(raw, cfg.vars, effective_env),
+            SubstitutionResolver(cfg.vars, effective_env).deep(raw),
         )
         unresolved_tokens = sorted(TokenReferenceCollector.collect_names(resolved))
         return ResolvedConfigContext(

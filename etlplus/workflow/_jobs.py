@@ -22,7 +22,7 @@ from ..utils import IntParser
 from ..utils import MappingFieldParser
 from ..utils import MappingParser
 from ..utils import SequenceParser
-from ..utils import TextNormalizer
+from ..utils import TextChoiceResolver
 from ..utils import ValueParser
 
 # SECTION: EXPORTS ========================================================== #
@@ -65,7 +65,7 @@ def _normalize_optional_choice(
     text = ValueParser.optional_str(value)
     if text is None:
         return None
-    return TextNormalizer.resolve_choice(text, mapping=mapping, default=text)
+    return TextChoiceResolver(mapping, text).resolve(text)
 
 
 # SECTION: DATA CLASSES ===================================================== #

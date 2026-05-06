@@ -10,10 +10,9 @@ from collections.abc import Callable
 from typing import Any
 from typing import ClassVar
 
+from ..utils import RecordPayloadParser
 from ..utils._types import JSONData
 from ._imports import get_dependency
-from ._io import coerce_record_payload
-from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -127,7 +126,7 @@ class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
         """
         _ = options
         codec = self.resolve_codec_module()
-        records = normalize_records(data, self.format_name)
+        records = RecordPayloadParser(self.format_name).normalize(data)
         payload: JSONData = records if isinstance(data, list) else records[0]
         return self.encode_payload(codec, payload)
 
@@ -181,7 +180,7 @@ class BinaryRecordCodecHandlerMixin(BinarySerializationFileHandlerABC):
         _ = options
         codec = self.resolve_codec_module()
         decoded = self.decode_payload(codec, payload)
-        return coerce_record_payload(decoded, format_name=self.format_name)
+        return RecordPayloadParser(self.format_name).coerce(decoded)
 
     def resolve_codec_module(self) -> Any:
         """Return the codec module for this handler."""

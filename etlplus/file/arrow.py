@@ -22,11 +22,11 @@ from pathlib import Path
 from typing import Any
 from typing import cast
 
+from ..utils import RecordPayloadParser
 from ..utils._types import JSONData
 from ..utils._types import JSONList
 from ._enums import FileFormat
 from ._imports import get_dependency
-from ._io import normalize_records
 from .base import ColumnarFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
@@ -82,7 +82,7 @@ class ArrowFile(ColumnarFileHandlerABC):
         Any
             Columnar table object.
         """
-        records = normalize_records(data, self.format_name)
+        records = RecordPayloadParser(self.format_name).normalize(data)
         pyarrow_mod = _pyarrow()
         return pyarrow_mod.Table.from_pylist(records)
 

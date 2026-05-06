@@ -18,15 +18,15 @@ Notes
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
+from ..utils import JsonCodec
+from ..utils import RecordPayloadParser
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import JSONList
 from ._enums import FileFormat
 from ._io import _open_text_handle
-from ._io import normalize_records
 from ._io import write_text
 from .base import LogEventFileHandlerABC
 from .base import ReadOptions
@@ -71,8 +71,8 @@ class LogFile(LogEventFileHandlerABC):
             Parsed event dictionary.
         """
         try:
-            parsed = json.loads(line)
-        except json.JSONDecodeError:
+            parsed = JsonCodec.parse(line)
+        except ValueError:
             return {'message': line}
         if isinstance(parsed, dict):
             return parsed
@@ -126,7 +126,7 @@ class LogFile(LogEventFileHandlerABC):
         str
             Serialized log line.
         """
-        return json.dumps(event, ensure_ascii=False)
+        return JsonCodec(compact=False).serialize(event)
 
     def write(
         self,
@@ -152,7 +152,7 @@ class LogFile(LogEventFileHandlerABC):
         int
             Number of events written.
         """
-        rows = normalize_records(data, self.format_name)
+        rows = RecordPayloadParser(self.format_name).normalize(data)
         if not rows:
             return 0
         payload = '\n'.join(self.serialize_event(event) for event in rows)

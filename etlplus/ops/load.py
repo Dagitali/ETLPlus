@@ -20,7 +20,7 @@ from ..file import FileFormat
 from ..file._core import FileFormatArg
 from ..file.base import WriteOptions
 from ..storage import StorageLocation
-from ..utils import RecordCounter
+from ..utils import count_records
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import StrPath
@@ -124,7 +124,7 @@ def _load_to_api_env(
         'status_code': response.status_code,
         'message': f'Data loaded to {request.url}',
         'response': response_json_or_text(response),
-        'records': RecordCounter.count(data),
+        'records': count_records(data),
         'method': request.http_method.value.upper(),
     }
 
@@ -294,7 +294,7 @@ def load_to_database(
     JSONDict
         Result object describing the operation.
     """
-    records = RecordCounter.count(data)
+    records = count_records(data)
 
     return {
         'status': 'not_implemented',
