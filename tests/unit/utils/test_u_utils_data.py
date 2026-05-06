@@ -120,7 +120,7 @@ class TestDataHelpers:
         expected: str,
     ) -> None:
         """Test the shared fallback serializer used by database codecs."""
-        serialized = JsonCodec.serialize(value, default=JsonCodec.default)
+        serialized = JsonCodec(default_serializer=JsonCodec.default).serialize(value)
 
         assert serialized.startswith(expected)
 
@@ -147,6 +147,13 @@ class TestDataHelpers:
     ) -> None:
         """Test that date-like values render with stable ISO precision."""
         assert JsonCodec.isoformat(value) == expected
+
+    def test_json_codec_is_frozen(self) -> None:
+        """Test that render policy cannot be mutated after construction."""
+        codec = JsonCodec()
+
+        with pytest.raises(AttributeError):
+            codec.pretty = True  # type: ignore[misc]
 
     @pytest.mark.parametrize(
         ('payload', 'expected'),
@@ -227,7 +234,7 @@ class TestDataHelpers:
         """
         Test that :meth:`JsonCodec.print` preserves readable Unicode output.
         """
-        JsonCodec.print(unicode_payload)
+        JsonCodec(pretty=True).print(unicode_payload)
         captured = capsys.readouterr().out
 
         assert '\\u2603' not in captured
@@ -241,7 +248,7 @@ class TestDataHelpers:
         stream = _FalseyStringIO()
         payload = {'ok': True}
 
-        JsonCodec.print(payload, stream=stream)
+        JsonCodec(pretty=True).print(payload, stream=stream)
 
         assert_json_output(stream.getvalue(), payload)
 
@@ -272,15 +279,15 @@ class TestDataHelpers:
 
     def test_serialize_json_can_use_standard_spacing(self) -> None:
         """Test that compact output can be disabled for standard JSON spacing."""
-        assert JsonCodec.serialize({'a': 1}, compact=False) == '{"a": 1}'
+        assert JsonCodec(compact=False).serialize({'a': 1}) == '{"a": 1}'
 
     def test_serialize_json_compacts_by_default(self) -> None:
         """Test that :meth:`JsonCodec.serialize` emits compact JSON by default."""
-        assert JsonCodec.serialize({'b': 1, 'a': 2}, sort_keys=True) == '{"a":2,"b":1}'
+        assert JsonCodec(sort_keys=True).serialize({'b': 1, 'a': 2}) == '{"a":2,"b":1}'
 
     def test_serialize_json_pretty_prints_when_requested(self) -> None:
         """Test that :meth:`JsonCodec.serialize` supports stable pretty output."""
-        assert JsonCodec.serialize({'a': 1}, pretty=True) == '{\n  "a": 1\n}'
+        assert JsonCodec(pretty=True).serialize({'a': 1}) == '{\n  "a": 1\n}'
 
     @pytest.mark.parametrize(
         ('value', 'expected'),
