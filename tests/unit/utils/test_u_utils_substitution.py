@@ -31,10 +31,8 @@ class TestDeepSubstitute:
         mappings and sequences to replace tokens with values from the provided
         maps.
         """
-        assert SubstitutionResolver.deep(
+        assert SubstitutionResolver(vars_map_basic).deep(
             {'a': '${FOO}', 'b': 2, 'c': ['${BAR}', 3]},
-            vars_map_basic,
-            None,
         ) == {
             'a': 'foo',
             'b': 2,
@@ -49,10 +47,8 @@ class TestDeepSubstitute:
         Test that :meth:`SubstitutionResolver.deep` environment values take
         precedence over vars-map values when keys overlap.
         """
-        assert SubstitutionResolver.deep(
+        assert SubstitutionResolver(vars_map_basic, {'FOO': 'envfoo'}).deep(
             {'a': '${FOO}', 'b': '${BAR}'},
-            vars_map_basic,
-            {'FOO': 'envfoo'},
         ) == {
             'a': 'envfoo',
             'b': 'bar',
@@ -85,7 +81,7 @@ class TestDeepSubstitute:
         Test that :meth:`SubstitutionResolver.deep` applies substitutions
         recursively and preserves non-string values while replacing tokens.
         """
-        assert SubstitutionResolver.deep(value, vars_map, None) == expected
+        assert SubstitutionResolver(vars_map).deep(value) == expected
 
     @pytest.mark.parametrize(
         ('value', 'expected'),
@@ -105,7 +101,7 @@ class TestDeepSubstitute:
         Test that :meth:`SubstitutionResolver.deep` preserves empty and
         ``None`` inputs when maps are missing.
         """
-        assert SubstitutionResolver.deep(value, None, None) == expected
+        assert SubstitutionResolver().deep(value) == expected
 
     def test_nested_container_types(
         self,
@@ -115,15 +111,13 @@ class TestDeepSubstitute:
         Test that :meth:`SubstitutionResolver.deep` supports tuple, set, and frozenset
         containers.
         """
-        result = SubstitutionResolver.deep(
+        result = SubstitutionResolver(vars_map_nested).deep(
             {
                 'a': ['${X}', {'b': '${Y}'}],
                 'b': ({'c': '${Z}'},),
                 'c': {'${X}', 'x'},
                 'd': frozenset({'${Y}', 'y'}),
             },
-            vars_map_nested,
-            None,
         )
 
         assert result == {
@@ -137,4 +131,11 @@ class TestDeepSubstitute:
         """Test that no-op substitution avoids unnecessary container copies."""
         value = {'a': ['${MISSING}']}
 
-        assert SubstitutionResolver.deep(value, None, None) is value
+        assert SubstitutionResolver().deep(value) is value
+
+    def test_resolver_is_frozen(self) -> None:
+        """Test that substitution maps cannot be reassigned after construction."""
+        resolver = SubstitutionResolver({'FOO': 'foo'})
+
+        with pytest.raises(AttributeError):
+            resolver.vars_map = {}  # type: ignore[misc]

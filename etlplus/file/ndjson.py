@@ -17,16 +17,16 @@ Notes
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import cast
 
-from ..utils import RecordCounter
+from ..utils import JsonCodec
+from ..utils import RecordPayloadParser
+from ..utils import count_records
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import JSONList
 from ._enums import FileFormat
-from ._io import normalize_records
 from ._io import read_text
 from ._io import write_text
 from .base import ReadOptions
@@ -78,7 +78,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
             Serialized NDJSON line including the trailing newline.
         """
         _ = options
-        return f'{json.dumps(data, ensure_ascii=False)}\n'
+        return f'{JsonCodec(compact=False).serialize(data)}\n'
 
     def dumps(
         self,
@@ -101,7 +101,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         str
             Serialized NDJSON text.
         """
-        rows = normalize_records(data, 'NDJSON')
+        rows = RecordPayloadParser('NDJSON').normalize(data)
         return ''.join(self.dump_line(row, options=options) for row in rows)
 
     def load_line(
@@ -139,7 +139,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         stripped = text.strip()
         if not stripped:
             raise ValueError('NDJSON line cannot be blank')
-        payload = json.loads(stripped)
+        payload = JsonCodec.decode(stripped)
         if not isinstance(payload, dict):
             suffix = f' (line {line_number})' if line_number is not None else ''
             raise TypeError(f'NDJSON lines must be objects (dicts){suffix}')
@@ -225,7 +225,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         int
             Number of records written.
         """
-        rows = normalize_records(data, 'NDJSON')
+        rows = RecordPayloadParser('NDJSON').normalize(data)
         if not rows:
             return 0
         encoding = self.encoding_from_options(options)
@@ -234,4 +234,4 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
             self.dumps(rows, options=options),
             encoding=encoding,
         )
-        return RecordCounter.count(rows)
+        return count_records(rows)

@@ -352,7 +352,7 @@ class TestReadinessReportBuilderCore:
         monkeypatch.setattr(
             readiness_base_mod.SubstitutionResolver,
             'deep',
-            lambda raw, _vars, _env: {'token': '${MISSING_TOKEN}'},
+            lambda _resolver, raw: {'token': '${MISSING_TOKEN}'},
         )
 
         connector_checks_called = {'value': False}

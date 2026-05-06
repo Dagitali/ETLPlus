@@ -22,9 +22,9 @@ from __future__ import annotations
 import configparser
 from io import StringIO
 
+from ..utils import stringify_value
 from ..utils._types import JSONDict
 from ._enums import FileFormat
-from ._io import stringify_value
 from ._semi_structured_handlers import DictPayloadTextCodecHandlerMixin
 
 # SECTION: EXPORTS ========================================================== #

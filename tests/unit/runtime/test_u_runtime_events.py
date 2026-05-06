@@ -196,7 +196,7 @@ class TestRuntimeEvents:
         monkeypatch.setattr(
             events_mod.JsonCodec,
             'serialize',
-            lambda event: 'SERIALIZED',
+            lambda _codec, event: 'SERIALIZED',
         )
 
         events_mod.RuntimeEvents.emit(

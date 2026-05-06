@@ -361,19 +361,6 @@ class TestIoHelpers:
         table = _TableStub([{'id': 1}, {'id': 2}])
         assert mod.records_from_table(table) == [{'id': 1}, {'id': 2}]
 
-    def test_require_dict_payload_and_require_str_key(self) -> None:
-        """Test dict/string key payload validators."""
-        payload = mod.require_dict_payload({'key': 'value'}, format_name='INI')
-        assert payload == {'key': 'value'}
-        assert mod.require_str_key(payload, format_name='INI', key='key') == 'value'
-        with pytest.raises(TypeError, match='must be a dict'):
-            mod.require_dict_payload(
-                [],
-                format_name='INI',
-            )  # type: ignore[arg-type]
-        with pytest.raises(TypeError, match='must include a "key" string'):
-            mod.require_str_key({'key': 1}, format_name='INI', key='key')
-
     def test_stringify_value(self) -> None:
         """Test scalar stringification rules."""
         for value, expected in ((None, ''), (12, '12'), ('abc', 'abc')):

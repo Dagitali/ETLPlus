@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from ._mapping import MappingParser
@@ -77,20 +78,38 @@ def _replace_tokens(
     return out
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: DATA CLASSES ===================================================== #
 
 
+@dataclass(frozen=True, slots=True)
 class SubstitutionResolver:
-    """Resolve token substitutions across nested Python containers."""
+    """
+    Resolve token substitutions across nested Python containers.
 
-    # -- Class Methods -- #
+    Attributes
+    ----------
+    vars_map : StrAnyMap | None
+        Mapping of variable names to replacement values (lower precedence).
+    env_map : Mapping[str, object] | None
+        Mapping of environment variables overriding *vars_map* values (higher
+        precedence).
+    """
 
-    @classmethod
+    vars_map: StrAnyMap | None = None
+    env_map: Mapping[str, object] | None = None
+
+    # -- Getters -- #
+
+    @property
+    def substitutions(self) -> tuple[tuple[str, Any], ...]:
+        """Return merged substitutions in replacement order."""
+        return _prepare_substitutions(self.vars_map, self.env_map)
+
+    # -- Instance Methods -- #
+
     def deep(
-        cls,
+        self,
         value: Any,
-        vars_map: StrAnyMap | None,
-        env_map: Mapping[str, object] | None,
     ) -> Any:
         """
         Recursively substitute ``${VAR}`` tokens in nested structures.
@@ -101,18 +120,13 @@ class SubstitutionResolver:
         ----------
         value : Any
             The value to perform substitutions on.
-        vars_map : StrAnyMap | None
-            Mapping of variable names to replacement values (lower precedence).
-        env_map : Mapping[str, object] | None
-            Mapping of environment variables overriding *vars_map* values (higher
-            precedence).
 
         Returns
         -------
         Any
             New structure with substitutions applied where tokens were found.
         """
-        substitutions = _prepare_substitutions(vars_map, env_map)
+        substitutions = self.substitutions
         if not substitutions:
             return value
 

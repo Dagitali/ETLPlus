@@ -159,14 +159,14 @@ def _serialize_result_summary(
     """Serialize one optional JSON result summary for persistence."""
     if result_summary is None:
         return None
-    return JsonCodec.serialize(result_summary)
+    return JsonCodec().serialize(result_summary)
 
 
 def _serialize_string_list(
     values: list[str] | None,
 ) -> str | None:
     """Serialize one optional string list for persistence."""
-    return None if values is None else JsonCodec.serialize(values)
+    return None if values is None else JsonCodec().serialize(values)
 
 
 def _sqlite_job_run_payload(

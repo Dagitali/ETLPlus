@@ -52,9 +52,9 @@ def emit_json(
         Whether to pretty-print JSON output.
     """
     if pretty:
-        JsonCodec.print(data)
+        JsonCodec(pretty=True).print(data)
         return
-    print(JsonCodec.serialize(data))
+    print(JsonCodec().serialize(data))
 
 
 def emit_markdown_table(
@@ -77,7 +77,7 @@ def emit_markdown_table(
         if value is None:
             return ''
         if isinstance(value, (dict, list)):
-            rendered = JsonCodec.serialize(value, sort_keys=True)
+            rendered = JsonCodec(sort_keys=True).serialize(value)
         else:
             rendered = str(value)
         return rendered.replace('|', '\\|').replace('\n', '<br>')

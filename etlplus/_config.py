@@ -233,7 +233,7 @@ class Config:
             base_env = dict(getattr(cfg.profile, 'env', {}) or {})
             external = dict(env) if env is not None else dict(os.environ)
             env_map = base_env | external
-            resolved = SubstitutionResolver.deep(raw, cfg.vars, env_map)
+            resolved = SubstitutionResolver(cfg.vars, env_map).deep(raw)
             cfg = cls.from_dict(resolved)
 
         return cfg

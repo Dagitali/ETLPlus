@@ -32,12 +32,25 @@ class ValueParser:
     - Optional string fields coerce non-``None`` values to strings.
     """
 
-    @classmethod
+    # -- Static Methods -- #
+
+    @staticmethod
     def optional_str(
-        cls,
         value: object,
     ) -> str | None:
-        """Return an optional string, coercing non-``None`` values."""
+        """
+        Return an optional string, coercing non-``None`` values.
+
+        Parameters
+        ----------
+        value : object
+            Input value to parse as an optional string.
+
+        Returns
+        -------
+        str | None
+            The string value if present, otherwise None.
+        """
         if value is None:
             return None
         return value if isinstance(value, str) else str(value)
@@ -53,13 +66,28 @@ class MappingFieldParser(ValueParser):
     - This class only extracts typed fields once a mapping is already known.
     """
 
-    @classmethod
+    # -- Static Methods -- #
+
+    @staticmethod
     def required_str(
-        cls,
         data: Mapping[str, object],
         key: str,
     ) -> str | None:
-        """Return one required string field from a mapping payload."""
+        """
+        Return one required string field from a mapping payload.
+
+        Parameters
+        ----------
+        data : Mapping[str, object]
+            Mapping payload to extract the field from.
+        key : str
+            Key of the required string field.
+
+        Returns
+        -------
+        str | None
+            The string value if present and valid, otherwise None.
+        """
         value = data.get(key)
         return value if isinstance(value, str) else None
 
@@ -67,12 +95,25 @@ class MappingFieldParser(ValueParser):
 class SequenceParser(ValueParser):
     """Parse sequence-style payloads into concrete sequence types."""
 
-    @classmethod
+    # -- Static Methods -- #
+
+    @staticmethod
     def str_list(
-        cls,
         value: object,
     ) -> list[str]:
-        """Normalize a string or a sequence of strings into a string list."""
+        """
+        Normalize a string or a sequence of strings into a string list.
+
+        Parameters
+        ----------
+        value : object
+            Input value to normalize.
+
+        Returns
+        -------
+        list[str]
+            Normalized list of strings.
+        """
         match value:
             case str():
                 return [value]

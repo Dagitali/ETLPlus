@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import pytest
 
+from etlplus.utils import TextChoiceResolver
 from etlplus.utils import TextNormalizer
 
 # SECTION: PRAGMAS ========================================================== #
@@ -43,47 +44,43 @@ class TestNormalizeText:
 
     def test_normalize_choice_with_default_normalizer(self) -> None:
         """
-        Test that :meth:`TextNormalizer.resolve_choice` resolves choices and
+        Test that :meth:`TextChoiceResolver.resolve` resolves choices and
         falls back to defaults.
         """
-        mapping = {'file': 'file', 'api': 'api'}
+        resolver = TextChoiceResolver({'file': 'file', 'api': 'api'}, 'file')
 
-        assert (
-            TextNormalizer.resolve_choice(
-                '  FILE  ',
-                mapping=mapping,
-                default='file',
-            )
-            == 'file'
-        )
-        assert (
-            TextNormalizer.resolve_choice(
-                'unknown',
-                mapping=mapping,
-                default='file',
-            )
-            == 'file'
-        )
-        assert (
-            TextNormalizer.resolve_choice(
-                None,
-                mapping=mapping,
-                default='file',
-            )
-            == 'file'
-        )
+        assert resolver.resolve('  FILE  ') == 'file'
+        assert resolver.resolve('unknown') == 'file'
+        assert resolver.resolve(None) == 'file'
 
     def test_normalize_choice_supports_custom_normalizer(self) -> None:
         """
-        Test that :meth:`TextNormalizer.resolve_choice` honors a caller-provided
+        Test that :class:`TextChoiceResolver` honors a caller-provided
         normalizer.
         """
         assert (
-            TextNormalizer.resolve_choice(
-                'V1',
-                mapping={'v1': 'version-1'},
-                default='fallback',
+            TextChoiceResolver(
+                {'v1': 'version-1'},
+                'fallback',
                 normalize=lambda value: (value or '').lower(),
-            )
+            ).resolve('V1')
             == 'version-1'
         )
+
+    def test_normalize_choice_wrapper_preserves_function_api(self) -> None:
+        """Test compatibility wrapper delegates to the stateful resolver."""
+        assert (
+            TextNormalizer.resolve_choice(
+                '  FILE  ',
+                mapping={'file': 'file'},
+                default='api',
+            )
+            == 'file'
+        )
+
+    def test_choice_resolver_is_frozen(self) -> None:
+        """Test that choice policy cannot be reassigned after construction."""
+        resolver = TextChoiceResolver({'file': 'file'}, 'file')
+
+        with pytest.raises(AttributeError):
+            resolver.default = 'api'  # type: ignore[misc]
