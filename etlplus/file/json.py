@@ -57,4 +57,4 @@ class JsonFile(RecordPayloadTextCodecHandlerMixin):
         data: JSONData,
     ) -> str:
         """Serialize *data* to JSON text."""
-        return JsonCodec.serialize(data, compact=False, pretty=True)
+        return JsonCodec(compact=False, pretty=True).serialize(data)
