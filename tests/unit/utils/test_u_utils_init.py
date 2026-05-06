@@ -14,8 +14,6 @@ from etlplus.utils._data import RecordCounter
 from etlplus.utils._data import RecordPayloadParser
 from etlplus.utils._data import coerce_record_payload
 from etlplus.utils._data import normalize_records
-from etlplus.utils._data import require_dict_payload
-from etlplus.utils._data import require_str_key
 from etlplus.utils._data import stringify_value
 from etlplus.utils._enums import CoercibleStrEnum
 from etlplus.utils._graph import NamedDependencyGraph
@@ -57,8 +55,6 @@ UTILS_EXPORTS = [
     ('coerce_record_payload', coerce_record_payload),
     ('finite_decimal_or_none', finite_decimal_or_none),
     ('normalize_records', normalize_records),
-    ('require_dict_payload', require_dict_payload),
-    ('require_str_key', require_str_key),
     ('stringify_value', stringify_value),
     ('topological_sort_names', topological_sort_names),
     ('BoundsWarningsMixin', BoundsWarningsMixin),
