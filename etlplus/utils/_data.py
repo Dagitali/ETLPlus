@@ -34,8 +34,6 @@ __all__ = [
     # Functions
     'coerce_record_payload',
     'normalize_records',
-    'require_dict_payload',
-    'require_str_key',
     'stringify_value',
 ]
 
@@ -103,55 +101,6 @@ def normalize_records(
         Normalized list of dictionaries.
     """
     return RecordPayloadParser(format_name).normalize(data)
-
-
-def require_dict_payload(
-    data: object,
-    *,
-    format_name: str,
-) -> JSONDict:
-    """
-    Validate that *data* is a dictionary payload.
-
-    Parameters
-    ----------
-    data : object
-        Input payload to validate.
-    format_name : str
-        Human-readable format name for error messages.
-
-    Returns
-    -------
-    JSONDict
-        Validated dictionary payload.
-    """
-    return RecordPayloadParser(format_name).require_dict(data)
-
-
-def require_str_key(
-    payload: JSONDict,
-    *,
-    format_name: str,
-    key: str,
-) -> str:
-    """
-    Require a string value for *key* in *payload*.
-
-    Parameters
-    ----------
-    payload : JSONDict
-        Dictionary payload to inspect.
-    format_name : str
-        Human-readable format name for error messages.
-    key : str
-        Key to extract.
-
-    Returns
-    -------
-    str
-        The string value for *key*.
-    """
-    return RecordPayloadParser(format_name).require_str_key(payload, key)
 
 
 def stringify_value(value: object) -> str:
