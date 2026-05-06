@@ -17,6 +17,11 @@ import pytest
 
 from etlplus.utils import JsonCodec
 from etlplus.utils import RecordCounter
+from etlplus.utils import coerce_record_payload
+from etlplus.utils import normalize_records
+from etlplus.utils import require_dict_payload
+from etlplus.utils import require_str_key
+from etlplus.utils import stringify_value
 from etlplus.utils._types import JSONData
 
 # SECTION: PRAGMAS ========================================================== #
@@ -38,6 +43,37 @@ class _FalseyStringIO(StringIO):
 
 class TestDataHelpers:
     """Unit tests for general data helpers."""
+
+    @pytest.mark.parametrize(
+        ('payload', 'expected'),
+        [
+            pytest.param({'a': 1}, {'a': 1}, id='dict'),
+            pytest.param([{'a': 1}, {'a': 2}], [{'a': 1}, {'a': 2}], id='records'),
+        ],
+    )
+    def test_coerce_record_payload_accepts_valid_shapes(
+        self,
+        payload: object,
+        expected: JSONData,
+    ) -> None:
+        """Test record payload coercion for supported and invalid shapes."""
+        assert coerce_record_payload(payload, format_name='JSON') == expected
+
+    @pytest.mark.parametrize(
+        ('payload', 'pattern'),
+        [
+            pytest.param([{'a': 1}, 2], 'array must contain only objects', id='mixed'),
+            pytest.param('bad', 'root must be an object', id='scalar'),
+        ],
+    )
+    def test_coerce_record_payload_rejects_invalid_shapes(
+        self,
+        payload: object,
+        pattern: str,
+    ) -> None:
+        """Test record payload coercion rejects invalid shapes."""
+        with pytest.raises(TypeError, match=pattern):
+            coerce_record_payload(payload, format_name='JSON')
 
     @pytest.mark.parametrize(
         ('payload', 'expected'),
@@ -78,6 +114,10 @@ class TestDataHelpers:
 
         assert serialized.startswith(expected)
 
+    def test_decode_json_returns_raw_json_value(self) -> None:
+        """Test that raw JSON decoding does not enforce ETL payload shape."""
+        assert JsonCodec.decode('42') == 42
+
     @pytest.mark.parametrize(
         ('value', 'expected'),
         [
@@ -97,6 +137,37 @@ class TestDataHelpers:
     ) -> None:
         """Test that date-like values render with stable ISO precision."""
         assert JsonCodec.isoformat(value) == expected
+
+    @pytest.mark.parametrize(
+        ('payload', 'expected'),
+        [
+            pytest.param({'id': 1}, [{'id': 1}], id='dict'),
+            pytest.param([{'id': 1}, {'id': 2}], [{'id': 1}, {'id': 2}], id='records'),
+        ],
+    )
+    def test_normalize_records_accepts_valid_shapes(
+        self,
+        payload: object,
+        expected: list[dict[str, object]],
+    ) -> None:
+        """Test record normalization for valid and invalid payloads."""
+        assert normalize_records(payload, 'CSV') == expected
+
+    @pytest.mark.parametrize(
+        ('payload', 'pattern'),
+        [
+            pytest.param(1, 'must be an object or an array', id='scalar'),
+            pytest.param([{'id': 1}, 'x'], 'contain only objects', id='mixed'),
+        ],
+    )
+    def test_normalize_records_rejects_invalid_shapes(
+        self,
+        payload: object,
+        pattern: str,
+    ) -> None:
+        """Test record normalization rejects invalid shapes."""
+        with pytest.raises(TypeError, match=pattern):
+            normalize_records(payload, 'CSV')
 
     def test_parse_json_raises_concise_value_error(self) -> None:
         """Test that :meth:`JsonCodec.parse` wraps JSON decode failures cleanly."""
@@ -162,6 +233,16 @@ class TestDataHelpers:
 
         assert_json_output(stream.getvalue(), payload)
 
+    def test_require_dict_payload_and_require_str_key(self) -> None:
+        """Test dict/string key payload validators."""
+        payload = require_dict_payload({'key': 'value'}, format_name='INI')
+        assert payload == {'key': 'value'}
+        assert require_str_key(payload, format_name='INI', key='key') == 'value'
+        with pytest.raises(TypeError, match='must be a dict'):
+            require_dict_payload([], format_name='INI')
+        with pytest.raises(TypeError, match='must include a "key" string'):
+            require_str_key({'key': 1}, format_name='INI', key='key')
+
     def test_serialize_json_can_use_standard_spacing(self) -> None:
         """Test that compact output can be disabled for standard JSON spacing."""
         assert JsonCodec.serialize({'a': 1}, compact=False) == '{"a": 1}'
@@ -173,3 +254,19 @@ class TestDataHelpers:
     def test_serialize_json_pretty_prints_when_requested(self) -> None:
         """Test that :meth:`JsonCodec.serialize` supports stable pretty output."""
         assert JsonCodec.serialize({'a': 1}, pretty=True) == '{\n  "a": 1\n}'
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(None, '', id='none'),
+            pytest.param(12, '12', id='integer'),
+            pytest.param('abc', 'abc', id='string'),
+        ],
+    )
+    def test_stringify_value(
+        self,
+        value: object,
+        expected: str,
+    ) -> None:
+        """Test scalar stringification rules."""
+        assert stringify_value(value) == expected
