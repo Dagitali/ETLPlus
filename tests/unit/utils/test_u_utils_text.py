@@ -22,6 +22,13 @@ from etlplus.utils import TextNormalizer
 class TestNormalizeText:
     """Unit tests for text-normalization helpers."""
 
+    def test_choice_resolver_is_frozen(self) -> None:
+        """Test that choice policy cannot be reassigned after construction."""
+        resolver = TextChoiceResolver({'file': 'file'}, 'file')
+
+        with pytest.raises(AttributeError):
+            resolver.default = 'api'  # type: ignore[misc]
+
     @pytest.mark.parametrize(
         ('value', 'expected'),
         [
@@ -78,9 +85,20 @@ class TestNormalizeText:
             == 'file'
         )
 
-    def test_choice_resolver_is_frozen(self) -> None:
-        """Test that choice policy cannot be reassigned after construction."""
-        resolver = TextChoiceResolver({'file': 'file'}, 'file')
-
-        with pytest.raises(AttributeError):
-            resolver.default = 'api'  # type: ignore[misc]
+    @pytest.mark.parametrize(
+        ('text', 'limit', 'expected'),
+        [
+            pytest.param('abcdef', 3, 'abc', id='truncated'),
+            pytest.param('abc', 10, 'abc', id='shorter-than-limit'),
+            pytest.param('', 3, '', id='empty'),
+            pytest.param(None, 3, '', id='none'),
+        ],
+    )
+    def test_truncate(
+        self,
+        text: str | None,
+        limit: int,
+        expected: str,
+    ) -> None:
+        """Test bounded text truncation."""
+        assert TextNormalizer.truncate(text, limit=limit) == expected
