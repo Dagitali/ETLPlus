@@ -15,6 +15,7 @@ from typing import Any
 from typing import ClassVar
 
 from ..utils import RecordCounter
+from ..utils import normalize_records
 from ..utils._types import JSONData
 from ..utils._types import JSONList
 from ._io import EmbeddedDatabaseTableOption
@@ -22,7 +23,6 @@ from ._io import FileHandlerOption
 from ._io import ScientificDatasetOption
 from ._io import SpreadsheetSheetOption
 from ._io import ensure_parent_dir
-from ._io import normalize_records
 from ._io import read_bytes
 from ._io import read_text
 from ._io import write_bytes
