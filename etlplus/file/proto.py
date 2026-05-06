@@ -17,8 +17,7 @@ Notes
 
 from __future__ import annotations
 
-from ..utils import require_dict_payload
-from ..utils import require_str_key
+from ..utils import RecordPayloadParser
 from ..utils._types import JSONData
 from ._enums import FileFormat
 from .base import BinarySerializationFileHandlerABC
@@ -68,8 +67,9 @@ class ProtoFile(BinarySerializationFileHandlerABC):
             Encoded schema bytes.
         """
         encoding = self.encoding_from_options(options)
-        payload = require_dict_payload(data, format_name='PROTO')
-        schema = require_str_key(payload, format_name='PROTO', key='schema')
+        parser = RecordPayloadParser('PROTO')
+        payload = parser.require_dict(data)
+        schema = parser.require_str_key(payload, 'schema')
         return schema.encode(encoding)
 
     def loads_bytes(
