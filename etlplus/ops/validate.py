@@ -306,42 +306,6 @@ def _infer_structured_text_format(
     return 'json' if text.lstrip().startswith(('{', '[')) else 'yaml'
 
 
-def _is_integer(
-    value: Any,
-) -> bool:
-    """
-    Return ``True`` if value is an integer but not a bool.
-
-    Parameters
-    ----------
-    value : Any
-        Value to test.
-
-    Returns
-    -------
-    bool
-        ``True`` if value is an integer, else ``False``.
-    """
-    return is_integer_value(value)
-
-
-def _is_number(value: Any) -> bool:
-    """
-    Return True if value is an int/float but not a bool.
-
-    Parameters
-    ----------
-    value : Any
-        Value to test.
-
-    Returns
-    -------
-    bool
-        ``True`` if value is a number, else ``False``.
-    """
-    return is_number_value(value)
-
-
 def _looks_like_inline_text(
     value: str,
 ) -> bool:
@@ -582,9 +546,9 @@ def _type_matches(
         case 'boolean':
             return isinstance(value, bool)
         case 'integer':
-            return _is_integer(value)
+            return is_integer_value(value)
         case 'number':
-            return _is_number(value)
+            return is_number_value(value)
         case 'object':
             return isinstance(value, dict)
         case 'string':
@@ -667,7 +631,7 @@ def _validate_numeric_rules(
     errors: list[str],
 ) -> None:
     """Append numeric range errors for one value."""
-    if not _is_number(value):
+    if not is_number_value(value):
         return
 
     numeric_value = float(value)
