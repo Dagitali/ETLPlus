@@ -17,8 +17,7 @@ from __future__ import annotations
 
 import base64
 
-from ..utils import require_dict_payload
-from ..utils import require_str_key
+from ..utils import RecordPayloadParser
 from ..utils._types import JSONData
 from ._enums import FileFormat
 from .base import BinarySerializationFileHandlerABC
@@ -68,12 +67,9 @@ class PbFile(BinarySerializationFileHandlerABC):
             Raw protobuf payload bytes.
         """
         _ = options
-        payload = require_dict_payload(data, format_name='PB')
-        payload_base64 = require_str_key(
-            payload,
-            format_name='PB',
-            key='payload_base64',
-        )
+        parser = RecordPayloadParser('PB')
+        payload = parser.require_dict(data)
+        payload_base64 = parser.require_str_key(payload, 'payload_base64')
         return base64.b64decode(payload_base64.encode('ascii'))
 
     def loads_bytes(
