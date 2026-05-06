@@ -20,11 +20,11 @@ from __future__ import annotations
 from typing import Any
 from typing import cast
 
+from ..utils import normalize_records
 from ..utils._types import JSONData
 from ..utils._types import JSONList
 from ._enums import FileFormat
 from ._imports import get_dependency
-from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
