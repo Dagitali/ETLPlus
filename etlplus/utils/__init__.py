@@ -8,6 +8,11 @@ from __future__ import annotations
 
 from ._data import JsonCodec
 from ._data import RecordCounter
+from ._data import coerce_record_payload
+from ._data import normalize_records
+from ._data import require_dict_payload
+from ._data import require_str_key
+from ._data import stringify_value
 from ._enums import CoercibleStrEnum
 from ._graph import NamedDependencyGraph
 from ._graph import topological_sort_names
@@ -43,7 +48,12 @@ __all__ = [
     # Enums
     'CoercibleStrEnum',
     # Functions
+    'coerce_record_payload',
     'finite_decimal_or_none',
+    'normalize_records',
+    'require_dict_payload',
+    'require_str_key',
+    'stringify_value',
     'topological_sort_names',
     # Mixins
     'BoundsWarningsMixin',
