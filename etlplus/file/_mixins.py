@@ -13,9 +13,7 @@ from typing import ClassVar
 from typing import Protocol
 from typing import cast
 
-from ..utils import coerce_record_payload as _coerce_record_payload
-from ..utils import normalize_records
-from ..utils import require_dict_payload as _require_dict_payload
+from ..utils import RecordPayloadParser
 from ..utils import stringify_value
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
@@ -89,14 +87,14 @@ class SemiStructuredPayloadMixin:
         payload: object,
     ) -> JSONData:
         """Coerce *payload* into object-or-object-list record form."""
-        return _coerce_record_payload(payload, format_name=self.format_name)
+        return RecordPayloadParser(self.format_name).coerce(payload)
 
     def require_dict_payload(
         self,
         data: JSONData,
     ) -> JSONDict:
         """Validate and return one dictionary payload."""
-        return _require_dict_payload(data, format_name=self.format_name)
+        return RecordPayloadParser(self.format_name).require_dict(data)
 
 
 class SingleDatasetValidation(ScientificDatasetOption):
@@ -138,7 +136,7 @@ class SingleDatasetValidation(ScientificDatasetOption):
             Normalized list of records ready for writing.
         """
         self.resolve_single_dataset(dataset, options=options)
-        return normalize_records(data, self.format_name)
+        return RecordPayloadParser(self.format_name).normalize(data)
 
     def resolve_single_dataset(
         self,
@@ -233,7 +231,7 @@ class TemplateTextIOMixin:
                 value for the template key.
         """
         template_handler = cast(_TemplateTextHandlerProtocol, self)
-        rows = normalize_records(data, template_handler.format_name)
+        rows = RecordPayloadParser(template_handler.format_name).normalize(data)
         if not rows:
             return 0
         if len(rows) != 1:
