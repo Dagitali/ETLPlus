@@ -17,6 +17,7 @@ from ..api import HttpMethod
 from ..api._utils import ApiRequestEnvDict
 from ..api._utils import ApiTargetEnvDict
 from ..api._utils import resolve_request
+from ..utils import MappingFieldParser
 from ..utils._types import JSONData
 from ..utils._types import Timeout
 
@@ -145,8 +146,7 @@ def require_url(
         `error_message` for context.
     """
     env_map = cast(Mapping[str, Any], env)
-    url = env_map.get('url')
-    if not isinstance(url, str) or not url:
+    if not (url := MappingFieldParser.required_str(env_map, 'url')):
         raise ValueError(error_message)
     return url
 
