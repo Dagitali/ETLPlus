@@ -27,6 +27,7 @@ from etlplus.utils._parsing import MappingFieldParser
 from etlplus.utils._parsing import SequenceParser
 from etlplus.utils._parsing import ValueParser
 from etlplus.utils._substitution import SubstitutionResolver
+from etlplus.utils._text import TextChoiceResolver
 from etlplus.utils._text import TextNormalizer
 from etlplus.utils._types import NonEmptyStr
 from etlplus.utils._types import NonEmptyStrList
@@ -50,6 +51,7 @@ UTILS_EXPORTS = [
     ('RecordCounter', RecordCounter),
     ('RecordPayloadParser', RecordPayloadParser),
     ('SubstitutionResolver', SubstitutionResolver),
+    ('TextChoiceResolver', TextChoiceResolver),
     ('TextNormalizer', TextNormalizer),
     ('CoercibleStrEnum', CoercibleStrEnum),
     ('coerce_record_payload', coerce_record_payload),
