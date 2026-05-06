@@ -24,6 +24,8 @@ from etlplus.utils._mixins import BoundsWarningsMixin
 from etlplus.utils._numbers import FloatParser
 from etlplus.utils._numbers import IntParser
 from etlplus.utils._numbers import finite_decimal_or_none
+from etlplus.utils._numbers import is_integer_value
+from etlplus.utils._numbers import is_number_value
 from etlplus.utils._parsing import MappingFieldParser
 from etlplus.utils._parsing import SequenceParser
 from etlplus.utils._parsing import ValueParser
@@ -58,6 +60,8 @@ UTILS_EXPORTS = [
     ('coerce_record_payload', coerce_record_payload),
     ('count_records', count_records),
     ('finite_decimal_or_none', finite_decimal_or_none),
+    ('is_integer_value', is_integer_value),
+    ('is_number_value', is_number_value),
     ('normalize_records', normalize_records),
     ('stringify_value', stringify_value),
     ('topological_sort_names', topological_sort_names),
