@@ -21,7 +21,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ..utils import JsonCodec
-from ..utils import normalize_records
+from ..utils import RecordPayloadParser
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import JSONList
@@ -152,7 +152,7 @@ class LogFile(LogEventFileHandlerABC):
         int
             Number of events written.
         """
-        rows = normalize_records(data, self.format_name)
+        rows = RecordPayloadParser(self.format_name).normalize(data)
         if not rows:
             return 0
         payload = '\n'.join(self.serialize_event(event) for event in rows)
