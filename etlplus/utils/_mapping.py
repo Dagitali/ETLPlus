@@ -6,8 +6,10 @@ Mapping-oriented utility helpers.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Iterable
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Any
 from typing import TypeVar
 
@@ -75,6 +77,33 @@ class MappingParser:
             )
 
         return None
+
+    @staticmethod
+    def freeze(
+        mapping: Mapping[Any, Any],
+        *,
+        key_cast: Callable[[Any], Any] | None = None,
+    ) -> MappingProxyType:
+        """
+        Return an immutable copy of a mapping, optionally normalizing keys.
+
+        Parameters
+        ----------
+        mapping : Mapping[Any, Any]
+            Source mapping to freeze.
+        key_cast : Callable[[Any], Any] | None, optional
+            Optional key coercion applied to each key.
+
+        Returns
+        -------
+        MappingProxyType
+            Read-only mapping proxy with normalized keys.
+        """
+        if key_cast is None:
+            data = dict(mapping)
+        else:
+            data = {key_cast(key): value for key, value in mapping.items()}
+        return MappingProxyType(data)
 
     @staticmethod
     def index_named_items(
