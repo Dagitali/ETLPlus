@@ -110,6 +110,29 @@ def _staged_local_read_path(
 # SECTION: FUNCTIONS ======================================================== #
 
 
+def coerce_record_payload(
+    payload: object,
+    *,
+    format_name: str,
+) -> JSONData:
+    """
+    Validate that *payload* is an object or list of objects.
+
+    Parameters
+    ----------
+    payload : object
+        Arbitrary payload to coerce into a record or list of records.
+    format_name : str
+        Human-readable format name for error messages.
+
+    Returns
+    -------
+    JSONData
+        The coerced record or list of records.
+    """
+    return RecordPayloadParser(format_name).coerce(payload)
+
+
 def coerce_path(
     path: StrPath,
 ) -> Path:
@@ -142,6 +165,28 @@ def ensure_parent_dir(
     """
     location = StorageLocation.from_value(path)
     get_backend(location).ensure_parent_dir(location)
+
+
+def normalize_records(
+    data: object,
+    format_name: str,
+) -> JSONList:
+    """
+    Normalize payloads into a list of dictionaries.
+
+    Parameters
+    ----------
+    data : object
+        Arbitrary payload to normalize.
+    format_name : str
+        Human-readable format name for error messages.
+
+    Returns
+    -------
+    JSONList
+        The normalized list of dictionaries.
+    """
+    return RecordPayloadParser(format_name).normalize(data)
 
 
 def read_bytes(
@@ -345,6 +390,25 @@ def write_text(
         newline='',
     ) as handle:
         handle.write(payload)
+
+
+def stringify_value(
+    value: object,
+) -> str:
+    """
+    Normalize configuration-like values into strings.
+
+    Parameters
+    ----------
+    value : object
+        The value to normalize.
+
+    Returns
+    -------
+    str
+        The normalized string representation of the value.
+    """
+    return '' if value is None else str(value)
 
 
 # SECTION: CLASSES ========================================================== #
