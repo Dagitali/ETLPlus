@@ -97,7 +97,7 @@ def coerce_sql_value(value: Any) -> Any:
     """
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
-    return JsonCodec.serialize(value, compact=False)
+    return JsonCodec(compact=False).serialize(value)
 
 
 def collect_column_values(
