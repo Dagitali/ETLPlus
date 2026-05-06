@@ -21,6 +21,8 @@ from ._mixins import BoundsWarningsMixin
 from ._numbers import FloatParser
 from ._numbers import IntParser
 from ._numbers import finite_decimal_or_none
+from ._numbers import is_integer_value
+from ._numbers import is_number_value
 from ._parsing import MappingFieldParser
 from ._parsing import SequenceParser
 from ._parsing import ValueParser
@@ -54,6 +56,8 @@ __all__ = [
     'coerce_record_payload',
     'count_records',
     'finite_decimal_or_none',
+    'is_integer_value',
+    'is_number_value',
     'normalize_records',
     'stringify_value',
     'topological_sort_names',

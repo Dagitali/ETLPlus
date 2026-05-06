@@ -1064,4 +1064,5 @@ class TestTransformInternalHelpers:
         """
         assert _sort_key(None)[0] == 2
         assert _sort_key(5)[0] == 0
+        assert _sort_key(True)[0] == 1
         assert _sort_key('abc')[0] == 1
