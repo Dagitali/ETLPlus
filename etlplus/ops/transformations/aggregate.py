@@ -14,6 +14,7 @@ from collections.abc import Mapping
 from typing import Any
 from typing import cast
 
+from ...utils import is_number_value
 from ...utils._types import JSONDict
 from ...utils._types import JSONList
 from .._enums import AggregateName
@@ -195,8 +196,8 @@ def _collect_numeric_and_presence(
         if field in record:
             present += 1
             value = record.get(field)
-            if isinstance(value, (int, float)) and not isinstance(value, bool):
-                nums.append(float(value))
+            if is_number_value(value):
+                nums.append(float(cast(float, value)))
     return nums, present
 
 
