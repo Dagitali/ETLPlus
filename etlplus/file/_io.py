@@ -20,7 +20,7 @@ from typing import cast
 
 from ..storage import StorageLocation
 from ..storage import get_backend
-from ..utils._data import normalize_records
+from ..utils._data import RecordPayloadParser
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import JSONList
@@ -291,7 +291,7 @@ def write_delimited(
     int
         The number of rows written.
     """
-    rows = normalize_records(data, format_name)
+    rows = RecordPayloadParser(format_name).normalize(data)
 
     fieldnames = sorted({key for row in rows for key in row})
     ensure_parent_dir(path)
