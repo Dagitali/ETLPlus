@@ -126,7 +126,7 @@ class LogFile(LogEventFileHandlerABC):
         str
             Serialized log line.
         """
-        return JsonCodec.serialize(event, compact=False)
+        return JsonCodec(compact=False).serialize(event)
 
     def write(
         self,
