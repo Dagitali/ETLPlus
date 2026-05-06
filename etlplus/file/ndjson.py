@@ -22,7 +22,7 @@ from typing import cast
 
 from ..utils import JsonCodec
 from ..utils import RecordCounter
-from ..utils import normalize_records
+from ..utils import RecordPayloadParser
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import JSONList
@@ -101,7 +101,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         str
             Serialized NDJSON text.
         """
-        rows = normalize_records(data, 'NDJSON')
+        rows = RecordPayloadParser('NDJSON').normalize(data)
         return ''.join(self.dump_line(row, options=options) for row in rows)
 
     def load_line(
@@ -225,7 +225,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         int
             Number of records written.
         """
-        rows = normalize_records(data, 'NDJSON')
+        rows = RecordPayloadParser('NDJSON').normalize(data)
         if not rows:
             return 0
         encoding = self.encoding_from_options(options)
