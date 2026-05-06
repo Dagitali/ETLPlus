@@ -17,10 +17,10 @@ Notes
 
 from __future__ import annotations
 
+from ..utils import require_dict_payload
+from ..utils import require_str_key
 from ..utils._types import JSONData
 from ._enums import FileFormat
-from ._io import require_dict_payload
-from ._io import require_str_key
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
