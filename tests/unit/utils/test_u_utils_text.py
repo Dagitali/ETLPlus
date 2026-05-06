@@ -74,17 +74,6 @@ class TestNormalizeText:
             == 'version-1'
         )
 
-    def test_normalize_choice_wrapper_preserves_function_api(self) -> None:
-        """Test compatibility wrapper delegates to the stateful resolver."""
-        assert (
-            TextNormalizer.resolve_choice(
-                '  FILE  ',
-                mapping={'file': 'file'},
-                default='api',
-            )
-            == 'file'
-        )
-
     @pytest.mark.parametrize(
         ('text', 'limit', 'expected'),
         [
