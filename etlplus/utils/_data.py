@@ -15,8 +15,11 @@ from datetime import time
 from decimal import Decimal
 from typing import TextIO
 from typing import TypeGuard
+from typing import cast
 
 from ._types import JSONData
+from ._types import JSONDict
+from ._types import JSONList
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -25,6 +28,12 @@ __all__ = [
     # Classes
     'JsonCodec',
     'RecordCounter',
+    # Functions
+    'coerce_record_payload',
+    'normalize_records',
+    'require_dict_payload',
+    'require_str_key',
+    'stringify_value',
 ]
 
 
@@ -35,9 +44,177 @@ def _is_json_data(
     value: object,
 ) -> TypeGuard[JSONData]:
     """Return whether *value* matches the JSONData runtime shape."""
-    return isinstance(value, dict) or (
-        isinstance(value, list) and all(isinstance(item, dict) for item in value)
+    return isinstance(value, dict) or _is_object_list(value)
+
+
+def _is_object_list(
+    value: object,
+) -> TypeGuard[JSONList]:
+    """Return whether *value* is a list of dictionary objects."""
+    return isinstance(value, list) and all(isinstance(item, dict) for item in value)
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def coerce_record_payload(
+    payload: object,
+    *,
+    format_name: str,
+) -> JSONData:
+    """
+    Validate that *payload* is an object or list of objects.
+
+    Parameters
+    ----------
+    payload : object
+        Parsed payload to validate.
+    format_name : str
+        Human-readable format name for error messages.
+
+    Returns
+    -------
+    JSONData
+        *payload* when it is a dict or a list of dicts.
+
+    Raises
+    ------
+    TypeError
+        If the payload is not a dict or list of dicts.
+    """
+    if isinstance(payload, dict):
+        return cast(JSONDict, payload)
+    if _is_object_list(payload):
+        return payload
+    if isinstance(payload, list):
+        raise TypeError(
+            f'{format_name} array must contain only objects (dicts)',
+        )
+    raise TypeError(
+        f'{format_name} root must be an object or an array of objects',
     )
+
+
+def normalize_records(
+    data: object,
+    format_name: str,
+) -> JSONList:
+    """
+    Normalize payloads into a list of dictionaries.
+
+    Parameters
+    ----------
+    data : object
+        Input payload to normalize.
+    format_name : str
+        Human-readable format name for error messages.
+
+    Returns
+    -------
+    JSONList
+        Normalized list of dictionaries.
+
+    Raises
+    ------
+    TypeError
+        If the payload is not a dict or a list of dicts.
+    """
+    if _is_object_list(data):
+        return data
+    if isinstance(data, list):
+        raise TypeError(
+            f'{format_name} payloads must contain only objects (dicts)',
+        )
+    if isinstance(data, dict):
+        return [cast(JSONDict, data)]
+    raise TypeError(
+        f'{format_name} payloads must be an object or an array of objects',
+    )
+
+
+def require_dict_payload(
+    data: object,
+    *,
+    format_name: str,
+) -> JSONDict:
+    """
+    Validate that *data* is a dictionary payload.
+
+    Parameters
+    ----------
+    data : object
+        Input payload to validate.
+    format_name : str
+        Human-readable format name for error messages.
+
+    Returns
+    -------
+    JSONDict
+        Validated dictionary payload.
+
+    Raises
+    ------
+    TypeError
+        If the payload is not a dictionary.
+    """
+    if isinstance(data, dict):
+        return cast(JSONDict, data)
+    raise TypeError(f'{format_name} payloads must be a dict')
+
+
+def require_str_key(
+    payload: JSONDict,
+    *,
+    format_name: str,
+    key: str,
+) -> str:
+    """
+    Require a string value for *key* in *payload*.
+
+    Parameters
+    ----------
+    payload : JSONDict
+        Dictionary payload to inspect.
+    format_name : str
+        Human-readable format name for error messages.
+    key : str
+        Key to extract.
+
+    Returns
+    -------
+    str
+        The string value for *key*.
+
+    Raises
+    ------
+    TypeError
+        If the key is missing or not a string.
+    """
+    value = payload.get(key)
+    if not isinstance(value, str):
+        raise TypeError(
+            f'{format_name} payloads must include a "{key}" string',
+        )
+    return value
+
+
+def stringify_value(value: object) -> str:
+    """
+    Normalize configuration-like values into strings.
+
+    Parameters
+    ----------
+    value : object
+        Value to normalize.
+
+    Returns
+    -------
+    str
+        Stringified value (``''`` for ``None``).
+    """
+    if value is None:
+        return ''
+    return str(value)
 
 
 # SECTION: CLASSES ========================================================== #
@@ -67,17 +244,35 @@ class RecordCounter:
         int
             Number of records in `data`.
         """
-        match data:
-            case list():
-                return len(data)
-            case _:
-                return 1
+        if isinstance(data, list):
+            return len(data)
+        return 1
 
 
 class JsonCodec:
     """Centralize JSON parse, render, and print behavior."""
 
     # -- Class Methods -- #
+
+    @classmethod
+    def decode(
+        cls,
+        text: str,
+    ) -> object:
+        """
+        Decode JSON text without applying ETL payload shape validation.
+
+        Parameters
+        ----------
+        text : str
+            The JSON text to decode.
+
+        Returns
+        -------
+        object
+            The raw decoded JSON value.
+        """
+        return json.loads(text)
 
     @classmethod
     def default(
@@ -117,10 +312,10 @@ class JsonCodec:
         Notes
         -----
         This wrapper preserves the concise :class:`ValueError` raised by the
-        internal JSON codec when decoding fails.`
+        internal JSON codec when decoding fails.
         """
         try:
-            data = json.loads(text)
+            data = cls.decode(text)
         except json.JSONDecodeError as exc:
             raise ValueError(
                 f'Invalid JSON payload: {exc.msg} (pos {exc.pos})',
@@ -188,17 +383,13 @@ class JsonCodec:
         str
             Serialized JSON text.
         """
-        kwargs: dict[str, object] = {
-            'ensure_ascii': False,
-            'sort_keys': sort_keys,
-            'indent': 2 if pretty else None,
-        }
-        if compact and not pretty:
-            kwargs['separators'] = (',', ':')
         return json.dumps(
             obj,
+            ensure_ascii=False,
+            sort_keys=sort_keys,
+            indent=2 if pretty else None,
+            separators=(',', ':') if compact and not pretty else None,
             default=default,
-            **kwargs,  # type: ignore[arg-type]
         )
 
     # -- Static Methods -- #
