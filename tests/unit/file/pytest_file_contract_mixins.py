@@ -21,7 +21,7 @@ from etlplus.file.base import ReadOptions
 from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.file.base import WriteOptions
-from etlplus.utils import RecordCounter
+from etlplus.utils import count_records
 from etlplus.utils._types import JSONData
 
 from ...pytest_file_common import resolve_module_handler
@@ -160,7 +160,7 @@ class RoundtripUnitModuleContract(PathMixin):
             if isinstance(spec.payload, str):
                 expected_written = len(spec.payload.splitlines())
             else:
-                expected_written = RecordCounter.count(spec.payload)
+                expected_written = count_records(spec.payload)
         assert written == expected_written
 
         result = self.module_handler.read(path, options=spec.read_options)
