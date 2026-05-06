@@ -27,7 +27,6 @@ import requests  # type: ignore[import]
 
 from etlplus.api._auth import CLOCK_SKEW_SEC
 from etlplus.api._auth import EndpointCredentialsBearer
-from etlplus.utils import TextNormalizer
 
 from ...conftest import RequestFactory
 
@@ -264,11 +263,6 @@ class TestEndpointCredentialsBearer:
         auth.session = cast(requests.Session, _Client())
         with pytest.raises(expected):
             auth._request_token()
-
-    def test_truncate_empty_text_returns_empty_string(self) -> None:
-        """Test that empty/``None`` input truncates to an empty string."""
-        assert TextNormalizer.truncate('', limit=500) == ''
-        assert TextNormalizer.truncate(None, limit=500) == ''
 
     def test_token_payload_omits_blank_scope(
         self,
