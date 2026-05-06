@@ -142,6 +142,13 @@ class TestRequestOptions:
         assert cleared.params is None
         assert cleared.headers is None
 
+    def test_request_options_rejects_non_mapping_params_headers(self) -> None:
+        """Test that non-mapping params and headers normalize to empty dicts."""
+        opts = RequestOptions(params='bad', headers=object())
+
+        assert opts.params == {}
+        assert opts.headers == {}
+
 
 class TestApiTypes:
     """Unit tests for public API type aliases."""
