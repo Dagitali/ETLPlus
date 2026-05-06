@@ -21,8 +21,8 @@ from pathlib import Path
 from typing import cast
 
 from ..utils import JsonCodec
-from ..utils import RecordCounter
 from ..utils import RecordPayloadParser
+from ..utils import count_records
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import JSONList
@@ -234,4 +234,4 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
             self.dumps(rows, options=options),
             encoding=encoding,
         )
-        return RecordCounter.count(rows)
+        return count_records(rows)
