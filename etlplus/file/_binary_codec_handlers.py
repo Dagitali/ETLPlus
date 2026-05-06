@@ -10,10 +10,10 @@ from collections.abc import Callable
 from typing import Any
 from typing import ClassVar
 
+from ..utils import coerce_record_payload
+from ..utils import normalize_records
 from ..utils._types import JSONData
 from ._imports import get_dependency
-from ._io import coerce_record_payload
-from ._io import normalize_records
 from .base import BinarySerializationFileHandlerABC
 from .base import ReadOptions
 from .base import WriteOptions
