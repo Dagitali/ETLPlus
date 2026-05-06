@@ -154,14 +154,37 @@ class RecordCounter:
         return 1
 
 
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(frozen=True, slots=True)
 class JsonCodec:
-    """Centralize JSON parse, render, and print behavior."""
+    """
+    Centralize JSON parse, render, and print behavior.
 
-    # -- Class Methods -- #
+    Attributes
+    ----------
+    compact : bool
+        Whether to remove optional whitespace when not pretty-printing.
+    pretty : bool
+        Whether to format output with indentation.
+    sort_keys : bool
+        Whether to sort mapping keys for stable output.
+    default_serializer : Callable[[object], object] | None
+        Optional JSON fallback serializer for non-standard values.
+    """
 
-    @classmethod
+    # -- Instance Attributes -- #
+
+    compact: bool = True
+    pretty: bool = False
+    sort_keys: bool = False
+    default_serializer: Callable[[object], object] | None = None
+
+    # -- Static Methods -- #
+
+    @staticmethod
     def decode(
-        cls,
         text: str,
     ) -> object:
         """
@@ -179,17 +202,30 @@ class JsonCodec:
         """
         return json.loads(text)
 
-    @classmethod
+    @staticmethod
     def default(
-        cls,
         value: object,
     ) -> object:
-        """Return a JSON fallback for common ETL scalar types."""
+        """
+        Return a JSON fallback for common ETL scalar types.
+
+        Parameters
+        ----------
+        value : object
+            The value to serialize.
+
+        Returns
+        -------
+        object
+            A JSON-serializable fallback for *value*.
+        """
         if isinstance(value, date | datetime | time):
-            return cls.isoformat(value)
+            return JsonCodec.isoformat(value)
         if isinstance(value, Decimal):
             return str(value)
         return str(value)
+
+    # -- Class Methods -- #
 
     @classmethod
     def parse(
@@ -229,9 +265,10 @@ class JsonCodec:
             raise ValueError('JSON payload must be an object or array of objects')
         return data
 
-    @classmethod
+    # -- Instance Methods -- #
+
     def print(
-        cls,
+        self,
         obj: object,
         *,
         stream: TextIO | None = None,
@@ -252,19 +289,15 @@ class JsonCodec:
             This helper writes directly to STDOUT.
         """
         print(
-            cls.serialize(obj, pretty=True),
+            self.serialize(obj),
             file=sys.stdout if stream is None else stream,
         )
 
-    @classmethod
     def serialize(
-        cls,
+        self,
         obj: object,
         *,
-        compact: bool = True,
         default: Callable[[object], object] | None = None,
-        pretty: bool = False,
-        sort_keys: bool = False,
     ) -> str:
         """
         Serialize *obj* as UTF-8 JSON without ASCII escaping.
@@ -273,15 +306,8 @@ class JsonCodec:
         ----------
         obj : object
             Object to serialize as JSON.
-        compact : bool, optional
-            Whether to remove optional whitespace when not pretty-printing.
-            Default is ``True``.
         default : Callable[[object], object] | None, optional
-            Optional JSON fallback serializer for non-standard values.
-        pretty : bool, optional
-            Whether to format output with indentation. Default is ``False``.
-        sort_keys : bool, optional
-            Whether to sort mapping keys for stable output. Default is ``False``.
+            Optional one-call override for the configured fallback serializer.
 
         Returns
         -------
@@ -291,10 +317,10 @@ class JsonCodec:
         return json.dumps(
             obj,
             ensure_ascii=False,
-            sort_keys=sort_keys,
-            indent=2 if pretty else None,
-            separators=(',', ':') if compact and not pretty else None,
-            default=default,
+            sort_keys=self.sort_keys,
+            indent=2 if self.pretty else None,
+            separators=(',', ':') if self.compact and not self.pretty else None,
+            default=self.default_serializer if default is None else default,
         )
 
     # -- Static Methods -- #
@@ -309,9 +335,6 @@ class JsonCodec:
                 return value.isoformat()
 
 
-# SECTION: DATA CLASSESS ==================================================== #
-
-
 @dataclass(frozen=True, slots=True)
 class RecordPayloadParser:
     """
@@ -323,7 +346,11 @@ class RecordPayloadParser:
         Human-readable format name used in validation error messages.
     """
 
+    # -- Instance Attributes -- #
+
     format_name: str
+
+    # -- Instance MEthods -- #
 
     def coerce(
         self,
