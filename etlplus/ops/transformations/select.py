@@ -5,9 +5,9 @@ Select helpers shared by :mod:`etlplus.ops.transform` and custom runners.
 
 Use :func:`apply_select` for direct field projection. Use
 :func:`apply_select_step` when you need the pipeline-style adapter consumed by
-:func:`etlplus.ops.transform.transform`. The normalization helpers
-:func:`is_sequence_not_text` and :func:`is_plain_fields_list` are public for
-callers that need to validate select-step configs before orchestration.
+:func:`etlplus.ops.transform.transform`. The normalization helper
+:func:`is_plain_fields_list` is public for callers that need to validate
+select-step configs before orchestration.
 """
 
 from __future__ import annotations
@@ -28,30 +28,10 @@ __all__ = [
     'apply_select',
     'apply_select_step',
     'is_plain_fields_list',
-    'is_sequence_not_text',
 ]
 
 
 # SECTION: FUNCTIONS ======================================================== #
-
-
-def is_sequence_not_text(
-    obj: Any,
-) -> bool:
-    """
-    Return ``True`` for non-text sequences.
-
-    Parameters
-    ----------
-    obj : Any
-        The object to check.
-
-    Returns
-    -------
-    bool
-        ``True`` when *obj* is a non-text sequence.
-    """
-    return SequenceParser.is_non_text(obj)
 
 
 def is_plain_fields_list(
@@ -74,7 +54,9 @@ def is_plain_fields_list(
         ``True`` if *obj* is a non-text sequence of non-mapping items;
         ``False`` otherwise.
     """
-    return is_sequence_not_text(obj) and not any(isinstance(x, Mapping) for x in obj)
+    return SequenceParser.is_non_text(obj) and not any(
+        isinstance(x, Mapping) for x in obj
+    )
 
 
 def apply_select(
