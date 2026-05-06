@@ -20,7 +20,7 @@ from __future__ import annotations
 from typing import Any
 from typing import cast
 
-from ..utils import normalize_records
+from ..utils import RecordPayloadParser
 from ..utils._types import JSONData
 from ..utils._types import JSONList
 from ._enums import FileFormat
@@ -148,7 +148,7 @@ class BsonFile(BinarySerializationFileHandlerABC):
         """
         _ = options
         bson = _bson()
-        records = normalize_records(data, 'BSON')
+        records = RecordPayloadParser('BSON').normalize(data)
         chunks = [_encode_doc(bson, record) for record in records]
         return b''.join(chunks)
 
