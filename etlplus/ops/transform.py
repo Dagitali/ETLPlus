@@ -47,6 +47,7 @@ from collections.abc import Sequence
 from typing import Any
 from typing import cast
 
+from ..utils import SequenceParser
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import JSONList
@@ -67,7 +68,6 @@ from .transformations.map import apply_map_step
 from .transformations.select import apply_select
 from .transformations.select import apply_select_step
 from .transformations.select import is_plain_fields_list
-from .transformations.select import is_sequence_not_text
 from .transformations.sort import apply_sort
 from .transformations.sort import apply_sort_step
 
@@ -164,7 +164,7 @@ def _normalize_specs(
     """
     if config is None:
         return []
-    if is_sequence_not_text(config):
+    if SequenceParser.is_non_text(config):
         # Already a sequence of step specs; normalize to a list.
         return list(cast(Sequence[StepSpec], config))
 
