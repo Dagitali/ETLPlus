@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
-from typing import cast
+from typing import TypeGuard
 
 from ...utils import SequenceParser
 from ...utils._types import JSONList
@@ -84,9 +84,9 @@ def apply_select_step(
         maybe_fields = spec.get('fields')
         if not is_plain_fields_list(maybe_fields):
             return records
-        fields = cast(Sequence[Any], maybe_fields)
+        fields = maybe_fields
     elif is_plain_fields_list(spec):
-        fields = cast(Sequence[Any], spec)
+        fields = spec
     else:
         return records
 
@@ -95,7 +95,7 @@ def apply_select_step(
 
 def is_plain_fields_list(
     obj: Any,
-) -> bool:
+) -> TypeGuard[Sequence[object]]:
     """
     Return ``True`` if *obj* is a non-text sequence of non-mapping items.
 
@@ -109,7 +109,7 @@ def is_plain_fields_list(
 
     Returns
     -------
-    bool
+    TypeGuard[Sequence[object]]
         ``True`` if *obj* is a non-text sequence of non-mapping items;
         ``False`` otherwise.
     """
