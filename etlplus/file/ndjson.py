@@ -78,7 +78,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
             Serialized NDJSON line including the trailing newline.
         """
         _ = options
-        return f'{JsonCodec.serialize(data, compact=False)}\n'
+        return f'{JsonCodec(compact=False).serialize(data)}\n'
 
     def dumps(
         self,
