@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from ._data import JsonCodec
 from ._data import RecordCounter
+from ._data import RecordPayloadParser
 from ._data import coerce_record_payload
 from ._data import normalize_records
 from ._data import require_dict_payload
@@ -43,6 +44,7 @@ __all__ = [
     'MappingParser',
     'NamedDependencyGraph',
     'RecordCounter',
+    'RecordPayloadParser',
     'SubstitutionResolver',
     'TextNormalizer',
     # Enums
