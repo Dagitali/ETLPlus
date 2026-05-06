@@ -148,7 +148,7 @@ class RuntimeEvents:
         RuntimeTelemetry.emit_event(event)
         if event_format != 'jsonl':
             return
-        print(JsonCodec.serialize(event), file=sys.stderr)
+        print(JsonCodec().serialize(event), file=sys.stderr)
 
     @staticmethod
     def utc_now_iso() -> str:
