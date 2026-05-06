@@ -13,6 +13,7 @@ from etlplus.utils._data import JsonCodec
 from etlplus.utils._data import RecordCounter
 from etlplus.utils._data import RecordPayloadParser
 from etlplus.utils._data import coerce_record_payload
+from etlplus.utils._data import count_records
 from etlplus.utils._data import normalize_records
 from etlplus.utils._data import stringify_value
 from etlplus.utils._enums import CoercibleStrEnum
@@ -55,6 +56,7 @@ UTILS_EXPORTS = [
     ('TextNormalizer', TextNormalizer),
     ('CoercibleStrEnum', CoercibleStrEnum),
     ('coerce_record_payload', coerce_record_payload),
+    ('count_records', count_records),
     ('finite_decimal_or_none', finite_decimal_or_none),
     ('normalize_records', normalize_records),
     ('stringify_value', stringify_value),
