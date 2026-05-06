@@ -11,8 +11,6 @@ from ._data import RecordCounter
 from ._data import RecordPayloadParser
 from ._data import coerce_record_payload
 from ._data import normalize_records
-from ._data import require_dict_payload
-from ._data import require_str_key
 from ._data import stringify_value
 from ._enums import CoercibleStrEnum
 from ._graph import NamedDependencyGraph
@@ -53,8 +51,6 @@ __all__ = [
     'coerce_record_payload',
     'finite_decimal_or_none',
     'normalize_records',
-    'require_dict_payload',
-    'require_str_key',
     'stringify_value',
     'topological_sort_names',
     # Mixins
