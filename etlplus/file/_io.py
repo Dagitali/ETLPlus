@@ -16,11 +16,11 @@ from typing import IO
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import ClassVar
-from typing import TypeGuard
 from typing import cast
 
 from ..storage import StorageLocation
 from ..storage import get_backend
+from ..utils._data import normalize_records
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import JSONList
@@ -29,15 +29,6 @@ from ..utils._types import StrPath
 if TYPE_CHECKING:
     from .base import ReadOptions
     from .base import WriteOptions
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _is_object_list(
-    payload: object,
-) -> TypeGuard[JSONList]:
-    """Return whether *payload* is a list of dictionary objects."""
-    return isinstance(payload, list) and all(isinstance(item, dict) for item in payload)
 
 
 def _staging_filename(location: StorageLocation) -> str:
@@ -138,44 +129,6 @@ def coerce_path(
     return path if isinstance(path, Path) else Path(path)
 
 
-def coerce_record_payload(
-    payload: Any,
-    *,
-    format_name: str,
-) -> JSONData:
-    """
-    Validate that *payload* is an object or list of objects.
-
-    Parameters
-    ----------
-    payload : Any
-        Parsed payload to validate.
-    format_name : str
-        Human-readable format name for error messages.
-
-    Returns
-    -------
-    JSONData
-        *payload* when it is a dict or a list of dicts.
-
-    Raises
-    ------
-    TypeError
-        If the payload is not a dict or list of dicts.
-    """
-    if isinstance(payload, dict):
-        return cast(JSONDict, payload)
-    if _is_object_list(payload):
-        return payload
-    if isinstance(payload, list):
-        raise TypeError(
-            f'{format_name} array must contain only objects (dicts)',
-        )
-    raise TypeError(
-        f'{format_name} root must be an object or an array of objects',
-    )
-
-
 def ensure_parent_dir(
     path: StrPath,
 ) -> None:
@@ -189,43 +142,6 @@ def ensure_parent_dir(
     """
     location = StorageLocation.from_value(path)
     get_backend(location).ensure_parent_dir(location)
-
-
-def normalize_records(
-    data: JSONData,
-    format_name: str,
-) -> JSONList:
-    """
-    Normalize payloads into a list of dictionaries.
-
-    Parameters
-    ----------
-    data : JSONData
-        Input payload to normalize.
-    format_name : str
-        Human-readable format name for error messages.
-
-    Returns
-    -------
-    JSONList
-        Normalized list of dictionaries.
-
-    Raises
-    ------
-    TypeError
-        If the payload is not a dict or a list of dicts.
-    """
-    if _is_object_list(data):
-        return data
-    if isinstance(data, list):
-        raise TypeError(
-            f'{format_name} payloads must contain only objects (dicts)',
-        )
-    if isinstance(data, dict):
-        return [cast(JSONDict, data)]
-    raise TypeError(
-        f'{format_name} payloads must be an object or an array of objects',
-    )
 
 
 def read_bytes(
@@ -336,91 +252,6 @@ def records_from_table(
         Converted row records.
     """
     return cast(JSONList, table.to_dict(orient='records'))
-
-
-def require_dict_payload(
-    data: JSONData,
-    *,
-    format_name: str,
-) -> JSONDict:
-    """
-    Validate that *data* is a dictionary payload.
-
-    Parameters
-    ----------
-    data : JSONData
-        Input payload to validate.
-    format_name : str
-        Human-readable format name for error messages.
-
-    Returns
-    -------
-    JSONDict
-        Validated dictionary payload.
-
-    Raises
-    ------
-    TypeError
-        If the payload is not a dictionary.
-    """
-    if isinstance(data, dict):
-        return cast(JSONDict, data)
-    raise TypeError(f'{format_name} payloads must be a dict')
-
-
-def require_str_key(
-    payload: JSONDict,
-    *,
-    format_name: str,
-    key: str,
-) -> str:
-    """
-    Require a string value for *key* in *payload*.
-
-    Parameters
-    ----------
-    payload : JSONDict
-        Dictionary payload to inspect.
-    format_name : str
-        Human-readable format name for error messages.
-    key : str
-        Key to extract.
-
-    Returns
-    -------
-    str
-        The string value for *key*.
-
-    Raises
-    ------
-    TypeError
-        If the key is missing or not a string.
-    """
-    value = payload.get(key)
-    if not isinstance(value, str):
-        raise TypeError(
-            f'{format_name} payloads must include a "{key}" string',
-        )
-    return value
-
-
-def stringify_value(value: Any) -> str:
-    """
-    Normalize configuration-like values into strings.
-
-    Parameters
-    ----------
-    value : Any
-        Value to normalize.
-
-    Returns
-    -------
-    str
-        Stringified value (``''`` for ``None``).
-    """
-    if value is None:
-        return ''
-    return str(value)
 
 
 def write_bytes(
