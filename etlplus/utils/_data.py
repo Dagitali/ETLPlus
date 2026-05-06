@@ -181,50 +181,6 @@ class JsonCodec:
     sort_keys: bool = False
     default_serializer: Callable[[object], object] | None = None
 
-    # -- Static Methods -- #
-
-    @staticmethod
-    def decode(
-        text: str,
-    ) -> object:
-        """
-        Decode JSON text without applying ETL payload shape validation.
-
-        Parameters
-        ----------
-        text : str
-            The JSON text to decode.
-
-        Returns
-        -------
-        object
-            The raw decoded JSON value.
-        """
-        return json.loads(text)
-
-    @staticmethod
-    def default(
-        value: object,
-    ) -> object:
-        """
-        Return a JSON fallback for common ETL scalar types.
-
-        Parameters
-        ----------
-        value : object
-            The value to serialize.
-
-        Returns
-        -------
-        object
-            A JSON-serializable fallback for *value*.
-        """
-        if isinstance(value, date | datetime | time):
-            return JsonCodec.isoformat(value)
-        if isinstance(value, Decimal):
-            return str(value)
-        return str(value)
-
     # -- Class Methods -- #
 
     @classmethod
@@ -324,6 +280,48 @@ class JsonCodec:
         )
 
     # -- Static Methods -- #
+
+    @staticmethod
+    def decode(
+        text: str,
+    ) -> object:
+        """
+        Decode JSON text without applying ETL payload shape validation.
+
+        Parameters
+        ----------
+        text : str
+            The JSON text to decode.
+
+        Returns
+        -------
+        object
+            The raw decoded JSON value.
+        """
+        return json.loads(text)
+
+    @staticmethod
+    def default(
+        value: object,
+    ) -> object:
+        """
+        Return a JSON fallback for common ETL scalar types.
+
+        Parameters
+        ----------
+        value : object
+            The value to serialize.
+
+        Returns
+        -------
+        object
+            A JSON-serializable fallback for *value*.
+        """
+        if isinstance(value, date | datetime | time):
+            return JsonCodec.isoformat(value)
+        if isinstance(value, Decimal):
+            return str(value)
+        return str(value)
 
     @staticmethod
     def isoformat(value: date | datetime | time) -> str:
