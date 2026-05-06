@@ -22,7 +22,7 @@ from io import BytesIO
 from typing import Any
 from typing import cast
 
-from ..utils import normalize_records
+from ..utils import RecordPayloadParser
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ..utils._types import JSONList
@@ -163,7 +163,7 @@ class AvroFile(BinarySerializationFileHandlerABC):
             Serialized AVRO payload.
         """
         _ = options
-        records = normalize_records(data, 'AVRO')
+        records = RecordPayloadParser('AVRO').normalize(data)
         if not records:
             return b''
 
