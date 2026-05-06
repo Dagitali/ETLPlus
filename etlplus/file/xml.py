@@ -21,7 +21,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from ..utils import RecordCounter
+from ..utils import count_records
 from ..utils._types import JSONData
 from ..utils._types import JSONDict
 from ._enums import FileFormat
@@ -276,4 +276,4 @@ class XmlFile(SemiStructuredTextFileHandlerABC):
         tree = ET.ElementTree(root_element)
         ensure_parent_dir(path)
         tree.write(path, encoding='utf-8', xml_declaration=True)
-        return RecordCounter.count(data)
+        return count_records(data)
