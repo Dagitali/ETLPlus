@@ -17,6 +17,7 @@ import pytest
 
 from etlplus.utils import JsonCodec
 from etlplus.utils import RecordCounter
+from etlplus.utils import RecordPayloadParser
 from etlplus.utils import coerce_record_payload
 from etlplus.utils import normalize_records
 from etlplus.utils import require_dict_payload
@@ -38,6 +39,15 @@ class _FalseyStringIO(StringIO):
         return False
 
 
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='json_record_parser')
+def json_record_parser_fixture() -> RecordPayloadParser:
+    """Return one parser with stable JSON error-message context."""
+    return RecordPayloadParser('JSON')
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -53,11 +63,12 @@ class TestDataHelpers:
     )
     def test_coerce_record_payload_accepts_valid_shapes(
         self,
+        json_record_parser: RecordPayloadParser,
         payload: object,
         expected: JSONData,
     ) -> None:
         """Test record payload coercion for supported and invalid shapes."""
-        assert coerce_record_payload(payload, format_name='JSON') == expected
+        assert json_record_parser.coerce(payload) == expected
 
     @pytest.mark.parametrize(
         ('payload', 'pattern'),
@@ -68,12 +79,13 @@ class TestDataHelpers:
     )
     def test_coerce_record_payload_rejects_invalid_shapes(
         self,
+        json_record_parser: RecordPayloadParser,
         payload: object,
         pattern: str,
     ) -> None:
         """Test record payload coercion rejects invalid shapes."""
         with pytest.raises(TypeError, match=pattern):
-            coerce_record_payload(payload, format_name='JSON')
+            json_record_parser.coerce(payload)
 
     @pytest.mark.parametrize(
         ('payload', 'expected'),
@@ -147,11 +159,12 @@ class TestDataHelpers:
     )
     def test_normalize_records_accepts_valid_shapes(
         self,
+        json_record_parser: RecordPayloadParser,
         payload: object,
         expected: list[dict[str, object]],
     ) -> None:
         """Test record normalization for valid and invalid payloads."""
-        assert normalize_records(payload, 'CSV') == expected
+        assert json_record_parser.normalize(payload) == expected
 
     @pytest.mark.parametrize(
         ('payload', 'pattern'),
@@ -162,12 +175,13 @@ class TestDataHelpers:
     )
     def test_normalize_records_rejects_invalid_shapes(
         self,
+        json_record_parser: RecordPayloadParser,
         payload: object,
         pattern: str,
     ) -> None:
         """Test record normalization rejects invalid shapes."""
         with pytest.raises(TypeError, match=pattern):
-            normalize_records(payload, 'CSV')
+            json_record_parser.normalize(payload)
 
     def test_parse_json_raises_concise_value_error(self) -> None:
         """Test that :meth:`JsonCodec.parse` wraps JSON decode failures cleanly."""
@@ -233,15 +247,37 @@ class TestDataHelpers:
 
         assert_json_output(stream.getvalue(), payload)
 
-    def test_require_dict_payload_and_require_str_key(self) -> None:
+    def test_record_payload_parser_is_frozen(self) -> None:
+        """Test that parser context cannot be mutated after construction."""
+        parser = RecordPayloadParser('JSON')
+
+        with pytest.raises(AttributeError):
+            parser.format_name = 'CSV'  # type: ignore[misc]
+
+    def test_record_payload_parser_wrappers_preserve_function_api(self) -> None:
+        """Test compatibility wrappers delegate to the stateful parser."""
+        assert coerce_record_payload({'id': 1}, format_name='JSON') == {'id': 1}
+        assert normalize_records({'id': 1}, 'JSON') == [{'id': 1}]
+        assert require_dict_payload({'key': 'value'}, format_name='JSON') == {
+            'key': 'value',
+        }
+        assert (
+            require_str_key({'key': 'value'}, format_name='JSON', key='key')
+            == 'value'
+        )
+
+    def test_require_dict_payload_and_require_str_key(
+        self,
+        json_record_parser: RecordPayloadParser,
+    ) -> None:
         """Test dict/string key payload validators."""
-        payload = require_dict_payload({'key': 'value'}, format_name='INI')
+        payload = json_record_parser.require_dict({'key': 'value'})
         assert payload == {'key': 'value'}
-        assert require_str_key(payload, format_name='INI', key='key') == 'value'
+        assert json_record_parser.require_str_key(payload, 'key') == 'value'
         with pytest.raises(TypeError, match='must be a dict'):
-            require_dict_payload([], format_name='INI')
+            json_record_parser.require_dict([])
         with pytest.raises(TypeError, match='must include a "key" string'):
-            require_str_key({'key': 1}, format_name='INI', key='key')
+            json_record_parser.require_str_key({'key': 1}, 'key')
 
     def test_serialize_json_can_use_standard_spacing(self) -> None:
         """Test that compact output can be disabled for standard JSON spacing."""
