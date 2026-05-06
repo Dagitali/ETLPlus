@@ -65,6 +65,26 @@ class TestSequenceParser:
     @pytest.mark.parametrize(
         ('value', 'expected'),
         [
+            pytest.param(['a'], True, id='list'),
+            pytest.param(('a',), True, id='tuple'),
+            pytest.param('abc', False, id='string'),
+            pytest.param(b'abc', False, id='bytes'),
+            pytest.param(bytearray(b'abc'), False, id='bytearray'),
+            pytest.param({'a', 'b'}, False, id='set'),
+            pytest.param(None, False, id='none'),
+        ],
+    )
+    def test_is_non_text(
+        self,
+        value: object,
+        expected: bool,
+    ) -> None:
+        """Test that non-text sequence detection excludes text and sets."""
+        assert SequenceParser.is_non_text(value) is expected
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
             pytest.param('seed', ['seed'], id='single-string'),
             pytest.param(['a', 1, None, 'b'], ['a', 'b'], id='filter-non-strings'),
             pytest.param(('a', 'b'), ['a', 'b'], id='tuple'),
