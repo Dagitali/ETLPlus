@@ -11,6 +11,7 @@ import pytest
 from etlplus import utils as utils_pkg
 from etlplus.utils._data import JsonCodec
 from etlplus.utils._data import RecordCounter
+from etlplus.utils._data import RecordPayloadParser
 from etlplus.utils._data import coerce_record_payload
 from etlplus.utils._data import normalize_records
 from etlplus.utils._data import require_dict_payload
@@ -49,6 +50,7 @@ UTILS_EXPORTS = [
     ('MappingParser', MappingParser),
     ('NamedDependencyGraph', NamedDependencyGraph),
     ('RecordCounter', RecordCounter),
+    ('RecordPayloadParser', RecordPayloadParser),
     ('SubstitutionResolver', SubstitutionResolver),
     ('TextNormalizer', TextNormalizer),
     ('CoercibleStrEnum', CoercibleStrEnum),
