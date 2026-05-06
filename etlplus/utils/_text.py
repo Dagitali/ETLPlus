@@ -102,6 +102,31 @@ class TextNormalizer:
         """
         return _normalize_text(value)
 
+    @staticmethod
+    def truncate(
+        text: str | None,
+        *,
+        limit: int,
+    ) -> str:
+        """
+        Return *text* shortened to *limit* characters.
+
+        Parameters
+        ----------
+        text : str | None
+            Text to shorten.
+        limit : int
+            Maximum number of characters to keep.
+
+        Returns
+        -------
+        str
+            Truncated text, or ``""`` when *text* is falsey.
+        """
+        if not text:
+            return ''
+        return text[:limit]
+
     # -- Class Methods -- #
 
     @classmethod
