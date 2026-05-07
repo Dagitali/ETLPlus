@@ -15,6 +15,7 @@ from etlplus.utils._imports import DependencyImporter
 from etlplus.utils._imports import build_dependency_error_message
 from etlplus.utils._imports import dependency_label
 from etlplus.utils._imports import import_package
+from etlplus.utils._imports import module_available
 from etlplus.utils._imports import normalize_dependency_names
 
 # SECTION: TESTS ============================================================ #
@@ -320,3 +321,25 @@ class TestDependencyImporter:
 
         with pytest.raises(ImportError, match=re.escape(expected)):
             importer.get('yaml', format_name='YAML', pip_name='PyYAML')
+
+
+class TestModuleAvailable:
+    """Unit tests for non-importing module availability checks."""
+
+    def test_module_available_detects_stdlib_module(self) -> None:
+        """Test availability checks return true for a known stdlib module."""
+        assert module_available('json') is True
+
+    @pytest.mark.parametrize(
+        'module_name',
+        [
+            pytest.param('etlplus.definitely_missing_dependency', id='missing'),
+            pytest.param(' ', id='blank'),
+        ],
+    )
+    def test_module_available_returns_false_for_unavailable_modules(
+        self,
+        module_name: str,
+    ) -> None:
+        """Test unavailable or invalid module names return false."""
+        assert module_available(module_name) is False
