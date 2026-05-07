@@ -115,6 +115,15 @@ def _clean_dependency_name(
     return cleaned
 
 
+def _clean_dependency_names(
+    values: tuple[str, ...],
+    *,
+    label: str,
+) -> tuple[str, ...]:
+    """Return stripped dependency names or raise a clear error."""
+    return tuple(_clean_dependency_name(value, label=label) for value in values)
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -124,9 +133,9 @@ def dependency_label(
     """Return one quoted dependency label string for an error message."""
     if not dependency_names:
         raise ValueError('dependency_names must not be empty')
-    cleaned_names = tuple(
-        _clean_dependency_name(name, label='dependency name')
-        for name in dependency_names
+    cleaned_names = _clean_dependency_names(
+        dependency_names,
+        label='dependency name',
     )
     quoted = tuple(f'"{name}"' for name in cleaned_names)
     if len(quoted) == 1:
@@ -155,9 +164,7 @@ def normalize_dependency_names(
         return (dependency_display_name,), dependency_display_name
     if not module_name:
         raise ValueError('module_name must not be an empty tuple')
-    dependency_names = tuple(
-        _clean_dependency_name(name, label='module_name') for name in module_name
-    )
+    dependency_names = _clean_dependency_names(module_name, label='module_name')
     return dependency_names, normalized_pip_name or dependency_names[0]
 
 
@@ -251,6 +258,8 @@ def import_package(
 
 def module_available(
     module_name: str,
+    *,
+    spec_finder: Callable[[str], object | None] = find_spec,
 ) -> bool:
     """
     Return whether *module_name* is importable without importing it.
@@ -259,6 +268,9 @@ def module_available(
     ----------
     module_name : str
         Module name to inspect.
+    spec_finder : Callable[[str], object | None], optional
+        Callable used to resolve import metadata. Defaults to
+        :func:`importlib.util.find_spec`.
 
     Returns
     -------
@@ -267,6 +279,6 @@ def module_available(
     """
     try:
         normalized = _clean_dependency_name(module_name, label='module_name')
-        return find_spec(normalized) is not None
+        return spec_finder(normalized) is not None
     except (ImportError, ModuleNotFoundError, ValueError):
         return False
