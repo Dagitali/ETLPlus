@@ -322,6 +322,95 @@ class TestDependencyImporter:
         with pytest.raises(ImportError, match=re.escape(expected)):
             importer.get('yaml', format_name='YAML', pip_name='PyYAML')
 
+    def test_import_package_can_reraise_nested_import_errors(self) -> None:
+        """Test strict missing-name mode preserves nested import errors."""
+
+        def _missing_nested(_name: str) -> object:
+            raise ImportError('nested missing', name='nested')
+
+        importer = DependencyImporter(
+            importer=_missing_nested,
+            strict_missing_name=True,
+        )
+
+        with pytest.raises(ImportError, match='nested missing'):
+            importer.import_package('outer', error_message='wrapped')
+
+    def test_import_package_imports_and_stores_cache(self) -> None:
+        """Test successful imports populate the importer cache."""
+        cache: dict[str, Any] = {}
+        sentinel = object()
+        importer = DependencyImporter(importer=lambda _name: sentinel, cache=cache)
+
+        result = importer.import_package('new_module', error_message='unused')
+
+        assert result is sentinel
+        assert cache == {'new_module': sentinel}
+
+    def test_import_package_rejects_blank_module_name(self) -> None:
+        """Test direct imports reject blank module names before import."""
+        calls: list[str] = []
+        importer = DependencyImporter(importer=lambda name: calls.append(name))
+
+        with pytest.raises(ValueError, match='module_name must not be empty'):
+            importer.import_package(' ', error_message='unused')
+        assert not calls
+
+    def test_import_package_strips_module_name_for_import_and_cache(self) -> None:
+        """Test direct imports normalize module names before cache/import use."""
+        calls: list[str] = []
+        sentinel = object()
+        importer = DependencyImporter(
+            cache={},
+            importer=lambda name: calls.append(name) or sentinel,
+        )
+
+        result = importer.import_package(' new_module ', error_message='unused')
+
+        assert result is sentinel
+        assert calls == ['new_module']
+
+    def test_import_package_uses_cache_before_importer(self) -> None:
+        """Test cache hits bypass importer calls."""
+        sentinel = object()
+        importer = DependencyImporter(
+            cache={'cached': sentinel},
+            importer=lambda _name: (_ for _ in ()).throw(AssertionError),
+        )
+
+        result = importer.import_package('cached', error_message='unused')
+
+        assert result is sentinel
+
+    def test_import_package_wraps_missing_dependency(self) -> None:
+        """Test import failures are translated to the configured error type."""
+
+        def _missing(_name: str) -> object:
+            raise ImportError('missing')
+
+        importer = DependencyImporter(
+            error_type=RuntimeError,
+            importer=_missing,
+        )
+
+        with pytest.raises(RuntimeError, match='install it'):
+            importer.import_package('missing', error_message='install it')
+
+    def test_import_package_wraps_matching_strict_import_error(self) -> None:
+        """Test strict missing-name mode still wraps the requested module."""
+
+        def _missing_requested(_name: str) -> object:
+            raise ImportError('requested missing', name='outer')
+
+        importer = DependencyImporter(
+            error_type=RuntimeError,
+            importer=_missing_requested,
+            strict_missing_name=True,
+        )
+
+        with pytest.raises(RuntimeError, match='wrapped'):
+            importer.import_package('outer', error_message='wrapped')
+
 
 class TestModuleAvailable:
     """Unit tests for non-importing module availability checks."""
