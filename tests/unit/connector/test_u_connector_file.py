@@ -58,6 +58,22 @@ class TestConnectorFile:
                 },
                 id='coerces-non-mapping-options',
             ),
+            pytest.param(
+                {
+                    'name': 'input_text',
+                    'type': 'file',
+                    'format': 123,
+                    'path': False,
+                },
+                {
+                    'type': DataConnectorType.FILE,
+                    'name': 'input_text',
+                    'format': '123',
+                    'path': 'False',
+                    'options': {},
+                },
+                id='coerces-optional-strings',
+            ),
         ],
     )
     def test_from_obj_normalizes_file_fields(
