@@ -93,8 +93,7 @@ class ExtractRef:
         Self | None
             Parsed reference or ``None`` when the payload is invalid.
         """
-        data = MappingParser.optional(obj)
-        if not data:
+        if not (data := MappingParser.optional(obj)):
             return None
         if (source := MappingFieldParser.required_str(data, 'source')) is None:
             return None
@@ -142,8 +141,7 @@ class JobRetryConfig:
         Self | None
             Parsed retry policy or ``None`` when the payload is invalid.
         """
-        data = MappingParser.optional(obj)
-        if not data:
+        if not (data := MappingParser.optional(obj)):
             return None
         return cls(
             max_attempts=IntParser.positive(data.get('max_attempts'), default=1),
@@ -219,8 +217,7 @@ class JobConfig:
         Self | None
             Parsed job configuration or ``None`` if invalid.
         """
-        data = MappingParser.optional(obj)
-        if not data:
+        if not (data := MappingParser.optional(obj)):
             return None
         if (name := MappingFieldParser.required_str(data, 'name')) is None:
             return None
@@ -275,8 +272,7 @@ class LoadRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = MappingParser.optional(obj)
-        if not data:
+        if not (data := MappingParser.optional(obj)):
             return None
         if (target := MappingFieldParser.required_str(data, 'target')) is None:
             return None
@@ -321,8 +317,7 @@ class TransformRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = MappingParser.optional(obj)
-        if not data:
+        if not (data := MappingParser.optional(obj)):
             return None
         if (pipeline := MappingFieldParser.required_str(data, 'pipeline')) is None:
             return None
@@ -371,8 +366,7 @@ class ValidationRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = MappingParser.optional(obj)
-        if not data:
+        if not (data := MappingParser.optional(obj)):
             return None
         if (ruleset := MappingFieldParser.required_str(data, 'ruleset')) is None:
             return None
