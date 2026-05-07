@@ -6,16 +6,15 @@ Shared run-history record models and builders.
 
 from __future__ import annotations
 
-import hashlib
 import os
 import socket
 from dataclasses import dataclass
 from dataclasses import fields
-from pathlib import Path
 from typing import Any
 from typing import Self
 
 from ..__version__ import __version__
+from ..utils import PathHasher
 from ..utils._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
@@ -43,20 +42,6 @@ def _field_payload(
         for field in fields(obj)
         if field.name not in exclude
     }
-
-
-def _file_sha256(
-    file_path: str,
-) -> str | None:
-    """Return the SHA-256 digest for *file_path* when the file exists."""
-    path = Path(file_path)
-    if not path.is_file():
-        return None
-    digest = hashlib.sha256()
-    with path.open('rb') as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b''):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -218,7 +203,7 @@ class RunRecord:
             pipeline_name=pipeline_name,
             job_name=job_name,
             config_path=config_path,
-            config_sha256=_file_sha256(config_path),
+            config_sha256=PathHasher.sha256(config_path),
             started_at=started_at,
             records_in=None,
             records_out=None,
