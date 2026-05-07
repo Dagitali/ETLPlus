@@ -117,8 +117,7 @@ class TestDataHelpers:
         expected: str,
     ) -> None:
         """Test the shared fallback serializer used by database codecs."""
-        codec = JsonCodec()
-        serialized = JsonCodec(default_serializer=codec.default).serialize(value)
+        serialized = JsonCodec(default_serializer=JsonCodec.default).serialize(value)
 
         assert serialized.startswith(expected)
 
