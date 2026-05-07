@@ -19,13 +19,14 @@ from dataclasses import field
 from typing import Any
 from typing import Self
 from typing import TypedDict
-from typing import overload
 
 from ..api import PaginationConfig
 from ..api import PaginationConfigDict
 from ..api import RateLimitConfig
 from ..api import RateLimitConfigDict
+from ..utils import MappingFieldParser
 from ..utils import MappingParser
+from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ..utils._types import StrStrMap
 from ._core import ConnectorBase
@@ -118,14 +119,6 @@ class ConnectorApi(ConnectorBase):
     # -- Class Methods -- #
 
     @classmethod
-    @overload
-    def from_obj(cls, obj: ConnectorApiConfigDict) -> Self: ...
-
-    @classmethod
-    @overload
-    def from_obj(cls, obj: StrAnyMap) -> Self: ...
-
-    @classmethod
     def from_obj(
         cls,
         obj: StrAnyMap,
@@ -143,19 +136,19 @@ class ConnectorApi(ConnectorBase):
         Self
             Parsed connector instance.
         """
-        name = cls._require_name(obj, kind='Api')
+        name = MappingFieldParser.require_str(obj, 'name', label='ConnectorApi')
         headers = MappingParser.to_str_dict(
             MappingParser.optional(obj.get('headers')),
         )
 
         return cls(
             name=name,
-            url=obj.get('url'),
-            method=obj.get('method'),
+            url=ValueParser.optional_str(obj.get('url')),
+            method=ValueParser.optional_str(obj.get('method')),
             headers=headers,
             query_params=MappingParser.to_dict(obj.get('query_params')),
             pagination=PaginationConfig.from_obj(obj.get('pagination')),
             rate_limit=RateLimitConfig.from_obj(obj.get('rate_limit')),
-            api=obj.get('api') or obj.get('service'),
-            endpoint=obj.get('endpoint'),
+            api=ValueParser.optional_str(obj.get('api') or obj.get('service')),
+            endpoint=ValueParser.optional_str(obj.get('endpoint')),
         )

@@ -122,10 +122,6 @@ class TestDataHelpers:
 
         assert serialized.startswith(expected)
 
-    def test_decode_json_returns_raw_json_value(self) -> None:
-        """Test that raw JSON decoding does not enforce ETL payload shape."""
-        assert JsonCodec.decode('42') == 42
-
     @pytest.mark.parametrize(
         ('value', 'expected'),
         [

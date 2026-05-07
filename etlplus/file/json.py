@@ -18,6 +18,8 @@ Notes
 
 from __future__ import annotations
 
+import json
+
 from ..utils import JsonCodec
 from ..utils._types import JSONData
 from ._enums import FileFormat
@@ -50,7 +52,7 @@ class JsonFile(RecordPayloadTextCodecHandlerMixin):
         text: str,
     ) -> object:
         """Parse raw JSON text into a Python payload."""
-        return JsonCodec.decode(text)
+        return json.loads(text)
 
     def encode_text_payload(
         self,

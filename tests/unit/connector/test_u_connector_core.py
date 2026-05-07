@@ -6,10 +6,7 @@ Unit tests for :mod:`etlplus.connector._core`.
 
 from __future__ import annotations
 
-import pytest
-
 from etlplus.connector import ConnectorFile
-from etlplus.connector._core import ConnectorBase
 from etlplus.connector._core import ConnectorProtocol
 
 # SECTION: PRAGMAS ========================================================== #
@@ -21,38 +18,6 @@ from etlplus.connector._core import ConnectorProtocol
 
 class TestConnectorCore:
     """Unit tests for connector base/protocol helpers."""
-
-    @pytest.mark.parametrize(
-        'payload',
-        [
-            {},
-            {'name': None},
-            {'name': 42},
-        ],
-    )
-    def test_require_name_raises_for_invalid_name(
-        self,
-        payload: dict[str, object],
-    ) -> None:
-        """
-        Test that missing or non-string name values raise :class:`TypeError`.
-        """
-        with pytest.raises(TypeError, match='ConnectorFile requires a "name"'):
-            ConnectorBase._require_name(payload, kind='File')
-
-    @pytest.mark.parametrize(
-        ('payload', 'expected'),
-        [
-            pytest.param({'name': 'src_file'}, 'src_file', id='valid-name'),
-        ],
-    )
-    def test_require_name_returns_name_when_valid(
-        self,
-        payload: dict[str, object],
-        expected: str,
-    ) -> None:
-        """Test that a valid connector name is returned unchanged."""
-        assert ConnectorBase._require_name(payload, kind='File') == expected
 
     def test_concrete_connector_satisfies_runtime_protocol(self) -> None:
         """

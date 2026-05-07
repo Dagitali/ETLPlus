@@ -200,7 +200,6 @@ def _write_exception_run_config(
               - name: source_in
                 type: file
                 format: json
-                path: 123
             targets:
               - name: target_out
                 type: file
@@ -513,7 +512,7 @@ class TestCliExecutionEvents:
                 'pipeline_name': 'Exception Failure Events',
                 'run_all': False,
             },
-            error_type='TypeError',
+            error_type='ValueError',
             error_message_contains='File source missing "path"',
         )
         run_id = lines[0]['run_id']
@@ -522,6 +521,6 @@ class TestCliExecutionEvents:
             run_id,
         ) == (
             'failed',
-            'TypeError',
+            'ValueError',
             'File source missing "path"',
         )

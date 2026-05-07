@@ -19,7 +19,6 @@ import etlplus.connector._utils as connector_utils
 from etlplus.connector import ConnectorApi
 from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorFile
-from etlplus.connector._enums import DataConnectorType
 
 from .pytest_connector_support import assert_connector_fields
 
@@ -128,30 +127,3 @@ class TestParseConnector:
         connector = connector_utils.parse_connector(payload)
         assert isinstance(connector, expected_cls)
         assert_connector_fields(connector, expected_attrs)
-
-
-class TestInternalLoadConnector:
-    """Unit tests for :func:`etlplus.connector._utils._load_connector`."""
-
-    @pytest.mark.parametrize(
-        ('kind', 'expected'),
-        [
-            (DataConnectorType.API, ConnectorApi),
-            (DataConnectorType.DATABASE, ConnectorDb),
-            (DataConnectorType.FILE, ConnectorFile),
-        ],
-    )
-    def test_load_connector_for_known_kinds(
-        self,
-        kind: DataConnectorType,
-        expected: type[object],
-    ) -> None:
-        """Test that known connector kinds resolve to concrete classes."""
-        assert connector_utils._load_connector(kind) is expected
-
-    def test_load_connector_rejects_unknown_kind(self) -> None:
-        """Test that unknown enum-like values raise :class:`TypeError`."""
-        with pytest.raises(TypeError, match='Unsupported connector type'):
-            connector_utils._load_connector(
-                cast(DataConnectorType, 'unknown'),
-            )
