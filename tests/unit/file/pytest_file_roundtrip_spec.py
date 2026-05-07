@@ -76,13 +76,13 @@ class RoundtripSpec:
         Parameters
         ----------
         shape : RoundtripShape, optional
-            Shape of the payload/expected data, by default 'records'.
+            Shape of the payload/expected data. Defaults to ``'records'``.
         field_count : int, optional
-            Number of fields per record, by default 1.
+            Number of fields per record. Defaults to 1.
         record_count : int, optional
-            Number of records, by default 1.
+            Number of records. Defaults to 1.
         value_kind : RoundtripValueKind, optional
-            Kind of values to generate, by default 'numeric'.
+            Kind of values to generate. Defaults to ``'numeric'``.
 
         Returns
         -------
