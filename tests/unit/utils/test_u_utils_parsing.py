@@ -21,6 +21,26 @@ class TestValueParser:
     """Unit tests for scalar parsing helpers."""
 
     @pytest.mark.parametrize(
+        ('value', 'default', 'expected'),
+        [
+            pytest.param(True, False, True, id='bool-true'),
+            pytest.param(False, True, False, id='bool-false'),
+            pytest.param(' yes ', False, True, id='true-string'),
+            pytest.param('OFF', True, False, id='false-string'),
+            pytest.param('maybe', True, True, id='unknown-string-default'),
+            pytest.param(None, False, False, id='none-default'),
+        ],
+    )
+    def test_bool_flag(
+        self,
+        value: object,
+        default: bool,
+        expected: bool,
+    ) -> None:
+        """Test common boolean flag parsing for config and env values."""
+        assert ValueParser.bool_flag(value, default=default) is expected
+
+    @pytest.mark.parametrize(
         ('value', 'expected'),
         [
             pytest.param(None, None, id='none'),
