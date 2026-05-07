@@ -9,12 +9,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from collections.abc import Sequence
+from os import PathLike
 from typing import Any
 from typing import TypeGuard
 
 from ...file import File
 from ...file import FileFormat
 from ...utils import JsonCodec
+from ...utils import PathParser
 from ...utils._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
@@ -96,7 +98,7 @@ def emit_markdown_table(
 
 def emit_or_write(
     data: Any,
-    output_path: str | None,
+    output_path: str | PathLike[str] | None,
     *,
     pretty: bool,
     success_message: str,
@@ -148,7 +150,7 @@ def emit_json_payload(
 
 
 def is_stdout_target(
-    output_path: str | None,
+    output_path: object,
 ) -> bool:
     """
     Return whether an output path represents STDOUT.
@@ -164,14 +166,12 @@ def is_stdout_target(
         ``True`` for ``None``, blank strings, or ``"-"`` with surrounding
         whitespace.
     """
-    return output_path is None or (
-        isinstance(output_path, str) and output_path.strip() in {'', '-'}
-    )
+    return PathParser.is_stdout_target(output_path)
 
 
 def is_file_target(
-    output_path: str | None,
-) -> TypeGuard[str]:
+    output_path: object,
+) -> TypeGuard[str | PathLike[str]]:
     """
     Return whether an output path names a concrete file target.
 
@@ -185,12 +185,12 @@ def is_file_target(
     TypeGuard[str]
         ``True`` when *output_path* can be passed to :class:`File`.
     """
-    return not is_stdout_target(output_path)
+    return PathParser.is_file_target(output_path)
 
 
 def write_json_output(
     data: Any,
-    output_path: str | None,
+    output_path: str | PathLike[str] | None,
     *,
     success_message: str,
 ) -> bool:
@@ -220,7 +220,7 @@ def write_json_output(
 
 def write_file_payload(
     payload: JSONData,
-    target: str,
+    target: str | PathLike[str],
     *,
     format_hint: str | None,
 ) -> None:
