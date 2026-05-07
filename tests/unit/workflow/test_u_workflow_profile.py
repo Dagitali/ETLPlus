@@ -6,9 +6,6 @@ Unit tests for :mod:`etlplus.workflow._profile`.
 
 from __future__ import annotations
 
-from typing import Any
-from typing import cast
-
 import pytest
 
 from etlplus.workflow._profile import ProfileConfig
@@ -68,4 +65,4 @@ class TestProfileConfig:
         """
         Test that non-mapping profile payloads produce a default config.
         """
-        assert ProfileConfig.from_obj(cast(Any, payload)) == ProfileConfig()
+        assert ProfileConfig.from_obj(payload) == ProfileConfig()
