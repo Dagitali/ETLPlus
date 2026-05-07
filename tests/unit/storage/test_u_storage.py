@@ -980,6 +980,27 @@ class TestHdfsStorageBackend:
             },
         ]
 
+    def test_ensure_parent_dir_noops_for_root_child_path(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that HDFS paths without a parent do not call mkdirs."""
+        backend = HdfsStorageBackend()
+        location = StorageLocation.from_value(
+            'hdfs://namenode.example.com:8020/table.parquet',
+        )
+        calls: list[StorageLocation] = []
+
+        def _filesystem(_location: StorageLocation) -> object:
+            calls.append(_location)
+            return object()
+
+        monkeypatch.setattr(backend, '_filesystem', _filesystem)
+
+        backend.ensure_parent_dir(location)
+
+        assert calls == []
+
     def test_exists_raises_import_error_without_fsspec(
         self,
         monkeypatch: pytest.MonkeyPatch,
