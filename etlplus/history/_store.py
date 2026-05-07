@@ -24,6 +24,7 @@ from typing import Any
 from ..file.ndjson import NdjsonFile
 from ..file.sqlite import SqliteFile
 from ..utils import JsonCodec
+from ..utils import SequenceParser
 from ..utils._types import JSONData
 from ._config import DEFAULT_HISTORY_BACKEND
 from ._config import HistoryBackend
@@ -34,7 +35,6 @@ from ._models import JobRunRecord
 from ._models import RunCompletion
 from ._models import RunRecord
 from ._models import RunState
-from ._models import _file_sha256 as _models_file_sha256
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -123,16 +123,9 @@ def _deserialize_string_list(
     """Deserialize one optional JSON string list."""
     if payload is None:
         return None
-    if not isinstance(values := json.loads(payload), list):
+    if not SequenceParser.is_non_text(values := json.loads(payload)):
         return None
-    return [value for value in values if isinstance(value, str)]
-
-
-def _file_sha256(
-    file_path: str,
-) -> str | None:
-    """Return the SHA-256 digest for *file_path* when the file exists."""
-    return _models_file_sha256(file_path)
+    return SequenceParser.str_list(values)
 
 
 def _job_run_record_key(
