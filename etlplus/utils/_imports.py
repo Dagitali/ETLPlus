@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
 from importlib import import_module
+from importlib.util import find_spec
 from typing import Any
 
 # SECTION: EXPORTS ========================================================== #
@@ -22,6 +23,7 @@ __all__ = [
     'build_dependency_error_message',
     'dependency_label',
     'import_package',
+    'module_available',
     'normalize_dependency_names',
     # Type Aliases
     'DependencyNames',
@@ -245,3 +247,26 @@ def import_package(
     if cache is not None:
         cache[module_name] = module
     return module
+
+
+def module_available(
+    module_name: str,
+) -> bool:
+    """
+    Return whether *module_name* is importable without importing it.
+
+    Parameters
+    ----------
+    module_name : str
+        Module name to inspect.
+
+    Returns
+    -------
+    bool
+        ``True`` when import metadata can resolve *module_name*.
+    """
+    try:
+        normalized = _clean_dependency_name(module_name, label='module_name')
+        return find_spec(normalized) is not None
+    except (ImportError, ModuleNotFoundError, ValueError):
+        return False
