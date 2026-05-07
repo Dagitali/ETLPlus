@@ -7,7 +7,6 @@ Substitution utility helpers.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
@@ -32,36 +31,6 @@ __all__ = [
 
 
 _DEFAULT_TOKEN_PATTERN: Final[Pattern[str]] = re.compile(r'\$\{([^}]+)\}')
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _replace_tokens(
-    text: str,
-    substitutions: Iterable[tuple[str, Any]],
-) -> str:
-    """
-    Replace ``${VAR}`` tokens in *text* using *substitutions*.
-
-    Parameters
-    ----------
-    text : str
-        Input string that may contain ``${VAR}`` tokens.
-    substitutions : Iterable[tuple[str, Any]]
-        Sequence of ``(name, value)`` pairs used for token replacement.
-
-    Returns
-    -------
-    str
-        Updated text with replacements applied.
-    """
-    out = text
-    for name, replacement in substitutions:
-        token = f'${{{name}}}'
-        if token in out:
-            out = out.replace(token, str(replacement))
-    return out
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -123,7 +92,9 @@ class SubstitutionResolver:
         def _apply(node: Any) -> Any:
             match node:
                 case str():
-                    return _replace_tokens(node, substitutions)
+                    for name, replacement in substitutions:
+                        node = node.replace(f'${{{name}}}', str(replacement))
+                    return node
                 case Mapping():
                     return {k: _apply(v) for k, v in node.items()}
                 case list() | tuple() as seq:
