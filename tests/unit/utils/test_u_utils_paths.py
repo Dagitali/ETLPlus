@@ -41,35 +41,27 @@ class TestPathParser:
     """Unit tests for path parsing helpers."""
 
     @pytest.mark.parametrize(
-        ('value', 'expected'),
+        ('value', 'expected_stdout', 'expected_file'),
         [
-            pytest.param(None, False, id='none'),
-            pytest.param('', False, id='empty'),
-            pytest.param(' - ', False, id='spaced-dash'),
-            pytest.param('out.json', True, id='string-path'),
-            pytest.param(Path('out.json'), True, id='pathlike'),
-            pytest.param(123, False, id='non-pathlike'),
+            pytest.param(None, True, False, id='none'),
+            pytest.param('', True, False, id='empty'),
+            pytest.param('   ', True, False, id='blank'),
+            pytest.param('-', True, False, id='dash'),
+            pytest.param(' - ', True, False, id='spaced-dash'),
+            pytest.param('out.json', False, True, id='string-path'),
+            pytest.param(Path('out.json'), False, True, id='pathlike'),
+            pytest.param(123, False, False, id='non-pathlike'),
         ],
     )
-    def test_is_file_target(self, value: object, expected: bool) -> None:
-        """Test concrete file-target detection."""
-        assert PathParser.is_file_target(value) is expected
-
-    @pytest.mark.parametrize(
-        ('value', 'expected'),
-        [
-            pytest.param(None, True, id='none'),
-            pytest.param('', True, id='empty'),
-            pytest.param('   ', True, id='blank'),
-            pytest.param('-', True, id='dash'),
-            pytest.param(' - ', True, id='spaced-dash'),
-            pytest.param('out.json', False, id='string-path'),
-            pytest.param(Path('out.json'), False, id='pathlike'),
-        ],
-    )
-    def test_is_stdout_target(self, value: object, expected: bool) -> None:
-        """Test STDOUT target detection."""
-        assert PathParser.is_stdout_target(value) is expected
+    def test_output_target_detection(
+        self,
+        value: object,
+        expected_stdout: bool,
+        expected_file: bool,
+    ) -> None:
+        """Test STDOUT and concrete file-target detection."""
+        assert PathParser.is_stdout_target(value) is expected_stdout
+        assert PathParser.is_file_target(value) is expected_file
 
     @pytest.mark.parametrize(
         ('value', 'expected'),
