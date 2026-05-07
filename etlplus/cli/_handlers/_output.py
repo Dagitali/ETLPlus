@@ -11,7 +11,6 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from os import PathLike
 from typing import Any
-from typing import TypeGuard
 
 from ...file import File
 from ...file import FileFormat
@@ -28,8 +27,6 @@ __all__ = [
     'emit_markdown_table',
     'emit_json_payload',
     'emit_or_write',
-    'is_file_target',
-    'is_stdout_target',
     'write_json_output',
     'write_file_payload',
 ]
@@ -149,45 +146,6 @@ def emit_json_payload(
     return exit_code
 
 
-def is_stdout_target(
-    output_path: object,
-) -> bool:
-    """
-    Return whether an output path represents STDOUT.
-
-    Parameters
-    ----------
-    output_path : str | None
-        Output destination supplied by the CLI.
-
-    Returns
-    -------
-    bool
-        ``True`` for ``None``, blank strings, or ``"-"`` with surrounding
-        whitespace.
-    """
-    return PathParser.is_stdout_target(output_path)
-
-
-def is_file_target(
-    output_path: object,
-) -> TypeGuard[str | PathLike[str]]:
-    """
-    Return whether an output path names a concrete file target.
-
-    Parameters
-    ----------
-    output_path : str | None
-        Output destination supplied by the CLI.
-
-    Returns
-    -------
-    TypeGuard[str | PathLike[str]]
-        ``True`` when *output_path* can be passed to :class:`File`.
-    """
-    return PathParser.is_file_target(output_path)
-
-
 def write_json_output(
     data: Any,
     output_path: str | PathLike[str] | None,
@@ -211,7 +169,7 @@ def write_json_output(
     bool
         True if data was written to disk; False if not.
     """
-    if not is_file_target(output_path):
+    if not PathParser.is_file_target(output_path):
         return False
     File(output_path, FileFormat.JSON).write(data)
     print(f'{success_message} {output_path}')
