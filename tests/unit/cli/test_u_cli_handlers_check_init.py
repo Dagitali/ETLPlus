@@ -351,42 +351,6 @@ class TestInitHandler:
         with pytest.raises(ValueError, match='Init target must be a directory'):
             handlers.init_handler(directory=str(file_path))
 
-    @pytest.mark.parametrize('conflicting_dir', ['data', 'temp'])
-    def test_rejects_existing_file_where_scaffold_directory_is_required(
-        self,
-        tmp_path: Path,
-        conflicting_dir: str,
-    ) -> None:
-        """
-        Test that init handler rejects files where scaffold directories are needed.
-        """
-        project_dir = tmp_path / 'starter'
-        project_dir.mkdir()
-        (project_dir / conflicting_dir).write_text('conflict\n', encoding='utf-8')
-
-        with pytest.raises(
-            ValueError,
-            match='Init target requires a directory but found a file',
-        ):
-            handlers.init_handler(directory=str(project_dir))
-
-    def test_scaffolds_starter_files(
-        self,
-        tmp_path: Path,
-        capture_io: CaptureIo,
-    ) -> None:
-        """
-        Test that init handler creates starter files and emits a JSON payload.
-        """
-        project_dir = tmp_path / 'starter'
-
-        assert handlers.init_handler(directory=str(project_dir)) == 0
-        assert (project_dir / 'pipeline.yml').is_file()
-        assert (project_dir / 'data' / 'customers.csv').is_file()
-        payload = cast(dict[str, Any], capture_io['emit_json'][0][0][0])
-        assert payload['status'] == 'ok'
-        assert payload['job'] == 'file_to_file_customers'
-
 
 class TestInitHandlerInternalHelpers:
     """Unit tests for internal helper functions in :mod:`etlplus.cli._handlers.init`."""
@@ -671,3 +635,98 @@ class TestCliHandlersInternalHelpers:
             {'table': 'from_spec'},
             {'table': 'from_config'},
         ]
+
+
+class TestScheduleHandler:
+    """Unit tests for :func:`schedule_handler`."""
+
+    def test_emits_schedule_summary(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Schedule handler should emit the configured schedule metadata."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Schedule Test Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+                'schedules': [
+                    {
+                        'name': 'nightly_all',
+                        'cron': '0 2 * * *',
+                        'timezone': 'UTC',
+                        'target': {'run_all': True},
+                    },
+                    {
+                        'name': 'customers_every_30m',
+                        'interval': {'minutes': 30},
+                        'paused': True,
+                        'target': {'job': 'job-a'},
+                    },
+                ],
+            },
+        )
+        patch_config_from_yaml(monkeypatch, cfg)
+
+        assert handlers.schedule_handler(config='cfg.yml') == 0
+        assert_emit_json(
+            capture_io,
+            {
+                'name': 'Schedule Test Pipeline',
+                'schedule_count': 2,
+                'schedules': [
+                    {
+                        'name': 'nightly_all',
+                        'cron': '0 2 * * *',
+                        'paused': False,
+                        'target': {'run_all': True},
+                        'timezone': 'UTC',
+                    },
+                    {
+                        'name': 'customers_every_30m',
+                        'interval': {'minutes': 30},
+                        'paused': True,
+                        'target': {'job': 'job-a'},
+                    },
+                ],
+            },
+            pretty=True,
+        )
+
+    @pytest.mark.parametrize('conflicting_dir', ['data', 'temp'])
+    def test_rejects_existing_file_where_scaffold_directory_is_required(
+        self,
+        tmp_path: Path,
+        conflicting_dir: str,
+    ) -> None:
+        """
+        Test that init handler rejects files where scaffold directories are needed.
+        """
+        project_dir = tmp_path / 'starter'
+        project_dir.mkdir()
+        (project_dir / conflicting_dir).write_text('conflict\n', encoding='utf-8')
+
+        with pytest.raises(
+            ValueError,
+            match='Init target requires a directory but found a file',
+        ):
+            handlers.init_handler(directory=str(project_dir))
+
+    def test_scaffolds_starter_files(
+        self,
+        tmp_path: Path,
+        capture_io: CaptureIo,
+    ) -> None:
+        """
+        Test that init handler creates starter files and emits a JSON payload.
+        """
+        project_dir = tmp_path / 'starter'
+
+        assert handlers.init_handler(directory=str(project_dir)) == 0
+        assert (project_dir / 'pipeline.yml').is_file()
+        assert (project_dir / 'data' / 'customers.csv').is_file()
+        payload = cast(dict[str, Any], capture_io['emit_json'][0][0][0])
+        assert payload['status'] == 'ok'
+        assert payload['job'] == 'file_to_file_customers'
