@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 
 from etlplus.utils import SubstitutionResolver
+from etlplus.utils import TokenReferenceCollector
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -139,3 +140,45 @@ class TestDeepSubstitute:
 
         with pytest.raises(AttributeError):
             resolver.vars_map = {}  # type: ignore[misc]
+
+
+class TestTokenReferenceCollector:
+    """Unit tests for unresolved token-reference collection."""
+
+    def test_collect_names_walks_nested_container_types(self) -> None:
+        """Test token collection across mappings and sequence container types."""
+        value = {
+            'list': ['${LIST_TOKEN}'],
+            'tuple': ('${TUPLE_TOKEN}',),
+            'set': {'${SET_TOKEN}'},
+            'frozen': frozenset({'${FROZEN_TOKEN}'}),
+            'number': 1,
+        }
+
+        assert TokenReferenceCollector.collect_names(value) == {
+            'FROZEN_TOKEN',
+            'LIST_TOKEN',
+            'SET_TOKEN',
+            'TUPLE_TOKEN',
+        }
+
+    def test_collect_rows_returns_stable_paths(self) -> None:
+        """Test token row collection includes sorted reference paths."""
+        assert TokenReferenceCollector.collect_rows(
+            {
+                'root': '${ROOT}',
+                'nested': [{'value': '${ROOT}'}, '${OTHER}'],
+            },
+        ) == [
+            {'name': 'OTHER', 'paths': ['nested[1]']},
+            {'name': 'ROOT', 'paths': ['nested[0].value', 'root']},
+        ]
+
+    def test_collect_rows_supports_custom_pattern(self) -> None:
+        """Test custom token patterns can be injected by callers."""
+        import re
+
+        assert TokenReferenceCollector.collect_rows(
+            {'path': 'Hello {{NAME}}'},
+            pattern=re.compile(r'\{\{([^}]+)\}\}'),
+        ) == [{'name': 'NAME', 'paths': ['path']}]
