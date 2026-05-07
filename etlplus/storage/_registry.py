@@ -115,6 +115,5 @@ def get_backend(
     ):
         return _backend_for(location.scheme)
     raise NotImplementedError(
-        'Storage backend support is not implemented yet for '
-        f'{location.scheme.value!r}',
+        f'Storage backend support is not implemented yet for {location.scheme.value!r}',
     )
