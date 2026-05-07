@@ -22,6 +22,7 @@ from etlplus.workflow._schedule import ScheduleBackfillConfig
 from etlplus.workflow._schedule import ScheduleConfig
 from etlplus.workflow._schedule import ScheduleIntervalConfig
 from etlplus.workflow._schedule import ScheduleTargetConfig
+from etlplus.workflow._schedule import schedule_validation_issues
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -43,6 +44,7 @@ WORKFLOW_EXPORTS = [
     ('TransformRef', TransformRef),
     ('ValidationRef', ValidationRef),
     ('DagError', DagError),
+    ('schedule_validation_issues', schedule_validation_issues),
     ('topological_sort_jobs', topological_sort_jobs),
 ]
 
