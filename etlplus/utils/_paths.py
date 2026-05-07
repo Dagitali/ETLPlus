@@ -10,6 +10,7 @@ import hashlib
 from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
+from typing import TypeGuard
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -60,6 +61,47 @@ class PathParser:
     """Parse and classify path-like strings."""
 
     # -- Static Methods -- #
+
+    @staticmethod
+    def is_file_target(
+        value: object,
+    ) -> TypeGuard[str | PathLike[str]]:
+        """
+        Return whether *value* names a concrete file target.
+
+        Parameters
+        ----------
+        value : object
+            Output destination supplied by a caller.
+
+        Returns
+        -------
+        TypeGuard[str | PathLike[str]]
+            ``True`` when *value* is path-like and does not represent STDOUT.
+        """
+        return isinstance(value, str | PathLike) and not PathParser.is_stdout_target(
+            value,
+        )
+
+    @staticmethod
+    def is_stdout_target(
+        value: object,
+    ) -> bool:
+        """
+        Return whether *value* represents STDOUT.
+
+        Parameters
+        ----------
+        value : object
+            Output destination supplied by a caller.
+
+        Returns
+        -------
+        bool
+            ``True`` for ``None``, blank strings, or ``"-"`` with surrounding
+            whitespace.
+        """
+        return value is None or (isinstance(value, str) and value.strip() in {'', '-'})
 
     @staticmethod
     def is_windows_drive_path(
