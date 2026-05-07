@@ -72,15 +72,6 @@ class _TelemetryValueParser:
         return None
 
     @staticmethod
-    def flag(
-        value: object,
-        *,
-        default: bool,
-    ) -> bool:
-        """Return one boolean flag or *default* when the input is invalid."""
-        return ValueParser.bool_flag(value, default=default)
-
-    @staticmethod
     def span_name(
         event: Mapping[str, Any],
     ) -> str:
@@ -152,7 +143,7 @@ class ResolvedTelemetryConfig:
         resolved_enabled = (
             enabled
             if enabled is not None
-            else _TelemetryValueParser.flag(
+            else ValueParser.bool_flag(
                 env_map.get(_ENV_TELEMETRY_ENABLED),
                 default=(telemetry_cfg.enabled or resolved_exporter != 'none'),
             )
@@ -198,7 +189,7 @@ class TelemetryConfig:
 
         raw_service_name = data.get('service_name')
         return cls(
-            enabled=_TelemetryValueParser.flag(data.get('enabled'), default=False),
+            enabled=ValueParser.bool_flag(data.get('enabled'), default=False),
             exporter=_TelemetryValueParser.exporter(data.get('exporter')),
             service_name=(
                 raw_service_name.strip()
@@ -362,17 +353,14 @@ class _OpenTelemetryAdapter:
         )
         self._history_record_counter.add(1, attrs)
 
-        duration_ms = record.get('duration_ms')
-        if isinstance(duration_ms, int):
-            self._history_duration_histogram.record(duration_ms, attrs)
-
-        records_in = record.get('records_in')
-        if isinstance(records_in, int):
-            self._history_records_in_histogram.record(records_in, attrs)
-
-        records_out = record.get('records_out')
-        if isinstance(records_out, int):
-            self._history_records_out_histogram.record(records_out, attrs)
+        for field_name, histogram in (
+            ('duration_ms', self._history_duration_histogram),
+            ('records_in', self._history_records_in_histogram),
+            ('records_out', self._history_records_out_histogram),
+        ):
+            value = record.get(field_name)
+            if isinstance(value, int):
+                histogram.record(value, attrs)
 
 
 class _TelemetryAttributeBuilder:
