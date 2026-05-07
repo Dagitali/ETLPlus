@@ -23,33 +23,61 @@ from .pytest_connector_support import assert_connector_fields
 class TestConnectorDb:
     """Unit tests for :class:`ConnectorDb`."""
 
-    def test_from_obj_normalizes_database_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('payload', 'expected'),
+        [
+            pytest.param(
+                {
+                    'name': 'warehouse',
+                    'type': 'database',
+                    'connection_string': 'sqlite:///warehouse.db',
+                    'query': 'select * from events',
+                    'table': 'events',
+                    'mode': 'append',
+                },
+                {
+                    'type': DataConnectorType.DATABASE,
+                    'name': 'warehouse',
+                    'connection_string': 'sqlite:///warehouse.db',
+                    'query': 'select * from events',
+                    'table': 'events',
+                    'mode': 'append',
+                },
+                id='strings',
+            ),
+            pytest.param(
+                {
+                    'name': 'warehouse',
+                    'type': 'database',
+                    'connection_string': 123,
+                    'query': False,
+                    'table': 456,
+                    'mode': None,
+                },
+                {
+                    'type': DataConnectorType.DATABASE,
+                    'name': 'warehouse',
+                    'connection_string': '123',
+                    'query': 'False',
+                    'table': '456',
+                    'mode': None,
+                },
+                id='coerces-optional-strings',
+            ),
+        ],
+    )
+    def test_from_obj_normalizes_database_fields(
+        self,
+        payload: dict[str, object],
+        expected: dict[str, object],
+    ) -> None:
         """
         Test that :meth:`from_obj` preserves standard database connector
         fields.
         """
-        connector = ConnectorDb.from_obj(
-            {
-                'name': 'warehouse',
-                'type': 'database',
-                'connection_string': 'sqlite:///warehouse.db',
-                'query': 'select * from events',
-                'table': 'events',
-                'mode': 'append',
-            },
-        )
+        connector = ConnectorDb.from_obj(payload)
 
-        assert_connector_fields(
-            connector,
-            {
-                'type': DataConnectorType.DATABASE,
-                'name': 'warehouse',
-                'connection_string': 'sqlite:///warehouse.db',
-                'query': 'select * from events',
-                'table': 'events',
-                'mode': 'append',
-            },
-        )
+        assert_connector_fields(connector, expected)
 
     @pytest.mark.parametrize(
         'payload',

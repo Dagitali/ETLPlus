@@ -17,8 +17,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Self
 from typing import TypedDict
-from typing import overload
 
+from ..utils import MappingFieldParser
+from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ._core import ConnectorBase
 from ._enums import DataConnectorType
@@ -86,14 +87,6 @@ class ConnectorDb(ConnectorBase):
     # -- Class Methods -- #
 
     @classmethod
-    @overload
-    def from_obj(cls, obj: ConnectorDbConfigDict) -> Self: ...
-
-    @classmethod
-    @overload
-    def from_obj(cls, obj: StrAnyMap) -> Self: ...
-
-    @classmethod
     def from_obj(
         cls,
         obj: StrAnyMap,
@@ -111,12 +104,14 @@ class ConnectorDb(ConnectorBase):
         Self
             Parsed connector instance.
         """
-        name = cls._require_name(obj, kind='Db')
+        name = MappingFieldParser.require_str(obj, 'name', label='ConnectorDb')
 
         return cls(
             name=name,
-            connection_string=obj.get('connection_string'),
-            query=obj.get('query'),
-            table=obj.get('table'),
-            mode=obj.get('mode'),
+            connection_string=ValueParser.optional_str(
+                obj.get('connection_string'),
+            ),
+            query=ValueParser.optional_str(obj.get('query')),
+            table=ValueParser.optional_str(obj.get('table')),
+            mode=ValueParser.optional_str(obj.get('mode')),
         )
