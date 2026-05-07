@@ -38,6 +38,44 @@ class ValueParser:
     # -- Static Methods -- #
 
     @staticmethod
+    def bool_flag(
+        value: object,
+        *,
+        default: bool,
+        true_values: frozenset[str] = frozenset({'1', 'on', 'true', 'yes'}),
+        false_values: frozenset[str] = frozenset({'0', 'off', 'false', 'no'}),
+    ) -> bool:
+        """
+        Return one boolean flag parsed from common config/env values.
+
+        Parameters
+        ----------
+        value : object
+            Input value to parse.
+        default : bool
+            Fallback returned when *value* is not a recognized flag.
+        true_values : frozenset[str], optional
+            Normalized strings interpreted as ``True``.
+        false_values : frozenset[str], optional
+            Normalized strings interpreted as ``False``.
+
+        Returns
+        -------
+        bool
+            Parsed boolean or *default*.
+        """
+        if isinstance(value, bool):
+            return value
+        if not isinstance(value, str):
+            return default
+        normalized = value.strip().casefold()
+        if normalized in true_values:
+            return True
+        if normalized in false_values:
+            return False
+        return default
+
+    @staticmethod
     def optional_choice(
         value: object,
         choices: Mapping[str, str],
