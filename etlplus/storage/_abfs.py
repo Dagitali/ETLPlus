@@ -40,11 +40,6 @@ def _import_datalake_types() -> tuple[Any, Any | None]:
     -------
     tuple[Any, Any | None]
         ``(DataLakeServiceClient, ContentSettings or None)``.
-
-    Raises
-    ------
-    ImportError
-        If ``azure-storage-file-datalake`` is not installed.
     """
     module = import_package(
         'azure.storage.filedatalake',
