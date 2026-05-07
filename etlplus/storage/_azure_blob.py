@@ -40,11 +40,6 @@ def _import_blob_types() -> tuple[Any, Any | None]:
     -------
     tuple[Any, Any | None]
         ``(BlobServiceClient, ContentSettings or None)``.
-
-    Raises
-    ------
-    ImportError
-        If azure-storage-blob is not installed.
     """
     module = import_package(
         'azure.storage.blob',
