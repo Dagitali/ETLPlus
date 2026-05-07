@@ -23,6 +23,7 @@ from etlplus.cli._handlers import dataops as dataops_mod
 from etlplus.cli._handlers import init as init_mod
 from etlplus.cli._handlers import render as render_mod
 from etlplus.cli._handlers import run as run_mod
+from etlplus.cli._handlers import schedule as schedule_mod
 from etlplus.file import File
 from etlplus.history import HistoryStore
 from etlplus.history import RunCompletion
@@ -59,6 +60,7 @@ handlers: Any = SimpleNamespace(
     load_handler=dataops_mod.load_handler,
     render_handler=render_mod.render_handler,
     run_handler=run_mod.run_handler,
+    schedule_handler=schedule_mod.schedule_handler,
     transform_handler=dataops_mod.transform_handler,
     validate_handler=dataops_mod.validate_handler,
 )
