@@ -203,7 +203,7 @@ class RunRecord:
             pipeline_name=pipeline_name,
             job_name=job_name,
             config_path=config_path,
-            config_sha256=PathHasher.sha256(config_path),
+            config_sha256=PathHasher(config_path).sha256(),
             started_at=started_at,
             records_in=None,
             records_out=None,
