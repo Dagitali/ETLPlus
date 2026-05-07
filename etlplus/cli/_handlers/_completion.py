@@ -30,7 +30,7 @@ __all__ = [
 type CompletionMode = Literal['json', 'or_write', 'file', 'json_file']
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _require_file_target(
@@ -53,6 +53,9 @@ def _require_success_message(
     if success_message:
         return success_message
     raise ValueError(f'{mode!r} completion requires a success message')
+
+
+# SECTION: FUNCTIONS ======================================================== #
 
 
 def complete_output(
