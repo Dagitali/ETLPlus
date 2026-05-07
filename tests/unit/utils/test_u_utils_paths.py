@@ -25,11 +25,13 @@ class TestPathHasher:
         path = tmp_path / 'pipeline.yml'
         path.write_text('name: pipeline-a\n', encoding='utf-8')
 
-        assert PathHasher.sha256(path) == hashlib.sha256(path.read_bytes()).hexdigest()
+        assert PathHasher(path).sha256() == hashlib.sha256(
+            path.read_bytes(),
+        ).hexdigest()
 
     def test_sha256_returns_none_for_missing_path(self, tmp_path: Path) -> None:
         """Missing paths should not produce a digest."""
-        assert PathHasher.sha256(tmp_path / 'missing.yml') is None
+        assert PathHasher(tmp_path / 'missing.yml').sha256() is None
 
 
 class TestPathParser:
