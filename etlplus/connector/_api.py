@@ -19,7 +19,6 @@ from dataclasses import field
 from typing import Any
 from typing import Self
 from typing import TypedDict
-from typing import overload
 
 from ..api import PaginationConfig
 from ..api import PaginationConfigDict
@@ -118,14 +117,6 @@ class ConnectorApi(ConnectorBase):
     endpoint: str | None = None
 
     # -- Class Methods -- #
-
-    @classmethod
-    @overload
-    def from_obj(cls, obj: ConnectorApiConfigDict) -> Self: ...
-
-    @classmethod
-    @overload
-    def from_obj(cls, obj: StrAnyMap) -> Self: ...
 
     @classmethod
     def from_obj(
