@@ -326,20 +326,62 @@ class TestDependencyImporter:
 class TestModuleAvailable:
     """Unit tests for non-importing module availability checks."""
 
-    def test_module_available_detects_stdlib_module(self) -> None:
-        """Test availability checks return true for a known stdlib module."""
-        assert module_available('json') is True
+    @pytest.mark.parametrize(
+        ('module_name', 'finder_result', 'expected'),
+        [
+            pytest.param(' json ', object(), True, id='available-stripped'),
+            pytest.param('missing', None, False, id='missing'),
+        ],
+    )
+    def test_module_available_uses_injected_spec_finder(
+        self,
+        module_name: str,
+        finder_result: object | None,
+        expected: bool,
+    ) -> None:
+        """Test availability checks normalize names before metadata lookup."""
+        calls: list[str] = []
+
+        assert (
+            module_available(
+                module_name,
+                spec_finder=lambda name: calls.append(name) or finder_result,
+            )
+            is expected
+        )
+        assert calls == [module_name.strip()]
 
     @pytest.mark.parametrize(
         'module_name',
         [
-            pytest.param('etlplus.definitely_missing_dependency', id='missing'),
             pytest.param(' ', id='blank'),
         ],
     )
-    def test_module_available_returns_false_for_unavailable_modules(
+    def test_module_available_returns_false_for_invalid_module_names(
         self,
         module_name: str,
     ) -> None:
-        """Test unavailable or invalid module names return false."""
-        assert module_available(module_name) is False
+        """Test invalid module names return false without spec lookup."""
+        calls: list[str] = []
+
+        assert module_available(module_name, spec_finder=calls.append) is False
+        assert not calls
+
+    @pytest.mark.parametrize(
+        'error',
+        [
+            pytest.param(ImportError('missing'), id='import-error'),
+            pytest.param(ModuleNotFoundError('missing'), id='module-not-found'),
+            pytest.param(ValueError('bad name'), id='value-error'),
+        ],
+    )
+    def test_module_available_returns_false_for_finder_errors(
+        self,
+        error: Exception,
+    ) -> None:
+        """Test finder failures are treated as unavailable modules."""
+
+        def _raise(_module_name: str) -> object:
+            raise error
+
+        assert module_available('broken', spec_finder=_raise) is False
