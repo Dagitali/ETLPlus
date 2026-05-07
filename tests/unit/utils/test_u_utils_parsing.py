@@ -24,6 +24,28 @@ class TestValueParser:
         ('value', 'expected'),
         [
             pytest.param(None, None, id='none'),
+            pytest.param(' WARN ', 'warn', id='normalized-choice'),
+            pytest.param('after_transform', 'after_transform', id='canonical-choice'),
+            pytest.param('custom', 'custom', id='unknown-choice'),
+            pytest.param(5, '5', id='coerced-unknown-choice'),
+        ],
+    )
+    def test_optional_choice(
+        self,
+        value: object,
+        expected: str | None,
+    ) -> None:
+        """Test optional choice normalization with string-preserving fallback."""
+        choices = {
+            'after_transform': 'after_transform',
+            'warn': 'warn',
+        }
+        assert ValueParser.optional_choice(value, choices) == expected
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(None, None, id='none'),
             pytest.param('hello', 'hello', id='string'),
             pytest.param(5, '5', id='coerce-int'),
             pytest.param(False, 'False', id='coerce-bool'),

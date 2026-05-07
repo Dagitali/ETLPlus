@@ -11,7 +11,6 @@ Notes
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Self
@@ -70,15 +69,10 @@ class ProfileConfig:
             Parsed profile configuration; non-mapping input yields a default
             instance. All :attr:`env` values are coerced to strings.
         """
-        if not isinstance(obj, Mapping):
+        if not (data := MappingParser.optional(obj)):
             return cls()
 
-        # Coerce all env values to strings using shared helper.
-        env = MappingParser.to_str_dict(MappingParser.optional(obj.get('env')))
-
         return cls(
-            default_target=ValueParser.optional_str(
-                obj.get('default_target'),
-            ),
-            env=env,
+            default_target=ValueParser.optional_str(data.get('default_target')),
+            env=MappingParser.to_str_dict(MappingParser.optional(data.get('env'))),
         )

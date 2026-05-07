@@ -22,7 +22,6 @@ from ..utils import IntParser
 from ..utils import MappingFieldParser
 from ..utils import MappingParser
 from ..utils import SequenceParser
-from ..utils import TextChoiceResolver
 from ..utils import ValueParser
 
 # SECTION: EXPORTS ========================================================== #
@@ -51,21 +50,6 @@ _VALIDATION_SEVERITY_CHOICES = {
     'warn': 'warn',
     'error': 'error',
 }
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _normalize_optional_choice(
-    value: object,
-    *,
-    mapping: dict[str, str],
-) -> str | None:
-    """Return one optional canonical choice string when recognized."""
-    text = ValueParser.optional_str(value)
-    if text is None:
-        return None
-    return TextChoiceResolver(mapping, text).resolve(text)
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -109,8 +93,7 @@ class ExtractRef:
         Self | None
             Parsed reference or ``None`` when the payload is invalid.
         """
-        data = MappingParser.optional(obj)
-        if not data:
+        if not (data := MappingParser.optional(obj)):
             return None
         if (source := MappingFieldParser.required_str(data, 'source')) is None:
             return None
@@ -158,8 +141,7 @@ class JobRetryConfig:
         Self | None
             Parsed retry policy or ``None`` when the payload is invalid.
         """
-        data = MappingParser.optional(obj)
-        if not data:
+        if not (data := MappingParser.optional(obj)):
             return None
         return cls(
             max_attempts=IntParser.positive(data.get('max_attempts'), default=1),
@@ -235,8 +217,7 @@ class JobConfig:
         Self | None
             Parsed job configuration or ``None`` if invalid.
         """
-        data = MappingParser.optional(obj)
-        if not data:
+        if not (data := MappingParser.optional(obj)):
             return None
         if (name := MappingFieldParser.required_str(data, 'name')) is None:
             return None
@@ -291,8 +272,7 @@ class LoadRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = MappingParser.optional(obj)
-        if not data:
+        if not (data := MappingParser.optional(obj)):
             return None
         if (target := MappingFieldParser.required_str(data, 'target')) is None:
             return None
@@ -337,8 +317,7 @@ class TransformRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = MappingParser.optional(obj)
-        if not data:
+        if not (data := MappingParser.optional(obj)):
             return None
         if (pipeline := MappingFieldParser.required_str(data, 'pipeline')) is None:
             return None
@@ -387,19 +366,18 @@ class ValidationRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        data = MappingParser.optional(obj)
-        if not data:
+        if not (data := MappingParser.optional(obj)):
             return None
         if (ruleset := MappingFieldParser.required_str(data, 'ruleset')) is None:
             return None
         return cls(
             ruleset=ruleset,
-            severity=_normalize_optional_choice(
+            severity=ValueParser.optional_choice(
                 data.get('severity'),
-                mapping=_VALIDATION_SEVERITY_CHOICES,
+                _VALIDATION_SEVERITY_CHOICES,
             ),
-            phase=_normalize_optional_choice(
+            phase=ValueParser.optional_choice(
                 data.get('phase'),
-                mapping=_VALIDATION_PHASE_CHOICES,
+                _VALIDATION_PHASE_CHOICES,
             ),
         )

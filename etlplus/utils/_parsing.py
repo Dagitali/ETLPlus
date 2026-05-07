@@ -10,6 +10,8 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import TypeGuard
 
+from ._text import TextChoiceResolver
+
 # SECTION: EXPORTS ========================================================== #
 
 
@@ -34,6 +36,32 @@ class ValueParser:
     """
 
     # -- Static Methods -- #
+
+    @staticmethod
+    def optional_choice(
+        value: object,
+        choices: Mapping[str, str],
+    ) -> str | None:
+        """
+        Return one optional canonical choice string when recognized.
+
+        Parameters
+        ----------
+        value : object
+            Input value to parse as an optional choice.
+        choices : Mapping[str, str]
+            Mapping of normalized input choices to canonical outputs.
+
+        Returns
+        -------
+        str | None
+            Canonical choice when recognized, the stringified value when
+            unrecognized, or ``None`` when *value* is missing.
+        """
+        text = ValueParser.optional_str(value)
+        if text is None:
+            return None
+        return TextChoiceResolver(choices, text).resolve(text)
 
     @staticmethod
     def optional_str(
