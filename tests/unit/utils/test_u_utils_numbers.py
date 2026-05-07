@@ -217,6 +217,18 @@ class TestGenericNumberCoercion:
         """
         assert FloatParser.coerce(value) == expected
 
+    def test_float_parser_coerce_accepts_floatable_object(self) -> None:
+        """Test fallback float coercion for non-primitive floatable objects."""
+
+        class Floatable:
+            """Object exposing ``__float__`` for parser fallback tests."""
+
+            def __float__(self) -> float:
+                """Return a finite float value."""
+                return 2.5
+
+        assert FloatParser.coerce(Floatable()) == 2.5
+
     def test_float_parser_coerce_with_shared_non_mapping_cases(
         self,
         non_mapping_value: object,
