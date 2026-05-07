@@ -71,42 +71,6 @@ class TestHistoryStoreMergeHelpers:
 class TestHistoryStoreModuleHelpers:
     """Unit tests for :mod:`etlplus.history._store` helper functions."""
 
-    def test_run_record_build_delegates_to_classmethod_implementation(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that the preferred :meth:`RunRecord.build` entry point receives
-        the supplied constructor inputs unchanged.
-        """
-        captured: dict[str, Any] = {}
-        sentinel = object()
-
-        def fake_build(**kwargs: Any) -> object:
-            captured.update(kwargs)
-            return sentinel
-
-        monkeypatch.setattr(store_mod.RunRecord, 'build', staticmethod(fake_build))
-
-        result = store_mod.RunRecord.build(
-            run_id='run-123',
-            config_path='pipeline.yml',
-            started_at='2026-03-23T00:00:00Z',
-            pipeline_name='pipeline-a',
-            job_name='job-a',
-            status='queued',
-        )
-
-        assert result is sentinel
-        assert captured == {
-            'run_id': 'run-123',
-            'config_path': 'pipeline.yml',
-            'started_at': '2026-03-23T00:00:00Z',
-            'pipeline_name': 'pipeline-a',
-            'job_name': 'job-a',
-            'status': 'queued',
-        }
-
     @pytest.mark.parametrize(
         ('payload', 'expected'),
         [
