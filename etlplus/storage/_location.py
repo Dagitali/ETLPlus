@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.parse import unquote
 from urllib.parse import urlsplit
 
+from ..utils import PathParser
 from ..utils._types import StrPath
 from ._enums import StorageScheme
 
@@ -60,13 +61,6 @@ def _from_https_azure_url(
         )
 
     return None
-
-
-def _looks_like_windows_drive(
-    raw: str,
-) -> bool:
-    """Return whether *raw* begins with a Windows drive prefix."""
-    return len(raw) >= 2 and raw[0].isalpha() and raw[1] == ':'
 
 
 # SECTION: CLASSES ========================================================== #
@@ -126,7 +120,7 @@ class StorageLocation:
             raise ValueError('Storage location cannot be empty')
 
         parsed = urlsplit(raw)
-        if parsed.scheme and not _looks_like_windows_drive(raw):
+        if parsed.scheme and not PathParser.is_windows_drive_path(raw):
             if parsed.scheme.casefold() == 'https':
                 azure_location = _from_https_azure_url(
                     raw,
