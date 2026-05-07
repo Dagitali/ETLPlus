@@ -18,6 +18,10 @@ from etlplus.workflow._jobs import LoadRef
 from etlplus.workflow._jobs import TransformRef
 from etlplus.workflow._jobs import ValidationRef
 from etlplus.workflow._profile import ProfileConfig
+from etlplus.workflow._schedule import ScheduleBackfillConfig
+from etlplus.workflow._schedule import ScheduleConfig
+from etlplus.workflow._schedule import ScheduleIntervalConfig
+from etlplus.workflow._schedule import ScheduleTargetConfig
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -32,6 +36,10 @@ WORKFLOW_EXPORTS = [
     ('JobRetryConfig', JobRetryConfig),
     ('LoadRef', LoadRef),
     ('ProfileConfig', ProfileConfig),
+    ('ScheduleBackfillConfig', ScheduleBackfillConfig),
+    ('ScheduleConfig', ScheduleConfig),
+    ('ScheduleIntervalConfig', ScheduleIntervalConfig),
+    ('ScheduleTargetConfig', ScheduleTargetConfig),
     ('TransformRef', TransformRef),
     ('ValidationRef', ValidationRef),
     ('DagError', DagError),
