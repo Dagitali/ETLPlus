@@ -11,6 +11,8 @@ from typing import IO
 from typing import Any
 from typing import cast
 
+from ..utils._imports import build_dependency_error_message
+from ..utils._imports import import_package
 from ._enums import StorageScheme
 from ._location import StorageLocation
 from ._remote import RemoteStorageBackend
@@ -43,13 +45,14 @@ def _import_boto3() -> Any:
     ImportError
         If boto3 is not installed.
     """
-    try:
-        return import_module('boto3')
-    except ImportError as e:  # pragma: no cover
-        raise ImportError(
-            'S3 storage support requires optional dependency "boto3".\n'
-            'Install with: pip install boto3',
-        ) from e
+    return import_package(
+        'boto3',
+        error_message=build_dependency_error_message(
+            'boto3',
+            format_name='S3 storage',
+        ),
+        importer=import_module,
+    )
 
 
 # SECTION: CLASSES ========================================================== #
