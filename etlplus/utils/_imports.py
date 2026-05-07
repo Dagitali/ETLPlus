@@ -75,6 +75,14 @@ class DependencyImporter:
         -------
         Any
             The imported module.
+
+        Raises
+        ------
+        self.import_exceptions
+            Propagated when ``strict_missing_name`` is enabled and the importer
+            fails on a different nested module name.
+        self.error_type
+            Raised with *error_message* when the configured import fails.
         """
         module_name = _clean_dependency_name(module_name, label='module_name')
 
@@ -163,7 +171,24 @@ def _clean_dependency_names(
 def dependency_label(
     dependency_names: tuple[str, ...],
 ) -> str:
-    """Return one quoted dependency label string for an error message."""
+    """
+    Return one quoted dependency label string for an error message.
+
+    Parameters
+    ----------
+    dependency_names : tuple[str, ...]
+        One or more cleaned dependency names.
+
+    Returns
+    -------
+    str
+        Quoted dependency label string.
+
+    Raises
+    ------
+    ValueError
+        If *dependency_names* is empty.
+    """
     if not dependency_names:
         raise ValueError('dependency_names must not be empty')
     cleaned_names = _clean_dependency_names(
@@ -183,7 +208,29 @@ def normalize_dependency_names(
     module_name: DependencyNames,
     pip_name: str | None,
 ) -> tuple[tuple[str, ...], str]:
-    """Normalize dependency names and install target for message formatting."""
+    """
+    Normalize dependency names and install target for message formatting.
+
+    Parameters
+    ----------
+    module_name : DependencyNames
+        One or more module names for the dependency.
+    pip_name : str | None
+        Optional package name to suggest for installation. Defaults to the
+        first cleaned module name when ``None`` or invalid. Ignored when
+        *module_name* is a string.
+
+    Returns
+    -------
+    tuple[tuple[str, ...], str]
+        Tuple of (normalized module names, normalized pip name or first module
+        name).
+
+    Raises
+    ------
+    ValueError
+        If *module_name* is an empty tuple or any cleaned names are empty.
+    """
     normalized_pip_name = (
         _clean_dependency_name(pip_name, label='pip_name')
         if pip_name is not None
@@ -208,7 +255,28 @@ def build_dependency_error_message(
     *,
     required: bool = False,
 ) -> str:
-    """Build an import error message for one dependency."""
+    """
+    Build an import error message for one dependency.
+
+    Parameters
+    ----------
+    module_name : DependencyNames
+        One or more module names for the dependency.
+    format_name : str
+        Name of the format requiring the dependency.
+    pip_name : str | None, optional
+        Optional package name to suggest for installation. Defaults to the
+        first cleaned module name when ``None`` or invalid. Ignored when
+        *module_name* is a string.
+    required : bool, optional
+        Whether the dependency is required. Defaults to ``False``.
+
+    Returns
+    -------
+    str
+        Formatted error message indicating the missing dependency and how to
+        install it.
+    """
     dependency_names, dependency_target = normalize_dependency_names(
         module_name,
         pip_name,
@@ -260,15 +328,6 @@ def import_package(
     -------
     Any
         The imported module.
-
-    Raises
-    ------
-    import_exceptions
-        Propagated when ``strict_missing_name`` is enabled and the importer
-        fails on a different nested module name.
-    error_type
-        Raised with *error_message* when the configured import fails.
-
     """
     importer_policy = DependencyImporter(
         cache=cache if cache is not None else {},
