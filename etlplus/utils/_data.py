@@ -152,7 +152,7 @@ class JsonCodec:
         internal JSON codec when decoding fails.
         """
         try:
-            data = cls.decode(text)
+            data = json.loads(text)
         except json.JSONDecodeError as exc:
             raise ValueError(
                 f'Invalid JSON payload: {exc.msg} (pos {exc.pos})',
@@ -218,27 +218,6 @@ class JsonCodec:
             separators=(',', ':') if self.compact and not self.pretty else None,
             default=self.default_serializer if default is None else default,
         )
-
-    # -- Static Methods -- #
-
-    @staticmethod
-    def decode(
-        text: str,
-    ) -> object:
-        """
-        Decode JSON text without applying ETL payload shape validation.
-
-        Parameters
-        ----------
-        text : str
-            The JSON text to decode.
-
-        Returns
-        -------
-        object
-            The raw decoded JSON value.
-        """
-        return json.loads(text)
 
     @staticmethod
     def default(
