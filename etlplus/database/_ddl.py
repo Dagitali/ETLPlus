@@ -103,9 +103,10 @@ def _ordered_specs(
 ) -> list[StrAnyMap]:
     """Return specs ordered by in-batch foreign-key dependencies."""
     materialized = list(specs)
-    names = [_spec_table_name(spec) for spec in materialized]
-    if any(name is None for name in names):
+    maybe_names = [_spec_table_name(spec) for spec in materialized]
+    if any(name is None for name in maybe_names):
         return materialized
+    names = [name for name in maybe_names if name is not None]
 
     known_names = frozenset(name for name in names if name is not None)
     if len(known_names) != len(names):
@@ -115,8 +116,6 @@ def _ordered_specs(
     specs_by_name: dict[str, StrAnyMap] = {}
 
     for spec, name in zip(materialized, names, strict=True):
-        if name is None:
-            continue
         specs_by_name[name] = spec
         foreign_keys = spec.get('foreign_keys')
         if not isinstance(foreign_keys, Sequence) or isinstance(foreign_keys, str):
