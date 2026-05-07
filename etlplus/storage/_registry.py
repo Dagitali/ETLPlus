@@ -6,6 +6,7 @@ Storage backend resolution helpers.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import cache
 
 from ..utils._types import StrPath
@@ -35,43 +36,28 @@ __all__ = [
 type ValueArg = StorageLocation | StrPath
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_BACKEND_FACTORIES: dict[StorageScheme, Callable[[], StorageBackendABC]] = {
+    StorageScheme.ABFS: AbfsStorageBackend,
+    StorageScheme.AZURE_BLOB: AzureBlobStorageBackend,
+    StorageScheme.FILE: LocalStorageBackend,
+    StorageScheme.FTP: FtpStorageBackend,
+    StorageScheme.HTTP: HttpStorageBackend,
+    StorageScheme.S3: S3StorageBackend,
+}
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 @cache
-def _abfs_backend() -> AbfsStorageBackend:
-    """Return the cached ABFS storage backend stub."""
-    return AbfsStorageBackend()
-
-
-@cache
-def _azure_blob_backend() -> AzureBlobStorageBackend:
-    """Return the cached Azure Blob storage backend skeleton."""
-    return AzureBlobStorageBackend()
-
-
-@cache
-def _ftp_backend() -> FtpStorageBackend:
-    """Return the cached FTP storage backend stub."""
-    return FtpStorageBackend()
-
-
-@cache
-def _http_backend() -> HttpStorageBackend:
-    """Return the cached HTTP storage backend instance."""
-    return HttpStorageBackend()
-
-
-@cache
-def _local_backend() -> LocalStorageBackend:
-    """Return the cached local-storage backend instance."""
-    return LocalStorageBackend()
-
-
-@cache
-def _s3_backend() -> S3StorageBackend:
-    """Return the cached S3 storage backend skeleton."""
-    return S3StorageBackend()
+def _backend_for(
+    scheme: StorageScheme,
+) -> StorageBackendABC:
+    """Return the cached backend instance for *scheme*."""
+    return _BACKEND_FACTORIES[scheme]()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -123,21 +109,12 @@ def get_backend(
         backend implementation.
     """
     location = coerce_location(value)
-    match location.scheme:
-        case StorageScheme.ABFS:
-            return _abfs_backend()
-        case StorageScheme.AZURE_BLOB:
-            return _azure_blob_backend()
-        case StorageScheme.FILE:
-            return _local_backend()
-        case StorageScheme.FTP:
-            return _ftp_backend()
-        case StorageScheme.HTTP:
-            return _http_backend()
-        case StorageScheme.S3:
-            return _s3_backend()
-        case _:
-            raise NotImplementedError(
-                'Storage backend support is not implemented yet for '
-                f'{location.scheme.value!r}',
-            )
+    if (
+        isinstance(location.scheme, StorageScheme)
+        and location.scheme in _BACKEND_FACTORIES
+    ):
+        return _backend_for(location.scheme)
+    raise NotImplementedError(
+        'Storage backend support is not implemented yet for '
+        f'{location.scheme.value!r}',
+    )
