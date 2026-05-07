@@ -107,7 +107,7 @@ def emit_or_write(
     ----------
     data : Any
         The data to serialize.
-    output_path : str | None
+    output_path : str | PathLike[str] | None
         Target file path; when falsy or ``'-'`` data is emitted to STDOUT.
     pretty : bool
         Whether to pretty-print JSON emission.
@@ -159,7 +159,7 @@ def write_json_output(
     ----------
     data : Any
         The data to serialize as JSON.
-    output_path : str | None
+    output_path : str | PathLike[str] | None
         The output file path, or None/'-' to skip writing.
     success_message : str
         The message to print upon successful write.
@@ -189,7 +189,7 @@ def write_file_payload(
     ----------
     payload : JSONData
         The JSON-like data to write.
-    target : str
+    target : str | PathLike[str]
         The file path to write the payload.
     format_hint : str | None
         An optional hint for the file format. If None, the format is inferred.
