@@ -52,10 +52,7 @@ def topological_sort_jobs(
     """
     try:
         jobs_by_name = MappingParser.index_named_items(jobs, item_label='job')
-        dependencies_by_name = {
-            job.name: tuple(dep for dep in job.depends_on if isinstance(dep, str))
-            for job in jobs
-        }
+        dependencies_by_name = {job.name: tuple(job.depends_on) for job in jobs}
         ordered_names = topological_sort_names(dependencies_by_name)
     except ValueError as exc:
         message = str(exc).replace(' for node ', ' in job ')
