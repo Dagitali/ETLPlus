@@ -17,6 +17,9 @@ from typing import Self
 from typing import cast
 
 from ..__version__ import __version__
+from ..utils import MappingParser
+from ..utils import TextNormalizer
+from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
@@ -42,8 +45,6 @@ type TelemetryExporter = Literal['none', 'opentelemetry']
 
 _DEFAULT_EXPORTER: TelemetryExporter = 'none'
 _VALID_EXPORTERS = frozenset({'none', 'opentelemetry'})
-_ENABLED_TRUE_VALUES = frozenset({'1', 'on', 'true', 'yes'})
-_ENABLED_FALSE_VALUES = frozenset({'0', 'off', 'false', 'no'})
 _ENV_TELEMETRY_ENABLED = 'ETLPLUS_TELEMETRY_ENABLED'
 _ENV_TELEMETRY_EXPORTER = 'ETLPLUS_TELEMETRY_EXPORTER'
 _ENV_TELEMETRY_SERVICE_NAME = 'ETLPLUS_TELEMETRY_SERVICE_NAME'
@@ -65,7 +66,7 @@ class _TelemetryValueParser:
         """Return one supported telemetry exporter name when valid."""
         if not isinstance(value, str):
             return None
-        normalized = value.strip().lower()
+        normalized = TextNormalizer.normalize(value)
         if normalized in _VALID_EXPORTERS:
             return cast(TelemetryExporter, normalized)
         return None
@@ -77,16 +78,7 @@ class _TelemetryValueParser:
         default: bool,
     ) -> bool:
         """Return one boolean flag or *default* when the input is invalid."""
-        if isinstance(value, bool):
-            return value
-        if not isinstance(value, str):
-            return default
-        normalized = value.strip().lower()
-        if normalized in _ENABLED_TRUE_VALUES:
-            return True
-        if normalized in _ENABLED_FALSE_VALUES:
-            return False
-        return default
+        return ValueParser.bool_flag(value, default=default)
 
     @staticmethod
     def span_name(
@@ -201,13 +193,13 @@ class TelemetryConfig:
         obj: StrAnyMap | None,
     ) -> Self:
         """Parse one optional telemetry config mapping."""
-        if not isinstance(obj, Mapping):
+        if not (data := MappingParser.optional(obj)):
             return cls()
 
-        raw_service_name = obj.get('service_name')
+        raw_service_name = data.get('service_name')
         return cls(
-            enabled=_TelemetryValueParser.flag(obj.get('enabled'), default=False),
-            exporter=_TelemetryValueParser.exporter(obj.get('exporter')),
+            enabled=_TelemetryValueParser.flag(data.get('enabled'), default=False),
+            exporter=_TelemetryValueParser.exporter(data.get('exporter')),
             service_name=(
                 raw_service_name.strip()
                 if isinstance(raw_service_name, str) and raw_service_name.strip()
