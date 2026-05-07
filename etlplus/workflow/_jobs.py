@@ -22,7 +22,6 @@ from ..utils import IntParser
 from ..utils import MappingFieldParser
 from ..utils import MappingParser
 from ..utils import SequenceParser
-from ..utils import TextChoiceResolver
 from ..utils import ValueParser
 
 # SECTION: EXPORTS ========================================================== #
@@ -51,21 +50,6 @@ _VALIDATION_SEVERITY_CHOICES = {
     'warn': 'warn',
     'error': 'error',
 }
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _normalize_optional_choice(
-    value: object,
-    *,
-    mapping: dict[str, str],
-) -> str | None:
-    """Return one optional canonical choice string when recognized."""
-    text = ValueParser.optional_str(value)
-    if text is None:
-        return None
-    return TextChoiceResolver(mapping, text).resolve(text)
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -394,12 +378,12 @@ class ValidationRef:
             return None
         return cls(
             ruleset=ruleset,
-            severity=_normalize_optional_choice(
+            severity=ValueParser.optional_choice(
                 data.get('severity'),
-                mapping=_VALIDATION_SEVERITY_CHOICES,
+                _VALIDATION_SEVERITY_CHOICES,
             ),
-            phase=_normalize_optional_choice(
+            phase=ValueParser.optional_choice(
                 data.get('phase'),
-                mapping=_VALIDATION_PHASE_CHOICES,
+                _VALIDATION_PHASE_CHOICES,
             ),
         )
