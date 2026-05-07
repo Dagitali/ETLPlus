@@ -24,6 +24,16 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_CONNECTOR_CLASSES: dict[DataConnectorType, type[Connector]] = {
+    DataConnectorType.API: ConnectorApi,
+    DataConnectorType.DATABASE: ConnectorDb,
+    DataConnectorType.FILE: ConnectorFile,
+}
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
@@ -60,41 +70,6 @@ def _coerce_connector_type(
         ) from exc
 
 
-def _load_connector(
-    kind: DataConnectorType,
-) -> type[Connector]:
-    """
-    Resolve the connector class for the requested kind.
-
-    Parameters
-    ----------
-    kind : DataConnectorType
-        Connector kind enum.
-
-    Returns
-    -------
-    type[Connector]
-        Connector class corresponding to *kind*.
-
-    Raises
-    ------
-    TypeError
-        If *kind* is unsupported.
-    """
-    match kind:
-        case DataConnectorType.API:
-            return ConnectorApi
-        case DataConnectorType.DATABASE:
-            return ConnectorDb
-        case DataConnectorType.FILE:
-            return ConnectorFile
-        case _:
-            raise TypeError(f'Unsupported connector type: {kind!r}')
-
-
-# SECTION: FUNCTIONS ======================================================== #
-
-
 def parse_connector(
     obj: Mapping[str, Any],
 ) -> Connector:
@@ -125,5 +100,4 @@ def parse_connector(
     """
     if not isinstance(obj, Mapping):
         raise TypeError('Connector configuration must be a mapping.')
-    connector_cls = _load_connector(_coerce_connector_type(obj))
-    return connector_cls.from_obj(obj)
+    return _CONNECTOR_CLASSES[_coerce_connector_type(obj)].from_obj(obj)
