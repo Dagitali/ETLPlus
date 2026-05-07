@@ -14,6 +14,9 @@ from typing import Literal
 from typing import Self
 from typing import cast
 
+from ..utils import MappingParser
+from ..utils import TextChoiceResolver
+from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
@@ -40,7 +43,11 @@ type HistoryBackend = Literal['sqlite', 'jsonl']
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_VALID_HISTORY_BACKENDS = frozenset({'sqlite', 'jsonl'})
+_VALID_HISTORY_BACKENDS: tuple[HistoryBackend, ...] = ('sqlite', 'jsonl')
+_HISTORY_BACKEND_RESOLVER = TextChoiceResolver(
+    {backend: backend for backend in _VALID_HISTORY_BACKENDS},
+    '',
+)
 
 
 # SECTION: CONSTANTS ======================================================== #
@@ -59,19 +66,10 @@ def _coerce_backend(
     """Return one supported history backend name when valid."""
     if not isinstance(value, str):
         return None
-    normalized = value.strip().lower()
-    if normalized in _VALID_HISTORY_BACKENDS:
+    normalized = _HISTORY_BACKEND_RESOLVER.resolve(value)
+    if normalized:
         return cast(HistoryBackend, normalized)
     return None
-
-
-def _coerce_flag(
-    value: object,
-    *,
-    default: bool,
-) -> bool:
-    """Return one boolean flag or *default* when the input is invalid."""
-    return value if isinstance(value, bool) else default
 
 
 def _coerce_state_dir(
@@ -105,13 +103,13 @@ class HistoryConfig:
         obj: StrAnyMap | None,
     ) -> Self:
         """Parse one optional history config mapping."""
-        if not isinstance(obj, Mapping):
+        if (data := MappingParser.optional(obj)) is None:
             return cls()
 
-        raw_state_dir = obj.get('state_dir')
+        raw_state_dir = data.get('state_dir')
         return cls(
-            enabled=_coerce_flag(obj.get('enabled'), default=True),
-            backend=_coerce_backend(obj.get('backend')),
+            enabled=ValueParser.bool_flag(data.get('enabled'), default=True),
+            backend=_coerce_backend(data.get('backend')),
             state_dir=(
                 None
                 if raw_state_dir is None
@@ -119,8 +117,8 @@ class HistoryConfig:
                 if isinstance(raw_state_dir, str)
                 else str(raw_state_dir)
             ),
-            capture_tracebacks=_coerce_flag(
-                obj.get('capture_tracebacks'),
+            capture_tracebacks=ValueParser.bool_flag(
+                data.get('capture_tracebacks'),
                 default=False,
             ),
         )

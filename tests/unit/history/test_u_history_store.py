@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.history._store`.
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Callable
 from collections.abc import Mapping
 from pathlib import Path
@@ -72,42 +71,6 @@ class TestHistoryStoreMergeHelpers:
 class TestHistoryStoreModuleHelpers:
     """Unit tests for :mod:`etlplus.history._store` helper functions."""
 
-    def test_run_record_build_delegates_to_classmethod_implementation(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that the preferred :meth:`RunRecord.build` entry point receives
-        the supplied constructor inputs unchanged.
-        """
-        captured: dict[str, Any] = {}
-        sentinel = object()
-
-        def fake_build(**kwargs: Any) -> object:
-            captured.update(kwargs)
-            return sentinel
-
-        monkeypatch.setattr(store_mod.RunRecord, 'build', staticmethod(fake_build))
-
-        result = store_mod.RunRecord.build(
-            run_id='run-123',
-            config_path='pipeline.yml',
-            started_at='2026-03-23T00:00:00Z',
-            pipeline_name='pipeline-a',
-            job_name='job-a',
-            status='queued',
-        )
-
-        assert result is sentinel
-        assert captured == {
-            'run_id': 'run-123',
-            'config_path': 'pipeline.yml',
-            'started_at': '2026-03-23T00:00:00Z',
-            'pipeline_name': 'pipeline-a',
-            'job_name': 'job-a',
-            'status': 'queued',
-        }
-
     @pytest.mark.parametrize(
         ('payload', 'expected'),
         [
@@ -148,32 +111,6 @@ class TestHistoryStoreModuleHelpers:
         assert (
             store_mod._serialize_string_list(['seed', 'publish'])
             == '["seed","publish"]'
-        )
-
-    def test_file_sha256_returns_none_for_missing_path(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that SHA-256 lookup returns `None` when the file does not exist.
-        """
-        assert store_mod._file_sha256(str(tmp_path / 'missing.yml')) is None
-
-    def test_file_sha256_returns_digest_for_existing_file(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that SHA-256 lookup hashes existing config files exactly once.
-        """
-        config_path = tmp_path / 'pipeline.yml'
-        config_path.write_text('name: pipeline-a\n', encoding='utf-8')
-
-        assert (
-            store_mod._file_sha256(str(config_path))
-            == hashlib.sha256(
-                config_path.read_bytes(),
-            ).hexdigest()
         )
 
     def test_sqlite_record_payload_serializes_missing_result_summary(

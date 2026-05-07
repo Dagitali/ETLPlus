@@ -26,6 +26,7 @@ from etlplus.utils._numbers import is_number_value
 from etlplus.utils._parsing import MappingFieldParser
 from etlplus.utils._parsing import SequenceParser
 from etlplus.utils._parsing import ValueParser
+from etlplus.utils._paths import PathHasher
 from etlplus.utils._paths import PathParser
 from etlplus.utils._substitution import SubstitutionResolver
 from etlplus.utils._substitution import TokenReferenceCollector
@@ -50,6 +51,7 @@ UTILS_EXPORTS = [
     ('JsonCodec', JsonCodec),
     ('MappingParser', MappingParser),
     ('NamedDependencyGraph', NamedDependencyGraph),
+    ('PathHasher', PathHasher),
     ('PathParser', PathParser),
     ('RecordPayloadParser', RecordPayloadParser),
     ('SubstitutionResolver', SubstitutionResolver),

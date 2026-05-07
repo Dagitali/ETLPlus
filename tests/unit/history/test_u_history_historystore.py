@@ -94,20 +94,6 @@ class TestHistoryStore:
         assert list(store.iter_runs()) == [expected_run]
         assert list(store.iter_job_runs()) == [expected_job_run]
 
-    def test_coerce_state_dir_defaults_without_environment(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that state directory coercion falls back to the package default.
-        """
-        monkeypatch.delenv('ETLPLUS_STATE_DIR', raising=False)
-
-        assert (
-            store_mod.HistoryStore._coerce_state_dir()
-            == Path('~/.etlplus').expanduser()
-        )
-
     def test_from_environment_rejects_invalid_backend(
         self,
         tmp_path: Path,

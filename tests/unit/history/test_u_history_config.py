@@ -26,8 +26,8 @@ class TestHistoryConfig:
             history_config_mod.HistoryConfig()
         )
 
-    def test_from_obj_coerces_pathlike_state_dir_and_invalid_flags(self) -> None:
-        """Parsing should stringify path-like values and default invalid booleans."""
+    def test_from_obj_coerces_pathlike_state_dir_and_string_flags(self) -> None:
+        """Parsing should stringify paths and parse common string booleans."""
         config = history_config_mod.HistoryConfig.from_obj(
             {
                 'enabled': 'yes',
