@@ -7,6 +7,7 @@ Path-oriented utility helpers.
 from __future__ import annotations
 
 import hashlib
+from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
 
@@ -20,20 +21,29 @@ __all__ = [
 ]
 
 
-# SECTION: CLASSES ========================================================== #
+# SECTION: DATA CLASSES ===================================================== #
 
 
+@dataclass(frozen=True, slots=True)
 class PathHasher:
-    """Hash filesystem paths when they exist."""
+    """
+    Hash one filesystem path when it exists.
 
-    # -- Static Methods -- #
+    Attributes
+    ----------
+    file_path : str | PathLike[str]
+        File path to hash.
+    """
 
-    @staticmethod
-    def sha256(
-        file_path: str | PathLike[str],
-    ) -> str | None:
-        """Return the SHA-256 digest for *file_path* when it is a file."""
-        path = Path(file_path)
+    # -- Instance Attributes -- #
+
+    file_path: str | PathLike[str]
+
+    # -- Instance Methods -- #
+
+    def sha256(self) -> str | None:
+        """Return the SHA-256 digest for this path when it is a file."""
+        path = Path(self.file_path)
         if not path.is_file():
             return None
         digest = hashlib.sha256()
@@ -41,6 +51,9 @@ class PathHasher:
             for chunk in iter(lambda: handle.read(1024 * 1024), b''):
                 digest.update(chunk)
         return digest.hexdigest()
+
+
+# SECTION: CLASSES ========================================================== #
 
 
 class PathParser:
