@@ -39,11 +39,6 @@ def _import_boto3() -> Any:
     -------
     Any
         Imported boto3 module.
-
-    Raises
-    ------
-    ImportError
-        If boto3 is not installed.
     """
     return import_package(
         'boto3',
