@@ -37,31 +37,6 @@ _DEFAULT_TOKEN_PATTERN: Final[Pattern[str]] = re.compile(r'\$\{([^}]+)\}')
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _prepare_substitutions(
-    vars_map: StrAnyMap | None,
-    env_map: Mapping[str, object] | None,
-) -> tuple[tuple[str, Any], ...]:
-    """
-    Merge variable and environment maps into an ordered substitutions list.
-
-    Parameters
-    ----------
-    vars_map : StrAnyMap | None
-        Mapping of variable names to replacement values (lower precedence).
-    env_map : Mapping[str, object] | None
-        Environment-backed values that override entries from *vars_map*.
-
-    Returns
-    -------
-    tuple[tuple[str, Any], ...]
-        Immutable sequence of ``(name, value)`` pairs suitable for token
-        replacement.
-    """
-    if not vars_map and not env_map:
-        return ()
-    return tuple(MappingParser.merge_to_dict(vars_map, env_map).items())
-
-
 def _replace_tokens(
     text: str,
     substitutions: Iterable[tuple[str, Any]],
@@ -114,7 +89,11 @@ class SubstitutionResolver:
     @property
     def substitutions(self) -> tuple[tuple[str, Any], ...]:
         """Return merged substitutions in replacement order."""
-        return _prepare_substitutions(self.vars_map, self.env_map)
+        if not self.vars_map and not self.env_map:
+            return ()
+        return tuple(
+            MappingParser.merge_to_dict(self.vars_map, self.env_map).items(),
+        )
 
     # -- Instance Methods -- #
 
