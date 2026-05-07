@@ -19,6 +19,7 @@ from ._schedule import ScheduleBackfillConfig
 from ._schedule import ScheduleConfig
 from ._schedule import ScheduleIntervalConfig
 from ._schedule import ScheduleTargetConfig
+from ._schedule import schedule_validation_issues
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -39,5 +40,6 @@ __all__ = [
     # Errors
     'DagError',
     # Functions
+    'schedule_validation_issues',
     'topological_sort_jobs',
 ]
