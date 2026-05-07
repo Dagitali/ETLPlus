@@ -1606,37 +1606,40 @@ class TestStorageRegistry:
         location = StorageLocation.from_value('data/input.csv')
         assert coerce_location(location) is location
 
-    def test_get_backend_for_abfs_location(self) -> None:
-        """Test that ABFS locations resolve to the ABFS backend."""
-        backend = get_backend(
-            'abfs://filesystem@example.dfs.core.windows.net/path.json',
-        )
-        assert isinstance(backend, AbfsStorageBackend)
-
-    def test_get_backend_for_azure_blob_location(self) -> None:
-        """Test that Azure Blob locations resolve to the Azure backend."""
-        backend = get_backend('azure-blob://container/path.json')
-        assert isinstance(backend, AzureBlobStorageBackend)
-
-    def test_get_backend_for_ftp_location(self) -> None:
-        """Test that FTP locations resolve to the FTP backend stub."""
-        backend = get_backend('ftp://example.com/path.json')
-        assert isinstance(backend, FtpStorageBackend)
-
-    def test_get_backend_for_http_location(self) -> None:
-        """Test that HTTP locations resolve to the HTTP backend."""
-        backend = get_backend('https://example.com/files/data.csv')
-        assert isinstance(backend, HttpStorageBackend)
-
-    def test_get_backend_for_local_location(self) -> None:
-        """Test that local storage resolves to the local backend."""
-        backend = get_backend('data/input.csv')
-        assert isinstance(backend, LocalStorageBackend)
-
-    def test_get_backend_for_s3_location(self) -> None:
-        """Test that S3 locations resolve to the S3 backend skeleton."""
-        backend = get_backend('s3://bucket/path.json')
-        assert isinstance(backend, S3StorageBackend)
+    @pytest.mark.parametrize(
+        ('raw', 'backend_type'),
+        [
+            pytest.param(
+                'abfs://filesystem@example.dfs.core.windows.net/path.json',
+                AbfsStorageBackend,
+                id='abfs',
+            ),
+            pytest.param(
+                'azure-blob://container/path.json',
+                AzureBlobStorageBackend,
+                id='azure-blob',
+            ),
+            pytest.param(
+                'ftp://example.com/path.json',
+                FtpStorageBackend,
+                id='ftp',
+            ),
+            pytest.param(
+                'https://example.com/files/data.csv',
+                HttpStorageBackend,
+                id='http',
+            ),
+            pytest.param('data/input.csv', LocalStorageBackend, id='local'),
+            pytest.param('s3://bucket/path.json', S3StorageBackend, id='s3'),
+        ],
+    )
+    def test_get_backend_for_location(
+        self,
+        raw: str,
+        backend_type: type[object],
+    ) -> None:
+        """Test that storage locations resolve to the expected backend type."""
+        assert isinstance(get_backend(raw), backend_type)
 
     def test_get_backend_rejects_unsupported_scheme(
         self,
