@@ -42,6 +42,32 @@ class TestMappingFieldParser:
     """Unit tests for mapping field extraction helpers."""
 
     @pytest.mark.parametrize(
+        'data',
+        [
+            pytest.param({}, id='missing'),
+            pytest.param({'name': 1}, id='non-string'),
+        ],
+    )
+    def test_require_str_raises_for_missing_or_invalid_field(
+        self,
+        data: Mapping[str, object],
+    ) -> None:
+        """Test strict required string extraction error messages."""
+        with pytest.raises(TypeError, match='ConnectorFile requires a "name"'):
+            MappingFieldParser.require_str(data, 'name', label='ConnectorFile')
+
+    def test_require_str_returns_valid_field(self) -> None:
+        """Test strict required string extraction for valid payloads."""
+        assert (
+            MappingFieldParser.require_str(
+                {'name': 'etl'},
+                'name',
+                label='ConnectorFile',
+            )
+            == 'etl'
+        )
+
+    @pytest.mark.parametrize(
         ('data', 'key', 'expected'),
         [
             pytest.param({'name': 'etl'}, 'name', 'etl', id='string-present'),
