@@ -25,9 +25,12 @@ class TestPathHasher:
         path = tmp_path / 'pipeline.yml'
         path.write_text('name: pipeline-a\n', encoding='utf-8')
 
-        assert PathHasher(path).sha256() == hashlib.sha256(
-            path.read_bytes(),
-        ).hexdigest()
+        assert (
+            PathHasher(path).sha256()
+            == hashlib.sha256(
+                path.read_bytes(),
+            ).hexdigest()
+        )
 
     def test_sha256_returns_none_for_missing_path(self, tmp_path: Path) -> None:
         """Missing paths should not produce a digest."""
@@ -36,6 +39,37 @@ class TestPathHasher:
 
 class TestPathParser:
     """Unit tests for path parsing helpers."""
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(None, False, id='none'),
+            pytest.param('', False, id='empty'),
+            pytest.param(' - ', False, id='spaced-dash'),
+            pytest.param('out.json', True, id='string-path'),
+            pytest.param(Path('out.json'), True, id='pathlike'),
+            pytest.param(123, False, id='non-pathlike'),
+        ],
+    )
+    def test_is_file_target(self, value: object, expected: bool) -> None:
+        """Test concrete file-target detection."""
+        assert PathParser.is_file_target(value) is expected
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(None, True, id='none'),
+            pytest.param('', True, id='empty'),
+            pytest.param('   ', True, id='blank'),
+            pytest.param('-', True, id='dash'),
+            pytest.param(' - ', True, id='spaced-dash'),
+            pytest.param('out.json', False, id='string-path'),
+            pytest.param(Path('out.json'), False, id='pathlike'),
+        ],
+    )
+    def test_is_stdout_target(self, value: object, expected: bool) -> None:
+        """Test STDOUT target detection."""
+        assert PathParser.is_stdout_target(value) is expected
 
     @pytest.mark.parametrize(
         ('value', 'expected'),
