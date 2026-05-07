@@ -74,6 +74,29 @@ class TestConnectorApi:
                 None,
                 id='api-field-precedes-service-alias',
             ),
+            pytest.param(
+                {
+                    'name': 'users_api',
+                    'type': 'api',
+                    'url': 123,
+                    'method': False,
+                    'api': 456,
+                    'endpoint': 789,
+                },
+                {
+                    'type': DataConnectorType.API,
+                    'name': 'users_api',
+                    'url': '123',
+                    'method': 'False',
+                    'headers': {},
+                    'query_params': {},
+                    'api': '456',
+                    'endpoint': '789',
+                },
+                None,
+                None,
+                id='coerces-optional-strings',
+            ),
         ],
     )
     def test_from_obj_normalizes_api_connector_fields(
