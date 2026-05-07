@@ -121,14 +121,18 @@ class TestImportsHelpers:
             return 'built message'
 
         monkeypatch.setattr(
-            utils_imports,
-            'build_dependency_error_message',
-            _message_builder,
+            mod._DEPENDENCY_IMPORTER,
+            'cache',
+            {},
         )
         monkeypatch.setattr(
-            utils_imports,
-            'import_package',
+            mod._DEPENDENCY_IMPORTER,
+            'importer',
             lambda *args, **kwargs: sentinel,
+        )
+        monkeypatch.setattr(
+            'etlplus.utils._imports.build_dependency_error_message',
+            _message_builder,
         )
 
         assert (
