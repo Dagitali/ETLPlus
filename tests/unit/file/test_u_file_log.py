@@ -44,6 +44,15 @@ class TestLog(RoundtripUnitModuleContract):
             'message': 'plain message',
         }
 
+    def test_parse_line_falls_back_when_json_codec_returns_non_mapping(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test fallback behavior for parsed non-object values."""
+        monkeypatch.setattr(mod.JsonCodec, 'parse', lambda _: ['a', 'b'])
+
+        assert self.module_handler.parse_line('ignored') == {'message': 'ignored'}
+
     def test_parse_line_parses_json_object(self) -> None:
         """Test that the line parser returns JSON objects as events."""
         assert self.module_handler.parse_line('{"id": 1}') == {'id': 1}
