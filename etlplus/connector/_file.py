@@ -19,7 +19,6 @@ from dataclasses import field
 from typing import Any
 from typing import Self
 from typing import TypedDict
-from typing import overload
 
 from ..utils import MappingFieldParser
 from ..utils import MappingParser
@@ -85,14 +84,6 @@ class ConnectorFile(ConnectorBase):
     options: dict[str, Any] = field(default_factory=dict)
 
     # -- Class Methods -- #
-
-    @classmethod
-    @overload
-    def from_obj(cls, obj: ConnectorFileConfigDict) -> Self: ...
-
-    @classmethod
-    @overload
-    def from_obj(cls, obj: StrAnyMap) -> Self: ...
 
     @classmethod
     def from_obj(
