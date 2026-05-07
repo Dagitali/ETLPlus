@@ -12,6 +12,8 @@ from typing import IO
 from typing import Any
 from typing import cast
 
+from ..utils._imports import build_dependency_error_message
+from ..utils._imports import import_package
 from ._enums import StorageScheme
 from ._location import StorageLocation
 from ._remote import RemoteStorageBackend
@@ -44,14 +46,15 @@ def _import_datalake_types() -> tuple[Any, Any | None]:
     ImportError
         If ``azure-storage-file-datalake`` is not installed.
     """
-    try:
-        module = import_module('azure.storage.filedatalake')
-    except ImportError as e:  # pragma: no cover
-        raise ImportError(
-            'ABFS storage support requires optional dependency '
-            '"azure-storage-file-datalake".\n'
-            'Install with: pip install azure-storage-file-datalake',
-        ) from e
+    module = import_package(
+        'azure.storage.filedatalake',
+        error_message=build_dependency_error_message(
+            'azure.storage.filedatalake',
+            format_name='ABFS storage',
+            pip_name='azure-storage-file-datalake',
+        ),
+        importer=import_module,
+    )
     return module.DataLakeServiceClient, getattr(module, 'ContentSettings', None)
 
 
