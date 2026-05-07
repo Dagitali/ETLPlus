@@ -6,8 +6,8 @@ under the file-format layer.
 - Separates where bytes live from how payloads are encoded
 - Normalizes local paths and storage URIs into a shared `StorageLocation` model
 - Resolves the active storage backend for a location
-- Includes local-disk support plus SDK-backed S3, Azure Blob, and Azure Data Lake Storage Gen2
-  (ABFS) access
+- Includes local-disk support plus SDK-backed S3, Azure Blob, Azure Data Lake Storage Gen2
+  (ABFS), and fsspec-backed HDFS access
 
 Install the cloud storage dependencies with:
 
@@ -29,11 +29,10 @@ Back to project overview: see the top-level [README](../../README.md).
 `etlplus.storage` is the storage layer for local paths, supported remote backends such as
 S3-compatible object storage and Azure storage services, and placeholder backends such as FTP.
 
-The top-level `etlplus.file.File` wrapper now stages remote objects through
-`etlplus.storage`, so URIs such as `s3://bucket/data.json`,
-`azure-blob://container/data.json`, and
-`abfs://filesystem@account.dfs.core.windows.net/data.json` can be used with
-the existing file-format handlers.
+The top-level `etlplus.file.File` wrapper now stages remote objects through `etlplus.storage`, so
+URIs such as `s3://bucket/data.json`, `azure-blob://container/data.json`,
+`abfs://filesystem@account.dfs.core.windows.net/data.json`, and
+`hdfs://namenode:8020/data/table.parquet` can be used with the existing file-format handlers.
 
 ## Public API
 
@@ -43,6 +42,7 @@ the existing file-format handlers.
 - `coerce_location(value)`: Normalize a mixed input into `StorageLocation`.
 - `FtpStorageBackend`: Stub backend for `ftp://host/path` locations.
 - `get_backend(value)`: Resolve the backend that can open or inspect the location.
+- `HdfsStorageBackend`: HDFS backend for `hdfs://namenode/path` locations.
 - `LocalStorageBackend`: Local filesystem backend for `file` locations and `file://` URIs.
 - `S3StorageBackend`: S3 backend for `s3://bucket/key` locations.
 - `StorageLocation.from_value(value)`: Parse a local path or storage URI into a normalized
@@ -75,10 +75,14 @@ ABFS uses `azure-storage-file-datalake`. It honors the same
 `AZURE_STORAGE_CREDENTIAL` environment variables, and can also derive the
 account URL from the `abfs://filesystem@account-host/path` authority.
 
+HDFS uses `fsspec`. Kerberos, libhdfs, WebHDFS, and cluster-specific settings
+must be configured in the local fsspec/Hadoop environment.
+
 ## Supported Schemes
 
 - `abfs`: Azure Data Lake Storage Gen2 backend wired to `azure-storage-file-datalake`
 - `azure-blob`: Azure Blob backend wired to `azure-storage-blob`
 - `file`: Local filesystem paths and `file://` URIs
 - `ftp`: FTP stub backend with validation-only runtime hooks
+- `hdfs`: HDFS backend wired through `fsspec`
 - `s3`: AWS S3 backend wired to `boto3`

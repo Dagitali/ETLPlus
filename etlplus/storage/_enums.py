@@ -30,6 +30,7 @@ class StorageScheme(CoercibleStrEnum):
     AZURE_BLOB = 'azure-blob'
     FILE = 'file'
     FTP = 'ftp'
+    HDFS = 'hdfs'
     HTTP = 'http'
     S3 = 's3'
 
@@ -60,4 +61,5 @@ class StorageScheme(CoercibleStrEnum):
             's3n': 's3',
             'wasb': 'azure-blob',
             'wasbs': 'azure-blob',
+            'webhdfs': 'hdfs',
         }

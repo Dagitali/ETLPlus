@@ -15,6 +15,7 @@ from ._azure_blob import AzureBlobStorageBackend
 from ._base import StorageBackendABC
 from ._enums import StorageScheme
 from ._ftp import FtpStorageBackend
+from ._hdfs import HdfsStorageBackend
 from ._http import HttpStorageBackend
 from ._local import LocalStorageBackend
 from ._location import StorageLocation
@@ -44,6 +45,7 @@ _BACKEND_FACTORIES: dict[StorageScheme, Callable[[], StorageBackendABC]] = {
     StorageScheme.AZURE_BLOB: AzureBlobStorageBackend,
     StorageScheme.FILE: LocalStorageBackend,
     StorageScheme.FTP: FtpStorageBackend,
+    StorageScheme.HDFS: HdfsStorageBackend,
     StorageScheme.HTTP: HttpStorageBackend,
     StorageScheme.S3: S3StorageBackend,
 }
