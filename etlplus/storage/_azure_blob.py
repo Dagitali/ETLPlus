@@ -12,6 +12,8 @@ from typing import IO
 from typing import Any
 from typing import cast
 
+from ..utils._imports import build_dependency_error_message
+from ..utils._imports import import_package
 from ._enums import StorageScheme
 from ._location import StorageLocation
 from ._remote import RemoteStorageBackend
@@ -44,14 +46,15 @@ def _import_blob_types() -> tuple[Any, Any | None]:
     ImportError
         If azure-storage-blob is not installed.
     """
-    try:
-        module = import_module('azure.storage.blob')
-    except ImportError as e:  # pragma: no cover
-        raise ImportError(
-            'Azure Blob storage support requires optional dependency '
-            '"azure-storage-blob".\n'
-            'Install with: pip install azure-storage-blob',
-        ) from e
+    module = import_package(
+        'azure.storage.blob',
+        error_message=build_dependency_error_message(
+            'azure.storage.blob',
+            format_name='Azure Blob storage',
+            pip_name='azure-storage-blob',
+        ),
+        importer=import_module,
+    )
     return module.BlobServiceClient, getattr(module, 'ContentSettings', None)
 
 
