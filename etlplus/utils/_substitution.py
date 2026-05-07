@@ -6,10 +6,13 @@ Substitution utility helpers.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+from dataclasses import field
+from re import Pattern
 from typing import Any
+from typing import Final
 
 from ._mapping import MappingParser
 from ._types import StrAnyMap
@@ -20,62 +23,14 @@ from ._types import StrAnyMap
 __all__ = [
     # Classes
     'SubstitutionResolver',
+    'TokenReferenceCollector',
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
+# SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-def _prepare_substitutions(
-    vars_map: StrAnyMap | None,
-    env_map: Mapping[str, object] | None,
-) -> tuple[tuple[str, Any], ...]:
-    """
-    Merge variable and environment maps into an ordered substitutions list.
-
-    Parameters
-    ----------
-    vars_map : StrAnyMap | None
-        Mapping of variable names to replacement values (lower precedence).
-    env_map : Mapping[str, object] | None
-        Environment-backed values that override entries from *vars_map*.
-
-    Returns
-    -------
-    tuple[tuple[str, Any], ...]
-        Immutable sequence of ``(name, value)`` pairs suitable for token
-        replacement.
-    """
-    if not vars_map and not env_map:
-        return ()
-    return tuple(MappingParser.merge_to_dict(vars_map, env_map).items())
-
-
-def _replace_tokens(
-    text: str,
-    substitutions: Iterable[tuple[str, Any]],
-) -> str:
-    """
-    Replace ``${VAR}`` tokens in *text* using *substitutions*.
-
-    Parameters
-    ----------
-    text : str
-        Input string that may contain ``${VAR}`` tokens.
-    substitutions : Iterable[tuple[str, Any]]
-        Sequence of ``(name, value)`` pairs used for token replacement.
-
-    Returns
-    -------
-    str
-        Updated text with replacements applied.
-    """
-    out = text
-    for name, replacement in substitutions:
-        token = f'${{{name}}}'
-        if token in out:
-            out = out.replace(token, str(replacement))
-    return out
+_DEFAULT_TOKEN_PATTERN: Final[Pattern[str]] = re.compile(r'\$\{([^}]+)\}')
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -103,7 +58,11 @@ class SubstitutionResolver:
     @property
     def substitutions(self) -> tuple[tuple[str, Any], ...]:
         """Return merged substitutions in replacement order."""
-        return _prepare_substitutions(self.vars_map, self.env_map)
+        if not self.vars_map and not self.env_map:
+            return ()
+        return tuple(
+            MappingParser.merge_to_dict(self.vars_map, self.env_map).items(),
+        )
 
     # -- Instance Methods -- #
 
@@ -133,7 +92,9 @@ class SubstitutionResolver:
         def _apply(node: Any) -> Any:
             match node:
                 case str():
-                    return _replace_tokens(node, substitutions)
+                    for name, replacement in substitutions:
+                        node = node.replace(f'${{{name}}}', str(replacement))
+                    return node
                 case Mapping():
                     return {k: _apply(v) for k, v in node.items()}
                 case list() | tuple() as seq:
@@ -147,3 +108,79 @@ class SubstitutionResolver:
                     return node
 
         return _apply(value)
+
+
+@dataclass(slots=True)
+class TokenReferenceCollector:
+    """
+    Collect unresolved text tokens and their stable paths in nested values.
+
+    Attributes
+    ----------
+    pattern : Pattern[str]
+        Regex pattern whose first capture group is treated as the token name.
+    paths_by_name : dict[str, set[str]]
+        Mapping of token names to sets of stable paths where they were found.
+    """
+
+    # -- Instance Attributes -- #
+
+    pattern: Pattern[str] = _DEFAULT_TOKEN_PATTERN
+    paths_by_name: dict[str, set[str]] = field(default_factory=dict)
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def collect_names(
+        cls,
+        value: Any,
+        *,
+        pattern: Pattern[str] | None = None,
+    ) -> set[str]:
+        """Return one set of token names discovered in *value*."""
+        collector = cls(pattern=pattern or _DEFAULT_TOKEN_PATTERN)
+        collector.walk(value)
+        return set(collector.paths_by_name)
+
+    @classmethod
+    def collect_rows(
+        cls,
+        value: Any,
+        *,
+        pattern: Pattern[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return one stable list of token reference rows."""
+        collector = cls(pattern=pattern or _DEFAULT_TOKEN_PATTERN)
+        collector.walk(value)
+        return [
+            {'name': name, 'paths': sorted(paths)}
+            for name, paths in sorted(collector.paths_by_name.items())
+        ]
+
+    # -- Instance Methods -- #
+
+    def walk(
+        self,
+        node: Any,
+        path: str = '',
+    ) -> None:
+        """Record token names and paths found in *node*."""
+        match node:
+            case str():
+                for match in self.pattern.findall(node):
+                    self.paths_by_name.setdefault(match, set()).add(path or '<root>')
+            case Mapping():
+                for key, inner in node.items():
+                    key_text = str(key)
+                    next_path = f'{path}.{key_text}' if path else key_text
+                    self.walk(inner, next_path)
+            case list() | tuple() as seq:
+                for index, inner in enumerate(seq):
+                    next_path = f'{path}[{index}]' if path else f'[{index}]'
+                    self.walk(inner, next_path)
+            case set() | frozenset():
+                for index, inner in enumerate(sorted(node, key=repr)):
+                    next_path = f'{path}[{index}]' if path else f'[{index}]'
+                    self.walk(inner, next_path)
+            case _:
+                return

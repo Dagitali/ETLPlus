@@ -6,7 +6,6 @@ Internal shared types and constants for runtime readiness checks.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Any
 from typing import Final
@@ -25,7 +24,6 @@ __all__ = [
     'FORMAT_EXTRA_REQUIREMENTS',
     'SCHEME_EXTRA_REQUIREMENTS',
     'SUPPORTED_PYTHON_RANGE',
-    'TOKEN_PATTERN',
     # Classes
     'ReadinessReport',
     'RequirementSpec',
@@ -142,4 +140,3 @@ SUPPORTED_PYTHON_RANGE: Final[tuple[tuple[int, int], tuple[int, int]]] = (
     (3, 13),
     (3, 15),
 )
-TOKEN_PATTERN: Final[re.Pattern[str]] = re.compile(r'\$\{([^}]+)\}')

@@ -13,12 +13,12 @@ from typing import cast
 
 from ...__version__ import __version__ as _ETLPLUS_VERSION
 from ..._config import Config
+from ...utils import TokenReferenceCollector
 from ...utils._types import StrAnyMap
 from . import _connectors
 from . import _providers
 from . import _strict
 from ._base import ReadinessBaseMixin
-from ._base import TokenReferenceCollector
 from ._support import ReadinessReport
 
 # SECTION: EXPORTS ========================================================== #

@@ -663,14 +663,14 @@ class TestReadinessReportBuilderCore:
             == 'warn'
         )
 
-    def test_package_available_handles_find_spec_errors(
+    def test_package_available_handles_availability_helper_errors(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test package availability failures when spec lookup raises."""
+        """Test package availability failures when helper lookup raises."""
         monkeypatch.setattr(
             readiness_base_mod,
-            'find_spec',
+            'module_available',
             lambda _module_name: (_ for _ in ()).throw(ValueError('boom')),
         )
 

@@ -28,6 +28,7 @@ from etlplus.utils._parsing import SequenceParser
 from etlplus.utils._parsing import ValueParser
 from etlplus.utils._paths import PathParser
 from etlplus.utils._substitution import SubstitutionResolver
+from etlplus.utils._substitution import TokenReferenceCollector
 from etlplus.utils._text import TextChoiceResolver
 from etlplus.utils._text import TextNormalizer
 from etlplus.utils._types import NonEmptyStr
@@ -54,6 +55,7 @@ UTILS_EXPORTS = [
     ('SubstitutionResolver', SubstitutionResolver),
     ('TextChoiceResolver', TextChoiceResolver),
     ('TextNormalizer', TextNormalizer),
+    ('TokenReferenceCollector', TokenReferenceCollector),
     ('CoercibleStrEnum', CoercibleStrEnum),
     ('count_records', count_records),
     ('finite_decimal_or_none', finite_decimal_or_none),
