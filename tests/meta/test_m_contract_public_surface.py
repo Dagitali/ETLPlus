@@ -86,6 +86,7 @@ EXPECTED_CLI_COMMANDS = {
     'render',
     'report',
     'run',
+    'schedule',
     'status',
     'transform',
     'validate',

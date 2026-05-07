@@ -12,6 +12,8 @@ from typing import Any
 
 from ...connector import parse_connector
 from ...utils._types import StrAnyMap
+from ...workflow import ScheduleConfig
+from ...workflow import schedule_validation_issues
 from . import _connectors
 
 # SECTION: EXPORTS ========================================================== #
@@ -98,6 +100,11 @@ class StrictConfigValidator:
             target_names=target_names,
             transform_names=transform_names,
             validation_names=validation_names,
+        )
+        StrictConfigValidator.schedule_issue_rows(
+            raw=raw,
+            issues=issues,
+            job_names=StrictConfigValidator.job_names(raw=raw),
         )
         return issues
 
@@ -348,6 +355,23 @@ class StrictConfigValidator:
             )
 
     @staticmethod
+    def job_names(
+        *,
+        raw: StrAnyMap,
+    ) -> set[str]:
+        """Return known non-empty job names from the raw jobs section."""
+        value = raw.get('jobs')
+        if not isinstance(value, list):
+            return set()
+        return {
+            name.strip()
+            for entry in value
+            if isinstance(entry, Mapping)
+            and isinstance(name := entry.get('name'), str)
+            and name.strip()
+        }
+
+    @staticmethod
     def job_ref_issue(
         *,
         entry: Mapping[str, Any],
@@ -491,3 +515,101 @@ class StrictConfigValidator:
             )
             return None
         return {str(name) for name in value}
+
+    @staticmethod
+    def schedule_issue_guidance(
+        issue: str,
+    ) -> str | None:
+        """Return one guidance message for a strict schedule issue."""
+        if issue.startswith('duplicate schedule name: '):
+            return 'Use unique schedule names within schedules.'
+        if issue == 'schedule must define exactly one target: cron or interval':
+            return None
+        if issue == 'schedule must define exactly one trigger: cron or interval':
+            return 'Set exactly one of "cron" or "interval" for each schedule.'
+        if issue == 'schedule must define a target':
+            return 'Add a target mapping with either "job" or "run_all".'
+        if issue == 'schedule target must define exactly one mode: job or run_all':
+            return 'Set exactly one of target.job or target.run_all.'
+        if issue.startswith('unknown scheduled job reference: '):
+            job_name = issue.split(': ', maxsplit=1)[1]
+            return f'Define "{job_name}" under top-level jobs or update target.job.'
+        if issue == 'cron helper emission currently supports exactly five cron fields':
+            return 'Use a five-field cron expression: minute hour day month weekday.'
+        if (
+            issue
+            == (
+                'cron helper emission currently supports '
+                'only single values or "*" fields'
+            )
+        ):
+            return (
+                'Use single cron field values or "*" for helper-compatible schedules.'
+            )
+        return None
+
+    @staticmethod
+    def schedule_issue_rows(
+        *,
+        raw: StrAnyMap,
+        issues: list[dict[str, Any]],
+        job_names: set[str],
+    ) -> None:
+        """Append strict-mode schedule diagnostics to *issues*."""
+        value = raw.get('schedules')
+        if value is None:
+            return
+        if not isinstance(value, list):
+            issues.append(
+                {
+                    'expected': 'list',
+                    'guidance': 'Define schedules as a YAML list of schedule mappings.',
+                    'issue': 'invalid section type',
+                    'observed_type': type(value).__name__,
+                    'section': 'schedules',
+                },
+            )
+            return
+
+        parsed_schedules: list[ScheduleConfig] = []
+        for index, entry in enumerate(value):
+            if not isinstance(entry, Mapping):
+                issues.append(
+                    {
+                        'guidance': (
+                            'Define each schedule as a mapping with "name" plus '
+                            'portable trigger and target fields.'
+                        ),
+                        'index': index,
+                        'issue': 'invalid schedule entry',
+                        'observed_type': type(entry).__name__,
+                        'section': 'schedules',
+                    },
+                )
+                continue
+            schedule = ScheduleConfig.from_obj(entry)
+            if schedule is None:
+                issues.append(
+                    {
+                        'guidance': 'Set "name" to a non-empty string.',
+                        'index': index,
+                        'issue': 'missing schedule name',
+                        'section': 'schedules',
+                    },
+                )
+                continue
+            parsed_schedules.append(schedule)
+
+        for issue_row in schedule_validation_issues(
+            parsed_schedules,
+            job_names=job_names,
+        ):
+            issue = issue_row['issue']
+            issues.append(
+                {
+                    'guidance': StrictConfigValidator.schedule_issue_guidance(issue),
+                    'issue': issue,
+                    'schedule': issue_row['schedule'],
+                    'section': 'schedules',
+                },
+            )

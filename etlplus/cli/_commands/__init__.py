@@ -17,6 +17,7 @@ from .log import log_cmd
 from .render import render_cmd
 from .report import report_cmd
 from .run import run_cmd
+from .schedule import schedule_cmd
 from .status import status_cmd
 from .transform import transform_cmd
 from .validate import validate_cmd
@@ -35,6 +36,7 @@ __all__ = [
     'render_cmd',
     'report_cmd',
     'run_cmd',
+    'schedule_cmd',
     'status_cmd',
     'transform_cmd',
     'validate_cmd',

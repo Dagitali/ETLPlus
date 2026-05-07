@@ -22,6 +22,7 @@ __all__ = [
     'CheckConfigOption',
     'ConfigOption',
     'ContinueOnFailOption',
+    'EmitScheduleFormatOption',
     'HistoryBackendOption',
     'HistoryEnabledOption',
     'HistoryStateDirOption',
@@ -32,6 +33,7 @@ __all__ = [
     'PrettyOption',
     'QuietOption',
     'RunAllOption',
+    'ScheduleNameOption',
     'StructuredEventFormatOption',
     'VerboseOption',
     'VersionOption',
@@ -75,6 +77,14 @@ CaptureTracebacksOption = typer_option_alias(
         ),
         show_default=None,
     ),
+)
+
+EmitScheduleFormatOption = typer_value_option_alias(
+    Literal['crontab', 'systemd'] | None,
+    '--emit',
+    help_text='Emit helper snippets for one schedule as crontab or systemd payloads.',
+    metavar='FORMAT',
+    show_default=None,
 )
 
 HistoryBackendOption = typer_value_option_alias(
@@ -154,6 +164,14 @@ QuietOption = typer_flag_option_alias(
 RunAllOption = typer_flag_option_alias(
     '--all',
     help_text='Run all configured jobs in DAG order.',
+)
+
+ScheduleNameOption = typer_value_option_alias(
+    str | None,
+    '--schedule',
+    help_text='Name of the configured schedule to inspect or emit.',
+    metavar='NAME',
+    show_default=None,
 )
 
 StructuredEventFormatOption = typer_value_option_alias(
