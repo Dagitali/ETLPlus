@@ -27,6 +27,28 @@ from .pytest_runtime_readiness import build_issue_row as _issue
 class TestReadinessReportBuilderStrict:
     """Strict-structure unit tests for :class:`ReadinessReportBuilder`."""
 
+    def test_strict_schedule_issue_rows_reject_non_list_section(
+        self,
+    ) -> None:
+        """Strict schedule validation should reject non-list schedule sections."""
+        issues: list[dict[str, Any]] = []
+
+        readiness_strict_mod.StrictConfigValidator.schedule_issue_rows(
+            raw={'schedules': {'name': 'nightly_all'}},
+            issues=issues,
+            job_names=set(),
+        )
+
+        assert issues == [
+            _issue(
+                expected='list',
+                guidance='Define schedules as a YAML list of schedule mappings.',
+                issue='invalid section type',
+                observed_type='dict',
+                section='schedules',
+            ),
+        ]
+
     def test_strict_config_issue_rows_report_duplicates_and_unknown_refs(
         self,
     ) -> None:
@@ -69,6 +91,96 @@ class TestReadinessReportBuilderStrict:
             issue['issue'] == 'unknown transform reference: missing-pipeline'
             for issue in issues
         )
+
+    def test_strict_config_issue_rows_report_schedule_semantic_problems(
+        self,
+    ) -> None:
+        """Strict issue rows should surface schedule semantic problems."""
+        issues = readiness_strict_mod.StrictConfigValidator.config_issue_rows(
+            raw={
+                'jobs': [
+                    {
+                        'name': 'publish',
+                        'extract': {'source': 'src'},
+                        'load': {'target': 'dest'},
+                    },
+                ],
+                'sources': [
+                    {
+                        'name': 'src',
+                        'type': 'file',
+                        'format': 'json',
+                        'path': 'in.json',
+                    },
+                ],
+                'targets': [
+                    {
+                        'name': 'dest',
+                        'type': 'file',
+                        'format': 'json',
+                        'path': 'out.json',
+                    },
+                ],
+                'schedules': [
+                    {
+                        'name': 'nightly_all',
+                        'cron': '*/15 * * * *',
+                        'target': {'job': 'missing-job'},
+                    },
+                ],
+            },
+        )
+
+        assert any(
+            issue['issue'] == 'unknown scheduled job reference: missing-job'
+            and issue['section'] == 'schedules'
+            for issue in issues
+        )
+        assert any(
+            issue['issue']
+            == (
+                'cron helper emission currently supports '
+                'only single values or "*" fields'
+            )
+            and issue['section'] == 'schedules'
+            for issue in issues
+        )
+
+    def test_strict_schedule_issue_rows_report_shape_problems(
+        self,
+    ) -> None:
+        """Strict schedule validation should surface malformed schedule entries."""
+        issues: list[dict[str, Any]] = []
+
+        readiness_strict_mod.StrictConfigValidator.schedule_issue_rows(
+            raw={
+                'schedules': [
+                    'not-a-mapping',
+                    {'cron': '0 2 * * *', 'target': {'run_all': True}},
+                ],
+            },
+            issues=issues,
+            job_names=set(),
+        )
+
+        assert issues == [
+            _issue(
+                guidance=(
+                    'Define each schedule as a mapping with "name" plus '
+                    'portable trigger and target fields.'
+                ),
+                index=0,
+                issue='invalid schedule entry',
+                observed_type='str',
+                section='schedules',
+            ),
+            _issue(
+                guidance='Set "name" to a non-empty string.',
+                index=1,
+                issue='missing schedule name',
+                section='schedules',
+            ),
+        ]
 
     def test_strict_connector_names_report_parse_errors_and_blank_names(
         self,
