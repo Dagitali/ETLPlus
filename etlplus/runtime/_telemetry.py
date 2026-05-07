@@ -51,35 +51,27 @@ _ENV_TELEMETRY_SERVICE_NAME = 'ETLPLUS_TELEMETRY_SERVICE_NAME'
 _LOGGER = logging.getLogger(__name__)
 
 
-# SECTION: INTERNAL CLASSES ================================================= #
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-class _TelemetryValueParser:
-    """Normalize exporter, flag, and span-name values for runtime telemetry."""
-
-    # -- Static Methods -- #
-
-    @staticmethod
-    def exporter(
-        value: object,
-    ) -> TelemetryExporter | None:
-        """Return one supported telemetry exporter name when valid."""
-        if not isinstance(value, str):
-            return None
-        normalized = TextNormalizer.normalize(value)
-        if normalized in _VALID_EXPORTERS:
-            return cast(TelemetryExporter, normalized)
+def _telemetry_exporter(
+    value: object,
+) -> TelemetryExporter | None:
+    """Return one supported telemetry exporter name when valid."""
+    if not isinstance(value, str):
         return None
+    normalized = TextNormalizer.normalize(value)
+    if normalized in _VALID_EXPORTERS:
+        return cast(TelemetryExporter, normalized)
+    return None
 
-    @staticmethod
-    def span_name(
-        event: Mapping[str, Any],
-    ) -> str:
-        """Return one stable span name for a runtime command event."""
-        command = event.get('command')
-        return (
-            f'etlplus.{command}' if isinstance(command, str) and command else 'etlplus'
-        )
+
+def _span_name(
+    event: Mapping[str, Any],
+) -> str:
+    """Return one stable span name for a runtime command event."""
+    command = event.get('command')
+    return f'etlplus.{command}' if isinstance(command, str) and command else 'etlplus'
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -135,8 +127,8 @@ class ResolvedTelemetryConfig:
         env_map = env or {}
 
         resolved_exporter = (
-            _TelemetryValueParser.exporter(exporter)
-            or _TelemetryValueParser.exporter(env_map.get(_ENV_TELEMETRY_EXPORTER))
+            _telemetry_exporter(exporter)
+            or _telemetry_exporter(env_map.get(_ENV_TELEMETRY_EXPORTER))
             or telemetry_cfg.exporter
             or _DEFAULT_EXPORTER
         )
@@ -190,7 +182,7 @@ class TelemetryConfig:
         raw_service_name = data.get('service_name')
         return cls(
             enabled=ValueParser.bool_flag(data.get('enabled'), default=False),
-            exporter=_TelemetryValueParser.exporter(data.get('exporter')),
+            exporter=_telemetry_exporter(data.get('exporter')),
             service_name=(
                 raw_service_name.strip()
                 if isinstance(raw_service_name, str) and raw_service_name.strip()
@@ -292,7 +284,7 @@ class _OpenTelemetryAdapter:
         event: Mapping[str, Any],
     ) -> None:
         """Export one structured runtime event as spans and metrics."""
-        attrs = _TelemetryAttributeBuilder.for_event(
+        attrs = _event_attributes(
             event,
             service_name=self._settings.service_name,
         )
@@ -304,7 +296,7 @@ class _OpenTelemetryAdapter:
             return
 
         if lifecycle == 'started':
-            span = self._tracer.start_span(_TelemetryValueParser.span_name(event))
+            span = self._tracer.start_span(_span_name(event))
             span.set_attributes(attrs)
             span.add_event(str(event.get('event', 'started')), attributes=attrs)
             self._spans[run_id] = span
@@ -315,7 +307,7 @@ class _OpenTelemetryAdapter:
 
         span = self._spans.pop(run_id, None)
         if span is None:
-            span = self._tracer.start_span(_TelemetryValueParser.span_name(event))
+            span = self._tracer.start_span(_span_name(event))
 
         span.set_attributes(attrs)
         span.add_event(str(event.get('event', lifecycle)), attributes=attrs)
@@ -346,7 +338,7 @@ class _OpenTelemetryAdapter:
         record_level: str,
     ) -> None:
         """Export one normalized persisted history record as metrics."""
-        attrs = _TelemetryAttributeBuilder.for_history_record(
+        attrs = _history_record_attributes(
             record,
             record_level=record_level,
             service_name=self._settings.service_name,
@@ -363,102 +355,93 @@ class _OpenTelemetryAdapter:
                 histogram.record(value, attrs)
 
 
-class _TelemetryAttributeBuilder:
-    """Build normalized OpenTelemetry attribute mappings for runtime payloads."""
-
-    # -- Static Methods -- #
-
-    @staticmethod
-    def for_event(
-        event: Mapping[str, Any],
-        *,
-        service_name: str,
-    ) -> dict[str, str | bool | int | float]:
-        """Return one attribute mapping derived from the stable event envelope."""
-        attrs: dict[str, str | bool | int | float] = {
-            'etlplus.service_name': service_name,
-            'etlplus.schema': str(event.get('schema', '')),
-            'etlplus.schema_version': int(event.get('schema_version', 0) or 0),
-            'etlplus.command': str(event.get('command', '')),
-            'etlplus.lifecycle': str(event.get('lifecycle', '')),
-            'etlplus.run_id': str(event.get('run_id', '')),
-        }
-        attrs.update(
-            _TelemetryAttributeBuilder._optional_string_attributes(
-                event,
-                fields=(
-                    'config_path',
-                    'error_message',
-                    'error_type',
-                    'event',
-                    'job',
-                    'pipeline_name',
-                    'result_status',
-                    'source',
-                    'source_type',
-                    'status',
-                    'target',
-                    'target_type',
-                    'timestamp',
-                ),
-                prefix='etlplus.',
+def _event_attributes(
+    event: Mapping[str, Any],
+    *,
+    service_name: str,
+) -> dict[str, str | bool | int | float]:
+    """Return one attribute mapping derived from the stable event envelope."""
+    attrs: dict[str, str | bool | int | float] = {
+        'etlplus.service_name': service_name,
+        'etlplus.schema': str(event.get('schema', '')),
+        'etlplus.schema_version': int(event.get('schema_version', 0) or 0),
+        'etlplus.command': str(event.get('command', '')),
+        'etlplus.lifecycle': str(event.get('lifecycle', '')),
+        'etlplus.run_id': str(event.get('run_id', '')),
+    }
+    attrs.update(
+        _optional_string_attributes(
+            event,
+            fields=(
+                'config_path',
+                'error_message',
+                'error_type',
+                'event',
+                'job',
+                'pipeline_name',
+                'result_status',
+                'source',
+                'source_type',
+                'status',
+                'target',
+                'target_type',
+                'timestamp',
             ),
-        )
-        for field_name in ('continue_on_fail', 'run_all', 'valid'):
-            value = event.get(field_name)
-            if isinstance(value, bool):
-                attrs[f'etlplus.{field_name}'] = value
-        return attrs
+            prefix='etlplus.',
+        ),
+    )
+    for field_name in ('continue_on_fail', 'run_all', 'valid'):
+        value = event.get(field_name)
+        if isinstance(value, bool):
+            attrs[f'etlplus.{field_name}'] = value
+    return attrs
 
-    @staticmethod
-    def for_history_record(
-        record: Mapping[str, Any],
-        *,
-        record_level: str,
-        service_name: str,
-    ) -> dict[str, str | bool | int | float]:
-        """Return one attribute mapping derived from normalized history fields."""
-        attrs: dict[str, str | bool | int | float] = {
-            'etlplus.service_name': service_name,
-            'etlplus.history.level': record_level,
-            'etlplus.run_id': str(record.get('run_id', '')),
-        }
-        attrs.update(
-            _TelemetryAttributeBuilder._optional_string_attributes(
-                record,
-                fields=(
-                    'config_path',
-                    'error_type',
-                    'etlplus_version',
-                    'job_name',
-                    'pipeline_name',
-                    'result_status',
-                    'status',
-                ),
-                prefix='etlplus.history.',
+
+def _history_record_attributes(
+    record: Mapping[str, Any],
+    *,
+    record_level: str,
+    service_name: str,
+) -> dict[str, str | bool | int | float]:
+    """Return one attribute mapping derived from normalized history fields."""
+    attrs: dict[str, str | bool | int | float] = {
+        'etlplus.service_name': service_name,
+        'etlplus.history.level': record_level,
+        'etlplus.run_id': str(record.get('run_id', '')),
+    }
+    attrs.update(
+        _optional_string_attributes(
+            record,
+            fields=(
+                'config_path',
+                'error_type',
+                'etlplus_version',
+                'job_name',
+                'pipeline_name',
+                'result_status',
+                'status',
             ),
-        )
-        sequence_index = record.get('sequence_index')
-        if isinstance(sequence_index, int):
-            attrs['etlplus.history.sequence_index'] = sequence_index
-        return attrs
+            prefix='etlplus.history.',
+        ),
+    )
+    sequence_index = record.get('sequence_index')
+    if isinstance(sequence_index, int):
+        attrs['etlplus.history.sequence_index'] = sequence_index
+    return attrs
 
-    # -- Static Methods -- #
 
-    @staticmethod
-    def _optional_string_attributes(
-        payload: Mapping[str, Any],
-        *,
-        fields: tuple[str, ...],
-        prefix: str,
-    ) -> dict[str, str]:
-        """Return optional string attributes copied from one payload mapping."""
-        attrs: dict[str, str] = {}
-        for field_name in fields:
-            value = payload.get(field_name)
-            if isinstance(value, str) and value:
-                attrs[f'{prefix}{field_name}'] = value
-        return attrs
+def _optional_string_attributes(
+    payload: Mapping[str, Any],
+    *,
+    fields: tuple[str, ...],
+    prefix: str,
+) -> dict[str, str]:
+    """Return optional string attributes copied from one payload mapping."""
+    return {
+        f'{prefix}{field_name}': value
+        for field_name in fields
+        if isinstance(value := payload.get(field_name), str) and value
+    }
 
 
 # SECTION: CLASSES ========================================================== #
