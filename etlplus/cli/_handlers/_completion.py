@@ -6,6 +6,7 @@ Shared command-completion helpers for CLI handler implementations.
 
 from __future__ import annotations
 
+from os import PathLike
 from typing import Any
 from typing import Literal
 
@@ -36,7 +37,7 @@ def _require_file_target(
     output_path: str | None,
     *,
     mode: CompletionMode,
-) -> str:
+) -> str | PathLike[str]:
     """Return a concrete file target or fail with a clear completion error."""
     if _output.is_file_target(output_path):
         return output_path
