@@ -43,10 +43,11 @@ type HistoryBackend = Literal['sqlite', 'jsonl']
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_VALID_HISTORY_BACKENDS = frozenset({'sqlite', 'jsonl'})
-_HISTORY_BACKEND_CHOICES = {
-    backend: backend for backend in _VALID_HISTORY_BACKENDS
-}
+_VALID_HISTORY_BACKENDS: tuple[HistoryBackend, ...] = ('sqlite', 'jsonl')
+_HISTORY_BACKEND_RESOLVER = TextChoiceResolver(
+    {backend: backend for backend in _VALID_HISTORY_BACKENDS},
+    '',
+)
 
 
 # SECTION: CONSTANTS ======================================================== #
@@ -65,7 +66,7 @@ def _coerce_backend(
     """Return one supported history backend name when valid."""
     if not isinstance(value, str):
         return None
-    normalized = TextChoiceResolver(_HISTORY_BACKEND_CHOICES, '').resolve(value)
+    normalized = _HISTORY_BACKEND_RESOLVER.resolve(value)
     if normalized:
         return cast(HistoryBackend, normalized)
     return None
