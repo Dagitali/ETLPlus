@@ -6,10 +6,10 @@ Shared command-completion helpers for CLI handler implementations.
 
 from __future__ import annotations
 
-from os import PathLike
 from typing import Any
 from typing import Literal
 
+from ...utils import PathParser
 from . import _lifecycle
 from . import _output
 
@@ -37,9 +37,9 @@ def _require_file_target(
     output_path: str | None,
     *,
     mode: CompletionMode,
-) -> str | PathLike[str]:
+) -> str:
     """Return a concrete file target or fail with a clear completion error."""
-    if _output.is_file_target(output_path):
+    if isinstance(output_path, str) and not PathParser.is_stdout_target(output_path):
         return output_path
     raise ValueError(f'{mode!r} completion requires an output path')
 
