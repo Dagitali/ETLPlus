@@ -17,7 +17,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Self
 from typing import TypedDict
-from typing import overload
 
 from ..utils import MappingFieldParser
 from ..utils import ValueParser
@@ -86,14 +85,6 @@ class ConnectorDb(ConnectorBase):
     mode: str | None = None  # append|replace|upsert (future)
 
     # -- Class Methods -- #
-
-    @classmethod
-    @overload
-    def from_obj(cls, obj: ConnectorDbConfigDict) -> Self: ...
-
-    @classmethod
-    @overload
-    def from_obj(cls, obj: StrAnyMap) -> Self: ...
 
     @classmethod
     def from_obj(
