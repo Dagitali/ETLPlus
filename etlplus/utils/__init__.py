@@ -23,6 +23,7 @@ from ._numbers import is_number_value
 from ._parsing import MappingFieldParser
 from ._parsing import SequenceParser
 from ._parsing import ValueParser
+from ._paths import PathParser
 from ._substitution import SubstitutionResolver
 from ._text import TextChoiceResolver
 from ._text import TextNormalizer
@@ -42,6 +43,7 @@ __all__ = [
     'JsonCodec',
     'MappingParser',
     'NamedDependencyGraph',
+    'PathParser',
     'RecordPayloadParser',
     'SubstitutionResolver',
     'TextChoiceResolver',
