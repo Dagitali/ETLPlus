@@ -257,6 +257,39 @@ class TestRenderTableSql:
 class TestRenderTables:
     """Unit tests for :func:`render_tables`."""
 
+    def test_preserves_input_order_when_any_spec_lacks_table_name(
+        self,
+        tmp_path: Path,
+        sample_spec: dict[str, object],
+    ) -> None:
+        """Test anonymous specs bypass dependency ordering."""
+        template_path = tmp_path / 'names.sql.j2'
+        template_path.write_text(
+            '{{ spec.table|default(spec.columns[0].name) }}',
+            encoding='utf-8',
+        )
+        anonymous = deepcopy(sample_spec)
+        named = deepcopy(sample_spec)
+        anonymous.pop('table')
+        named['table'] = 'named'
+
+        rendered = ddl.render_tables(
+            [anonymous, named],
+            template_path=template_path,
+        )
+
+        assert rendered == ['id\n', 'named\n']
+
+    def test_rejects_duplicate_table_names(
+        self,
+        sample_spec: dict[str, object],
+    ) -> None:
+        """Test duplicate table specs fail instead of being overwritten."""
+        duplicate = deepcopy(sample_spec)
+
+        with pytest.raises(ValueError, match='Duplicate table spec name'):
+            ddl.render_tables([sample_spec, duplicate])
+
     def test_renders_multiple_specs(
         self,
         sample_spec: dict[str, object],
@@ -296,15 +329,25 @@ class TestRenderTables:
 
         assert rendered == ['accounts\n', 'orders\n']
 
-    def test_rejects_duplicate_table_names(
+    def test_orders_by_name_key_when_table_key_is_blank(
         self,
+        tmp_path: Path,
         sample_spec: dict[str, object],
     ) -> None:
-        """Test duplicate table specs fail instead of being overwritten."""
-        duplicate = deepcopy(sample_spec)
+        """Test table-name resolution falls back to a nonblank name key."""
+        template_path = tmp_path / 'names.sql.j2'
+        template_path.write_text('{{ spec.name }}', encoding='utf-8')
+        parent = deepcopy(sample_spec)
+        child = deepcopy(sample_spec)
+        parent['table'] = ' '
+        parent['name'] = 'accounts'
+        child['table'] = ' '
+        child['name'] = 'orders'
+        child['foreign_keys'] = [{'ref_table': 'accounts'}]
 
-        with pytest.raises(ValueError, match='Duplicate table spec name'):
-            ddl.render_tables([sample_spec, duplicate])
+        rendered = ddl.render_tables([child, parent], template_path=template_path)
+
+        assert rendered == ['accounts\n', 'orders\n']
 
 
 class TestRenderTablesToString:
