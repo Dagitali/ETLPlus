@@ -17,6 +17,7 @@ Notes
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import cast
 
@@ -139,7 +140,7 @@ class NdjsonFile(SemiStructuredTextFileHandlerABC):
         stripped = text.strip()
         if not stripped:
             raise ValueError('NDJSON line cannot be blank')
-        payload = JsonCodec.decode(stripped)
+        payload = json.loads(stripped)
         if not isinstance(payload, dict):
             suffix = f' (line {line_number})' if line_number is not None else ''
             raise TypeError(f'NDJSON lines must be objects (dicts){suffix}')
