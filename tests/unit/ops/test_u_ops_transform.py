@@ -54,6 +54,7 @@ from etlplus.ops.transformations.filter import apply_filter_step
 from etlplus.ops.transformations.map import apply_map_step
 from etlplus.ops.transformations.select import apply_select_step
 from etlplus.ops.transformations.select import is_plain_fields_list
+from etlplus.ops.transformations.select import is_sequence_not_text
 from etlplus.ops.transformations.sort import _sort_key
 from etlplus.ops.transformations.sort import apply_sort_step
 from etlplus.utils._types import JSONData
@@ -947,6 +948,22 @@ class TestTransformInternalHelpers:
         sequences of non-mappings.
         """
         assert is_plain_fields_list(value) is expected
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            ([1, 2], True),
+            ('name', False),
+            (b'name', False),
+        ],
+    )
+    def test_is_sequence_not_text(
+        self,
+        value: object,
+        expected: bool,
+    ) -> None:
+        """Test compatibility sequence detection helper."""
+        assert is_sequence_not_text(value) is expected
 
     def test_normalize_operation_keys_accepts_enums(self) -> None:
         """
