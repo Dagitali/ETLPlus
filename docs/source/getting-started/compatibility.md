@@ -34,7 +34,7 @@ packaging and entrypoint regressions before release.
 | Development | `pip install -e ".[dev]"` | Local development, linting, type-checking, tests, and packaging work. |
 | Docs | `pip install -e ".[docs]"` | Sphinx and Read the Docs-compatible documentation builds. |
 | File extras | `pip install -e ".[file]"` | Remaining scientific and specialty format dependencies such as `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`. |
-| Storage extras | `pip install -e ".[storage]"` | Cloud storage backends for `s3://`, `azure-blob://`, and `abfs://` locations through `etlplus.storage` and `etlplus.file.File`. |
+| Storage extras | `pip install -e ".[storage]"` | Remote storage backends for `s3://`, `azure-blob://`, `abfs://`, and `hdfs://` locations through `etlplus.storage` and `etlplus.file.File`. |
 
 The broad base runtime is intentional. For the `v1.x` stable line, ETLPlus treats the documented
 CLI, `etlplus.ops`, `etlplus.api`, and the implemented built-in file handlers as one default
