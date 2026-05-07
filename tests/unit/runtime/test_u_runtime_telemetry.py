@@ -217,7 +217,7 @@ class TestTelemetryConfig:
 
     def test_exporter_parser_rejects_invalid_inputs(self) -> None:
         """Telemetry exporter parsing should reject invalid inputs predictably."""
-        assert telemetry_mod._TelemetryValueParser.exporter('bogus') is None
+        assert telemetry_mod._telemetry_exporter('bogus') is None
 
     def test_resolve_prefers_env_and_promotes_enabled_exporter(self) -> None:
         """Env values should override config and enabling telemetry picks OTel."""
