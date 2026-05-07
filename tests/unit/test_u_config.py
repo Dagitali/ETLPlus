@@ -270,6 +270,56 @@ class TestConfig:
         assert cfg.history.state_dir == './.etlplus-state'
         assert cfg.history.capture_tracebacks is True
 
+    def test_from_dict_parses_schedules(
+        self,
+    ) -> None:
+        """Test that :class:`Config` parses one optional schedules block."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Schedule Config Test',
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+                'schedules': [
+                    {
+                        'name': 'nightly_all',
+                        'cron': '0 2 * * *',
+                        'timezone': 'UTC',
+                        'paused': False,
+                        'target': {
+                            'run_all': True,
+                        },
+                        'backfill': {
+                            'enabled': True,
+                            'max_catchup_runs': 3,
+                            'start_at': '2026-05-01T00:00:00Z',
+                        },
+                    },
+                    {
+                        'name': 'customers_every_30m',
+                        'interval': {
+                            'minutes': 30,
+                        },
+                        'target': {
+                            'job': 'job-a',
+                        },
+                    },
+                ],
+            },
+        )
+
+        assert len(cfg.schedules) == 2
+        assert cfg.schedules[0].name == 'nightly_all'
+        assert cfg.schedules[0].cron == '0 2 * * *'
+        assert cfg.schedules[0].target is not None
+        assert cfg.schedules[0].target.run_all is True
+        assert cfg.schedules[0].backfill is not None
+        assert cfg.schedules[0].backfill.max_catchup_runs == 3
+        assert cfg.schedules[1].interval is not None
+        assert cfg.schedules[1].interval.minutes == 30
+        assert cfg.schedules[1].target is not None
+        assert cfg.schedules[1].target.job == 'job-a'
+
     def test_from_dict_parses_telemetry_defaults(
         self,
     ) -> None:

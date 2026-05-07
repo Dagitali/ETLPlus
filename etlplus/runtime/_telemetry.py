@@ -110,13 +110,13 @@ class ResolvedTelemetryConfig:
         config : TelemetryConfig | None
             Optional telemetry configuration.
         env : Mapping[str, str] | None, optional
-            Environment variables to consider, by default None.
+            Environment variables to consider. Defaults to ``None``.
         enabled : bool | None, optional
-            Explicit override for the enabled flag, by default None.
+            Explicit override for the enabled flag. Defaults to ``None``.
         exporter : str | None, optional
-            Explicit override for the exporter, by default None.
+            Explicit override for the exporter. Defaults to ``None``.
         service_name : str | None, optional
-            Explicit override for the service name, by default None.
+            Explicit override for the service name. Defaults to ``None``.
 
         Returns
         -------

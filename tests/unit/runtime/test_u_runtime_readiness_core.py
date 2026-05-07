@@ -272,6 +272,209 @@ class TestReadinessReportBuilderCore:
             },
         ]
 
+    def test_config_checks_schedule_errors_skip_runtime_checks(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Schedule validation errors should fail readiness before runtime checks."""
+        config_path = write_pipeline_config(tmp_path)
+        resolved_cfg = _cfg()
+        resolved_cfg.jobs = [SimpleNamespace(name='job-a')]
+        resolved_cfg.schedules = [
+            SimpleNamespace(
+                name='nightly_all',
+                cron='*/15 * * * *',
+                interval=None,
+                paused=False,
+                target=SimpleNamespace(job=None, run_all=True),
+                timezone='UTC',
+                backfill=None,
+            ),
+        ]
+        _patch_config_resolution(
+            monkeypatch,
+            raw={'name': 'pipeline'},
+            resolved_cfg=resolved_cfg,
+        )
+        runtime_called = {'value': False}
+
+        def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
+            runtime_called['value'] = True
+            return [{'name': 'connector-readiness', 'status': 'ok'}]
+
+        monkeypatch.setattr(
+            readiness_connectors_mod.ConnectorReadinessPolicy,
+            'readiness_checks',
+            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
+        )
+
+        checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
+            str(config_path),
+            env={},
+        )
+
+        assert runtime_called['value'] is False
+        schedule_check = next(
+            check for check in checks if check['name'] == 'schedule-config'
+        )
+        assert schedule_check['status'] == 'error'
+        assert any(
+            issue['issue']
+            == (
+                'cron helper emission currently supports only '
+                'single values or "*" fields'
+            )
+            for issue in schedule_check['issues']
+        )
+
+    def test_config_checks_schedule_validation_accepts_supported_schedule_shape(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Supported schedule shapes should continue into runtime readiness checks."""
+        config_path = write_pipeline_config(tmp_path)
+        resolved_cfg = _cfg()
+        resolved_cfg.jobs = [SimpleNamespace(name='job-a')]
+        resolved_cfg.schedules = [
+            SimpleNamespace(
+                name='nightly_all',
+                cron='0 2 * * *',
+                interval=None,
+                paused=False,
+                target=SimpleNamespace(job='job-a', run_all=False),
+                timezone='UTC',
+                backfill=None,
+            ),
+        ]
+        _patch_config_resolution(
+            monkeypatch,
+            raw={'name': 'pipeline'},
+            resolved_cfg=resolved_cfg,
+        )
+        monkeypatch.setattr(
+            readiness_connectors_mod.ConnectorReadinessPolicy,
+            'readiness_checks',
+            lambda *_args, **_kwargs: [{'name': 'connector-readiness', 'status': 'ok'}],
+        )
+        monkeypatch.setattr(
+            readiness_builder_mod.ReadinessReportBuilder,
+            '_provider_checks',
+            lambda *, cfg, env: [{'name': 'provider-environment', 'status': 'ok'}],
+        )
+
+        checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
+            str(config_path),
+            env={},
+        )
+
+        assert not any(check['name'] == 'schedule-config' for check in checks)
+        assert any(check['name'] == 'connector-readiness' for check in checks)
+        assert any(check['name'] == 'provider-environment' for check in checks)
+
+    def test_config_checks_strict_structure_errors_short_circuit_runtime_checks(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Strict config issues should stop before runtime readiness checks."""
+        config_path = write_pipeline_config(tmp_path)
+        resolved_raw = {
+            'sources': ['bad-entry'],
+            'jobs': [
+                {
+                    'name': 'publish',
+                    'extract': {'source': 'missing-source'},
+                    'load': {'target': 'missing-target'},
+                },
+            ],
+        }
+        _patch_config_resolution(
+            monkeypatch,
+            raw=resolved_raw,
+            resolved_raw=resolved_raw,
+        )
+        runtime_called = {'value': False}
+
+        def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
+            runtime_called['value'] = True
+            return [{'name': 'connector-readiness', 'status': 'ok'}]
+
+        monkeypatch.setattr(
+            readiness_connectors_mod.ConnectorReadinessPolicy,
+            'readiness_checks',
+            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
+        )
+
+        checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
+            str(config_path),
+            env={},
+            strict=True,
+        )
+
+        assert runtime_called['value'] is False
+        structure_check = next(
+            check for check in checks if check['name'] == 'config-structure'
+        )
+        assert structure_check['status'] == 'error'
+        assert any(
+            issue['issue'] == 'invalid connector entry'
+            for issue in structure_check['issues']
+        )
+        assert any(
+            issue['issue'] == 'unknown source reference: missing-source'
+            for issue in structure_check['issues']
+        )
+
+    def test_config_checks_strict_success_adds_config_structure_ok_row(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Strict config checks should emit an explicit ok row when clean."""
+        config_path = write_pipeline_config(tmp_path)
+        resolved_cfg = _cfg()
+        _patch_config_resolution(
+            monkeypatch,
+            raw={'name': 'pipeline'},
+            resolved_cfg=resolved_cfg,
+        )
+        monkeypatch.setattr(
+            readiness_builder_mod.ReadinessReportBuilder,
+            '_strict_config_issues',
+            lambda *, raw: [],
+        )
+        monkeypatch.setattr(
+            readiness_connectors_mod.ConnectorReadinessPolicy,
+            'readiness_checks',
+            lambda *_args, **_kwargs: [{'name': 'connector-readiness', 'status': 'ok'}],
+        )
+        monkeypatch.setattr(
+            readiness_builder_mod.ReadinessReportBuilder,
+            '_provider_checks',
+            lambda *, cfg, env: [{'name': 'provider-environment', 'status': 'ok'}],
+        )
+
+        checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
+            str(config_path),
+            env={},
+            strict=True,
+        )
+
+        assert any(
+            check
+            == {
+                'message': (
+                    'Strict config validation found no malformed or '
+                    'inconsistent configuration entries.'
+                ),
+                'name': 'config-structure',
+                'status': 'ok',
+            }
+            for check in checks
+        )
+
     def test_config_checks_success_path_adds_connector_and_provider_results(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -396,108 +599,6 @@ class TestReadinessReportBuilderCore:
                 'unresolved_tokens': ['MISSING_TOKEN'],
             },
         ]
-
-    def test_config_checks_strict_structure_errors_short_circuit_runtime_checks(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
-    ) -> None:
-        """Strict config issues should stop before runtime readiness checks."""
-        config_path = write_pipeline_config(tmp_path)
-        resolved_raw = {
-            'sources': ['bad-entry'],
-            'jobs': [
-                {
-                    'name': 'publish',
-                    'extract': {'source': 'missing-source'},
-                    'load': {'target': 'missing-target'},
-                },
-            ],
-        }
-        _patch_config_resolution(
-            monkeypatch,
-            raw=resolved_raw,
-            resolved_raw=resolved_raw,
-        )
-        runtime_called = {'value': False}
-
-        def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
-            runtime_called['value'] = True
-            return [{'name': 'connector-readiness', 'status': 'ok'}]
-
-        monkeypatch.setattr(
-            readiness_connectors_mod.ConnectorReadinessPolicy,
-            'readiness_checks',
-            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
-        )
-
-        checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
-            str(config_path),
-            env={},
-            strict=True,
-        )
-
-        assert runtime_called['value'] is False
-        structure_check = next(
-            check for check in checks if check['name'] == 'config-structure'
-        )
-        assert structure_check['status'] == 'error'
-        assert any(
-            issue['issue'] == 'invalid connector entry'
-            for issue in structure_check['issues']
-        )
-        assert any(
-            issue['issue'] == 'unknown source reference: missing-source'
-            for issue in structure_check['issues']
-        )
-
-    def test_config_checks_strict_success_adds_config_structure_ok_row(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        tmp_path: Path,
-    ) -> None:
-        """Strict config checks should emit an explicit ok row when clean."""
-        config_path = write_pipeline_config(tmp_path)
-        resolved_cfg = _cfg()
-        _patch_config_resolution(
-            monkeypatch,
-            raw={'name': 'pipeline'},
-            resolved_cfg=resolved_cfg,
-        )
-        monkeypatch.setattr(
-            readiness_builder_mod.ReadinessReportBuilder,
-            '_strict_config_issues',
-            lambda *, raw: [],
-        )
-        monkeypatch.setattr(
-            readiness_connectors_mod.ConnectorReadinessPolicy,
-            'readiness_checks',
-            lambda *_args, **_kwargs: [{'name': 'connector-readiness', 'status': 'ok'}],
-        )
-        monkeypatch.setattr(
-            readiness_builder_mod.ReadinessReportBuilder,
-            '_provider_checks',
-            lambda *, cfg, env: [{'name': 'provider-environment', 'status': 'ok'}],
-        )
-
-        checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
-            str(config_path),
-            env={},
-            strict=True,
-        )
-
-        assert any(
-            check
-            == {
-                'message': (
-                    'Strict config validation found no malformed or '
-                    'inconsistent configuration entries.'
-                ),
-                'name': 'config-structure',
-                'status': 'ok',
-            }
-            for check in checks
-        )
 
     @pytest.mark.parametrize(
         ('issue', 'api_reference', 'expected'),

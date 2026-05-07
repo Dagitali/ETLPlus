@@ -34,8 +34,9 @@ from .runtime import TelemetryConfig
 from .utils import MappingParser
 from .utils import SubstitutionResolver
 from .utils._types import StrAnyMap
-from .workflow._jobs import JobConfig
-from .workflow._profile import ProfileConfig
+from .workflow import JobConfig
+from .workflow import ProfileConfig
+from .workflow import ScheduleConfig
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -163,6 +164,8 @@ class Config:
         Target connectors, parsed tolerantly.
     jobs : list[JobConfig]
         Job orchestration definitions.
+    schedules : list[ScheduleConfig]
+        Optional portable schedule definitions.
     table_schemas : list[dict[str, Any]]
         Optional DDL-style table specifications used by the render command.
     """
@@ -185,6 +188,7 @@ class Config:
     transforms: dict[str, dict[str, Any]] = field(default_factory=dict)
     targets: list[Connector] = field(default_factory=list)
     jobs: list[JobConfig] = field(default_factory=list)
+    schedules: list[ScheduleConfig] = field(default_factory=list)
     table_schemas: list[dict[str, Any]] = field(default_factory=list)
 
     # -- Class Methods -- #
@@ -297,6 +301,12 @@ class Config:
             JobConfig.from_obj,
         )
 
+        # Schedules
+        schedules: list[ScheduleConfig] = _collect_parsed(
+            raw.get('schedules', []) or [],
+            ScheduleConfig.from_obj,
+        )
+
         # Table schemas (optional, tolerant pass-through structures).
         table_schemas: list[dict[str, Any]] = []
         for entry in raw.get('table_schemas', []) or []:
@@ -319,5 +329,6 @@ class Config:
             transforms=transforms,
             targets=targets,
             jobs=jobs,
+            schedules=schedules,
             table_schemas=table_schemas,
         )

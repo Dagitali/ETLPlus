@@ -15,6 +15,7 @@ from ...__version__ import __version__ as _ETLPLUS_VERSION
 from ..._config import Config
 from ...utils import TokenReferenceCollector
 from ...utils._types import StrAnyMap
+from ...workflow._schedule import schedule_validation_issues
 from . import _connectors
 from . import _providers
 from . import _strict
@@ -236,6 +237,21 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             )
 
         if not include_runtime_checks:
+            return checks
+
+        schedule_issues = schedule_validation_issues(
+            getattr(resolved_cfg, 'schedules', []),
+            job_names={job.name for job in getattr(resolved_cfg, 'jobs', [])},
+        )
+        if schedule_issues:
+            checks.append(
+                cls.make_check(
+                    'schedule-config',
+                    'error',
+                    'Schedule validation found unsupported or inconsistent entries.',
+                    issues=schedule_issues,
+                ),
+            )
             return checks
 
         checks.extend(

@@ -22,6 +22,7 @@ import etlplus.cli._commands.init as init_mod
 import etlplus.cli._commands.log as log_mod
 import etlplus.cli._commands.report as report_mod
 import etlplus.cli._commands.run as run_mod
+import etlplus.cli._commands.schedule as schedule_mod
 import etlplus.cli._commands.status as status_mod
 import etlplus.cli._commands.transform as transform_mod
 from etlplus.cli._commands._state import CliState
@@ -406,6 +407,24 @@ class TestDelegatingCommands:
                 id='log',
             ),
             pytest.param(
+                schedule_mod,
+                commands_mod.schedule_cmd,
+                'schedule_handler',
+                {
+                    'config': 'pipeline.yml',
+                    'emit': 'crontab',
+                    'schedule': 'nightly_all',
+                },
+                {
+                    'config': 'pipeline.yml',
+                    'emit': 'crontab',
+                    'pretty': False,
+                    'schedule_name': 'nightly_all',
+                },
+                0,
+                id='schedule',
+            ),
+            pytest.param(
                 report_mod,
                 commands_mod.report_cmd,
                 'report_handler',
@@ -557,6 +576,28 @@ class TestDelegatingCommands:
                 run_all=True,
             )
 
+    def test_schedule_emit_requires_named_schedule(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+    ) -> None:
+        """Schedule helper emission should require one named schedule."""
+        monkeypatch.setattr(
+            schedule_mod.CommandHelperPolicy,
+            'fail_usage',
+            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
+        )
+
+        with pytest.raises(
+            typer.BadParameter,
+            match="'--emit' requires '--schedule'",
+        ):
+            commands_mod.schedule_cmd(
+                typer_ctx_factory(),
+                config='pipeline.yml',
+                emit='crontab',
+            )
+
 
 class TestCliInvokeParsing:
     """Typer runner coverage for history/log/report option parsing."""
@@ -623,6 +664,25 @@ class TestCliInvokeParsing:
                     'status': 'skipped',
                 },
                 id='log-level-job-pipeline-status',
+            ),
+            pytest.param(
+                (
+                    'schedule',
+                    '--config',
+                    'pipeline.yml',
+                    '--schedule',
+                    'nightly_all',
+                    '--emit',
+                    'systemd',
+                ),
+                schedule_mod,
+                'schedule_handler',
+                {
+                    'config': 'pipeline.yml',
+                    'emit': 'systemd',
+                    'schedule_name': 'nightly_all',
+                },
+                id='schedule-emit-systemd',
             ),
             pytest.param(
                 (
