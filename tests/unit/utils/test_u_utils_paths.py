@@ -25,9 +25,12 @@ class TestPathHasher:
         path = tmp_path / 'pipeline.yml'
         path.write_text('name: pipeline-a\n', encoding='utf-8')
 
-        assert PathHasher(path).sha256() == hashlib.sha256(
-            path.read_bytes(),
-        ).hexdigest()
+        assert (
+            PathHasher(path).sha256()
+            == hashlib.sha256(
+                path.read_bytes(),
+            ).hexdigest()
+        )
 
     def test_sha256_returns_none_for_missing_path(self, tmp_path: Path) -> None:
         """Missing paths should not produce a digest."""
@@ -52,3 +55,26 @@ class TestPathParser:
     def test_is_windows_drive_path(self, value: str, expected: bool) -> None:
         """Test Windows drive-prefix detection."""
         assert PathParser.is_windows_drive_path(value) is expected
+
+    @pytest.mark.parametrize(
+        ('value', 'expected_stdout', 'expected_file'),
+        [
+            pytest.param(None, True, False, id='none'),
+            pytest.param('', True, False, id='empty'),
+            pytest.param('   ', True, False, id='blank'),
+            pytest.param('-', True, False, id='dash'),
+            pytest.param(' - ', True, False, id='spaced-dash'),
+            pytest.param('out.json', False, True, id='string-path'),
+            pytest.param(Path('out.json'), False, True, id='pathlike'),
+            pytest.param(123, False, False, id='non-pathlike'),
+        ],
+    )
+    def test_output_target_detection(
+        self,
+        value: object,
+        expected_stdout: bool,
+        expected_file: bool,
+    ) -> None:
+        """Test STDOUT and concrete file-target detection."""
+        assert PathParser.is_stdout_target(value) is expected_stdout
+        assert PathParser.is_file_target(value) is expected_file

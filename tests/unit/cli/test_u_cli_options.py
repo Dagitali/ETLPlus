@@ -54,7 +54,7 @@ class TestHelperOptionKwargs:
             pytest.param('target', 'Override the inferred target type', id='target'),
         ],
     )
-    def test_connector_option_kwargs_context_specific_help(
+    def test_connector_option_alias_context_specific_help(
         self,
         context: str,
         expected_help: str,
@@ -63,14 +63,19 @@ class TestHelperOptionKwargs:
         Test that :class:`Connector`-type helper preserve source and target
         wording.
         """
-        kwargs = cli_options._typer_connector_option_kwargs(
-            context=context,  # type: ignore[arg-type]
+        _, option_info = get_args(
+            cli_options.typer_connector_option_alias(
+                str,
+                f'--{context}-type',
+                context=context,  # type: ignore[arg-type]
+            ),
         )
 
-        assert kwargs['metavar'] == 'CONNECTOR'
-        assert kwargs['show_default'] is False
-        assert kwargs['rich_help_panel'] == 'I/O overrides'
-        assert expected_help in str(kwargs['help'])
+        assert isinstance(option_info, typer.models.OptionInfo)
+        assert option_info.metavar == 'CONNECTOR'
+        assert option_info.show_default is False
+        assert option_info.rich_help_panel == 'I/O overrides'
+        assert expected_help in str(option_info.help)
 
     @pytest.mark.parametrize(
         ('help_text', 'show_default', 'expected'),
@@ -183,19 +188,24 @@ class TestHelperOptionKwargs:
             pytest.param('until', 'at or before', id='until'),
         ],
     )
-    def test_timestamp_option_kwargs_bound_specific_help(
+    def test_timestamp_option_alias_bound_specific_help(
         self,
         bound: str,
         expected_fragment: str,
     ) -> None:
         """Test that timestamp helpers preserve `since` and `until` wording."""
-        kwargs = cli_options._typer_timestamp_option_kwargs(
-            bound=bound,  # type: ignore[arg-type]
+        _, option_info = get_args(
+            cli_options.typer_timestamp_option_alias(
+                str | None,
+                f'--{bound}',
+                bound=bound,  # type: ignore[arg-type]
+            ),
         )
 
-        assert kwargs['metavar'] == 'ISO8601'
-        assert kwargs['show_default'] is False
-        assert expected_fragment in str(kwargs['help'])
+        assert isinstance(option_info, typer.models.OptionInfo)
+        assert option_info.metavar == 'ISO8601'
+        assert option_info.show_default is False
+        assert expected_fragment in str(option_info.help)
 
     @pytest.mark.parametrize(
         ('context', 'expected_fragment'),
@@ -204,19 +214,24 @@ class TestHelperOptionKwargs:
             pytest.param('target', 'target is STDIN/inline', id='target'),
         ],
     )
-    def test_typer_format_option_kwargs_context_specific_help(
+    def test_typer_format_option_alias_context_specific_help(
         self,
         context: str,
         expected_fragment: str,
     ) -> None:
         """Test that format helpers tailor help text by connector context."""
-        kwargs = cli_options._typer_format_option_kwargs(
-            context=context,  # type: ignore[arg-type]
+        _, option_info = get_args(
+            cli_options.typer_format_option_alias(
+                str | None,
+                f'--{context}-format',
+                context=context,  # type: ignore[arg-type]
+            ),
         )
 
-        assert kwargs['metavar'] == 'FORMAT'
-        assert kwargs['show_default'] is False
-        assert expected_fragment in str(kwargs['help'])
+        assert isinstance(option_info, typer.models.OptionInfo)
+        assert option_info.metavar == 'FORMAT'
+        assert option_info.show_default is False
+        assert expected_fragment in str(option_info.help)
 
     def test_value_option_alias_builds_typer_option_metadata(self) -> None:
         """Scalar option aliases should carry the requested metadata."""

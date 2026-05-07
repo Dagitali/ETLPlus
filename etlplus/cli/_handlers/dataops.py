@@ -21,11 +21,11 @@ from ...ops import validate
 from ...ops._types import PipelineConfig
 from ...ops.validate import FieldRulesDict
 from ...ops.validate import validate_schema
+from ...utils import PathParser
 from ...utils._types import JSONData
 from . import _completion
 from . import _input
 from . import _lifecycle
-from . import _output
 from . import _payload
 
 # SECTION: EXPORTS ========================================================== #
@@ -258,7 +258,7 @@ class DataCommandPolicy:
             ``True`` if *target* names a concrete non-STDOUT destination,
             narrowing *target* to ``str`` in the guarded branch.
         """
-        return not _output.is_stdout_target(target)
+        return PathParser.is_file_target(target)
 
     @staticmethod
     def is_explicit_format(

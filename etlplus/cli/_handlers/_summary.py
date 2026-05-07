@@ -18,7 +18,7 @@ from ...workflow import topological_sort_jobs
 
 
 __all__ = [
-    # Functins
+    # Functions
     'check_sections',
     'collect_table_specs',
     'graph_summary',
@@ -51,7 +51,7 @@ def check_sections(
     transforms: bool,
 ) -> dict[str, Any]:
     """
-    Build sectioned metadata output for the check command.
+    Build sectioned metadata output for the ``etlplus check`` command.
 
     Parameters
     ----------
@@ -73,22 +73,13 @@ def check_sections(
     dict[str, Any]
         A dictionary containing the requested sections of metadata.
     """
-    sections: dict[str, Any] = {}
     summary = pipeline_summary(cfg)
-
-    if jobs:
-        sections['jobs'] = summary['jobs']
-    if pipelines:
-        sections['pipelines'] = [cfg.name]
-    if sources:
-        sections['sources'] = [src.name for src in cfg.sources]
-    if targets:
-        sections['targets'] = [tgt.name for tgt in cfg.targets]
-    if transforms:
-        sections['transforms'] = _transform_names(cfg)
-    if not sections:
-        sections['jobs'] = summary['jobs']
-    return sections
+    sections: dict[str, Any] = {'jobs': summary['jobs']} if jobs else {}
+    sections |= {'pipelines': [cfg.name]} if pipelines else {}
+    sections |= {'sources': [src.name for src in cfg.sources]} if sources else {}
+    sections |= {'targets': [tgt.name for tgt in cfg.targets]} if targets else {}
+    sections |= {'transforms': _transform_names(cfg)} if transforms else {}
+    return sections or {'jobs': summary['jobs']}
 
 
 def collect_table_specs(

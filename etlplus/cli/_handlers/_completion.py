@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 from typing import Literal
 
+from ...utils import PathParser
 from . import _lifecycle
 from . import _output
 
@@ -29,7 +30,7 @@ __all__ = [
 type CompletionMode = Literal['json', 'or_write', 'file', 'json_file']
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _require_file_target(
@@ -38,7 +39,7 @@ def _require_file_target(
     mode: CompletionMode,
 ) -> str:
     """Return a concrete file target or fail with a clear completion error."""
-    if _output.is_file_target(output_path):
+    if isinstance(output_path, str) and not PathParser.is_stdout_target(output_path):
         return output_path
     raise ValueError(f'{mode!r} completion requires an output path')
 
@@ -52,6 +53,9 @@ def _require_success_message(
     if success_message:
         return success_message
     raise ValueError(f'{mode!r} completion requires a success message')
+
+
+# SECTION: FUNCTIONS ======================================================== #
 
 
 def complete_output(
