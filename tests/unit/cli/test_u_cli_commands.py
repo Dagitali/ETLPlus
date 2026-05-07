@@ -22,6 +22,7 @@ import etlplus.cli._commands.init as init_mod
 import etlplus.cli._commands.log as log_mod
 import etlplus.cli._commands.report as report_mod
 import etlplus.cli._commands.run as run_mod
+import etlplus.cli._commands.schedule as schedule_mod
 import etlplus.cli._commands.status as status_mod
 import etlplus.cli._commands.transform as transform_mod
 from etlplus.cli._commands._state import CliState
@@ -404,6 +405,20 @@ class TestDelegatingCommands:
                 },
                 0,
                 id='log',
+            ),
+            pytest.param(
+                schedule_mod,
+                commands_mod.schedule_cmd,
+                'schedule_handler',
+                {
+                    'config': 'pipeline.yml',
+                },
+                {
+                    'config': 'pipeline.yml',
+                    'pretty': False,
+                },
+                0,
+                id='schedule',
             ),
             pytest.param(
                 report_mod,
