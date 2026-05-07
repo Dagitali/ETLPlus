@@ -182,7 +182,7 @@ def is_file_target(
 
     Returns
     -------
-    TypeGuard[str]
+    TypeGuard[str | PathLike[str]]
         ``True`` when *output_path* can be passed to :class:`File`.
     """
     return PathParser.is_file_target(output_path)
