@@ -6,11 +6,30 @@ Unit tests for :mod:`etlplus.utils._paths`.
 
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
+
 import pytest
 
+from etlplus.utils import PathHasher
 from etlplus.utils import PathParser
 
 # SECTION: TESTS ============================================================ #
+
+
+class TestPathHasher:
+    """Unit tests for path hashing helpers."""
+
+    def test_sha256_returns_digest_for_existing_file(self, tmp_path: Path) -> None:
+        """Existing files should hash to their SHA-256 digest."""
+        path = tmp_path / 'pipeline.yml'
+        path.write_text('name: pipeline-a\n', encoding='utf-8')
+
+        assert PathHasher.sha256(path) == hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def test_sha256_returns_none_for_missing_path(self, tmp_path: Path) -> None:
+        """Missing paths should not produce a digest."""
+        assert PathHasher.sha256(tmp_path / 'missing.yml') is None
 
 
 class TestPathParser:
