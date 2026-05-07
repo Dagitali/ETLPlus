@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from datetime import date
 from datetime import datetime
 from datetime import time
-from decimal import Decimal
 from typing import TextIO
 from typing import TypeGuard
 from typing import cast
@@ -37,13 +36,6 @@ __all__ = [
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _is_json_data(
-    value: object,
-) -> TypeGuard[JSONData]:
-    """Return whether *value* matches the JSONData runtime shape."""
-    return isinstance(value, dict) or _is_object_list(value)
 
 
 def _is_object_list(
@@ -146,10 +138,6 @@ class JsonCodec:
         ValueError
             If *text* is not valid JSON.
 
-        Notes
-        -----
-        This wrapper preserves the concise :class:`ValueError` raised by the
-        internal JSON codec when decoding fails.
         """
         try:
             data = json.loads(text)
@@ -157,9 +145,11 @@ class JsonCodec:
             raise ValueError(
                 f'Invalid JSON payload: {exc.msg} (pos {exc.pos})',
             ) from exc
-        if not _is_json_data(data):
-            raise ValueError('JSON payload must be an object or array of objects')
-        return data
+        if isinstance(data, dict):
+            return cast(JSONDict, data)
+        if _is_object_list(data):
+            return data
+        raise ValueError('JSON payload must be an object or array of objects')
 
     # -- Instance Methods -- #
 
@@ -238,8 +228,6 @@ class JsonCodec:
         """
         if isinstance(value, date | datetime | time):
             return JsonCodec.isoformat(value)
-        if isinstance(value, Decimal):
-            return str(value)
         return str(value)
 
     @staticmethod
