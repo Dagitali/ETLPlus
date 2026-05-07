@@ -119,6 +119,8 @@ class TokenReferenceCollector:
     ----------
     pattern : Pattern[str]
         Regex pattern whose first capture group is treated as the token name.
+    paths_by_name : dict[str, set[str]]
+        Mapping of token names to sets of stable paths where they were found.
     """
 
     # -- Instance Attributes -- #
