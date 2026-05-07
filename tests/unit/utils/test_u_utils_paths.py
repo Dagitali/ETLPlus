@@ -41,6 +41,22 @@ class TestPathParser:
     """Unit tests for path parsing helpers."""
 
     @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param('C:\\data\\file.csv', True, id='windows-backslash'),
+            pytest.param('D:/data/file.csv', True, id='windows-forward-slash'),
+            pytest.param('/tmp/data.csv', False, id='posix-absolute'),
+            pytest.param('data/input.csv', False, id='relative'),
+            pytest.param('s3://bucket/key', False, id='uri'),
+            pytest.param('', False, id='empty'),
+            pytest.param('1:/data', False, id='numeric-prefix'),
+        ],
+    )
+    def test_is_windows_drive_path(self, value: str, expected: bool) -> None:
+        """Test Windows drive-prefix detection."""
+        assert PathParser.is_windows_drive_path(value) is expected
+
+    @pytest.mark.parametrize(
         ('value', 'expected_stdout', 'expected_file'),
         [
             pytest.param(None, True, False, id='none'),
@@ -62,19 +78,3 @@ class TestPathParser:
         """Test STDOUT and concrete file-target detection."""
         assert PathParser.is_stdout_target(value) is expected_stdout
         assert PathParser.is_file_target(value) is expected_file
-
-    @pytest.mark.parametrize(
-        ('value', 'expected'),
-        [
-            pytest.param('C:\\data\\file.csv', True, id='windows-backslash'),
-            pytest.param('D:/data/file.csv', True, id='windows-forward-slash'),
-            pytest.param('/tmp/data.csv', False, id='posix-absolute'),
-            pytest.param('data/input.csv', False, id='relative'),
-            pytest.param('s3://bucket/key', False, id='uri'),
-            pytest.param('', False, id='empty'),
-            pytest.param('1:/data', False, id='numeric-prefix'),
-        ],
-    )
-    def test_is_windows_drive_path(self, value: str, expected: bool) -> None:
-        """Test Windows drive-prefix detection."""
-        assert PathParser.is_windows_drive_path(value) is expected
