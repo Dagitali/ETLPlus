@@ -10,6 +10,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
 from importlib import import_module
+from importlib.util import find_spec
 from typing import Any
 
 # SECTION: EXPORTS ========================================================== #
@@ -22,6 +23,7 @@ __all__ = [
     'build_dependency_error_message',
     'dependency_label',
     'import_package',
+    'module_available',
     'normalize_dependency_names',
     # Type Aliases
     'DependencyNames',
@@ -53,6 +55,52 @@ class DependencyImporter:
 
     # -- Instance Methods -- #
 
+    def import_package(
+        self,
+        module_name: str,
+        *,
+        error_message: str,
+    ) -> Any:
+        """
+        Import one package using this importer's cache and error policy.
+
+        Parameters
+        ----------
+        module_name : str
+            Module name to import.
+        error_message : str
+            Error message used when import fails.
+
+        Returns
+        -------
+        Any
+            The imported module.
+
+        Raises
+        ------
+        self.import_exceptions
+            Propagated when ``strict_missing_name`` is enabled and the importer
+            fails on a different nested module name.
+        self.error_type
+            Raised with *error_message* when the configured import fails.
+        """
+        module_name = _clean_dependency_name(module_name, label='module_name')
+
+        if module_name in self.cache:
+            return self.cache[module_name]
+
+        try:
+            module = self.importer(module_name)
+        except self.import_exceptions as exc:
+            if self.strict_missing_name and isinstance(exc, ImportError):
+                missing_name = getattr(exc, 'name', None)
+                if missing_name is not None and missing_name != module_name:
+                    raise
+            raise self.error_type(error_message) from exc
+
+        self.cache[module_name] = module
+        return module
+
     def get(
         self,
         module_name: str,
@@ -82,7 +130,7 @@ class DependencyImporter:
         Any
             The imported module.
         """
-        return import_package(
+        return self.import_package(
             module_name,
             error_message=build_dependency_error_message(
                 module_name,
@@ -90,11 +138,6 @@ class DependencyImporter:
                 pip_name=pip_name,
                 required=required,
             ),
-            cache=self.cache,
-            importer=self.importer,
-            error_type=self.error_type,
-            import_exceptions=self.import_exceptions,
-            strict_missing_name=self.strict_missing_name,
         )
 
 
@@ -113,18 +156,44 @@ def _clean_dependency_name(
     return cleaned
 
 
+def _clean_dependency_names(
+    values: tuple[str, ...],
+    *,
+    label: str,
+) -> tuple[str, ...]:
+    """Return stripped dependency names or raise a clear error."""
+    return tuple(_clean_dependency_name(value, label=label) for value in values)
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
 def dependency_label(
     dependency_names: tuple[str, ...],
 ) -> str:
-    """Return one quoted dependency label string for an error message."""
+    """
+    Return one quoted dependency label string for an error message.
+
+    Parameters
+    ----------
+    dependency_names : tuple[str, ...]
+        One or more cleaned dependency names.
+
+    Returns
+    -------
+    str
+        Quoted dependency label string.
+
+    Raises
+    ------
+    ValueError
+        If *dependency_names* is empty.
+    """
     if not dependency_names:
         raise ValueError('dependency_names must not be empty')
-    cleaned_names = tuple(
-        _clean_dependency_name(name, label='dependency name')
-        for name in dependency_names
+    cleaned_names = _clean_dependency_names(
+        dependency_names,
+        label='dependency name',
     )
     quoted = tuple(f'"{name}"' for name in cleaned_names)
     if len(quoted) == 1:
@@ -139,7 +208,29 @@ def normalize_dependency_names(
     module_name: DependencyNames,
     pip_name: str | None,
 ) -> tuple[tuple[str, ...], str]:
-    """Normalize dependency names and install target for message formatting."""
+    """
+    Normalize dependency names and install target for message formatting.
+
+    Parameters
+    ----------
+    module_name : DependencyNames
+        One or more module names for the dependency.
+    pip_name : str | None
+        Optional package name to suggest for installation. Defaults to the
+        first cleaned module name when ``None`` or invalid. Ignored when
+        *module_name* is a string.
+
+    Returns
+    -------
+    tuple[tuple[str, ...], str]
+        Tuple of (normalized module names, normalized pip name or first module
+        name).
+
+    Raises
+    ------
+    ValueError
+        If *module_name* is an empty tuple or any cleaned names are empty.
+    """
     normalized_pip_name = (
         _clean_dependency_name(pip_name, label='pip_name')
         if pip_name is not None
@@ -153,9 +244,7 @@ def normalize_dependency_names(
         return (dependency_display_name,), dependency_display_name
     if not module_name:
         raise ValueError('module_name must not be an empty tuple')
-    dependency_names = tuple(
-        _clean_dependency_name(name, label='module_name') for name in module_name
-    )
+    dependency_names = _clean_dependency_names(module_name, label='module_name')
     return dependency_names, normalized_pip_name or dependency_names[0]
 
 
@@ -166,7 +255,28 @@ def build_dependency_error_message(
     *,
     required: bool = False,
 ) -> str:
-    """Build an import error message for one dependency."""
+    """
+    Build an import error message for one dependency.
+
+    Parameters
+    ----------
+    module_name : DependencyNames
+        One or more module names for the dependency.
+    format_name : str
+        Name of the format requiring the dependency.
+    pip_name : str | None, optional
+        Optional package name to suggest for installation. Defaults to the
+        first cleaned module name when ``None`` or invalid. Ignored when
+        *module_name* is a string.
+    required : bool, optional
+        Whether the dependency is required. Defaults to ``False``.
+
+    Returns
+    -------
+    str
+        Formatted error message indicating the missing dependency and how to
+        install it.
+    """
     dependency_names, dependency_target = normalize_dependency_names(
         module_name,
         pip_name,
@@ -218,30 +328,43 @@ def import_package(
     -------
     Any
         The imported module.
-
-    Raises
-    ------
-    import_exceptions
-        Propagated when ``strict_missing_name`` is enabled and the importer
-        fails on a different nested module name.
-    error_type
-        Raised with *error_message* when the configured import fails.
-
     """
-    module_name = _clean_dependency_name(module_name, label='module_name')
+    importer_policy = DependencyImporter(
+        cache=cache if cache is not None else {},
+        error_type=error_type,
+        import_exceptions=import_exceptions,
+        importer=importer,
+        strict_missing_name=strict_missing_name,
+    )
+    return importer_policy.import_package(
+        module_name,
+        error_message=error_message,
+    )
 
-    if cache is not None and module_name in cache:
-        return cache[module_name]
 
+def module_available(
+    module_name: str,
+    *,
+    spec_finder: Callable[[str], object | None] = find_spec,
+) -> bool:
+    """
+    Return whether *module_name* is importable without importing it.
+
+    Parameters
+    ----------
+    module_name : str
+        Module name to inspect.
+    spec_finder : Callable[[str], object | None], optional
+        Callable used to resolve import metadata. Defaults to
+        :func:`importlib.util.find_spec`.
+
+    Returns
+    -------
+    bool
+        ``True`` when import metadata can resolve *module_name*.
+    """
     try:
-        module = importer(module_name)
-    except import_exceptions as exc:
-        if strict_missing_name and isinstance(exc, ImportError):
-            missing_name = getattr(exc, 'name', None)
-            if missing_name is not None and missing_name != module_name:
-                raise
-        raise error_type(error_message) from exc
-
-    if cache is not None:
-        cache[module_name] = module
-    return module
+        normalized = _clean_dependency_name(module_name, label='module_name')
+        return spec_finder(normalized) is not None
+    except (ImportError, ModuleNotFoundError, ValueError):
+        return False

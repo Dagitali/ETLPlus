@@ -25,6 +25,7 @@ from ._parsing import SequenceParser
 from ._parsing import ValueParser
 from ._paths import PathParser
 from ._substitution import SubstitutionResolver
+from ._substitution import TokenReferenceCollector
 from ._text import TextChoiceResolver
 from ._text import TextNormalizer
 from ._types import NonEmptyStr
@@ -48,6 +49,7 @@ __all__ = [
     'SubstitutionResolver',
     'TextChoiceResolver',
     'TextNormalizer',
+    'TokenReferenceCollector',
     # Enums
     'CoercibleStrEnum',
     # Functions

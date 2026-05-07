@@ -10,7 +10,6 @@ import os
 import sys
 from collections.abc import Iterator
 from collections.abc import Mapping
-from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -23,9 +22,10 @@ from ...file import FileFormat
 from ...storage import StorageScheme
 from ...utils import MappingParser
 from ...utils import SubstitutionResolver
+from ...utils import TokenReferenceCollector
+from ...utils._imports import module_available
 from ...utils._types import StrAnyMap
 from ._support import SUPPORTED_PYTHON_RANGE
-from ._support import TOKEN_PATTERN
 from ._support import CheckStatus
 from ._support import ReadinessRow
 from ._support import ResolvedConfigContext
@@ -168,7 +168,7 @@ class ReadinessBaseMixin:
             ``True`` if the module is available, ``False`` if not.
         """
         try:
-            return find_spec(module_name) is not None
+            return module_available(module_name)
         except (ImportError, ModuleNotFoundError, ValueError):
             return False
 
@@ -462,65 +462,3 @@ class ReadinessSupportPolicy:
         if detected_scheme is not None:
             return f'{install_hint} Required for "{detected_scheme}" storage paths.'
         return install_hint
-
-
-class TokenReferenceCollector:
-    """Collect unresolved substitution tokens and their stable config paths."""
-
-    # -- Magic Methods (Object Lifecycle) -- #
-
-    def __init__(self) -> None:
-        self._paths_by_name: dict[str, set[str]] = {}
-
-    # -- Class Methods -- #
-
-    @classmethod
-    def collect_names(
-        cls,
-        value: Any,
-    ) -> set[str]:
-        """Return one set of unresolved token names discovered in *value*."""
-        collector = cls()
-        collector.walk(value)
-        return set(collector._paths_by_name)
-
-    @classmethod
-    def collect_rows(
-        cls,
-        value: Any,
-    ) -> list[dict[str, Any]]:
-        """Return one stable list of unresolved token reference rows."""
-        collector = cls()
-        collector.walk(value)
-        return [
-            {'name': name, 'paths': sorted(paths)}
-            for name, paths in sorted(collector._paths_by_name.items())
-        ]
-
-    # -- Instance Methods -- #
-
-    def walk(
-        self,
-        node: Any,
-        path: str = '',
-    ) -> None:
-        """Record unresolved token names and paths found in *node*."""
-        match node:
-            case str():
-                for match in TOKEN_PATTERN.findall(node):
-                    self._paths_by_name.setdefault(match, set()).add(path or '<root>')
-            case Mapping():
-                for key, inner in node.items():
-                    key_text = str(key)
-                    next_path = f'{path}.{key_text}' if path else key_text
-                    self.walk(inner, next_path)
-            case list() | tuple() as seq:
-                for index, inner in enumerate(seq):
-                    next_path = f'{path}[{index}]' if path else f'[{index}]'
-                    self.walk(inner, next_path)
-            case set() | frozenset():
-                for index, inner in enumerate(sorted(node, key=repr)):
-                    next_path = f'{path}[{index}]' if path else f'[{index}]'
-                    self.walk(inner, next_path)
-            case _:
-                return
