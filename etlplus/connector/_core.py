@@ -67,35 +67,6 @@ class ConnectorProtocol(Protocol):
         """
         ...
 
-    # -- Internal Static Methods -- #
-
-    @staticmethod
-    def _require_name(obj: StrAnyMap, *, kind: str) -> str:
-        """
-        Extract and validate the ``name`` field from connector mappings.
-
-        Parameters
-        ----------
-        obj : StrAnyMap
-            Connector mapping with a ``name`` entry.
-        kind : str
-            Connector kind used in the error message.
-
-        Returns
-        -------
-        str
-            Valid connector name.
-
-        Raises
-        ------
-        TypeError
-            If ``name`` is missing or not a string.
-        """
-        name = obj.get('name')
-        if not isinstance(name, str):
-            raise TypeError(f'Connector{kind} requires a "name" (str)')
-        return name
-
 
 # SECTION: ABSTRACT BASE DATA CLASSES ======================================= #
 
