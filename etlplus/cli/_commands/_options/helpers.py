@@ -32,65 +32,6 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _typer_argument_alias(
-    value_type: Any,
-    *param_decls: object,
-    **kwargs: Any,
-) -> Any:
-    """Return one ``Annotated`` Typer argument alias."""
-    return Annotated[
-        value_type,
-        typer.Argument(*param_decls, **kwargs),  # type: ignore[call-overload]
-    ]
-
-
-def _typer_connector_option_kwargs(
-    *,
-    context: DataConnectorContext,
-    rich_help_panel: str = 'I/O overrides',
-) -> dict[str, object]:
-    """Return common Typer option kwargs for source/target connector types."""
-    return {
-        'metavar': 'CONNECTOR',
-        'show_default': False,
-        'rich_help_panel': rich_help_panel,
-        'help': f'Override the inferred {context} type (api, database, file).',
-    }
-
-
-def _typer_format_option_kwargs(
-    *,
-    context: DataConnectorContext,
-    rich_help_panel: str = 'Format overrides',
-) -> dict[str, object]:
-    """Return common Typer option kwargs for format overrides."""
-    return {
-        'metavar': 'FORMAT',
-        'show_default': False,
-        'rich_help_panel': rich_help_panel,
-        'help': (
-            f'Payload format when the {context} is STDIN/inline or a '
-            'non-file connector. File connectors infer from extensions.'
-        ),
-    }
-
-
-def _typer_timestamp_option_kwargs(
-    *,
-    bound: Literal['since', 'until'],
-) -> dict[str, object]:
-    """Return common Typer option kwargs for ISO-8601 history bounds."""
-    direction = 'after' if bound == 'since' else 'before'
-    return {
-        'metavar': 'ISO8601',
-        'show_default': False,
-        'help': (f'Emit only records at or {direction} the given ISO-8601 timestamp.'),
-    }
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -150,10 +91,10 @@ def typer_connector_option_alias(
     return typer_option_alias(
         value_type,
         *param_decls,
-        **_typer_connector_option_kwargs(
-            context=context,
-            rich_help_panel=rich_help_panel,
-        ),
+        metavar='CONNECTOR',
+        show_default=False,
+        rich_help_panel=rich_help_panel,
+        help=f'Override the inferred {context} type (api, database, file).',
     )
 
 
@@ -252,9 +193,12 @@ def typer_format_option_alias(
     return typer_option_alias(
         value_type,
         *param_decls,
-        **_typer_format_option_kwargs(
-            context=context,
-            rich_help_panel=rich_help_panel,
+        metavar='FORMAT',
+        show_default=False,
+        rich_help_panel=rich_help_panel,
+        help=(
+            f'Payload format when the {context} is STDIN/inline or a '
+            'non-file connector. File connectors infer from extensions.'
         ),
     )
 
@@ -315,11 +259,13 @@ def typer_resource_argument_alias(
     Any
         The annotated Typer argument alias.
     """
-    return _typer_argument_alias(
+    return Annotated[
         value_type,
-        *param_decls,
-        **typer_resource_argument_kwargs(context=context),
-    )
+        typer.Argument(  # type: ignore[call-overload]
+            *param_decls,
+            **typer_resource_argument_kwargs(context=context),
+        ),
+    ]
 
 
 def typer_timestamp_option_alias(
@@ -328,10 +274,13 @@ def typer_timestamp_option_alias(
     bound: Literal['since', 'until'],
 ) -> Any:
     """Return one history-bound Typer option alias."""
+    direction = 'after' if bound == 'since' else 'before'
     return typer_option_alias(
         value_type,
         *param_decls,
-        **_typer_timestamp_option_kwargs(bound=bound),
+        metavar='ISO8601',
+        show_default=False,
+        help=f'Emit only records at or {direction} the given ISO-8601 timestamp.',
     )
 
 

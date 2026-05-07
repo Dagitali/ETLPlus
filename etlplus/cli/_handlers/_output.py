@@ -9,12 +9,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from collections.abc import Sequence
+from os import PathLike
 from typing import Any
-from typing import TypeGuard
 
 from ...file import File
 from ...file import FileFormat
 from ...utils import JsonCodec
+from ...utils import PathParser
 from ...utils._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
@@ -26,8 +27,6 @@ __all__ = [
     'emit_markdown_table',
     'emit_json_payload',
     'emit_or_write',
-    'is_file_target',
-    'is_stdout_target',
     'write_json_output',
     'write_file_payload',
 ]
@@ -96,7 +95,7 @@ def emit_markdown_table(
 
 def emit_or_write(
     data: Any,
-    output_path: str | None,
+    output_path: str | PathLike[str] | None,
     *,
     pretty: bool,
     success_message: str,
@@ -108,7 +107,7 @@ def emit_or_write(
     ----------
     data : Any
         The data to serialize.
-    output_path : str | None
+    output_path : str | PathLike[str] | None
         Target file path; when falsy or ``'-'`` data is emitted to STDOUT.
     pretty : bool
         Whether to pretty-print JSON emission.
@@ -147,50 +146,9 @@ def emit_json_payload(
     return exit_code
 
 
-def is_stdout_target(
-    output_path: str | None,
-) -> bool:
-    """
-    Return whether an output path represents STDOUT.
-
-    Parameters
-    ----------
-    output_path : str | None
-        Output destination supplied by the CLI.
-
-    Returns
-    -------
-    bool
-        ``True`` for ``None``, blank strings, or ``"-"`` with surrounding
-        whitespace.
-    """
-    return output_path is None or (
-        isinstance(output_path, str) and output_path.strip() in {'', '-'}
-    )
-
-
-def is_file_target(
-    output_path: str | None,
-) -> TypeGuard[str]:
-    """
-    Return whether an output path names a concrete file target.
-
-    Parameters
-    ----------
-    output_path : str | None
-        Output destination supplied by the CLI.
-
-    Returns
-    -------
-    TypeGuard[str]
-        ``True`` when *output_path* can be passed to :class:`File`.
-    """
-    return not is_stdout_target(output_path)
-
-
 def write_json_output(
     data: Any,
-    output_path: str | None,
+    output_path: str | PathLike[str] | None,
     *,
     success_message: str,
 ) -> bool:
@@ -201,7 +159,7 @@ def write_json_output(
     ----------
     data : Any
         The data to serialize as JSON.
-    output_path : str | None
+    output_path : str | PathLike[str] | None
         The output file path, or None/'-' to skip writing.
     success_message : str
         The message to print upon successful write.
@@ -211,7 +169,7 @@ def write_json_output(
     bool
         True if data was written to disk; False if not.
     """
-    if not is_file_target(output_path):
+    if not PathParser.is_file_target(output_path):
         return False
     File(output_path, FileFormat.JSON).write(data)
     print(f'{success_message} {output_path}')
@@ -220,7 +178,7 @@ def write_json_output(
 
 def write_file_payload(
     payload: JSONData,
-    target: str,
+    target: str | PathLike[str],
     *,
     format_hint: str | None,
 ) -> None:
@@ -231,7 +189,7 @@ def write_file_payload(
     ----------
     payload : JSONData
         The JSON-like data to write.
-    target : str
+    target : str | PathLike[str]
         The file path to write the payload.
     format_hint : str | None
         An optional hint for the file format. If None, the format is inferred.
