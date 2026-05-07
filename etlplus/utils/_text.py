@@ -20,60 +20,6 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _normalize_text(value: str | None) -> str:
-    """Return case-folded, trimmed text."""
-    return (value or '').strip().casefold()
-
-
-# SECTION: DATA CLASSES ===================================================== #
-
-
-@dataclass(frozen=True, slots=True)
-class TextChoiceResolver:
-    """
-    Resolve normalized text choices using one mapping and fallback.
-
-    Attributes
-    ----------
-    mapping : Mapping[str, str]
-        Mapping of acceptable normalized inputs to output values.
-    default : str
-        Fallback returned when input is missing or unrecognized.
-    normalize : Callable[[str | None], str]
-        Function applied to incoming values before lookup.
-    """
-
-    # -- Instance Attributes -- #
-
-    mapping: Mapping[str, str]
-    default: str
-    normalize: Callable[[str | None], str] = _normalize_text
-
-    # -- Instance Methods -- #
-
-    def resolve(
-        self,
-        value: str | None,
-    ) -> str:
-        """
-        Return the mapped choice for *value* or the configured fallback.
-
-        Parameters
-        ----------
-        value : str | None
-            Input value to normalize.
-
-        Returns
-        -------
-        str
-            Normalized mapped value or configured fallback.
-        """
-        return self.mapping.get(self.normalize(value), self.default)
-
-
 # SECTION: CLASSES ========================================================== #
 
 
@@ -100,7 +46,7 @@ class TextNormalizer:
             Normalized string with surrounding whitespace removed and case-
             folded. ``""`` when *value* is ``None``.
         """
-        return _normalize_text(value)
+        return (value or '').strip().casefold()
 
     @staticmethod
     def truncate(
@@ -126,3 +72,49 @@ class TextNormalizer:
         if not text:
             return ''
         return text[:limit]
+
+
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(frozen=True, slots=True)
+class TextChoiceResolver:
+    """
+    Resolve normalized text choices using one mapping and fallback.
+
+    Attributes
+    ----------
+    mapping : Mapping[str, str]
+        Mapping of acceptable normalized inputs to output values.
+    default : str
+        Fallback returned when input is missing or unrecognized.
+    normalize : Callable[[str | None], str]
+        Function applied to incoming values before lookup.
+    """
+
+    # -- Instance Attributes -- #
+
+    mapping: Mapping[str, str]
+    default: str
+    normalize: Callable[[str | None], str] = TextNormalizer.normalize
+
+    # -- Instance Methods -- #
+
+    def resolve(
+        self,
+        value: str | None,
+    ) -> str:
+        """
+        Return the mapped choice for *value* or the configured fallback.
+
+        Parameters
+        ----------
+        value : str | None
+            Input value to normalize.
+
+        Returns
+        -------
+        str
+            Normalized mapped value or configured fallback.
+        """
+        return self.mapping.get(self.normalize(value), self.default)

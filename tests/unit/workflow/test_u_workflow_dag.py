@@ -93,6 +93,11 @@ class TestDagHelpers:
                 'Unknown dependency',
                 id='unknown-dependency',
             ),
+            pytest.param(
+                [_job('a'), _job('a')],
+                'Duplicate job name',
+                id='duplicate-job-name',
+            ),
         ],
     )
     def test_topological_sort_rejects_invalid_graphs(
