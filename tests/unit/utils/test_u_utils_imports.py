@@ -171,34 +171,31 @@ class TestDependencyMessages:
 class TestImportPackage:
     """Unit tests for the module-level import compatibility wrapper."""
 
-    def test_import_package_imports_and_stores_cache(self) -> None:
-        """Test wrapper imports still support caller-provided caches."""
-        cache: dict[str, Any] = {}
+    @pytest.mark.parametrize(
+        ('cache', 'module_name'),
+        [
+            pytest.param({}, 'cached_module', id='caller-cache'),
+            pytest.param(None, 'uncached_module', id='uncached'),
+        ],
+    )
+    def test_import_package_cache_policy(
+        self,
+        cache: dict[str, Any] | None,
+        module_name: str,
+    ) -> None:
+        """Test wrapper imports support cached and uncached calls."""
         sentinel = object()
 
         result = import_package(
-            'new_module',
+            module_name,
             error_message='unused',
             cache=cache,
             importer=lambda _name: sentinel,
         )
 
         assert result is sentinel
-        assert cache == {'new_module': sentinel}
-
-    def test_import_package_supports_uncached_imports(self) -> None:
-        """Test wrapper imports do not require a cache object."""
-        sentinel = object()
-
-        assert (
-            import_package(
-                'uncached_module',
-                error_message='unused',
-                cache=None,
-                importer=lambda _name: sentinel,
-            )
-            is sentinel
-        )
+        if cache is not None:
+            assert cache == {module_name: sentinel}
 
 
 class TestDependencyImporter:
