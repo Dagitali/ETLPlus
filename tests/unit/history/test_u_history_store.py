@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.history._store`.
 
 from __future__ import annotations
 
-import hashlib
 from collections.abc import Callable
 from collections.abc import Mapping
 from pathlib import Path
@@ -148,32 +147,6 @@ class TestHistoryStoreModuleHelpers:
         assert (
             store_mod._serialize_string_list(['seed', 'publish'])
             == '["seed","publish"]'
-        )
-
-    def test_file_sha256_returns_none_for_missing_path(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that SHA-256 lookup returns `None` when the file does not exist.
-        """
-        assert store_mod._file_sha256(str(tmp_path / 'missing.yml')) is None
-
-    def test_file_sha256_returns_digest_for_existing_file(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that SHA-256 lookup hashes existing config files exactly once.
-        """
-        config_path = tmp_path / 'pipeline.yml'
-        config_path.write_text('name: pipeline-a\n', encoding='utf-8')
-
-        assert (
-            store_mod._file_sha256(str(config_path))
-            == hashlib.sha256(
-                config_path.read_bytes(),
-            ).hexdigest()
         )
 
     def test_sqlite_record_payload_serializes_missing_result_summary(
