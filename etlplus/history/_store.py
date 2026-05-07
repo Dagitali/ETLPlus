@@ -30,7 +30,6 @@ from ._config import DEFAULT_HISTORY_BACKEND
 from ._config import HistoryBackend
 from ._config import ResolvedHistoryConfig
 from ._config import _coerce_backend
-from ._config import _coerce_state_dir
 from ._models import JobRunRecord
 from ._models import RunCompletion
 from ._models import RunRecord
@@ -321,15 +320,6 @@ class HistoryStore(ABC):
             key_fn=_run_record_key,
             field_names=_RUN_RECORD_FIELDS,
         )
-
-    # -- Static Methods -- #
-
-    @staticmethod
-    def _coerce_state_dir(
-        state_dir: str | os.PathLike[str] | None = None,
-    ) -> Path:
-        """Coerce a state directory path from a value or environment variable."""
-        return _coerce_state_dir(state_dir or os.getenv('ETLPLUS_STATE_DIR'))
 
     @staticmethod
     def _record_level(
