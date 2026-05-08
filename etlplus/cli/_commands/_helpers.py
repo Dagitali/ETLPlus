@@ -204,9 +204,7 @@ class CommandHelperPolicy:
         """
         history_state = ensure_state(ctx) if state is None else state
         history_kwargs = {
-            key: value
-            for key, value in kwargs.items()
-            if value is not _MISSING
+            key: value for key, value in kwargs.items() if value is not _MISSING
         }
         return handler(pretty=history_state.pretty, **history_kwargs)
 
