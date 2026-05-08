@@ -251,10 +251,11 @@ def normalize_dependency_names(
         else None
     )
     if isinstance(module_name, str):
-        dependency_display_name = normalized_pip_name or _clean_dependency_name(
+        cleaned_module_name = _clean_dependency_name(
             module_name,
             label='module_name',
         )
+        dependency_display_name = normalized_pip_name or cleaned_module_name
         return (dependency_display_name,), dependency_display_name
     if not module_name:
         raise ValueError('module_name must not be an empty tuple')
