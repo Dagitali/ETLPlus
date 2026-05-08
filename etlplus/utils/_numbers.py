@@ -117,8 +117,9 @@ class _NumberParser:
         bound: Callable[[Num, Num], Num],
     ) -> Num:
         """Parse a value and compare it with a required default bound."""
-        result = parser(value, default)
-        return bound(cls._value_or_default(result, default), default)
+        return bound(
+            default if (result := parser(value, default)) is None else result, default,
+        )
 
     @classmethod
     def _clamp[Num: (int, float)](
@@ -220,28 +221,6 @@ class _NumberParser:
         if minimum is not None and maximum is not None and minimum > maximum:
             raise ValueError('minimum cannot exceed maximum')
         return minimum, maximum
-
-    @staticmethod
-    def _value_or_default[Num: (int, float)](
-        value: Num | None,
-        default: Num,
-    ) -> Num:
-        """
-        Return *value* if not ``None``; else *default*.
-
-        Parameters
-        ----------
-        value : Num | None
-            Candidate value.
-        default : Num
-            Fallback value.
-
-        Returns
-        -------
-        Num
-            *value* or *default*.
-        """
-        return default if value is None else value
 
 
 # SECTION: CLASSES ========================================================== #
@@ -559,5 +538,8 @@ class IntParser(_NumberParser):
         int
             Positive integer if coercion succeeds; else *minimum*.
         """
-        result = cls.parse(value, default, minimum=minimum)
-        return cls._value_or_default(result, minimum)
+        return (
+            minimum
+            if (result := cls.parse(value, default, minimum=minimum)) is None
+            else result
+        )
