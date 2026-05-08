@@ -7,7 +7,6 @@ Shared helper functions for CLI command modules.
 from __future__ import annotations
 
 from collections.abc import Callable
-from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any
 from typing import Final
@@ -104,37 +103,6 @@ class _ResolvedResource:
 
 class CommandHelperPolicy:
     """Own shared command dispatch, validation, and resource normalization."""
-
-    @staticmethod
-    def normalize_optional_choice(
-        value: object | None,
-        choices: Collection[str],
-        *,
-        label: str,
-    ) -> str | None:
-        """
-        Normalize one optional CLI value against *choices*.
-
-        Parameters
-        ----------
-        value : object | None
-            The raw CLI value to normalize, or ``None`` if not provided.
-        choices : Collection[str]
-            The valid choices to normalize against.
-        label : str
-            The human-friendly name of the value for error messages.
-
-        Returns
-        -------
-        str | None
-            The normalized value, or ``None`` if the input value is ``None``
-            or invalid.
-        """
-        return ResourceTypeResolver.optional_choice(
-            None if value is None else str(value),
-            choices,
-            label=label,
-        )
 
     @staticmethod
     def call_handler(
@@ -254,8 +222,8 @@ class CommandHelperPolicy:
         FileFormat | None
             The normalized file format value.
         """
-        normalized = CommandHelperPolicy.normalize_optional_choice(
-            value,
+        normalized = ResourceTypeResolver.optional_choice(
+            None if value is None else str(value),
             FILE_FORMATS,
             label=label,
         )
@@ -385,8 +353,8 @@ class CommandHelperPolicy:
                 state,
                 role=role,
                 value=resolved_value,
-                explicit_type=CommandHelperPolicy.normalize_optional_choice(
-                    connector_type,
+                explicit_type=ResourceTypeResolver.optional_choice(
+                    None if connector_type is None else str(connector_type),
                     DATA_CONNECTORS,
                     label=f'{role}_type',
                 ),
