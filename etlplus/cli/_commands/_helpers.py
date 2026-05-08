@@ -202,34 +202,6 @@ class CommandHelperPolicy:
         raise typer.Exit(exit_code)
 
     @staticmethod
-    def normalize_file_format(
-        value: FileFormat | str | None,
-        *,
-        label: str,
-    ) -> FileFormat | None:
-        """
-        Normalize optional file-format CLI values to :class:`FileFormat`.
-
-        Parameters
-        ----------
-        value : FileFormat | str | None
-            The file format value to normalize.
-        label : str
-            The label for the file format option, used in error messages.
-
-        Returns
-        -------
-        FileFormat | None
-            The normalized file format value.
-        """
-        normalized = ResourceTypeResolver.optional_choice(
-            None if value is None else str(value),
-            FILE_FORMATS,
-            label=label,
-        )
-        return None if normalized is None else FileFormat.coerce(normalized)
-
-    @staticmethod
     def parse_json_option(
         value: str,
         flag: str,
@@ -360,9 +332,17 @@ class CommandHelperPolicy:
                 ),
                 soft_inference=soft_inference,
             ),
-            format_hint=CommandHelperPolicy.normalize_file_format(
-                format_value,
-                label=f'{role}_format',
+            format_hint=(
+                None
+                if (
+                    normalized_format := ResourceTypeResolver.optional_choice(
+                        None if format_value is None else str(format_value),
+                        FILE_FORMATS,
+                        label=f'{role}_format',
+                    )
+                )
+                is None
+                else FileFormat.coerce(normalized_format)
             ),
         )
 
