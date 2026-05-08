@@ -22,6 +22,7 @@ from ...ops._types import PipelineConfig
 from ...ops.validate import FieldRulesDict
 from ...ops.validate import validate_schema
 from ...utils import PathParser
+from ...utils._payloads import materialize_file_payload
 from ...utils._types import JSONData
 from . import _completion
 from . import _input
@@ -588,7 +589,7 @@ def load_handler(
         if target_type == 'file' and target == '-':
             return DataCommandPolicy.complete_json_success(
                 context,
-                _input.materialize_file_payload(
+                materialize_file_payload(
                     source_value,
                     format_hint=source_format,
                     format_explicit=source_format_explicit,
