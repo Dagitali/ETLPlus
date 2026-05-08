@@ -6,6 +6,7 @@ Generic graph-ordering helpers.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections.abc import Iterable
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ from heapq import heappop
 from heapq import heappush
 from typing import Self
 
+from ._mapping import MappingParser
+
 # SECTION: EXPORTS ========================================================== #
 
 
@@ -21,6 +24,7 @@ __all__ = [
     # Classes
     'NamedDependencyGraph',
     # Functions
+    'topological_sort_named_items',
     'topological_sort_names',
 ]
 
@@ -173,3 +177,37 @@ def topological_sort_names(
     return NamedDependencyGraph.from_dependencies(
         dependencies_by_name,
     ).ordered_names()
+
+
+def topological_sort_named_items[ItemT](
+    items: Iterable[ItemT],
+    *,
+    dependency_getter: Callable[[ItemT], Iterable[str]],
+    item_label: str,
+) -> list[ItemT]:
+    """
+    Return named items in topological order.
+
+    Parameters
+    ----------
+    items : Iterable[ItemT]
+        Named items to sort. Entries without a non-empty ``name`` attribute are
+        ignored.
+    dependency_getter : Callable[[ItemT], Iterable[str]]
+        Callable returning dependency names for one item.
+    item_label : str
+        Human-readable item label used in duplicate-name error messages.
+
+    Returns
+    -------
+    list[ItemT]
+        Items sorted in dependency-respecting order.
+    """
+    indexed_items = MappingParser.index_named_items(items, item_label=item_label)
+    ordered_names = topological_sort_names(
+        {
+            name: tuple(dict.fromkeys(dependency_getter(item)))
+            for name, item in indexed_items.items()
+        },
+    )
+    return [indexed_items[name] for name in ordered_names]
