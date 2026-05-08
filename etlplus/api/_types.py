@@ -234,9 +234,7 @@ class RequestOptions:
         if headers is _UNSET:
             next_headers = self.headers
         else:
-            next_headers = (
-                None if headers is None else MappingParser.to_dict(headers)
-            )
+            next_headers = None if headers is None else MappingParser.to_dict(headers)
         if timeout is _UNSET:
             next_timeout = self.timeout
         else:
