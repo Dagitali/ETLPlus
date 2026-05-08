@@ -109,7 +109,18 @@ class NamedDependencyGraph:
         *,
         known_names: frozenset[str],
     ) -> None:
-        """Validate and register one dependency edge."""
+        """
+        Validate and register one dependency edge.
+
+        Parameters
+        ----------
+        name : str
+            Name of the dependent node.
+        dependency_name : str
+            Name of the node it depends on.
+        known_names : frozenset[str]
+            Set of valid node names for reference checks.
+        """
         if dependency_name not in known_names:
             raise ValueError(
                 f'Unknown dependency "{dependency_name}" for node "{name}"',
