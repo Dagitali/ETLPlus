@@ -195,6 +195,13 @@ class _NumberParser:
     # -- Internal Static Methods -- #
 
     @staticmethod
+    def _clean_numeric_text(
+        value: object,
+    ) -> str | None:
+        """Return one stripped numeric text value when present and non-blank."""
+        return text if isinstance(value, str) and (text := value.strip()) else None
+
+    @staticmethod
     def _validate_bounds[Num: (int, float)](
         minimum: Num | None,
         maximum: Num | None,
@@ -307,8 +314,7 @@ class FloatParser(_NumberParser):
             case int():
                 return float(value)
             case str():
-                text = value.strip()
-                if not text:
+                if (text := cls._clean_numeric_text(value)) is None:
                     return None
                 try:
                     parsed = float(text)
@@ -469,8 +475,7 @@ class IntParser(_NumberParser):
             case float() if value.is_integer():
                 return int(value)
             case str():
-                text = value.strip()
-                if not text:
+                if (text := cls._clean_numeric_text(value)) is None:
                     return None
                 try:
                     return int(text)
