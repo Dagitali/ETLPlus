@@ -17,6 +17,7 @@ from etlplus.cli._handlers import _input as input_mod
 from etlplus.cli._handlers import _output as output_mod
 from etlplus.file import FileFormat
 from etlplus.utils import JsonCodec
+from etlplus.utils import _payloads as payload_mod
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -326,7 +327,7 @@ class TestMaterializeFilePayload:
             payload=expected,
             resolved_format=resolved_format,
         )
-        monkeypatch.setattr(input_mod, 'File', dummy_file)
+        monkeypatch.setattr(payload_mod, 'FILE', dummy_file)
 
         payload = input_mod.materialize_file_payload(
             actual_source,
