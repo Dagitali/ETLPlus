@@ -12,6 +12,7 @@ from ._data import count_records
 from ._data import stringify_value
 from ._enums import CoercibleStrEnum
 from ._graph import NamedDependencyGraph
+from ._graph import topological_sort_named_items
 from ._graph import topological_sort_names
 from ._mapping import MappingParser
 from ._mixins import BoundsWarningsMixin
@@ -60,6 +61,7 @@ __all__ = [
     'is_integer_value',
     'is_number_value',
     'stringify_value',
+    'topological_sort_named_items',
     'topological_sort_names',
     # Mixins
     'BoundsWarningsMixin',
