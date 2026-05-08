@@ -28,16 +28,6 @@ from etlplus.utils import JsonCodec
 type SourceBuilder = Callable[[Path], str | Path]
 
 
-def _string_missing_source(tmp_path: Path) -> str:
-    """Build one missing string path for file-materialization tests."""
-    return str(tmp_path / 'missing.json')
-
-
-def _path_missing_source(tmp_path: Path) -> Path:
-    """Build one missing pathlike source for file-materialization tests."""
-    return tmp_path / 'missing.json'
-
-
 def _build_writable_file_double() -> tuple[type[object], dict[str, object]]:
     """Build a ``File`` double that captures write-target construction."""
     captured: dict[str, object] = {}
@@ -54,6 +44,16 @@ def _build_writable_file_double() -> tuple[type[object], dict[str, object]]:
             captured['data'] = data
 
     return DummyFile, captured
+
+
+def _path_missing_source(tmp_path: Path) -> Path:
+    """Build one missing pathlike source for file-materialization tests."""
+    return tmp_path / 'missing.json'
+
+
+def _string_missing_source(tmp_path: Path) -> str:
+    """Build one missing string path for file-materialization tests."""
+    return str(tmp_path / 'missing.json')
 
 
 # SECTION: TESTS ============================================================ #
