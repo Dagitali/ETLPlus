@@ -36,6 +36,13 @@ from ._types import NonEmptyStrList
 # SECTION: EXPORTS ========================================================== #
 
 
+# NOTE: For the public-surface narrowing work, the utils facade is split into
+# NOTE: stable and transitional groups and in the package export contract test
+# NOTE: at test_u_utils_init.py. That preserves the full current facade, but it
+# NOTE: clearly marks JsonCodec, PathHasher, RecordPayloadParser,
+# NOTE: TokenReferenceCollector, BoundsWarningsMixin, NonEmptyStr, and
+# NOTE: NonEmptyStrList as transitional exports to revisit in a future feature
+# NOTE: release.
 __all__ = [
     # Classes
     'MappingFieldParser',
@@ -43,16 +50,16 @@ __all__ = [
     'ValueParser',
     'FloatParser',
     'IntParser',
-    'JsonCodec',
+    'JsonCodec',                # Transitional export kept for v1 compatibility
     'MappingParser',
     'NamedDependencyGraph',
-    'PathHasher',
+    'PathHasher',               # Transitional export kept for v1 compatibility
     'PathParser',
-    'RecordPayloadParser',
+    'RecordPayloadParser',      # Transitional export kept for v1 compatibility
     'SubstitutionResolver',
     'TextChoiceResolver',
     'TextNormalizer',
-    'TokenReferenceCollector',
+    'TokenReferenceCollector',  # Transitional export kept for v1 compatibility
     # Enums
     'CoercibleStrEnum',
     # Functions
@@ -64,8 +71,8 @@ __all__ = [
     'topological_sort_named_items',
     'topological_sort_names',
     # Mixins
-    'BoundsWarningsMixin',
+    'BoundsWarningsMixin',      # Transitional export kept for v1 compatibility
     # Type Aliases
-    'NonEmptyStr',
-    'NonEmptyStrList',
+    'NonEmptyStr',              # Transitional export kept for v1 compatibility
+    'NonEmptyStrList',          # Transitional export kept for v1 compatibility
 ]
