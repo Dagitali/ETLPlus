@@ -43,22 +43,18 @@ from etlplus.utils._types import NonEmptyStrList
 # SECTION: HELPERS ========================================================== #
 
 
-UTILS_EXPORTS = [
+STABLE_UTILS_EXPORTS = [
     ('MappingFieldParser', MappingFieldParser),
     ('SequenceParser', SequenceParser),
     ('ValueParser', ValueParser),
     ('FloatParser', FloatParser),
     ('IntParser', IntParser),
-    ('JsonCodec', JsonCodec),
     ('MappingParser', MappingParser),
     ('NamedDependencyGraph', NamedDependencyGraph),
-    ('PathHasher', PathHasher),
     ('PathParser', PathParser),
-    ('RecordPayloadParser', RecordPayloadParser),
     ('SubstitutionResolver', SubstitutionResolver),
     ('TextChoiceResolver', TextChoiceResolver),
     ('TextNormalizer', TextNormalizer),
-    ('TokenReferenceCollector', TokenReferenceCollector),
     ('CoercibleStrEnum', CoercibleStrEnum),
     ('count_records', count_records),
     ('finite_decimal_or_none', finite_decimal_or_none),
@@ -67,10 +63,19 @@ UTILS_EXPORTS = [
     ('stringify_value', stringify_value),
     ('topological_sort_named_items', topological_sort_named_items),
     ('topological_sort_names', topological_sort_names),
+]
+
+TRANSITIONAL_UTILS_EXPORTS = [
+    ('JsonCodec', JsonCodec),
+    ('PathHasher', PathHasher),
+    ('RecordPayloadParser', RecordPayloadParser),
+    ('TokenReferenceCollector', TokenReferenceCollector),
     ('BoundsWarningsMixin', BoundsWarningsMixin),
     ('NonEmptyStr', NonEmptyStr),
     ('NonEmptyStrList', NonEmptyStrList),
 ]
+
+UTILS_EXPORTS = [*STABLE_UTILS_EXPORTS, *TRANSITIONAL_UTILS_EXPORTS]
 
 
 # SECTION: TESTS ============================================================ #
@@ -85,6 +90,21 @@ class TestUtilsPackageExports:
         public API surface (i.e., ``__all__`` contract).
         """
         assert utils_pkg.__all__ == [name for name, _value in UTILS_EXPORTS]
+
+    def test_stable_symbols_lead_public_export_order(self) -> None:
+        """Test stable exports stay grouped first in the package facade."""
+        assert utils_pkg.__all__[: len(STABLE_UTILS_EXPORTS)] == [
+            name for name, _value in STABLE_UTILS_EXPORTS
+        ]
+
+    def test_transitional_symbols_remain_public_for_now(self) -> None:
+        """
+        Test transitional exports remain available until a feature release
+        narrows them.
+        """
+        assert utils_pkg.__all__[len(STABLE_UTILS_EXPORTS):] == [
+            name for name, _value in TRANSITIONAL_UTILS_EXPORTS
+        ]
 
     @pytest.mark.parametrize(('name', 'expected'), UTILS_EXPORTS)
     def test_expected_symbol_bindings(
