@@ -29,12 +29,6 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_FILE = File
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -99,11 +93,11 @@ def materialize_file_payload(
 
     if format_explicit and normalized_hint:
         try:
-            file = _FILE(source, FileFormat(normalized_hint))
+            file = File(source, FileFormat(normalized_hint))
         except ValueError:
             file = None
     else:
-        file = _FILE(source)
+        file = File(source)
 
     if file is None or file.file_format is None:
         return source
