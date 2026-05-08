@@ -12,7 +12,6 @@ import sys
 from ...utils._payloads import infer_payload_format
 from ...utils._payloads import materialize_file_payload
 from ...utils._payloads import parse_text_payload
-from ...utils._payloads import read_csv_rows
 from ...utils._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
@@ -24,7 +23,6 @@ __all__ = [
     'is_stdin_source',
     'materialize_file_payload',
     'parse_text_payload',
-    'read_csv_rows',
     'read_stdin_text',
     'resolve_cli_payload',
 ]
