@@ -134,8 +134,6 @@ class MappingParser:
 
         Parameters
         ----------
-        ItemT : type
-            The type of elements in the list.
         items : Iterable[ItemT]
             Items to index. Only entries with a non-empty string ``name``
             attribute are included.
