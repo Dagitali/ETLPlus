@@ -171,79 +171,6 @@ class CommandHelperPolicy:
         return handler(**kwargs, **state_kwargs)
 
     @staticmethod
-    def call_history_handler(
-        handler: Callable[..., int],
-        /,
-        *,
-        state: CliState,
-        level: str | object = _MISSING,
-        job: str | None | object = _MISSING,
-        pipeline: str | None | object = _MISSING,
-        run_id: str | None | object = _MISSING,
-        since: str | None | object = _MISSING,
-        until: str | None | object = _MISSING,
-        status: str | None | object = _MISSING,
-        limit: int | None | object = _MISSING,
-        **kwargs: Any,
-    ) -> int:
-        """
-        Invoke one persisted-history handler with shared query filters.
-
-        Parameters
-        ----------
-        handler : Callable[..., int]
-            The handler function to invoke.
-        state : CliState
-            The CLI state to pull keyword arguments from.
-        level : str | object, optional
-            History level filter (defaults to missing, which means the
-            handler's default will be used).
-        job : str | None | object, optional
-            Job name filter (defaults to missing, which means the handler's
-            default will be used).
-        pipeline : str | None | object, optional
-            Pipeline name filter (defaults to missing, which means the
-            handler's default will be used).
-        run_id : str | None | object, optional
-            Run ID filter (defaults to missing, which means the handler's
-            default will be used).
-        since : str | None | object, optional
-            Start time filter (defaults to missing, which means the handler's
-            default will be used).
-        until : str | None | object, optional
-            End time filter (defaults to missing, which means the handler's
-            default will be used).
-        status : str | None | object, optional
-            Status filter (defaults to missing, which means the handler's
-            default will be used).
-        limit : int | None | object, optional
-            Result limit (defaults to missing, which means the handler's
-            default will be used).
-        **kwargs : Any
-            Additional keyword arguments to pass to *handler*.
-
-        Returns
-        -------
-        int
-            The exit code returned by *handler*.
-        """
-        history_kwargs = {
-            key: value
-            for key, value in {
-                'level': level,
-                'job': job,
-                'limit': limit,
-                'pipeline': pipeline,
-                'run_id': run_id,
-                'since': since,
-                'status': status,
-                'until': until,
-            }.items()
-            if value is not _MISSING
-        }
-        return handler(pretty=state.pretty, **history_kwargs, **kwargs)
-
-    @staticmethod
     def call_history_command(
         handler: Callable[..., int],
         /,
@@ -266,19 +193,22 @@ class CommandHelperPolicy:
             Existing CLI state to reuse (defaults to ``None``, which means
             :func:`ensure_state` will be called).
         **kwargs : Any
-            Additional keyword arguments to forward through
-            :func:`call_history_handler`.
+            Additional keyword arguments to pass to *handler*. Missing history
+            filter values are omitted so the handler's own defaults still
+            apply.
 
         Returns
         -------
         int
             The exit code returned by *handler*.
         """
-        return CommandHelperPolicy.call_history_handler(
-            handler,
-            state=ensure_state(ctx) if state is None else state,
-            **kwargs,
-        )
+        history_state = ensure_state(ctx) if state is None else state
+        history_kwargs = {
+            key: value
+            for key, value in kwargs.items()
+            if value is not _MISSING
+        }
+        return handler(pretty=history_state.pretty, **history_kwargs)
 
     @staticmethod
     def fail_usage(
@@ -362,25 +292,6 @@ class CommandHelperPolicy:
             return JsonCodec.parse(value)
         except ValueError as exc:
             raise typer.BadParameter(f'Invalid JSON for {flag}: {exc}') from exc
-
-    @staticmethod
-    def require_any(
-        values: Collection[object],
-        *,
-        message: str,
-    ) -> None:
-        """
-        Require at least one truthy value from *values*.
-
-        Parameters
-        ----------
-        values : Collection[object]
-            The values to check.
-        message : str
-            The error message to emit if none of the values are truthy.
-        """
-        if not any(values):
-            CommandHelperPolicy.fail_usage(message)
 
     @staticmethod
     def require_value(
