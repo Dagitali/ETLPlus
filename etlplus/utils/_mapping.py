@@ -78,7 +78,8 @@ class MappingParser:
                 return text
 
         if nested_key is not None and isinstance(
-            nested := mapping.get(nested_key), Mapping,
+            nested := mapping.get(nested_key),
+            Mapping,
         ):
             return MappingParser.first_non_empty_str(
                 nested,
