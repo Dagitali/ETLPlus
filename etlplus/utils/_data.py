@@ -279,6 +279,23 @@ class RecordPayloadParser:
 
     format_name: str
 
+    # -- Internal Instance Methods -- #
+
+    def _invalid_payload_error(
+        self,
+        payload: object,
+        *,
+        mixed_list_message: str,
+        invalid_root_message: str,
+    ) -> TypeError:
+        """Return the payload-shape error matching *payload*."""
+        message = (
+            mixed_list_message if isinstance(payload, list) else invalid_root_message
+        )
+        return TypeError(
+            f'{self.format_name} {message}',
+        )
+
     # -- Instance Methods -- #
 
     def coerce(
@@ -306,12 +323,10 @@ class RecordPayloadParser:
         record_payload = _record_payload_or_none(payload)
         if record_payload is not None:
             return record_payload
-        if isinstance(payload, list):
-            raise TypeError(
-                f'{self.format_name} array must contain only objects (dicts)',
-            )
-        raise TypeError(
-            f'{self.format_name} root must be an object or an array of objects',
+        raise self._invalid_payload_error(
+            payload,
+            mixed_list_message='array must contain only objects (dicts)',
+            invalid_root_message='root must be an object or an array of objects',
         )
 
     def normalize(
@@ -339,15 +354,12 @@ class RecordPayloadParser:
         record_payload = _record_payload_or_none(data)
         if isinstance(record_payload, list):
             return record_payload
-        if isinstance(data, list):
-            raise TypeError(
-                f'{self.format_name} payloads must contain only objects (dicts)',
-            )
         if record_payload is not None:
             return [record_payload]
-        raise TypeError(
-            f'{self.format_name} payloads must be an object '
-            'or an array of objects',
+        raise self._invalid_payload_error(
+            data,
+            mixed_list_message='payloads must contain only objects (dicts)',
+            invalid_root_message='payloads must be an object or an array of objects',
         )
 
     def require_dict(
