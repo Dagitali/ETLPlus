@@ -12,6 +12,7 @@ from ._data import count_records
 from ._data import stringify_value
 from ._enums import CoercibleStrEnum
 from ._graph import NamedDependencyGraph
+from ._graph import topological_sort_named_items
 from ._graph import topological_sort_names
 from ._mapping import MappingParser
 from ._mixins import BoundsWarningsMixin
@@ -35,23 +36,28 @@ from ._types import NonEmptyStrList
 # SECTION: EXPORTS ========================================================== #
 
 
+# NOTE: For the public-surface narrowing work, the utils facade is split into
+# NOTE: stable and transitional groups and in the package export contract test
+# NOTE: at test_u_utils_init.py. That preserves the full current facade, but it
+# NOTE: clearly marks JsonCodec, PathHasher, RecordPayloadParser,
+# NOTE: TokenReferenceCollector, BoundsWarningsMixin, NonEmptyStr, and
+# NOTE: NonEmptyStrList as transitional exports to revisit in a future feature
+# NOTE: release.
 __all__ = [
+    # Stable exports that are expected to remain public in the long term
+
     # Classes
-    'MappingFieldParser',
-    'SequenceParser',
-    'ValueParser',
     'FloatParser',
     'IntParser',
-    'JsonCodec',
+    'MappingFieldParser',
     'MappingParser',
     'NamedDependencyGraph',
-    'PathHasher',
     'PathParser',
-    'RecordPayloadParser',
+    'SequenceParser',
     'SubstitutionResolver',
     'TextChoiceResolver',
     'TextNormalizer',
-    'TokenReferenceCollector',
+    'ValueParser',
     # Enums
     'CoercibleStrEnum',
     # Functions
@@ -60,7 +66,16 @@ __all__ = [
     'is_integer_value',
     'is_number_value',
     'stringify_value',
+    'topological_sort_named_items',
     'topological_sort_names',
+
+    # Transitional exports kept public for v1 compatibility
+
+    # Data Classes
+    'JsonCodec',
+    'PathHasher',
+    'RecordPayloadParser',
+    'TokenReferenceCollector',
     # Mixins
     'BoundsWarningsMixin',
     # Type Aliases

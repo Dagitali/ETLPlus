@@ -7,8 +7,7 @@ Lightweight directed acyclic graph (DAG) helpers for ordering jobs based on
 
 from __future__ import annotations
 
-from ..utils import MappingParser
-from ..utils import topological_sort_names
+from ..utils import topological_sort_named_items
 from ._errors import DagError
 from ._jobs import JobConfig
 
@@ -51,11 +50,12 @@ def topological_sort_jobs(
         is detected.
     """
     try:
-        jobs_by_name = MappingParser.index_named_items(jobs, item_label='job')
-        dependencies_by_name = {job.name: tuple(job.depends_on) for job in jobs}
-        ordered_names = topological_sort_names(dependencies_by_name)
+        return topological_sort_named_items(
+            jobs,
+            dependency_getter=lambda job: job.depends_on,
+            item_label='job',
+        )
     except ValueError as exc:
         message = str(exc).replace(' for node ', ' in job ')
         message = message.replace('Node "', 'Job "')
         raise DagError(message=message) from exc
-    return [jobs_by_name[name] for name in ordered_names]

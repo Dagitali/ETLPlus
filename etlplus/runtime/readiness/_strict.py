@@ -536,12 +536,8 @@ class StrictConfigValidator:
             return f'Define "{job_name}" under top-level jobs or update target.job.'
         if issue == 'cron helper emission currently supports exactly five cron fields':
             return 'Use a five-field cron expression: minute hour day month weekday.'
-        if (
-            issue
-            == (
-                'cron helper emission currently supports '
-                'only single values or "*" fields'
-            )
+        if issue == (
+            'cron helper emission currently supports only single values or "*" fields'
         ):
             return (
                 'Use single cron field values or "*" for helper-compatible schedules.'

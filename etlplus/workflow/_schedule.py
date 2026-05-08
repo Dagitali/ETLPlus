@@ -35,6 +35,19 @@ __all__ = [
 _UNSUPPORTED_CRON_TOKENS = (',', '-', '/', '?')
 
 
+# SECTION: INTERNAL FUNCTIONS ============================================== #
+
+
+def _append_issue(
+    issues: list[dict[str, str]],
+    *,
+    schedule_name: str,
+    issue: str,
+) -> None:
+    """Append one structured schedule validation issue."""
+    issues.append({'issue': issue, 'schedule': schedule_name})
+
+
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -188,55 +201,47 @@ def schedule_validation_issues(
 
     for schedule in schedules:
         schedule_name = schedule.name
+
         if schedule_name in seen_schedule_names:
-            issues.append(
-                {
-                    'issue': f'duplicate schedule name: {schedule_name}',
-                    'schedule': schedule_name,
-                },
+            _append_issue(
+                issues,
+                schedule_name=schedule_name,
+                issue=f'duplicate schedule name: {schedule_name}',
             )
         else:
             seen_schedule_names.add(schedule_name)
 
-        trigger_count = int(
-            isinstance(schedule.cron, str) and bool(schedule.cron),
-        ) + int(schedule.interval is not None)
+        has_cron = isinstance(schedule.cron, str) and bool(schedule.cron)
+        trigger_count = int(has_cron) + int(schedule.interval is not None)
         if trigger_count != 1:
-            issues.append(
-                {
-                    'issue': (
-                        'schedule must define exactly one trigger: cron or interval'
-                    ),
-                    'schedule': schedule_name,
-                },
+            _append_issue(
+                issues,
+                schedule_name=schedule_name,
+                issue='schedule must define exactly one trigger: cron or interval',
             )
 
         target = schedule.target
         if target is None:
-            issues.append(
-                {
-                    'issue': 'schedule must define a target',
-                    'schedule': schedule_name,
-                },
+            _append_issue(
+                issues,
+                schedule_name=schedule_name,
+                issue='schedule must define a target',
             )
         else:
             target_count = int(bool(target.job)) + int(target.run_all)
             if target_count != 1:
-                issues.append(
-                    {
-                        'issue': (
-                            'schedule target must define exactly one mode: '
-                            'job or run_all'
-                        ),
-                        'schedule': schedule_name,
-                    },
+                _append_issue(
+                    issues,
+                    schedule_name=schedule_name,
+                    issue=(
+                        'schedule target must define exactly one mode: job or run_all'
+                    ),
                 )
             if target.job and target.job not in job_names:
-                issues.append(
-                    {
-                        'issue': f'unknown scheduled job reference: {target.job}',
-                        'schedule': schedule_name,
-                    },
+                _append_issue(
+                    issues,
+                    schedule_name=schedule_name,
+                    issue=f'unknown scheduled job reference: {target.job}',
                 )
 
         cron = schedule.cron
@@ -244,28 +249,23 @@ def schedule_validation_issues(
             continue
         cron_fields = cron.split()
         if len(cron_fields) != 5:
-            issues.append(
-                {
-                    'issue': (
-                        'cron helper emission currently supports exactly '
-                        'five cron fields'
-                    ),
-                    'schedule': schedule_name,
-                },
+            _append_issue(
+                issues,
+                schedule_name=schedule_name,
+                issue=(
+                    'cron helper emission currently supports exactly five cron fields'
+                ),
             )
             continue
         if any(
             any(token in field for token in _UNSUPPORTED_CRON_TOKENS)
             for field in cron_fields
         ):
-            issues.append(
-                {
-                    'issue': (
-                        'cron helper emission currently supports only single '
-                        'values or "*" fields'
-                    ),
-                    'schedule': schedule_name,
-                },
+            _append_issue(
+                issues,
+                schedule_name=schedule_name,
+                issue='cron helper emission currently supports only single '
+                'values or "*" fields',
             )
 
     return issues

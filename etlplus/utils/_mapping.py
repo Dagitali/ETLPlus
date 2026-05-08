@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-# SECTION: TYPE VARIABLES =================================================== #
+# SECTION: TYPE VARS ======================================================== #
 
 
 ItemT = TypeVar('ItemT')
@@ -35,6 +35,22 @@ ItemT = TypeVar('ItemT')
 
 class MappingParser:
     """Normalize optionally mapping-like inputs into concrete mapping shapes."""
+
+    # -- Internal Static Methods -- #
+
+    @staticmethod
+    def _item_name(
+        item: object,
+    ) -> str | None:
+        """Return one usable item name derived from a ``name`` attribute."""
+        return MappingParser._non_empty_str(getattr(item, 'name', None))
+
+    @staticmethod
+    def _non_empty_str(
+        value: object,
+    ) -> str | None:
+        """Return one stripped non-empty string value when available."""
+        return value.strip() if isinstance(value, str) and value.strip() else None
 
     # -- Static Methods -- #
 
@@ -65,11 +81,13 @@ class MappingParser:
         """
         candidates = tuple(keys)
         for key in candidates:
-            value = mapping.get(key)
-            if isinstance(value, str) and value.strip():
-                return value.strip()
+            if (text := MappingParser._non_empty_str(mapping.get(key))) is not None:
+                return text
 
-        if nested_key and isinstance(nested := mapping.get(nested_key), Mapping):
+        if nested_key is not None and isinstance(
+            nested := mapping.get(nested_key),
+            Mapping,
+        ):
             return MappingParser.first_non_empty_str(
                 nested,
                 candidates,
@@ -99,10 +117,10 @@ class MappingParser:
         MappingProxyType
             Read-only mapping proxy with normalized keys.
         """
-        if key_cast is None:
-            data = dict(mapping)
-        else:
-            data = {key_cast(key): value for key, value in mapping.items()}
+        data = {
+            key if key_cast is None else key_cast(key): value
+            for key, value in mapping.items()
+        }
         return MappingProxyType(data)
 
     @staticmethod
@@ -134,10 +152,7 @@ class MappingParser:
         """
         indexed: dict[str, ItemT] = {}
         for item in items:
-            if not isinstance(raw_name := getattr(item, 'name', None), str):
-                continue
-            name = raw_name.strip()
-            if not name:
+            if (name := MappingParser._item_name(item)) is None:
                 continue
             if name in indexed:
                 raise ValueError(f'Duplicate {item_label} name: {name}')

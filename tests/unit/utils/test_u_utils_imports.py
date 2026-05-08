@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.utils._imports`.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -17,6 +18,25 @@ from etlplus.utils._imports import dependency_label
 from etlplus.utils._imports import import_package
 from etlplus.utils._imports import module_available
 from etlplus.utils._imports import normalize_dependency_names
+
+# SECTION: HELPERS ========================================================== #
+
+
+@pytest.fixture(name='sentinel')
+def sentinel_fixture() -> object:
+    """Return one stable sentinel object for importer/cache tests."""
+    return object()
+
+
+@pytest.fixture(name='missing_importer')
+def missing_importer_fixture() -> Callable[[str], object]:
+    """Return one importer callable that always raises ``ImportError``."""
+
+    def _missing(_name: str) -> object:
+        raise ImportError('missing')
+
+    return _missing
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -182,10 +202,9 @@ class TestImportPackage:
         self,
         cache: dict[str, Any] | None,
         module_name: str,
+        sentinel: object,
     ) -> None:
         """Test wrapper imports support cached and uncached calls."""
-        sentinel = object()
-
         result = import_package(
             module_name,
             error_message='unused',
@@ -221,13 +240,12 @@ class TestDependencyImporter:
         )
         assert cache == {'yaml': sentinel}
 
-    def test_get_uses_standard_dependency_error(self) -> None:
+    def test_get_uses_standard_dependency_error(
+        self,
+        missing_importer: Callable[[str], object],
+    ) -> None:
         """Test missing imports receive the standard formatted error."""
-
-        def _missing(_name: str) -> object:
-            raise ImportError('missing')
-
-        importer = DependencyImporter(importer=_missing, cache={})
+        importer = DependencyImporter(importer=missing_importer, cache={})
         expected = (
             'YAML support requires optional dependency "PyYAML".\n'
             'Install with: pip install PyYAML'
@@ -250,10 +268,12 @@ class TestDependencyImporter:
         with pytest.raises(ImportError, match='nested missing'):
             importer.import_package('outer', error_message='wrapped')
 
-    def test_import_package_imports_and_stores_cache(self) -> None:
+    def test_import_package_imports_and_stores_cache(
+        self,
+        sentinel: object,
+    ) -> None:
         """Test successful imports populate the importer cache."""
         cache: dict[str, Any] = {}
-        sentinel = object()
         importer = DependencyImporter(importer=lambda _name: sentinel, cache=cache)
 
         result = importer.import_package('new_module', error_message='unused')
@@ -264,7 +284,12 @@ class TestDependencyImporter:
     def test_import_package_rejects_blank_module_name(self) -> None:
         """Test direct imports reject blank module names before import."""
         calls: list[str] = []
-        importer = DependencyImporter(importer=lambda name: calls.append(name))
+
+        def _record_call(name: str) -> object:
+            calls.append(name)
+            return object()
+
+        importer = DependencyImporter(importer=_record_call)
 
         with pytest.raises(ValueError, match='module_name must not be empty'):
             importer.import_package(' ', error_message='unused')
@@ -274,9 +299,14 @@ class TestDependencyImporter:
         """Test direct imports normalize module names before cache/import use."""
         calls: list[str] = []
         sentinel = object()
+
+        def _record_and_return(name: str) -> object:
+            calls.append(name)
+            return sentinel
+
         importer = DependencyImporter(
             cache={},
-            importer=lambda name: calls.append(name) or sentinel,
+            importer=_record_and_return,
         )
 
         result = importer.import_package(' new_module ', error_message='unused')
@@ -296,15 +326,14 @@ class TestDependencyImporter:
 
         assert result is sentinel
 
-    def test_import_package_wraps_missing_dependency(self) -> None:
+    def test_import_package_wraps_missing_dependency(
+        self,
+        missing_importer: Callable[[str], object],
+    ) -> None:
         """Test import failures are translated to the configured error type."""
-
-        def _missing(_name: str) -> object:
-            raise ImportError('missing')
-
         importer = DependencyImporter(
             error_type=RuntimeError,
-            importer=_missing,
+            importer=missing_importer,
         )
 
         with pytest.raises(RuntimeError, match='install it'):
@@ -345,10 +374,14 @@ class TestModuleAvailable:
         """Test availability checks normalize names before metadata lookup."""
         calls: list[str] = []
 
+        def _find_spec(name: str) -> object | None:
+            calls.append(name)
+            return finder_result
+
         assert (
             module_available(
                 module_name,
-                spec_finder=lambda name: calls.append(name) or finder_result,
+                spec_finder=_find_spec,
             )
             is expected
         )

@@ -53,6 +53,22 @@ class DependencyImporter:
     importer: Callable[[str], Any] = import_module
     cache: dict[str, Any] = field(default_factory=dict)
 
+    # -- Internal Instance Methods -- #
+
+    def _should_reraise_nested_import(
+        self,
+        exc: BaseException,
+        *,
+        module_name: str,
+    ) -> bool:
+        """Return whether one nested import error should be re-raised."""
+        return (
+            self.strict_missing_name
+            and isinstance(exc, ImportError)
+            and (missing_name := getattr(exc, 'name', None)) is not None
+            and missing_name != module_name
+        )
+
     # -- Instance Methods -- #
 
     def import_package(
@@ -84,7 +100,7 @@ class DependencyImporter:
         self.error_type
             Raised with *error_message* when the configured import fails.
         """
-        module_name = _clean_dependency_name(module_name, label='module_name')
+        module_name = _clean_dependency_name(module_name)
 
         if module_name in self.cache:
             return self.cache[module_name]
@@ -92,10 +108,8 @@ class DependencyImporter:
         try:
             module = self.importer(module_name)
         except self.import_exceptions as exc:
-            if self.strict_missing_name and isinstance(exc, ImportError):
-                missing_name = getattr(exc, 'name', None)
-                if missing_name is not None and missing_name != module_name:
-                    raise
+            if self._should_reraise_nested_import(exc, module_name=module_name):
+                raise
             raise self.error_type(error_message) from exc
 
         self.cache[module_name] = module
@@ -147,7 +161,7 @@ class DependencyImporter:
 def _clean_dependency_name(
     value: str,
     *,
-    label: str,
+    label: str = 'module_name',
 ) -> str:
     """Return one stripped dependency name or raise a clear error."""
     cleaned = value.strip()
@@ -159,10 +173,17 @@ def _clean_dependency_name(
 def _clean_dependency_names(
     values: tuple[str, ...],
     *,
-    label: str,
+    label: str = 'module_name',
 ) -> tuple[str, ...]:
     """Return stripped dependency names or raise a clear error."""
     return tuple(_clean_dependency_name(value, label=label) for value in values)
+
+
+def _normalized_dependency_target(
+    pip_name: str | None,
+) -> str | None:
+    """Return one normalized pip install target when provided."""
+    return _clean_dependency_name(pip_name, label='pip_name') if pip_name else None
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -231,11 +252,7 @@ def normalize_dependency_names(
     ValueError
         If *module_name* is an empty tuple or any cleaned names are empty.
     """
-    normalized_pip_name = (
-        _clean_dependency_name(pip_name, label='pip_name')
-        if pip_name is not None
-        else None
-    )
+    normalized_pip_name = _normalized_dependency_target(pip_name)
     if isinstance(module_name, str):
         dependency_display_name = normalized_pip_name or _clean_dependency_name(
             module_name,
@@ -329,14 +346,13 @@ def import_package(
     Any
         The imported module.
     """
-    importer_policy = DependencyImporter(
+    return DependencyImporter(
         cache=cache if cache is not None else {},
         error_type=error_type,
         import_exceptions=import_exceptions,
         importer=importer,
         strict_missing_name=strict_missing_name,
-    )
-    return importer_policy.import_package(
+    ).import_package(
         module_name,
         error_message=error_message,
     )

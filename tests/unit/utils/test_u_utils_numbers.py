@@ -21,6 +21,23 @@ from etlplus.utils import is_number_value
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: HELPERS ========================================================== #
+
+
+@pytest.fixture(name='floatable_value')
+def floatable_value_fixture() -> object:
+    """Return one object exposing ``__float__`` for coercion tests."""
+
+    class Floatable:
+        """Object exposing ``__float__`` for parser fallback tests."""
+
+        def __float__(self) -> float:
+            """Return a finite float value."""
+            return 2.5
+
+    return Floatable()
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -217,17 +234,12 @@ class TestGenericNumberCoercion:
         """
         assert FloatParser.coerce(value) == expected
 
-    def test_float_parser_coerce_accepts_floatable_object(self) -> None:
+    def test_float_parser_coerce_accepts_floatable_object(
+        self,
+        floatable_value: object,
+    ) -> None:
         """Test fallback float coercion for non-primitive floatable objects."""
-
-        class Floatable:
-            """Object exposing ``__float__`` for parser fallback tests."""
-
-            def __float__(self) -> float:
-                """Return a finite float value."""
-                return 2.5
-
-        assert FloatParser.coerce(Floatable()) == 2.5
+        assert FloatParser.coerce(floatable_value) == 2.5
 
     def test_float_parser_coerce_with_shared_non_mapping_cases(
         self,
