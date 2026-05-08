@@ -646,11 +646,14 @@ class TestUtilsInternalBranches:
         )
 
         assert _utils.compose_api_request_env(cfg, source, {})['session'] is None
-        assert _utils.compose_api_target_env(
-            target_cfg,
-            target,
-            {'session': cast(Any, 'bad')},
-        )['session'] is None
+        assert (
+            _utils.compose_api_target_env(
+                target_cfg,
+                target,
+                {'session': cast(Any, 'bad')},
+            )['session']
+            is None
+        )
 
         api_cfg = _ApiCfg(base_url)
         ep = _Endpoint()
