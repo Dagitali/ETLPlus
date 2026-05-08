@@ -333,38 +333,6 @@ class ApiConfig:
             MappingParser.freeze(self.profiles, key_cast=str),
         )
 
-    # -- Internal Instance Methods -- #
-
-    def _selected_profile(self) -> ApiProfileConfig | None:
-        """Return the active profile object, preferring ``default``."""
-        if not (profiles := self.profiles):
-            return None
-
-        name = 'default' if 'default' in profiles else next(iter(profiles))
-
-        return profiles.get(name)
-
-    def _profile_attr(
-        self,
-        attr: str,
-    ) -> Any:
-        """
-        Return an attribute on the selected profile, if available.
-
-        Parameters
-        ----------
-        attr : str
-            Attribute name to retrieve.
-
-        Returns
-        -------
-        Any
-            Attribute value or ``None`` if no profile is selected.
-        """
-        prof = self._selected_profile()
-
-        return getattr(prof, attr, None) if prof else None
-
     # -- Instance Methods -- #
 
     def build_endpoint_url(
@@ -394,7 +362,11 @@ class ApiConfig:
 
     def effective_base_path(self) -> str | None:
         """Return the selected profile's ``base_path``, if any."""
-        return self._profile_attr('base_path')
+        if not (profiles := self.profiles):
+            return None
+        name = 'default' if 'default' in profiles else next(iter(profiles))
+        prof = profiles.get(name)
+        return getattr(prof, 'base_path', None) if prof else None
 
     def effective_base_url(self) -> str:
         """
@@ -415,11 +387,19 @@ class ApiConfig:
 
     def effective_pagination_defaults(self) -> PaginationConfig | None:
         """Return selected profile ``pagination_defaults``, if any."""
-        return self._profile_attr('pagination_defaults')
+        if not (profiles := self.profiles):
+            return None
+        name = 'default' if 'default' in profiles else next(iter(profiles))
+        prof = profiles.get(name)
+        return getattr(prof, 'pagination_defaults', None) if prof else None
 
     def effective_rate_limit_defaults(self) -> RateLimitConfig | None:
         """Return selected profile ``rate_limit_defaults``, if any."""
-        return self._profile_attr('rate_limit_defaults')
+        if not (profiles := self.profiles):
+            return None
+        name = 'default' if 'default' in profiles else next(iter(profiles))
+        prof = profiles.get(name)
+        return getattr(prof, 'rate_limit_defaults', None) if prof else None
 
     # -- Class Methods -- #
 
