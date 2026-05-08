@@ -50,12 +50,12 @@ __all__ = [
     'ValueParser',
     'FloatParser',
     'IntParser',
-    'JsonCodec',                # Transitional export kept for v1 compatibility
+    'JsonCodec',  # Transitional export kept for v1 compatibility
     'MappingParser',
     'NamedDependencyGraph',
-    'PathHasher',               # Transitional export kept for v1 compatibility
+    'PathHasher',  # Transitional export kept for v1 compatibility
     'PathParser',
-    'RecordPayloadParser',      # Transitional export kept for v1 compatibility
+    'RecordPayloadParser',  # Transitional export kept for v1 compatibility
     'SubstitutionResolver',
     'TextChoiceResolver',
     'TextNormalizer',
@@ -71,8 +71,8 @@ __all__ = [
     'topological_sort_named_items',
     'topological_sort_names',
     # Mixins
-    'BoundsWarningsMixin',      # Transitional export kept for v1 compatibility
+    'BoundsWarningsMixin',  # Transitional export kept for v1 compatibility
     # Type Aliases
-    'NonEmptyStr',              # Transitional export kept for v1 compatibility
-    'NonEmptyStrList',          # Transitional export kept for v1 compatibility
+    'NonEmptyStr',  # Transitional export kept for v1 compatibility
+    'NonEmptyStrList',  # Transitional export kept for v1 compatibility
 ]
