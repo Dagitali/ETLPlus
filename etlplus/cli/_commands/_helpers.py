@@ -137,34 +137,6 @@ class CommandHelperPolicy:
         )
 
     @staticmethod
-    def normalize_resource_type(
-        value: str | None,
-        *,
-        label: str,
-    ) -> str | None:
-        """
-        Normalize optional connector types against known CLI connectors.
-
-        Parameters
-        ----------
-        value : str | None
-            The raw CLI value to normalize, or ``None`` if not provided.
-        label : str
-            The human-friendly name of the error messages value.
-
-        Returns
-        -------
-        str | None
-            The normalized connector type, or ``None`` if the input value is
-            ``None`` or invalid.
-        """
-        return CommandHelperPolicy.normalize_optional_choice(
-            value,
-            DATA_CONNECTORS,
-            label=label,
-        )
-
-    @staticmethod
     def call_handler(
         handler: Callable[..., int],
         /,
@@ -504,8 +476,9 @@ class CommandHelperPolicy:
                 state,
                 role=role,
                 value=resolved_value,
-                explicit_type=CommandHelperPolicy.normalize_resource_type(
+                explicit_type=CommandHelperPolicy.normalize_optional_choice(
                     connector_type,
+                    DATA_CONNECTORS,
                     label=f'{role}_type',
                 ),
                 soft_inference=soft_inference,
