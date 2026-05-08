@@ -124,15 +124,27 @@ class TestCommandsInternalHelpers:
             'status': 'failed',
         }
 
-    def test_normalize_file_format_returns_enum_member(self) -> None:
-        """Shared format normalization should preserve ``FileFormat`` typing."""
-        assert (
-            helpers_mod.CommandHelperPolicy.normalize_file_format(
-                'json',
-                label='source',
-            )
-            is FileFormat.JSON
+    @pytest.mark.parametrize(
+        'format_value',
+        [
+            pytest.param('json', id='str'),
+            pytest.param(FileFormat.JSON, id='enum'),
+        ],
+    )
+    def test_resolve_resource_preserves_file_format_typing(
+        self,
+        format_value: FileFormat | str,
+    ) -> None:
+        """Shared resource resolution should preserve ``FileFormat`` typing."""
+        resolved = helpers_mod.CommandHelperPolicy.resolve_resource(
+            CliState(),
+            role='source',
+            value='payload.json',
+            connector_type='file',
+            format_value=format_value,
         )
+
+        assert resolved.format_hint is FileFormat.JSON
 
     def test_parse_json_option_wraps_value_errors(
         self,
