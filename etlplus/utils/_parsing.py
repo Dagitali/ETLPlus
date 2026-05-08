@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from typing import TypeGuard
 
 from ._text import TextChoiceResolver
+from ._text import TextNormalizer
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -68,7 +69,7 @@ class ValueParser:
             return value
         if not isinstance(value, str):
             return default
-        normalized = value.strip().casefold()
+        normalized = TextNormalizer.normalize(value)
         if normalized in true_values:
             return True
         if normalized in false_values:
