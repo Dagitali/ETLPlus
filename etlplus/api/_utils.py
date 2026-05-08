@@ -143,52 +143,6 @@ class SessionConfigDict(TypedDict, total=False):
     trust_env: bool
 
 
-# SECTION: INTERNAL FUNCTIONS ============================================== #
-
-
-def _build_session_optional(
-    cfg: SessionConfigDict | None,
-) -> requests.Session | None:
-    """
-    Return a configured session when *cfg* is a mapping.
-
-    Parameters
-    ----------
-    cfg : SessionConfigDict | None
-        Session configuration mapping.
-
-    Returns
-    -------
-    requests.Session | None
-        Configured session or ``None``.
-    """
-    if isinstance(cfg, Mapping):
-        return build_session(cast(SessionConfigDict, cfg))
-    return None
-
-
-def _coalesce(
-    *args: Any,
-) -> Any | None:
-    """
-    Return the first non-``None`` value from *args*.
-
-    Parameters
-    ----------
-    *args : Any
-        Candidate values in descending precedence order.
-
-    Returns
-    -------
-    Any | None
-        The first non-``None`` value, or ``None`` if all are ``None``.
-    """
-    for arg in args:
-        if arg is not None:
-            return arg
-    return None
-
-
 def _get_api_cfg_and_endpoint(
     cfg: Any,
     api_name: str,
@@ -261,38 +215,16 @@ def _inherit_http_from_api_endpoint(
     if force_url or not url:
         url = api_cfg.build_endpoint_url(ep)
     headers = {**api_cfg.headers, **headers}
-    session_cfg = _merge_session_cfg_three(api_cfg, ep, session_cfg)
-    return url, headers, session_cfg
-
-
-def _merge_session_cfg_three(
-    api_cfg: ApiConfig,
-    ep: EndpointConfig,
-    source_session_cfg: SessionConfigDict | None,
-) -> SessionConfigDict | None:
-    """
-    Merge session configurations from API, endpoint, and source.
-
-    Parameters
-    ----------
-    api_cfg : ApiConfig
-        API configuration.
-    ep : EndpointConfig
-        Endpoint configuration.
-    source_session_cfg : SessionConfigDict | None
-        Source session configuration.
-
-    Returns
-    -------
-    SessionConfigDict | None
-        Merged session configuration.
-    """
-    merged = MappingParser.merge_to_dict(
-        getattr(api_cfg, 'session', None),
-        getattr(ep, 'session', None),
-        source_session_cfg,
+    session_cfg = cast(
+        SessionConfigDict | None,
+        MappingParser.merge_to_dict(
+            getattr(api_cfg, 'session', None),
+            getattr(ep, 'session', None),
+            session_cfg,
+        )
+        or None,
     )
-    return cast(SessionConfigDict | None, merged or None)
+    return url, headers, session_cfg
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -404,29 +336,26 @@ def compose_api_request_env(
         )
         ep_params.update(params)
         params = ep_params
-        pagination = _coalesce(
-            pagination,
-            ep.pagination,
-            api_cfg.effective_pagination_defaults(),
-        )
-        rate_limit = _coalesce(
-            rate_limit,
-            ep.rate_limit,
-            api_cfg.effective_rate_limit_defaults(),
-        )
-        retry = cast(
-            RetryPolicyDict | None,
-            _coalesce(
-                retry,
-                getattr(ep, 'retry', None),
-                getattr(api_cfg, 'retry', None),
-            ),
-        )
-        retry_network_errors = _coalesce(
-            retry_network_errors,
-            getattr(ep, 'retry_network_errors', None),
-            getattr(api_cfg, 'retry_network_errors', None),
-        )
+        if pagination is None:
+            pagination = ep.pagination
+        if pagination is None:
+            pagination = api_cfg.effective_pagination_defaults()
+        if rate_limit is None:
+            rate_limit = ep.rate_limit
+        if rate_limit is None:
+            rate_limit = api_cfg.effective_rate_limit_defaults()
+        if retry is None:
+            retry = cast(RetryPolicyDict | None, getattr(ep, 'retry', None))
+        if retry is None:
+            retry = cast(RetryPolicyDict | None, getattr(api_cfg, 'retry', None))
+        if retry_network_errors is None:
+            retry_network_errors = getattr(ep, 'retry_network_errors', None)
+        if retry_network_errors is None:
+            retry_network_errors = getattr(
+                api_cfg,
+                'retry_network_errors',
+                None,
+            )
         use_client_endpoints = True
         client_base_url = api_cfg.base_url
         client_base_path = api_cfg.effective_base_path()
@@ -461,7 +390,11 @@ def compose_api_request_env(
         pagination,
         pag_ov,
     )
-    sess_obj = _build_session_optional(session_cfg)
+    sess_obj = (
+        build_session(cast(SessionConfigDict, session_cfg))
+        if isinstance(session_cfg, Mapping)
+        else None
+    )
     return {
         'use_endpoints': use_client_endpoints,
         'base_url': client_base_url,
@@ -538,7 +471,11 @@ def compose_api_target_env(
             sess_cfg,
             force_url=False,
         )
-    sess_obj = _build_session_optional(sess_cfg)
+    sess_obj = (
+        build_session(cast(SessionConfigDict, sess_cfg))
+        if isinstance(sess_cfg, Mapping)
+        else None
+    )
 
     return {
         'url': url,
