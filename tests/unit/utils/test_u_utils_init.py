@@ -15,6 +15,7 @@ from etlplus.utils._data import count_records
 from etlplus.utils._data import stringify_value
 from etlplus.utils._enums import CoercibleStrEnum
 from etlplus.utils._graph import NamedDependencyGraph
+from etlplus.utils._graph import topological_sort_named_items
 from etlplus.utils._graph import topological_sort_names
 from etlplus.utils._mapping import MappingParser
 from etlplus.utils._mixins import BoundsWarningsMixin
@@ -64,6 +65,7 @@ UTILS_EXPORTS = [
     ('is_integer_value', is_integer_value),
     ('is_number_value', is_number_value),
     ('stringify_value', stringify_value),
+    ('topological_sort_named_items', topological_sort_named_items),
     ('topological_sort_names', topological_sort_names),
     ('BoundsWarningsMixin', BoundsWarningsMixin),
     ('NonEmptyStr', NonEmptyStr),
