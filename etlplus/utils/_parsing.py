@@ -10,7 +10,6 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import TypeGuard
 
-from ._text import TextChoiceResolver
 from ._text import TextNormalizer
 
 # SECTION: EXPORTS ========================================================== #
@@ -99,7 +98,7 @@ class ValueParser:
         """
         if (text := ValueParser.optional_str(value)) is None:
             return None
-        return TextChoiceResolver.resolve_mapping(choices, text, text)
+        return choices.get(TextNormalizer.normalize(text), text)
 
     @staticmethod
     def optional_str(
