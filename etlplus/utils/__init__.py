@@ -44,22 +44,20 @@ from ._types import NonEmptyStrList
 # NOTE: NonEmptyStrList as transitional exports to revisit in a future feature
 # NOTE: release.
 __all__ = [
+    # Stable exports that are expected to remain public in the long term
+
     # Classes
-    'MappingFieldParser',
-    'SequenceParser',
-    'ValueParser',
     'FloatParser',
     'IntParser',
-    'JsonCodec',  # Transitional export kept for v1 compatibility
+    'MappingFieldParser',
     'MappingParser',
     'NamedDependencyGraph',
-    'PathHasher',  # Transitional export kept for v1 compatibility
     'PathParser',
-    'RecordPayloadParser',  # Transitional export kept for v1 compatibility
+    'SequenceParser',
     'SubstitutionResolver',
     'TextChoiceResolver',
     'TextNormalizer',
-    'TokenReferenceCollector',  # Transitional export kept for v1 compatibility
+    'ValueParser',
     # Enums
     'CoercibleStrEnum',
     # Functions
@@ -70,9 +68,17 @@ __all__ = [
     'stringify_value',
     'topological_sort_named_items',
     'topological_sort_names',
+
+    # Transitional exports kept public for v1 compatibility
+
+    # Data Classes
+    'JsonCodec',
+    'PathHasher',
+    'RecordPayloadParser',
+    'TokenReferenceCollector',
     # Mixins
-    'BoundsWarningsMixin',  # Transitional export kept for v1 compatibility
+    'BoundsWarningsMixin',
     # Type Aliases
-    'NonEmptyStr',  # Transitional export kept for v1 compatibility
-    'NonEmptyStrList',  # Transitional export kept for v1 compatibility
+    'NonEmptyStr',
+    'NonEmptyStrList',
 ]
