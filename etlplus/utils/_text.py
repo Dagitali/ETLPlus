@@ -152,5 +152,12 @@ class TextChoiceResolver:
         -------
         str
             Normalized mapped value or configured fallback.
+
+        Notes
+        -----
+        This stateless entry point exists for callers that already have one
+        mapping and fallback in hand and do not need to allocate a
+        :class:`TextChoiceResolver` instance just to normalize and resolve one
+        value.
         """
         return mapping.get(normalize(value), default)
