@@ -50,15 +50,6 @@ _WRITE_OPTION_DEFAULTS: Final[dict[str, object]] = {
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _coerce_required_text(
-    value: object,
-    *,
-    default: str,
-) -> str:
-    """Return a required text value with a string default."""
-    return default if (text := ValueParser.optional_str(value)) is None else text
-
-
 def _coerce_file_options[OptionsT](
     options: FileOptionsArg[OptionsT],
     *,
@@ -77,14 +68,12 @@ def _coerce_file_options[OptionsT](
     extras = {key: value for key, value in options.items()}
     normalized = {key: extras.pop(key, default) for key, default in defaults.items()}
 
-    normalized['encoding'] = _coerce_required_text(
-        normalized.get('encoding'),
-        default='utf-8',
+    normalized['encoding'] = (
+        ValueParser.optional_str(normalized.get('encoding')) or 'utf-8'
     )
     if 'root_tag' in normalized:
-        normalized['root_tag'] = _coerce_required_text(
-            normalized.get('root_tag'),
-            default='root',
+        normalized['root_tag'] = (
+            ValueParser.optional_str(normalized.get('root_tag')) or 'root'
         )
     for key in _OPTIONAL_TEXT_FIELDS:
         normalized[key] = ValueParser.optional_str(normalized.get(key))
