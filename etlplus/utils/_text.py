@@ -117,4 +117,40 @@ class TextChoiceResolver:
         str
             Normalized mapped value or configured fallback.
         """
-        return self.mapping.get(self.normalize(value), self.default)
+        return self.resolve_mapping(
+            self.mapping,
+            self.default,
+            value,
+            normalize=self.normalize,
+        )
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def resolve_mapping(
+        mapping: Mapping[str, str],
+        default: str,
+        value: str | None,
+        *,
+        normalize: Callable[[str | None], str] = TextNormalizer.normalize,
+    ) -> str:
+        """
+        Return one mapped choice from a mapping and fallback.
+
+        Parameters
+        ----------
+        mapping : Mapping[str, str]
+            Mapping of acceptable normalized inputs to output values.
+        default : str
+            Fallback returned when input is missing or unrecognized.
+        value : str | None
+            Input value to normalize.
+        normalize : Callable[[str | None], str], optional
+            Function applied to incoming values before lookup.
+
+        Returns
+        -------
+        str
+            Normalized mapped value or configured fallback.
+        """
+        return mapping.get(normalize(value), default)
