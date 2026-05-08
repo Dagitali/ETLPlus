@@ -45,6 +45,11 @@ extend-select = [
 combine-as-imports = false
 force-single-line = true
 
+[lint.per-file-ignores]
+# Keep doclint-compatible generic syntax until pydocstyle fully understands
+# inline type parameters on public APIs.
+'etlplus/utils/_graph.py' = ['UP047']
+
 [format]
 quote-style = "single"
 indent-style = "space"
