@@ -478,20 +478,25 @@ class TestParseTextPayload:
             JsonCodec.parse('{broken')
 
 
-class TestReadCsvRows:
-    """Unit tests for :func:`read_csv_rows`."""
+class TestCsvPayloadHandling:
+    """Unit tests for CSV payload parsing helpers."""
 
-    def test_reading_csv_rows(
+    def test_materializing_csv_file_payload(
         self,
         tmp_path: Path,
         csv_text: str,
     ) -> None:
         """
-        Test that :func:`read_csv_rows` reads a CSV into row dictionaries.
+        Test that CSV file payloads hydrate into row dictionaries.
         """
         file_path = tmp_path / 'data.csv'
         file_path.write_text(csv_text)
-        assert input_mod.read_csv_rows(file_path) == [
+
+        assert input_mod.materialize_file_payload(
+            str(file_path),
+            format_hint=None,
+            format_explicit=False,
+        ) == [
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},
         ]
