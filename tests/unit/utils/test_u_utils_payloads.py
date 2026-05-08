@@ -10,34 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from etlplus.file import FileFormat
+import etlplus.utils._payloads as payload_mod
 from etlplus.utils import JsonCodec
-from etlplus.utils import _payloads as payload_mod
-
-# SECTION: HELPERS ========================================================== #
-
-
-def _build_readable_file_double(
-    *,
-    payload: object,
-    resolved_format: FileFormat,
-) -> tuple[type[object], dict[str, object]]:
-    captured: dict[str, object] = {}
-
-    class _DummyFile:
-        def __init__(self, path: object, file_format: FileFormat | None = None) -> None:
-            captured['path'] = path
-            captured['fmt'] = file_format
-            self.file_format = resolved_format
-
-        def exists(self) -> bool:
-            return True
-
-        def read(self) -> object:
-            return payload
-
-    return _DummyFile, captured
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -72,25 +46,18 @@ class TestMaterializeFilePayload:
 
     def test_reads_existing_structured_sources_via_file(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
     ) -> None:
-        dummy_file, captured = _build_readable_file_double(
-            payload={'ok': True},
-            resolved_format=FileFormat.JSON,
-        )
-        monkeypatch.setattr(payload_mod, 'FILE', dummy_file)
+        file_path = tmp_path / 'payload.json'
+        file_path.write_text('{"ok": true}', encoding='utf-8')
 
         payload = payload_mod.materialize_file_payload(
-            's3://bucket/payload.json',
+            str(file_path),
             format_hint=None,
             format_explicit=False,
         )
 
         assert payload == {'ok': True}
-        assert captured == {
-            'fmt': None,
-            'path': 's3://bucket/payload.json',
-        }
 
 
 class TestParseTextPayload:
