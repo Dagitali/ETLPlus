@@ -82,6 +82,18 @@ class TestNormalizeText:
             == 'version-1'
         )
 
+    def test_resolve_mapping_supports_custom_normalizer(self) -> None:
+        """Test direct mapping resolution accepts a caller-supplied normalizer."""
+        assert (
+            TextChoiceResolver.resolve_mapping(
+                {'v1': 'version-1'},
+                'fallback',
+                'V1',
+                normalize=lambda value: (value or '').lower(),
+            )
+            == 'version-1'
+        )
+
     @pytest.mark.parametrize(
         ('value', 'expected'),
         [
