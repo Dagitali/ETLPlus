@@ -44,17 +44,17 @@ from etlplus.utils._types import NonEmptyStrList
 
 
 STABLE_UTILS_EXPORTS = [
-    ('MappingFieldParser', MappingFieldParser),
-    ('SequenceParser', SequenceParser),
-    ('ValueParser', ValueParser),
     ('FloatParser', FloatParser),
     ('IntParser', IntParser),
+    ('MappingFieldParser', MappingFieldParser),
     ('MappingParser', MappingParser),
     ('NamedDependencyGraph', NamedDependencyGraph),
     ('PathParser', PathParser),
+    ('SequenceParser', SequenceParser),
     ('SubstitutionResolver', SubstitutionResolver),
     ('TextChoiceResolver', TextChoiceResolver),
     ('TextNormalizer', TextNormalizer),
+    ('ValueParser', ValueParser),
     ('CoercibleStrEnum', CoercibleStrEnum),
     ('count_records', count_records),
     ('finite_decimal_or_none', finite_decimal_or_none),
