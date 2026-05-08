@@ -482,15 +482,6 @@ class IntParser(_NumberParser):
                 return None
             case int():
                 return value
-            case float() if value.is_integer():
-                return int(value)
-            case str():
-                if (text := _clean_numeric_text(value)) is None:
-                    return None
-                try:
-                    return int(text)
-                except ValueError:
-                    return cls._integral_from_float(FloatParser.coerce(text))
             case _:
                 return cls._integral_from_float(FloatParser.coerce(value))
 
