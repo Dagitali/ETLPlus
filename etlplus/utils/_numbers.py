@@ -32,6 +32,16 @@ __all__ = [
 type _Floatable = float | str | int
 
 
+# SECTION: INTERNAL FUNCTIONS ============================================== #
+
+
+def _clean_numeric_text(
+    value: object,
+) -> str | None:
+    """Return one stripped numeric text value when present and non-blank."""
+    return text if isinstance(value, str) and (text := value.strip()) else None
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -52,10 +62,17 @@ def finite_decimal_or_none(
         Finite :class:`Decimal` or ``None`` when coercion fails or value is
         non-finite.
     """
-    if not isinstance(value, int | float | Decimal | str):
+    if isinstance(value, bool) or not isinstance(value, int | float | Decimal | str):
         return None
     try:
-        decimal = value if isinstance(value, Decimal) else Decimal(str(value).strip())
+        if isinstance(value, Decimal):
+            decimal = value
+        elif isinstance(value, str):
+            if (text := _clean_numeric_text(value)) is None:
+                return None
+            decimal = Decimal(text)
+        else:
+            decimal = Decimal(str(value))
     except (InvalidOperation, ValueError):
         return None
     return decimal if decimal.is_finite() else None
@@ -195,13 +212,6 @@ class _NumberParser:
     # -- Internal Static Methods -- #
 
     @staticmethod
-    def _clean_numeric_text(
-        value: object,
-    ) -> str | None:
-        """Return one stripped numeric text value when present and non-blank."""
-        return text if isinstance(value, str) and (text := value.strip()) else None
-
-    @staticmethod
     def _validate_bounds[Num: (int, float)](
         minimum: Num | None,
         maximum: Num | None,
@@ -314,7 +324,7 @@ class FloatParser(_NumberParser):
             case int():
                 return float(value)
             case str():
-                if (text := cls._clean_numeric_text(value)) is None:
+                if (text := _clean_numeric_text(value)) is None:
                     return None
                 try:
                     parsed = float(text)
@@ -475,7 +485,7 @@ class IntParser(_NumberParser):
             case float() if value.is_integer():
                 return int(value)
             case str():
-                if (text := cls._clean_numeric_text(value)) is None:
+                if (text := _clean_numeric_text(value)) is None:
                     return None
                 try:
                     return int(text)
