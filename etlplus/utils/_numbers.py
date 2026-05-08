@@ -118,7 +118,8 @@ class _NumberParser:
     ) -> Num:
         """Parse a value and compare it with a required default bound."""
         return bound(
-            default if (result := parser(value, default)) is None else result, default,
+            default if (result := parser(value, default)) is None else result,
+            default,
         )
 
     @classmethod
