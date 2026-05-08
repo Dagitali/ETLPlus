@@ -81,13 +81,8 @@ class TestParseTextPayload:
     ) -> None:
         assert payload_mod.parse_text_payload(payload, fmt_hint=fmt_hint) == expected
 
-
-class TestReadCsvRows:
-    def test_reading_csv_rows(self, tmp_path: Path) -> None:
-        file_path = tmp_path / 'data.csv'
-        file_path.write_text('a,b\n1,2\n3,4\n', encoding='utf-8')
-
-        assert payload_mod.read_csv_rows(file_path) == [
+    def test_parses_csv_text_payload(self) -> None:
+        assert payload_mod.parse_text_payload('a,b\n1,2\n3,4\n', fmt_hint='csv') == [
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},
         ]
