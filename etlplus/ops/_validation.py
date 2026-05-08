@@ -225,7 +225,7 @@ def _normalize_choice[T: ValidationChoice](
     """Normalize arbitrary text into one of the allowed literal choices."""
     return cast(
         T,
-        TextChoiceResolver(mapping, default).resolve(value),
+        TextChoiceResolver.resolve_mapping(mapping, default, value),
     )
 
 
