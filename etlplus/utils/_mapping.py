@@ -226,7 +226,9 @@ class MappingParser:
         dict[str, Any]
             Shallow copy of *value* converted to a standard ``dict``.
         """
-        return dict(value) if isinstance(value, Mapping) else {}
+        if (mapping := MappingParser.optional(value)) is None:
+            return {}
+        return dict(mapping)
 
     @staticmethod
     def optional(
