@@ -80,19 +80,19 @@ class MappingParser:
             Trimmed string value if found; otherwise ``None``.
         """
         candidates = tuple(keys)
-        for key in candidates:
-            if (text := MappingParser._non_empty_str(mapping.get(key))) is not None:
-                return text
+        current_mapping: Mapping[str, object] | None = mapping
 
-        if nested_key is not None and isinstance(
-            nested := mapping.get(nested_key),
-            Mapping,
-        ):
-            return MappingParser.first_non_empty_str(
-                nested,
-                candidates,
-                nested_key=nested_key,
-            )
+        while current_mapping is not None:
+            for key in candidates:
+                if (
+                    text := MappingParser._non_empty_str(current_mapping.get(key))
+                ) is not None:
+                    return text
+
+            if nested_key is None:
+                break
+            nested = current_mapping.get(nested_key)
+            current_mapping = nested if isinstance(nested, Mapping) else None
 
         return None
 
