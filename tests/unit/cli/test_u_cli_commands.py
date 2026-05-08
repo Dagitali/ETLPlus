@@ -72,7 +72,7 @@ class TestCommandsInternalHelpers:
             'value': 'payload',
         }
 
-    def test_call_history_handler_omits_unset_filters_and_preserves_explicit_none(
+    def test_call_history_command_omits_unset_filters_and_preserves_explicit_none(
         self,
     ) -> None:
         """History dispatch should forward only explicit filters plus ``pretty``."""
@@ -82,8 +82,9 @@ class TestCommandsInternalHelpers:
             captured.update(kwargs)
             return 11
 
-        result = helpers_mod.CommandHelperPolicy.call_history_handler(
+        result = helpers_mod.CommandHelperPolicy.call_history_command(
             _handler,
+            ctx=cast(typer.Context, object()),
             state=CliState(pretty=False),
             level='job',
             job='seed',
