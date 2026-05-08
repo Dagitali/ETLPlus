@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from typing import TypeGuard
 
 from ._text import TextChoiceResolver
+from ._text import TextNormalizer
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -68,7 +69,7 @@ class ValueParser:
             return value
         if not isinstance(value, str):
             return default
-        normalized = value.strip().casefold()
+        normalized = TextNormalizer.normalize(value)
         if normalized in true_values:
             return True
         if normalized in false_values:
@@ -96,10 +97,9 @@ class ValueParser:
             Canonical choice when recognized, the stringified value when
             unrecognized, or ``None`` when *value* is missing.
         """
-        text = ValueParser.optional_str(value)
-        if text is None:
+        if (text := ValueParser.optional_str(value)) is None:
             return None
-        return TextChoiceResolver(choices, text).resolve(text)
+        return TextChoiceResolver.resolve_mapping(choices, text, text)
 
     @staticmethod
     def optional_str(
@@ -155,8 +155,7 @@ class MappingFieldParser(ValueParser):
         str | None
             The string value if present and valid, otherwise None.
         """
-        value = data.get(key)
-        return value if isinstance(value, str) else None
+        return value if isinstance(value := data.get(key), str) else None
 
     @staticmethod
     def require_str(
@@ -236,10 +235,8 @@ class SequenceParser(ValueParser):
         list[str]
             Normalized list of strings.
         """
-        match value:
-            case str():
-                return [value]
-            case Sequence() if SequenceParser.is_non_text(value):
-                return [entry for entry in value if isinstance(entry, str)]
-            case _:
-                return []
+        if isinstance(value, str):
+            return [value]
+        if not SequenceParser.is_non_text(value):
+            return []
+        return [entry for entry in value if isinstance(entry, str)]

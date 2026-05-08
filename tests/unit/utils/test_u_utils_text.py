@@ -22,6 +22,11 @@ from etlplus.utils import TextNormalizer
 class TestNormalizeText:
     """Unit tests for text-normalization helpers."""
 
+    @pytest.fixture(name='choice_mapping')
+    def choice_mapping_fixture(self) -> dict[str, str]:
+        """Return one reusable normalized choice mapping."""
+        return {'file': 'file', 'api': 'api'}
+
     def test_choice_resolver_is_frozen(self) -> None:
         """Test that choice policy cannot be reassigned after construction."""
         resolver = TextChoiceResolver({'file': 'file'}, 'file')
@@ -49,12 +54,15 @@ class TestNormalizeText:
         """
         assert TextNormalizer.normalize(value) == expected
 
-    def test_normalize_choice_with_default_normalizer(self) -> None:
+    def test_normalize_choice_with_default_normalizer(
+        self,
+        choice_mapping: dict[str, str],
+    ) -> None:
         """
         Test that :meth:`TextChoiceResolver.resolve` resolves choices and
         falls back to defaults.
         """
-        resolver = TextChoiceResolver({'file': 'file', 'api': 'api'}, 'file')
+        resolver = TextChoiceResolver(choice_mapping, 'file')
 
         assert resolver.resolve('  FILE  ') == 'file'
         assert resolver.resolve('unknown') == 'file'
@@ -72,6 +80,38 @@ class TestNormalizeText:
                 normalize=lambda value: (value or '').lower(),
             ).resolve('V1')
             == 'version-1'
+        )
+
+    def test_resolve_mapping_supports_custom_normalizer(self) -> None:
+        """Test direct mapping resolution accepts a caller-supplied normalizer."""
+        assert (
+            TextChoiceResolver.resolve_mapping(
+                {'v1': 'version-1'},
+                'fallback',
+                'V1',
+                normalize=lambda value: (value or '').lower(),
+            )
+            == 'version-1'
+        )
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param('  FILE  ', 'file', id='normalized-match'),
+            pytest.param('unknown', 'file', id='default-fallback'),
+            pytest.param(None, 'file', id='none-fallback'),
+        ],
+    )
+    def test_resolve_mapping_without_resolver_instance(
+        self,
+        choice_mapping: dict[str, str],
+        value: str | None,
+        expected: str,
+    ) -> None:
+        """Test direct mapping resolution without resolver allocation."""
+        assert (
+            TextChoiceResolver.resolve_mapping(choice_mapping, 'file', value)
+            == expected
         )
 
     @pytest.mark.parametrize(

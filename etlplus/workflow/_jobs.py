@@ -12,6 +12,7 @@ Notes
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
@@ -50,6 +51,21 @@ _VALIDATION_SEVERITY_CHOICES = {
     'warn': 'warn',
     'error': 'error',
 }
+
+
+# SECTION: INTERNAL FUNCTIONS ============================================== #
+
+
+def _mapping_with_required_str(
+    obj: Any,
+    key: str,
+) -> tuple[Mapping[str, Any], str] | None:
+    """Return one parsed mapping together with its required string field."""
+    if not (data := MappingParser.optional(obj)):
+        return None
+    if (value := MappingFieldParser.required_str(data, key)) is None:
+        return None
+    return data, value
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -93,10 +109,9 @@ class ExtractRef:
         Self | None
             Parsed reference or ``None`` when the payload is invalid.
         """
-        if not (data := MappingParser.optional(obj)):
+        if (parsed := _mapping_with_required_str(obj, 'source')) is None:
             return None
-        if (source := MappingFieldParser.required_str(data, 'source')) is None:
-            return None
+        data, source = parsed
         return cls(
             source=source,
             options=MappingParser.to_dict(data.get('options')),
@@ -217,10 +232,9 @@ class JobConfig:
         Self | None
             Parsed job configuration or ``None`` if invalid.
         """
-        if not (data := MappingParser.optional(obj)):
+        if (parsed := _mapping_with_required_str(obj, 'name')) is None:
             return None
-        if (name := MappingFieldParser.required_str(data, 'name')) is None:
-            return None
+        data, name = parsed
 
         return cls(
             name=name,
@@ -272,10 +286,9 @@ class LoadRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        if not (data := MappingParser.optional(obj)):
+        if (parsed := _mapping_with_required_str(obj, 'target')) is None:
             return None
-        if (target := MappingFieldParser.required_str(data, 'target')) is None:
-            return None
+        data, target = parsed
         return cls(
             target=target,
             overrides=MappingParser.to_dict(data.get('overrides')),
@@ -317,10 +330,9 @@ class TransformRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        if not (data := MappingParser.optional(obj)):
+        if (parsed := _mapping_with_required_str(obj, 'pipeline')) is None:
             return None
-        if (pipeline := MappingFieldParser.required_str(data, 'pipeline')) is None:
-            return None
+        _data, pipeline = parsed
         return cls(pipeline=pipeline)
 
 
@@ -366,10 +378,9 @@ class ValidationRef:
         Self | None
             Parsed reference or ``None`` when invalid.
         """
-        if not (data := MappingParser.optional(obj)):
+        if (parsed := _mapping_with_required_str(obj, 'ruleset')) is None:
             return None
-        if (ruleset := MappingFieldParser.required_str(data, 'ruleset')) is None:
-            return None
+        data, ruleset = parsed
         return cls(
             ruleset=ruleset,
             severity=ValueParser.optional_choice(

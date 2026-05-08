@@ -48,12 +48,10 @@ repos:
 
   # Conventional commits / branch naming
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.13.9
+    rev: v4.15.1
     hooks:
       - id: commitizen
         stages: [commit-msg]
-      - id: commitizen-branch
-        stages: [pre-push]
 
   ### Git, Polyglot ###
 
@@ -133,7 +131,7 @@ repos:
 
   # Python: authoritative linting, import ordering, and pyupgrade-style rules
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.6
+    rev: v0.15.12
     hooks:
       - id: ruff
         # Ruff will:
@@ -156,7 +154,7 @@ repos:
 
   # Python: type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.1
+    rev: v2.0.0
     hooks:
       - id: mypy
         stages: [manual]
@@ -168,6 +166,15 @@ repos:
 
   - repo: local
     hooks:
+      - id: commitizen-branch
+        name: commitizen check branch
+        entry: python tools/check_commitizen_branch.py
+        language: python
+        additional_dependencies:
+          - commitizen==4.15.1
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
       - id: make-check-pre-push
         name: make check-pre-push (lint, doclint, typecheck, tests)
         entry: make check-pre-push

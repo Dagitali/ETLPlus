@@ -45,6 +45,19 @@ def _is_object_list(
     return isinstance(value, list) and all(isinstance(item, dict) for item in value)
 
 
+def _payload_kind(
+    value: object,
+) -> str:
+    """Return the structural payload kind used by record validators."""
+    if isinstance(value, dict):
+        return 'object'
+    if _is_object_list(value):
+        return 'object-list'
+    if isinstance(value, list):
+        return 'list'
+    return 'other'
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -293,17 +306,19 @@ class RecordPayloadParser:
         TypeError
             If the payload is not a dict or list of dicts.
         """
-        if isinstance(payload, dict):
-            return cast(JSONDict, payload)
-        if _is_object_list(payload):
-            return payload
-        if isinstance(payload, list):
-            raise TypeError(
-                f'{self.format_name} array must contain only objects (dicts)',
-            )
-        raise TypeError(
-            f'{self.format_name} root must be an object or an array of objects',
-        )
+        match _payload_kind(payload):
+            case 'object':
+                return cast(JSONDict, payload)
+            case 'object-list':
+                return cast(JSONList, payload)
+            case 'list':
+                raise TypeError(
+                    f'{self.format_name} array must contain only objects (dicts)',
+                )
+            case _:
+                raise TypeError(
+                    f'{self.format_name} root must be an object or an array of objects',
+                )
 
     def normalize(
         self,
@@ -327,17 +342,20 @@ class RecordPayloadParser:
         TypeError
             If the payload is not a dict or a list of dicts.
         """
-        if _is_object_list(data):
-            return data
-        if isinstance(data, list):
-            raise TypeError(
-                f'{self.format_name} payloads must contain only objects (dicts)',
-            )
-        if isinstance(data, dict):
-            return [cast(JSONDict, data)]
-        raise TypeError(
-            f'{self.format_name} payloads must be an object or an array of objects',
-        )
+        match _payload_kind(data):
+            case 'object-list':
+                return cast(JSONList, data)
+            case 'list':
+                raise TypeError(
+                    f'{self.format_name} payloads must contain only objects (dicts)',
+                )
+            case 'object':
+                return [cast(JSONDict, data)]
+            case _:
+                raise TypeError(
+                    f'{self.format_name} payloads must be an object '
+                    'or an array of objects',
+                )
 
     def require_dict(
         self,

@@ -128,6 +128,17 @@ class TokenReferenceCollector:
     pattern: Pattern[str] = _DEFAULT_TOKEN_PATTERN
     paths_by_name: dict[str, set[str]] = field(default_factory=dict)
 
+    # -- Internal Class Methods -- #
+
+    @classmethod
+    def _collector(
+        cls,
+        *,
+        pattern: Pattern[str] | None = None,
+    ) -> TokenReferenceCollector:
+        """Return one collector configured with *pattern* or the default."""
+        return cls(pattern=pattern or _DEFAULT_TOKEN_PATTERN)
+
     # -- Class Methods -- #
 
     @classmethod
@@ -138,7 +149,7 @@ class TokenReferenceCollector:
         pattern: Pattern[str] | None = None,
     ) -> set[str]:
         """Return one set of token names discovered in *value*."""
-        collector = cls(pattern=pattern or _DEFAULT_TOKEN_PATTERN)
+        collector = cls._collector(pattern=pattern)
         collector.walk(value)
         return set(collector.paths_by_name)
 
@@ -150,7 +161,7 @@ class TokenReferenceCollector:
         pattern: Pattern[str] | None = None,
     ) -> list[dict[str, Any]]:
         """Return one stable list of token reference rows."""
-        collector = cls(pattern=pattern or _DEFAULT_TOKEN_PATTERN)
+        collector = cls._collector(pattern=pattern)
         collector.walk(value)
         return [
             {'name': name, 'paths': sorted(paths)}
