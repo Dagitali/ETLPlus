@@ -14,6 +14,7 @@ from heapq import heapify
 from heapq import heappop
 from heapq import heappush
 from typing import Self
+from typing import TypeVar
 
 from ._mapping import MappingParser
 
@@ -27,6 +28,12 @@ __all__ = [
     'topological_sort_named_items',
     'topological_sort_names',
 ]
+
+
+# SECTION: TYPE VARS ======================================================== #
+
+
+ItemT = TypeVar('ItemT')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -120,6 +127,11 @@ class NamedDependencyGraph:
             Name of the node it depends on.
         known_names : frozenset[str]
             Set of valid node names for reference checks.
+
+        Raises
+        ------
+        ValueError
+            If the dependency name is unknown or self-referential.
         """
         if dependency_name not in known_names:
             raise ValueError(
@@ -190,7 +202,7 @@ def topological_sort_names(
     ).ordered_names()
 
 
-def topological_sort_named_items[ItemT](
+def topological_sort_named_items(
     items: Iterable[ItemT],
     *,
     dependency_getter: Callable[[ItemT], Iterable[str]],
