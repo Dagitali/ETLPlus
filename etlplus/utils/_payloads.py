@@ -9,7 +9,6 @@ from __future__ import annotations
 import csv
 import io as _io
 import os
-from pathlib import Path
 from typing import cast
 
 from ..file import File
@@ -25,7 +24,6 @@ __all__ = [
     'infer_payload_format',
     'materialize_file_payload',
     'parse_text_payload',
-    'read_csv_rows',
 ]
 
 
@@ -141,24 +139,3 @@ def parse_text_payload(
         reader = csv.DictReader(_io.StringIO(text))
         return [dict(row) for row in reader]
     return text
-
-
-def read_csv_rows(
-    path: Path,
-) -> list[dict[str, str]]:
-    """
-    Read CSV rows into dictionaries.
-
-    Parameters
-    ----------
-    path : Path
-        The path to the CSV file.
-
-    Returns
-    -------
-    list[dict[str, str]]
-        The list of CSV rows as dictionaries.
-    """
-    with path.open(newline='', encoding='utf-8') as handle:
-        reader = csv.DictReader(handle)
-        return [dict(row) for row in reader]
