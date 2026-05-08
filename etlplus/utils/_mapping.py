@@ -11,6 +11,7 @@ from collections.abc import Iterable
 from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Any
+from typing import TypeVar
 
 from ._types import StrAnyMap
 
@@ -21,6 +22,12 @@ __all__ = [
     # Classes
     'MappingParser',
 ]
+
+
+# SECTION: TYPE VARS ======================================================== #
+
+
+ItemT = TypeVar('ItemT')
 
 
 # SECTION: CLASSES ========================================================== #
@@ -117,7 +124,7 @@ class MappingParser:
         return MappingProxyType(data)
 
     @staticmethod
-    def index_named_items[ItemT](
+    def index_named_items(
         items: Iterable[ItemT],
         *,
         item_label: str,
@@ -127,6 +134,8 @@ class MappingParser:
 
         Parameters
         ----------
+        ItemT : type
+            The type of elements in the list.
         items : Iterable[ItemT]
             Items to index. Only entries with a non-empty string ``name``
             attribute are included.
