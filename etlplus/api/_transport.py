@@ -183,26 +183,6 @@ def _build_retry_value(
     except ImportError:  # pragma: no cover - optional dependency
         return IntParser.at_least(config.get('total'), 0)
 
-    kwargs = _normalize_retry_kwargs(config)
-    return Retry(**kwargs) if kwargs else 0
-
-
-def _normalize_retry_kwargs(
-    retries_cfg: Mapping[str, Any],
-) -> dict[str, Any]:
-    """
-    Filter and normalize urllib3 ``Retry`` kwargs from a mapping.
-
-    Parameters
-    ----------
-    retries_cfg : Mapping[str, Any]
-        Raw retry configuration mapping.
-
-    Returns
-    -------
-    dict[str, Any]
-        Filtered and normalized keyword arguments for ``Retry``.
-    """
     allowed_keys = {
         'total',
         'connect',
@@ -215,49 +195,22 @@ def _normalize_retry_kwargs(
         'raise_on_status',
         'respect_retry_after_header',
     }
-    normalized: dict[str, Any] = {}
-    for key, value in retries_cfg.items():
+    kwargs: dict[str, Any] = {}
+    for key, value in config.items():
         if key not in allowed_keys:
             continue
         match key:
             case 'status_forcelist' if isinstance(value, (list, tuple, set)):
-                normalized[key] = tuple(value)
+                kwargs[key] = tuple(value)
             case 'allowed_methods' if isinstance(
                 value,
                 (list, tuple, set, frozenset),
             ):
-                normalized[key] = frozenset(value)
+                kwargs[key] = frozenset(value)
             case _:
-                normalized[key] = value
-    return normalized
+                kwargs[key] = value
 
-
-def _resolve_max_retries(
-    retries_cfg: object,
-) -> int | Any:
-    """
-    Normalize ``max_retries`` values accepted by ``HTTPAdapter``.
-
-    Parameters
-    ----------
-    retries_cfg : object
-        Raw ``max_retries`` configuration value.
-
-    Returns
-    -------
-    int | Any
-        Integer retry count or ``Retry`` instance.
-    """
-    match retries_cfg:
-        case int():
-            return IntParser.at_least(retries_cfg, 0)
-        case Mapping():
-            try:
-                return _build_retry_value(retries_cfg)
-            except (TypeError, ValueError, AttributeError):
-                return IntParser.at_least(retries_cfg.get('total'), 0)
-        case _:
-            return 0
+    return Retry(**kwargs) if kwargs else 0
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -294,7 +247,17 @@ def build_http_adapter(
     pool_maxsize = IntParser.positive(cfg.get('pool_maxsize'), 10)
     pool_block = bool(cfg.get('pool_block', False))
 
-    max_retries = _resolve_max_retries(cfg.get('max_retries'))
+    retries_cfg = cfg.get('max_retries')
+    match retries_cfg:
+        case int():
+            max_retries = IntParser.at_least(retries_cfg, 0)
+        case Mapping():
+            try:
+                max_retries = _build_retry_value(retries_cfg)
+            except (TypeError, ValueError, AttributeError):
+                max_retries = IntParser.at_least(retries_cfg.get('total'), 0)
+        case _:
+            max_retries = 0
 
     return HTTPAdapter(
         pool_connections=pool_connections,
