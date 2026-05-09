@@ -129,6 +129,7 @@ def _extract_from_api_env(
     timeout = None
     pagination = None
     sleep_seconds = 0.0
+    use_endpoints = False
     base_url = None
     base_path = None
     endpoints_map: dict[str, str] = {}
@@ -145,6 +146,7 @@ def _extract_from_api_env(
         timeout = cast(Timeout | None, request_env.get('timeout'))
         pagination = request_env.get('pagination')
         sleep_seconds = float(request_env.get('sleep_seconds', 0.0))
+        use_endpoints = bool(request_env.get('use_endpoints'))
         base_url = (
             raw_base_url
             if isinstance(raw_base_url := request_env.get('base_url'), str)
@@ -160,7 +162,7 @@ def _extract_from_api_env(
 
     if (
         request_env is not None
-        and request_env.get('use_endpoints')
+        and use_endpoints
         and base_url
         and endpoints_map
         and endpoint_key
