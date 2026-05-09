@@ -214,26 +214,28 @@ def _parse_api_response(
         Parsed JSON payload, or a fallback object with raw text.
     """
     content_type = response.headers.get('content-type', '').lower()
-    if 'application/json' in content_type:
-        try:
-            payload: Any = response.json()
-        except ValueError:
-            # Malformed JSON despite content-type; fall back to text
-            return {
-                'content': response.text,
-                'content_type': content_type,
-            }
-        match payload:
-            case dict():
-                return payload
-            case list():
-                if all(isinstance(item, dict) for item in payload):
-                    return payload
-                return [{'value': item} for item in payload]
-            case _:
-                return {'value': payload}
+    text_payload = {
+        'content': response.text,
+        'content_type': content_type,
+    }
+    if 'application/json' not in content_type:
+        return text_payload
 
-    return {'content': response.text, 'content_type': content_type}
+    try:
+        payload: Any = response.json()
+    except ValueError:
+        # Malformed JSON despite content-type; fall back to text
+        return text_payload
+
+    match payload:
+        case dict():
+            return payload
+        case list() if all(isinstance(item, dict) for item in payload):
+            return payload
+        case list():
+            return [{'value': item} for item in payload]
+        case _:
+            return {'value': payload}
 
 
 # SECTION: FUNCTIONS ======================================================== #
