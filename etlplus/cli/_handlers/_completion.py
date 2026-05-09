@@ -81,6 +81,11 @@ def complete_output(
     ------
     AssertionError
         If *mode* is not one of the supported output modes.
+    ValueError
+        If required parameters for the specified *mode* are missing or invalid.
+        For example, if *mode* is "file" but *output_path* is not provided or
+        is a STDOUT target, or if *mode* is "or_write" but *success_message* is
+        not provided.
     """
     _lifecycle.complete_command(context, **fields)
     match mode:
