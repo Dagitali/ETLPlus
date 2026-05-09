@@ -345,11 +345,11 @@ def load_to_file(
         if resolved_options is None
         else target.file.write(data, options=resolved_options)
     )
-
-    if target.file_format is FileFormat.CSV and records == 0:
-        message = 'No data to write'
-    else:
-        message = f'Data loaded to {target_label}'
+    message = (
+        'No data to write'
+        if target.file_format is FileFormat.CSV and records == 0
+        else f'Data loaded to {target_label}'
+    )
 
     return {
         'status': 'success',
