@@ -86,8 +86,7 @@ def _build_client(
     EndpointClient
         Configured endpoint client instance.
     """
-    ClientClass = EndpointClient  # noqa: N806
-    return ClientClass(
+    return EndpointClient(
         base_url=base_url,
         base_path=base_path,
         endpoints=endpoints,
@@ -122,6 +121,17 @@ def _extract_from_api_env(
     else:
         request_env = None
 
+    retry = None
+    retry_network_errors = False
+    session = None
+
+    if request_env is not None:
+        retry = request_env.get('retry')
+        retry_network_errors = bool(
+            request_env.get('retry_network_errors', False),
+        )
+        session = request_env.get('session')
+
     if (
         request_env is not None
         and request_env.get('use_endpoints')
@@ -137,11 +147,9 @@ def _extract_from_api_env(
                 else None
             ),
             endpoints=dict(request_env.get('endpoints_map') or {}),
-            retry=request_env.get('retry'),
-            retry_network_errors=bool(
-                request_env.get('retry_network_errors', False),
-            ),
-            session=request_env.get('session'),
+            retry=retry,
+            retry_network_errors=retry_network_errors,
+            session=session,
         )
         return paginate_with_client(
             client,
@@ -164,11 +172,9 @@ def _extract_from_api_env(
             base_url=base,
             base_path=None,
             endpoints={},
-            retry=request_env.get('retry'),
-            retry_network_errors=bool(
-                request_env.get('retry_network_errors', False),
-            ),
-            session=request_env.get('session'),
+            retry=retry,
+            retry_network_errors=retry_network_errors,
+            session=session,
         )
         request_options = RequestOptions(
             params=cast(Mapping[str, Any] | None, request_env.get('params')),
