@@ -317,7 +317,7 @@ class RecordPayloadParser:
 
         Raises
         ------
-        TypeError
+        self._invalid_payload_error
             If the payload is not a dict or list of dicts.
         """
         record_payload = _record_payload_or_none(payload)
@@ -348,7 +348,7 @@ class RecordPayloadParser:
 
         Raises
         ------
-        TypeError
+        self._invalid_payload_error
             If the payload is not a dict or a list of dicts.
         """
         record_payload = _record_payload_or_none(data)
