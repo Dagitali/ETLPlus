@@ -65,16 +65,16 @@ def _coerce_file_options[OptionsT](
             'options must be a mapping or a concrete file options object',
         )
 
-    extras = {key: value for key, value in options.items()}
+    extras = dict(options)
     normalized = {key: extras.pop(key, default) for key, default in defaults.items()}
 
-    normalized['encoding'] = (
-        ValueParser.optional_str(normalized.get('encoding')) or 'utf-8'
-    )
+    required_text_defaults = {'encoding': 'utf-8'}
     if 'root_tag' in normalized:
-        normalized['root_tag'] = (
-            ValueParser.optional_str(normalized.get('root_tag')) or 'root'
-        )
+        required_text_defaults['root_tag'] = 'root'
+
+    for key, default in required_text_defaults.items():
+        normalized[key] = ValueParser.optional_str(normalized.get(key)) or default
+
     for key in _OPTIONAL_TEXT_FIELDS:
         normalized[key] = ValueParser.optional_str(normalized.get(key))
 
