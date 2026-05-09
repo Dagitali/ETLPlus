@@ -116,57 +116,41 @@ def _extract_from_api_env(
     JSONData
         Extracted payload.
     """
-    if use_client:
-        request_env = cast(ApiRequestEnvDict, env)
-    else:
-        request_env = None
-
-    retry = None
-    retry_network_errors = False
-    session = None
-    params = None
-    headers = None
-    timeout = None
-    pagination = None
-    sleep_seconds = 0.0
-    use_endpoints = False
-    base_url = None
-    base_path = None
-    endpoints_map: dict[str, str] = {}
-    endpoint_key = None
-
-    if request_env is not None:
-        retry = request_env.get('retry')
-        retry_network_errors = bool(
-            request_env.get('retry_network_errors', False),
+    if not use_client:
+        request = build_request_call(
+            env,
+            error_message='API source missing URL',
+            default_method=HttpMethod.GET,
         )
-        session = request_env.get('session')
-        params = cast(Mapping[str, Any] | None, request_env.get('params'))
-        headers = cast(Mapping[str, str] | None, request_env.get('headers'))
-        timeout = cast(Timeout | None, request_env.get('timeout'))
-        pagination = request_env.get('pagination')
-        sleep_seconds = float(request_env.get('sleep_seconds', 0.0))
-        use_endpoints = bool(request_env.get('use_endpoints'))
-        base_url = (
-            raw_base_url
-            if isinstance(raw_base_url := request_env.get('base_url'), str)
-            else None
-        )
-        base_path = (
-            raw_base_path
-            if isinstance(raw_base_path := request_env.get('base_path'), str)
-            else None
-        )
-        endpoints_map = dict(request_env.get('endpoints_map') or {})
-        endpoint_key = request_env.get('endpoint_key')
+        response = send_request(request)
+        return _parse_api_response(response)
 
-    if (
-        request_env is not None
-        and use_endpoints
-        and base_url
-        and endpoints_map
-        and endpoint_key
-    ):
+    request_env = cast(ApiRequestEnvDict, env)
+    retry = request_env.get('retry')
+    retry_network_errors = bool(
+        request_env.get('retry_network_errors', False),
+    )
+    session = request_env.get('session')
+    params = cast(Mapping[str, Any] | None, request_env.get('params'))
+    headers = cast(Mapping[str, str] | None, request_env.get('headers'))
+    timeout = cast(Timeout | None, request_env.get('timeout'))
+    pagination = request_env.get('pagination')
+    sleep_seconds = float(request_env.get('sleep_seconds', 0.0))
+    use_endpoints = bool(request_env.get('use_endpoints'))
+    base_url = (
+        raw_base_url
+        if isinstance(raw_base_url := request_env.get('base_url'), str)
+        else None
+    )
+    base_path = (
+        raw_base_path
+        if isinstance(raw_base_path := request_env.get('base_path'), str)
+        else None
+    )
+    endpoints_map = dict(request_env.get('endpoints_map') or {})
+    endpoint_key = request_env.get('endpoint_key')
+
+    if use_endpoints and base_url and endpoints_map and endpoint_key:
         client = _build_client(
             base_url=base_url,
             base_path=base_path,
@@ -184,15 +168,6 @@ def _extract_from_api_env(
             pagination,
             sleep_seconds,
         )
-
-    if request_env is None:
-        request = build_request_call(
-            env,
-            error_message='API source missing URL',
-            default_method=HttpMethod.GET,
-        )
-        response = send_request(request)
-        return _parse_api_response(response)
 
     url = require_url(
         request_env,
