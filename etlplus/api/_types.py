@@ -57,28 +57,6 @@ __all__ = [
 _UNSET: object = object()
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _to_dict(
-    value: Mapping[str, Any] | object | None,
-) -> dict[str, Any] | None:
-    """
-    Return a defensive ``dict`` copy for mapping inputs.
-
-    Parameters
-    ----------
-    value : Mapping[str, Any] | object | None
-        Mapping to copy, or ``None``.
-
-    Returns
-    -------
-    dict[str, Any] | None
-        New ``dict`` instance or ``None`` when the input is ``None``.
-    """
-    return None if value is None else MappingParser.to_dict(value)
-
-
 # SECTION: TYPED DICTS ====================================================== #
 
 
@@ -197,9 +175,9 @@ class RequestOptions:
 
     def __post_init__(self) -> None:
         if self.params is not None:
-            object.__setattr__(self, 'params', _to_dict(self.params))
+            object.__setattr__(self, 'params', MappingParser.to_dict(self.params))
         if self.headers is not None:
-            object.__setattr__(self, 'headers', _to_dict(self.headers))
+            object.__setattr__(self, 'headers', MappingParser.to_dict(self.headers))
 
     # -- Instance Methods -- #
 
@@ -251,12 +229,12 @@ class RequestOptions:
         if params is _UNSET:
             next_params = self.params
         else:
-            next_params = _to_dict(params)
+            next_params = None if params is None else MappingParser.to_dict(params)
 
         if headers is _UNSET:
             next_headers = self.headers
         else:
-            next_headers = _to_dict(headers)
+            next_headers = None if headers is None else MappingParser.to_dict(headers)
         if timeout is _UNSET:
             next_timeout = self.timeout
         else:

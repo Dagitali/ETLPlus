@@ -45,7 +45,6 @@ from ._types import NonEmptyStrList
 # NOTE: release.
 __all__ = [
     # Stable exports that are expected to remain public in the long term
-
     # Classes
     'FloatParser',
     'IntParser',
@@ -68,9 +67,7 @@ __all__ = [
     'stringify_value',
     'topological_sort_named_items',
     'topological_sort_names',
-
     # Transitional exports kept public for v1 compatibility
-
     # Data Classes
     'JsonCodec',
     'PathHasher',

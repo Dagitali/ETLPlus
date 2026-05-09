@@ -119,10 +119,11 @@ class CoercibleStrEnum(enum.StrEnum):
                 TextNormalizer.normalize(str(key)): alias
                 for key, alias in cls.aliases().items()
             }
-            resolved = aliases.get(normalized)
-            if resolved is None:
-                return cls._from_value_or_name(normalized, name=raw)
-            return cls._from_value_or_name(resolved)
+            resolved = aliases.get(normalized, normalized)
+            return cls._from_value_or_name(
+                resolved,
+                name=raw if resolved == normalized else None,
+            )
         except (ValueError, TypeError, KeyError) as e:
             allowed = ', '.join(cls.choices())
             raise ValueError(

@@ -30,31 +30,6 @@ __all__ = [
 type CompletionMode = Literal['json', 'or_write', 'file', 'json_file']
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _require_file_target(
-    output_path: str | None,
-    *,
-    mode: CompletionMode,
-) -> str:
-    """Return a concrete file target or fail with a clear completion error."""
-    if isinstance(output_path, str) and not PathParser.is_stdout_target(output_path):
-        return output_path
-    raise ValueError(f'{mode!r} completion requires an output path')
-
-
-def _require_success_message(
-    success_message: str | None,
-    *,
-    mode: CompletionMode,
-) -> str:
-    """Return a completion success message or fail with a clear error."""
-    if success_message:
-        return success_message
-    raise ValueError(f'{mode!r} completion requires a success message')
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -106,39 +81,48 @@ def complete_output(
     ------
     AssertionError
         If *mode* is not one of the supported output modes.
+    ValueError
+        If required parameters for the specified *mode* are missing or invalid.
+        For example, if *mode* is "file" but *output_path* is not provided or
+        is a STDOUT target, or if *mode* is "or_write" but *success_message* is
+        not provided.
     """
     _lifecycle.complete_command(context, **fields)
     match mode:
         case 'json':
             return _output.emit_json_payload(payload, pretty=pretty)
         case 'or_write':
+            if not success_message:
+                raise ValueError(f'{mode!r} completion requires a success message')
             _output.emit_or_write(
                 payload,
                 output_path,
                 pretty=pretty,
-                success_message=_require_success_message(
-                    success_message,
-                    mode=mode,
-                ),
+                success_message=success_message,
             )
             return 0
         case 'file':
-            target = _require_file_target(output_path, mode=mode)
+            if not isinstance(output_path, str) or PathParser.is_stdout_target(
+                output_path,
+            ):
+                raise ValueError(f'{mode!r} completion requires an output path')
+            if not success_message:
+                raise ValueError(f'{mode!r} completion requires a success message')
+            target = output_path
             _output.write_file_payload(
                 payload,
                 target,
                 format_hint=format_hint,
             )
-            print(f'{_require_success_message(success_message, mode=mode)} {target}')
+            print(f'{success_message} {target}')
             return 0
         case 'json_file':
+            if not success_message:
+                raise ValueError(f'{mode!r} completion requires a success message')
             if not _output.write_json_output(
                 payload,
                 output_path,
-                success_message=_require_success_message(
-                    success_message,
-                    mode=mode,
-                ),
+                success_message=success_message,
             ):
                 return _output.emit_json_payload(payload, pretty=pretty)
             return 0

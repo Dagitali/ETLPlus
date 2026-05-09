@@ -98,6 +98,11 @@ class TestMappingHelpers:
                 'sqlite:///nested.db',
                 id='nested-with-key-generator',
             ),
+            pytest.param(
+                {'default': {'default': {'dsn': 'postgresql://deep-db'}}},
+                'postgresql://deep-db',
+                id='nested-recursive-chain',
+            ),
         ],
     )
     def test_first_non_empty_str(

@@ -179,13 +179,6 @@ def _clean_dependency_names(
     return tuple(_clean_dependency_name(value, label=label) for value in values)
 
 
-def _normalized_dependency_target(
-    pip_name: str | None,
-) -> str | None:
-    """Return one normalized pip install target when provided."""
-    return _clean_dependency_name(pip_name, label='pip_name') if pip_name else None
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -252,12 +245,17 @@ def normalize_dependency_names(
     ValueError
         If *module_name* is an empty tuple or any cleaned names are empty.
     """
-    normalized_pip_name = _normalized_dependency_target(pip_name)
+    normalized_pip_name = (
+        _clean_dependency_name(pip_name, label='pip_name')
+        if pip_name is not None
+        else None
+    )
     if isinstance(module_name, str):
-        dependency_display_name = normalized_pip_name or _clean_dependency_name(
+        cleaned_module_name = _clean_dependency_name(
             module_name,
             label='module_name',
         )
+        dependency_display_name = normalized_pip_name or cleaned_module_name
         return (dependency_display_name,), dependency_display_name
     if not module_name:
         raise ValueError('module_name must not be an empty tuple')

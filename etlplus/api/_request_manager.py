@@ -370,22 +370,6 @@ class RequestManager:
 
     # -- Internal Instance Methods -- #
 
-    def _build_adapter_session(self) -> requests.Session | None:
-        """
-        Build a session configured with HTTP adapters when provided.
-
-        Returns
-        -------
-        requests.Session | None
-            Configured session with HTTP adapters, or ``None``.
-        """
-        if not self.session_adapters:
-            return None
-        try:
-            return build_session_with_adapters(tuple(self.session_adapters))
-        except (ValueError, TypeError, AttributeError):
-            return requests.Session()
-
     def _instantiate_session(self) -> tuple[requests.Session | None, bool]:
         """
         Create a session from factory/adapters when available.
@@ -405,9 +389,11 @@ class RequestManager:
             if session is not None:
                 return session, True
             return None, False
-        adapter_session = self._build_adapter_session()
-        if adapter_session is not None:
-            return adapter_session, True
+        if self.session_adapters:
+            try:
+                return build_session_with_adapters(tuple(self.session_adapters)), True
+            except (ValueError, TypeError, AttributeError):
+                return requests.Session(), True
         return None, False
 
     def _parse_response_payload(

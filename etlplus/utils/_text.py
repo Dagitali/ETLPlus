@@ -69,9 +69,7 @@ class TextNormalizer:
         str
             Truncated text, or ``""`` when *text* is falsey.
         """
-        if not text:
-            return ''
-        return text[:limit]
+        return (text or '')[:limit]
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -117,12 +115,7 @@ class TextChoiceResolver:
         str
             Normalized mapped value or configured fallback.
         """
-        return self.resolve_mapping(
-            self.mapping,
-            self.default,
-            value,
-            normalize=self.normalize,
-        )
+        return self.mapping.get(self.normalize(value), self.default)
 
     # -- Static Methods -- #
 

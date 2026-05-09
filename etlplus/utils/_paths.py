@@ -47,11 +47,8 @@ class PathHasher:
         path = Path(self.file_path)
         if not path.is_file():
             return None
-        digest = hashlib.sha256()
         with path.open('rb') as handle:
-            for chunk in iter(lambda: handle.read(1024 * 1024), b''):
-                digest.update(chunk)
-        return digest.hexdigest()
+            return hashlib.file_digest(handle, 'sha256').hexdigest()
 
 
 # SECTION: CLASSES ========================================================== #
@@ -79,9 +76,9 @@ class PathParser:
         TypeGuard[str | PathLike[str]]
             ``True`` when *value* is path-like and does not represent STDOUT.
         """
-        return isinstance(value, str | PathLike) and not PathParser.is_stdout_target(
-            value,
-        )
+        if not isinstance(value, str | PathLike):
+            return False
+        return not PathParser.is_stdout_target(value)
 
     @staticmethod
     def is_stdout_target(

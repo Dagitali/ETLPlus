@@ -217,7 +217,7 @@ class TestLoadHandler:
             return ['rows', src]
 
         monkeypatch.setattr(
-            handlers._input,
+            dataops_mod,
             'materialize_file_payload',
             fake_materialize,
         )
@@ -278,7 +278,7 @@ class TestLoadHandler:
             )
 
         monkeypatch.setattr(
-            handlers._input,
+            dataops_mod,
             'materialize_file_payload',
             fail_materialize,
         )

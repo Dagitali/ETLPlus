@@ -975,12 +975,14 @@ def _resolve_job_connector(
             connector_obj=connector_obj,
         )
 
+    connection_value = str(
+        resolved_overrides.get('connection_string')
+        or getattr(connector_obj, 'connection_string', ''),
+    )
+
     return _ResolvedJobConnector(
         connector_type=connector_type,
-        value=str(
-            resolved_overrides.get('connection_string')
-            or getattr(connector_obj, 'connection_string', ''),
-        ),
+        value=connection_value,
         file_format=None,
         options=resolved_overrides,
         connector_obj=connector_obj,

@@ -104,7 +104,9 @@ class TestScheduleParsing:
             pytest.param(ScheduleBackfillConfig, None, id='backfill-none'),
             pytest.param(ScheduleConfig, None, id='schedule-none'),
             pytest.param(
-                ScheduleConfig, {'cron': '0 0 * * *'}, id='schedule-missing-name',
+                ScheduleConfig,
+                {'cron': '0 0 * * *'},
+                id='schedule-missing-name',
             ),
         ],
     )

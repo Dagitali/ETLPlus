@@ -125,25 +125,6 @@ class TestFileOptionHelpers:
         case = option_case
         assert case['coerce'](case['instance']) is case['instance']
 
-    @pytest.mark.parametrize(
-        ('value', 'default', 'expected'),
-        [
-            pytest.param(None, 'utf-8', 'utf-8', id='default'),
-            pytest.param('utf-16', 'utf-8', 'utf-16', id='string'),
-            pytest.param(65001, 'utf-8', '65001', id='stringify'),
-        ],
-    )
-    def test_coerce_required_text(
-        self,
-        value: object,
-        default: str,
-        expected: str,
-    ) -> None:
-        """
-        Test that required text coercion preserves, defaults, or stringifies values.
-        """
-        assert options_mod._coerce_required_text(value, default=default) == expected
-
     def test_internal_coerce_file_options_rejects_invalid_object(self) -> None:
         """
         Test that invalid non-mapping option objects raise :class:`TypeError`.
@@ -155,3 +136,52 @@ class TestFileOptionHelpers:
                 factory=ReadOptions,
                 defaults={'encoding': 'utf-8'},
             )
+
+    @pytest.mark.parametrize(
+        ('mapping', 'expected_encoding', 'expected_root_tag'),
+        [
+            pytest.param({}, 'utf-8', None, id='read-default-encoding'),
+            pytest.param(
+                {'encoding': 'utf-16'},
+                'utf-16',
+                None,
+                id='read-string-encoding',
+            ),
+            pytest.param(
+                {'encoding': 65001},
+                '65001',
+                None,
+                id='read-stringify-encoding',
+            ),
+            pytest.param(
+                {'encoding': None, 'root_tag': None},
+                'utf-8',
+                'root',
+                id='write-defaults',
+            ),
+            pytest.param(
+                {'encoding': 65001, 'root_tag': 7},
+                '65001',
+                '7',
+                id='write-stringify-required-text',
+            ),
+        ],
+    )
+    def test_required_text_fields_are_normalized_through_option_coercion(
+        self,
+        mapping: dict[str, object],
+        expected_encoding: str,
+        expected_root_tag: str | None,
+    ) -> None:
+        """Test required text fields default or stringify through option coercion."""
+        read_options = options_mod.coerce_read_options(mapping)
+
+        assert read_options is not None
+        assert read_options.encoding == expected_encoding
+
+        write_options = options_mod.coerce_write_options(mapping)
+
+        assert write_options is not None
+        assert write_options.encoding == expected_encoding
+        if expected_root_tag is not None:
+            assert write_options.root_tag == expected_root_tag
