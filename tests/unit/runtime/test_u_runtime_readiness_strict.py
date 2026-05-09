@@ -239,6 +239,13 @@ class TestReadinessReportBuilderStrict:
         ),
         [
             pytest.param(
+                None,
+                {},
+                set(),
+                [],
+                id='missing-section-returns-empty-set',
+            ),
+            pytest.param(
                 lambda entry: (_ for _ in ()).throw(TypeError('unsupported connector')),
                 {'sources': [{'type': 1}]},
                 set(),
@@ -267,6 +274,24 @@ class TestReadinessReportBuilderStrict:
                     ),
                 ],
                 id='invalid-section-type',
+            ),
+            pytest.param(
+                None,
+                {'sources': ['not-a-mapping']},
+                set(),
+                [
+                    _issue(
+                        guidance=(
+                            'Define each connector as a mapping with at least '
+                            '"name" and "type" fields.'
+                        ),
+                        index=0,
+                        issue='invalid connector entry',
+                        observed_type='str',
+                        section='sources',
+                    ),
+                ],
+                id='invalid-connector-entry-type',
             ),
             pytest.param(
                 lambda entry: (_ for _ in ()).throw(
@@ -389,6 +414,20 @@ class TestReadinessReportBuilderStrict:
         )
 
         assert not issues
+
+    def test_strict_job_names_skip_non_list_and_blank_entries(self) -> None:
+        """Strict job-name collection should ignore non-list and blank entries."""
+        assert readiness_strict_mod.StrictConfigValidator.job_names(raw={}) == set()
+        assert readiness_strict_mod.StrictConfigValidator.job_names(
+            raw={
+                'jobs': [
+                    {'name': ' publish '},
+                    {'name': '   '},
+                    {'name': None},
+                    'bad-entry',
+                ],
+            },
+        ) == {'publish'}
 
     @pytest.mark.parametrize(
         (
@@ -527,3 +566,66 @@ class TestReadinessReportBuilderStrict:
                 section='transforms',
             ),
         ]
+
+    @pytest.mark.parametrize(
+        ('issue', 'expected'),
+        [
+            pytest.param(
+                'duplicate schedule name: nightly',
+                'Use unique schedule names within schedules.',
+                id='duplicate-name',
+            ),
+            pytest.param(
+                'schedule must define exactly one target: cron or interval',
+                None,
+                id='conflicting-targets',
+            ),
+            pytest.param(
+                'schedule must define exactly one trigger: cron or interval',
+                'Set exactly one of "cron" or "interval" for each schedule.',
+                id='missing-trigger',
+            ),
+            pytest.param(
+                'schedule must define a target',
+                'Add a target mapping with either "job" or "run_all".',
+                id='missing-target',
+            ),
+            pytest.param(
+                'schedule target must define exactly one mode: job or run_all',
+                'Set exactly one of target.job or target.run_all.',
+                id='invalid-target-mode',
+            ),
+            pytest.param(
+                'unknown scheduled job reference: sync-db',
+                'Define "sync-db" under top-level jobs or update target.job.',
+                id='unknown-job-reference',
+            ),
+            pytest.param(
+                'cron helper emission currently supports exactly five cron fields',
+                'Use a five-field cron expression: minute hour day month weekday.',
+                id='unsupported-cron-length',
+            ),
+            pytest.param(
+                (
+                    'cron helper emission currently supports only single values '
+                    'or "*" fields'
+                ),
+                (
+                    'Use single cron field values or "*" for '
+                    'helper-compatible schedules.'
+                ),
+                id='unsupported-cron-token',
+            ),
+            pytest.param('unknown issue', None, id='fallback-none'),
+        ],
+    )
+    def test_strict_schedule_issue_guidance_covers_known_messages(
+        self,
+        issue: str,
+        expected: str | None,
+    ) -> None:
+        """Strict schedule guidance should cover the known issue messages."""
+        assert (
+            readiness_strict_mod.StrictConfigValidator.schedule_issue_guidance(issue)
+            == expected
+        )
