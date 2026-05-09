@@ -181,25 +181,32 @@ def build_request_call(
         A dataclass instance containing the normalized request call details.
     """
     env_map = cast(Mapping[str, Any], env)
-    kwargs = dict(cast(Mapping[str, Any] | None, env_map.get('request_kwargs')) or {})
+    url = require_url(env, error_message=error_message)
+    request_kwargs = dict(
+        cast(Mapping[str, Any] | None, env_map.get('request_kwargs')) or {},
+    )
     headers = env_map.get('headers')
     if isinstance(headers, Mapping):
-        kwargs.setdefault('headers', headers)
+        request_kwargs.setdefault('headers', headers)
+
+    method = env_map.get('method') or default_method
+    session = env_map.get('session')
+    request_timeout = env_map.get('timeout')
 
     request_callable, timeout, http_method = resolve_request(
-        env_map.get('method') or default_method,
-        session=env_map.get('session'),
-        timeout=env_map.get('timeout'),
+        method,
+        session=session,
+        timeout=request_timeout,
     )
     if json_data is not None:
-        kwargs['json'] = json_data
+        request_kwargs['json'] = json_data
 
     return ResolvedRequest(
-        url=require_url(env, error_message=error_message),
+        url=url,
         request_callable=request_callable,
         timeout=timeout,
         http_method=http_method,
-        kwargs=kwargs,
+        kwargs=request_kwargs,
     )
 
 
