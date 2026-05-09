@@ -741,6 +741,124 @@ class TestScheduleHandler:
             pretty=True,
         )
 
+    def test_emits_helper_payload_for_later_matching_schedule(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Schedule helper selection should continue past earlier non-matches."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Schedule Test Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+                'schedules': [
+                    {
+                        'name': 'nightly_all',
+                        'cron': '0 2 * * *',
+                        'target': {'run_all': True},
+                    },
+                    {
+                        'name': 'customers_every_30m',
+                        'interval': {'minutes': 30},
+                        'target': {'job': 'job-a'},
+                    },
+                ],
+            },
+        )
+        patch_config_from_yaml(monkeypatch, cfg)
+        config_path = Path('cfg.yml').resolve()
+
+        assert (
+            handlers.schedule_handler(
+                config='cfg.yml',
+                emit='crontab',
+                schedule_name='nightly_all',
+            )
+            == 0
+        )
+        assert_emit_json(
+            capture_io,
+            {
+                'format': 'crontab',
+                'schedule': 'nightly_all',
+                'snippet': (
+                    f'0 2 * * * cd {config_path.parent} '
+                    f'&& etlplus run --config {config_path} --all'
+                ),
+            },
+            pretty=True,
+        )
+
+    def test_emits_helper_payload_for_second_matching_schedule(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Schedule resolution should keep scanning until a later name matches."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Schedule Test Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+                'schedules': [
+                    {
+                        'name': 'nightly_all',
+                        'cron': '0 2 * * *',
+                        'target': {'run_all': True},
+                    },
+                    {
+                        'name': 'customers_every_30m',
+                        'interval': {'minutes': 30},
+                        'target': {'job': 'job-a'},
+                    },
+                ],
+            },
+        )
+        patch_config_from_yaml(monkeypatch, cfg)
+        config_path = Path('cfg.yml').resolve()
+        service_name = 'etlplus-customers-every-30m.service'
+        timer_name = 'etlplus-customers-every-30m.timer'
+
+        assert (
+            handlers.schedule_handler(
+                config='cfg.yml',
+                emit='systemd',
+                schedule_name='customers_every_30m',
+            )
+            == 0
+        )
+        assert_emit_json(
+            capture_io,
+            {
+                'format': 'systemd',
+                'schedule': 'customers_every_30m',
+                'service_name': service_name,
+                'timer_name': timer_name,
+                'service': (
+                    '[Unit]\n'
+                    'Description=ETLPlus schedule customers_every_30m\n\n'
+                    '[Service]\n'
+                    'Type=oneshot\n'
+                    f'WorkingDirectory={config_path.parent}\n'
+                    f'ExecStart=etlplus run --config {config_path} --job job-a\n'
+                ),
+                'timer': (
+                    '[Unit]\n'
+                    'Description=Run ETLPlus schedule customers_every_30m\n\n'
+                    '[Timer]\n'
+                    'OnUnitActiveSec=30m\n'
+                    'Persistent=true\n'
+                    f'Unit={service_name}\n\n'
+                    '[Install]\n'
+                    'WantedBy=timers.target\n'
+                ),
+            },
+            pretty=True,
+        )
+
     def test_emits_schedule_summary(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -974,6 +1092,39 @@ class TestScheduleHandler:
                 working_directory=config_path.parent,
             )
 
+    def test_schedule_payload_omits_empty_target_and_backfill_sections(self) -> None:
+        """Schedule summaries should skip empty derived target/backfill payloads."""
+        cfg = SimpleNamespace(
+            name='Schedule Test Pipeline',
+            schedules=[
+                SimpleNamespace(
+                    name='nightly_all',
+                    cron='0 2 * * *',
+                    target=SimpleNamespace(job=None, run_all=False),
+                    interval=None,
+                    paused=False,
+                    timezone=None,
+                    backfill=SimpleNamespace(
+                        enabled=False,
+                        max_catchup_runs=None,
+                        start_at=None,
+                    ),
+                ),
+            ],
+        )
+
+        assert schedule_mod._schedule_payload(cfg) == {
+            'name': 'Schedule Test Pipeline',
+            'schedule_count': 1,
+            'schedules': [
+                {
+                    'name': 'nightly_all',
+                    'cron': '0 2 * * *',
+                    'paused': False,
+                },
+            ],
+        }
+
     def test_schedule_payload_filters_and_includes_backfill_metadata(self) -> None:
         """Schedule summaries should filter by name and include backfill fields."""
         cfg = Config.from_dict(
@@ -1058,6 +1209,35 @@ class TestScheduleHandler:
                     'cron': '0 2 * * *',
                     'paused': False,
                     'target': {'run_all': True},
+                },
+            ],
+        }
+
+    def test_schedule_payload_tolerates_missing_target_objects(self) -> None:
+        """Schedule summaries should omit target when the schedule has none."""
+        cfg = SimpleNamespace(
+            name='Schedule Test Pipeline',
+            schedules=[
+                SimpleNamespace(
+                    name='nightly_all',
+                    cron='0 2 * * *',
+                    target=None,
+                    interval=None,
+                    paused=False,
+                    timezone=None,
+                    backfill=None,
+                ),
+            ],
+        )
+
+        assert schedule_mod._schedule_payload(cfg) == {
+            'name': 'Schedule Test Pipeline',
+            'schedule_count': 1,
+            'schedules': [
+                {
+                    'name': 'nightly_all',
+                    'cron': '0 2 * * *',
+                    'paused': False,
                 },
             ],
         }
