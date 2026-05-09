@@ -77,8 +77,8 @@ def _load_data_from_str(
     location = StorageLocation.from_value(source)
     if location.is_local:
         candidate = location.as_path()
-        file = File(candidate, FileFormat.JSON)
         exists = candidate.exists()
+        file = File(candidate, FileFormat.JSON)
     else:
         file = File(source, FileFormat.JSON)
         exists = file.exists()
@@ -345,11 +345,11 @@ def load_to_file(
         if resolved_options is None
         else target.file.write(data, options=resolved_options)
     )
-
-    if target.file_format is FileFormat.CSV and records == 0:
-        message = 'No data to write'
-    else:
-        message = f'Data loaded to {target_label}'
+    message = (
+        'No data to write'
+        if target.file_format is FileFormat.CSV and records == 0
+        else f'Data loaded to {target_label}'
+    )
 
     return {
         'status': 'success',
@@ -398,11 +398,12 @@ def load(
         If `target_type` is not one of the supported values.
     """
     data = load_data(source)
+    file_options = kwargs or None
 
     match DataConnectorType.coerce(target_type):
         case DataConnectorType.FILE:
             # Prefer explicit format if provided, else infer from filename.
-            return load_to_file(data, target, file_format, kwargs or None)
+            return load_to_file(data, target, file_format, file_options)
         case DataConnectorType.DATABASE:
             return load_to_database(data, str(target))
         case DataConnectorType.API:

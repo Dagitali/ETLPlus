@@ -86,8 +86,7 @@ def _build_client(
     EndpointClient
         Configured endpoint client instance.
     """
-    ClientClass = EndpointClient  # noqa: N806
-    return ClientClass(
+    return EndpointClient(
         base_url=base_url,
         base_path=base_path,
         endpoints=endpoints,
@@ -117,78 +116,84 @@ def _extract_from_api_env(
     JSONData
         Extracted payload.
     """
-    if use_client:
-        request_env = cast(ApiRequestEnvDict, env)
-    else:
-        request_env = None
+    if not use_client:
+        request = build_request_call(
+            env,
+            error_message='API source missing URL',
+            default_method=HttpMethod.GET,
+        )
+        response = send_request(request)
+        return _parse_api_response(response)
 
-    if (
-        request_env is not None
-        and request_env.get('use_endpoints')
-        and request_env.get('base_url')
-        and request_env.get('endpoints_map')
-        and request_env.get('endpoint_key')
-    ):
+    request_env = cast(ApiRequestEnvDict, env)
+    retry = request_env.get('retry')
+    retry_network_errors = bool(
+        request_env.get('retry_network_errors', False),
+    )
+    session = request_env.get('session')
+    params = cast(Mapping[str, Any] | None, request_env.get('params'))
+    headers = cast(Mapping[str, str] | None, request_env.get('headers'))
+    timeout = cast(Timeout | None, request_env.get('timeout'))
+    pagination = request_env.get('pagination')
+    sleep_seconds = float(request_env.get('sleep_seconds', 0.0))
+    use_endpoints = bool(request_env.get('use_endpoints'))
+    base_url = (
+        raw_base_url
+        if isinstance(raw_base_url := request_env.get('base_url'), str)
+        else None
+    )
+    base_path = (
+        raw_base_path
+        if isinstance(raw_base_path := request_env.get('base_path'), str)
+        else None
+    )
+    endpoints_map = dict(request_env.get('endpoints_map') or {})
+    endpoint_key = request_env.get('endpoint_key')
+
+    if use_endpoints and base_url and endpoints_map and endpoint_key:
         client = _build_client(
-            base_url=str(request_env['base_url']),
-            base_path=(
-                base_path
-                if isinstance(base_path := request_env.get('base_path'), str)
-                else None
-            ),
-            endpoints=dict(request_env.get('endpoints_map') or {}),
-            retry=request_env.get('retry'),
-            retry_network_errors=bool(
-                request_env.get('retry_network_errors', False),
-            ),
-            session=request_env.get('session'),
+            base_url=base_url,
+            base_path=base_path,
+            endpoints=endpoints_map,
+            retry=retry,
+            retry_network_errors=retry_network_errors,
+            session=session,
         )
         return paginate_with_client(
             client,
-            str(request_env['endpoint_key']),
-            request_env.get('params'),
-            request_env.get('headers'),
-            request_env.get('timeout'),
-            request_env.get('pagination'),
-            request_env.get('sleep_seconds'),
+            str(endpoint_key),
+            params,
+            headers,
+            timeout,
+            pagination,
+            sleep_seconds,
         )
 
-    if request_env is not None:
-        url = require_url(
-            request_env,
-            error_message='API source missing URL',
-        )
-        parts = urlsplit(url)
-        base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
-        client = _build_client(
-            base_url=base,
-            base_path=None,
-            endpoints={},
-            retry=request_env.get('retry'),
-            retry_network_errors=bool(
-                request_env.get('retry_network_errors', False),
-            ),
-            session=request_env.get('session'),
-        )
-        request_options = RequestOptions(
-            params=cast(Mapping[str, Any] | None, request_env.get('params')),
-            headers=cast(Mapping[str, str] | None, request_env.get('headers')),
-            timeout=cast(Timeout | None, request_env.get('timeout')),
-        )
-
-        return client.paginate_url(
-            url,
-            request_env.get('pagination'),
-            request=request_options,
-            sleep_seconds=float(request_env.get('sleep_seconds', 0.0)),
-        )
-
-    request = build_request_call(
-        env,
+    url = require_url(
+        request_env,
         error_message='API source missing URL',
-        default_method=HttpMethod.GET,
     )
-    return _parse_api_response(send_request(request))
+    parts = urlsplit(url)
+    client = _build_client(
+        base_url=urlunsplit((parts.scheme, parts.netloc, '', '', '')),
+        base_path=None,
+        endpoints={},
+        retry=retry,
+        retry_network_errors=retry_network_errors,
+        session=session,
+    )
+    request_options = RequestOptions(
+        params=params,
+        headers=headers,
+        timeout=timeout,
+    )
+
+    return client.paginate_url(
+        url,
+        pagination,
+        request=request_options,
+        sleep_seconds=sleep_seconds,
+    )
 
 
 def _parse_api_response(
@@ -209,26 +214,28 @@ def _parse_api_response(
         Parsed JSON payload, or a fallback object with raw text.
     """
     content_type = response.headers.get('content-type', '').lower()
-    if 'application/json' in content_type:
-        try:
-            payload: Any = response.json()
-        except ValueError:
-            # Malformed JSON despite content-type; fall back to text
-            return {
-                'content': response.text,
-                'content_type': content_type,
-            }
-        match payload:
-            case dict():
-                return payload
-            case list():
-                if all(isinstance(item, dict) for item in payload):
-                    return payload
-                return [{'value': item} for item in payload]
-            case _:
-                return {'value': payload}
+    text_payload = {
+        'content': response.text,
+        'content_type': content_type,
+    }
+    if 'application/json' not in content_type:
+        return text_payload
 
-    return {'content': response.text, 'content_type': content_type}
+    try:
+        payload: Any = response.json()
+    except ValueError:
+        # Malformed JSON despite content-type; fall back to text
+        return text_payload
+
+    match payload:
+        case dict():
+            return payload
+        case list() if all(isinstance(item, dict) for item in payload):
+            return payload
+        case list():
+            return [{'value': item} for item in payload]
+        case _:
+            return {'value': payload}
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -390,10 +397,12 @@ def extract(
     ValueError
         If `source_type` is not one of the supported values.
     """
+    file_options = kwargs or None
+
     match DataConnectorType.coerce(source_type):
         case DataConnectorType.FILE:
             # Prefer explicit format if provided, else infer from filename.
-            return extract_from_file(source, file_format, kwargs or None)
+            return extract_from_file(source, file_format, file_options)
         case DataConnectorType.DATABASE:
             return extract_from_database(str(source))
         case DataConnectorType.API:

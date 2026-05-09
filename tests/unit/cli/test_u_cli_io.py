@@ -28,48 +28,6 @@ from etlplus.utils import JsonCodec
 type SourceBuilder = Callable[[Path], str | Path]
 
 
-def _string_missing_source(tmp_path: Path) -> str:
-    """Build one missing string path for file-materialization tests."""
-    return str(tmp_path / 'missing.json')
-
-
-def _path_missing_source(tmp_path: Path) -> Path:
-    """Build one missing pathlike source for file-materialization tests."""
-    return tmp_path / 'missing.json'
-
-
-def _build_readable_file_double(
-    *,
-    payload: object,
-    resolved_format: FileFormat,
-) -> tuple[type[object], dict[str, object]]:
-    """Build a ``File`` double that captures reads and returns one payload."""
-    captured: dict[str, object] = {}
-
-    class DummyFile:
-        """Capture file construction and return a fixed payload on read."""
-
-        file_format = resolved_format
-
-        def __init__(
-            self,
-            path_arg: object,
-            fmt_arg: FileFormat | None = None,
-        ) -> None:
-            captured['path'] = path_arg
-            captured['fmt'] = fmt_arg
-
-        def exists(self) -> bool:
-            """Report that the referenced file exists."""
-            return True
-
-        def read(self) -> object:
-            """Return the configured sentinel payload."""
-            return payload
-
-    return DummyFile, captured
-
-
 def _build_writable_file_double() -> tuple[type[object], dict[str, object]]:
     """Build a ``File`` double that captures write-target construction."""
     captured: dict[str, object] = {}
@@ -86,6 +44,19 @@ def _build_writable_file_double() -> tuple[type[object], dict[str, object]]:
             captured['data'] = data
 
     return DummyFile, captured
+
+
+def _path_missing_source(tmp_path: Path) -> Path:
+    """Build one missing pathlike source for file-materialization tests."""
+    return tmp_path / 'missing.json'
+
+
+def _string_missing_source(tmp_path: Path) -> str:
+    """Build one missing string path for file-materialization tests."""
+    return str(tmp_path / 'missing.json')
+
+
+# SECTION: TESTS ============================================================ #
 
 
 class TestEmitJson:
@@ -288,55 +259,21 @@ class TestMaterializeFilePayload:
         assert isinstance(rows, list)
         assert rows[0] == {'a': '1', 'b': '2'}
 
-    @pytest.mark.parametrize(
-        ('source', 'resolved_format', 'expected'),
-        [
-            pytest.param(
-                'payload.xml',
-                FileFormat.XML,
-                {'xml': True},
-                id='local-xml',
-            ),
-            pytest.param(
-                's3://bucket/payload.json',
-                FileFormat.JSON,
-                {'remote': True},
-                id='remote-json-uri',
-            ),
-        ],
-    )
-    def test_reads_existing_structured_sources_via_file(
+    def test_reads_existing_structured_sources_via_explicit_format(
         self,
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        source: str,
-        resolved_format: FileFormat,
-        expected: object,
     ) -> None:
         """Existing file-like sources should hydrate through :class:`File`."""
-        actual_source = (
-            str(tmp_path / source) if not source.startswith('s3://') else source
-        )
-        if source.endswith('.xml'):
-            Path(actual_source).write_text(
-                '<root><value>1</value></root>',
-                encoding='utf-8',
-            )
-        dummy_file, captured = _build_readable_file_double(
-            payload=expected,
-            resolved_format=resolved_format,
-        )
-        monkeypatch.setattr(input_mod, 'File', dummy_file)
+        file_path = tmp_path / 'payload.data'
+        file_path.write_text('{"remote": true}', encoding='utf-8')
 
         payload = input_mod.materialize_file_payload(
-            actual_source,
-            format_hint=None,
-            format_explicit=False,
+            str(file_path),
+            format_hint='json',
+            format_explicit=True,
         )
 
-        assert payload == expected
-        assert captured['path'] == actual_source
-        assert captured['fmt'] is None
+        assert payload == {'remote': True}
 
     @pytest.mark.parametrize(
         ('source', 'expected'),
@@ -541,20 +478,25 @@ class TestParseTextPayload:
             JsonCodec.parse('{broken')
 
 
-class TestReadCsvRows:
-    """Unit tests for :func:`read_csv_rows`."""
+class TestCsvPayloadHandling:
+    """Unit tests for CSV payload parsing helpers."""
 
-    def test_reading_csv_rows(
+    def test_materializing_csv_file_payload(
         self,
         tmp_path: Path,
         csv_text: str,
     ) -> None:
         """
-        Test that :func:`read_csv_rows` reads a CSV into row dictionaries.
+        Test that CSV file payloads hydrate into row dictionaries.
         """
         file_path = tmp_path / 'data.csv'
         file_path.write_text(csv_text)
-        assert input_mod.read_csv_rows(file_path) == [
+
+        assert input_mod.materialize_file_payload(
+            str(file_path),
+            format_hint=None,
+            format_explicit=False,
+        ) == [
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},
         ]

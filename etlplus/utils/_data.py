@@ -45,17 +45,15 @@ def _is_object_list(
     return isinstance(value, list) and all(isinstance(item, dict) for item in value)
 
 
-def _payload_kind(
+def _record_payload_or_none(
     value: object,
-) -> str:
-    """Return the structural payload kind used by record validators."""
+) -> JSONData | None:
+    """Return one validated record payload or ``None`` for unsupported shapes."""
     if isinstance(value, dict):
-        return 'object'
+        return cast(JSONDict, value)
     if _is_object_list(value):
-        return 'object-list'
-    if isinstance(value, list):
-        return 'list'
-    return 'other'
+        return value
+    return None
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -158,10 +156,9 @@ class JsonCodec:
             raise ValueError(
                 f'Invalid JSON payload: {exc.msg} (pos {exc.pos})',
             ) from exc
-        if isinstance(data, dict):
-            return cast(JSONDict, data)
-        if _is_object_list(data):
-            return data
+        record_payload = _record_payload_or_none(data)
+        if record_payload is not None:
+            return record_payload
         raise ValueError('JSON payload must be an object or array of objects')
 
     # -- Instance Methods -- #
@@ -282,6 +279,23 @@ class RecordPayloadParser:
 
     format_name: str
 
+    # -- Internal Instance Methods -- #
+
+    def _invalid_payload_error(
+        self,
+        payload: object,
+        *,
+        mixed_list_message: str,
+        invalid_root_message: str,
+    ) -> TypeError:
+        """Return the payload-shape error matching *payload*."""
+        message = (
+            mixed_list_message if isinstance(payload, list) else invalid_root_message
+        )
+        return TypeError(
+            f'{self.format_name} {message}',
+        )
+
     # -- Instance Methods -- #
 
     def coerce(
@@ -303,22 +317,17 @@ class RecordPayloadParser:
 
         Raises
         ------
-        TypeError
+        self._invalid_payload_error
             If the payload is not a dict or list of dicts.
         """
-        match _payload_kind(payload):
-            case 'object':
-                return cast(JSONDict, payload)
-            case 'object-list':
-                return cast(JSONList, payload)
-            case 'list':
-                raise TypeError(
-                    f'{self.format_name} array must contain only objects (dicts)',
-                )
-            case _:
-                raise TypeError(
-                    f'{self.format_name} root must be an object or an array of objects',
-                )
+        record_payload = _record_payload_or_none(payload)
+        if record_payload is not None:
+            return record_payload
+        raise self._invalid_payload_error(
+            payload,
+            mixed_list_message='array must contain only objects (dicts)',
+            invalid_root_message='root must be an object or an array of objects',
+        )
 
     def normalize(
         self,
@@ -339,23 +348,19 @@ class RecordPayloadParser:
 
         Raises
         ------
-        TypeError
+        self._invalid_payload_error
             If the payload is not a dict or a list of dicts.
         """
-        match _payload_kind(data):
-            case 'object-list':
-                return cast(JSONList, data)
-            case 'list':
-                raise TypeError(
-                    f'{self.format_name} payloads must contain only objects (dicts)',
-                )
-            case 'object':
-                return [cast(JSONDict, data)]
-            case _:
-                raise TypeError(
-                    f'{self.format_name} payloads must be an object '
-                    'or an array of objects',
-                )
+        record_payload = _record_payload_or_none(data)
+        if isinstance(record_payload, list):
+            return record_payload
+        if record_payload is not None:
+            return [record_payload]
+        raise self._invalid_payload_error(
+            data,
+            mixed_list_message='payloads must contain only objects (dicts)',
+            invalid_root_message='payloads must be an object or an array of objects',
+        )
 
     def require_dict(
         self,

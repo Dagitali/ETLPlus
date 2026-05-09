@@ -610,6 +610,13 @@ class TestUtilsInternalBranches:
         assert env['url'] == 'https://override.test/u'
         assert env['headers'] == {'T': '1'}
 
+    def test_compute_rl_sleep_seconds_variants(self) -> None:
+        """Test that rate-limit sleep helper filters overrides correctly."""
+        rl_obj = RateLimitConfig(sleep_seconds=0.5, max_per_sec=None)
+        assert _utils.compute_rl_sleep_seconds(rl_obj, {'max_per_sec': 4}) == 0.5
+        assert _utils.compute_rl_sleep_seconds(None, {'max_per_sec': 4}) == 0.25
+        assert _utils.compute_rl_sleep_seconds({'sleep_seconds': 0.2}, {'x': 1}) == 0.2
+
     def test_internal_helpers_handle_non_mapping_inputs(
         self,
         base_url: str,
@@ -617,8 +624,36 @@ class TestUtilsInternalBranches:
         """
         Test that internal helper branches gracefully handles invalid inputs.
         """
-        assert _utils._build_session_optional(cast(Any, 'bad')) is None
-        assert _utils._coalesce(None, None) is None
+        cfg = SimpleNamespace(apis={})
+        source = SimpleNamespace(
+            api=None,
+            endpoint=None,
+            url='https://already.test/u',
+            headers={'X': '1'},
+            query_params={'q': '1'},
+            session=cast(Any, 'bad'),
+            pagination=None,
+            rate_limit=None,
+            retry=None,
+            retry_network_errors=False,
+        )
+        target_cfg = SimpleNamespace(apis={})
+        target = SimpleNamespace(
+            api=None,
+            endpoint=None,
+            url='https://target.test/u',
+            headers={'T': '1'},
+        )
+
+        assert _utils.compose_api_request_env(cfg, source, {})['session'] is None
+        assert (
+            _utils.compose_api_target_env(
+                target_cfg,
+                target,
+                {'session': cast(Any, 'bad')},
+            )['session']
+            is None
+        )
 
         api_cfg = _ApiCfg(base_url)
         ep = _Endpoint()
@@ -635,31 +670,27 @@ class TestUtilsInternalBranches:
         assert headers['X'] == '1'
         assert session_cfg is not None
 
-    def test_merge_session_cfg_three_with_non_mapping_values(
+    def test_inherit_http_skips_non_mapping_session_inputs(
         self,
         base_url: str,
     ) -> None:
         """
-        Test that session merge returns ``None`` when all three values are
-        invalid.
+        Test that session inheritance returns ``None`` when all session inputs
+        are invalid.
         """
         api_cfg = _ApiCfg(base_url)
         api_cfg.session = cast(Any, 'bad')
         ep = _Endpoint()
         ep.session = cast(Any, 'bad')
-        merged = _utils._merge_session_cfg_three(  # type: ignore[attr-defined]
+        _, _, session_cfg = _utils._inherit_http_from_api_endpoint(
             cast(ApiConfig, api_cfg),
             cast(EndpointConfig, ep),
+            None,
+            {},
             cast(Any, 'bad'),
+            force_url=False,
         )
-        assert merged is None
-
-    def test_compute_rl_sleep_seconds_variants(self) -> None:
-        """Test that rate-limit sleep helper filters overrides correctly."""
-        rl_obj = RateLimitConfig(sleep_seconds=0.5, max_per_sec=None)
-        assert _utils.compute_rl_sleep_seconds(rl_obj, {'max_per_sec': 4}) == 0.5
-        assert _utils.compute_rl_sleep_seconds(None, {'max_per_sec': 4}) == 0.25
-        assert _utils.compute_rl_sleep_seconds({'sleep_seconds': 0.2}, {'x': 1}) == 0.2
+        assert session_cfg is None
 
     def test_resolve_request_raises_when_method_missing(self) -> None:
         """

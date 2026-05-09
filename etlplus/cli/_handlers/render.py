@@ -115,14 +115,23 @@ def render_handler(
         )
         return 1
 
-    return _emit_render_output(
-        render_tables(
-            specs,
-            template=template_key,
-            template_path=file_override,
-        ),
-        output_path=output,
-        pretty=pretty,
-        quiet=quiet,
-        schema_count=len(specs),
+    sql_text = (
+        '\n'.join(
+            chunk.rstrip()
+            for chunk in render_tables(
+                specs,
+                template=template_key,
+                template_path=file_override,
+            )
+        ).rstrip()
+        + '\n'
     )
+    rendered_output = sql_text if pretty else sql_text.rstrip('\n')
+    if output and output != '-':
+        Path(output).write_text(rendered_output, encoding='utf-8')
+        if not quiet:
+            print(f'Rendered {len(specs)} schema(s) to {output}')
+        return 0
+
+    print(rendered_output, end='')
+    return 0

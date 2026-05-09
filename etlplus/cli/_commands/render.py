@@ -66,10 +66,10 @@ def render_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    CommandHelperPolicy.require_any(
-        (config, spec),
-        message="Missing required option '--config' or '--spec'.",
-    )
+    if not any((config, spec)):
+        CommandHelperPolicy.fail_usage(
+            "Missing required option '--config' or '--spec'.",
+        )
 
     return CommandHelperPolicy.call_handler(
         render_handler,
