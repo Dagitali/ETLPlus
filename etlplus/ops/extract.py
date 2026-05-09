@@ -124,6 +124,15 @@ def _extract_from_api_env(
     retry = None
     retry_network_errors = False
     session = None
+    params = None
+    headers = None
+    timeout = None
+    pagination = None
+    sleep_seconds = 0.0
+    base_url = None
+    base_path = None
+    endpoints_map: dict[str, str] = {}
+    endpoint_key = None
 
     if request_env is not None:
         retry = request_env.get('retry')
@@ -131,34 +140,47 @@ def _extract_from_api_env(
             request_env.get('retry_network_errors', False),
         )
         session = request_env.get('session')
+        params = cast(Mapping[str, Any] | None, request_env.get('params'))
+        headers = cast(Mapping[str, str] | None, request_env.get('headers'))
+        timeout = cast(Timeout | None, request_env.get('timeout'))
+        pagination = request_env.get('pagination')
+        sleep_seconds = float(request_env.get('sleep_seconds', 0.0))
+        base_url = (
+            raw_base_url
+            if isinstance(raw_base_url := request_env.get('base_url'), str)
+            else None
+        )
+        base_path = (
+            raw_base_path
+            if isinstance(raw_base_path := request_env.get('base_path'), str)
+            else None
+        )
+        endpoints_map = dict(request_env.get('endpoints_map') or {})
+        endpoint_key = request_env.get('endpoint_key')
 
     if (
         request_env is not None
         and request_env.get('use_endpoints')
-        and request_env.get('base_url')
-        and request_env.get('endpoints_map')
-        and request_env.get('endpoint_key')
+        and base_url
+        and endpoints_map
+        and endpoint_key
     ):
         client = _build_client(
-            base_url=str(request_env['base_url']),
-            base_path=(
-                base_path
-                if isinstance(base_path := request_env.get('base_path'), str)
-                else None
-            ),
-            endpoints=dict(request_env.get('endpoints_map') or {}),
+            base_url=base_url,
+            base_path=base_path,
+            endpoints=endpoints_map,
             retry=retry,
             retry_network_errors=retry_network_errors,
             session=session,
         )
         return paginate_with_client(
             client,
-            str(request_env['endpoint_key']),
-            request_env.get('params'),
-            request_env.get('headers'),
-            request_env.get('timeout'),
-            request_env.get('pagination'),
-            request_env.get('sleep_seconds'),
+            str(endpoint_key),
+            params,
+            headers,
+            timeout,
+            pagination,
+            sleep_seconds,
         )
 
     if request_env is not None:
@@ -177,16 +199,16 @@ def _extract_from_api_env(
             session=session,
         )
         request_options = RequestOptions(
-            params=cast(Mapping[str, Any] | None, request_env.get('params')),
-            headers=cast(Mapping[str, str] | None, request_env.get('headers')),
-            timeout=cast(Timeout | None, request_env.get('timeout')),
+            params=params,
+            headers=headers,
+            timeout=timeout,
         )
 
         return client.paginate_url(
             url,
-            request_env.get('pagination'),
+            pagination,
             request=request_options,
-            sleep_seconds=float(request_env.get('sleep_seconds', 0.0)),
+            sleep_seconds=sleep_seconds,
         )
 
     request = build_request_call(
