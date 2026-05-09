@@ -19,6 +19,7 @@ from etlplus import Config
 from etlplus.cli._handlers import _lifecycle as lifecycle_mod
 from etlplus.cli._handlers import check as check_mod
 from etlplus.cli._handlers import init as init_mod
+from etlplus.cli._handlers import schedule as schedule_mod
 
 from .conftest import CaptureIo
 from .conftest import assert_emit_json
@@ -640,6 +641,61 @@ class TestCliHandlersInternalHelpers:
 class TestScheduleHandler:
     """Unit tests for :func:`schedule_handler`."""
 
+    @pytest.mark.parametrize(
+        ('cron', 'match'),
+        [
+            pytest.param(
+                '0 2 * *',
+                'supports exactly five cron fields',
+                id='invalid-field-count',
+            ),
+            pytest.param(
+                '*/5 2 * * *',
+                'supports only single values or "\\*" fields',
+                id='unsupported-token',
+            ),
+            pytest.param(
+                '0 2 * * 8',
+                'Cron weekday must be 0-7',
+                id='invalid-weekday',
+            ),
+            pytest.param(
+                'x 2 * * *',
+                'Cron minute must be one integer value or "\\*"',
+                id='invalid-minute',
+            ),
+            pytest.param(
+                '0 x * * *',
+                'Cron hour must be one integer value or "\\*"',
+                id='invalid-hour',
+            ),
+            pytest.param(
+                '0 2 x * *',
+                'Cron day must be one integer value or "\\*"',
+                id='invalid-day',
+            ),
+            pytest.param(
+                '0 2 * x *',
+                'Cron month must be one integer value or "\\*"',
+                id='invalid-month',
+            ),
+        ],
+    )
+    def test_cron_to_on_calendar_rejects_unsupported_inputs(
+        self,
+        cron: str,
+        match: str,
+    ) -> None:
+        """Schedule cron helper should reject unsupported cron expressions."""
+        with pytest.raises(ValueError, match=match):
+            schedule_mod._cron_to_on_calendar(cron)
+
+    def test_cron_to_on_calendar_supports_weekday_prefixes(self) -> None:
+        """Schedule cron helper should map weekday numbers into systemd names."""
+        assert schedule_mod._cron_to_on_calendar('5 6 * * 1') == (
+            'Mon *-*-* 06:05:00'
+        )
+
     def test_emits_crontab_helper_payload(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -680,6 +736,124 @@ class TestScheduleHandler:
                 'snippet': (
                     f'0 2 * * * cd {config_path.parent} '
                     f'&& etlplus run --config {config_path} --all'
+                ),
+            },
+            pretty=True,
+        )
+
+    def test_emits_helper_payload_for_later_matching_schedule(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Schedule helper selection should continue past earlier non-matches."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Schedule Test Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+                'schedules': [
+                    {
+                        'name': 'nightly_all',
+                        'cron': '0 2 * * *',
+                        'target': {'run_all': True},
+                    },
+                    {
+                        'name': 'customers_every_30m',
+                        'interval': {'minutes': 30},
+                        'target': {'job': 'job-a'},
+                    },
+                ],
+            },
+        )
+        patch_config_from_yaml(monkeypatch, cfg)
+        config_path = Path('cfg.yml').resolve()
+
+        assert (
+            handlers.schedule_handler(
+                config='cfg.yml',
+                emit='crontab',
+                schedule_name='nightly_all',
+            )
+            == 0
+        )
+        assert_emit_json(
+            capture_io,
+            {
+                'format': 'crontab',
+                'schedule': 'nightly_all',
+                'snippet': (
+                    f'0 2 * * * cd {config_path.parent} '
+                    f'&& etlplus run --config {config_path} --all'
+                ),
+            },
+            pretty=True,
+        )
+
+    def test_emits_helper_payload_for_second_matching_schedule(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Schedule resolution should keep scanning until a later name matches."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Schedule Test Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+                'schedules': [
+                    {
+                        'name': 'nightly_all',
+                        'cron': '0 2 * * *',
+                        'target': {'run_all': True},
+                    },
+                    {
+                        'name': 'customers_every_30m',
+                        'interval': {'minutes': 30},
+                        'target': {'job': 'job-a'},
+                    },
+                ],
+            },
+        )
+        patch_config_from_yaml(monkeypatch, cfg)
+        config_path = Path('cfg.yml').resolve()
+        service_name = 'etlplus-customers-every-30m.service'
+        timer_name = 'etlplus-customers-every-30m.timer'
+
+        assert (
+            handlers.schedule_handler(
+                config='cfg.yml',
+                emit='systemd',
+                schedule_name='customers_every_30m',
+            )
+            == 0
+        )
+        assert_emit_json(
+            capture_io,
+            {
+                'format': 'systemd',
+                'schedule': 'customers_every_30m',
+                'service_name': service_name,
+                'timer_name': timer_name,
+                'service': (
+                    '[Unit]\n'
+                    'Description=ETLPlus schedule customers_every_30m\n\n'
+                    '[Service]\n'
+                    'Type=oneshot\n'
+                    f'WorkingDirectory={config_path.parent}\n'
+                    f'ExecStart=etlplus run --config {config_path} --job job-a\n'
+                ),
+                'timer': (
+                    '[Unit]\n'
+                    'Description=Run ETLPlus schedule customers_every_30m\n\n'
+                    '[Timer]\n'
+                    'OnUnitActiveSec=30m\n'
+                    'Persistent=true\n'
+                    f'Unit={service_name}\n\n'
+                    '[Install]\n'
+                    'WantedBy=timers.target\n'
                 ),
             },
             pretty=True,
@@ -856,6 +1030,25 @@ class TestScheduleHandler:
         ):
             handlers.init_handler(directory=str(project_dir))
 
+    def test_run_command_requires_target_and_target_mode(self) -> None:
+        """Schedule helper should require a target and one run mode."""
+        config_path = Path('cfg.yml').resolve()
+
+        with pytest.raises(ValueError, match='must define a target'):
+            schedule_mod._run_command(
+                config_path=config_path,
+                schedule=SimpleNamespace(name='nightly', target=None),
+            )
+
+        with pytest.raises(ValueError, match='must target one job or run_all'):
+            schedule_mod._run_command(
+                config_path=config_path,
+                schedule=SimpleNamespace(
+                    name='nightly',
+                    target=SimpleNamespace(job=None, run_all=False),
+                ),
+            )
+
     def test_scaffolds_starter_files(
         self,
         tmp_path: Path,
@@ -872,3 +1065,203 @@ class TestScheduleHandler:
         payload = cast(dict[str, Any], capture_io['emit_json'][0][0][0])
         assert payload['status'] == 'ok'
         assert payload['job'] == 'file_to_file_customers'
+
+    def test_schedule_emit_helpers_require_compatible_schedule_shapes(self) -> None:
+        """Schedule helper emitters should reject missing cron and trigger data."""
+        config_path = Path('cfg.yml').resolve()
+
+        with pytest.raises(ValueError, match='must define cron for crontab emission'):
+            schedule_mod._crontab_payload(
+                config_path=config_path,
+                schedule=SimpleNamespace(name='nightly', cron=None),
+                working_directory=config_path.parent,
+            )
+
+        with pytest.raises(
+            ValueError,
+            match='must define cron or interval for systemd emission',
+        ):
+            schedule_mod._systemd_payload(
+                config_path=config_path,
+                schedule=SimpleNamespace(
+                    name='nightly',
+                    cron=None,
+                    interval=None,
+                    target=SimpleNamespace(run_all=True),
+                ),
+                working_directory=config_path.parent,
+            )
+
+    def test_schedule_payload_omits_empty_target_and_backfill_sections(self) -> None:
+        """Schedule summaries should skip empty derived target/backfill payloads."""
+        cfg = SimpleNamespace(
+            name='Schedule Test Pipeline',
+            schedules=[
+                SimpleNamespace(
+                    name='nightly_all',
+                    cron='0 2 * * *',
+                    target=SimpleNamespace(job=None, run_all=False),
+                    interval=None,
+                    paused=False,
+                    timezone=None,
+                    backfill=SimpleNamespace(
+                        enabled=False,
+                        max_catchup_runs=None,
+                        start_at=None,
+                    ),
+                ),
+            ],
+        )
+
+        assert schedule_mod._schedule_payload(cfg) == {
+            'name': 'Schedule Test Pipeline',
+            'schedule_count': 1,
+            'schedules': [
+                {
+                    'name': 'nightly_all',
+                    'cron': '0 2 * * *',
+                    'paused': False,
+                },
+            ],
+        }
+
+    def test_schedule_payload_filters_and_includes_backfill_metadata(self) -> None:
+        """Schedule summaries should filter by name and include backfill fields."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Schedule Test Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+                'schedules': [
+                    {
+                        'name': 'nightly_all',
+                        'cron': '0 2 * * *',
+                        'target': {'run_all': True},
+                    },
+                    {
+                        'name': 'backfill_customers',
+                        'interval': {'minutes': 30},
+                        'target': {'job': 'job-a'},
+                        'backfill': {
+                            'enabled': True,
+                            'max_catchup_runs': 3,
+                            'start_at': '2026-05-01T00:00:00Z',
+                        },
+                    },
+                ],
+            },
+        )
+
+        assert schedule_mod._schedule_payload(
+            cfg,
+            schedule_name='backfill_customers',
+        ) == {
+            'name': 'Schedule Test Pipeline',
+            'schedule_count': 1,
+            'schedules': [
+                {
+                    'name': 'backfill_customers',
+                    'paused': False,
+                    'interval': {'minutes': 30},
+                    'target': {'job': 'job-a'},
+                    'backfill': {
+                        'enabled': True,
+                        'max_catchup_runs': 3,
+                        'start_at': '2026-05-01T00:00:00Z',
+                    },
+                },
+            ],
+        }
+
+    def test_schedule_payload_skips_non_string_schedule_names(self) -> None:
+        """Schedule summaries should ignore malformed schedule entries."""
+        cfg = SimpleNamespace(
+            name='Schedule Test Pipeline',
+            schedules=[
+                SimpleNamespace(
+                    name='nightly_all',
+                    cron='0 2 * * *',
+                    target=SimpleNamespace(job=None, run_all=True),
+                    interval=None,
+                    paused=False,
+                    timezone=None,
+                    backfill=None,
+                ),
+                SimpleNamespace(
+                    name=123,
+                    cron='0 3 * * *',
+                    target=SimpleNamespace(job=None, run_all=True),
+                    interval=None,
+                    paused=False,
+                    timezone=None,
+                    backfill=None,
+                ),
+            ],
+        )
+
+        assert schedule_mod._schedule_payload(cfg) == {
+            'name': 'Schedule Test Pipeline',
+            'schedule_count': 1,
+            'schedules': [
+                {
+                    'name': 'nightly_all',
+                    'cron': '0 2 * * *',
+                    'paused': False,
+                    'target': {'run_all': True},
+                },
+            ],
+        }
+
+    def test_schedule_payload_tolerates_missing_target_objects(self) -> None:
+        """Schedule summaries should omit target when the schedule has none."""
+        cfg = SimpleNamespace(
+            name='Schedule Test Pipeline',
+            schedules=[
+                SimpleNamespace(
+                    name='nightly_all',
+                    cron='0 2 * * *',
+                    target=None,
+                    interval=None,
+                    paused=False,
+                    timezone=None,
+                    backfill=None,
+                ),
+            ],
+        )
+
+        assert schedule_mod._schedule_payload(cfg) == {
+            'name': 'Schedule Test Pipeline',
+            'schedule_count': 1,
+            'schedules': [
+                {
+                    'name': 'nightly_all',
+                    'cron': '0 2 * * *',
+                    'paused': False,
+                },
+            ],
+        }
+
+    def test_schedule_slug_falls_back_for_non_alphanumeric_names(self) -> None:
+        """Schedule slugs should fall back to a default name when empty."""
+        assert schedule_mod._schedule_slug('!!!') == 'schedule'
+
+    def test_systemd_payload_supports_cron_schedules(self) -> None:
+        """Systemd helper payloads should emit OnCalendar for cron schedules."""
+        config_path = Path('cfg.yml').resolve()
+
+        payload = schedule_mod._systemd_payload(
+            config_path=config_path,
+            schedule=SimpleNamespace(
+                name='weekday_sync',
+                cron='5 6 * * 1',
+                interval=None,
+                target=SimpleNamespace(job='job-a', run_all=False),
+            ),
+            working_directory=config_path.parent,
+        )
+
+        assert payload['format'] == 'systemd'
+        assert payload['service_name'] == 'etlplus-weekday-sync.service'
+        assert payload['timer_name'] == 'etlplus-weekday-sync.timer'
+        assert 'OnCalendar=Mon *-*-* 06:05:00' in cast(str, payload['timer'])
