@@ -91,15 +91,14 @@ def resolve_file(
     """
     if file_format is None:
         file = file_cls(file_path)
-        return _ResolvedFile(
-            file=file,
-            file_format=file.file_format
-            if file.file_format is not None
-            else inferred_default,
+        resolved_format = (
+            file.file_format if file.file_format is not None else inferred_default
         )
+    else:
+        resolved_format = FileFormat.coerce(file_format)
+        file = file_cls(file_path, resolved_format)
 
-    resolved_format = FileFormat.coerce(file_format)
     return _ResolvedFile(
-        file=file_cls(file_path, resolved_format),
+        file=file,
         file_format=resolved_format,
     )
