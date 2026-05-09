@@ -398,11 +398,12 @@ def load(
         If `target_type` is not one of the supported values.
     """
     data = load_data(source)
+    file_options = kwargs or None
 
     match DataConnectorType.coerce(target_type):
         case DataConnectorType.FILE:
             # Prefer explicit format if provided, else infer from filename.
-            return load_to_file(data, target, file_format, kwargs or None)
+            return load_to_file(data, target, file_format, file_options)
         case DataConnectorType.DATABASE:
             return load_to_database(data, str(target))
         case DataConnectorType.API:
