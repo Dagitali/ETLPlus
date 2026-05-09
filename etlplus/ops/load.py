@@ -77,8 +77,8 @@ def _load_data_from_str(
     location = StorageLocation.from_value(source)
     if location.is_local:
         candidate = location.as_path()
-        file = File(candidate, FileFormat.JSON)
         exists = candidate.exists()
+        file = File(candidate, FileFormat.JSON)
     else:
         file = File(source, FileFormat.JSON)
         exists = file.exists()
