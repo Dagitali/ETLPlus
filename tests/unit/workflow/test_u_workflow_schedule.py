@@ -100,6 +100,11 @@ class TestScheduleParsing:
         ('schedule_cls', 'payload'),
         [
             pytest.param(ScheduleIntervalConfig, None, id='interval-none'),
+            pytest.param(
+                ScheduleIntervalConfig,
+                {'minutes': 'invalid'},
+                id='interval-invalid-minutes',
+            ),
             pytest.param(ScheduleTargetConfig, None, id='target-none'),
             pytest.param(ScheduleBackfillConfig, None, id='backfill-none'),
             pytest.param(ScheduleConfig, None, id='schedule-none'),
