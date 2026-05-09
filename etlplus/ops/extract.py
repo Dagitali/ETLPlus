@@ -185,40 +185,40 @@ def _extract_from_api_env(
             sleep_seconds,
         )
 
-    if request_env is not None:
-        url = require_url(
-            request_env,
+    if request_env is None:
+        request = build_request_call(
+            env,
             error_message='API source missing URL',
+            default_method=HttpMethod.GET,
         )
-        parts = urlsplit(url)
-        base = urlunsplit((parts.scheme, parts.netloc, '', '', ''))
-        client = _build_client(
-            base_url=base,
-            base_path=None,
-            endpoints={},
-            retry=retry,
-            retry_network_errors=retry_network_errors,
-            session=session,
-        )
-        request_options = RequestOptions(
-            params=params,
-            headers=headers,
-            timeout=timeout,
-        )
+        response = send_request(request)
+        return _parse_api_response(response)
 
-        return client.paginate_url(
-            url,
-            pagination,
-            request=request_options,
-            sleep_seconds=sleep_seconds,
-        )
-
-    request = build_request_call(
-        env,
+    url = require_url(
+        request_env,
         error_message='API source missing URL',
-        default_method=HttpMethod.GET,
     )
-    return _parse_api_response(send_request(request))
+    parts = urlsplit(url)
+    client = _build_client(
+        base_url=urlunsplit((parts.scheme, parts.netloc, '', '', '')),
+        base_path=None,
+        endpoints={},
+        retry=retry,
+        retry_network_errors=retry_network_errors,
+        session=session,
+    )
+    request_options = RequestOptions(
+        params=params,
+        headers=headers,
+        timeout=timeout,
+    )
+
+    return client.paginate_url(
+        url,
+        pagination,
+        request=request_options,
+        sleep_seconds=sleep_seconds,
+    )
 
 
 def _parse_api_response(
@@ -420,10 +420,12 @@ def extract(
     ValueError
         If `source_type` is not one of the supported values.
     """
+    file_options = kwargs or None
+
     match DataConnectorType.coerce(source_type):
         case DataConnectorType.FILE:
             # Prefer explicit format if provided, else infer from filename.
-            return extract_from_file(source, file_format, kwargs or None)
+            return extract_from_file(source, file_format, file_options)
         case DataConnectorType.DATABASE:
             return extract_from_database(str(source))
         case DataConnectorType.API:
