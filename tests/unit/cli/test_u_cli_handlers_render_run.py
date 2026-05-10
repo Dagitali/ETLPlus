@@ -32,6 +32,86 @@ from .pytest_cli_handlers_support import patch_config_from_yaml
 class TestRenderHandler:
     """Unit tests for :func:`render_handler`."""
 
+    def test_emit_render_output_writes_file_and_status_message(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Direct render output should write files and emit a status message."""
+        output_path = tmp_path / 'rendered.sql'
+
+        assert (
+            render_mod._emit_render_output(
+                ['SELECT 1  ', ''],
+                output_path=str(output_path),
+                pretty=True,
+                quiet=False,
+                schema_count=2,
+            )
+            == 0
+        )
+
+        assert output_path.read_text(encoding='utf-8') == 'SELECT 1\n'
+        assert f'Rendered 2 schema(s) to {output_path}' in capsys.readouterr().out
+
+    def test_emit_render_output_writes_stdout_when_output_path_is_missing(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Direct render output should print to STDOUT when no output path is given."""
+        assert (
+            render_mod._emit_render_output(
+                ['SELECT 1'],
+                output_path=None,
+                pretty=True,
+                quiet=False,
+                schema_count=1,
+            )
+            == 0
+        )
+
+        assert capsys.readouterr().out == 'SELECT 1\n'
+
+    def test_emit_render_output_writes_stdout_without_trailing_newline_when_compact(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Direct render output should trim the final newline in compact mode."""
+        assert (
+            render_mod._emit_render_output(
+                ['SELECT 1  '],
+                output_path='-',
+                pretty=False,
+                quiet=True,
+                schema_count=1,
+            )
+            == 0
+        )
+
+        assert capsys.readouterr().out == 'SELECT 1'
+
+    def test_emit_render_output_suppresses_status_message_when_quiet_to_file(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """Direct render output should skip the status log when file output is quiet."""
+        output_path = tmp_path / 'rendered.sql'
+
+        assert (
+            render_mod._emit_render_output(
+                ['SELECT 1'],
+                output_path=str(output_path),
+                pretty=True,
+                quiet=True,
+                schema_count=1,
+            )
+            == 0
+        )
+
+        assert output_path.read_text(encoding='utf-8') == 'SELECT 1\n'
+        assert capsys.readouterr().out == ''
+
     def test_errors_without_specs(
         self,
         capsys: pytest.CaptureFixture[str],

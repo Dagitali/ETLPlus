@@ -534,6 +534,68 @@ class TestUtilsInternalBranches:
         default_session = _utils.build_session(None)
         assert isinstance(default_session, _TinySession)
 
+    def test_compose_api_request_env_falls_back_to_api_level_defaults(
+        self,
+        base_url: str,
+    ) -> None:
+        """Test that request composition falls back from endpoint to API defaults."""
+        cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
+        endpoint = cfg.apis['core'].endpoints['users']
+        endpoint.pagination = None
+        endpoint.rate_limit = None
+        endpoint.retry = None
+        endpoint.retry_network_errors = None
+
+        source = SimpleNamespace(
+            api='core',
+            endpoint='users',
+            query_params=None,
+            headers=None,
+            pagination=None,
+            rate_limit=None,
+            retry=None,
+            retry_network_errors=None,
+            session=None,
+        )
+
+        env = _utils.compose_api_request_env(cfg, source, {})
+
+        assert env['pagination'] is None
+        assert env['sleep_seconds'] == 0.25
+        assert env['retry'] == {'max_attempts': 1}
+        assert env['retry_network_errors'] is False
+
+    def test_compose_api_request_env_preserves_source_pagination_and_rate_limit(
+        self,
+        base_url: str,
+    ) -> None:
+        """Test that source pagination and rate-limit values take precedence."""
+        cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
+        source = SimpleNamespace(
+            api='core',
+            endpoint='users',
+            query_params=None,
+            headers=None,
+            pagination=PaginationConfig(
+                type=PaginationType.PAGE,
+                page_param='page',
+                page_size=10,
+            ),
+            rate_limit=RateLimitConfig(sleep_seconds=0.1),
+            retry=None,
+            retry_network_errors=None,
+            session=None,
+        )
+
+        env = _utils.compose_api_request_env(cfg, source, {})
+
+        assert env['pagination'] is not None
+        pagination_cfg = cast(PagePaginationConfigDict, env['pagination'])
+        assert pagination_cfg['type'] == 'page'
+        assert pagination_cfg['page_param'] == 'page'
+        assert pagination_cfg['page_size'] == 10
+        assert env['sleep_seconds'] == 0.1
+
     def test_compose_api_request_env_without_api_reference(self) -> None:
         """
         Test that :func:`compose_api_request_env` works without API/endpoint

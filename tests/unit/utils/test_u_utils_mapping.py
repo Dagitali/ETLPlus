@@ -122,6 +122,16 @@ class TestMappingHelpers:
             == expected
         )
 
+    def test_first_non_empty_str_returns_none_without_nested_key(self) -> None:
+        """Test ordered string lookup stops when no nested fallback key is set."""
+        assert (
+            MappingParser.first_non_empty_str(
+                {'default': {'dsn': 'postgresql://deep-db'}},
+                ('connection_string', 'url', 'dsn'),
+            )
+            is None
+        )
+
     def test_freeze_returns_read_only_copy_with_optional_key_cast(self) -> None:
         """Test immutable mapping snapshots with optional key normalization."""
         source = {1: 'a'}
