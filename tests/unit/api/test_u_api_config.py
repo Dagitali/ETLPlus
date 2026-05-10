@@ -201,6 +201,8 @@ class TestApiConfig:
         obj = {'base_url': base_url, 'endpoints': {}}
         cfg = api_config_factory(obj)
         assert cfg.effective_base_path() is None
+        assert cfg.effective_pagination_defaults() is None
+        assert cfg.effective_rate_limit_defaults() is None
 
     def test_profile_defaults_headers_and_fields(
         self,
