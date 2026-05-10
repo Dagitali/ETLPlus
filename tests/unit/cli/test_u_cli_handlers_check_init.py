@@ -491,6 +491,50 @@ class TestCliHandlersInternalHelpers:
         )
         assert emitted == {'payload': {'ok': True}, 'pretty': False}
 
+    def test_complete_output_json_file_returns_zero_after_successful_write(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        command_context: lifecycle_mod.CommandContext,
+    ) -> None:
+        """JSON-file completion should return success when file output is written."""
+        writes: dict[str, object] = {}
+        monkeypatch.setattr(
+            lifecycle_mod,
+            'complete_command',
+            lambda _context, **_fields: None,
+        )
+        monkeypatch.setattr(
+            handlers._output,
+            'write_json_output',
+            lambda payload, output_path, *, success_message: (
+                writes.update(
+                    {
+                        'payload': payload,
+                        'output_path': output_path,
+                        'success_message': success_message,
+                    },
+                )
+                or True
+            ),
+        )
+
+        assert (
+            handlers._complete_output(
+                command_context,
+                {'ok': True},
+                mode='json_file',
+                output_path='out.json',
+                pretty=False,
+                success_message='Saved to',
+            )
+            == 0
+        )
+        assert writes == {
+            'payload': {'ok': True},
+            'output_path': 'out.json',
+            'success_message': 'Saved to',
+        }
+
     @pytest.mark.parametrize(
         ('kwargs', 'expected_message'),
         [
@@ -503,6 +547,11 @@ class TestCliHandlersInternalHelpers:
                 {'mode': 'file', 'output_path': '-'},
                 "'file' completion requires an output path",
                 id='file-stdout-target',
+            ),
+            pytest.param(
+                {'mode': 'file', 'output_path': 'out.json'},
+                "'file' completion requires a success message",
+                id='file-missing-message',
             ),
             pytest.param(
                 {'mode': 'or_write', 'output_path': 'out.json'},
