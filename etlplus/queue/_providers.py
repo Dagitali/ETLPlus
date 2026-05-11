@@ -119,42 +119,6 @@ class ProviderQueueConfigMixin:
         return data
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _optional_int(value: object, *, field_name: str, label: str) -> int | None:
-    """
-    Return one optional integer value.
-
-    Parameters
-    ----------
-    value : object
-        Input value.
-    field_name : str
-        Field name used in validation errors.
-    label : str
-        Human-readable payload label used in validation errors.
-
-    Returns
-    -------
-    int | None
-        Parsed integer value, or ``None`` when absent.
-
-    Raises
-    ------
-    TypeError
-        If the value cannot be parsed as an integer.
-    """
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        raise TypeError(f'{label} "{field_name}" must be an integer')
-    try:
-        return int(value)
-    except (TypeError, ValueError) as exc:
-        raise TypeError(f'{label} "{field_name}" must be an integer') from exc
-
-
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -359,7 +323,7 @@ class RedisQueue(ProviderQueueConfigMixin):
             name=MappingFieldParser.require_str(obj, 'name', label='RedisQueue'),
             url=ValueParser.optional_str(obj.get('url')),
             key=ValueParser.optional_str(obj.get('key', obj.get('queue_name'))),
-            database=_optional_int(
+            database=ValueParser.optional_int(
                 obj.get('database', obj.get('db')),
                 field_name='database',
                 label='RedisQueue',
