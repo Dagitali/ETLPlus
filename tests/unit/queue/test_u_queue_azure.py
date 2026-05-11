@@ -22,6 +22,16 @@ from etlplus.queue import QueueService
 class TestAzureServiceBusQueue:
     """Unit tests for :class:`etlplus.queue.AzureServiceBusQueue`."""
 
+    def test_from_obj_accepts_queue_alias(self) -> None:
+        """Test Azure Service Bus queue metadata accepts the ``queue`` alias."""
+        queue = AzureServiceBusQueue.from_obj({'name': 'orders', 'queue': 'orders-in'})
+
+        assert queue.queue_name == 'orders-in'
+        assert queue.to_connector_options() == {
+            'service': 'azure-service-bus',
+            'queue_name': 'orders-in',
+        }
+
     def test_from_obj_rejects_missing_target(self) -> None:
         """Test Azure Service Bus metadata requires a queue or topic."""
         with pytest.raises(ValueError, match='requires "queue_name" or "topic"'):
