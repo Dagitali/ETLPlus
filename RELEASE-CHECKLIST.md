@@ -151,6 +151,9 @@ release.
     with JSONL fallback support
   - DAG execution summaries for `run --all` and dependency-aware `run --job`, including skipped
     downstream jobs when an upstream dependency fails
+  - Queue connector groundwork includes the `etlplus.queue` SQS metadata surface, the optional
+    `queue` dependency extra for SQS runtime support via `boto3`, and readiness diagnostics for
+    missing SQS queue dependencies.
 
 ## Current Stable-Line Maintenance Checklist
 
