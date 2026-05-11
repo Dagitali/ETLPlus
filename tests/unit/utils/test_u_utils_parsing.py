@@ -66,6 +66,36 @@ class TestValueParser:
         ('value', 'expected'),
         [
             pytest.param(None, None, id='none'),
+            pytest.param(5, 5, id='int'),
+            pytest.param('5', 5, id='string-int'),
+            pytest.param(5.0, 5, id='float-int'),
+        ],
+    )
+    def test_optional_int(
+        self,
+        value: object,
+        expected: int | None,
+    ) -> None:
+        """Test optional integer parsing for config-style values."""
+        assert (
+            ValueParser.optional_int(
+                value,
+                field_name='count',
+                label='Example',
+            )
+            == expected
+        )
+
+    @pytest.mark.parametrize('value', ['not-an-int', True])
+    def test_optional_int_rejects_invalid_values(self, value: object) -> None:
+        """Test optional integer parsing rejects invalid values."""
+        with pytest.raises(TypeError, match='Example "count" must be an integer'):
+            ValueParser.optional_int(value, field_name='count', label='Example')
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(None, None, id='none'),
             pytest.param('hello', 'hello', id='string'),
             pytest.param(5, '5', id='coerce-int'),
             pytest.param(False, 'False', id='coerce-bool'),
