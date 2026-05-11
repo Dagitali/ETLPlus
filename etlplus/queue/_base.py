@@ -76,11 +76,6 @@ class ProviderQueueConfigMixin:
         -------
         dict[str, Any]
             Parsed ``name`` and provider-specific options fields.
-
-        Raises
-        ------
-        TypeError
-            If ``name`` is missing or invalid.
         """
         return {
             'name': MappingFieldParser.require_str(obj, 'name', label=label),
