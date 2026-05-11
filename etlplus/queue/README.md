@@ -26,6 +26,7 @@ Back to project overview: see the top-level [README](../../README.md).
   - [AWS SQS Metadata](#aws-sqs-metadata)
   - [Queue Locations](#queue-locations)
   - [Dependency Extras](#dependency-extras)
+  - [Module Layout](#module-layout)
   - [Examples](#examples)
     - [AMQP/RabbitMQ](#amqprabbitmq)
     - [AWS SQS](#aws-sqs)
@@ -134,6 +135,12 @@ Provider extras:
 - `etlplus[queue-redis]` for Redis queue-like workflows through `redis`
 - `etlplus[queue]` or `etlplus[queue-all]` for all queue provider dependencies
 
+## Module Layout
+
+Provider metadata classes live in provider-specific modules: `_aws.py`, `_azure.py`, `_gcp.py`,
+`_amqp.py`, and `_redis.py`. Shared structural contracts and provider base behavior live in
+`_base.py`.
+
 ## Examples
 
 ### AMQP/RabbitMQ
@@ -225,6 +232,7 @@ assert queue.to_connector_options()['service'] == 'redis'
 - Top-level CLI and library usage in the main [README](../../README.md)
 - Queue connector metadata in [`etlplus.connector._queue`](../connector/_queue.py)
 - AMQP/RabbitMQ metadata in [`_amqp.py`](_amqp.py)
+- Shared queue contracts in [`_base.py`](_base.py)
 - Queue enums in [`_enums.py`](_enums.py)
 - AWS SQS metadata in [`_aws.py`](_aws.py)
 - Azure Service Bus metadata in [`_azure.py`](_azure.py)
