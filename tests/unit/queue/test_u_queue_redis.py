@@ -29,6 +29,13 @@ class TestRedisQueue:
         assert isinstance(queue, QueueConfigProtocol)
         assert queue.database is None
 
+    def test_from_obj_accepts_queue_name_and_db_aliases(self) -> None:
+        """Test Redis metadata accepts ``queue_name`` and ``db`` aliases."""
+        queue = RedisQueue.from_obj({'name': 'orders', 'queue_name': 'events', 'db': 2})
+
+        assert queue.key == 'events'
+        assert queue.database == 2
+
     @pytest.mark.parametrize('database', ['not-an-int', True])
     def test_from_obj_rejects_invalid_database(self, database: object) -> None:
         """Test Redis database metadata rejects non-integer values."""
