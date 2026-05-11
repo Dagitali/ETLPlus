@@ -70,10 +70,10 @@ class AmqpQueue(ProviderQueueConfigMixin):
 
     Attributes
     ----------
-    service : QueueService
-        Queue service, always ``'amqp'``.
     name : str
         Queue metadata name.
+    service : QueueService
+        Queue service, always ``'amqp'``.
     url : str | None
         Optional AMQP connection URL.
     host : str | None
@@ -123,16 +123,21 @@ class AmqpQueue(ProviderQueueConfigMixin):
         Self
             Parsed queue instance.
         """
+        optional_str_fields = cls._optional_str_fields(
+            obj,
+            'url',
+            'host',
+            'virtual_host',
+            'exchange',
+            'routing_key',
+        )
         queue = cls(
             **cls._common_fields(obj, label='AmqpQueue'),
-            **cls._optional_str_fields(
-                obj,
-                'url',
-                'host',
-                'virtual_host',
-                'exchange',
-                'routing_key',
-            ),
+            url=optional_str_fields['url'],
+            host=optional_str_fields['host'],
+            virtual_host=optional_str_fields['virtual_host'],
+            exchange=optional_str_fields['exchange'],
+            routing_key=optional_str_fields['routing_key'],
         )
         queue.validate()
         return queue
