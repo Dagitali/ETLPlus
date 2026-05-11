@@ -6,11 +6,11 @@ Queue type aliases.
 
 from __future__ import annotations
 
+from ._amqp import AmqpQueue
 from ._aws import AwsSqsQueue
-from ._providers import AmqpQueue
-from ._providers import AzureServiceBusQueue
-from ._providers import GcpPubSubQueue
-from ._providers import RedisQueue
+from ._azure import AzureServiceBusQueue
+from ._gcp import GcpPubSubQueue
+from ._redis import RedisQueue
 
 # SECTION: EXPORTS ========================================================== #
 
