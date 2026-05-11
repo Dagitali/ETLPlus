@@ -59,6 +59,11 @@ class TestQueueEnums:
         """Test that service aliases coerce to expected enum members."""
         assert QueueService.coerce(value) is expected
 
+    def test_service_coerce_rejects_unknown_values(self) -> None:
+        """Test that unsupported queue services raise a descriptive error."""
+        with pytest.raises(ValueError, match='Invalid QueueService value'):
+            QueueService.coerce('kafka')
+
     def test_type_aliases_returns_expected_mapping(self) -> None:
         """Test that :meth:`QueueType.aliases` returns expected aliases."""
         assert QueueType.aliases() == {
@@ -85,3 +90,8 @@ class TestQueueEnums:
     ) -> None:
         """Test that queue type aliases coerce to expected enum members."""
         assert QueueType.coerce(value) is expected
+
+    def test_type_coerce_rejects_unknown_values(self) -> None:
+        """Test that unsupported queue types raise a descriptive error."""
+        with pytest.raises(ValueError, match='Invalid QueueType value'):
+            QueueType.coerce('priority')
