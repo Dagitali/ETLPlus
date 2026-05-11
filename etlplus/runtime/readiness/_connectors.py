@@ -13,6 +13,7 @@ from ..._config import Config
 from ...connector import DataConnectorType
 from ._base import ReadinessSupportPolicy
 from ._support import FORMAT_EXTRA_REQUIREMENTS
+from ._support import QUEUE_SERVICE_EXTRA_REQUIREMENTS
 from ._support import SCHEME_EXTRA_REQUIREMENTS
 from ._support import ReadinessRow
 from ._support import RequirementSpec
@@ -239,8 +240,10 @@ class ConnectorReadinessPolicy:
         rows: list[ReadinessRow] = []
         for role, connector in ReadinessSupportPolicy.iter_connectors(cfg):
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
+            connector_type_name = str(getattr(connector, 'type', '') or '')
             path = getattr(connector, 'path', None)
             format_name = str(getattr(connector, 'format', '') or '').lower()
+            queue_service = str(getattr(connector, 'service', '') or '').lower()
 
             if path:
                 scheme = ReadinessSupportPolicy.coerce_storage_scheme(path)
@@ -259,6 +262,28 @@ class ConnectorReadinessPolicy:
                             detected_scheme=scheme,
                             reason=(
                                 f'{scheme} storage path requires {requirement.package}'
+                            ),
+                            requirement=requirement,
+                            role=role,
+                        ),
+                    )
+
+            if (
+                connector_type_name == DataConnectorType.QUEUE.value
+                and queue_service in QUEUE_SERVICE_EXTRA_REQUIREMENTS
+            ):
+                requirement = QUEUE_SERVICE_EXTRA_REQUIREMENTS[queue_service]
+                if not cls.requirement_available(
+                    requirement,
+                    package_available=package_available,
+                ):
+                    rows.append(
+                        cls.requirement_row(
+                            connector=connector_name,
+                            detected_queue_service=queue_service,
+                            reason=(
+                                f'{queue_service} queue connector requires '
+                                f'{requirement.package}'
                             ),
                             requirement=requirement,
                             role=role,
@@ -429,6 +454,7 @@ class ConnectorReadinessPolicy:
         *,
         connector: str,
         detected_format: str | None = None,
+        detected_queue_service: str | None = None,
         detected_scheme: str | None = None,
         reason: str,
         requirement: RequirementSpec,
@@ -440,6 +466,7 @@ class ConnectorReadinessPolicy:
             'extra': requirement.extra or '',
             'guidance': ReadinessSupportPolicy.missing_requirement_guidance(
                 detected_format=detected_format,
+                detected_queue_service=detected_queue_service,
                 detected_scheme=detected_scheme,
                 package=requirement.package,
                 extra=requirement.extra,
@@ -450,6 +477,8 @@ class ConnectorReadinessPolicy:
         }
         if detected_format is not None:
             row['detected_format'] = detected_format
+        if detected_queue_service is not None:
+            row['detected_queue_service'] = detected_queue_service
         if detected_scheme is not None:
             row['detected_scheme'] = detected_scheme
         return row
