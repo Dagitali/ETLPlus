@@ -85,44 +85,6 @@ _SQS_OPTION_FIELDS = (
 )
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _optional_int(
-    value: object,
-    *,
-    field_name: str,
-) -> int | None:
-    """
-    Return one optional integer value.
-
-    Parameters
-    ----------
-    value : object
-        Input value.
-    field_name : str
-        Field name used in validation errors.
-
-    Returns
-    -------
-    int | None
-        Parsed integer value, or ``None`` when absent.
-
-    Raises
-    ------
-    TypeError
-        If the value cannot be parsed as an integer.
-    """
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        raise TypeError(f'SqsQueue "{field_name}" must be an integer')
-    try:
-        return int(value)
-    except (TypeError, ValueError) as exc:
-        raise TypeError(f'SqsQueue "{field_name}" must be an integer') from exc
-
-
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -222,7 +184,11 @@ class SqsQueue:
             else QueueType.STANDARD
         )
         integer_values = {
-            field_name: _optional_int(obj.get(field_name), field_name=field_name)
+            field_name: ValueParser.optional_int(
+                obj.get(field_name),
+                field_name=field_name,
+                label='SqsQueue',
+            )
             for field_name in cls._integer_ranges
         }
         content_based_deduplication = obj.get('content_based_deduplication')
