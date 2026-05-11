@@ -34,13 +34,29 @@ __all__ = [
 
 
 class GcpPubSubQueueConfigDict(TypedDict, total=False):
-    """Shape accepted by :meth:`GcpPubSubQueue.from_obj`."""
+    """
+    Shape accepted by :meth:`GcpPubSubQueue.from_obj` (all keys optional).
+
+    See Also
+    --------
+    - :meth:`etlplus.queue.GcpPubSubQueue.from_obj`
+    """
 
     name: str
     project: str
     topic: str
     subscription: str
     options: StrAnyMap
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_GCP_PUBSUB_OPTION_FIELDS = (
+    'project',
+    'topic',
+    'subscription',
+)
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -61,17 +77,28 @@ class GcpPubSubQueue(ProviderQueueConfigMixin):
 
     # -- Internal Class Attributes -- #
 
-    _option_fields: ClassVar[tuple[str, ...]] = (
-        'project',
-        'topic',
-        'subscription',
-    )
+    _option_fields: ClassVar[tuple[str, ...]] = _GCP_PUBSUB_OPTION_FIELDS
 
     # -- Class Methods -- #
 
     @classmethod
-    def from_obj(cls, obj: StrAnyMap) -> Self:
-        """Parse a mapping into a ``GcpPubSubQueue`` instance."""
+    def from_obj(
+        cls,
+        obj: StrAnyMap,
+    ) -> Self:
+        """
+        Parse a mapping into a ``GcpPubSubQueue`` instance.
+
+        Parameters
+        ----------
+        obj : StrAnyMap
+            Mapping with at least ``name``.
+
+        Returns
+        -------
+        Self
+            Parsed queue instance.
+        """
         queue = cls(
             name=MappingFieldParser.require_str(obj, 'name', label='GcpPubSubQueue'),
             project=ValueParser.optional_str(obj.get('project')),
