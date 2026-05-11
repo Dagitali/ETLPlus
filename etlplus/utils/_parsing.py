@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from collections.abc import Sequence
+from typing import SupportsIndex
+from typing import SupportsInt
 from typing import TypeGuard
 
 from ._text import TextNormalizer
@@ -134,6 +136,11 @@ class ValueParser:
         if isinstance(value, bool):
             raise TypeError(f'{label} "{field_name}" must be an integer')
         try:
+            if not isinstance(
+                value,
+                str | bytes | bytearray | SupportsInt | SupportsIndex,
+            ):
+                raise TypeError
             return int(value)
         except (TypeError, ValueError) as exc:
             raise TypeError(f'{label} "{field_name}" must be an integer') from exc
