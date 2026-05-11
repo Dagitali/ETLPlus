@@ -190,11 +190,11 @@ class ConnectorQueue(ConnectorBase):
         data = {
             **self.options,
             'name': self.queue_name or self.name,
-            'queue_name': self.queue_name,
             'queue_type': self.queue_type,
-            'region': self.region,
-            'url': self.url,
         }
+        for field_name in ('queue_name', 'region', 'url'):
+            if (value := getattr(self, field_name)) is not None:
+                data[field_name] = value
         match self.service:
             case QueueService.AWS_SQS:
                 return SqsQueue.from_obj(data)
