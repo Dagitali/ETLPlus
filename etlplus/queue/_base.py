@@ -11,6 +11,9 @@ from typing import ClassVar
 from typing import Protocol
 from typing import runtime_checkable
 
+from ..utils import MappingFieldParser
+from ..utils import MappingParser
+from ..utils._types import StrAnyMap
 from ._enums import QueueService
 
 # SECTION: EXPORTS ========================================================== #
@@ -60,6 +63,39 @@ class ProviderQueueConfigMixin:
             if value is not None:
                 data[field_name] = value
         return data
+
+    # -- Internal Static Methods -- #
+
+    @staticmethod
+    def _common_fields(
+        obj: StrAnyMap,
+        *,
+        label: str,
+    ) -> dict[str, Any]:
+        """
+        Return shared provider queue config constructor fields.
+
+        Parameters
+        ----------
+        obj : StrAnyMap
+            Mapping with at least ``name`` and optional ``options``.
+        label : str
+            Human-readable payload label used in validation errors.
+
+        Returns
+        -------
+        dict[str, Any]
+            Parsed ``name`` and provider-specific ``options`` fields.
+
+        Raises
+        ------
+        TypeError
+            If ``name`` is missing or invalid.
+        """
+        return {
+            'name': MappingFieldParser.require_str(obj, 'name', label=label),
+            'options': MappingParser.to_dict(obj.get('options')),
+        }
 
 
 # SECTION: PROTOCOLS ======================================================== #
