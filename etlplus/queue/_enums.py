@@ -27,7 +27,11 @@ class QueueService(CoercibleStrEnum):
 
     # -- Constants -- #
 
-    SQS = 'sqs'
+    AMQP = 'amqp'
+    AWS_SQS = 'aws-sqs'
+    AZURE_SERVICE_BUS = 'azure-service-bus'
+    GCP_PUBSUB = 'gcp-pubsub'
+    REDIS = 'redis'
 
     # -- Class Methods -- #
 
@@ -42,9 +46,19 @@ class QueueService(CoercibleStrEnum):
             A mapping of alias names to their corresponding enum member names.
         """
         return {
-            'amazon-sqs': 'sqs',
-            'aws-sqs': 'sqs',
-            'aws_sqs': 'sqs',
+            'aio-pika': 'amqp',
+            'amazon-sqs': 'aws-sqs',
+            'azure-servicebus': 'azure-service-bus',
+            'azure_service_bus': 'azure-service-bus',
+            'aws_sqs': 'aws-sqs',
+            'gcp-pub-sub': 'gcp-pubsub',
+            'google-cloud-pubsub': 'gcp-pubsub',
+            'google-pubsub': 'gcp-pubsub',
+            'pika': 'amqp',
+            'pubsub': 'gcp-pubsub',
+            'rabbitmq': 'amqp',
+            'redis-streams': 'redis',
+            'sqs': 'aws-sqs',
         }
 
 
