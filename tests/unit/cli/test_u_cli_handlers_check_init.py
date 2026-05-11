@@ -741,9 +741,7 @@ class TestScheduleHandler:
 
     def test_cron_to_on_calendar_supports_weekday_prefixes(self) -> None:
         """Schedule cron helper should map weekday numbers into systemd names."""
-        assert schedule_mod._cron_to_on_calendar('5 6 * * 1') == (
-            'Mon *-*-* 06:05:00'
-        )
+        assert schedule_mod._cron_to_on_calendar('5 6 * * 1') == ('Mon *-*-* 06:05:00')
 
     def test_emits_crontab_helper_payload(
         self,
