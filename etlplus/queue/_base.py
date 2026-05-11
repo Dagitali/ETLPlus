@@ -40,7 +40,6 @@ class ProviderQueueConfigMixin:
     # -- Instance Attributes -- #
 
     service: QueueService
-    options: dict[str, Any]
 
     # -- Internal Instance Attributes -- #
 
@@ -110,7 +109,7 @@ class ProviderQueueConfigMixin:
         dict[str, Any]
             Queue metadata represented as a plain dictionary.
         """
-        data = dict(getattr(self, self._options_attr))
+        data: dict[str, Any] = dict(getattr(self, self._options_attr))
         data.update(self._base_connector_options())
         for field_name in self._option_fields:
             value = getattr(self, field_name)
