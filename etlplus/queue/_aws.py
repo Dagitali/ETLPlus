@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.queue._sqs` module.
+:mod:`etlplus.queue._aws` module.
 
 AWS SQS queue type helpers.
 """
