@@ -1,7 +1,7 @@
 """
-:mod:`tests.unit.queue.test_u_queue_sqs` module.
+:mod:`tests.unit.queue.test_u_queue_aws` module.
 
-Unit tests for :mod:`etlplus.queue._sqs`.
+Unit tests for :mod:`etlplus.queue._aws`.
 """
 
 from __future__ import annotations
