@@ -6,6 +6,8 @@ Queue type helpers for message-oriented ETL sources and targets.
 
 from __future__ import annotations
 
+from ._aws import SqsQueue
+from ._aws import SqsQueueConfigDict
 from ._base import QueueConfigProtocol
 from ._enums import QueueService
 from ._enums import QueueType
@@ -18,8 +20,6 @@ from ._providers import GcpPubSubQueue
 from ._providers import GcpPubSubQueueConfigDict
 from ._providers import RedisQueue
 from ._providers import RedisQueueConfigDict
-from ._sqs import SqsQueue
-from ._sqs import SqsQueueConfigDict
 from ._types import QueueConfig
 
 # SECTION: EXPORTS ========================================================== #
