@@ -136,7 +136,7 @@ QUEUE_SERVICE_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
         'queue-gcp',
     ),
     'redis': RequirementSpec(('redis',), 'redis', 'queue-redis'),
-    'aws-sqs': RequirementSpec(('boto3',), 'boto3', 'queue'),
+    'aws-sqs': RequirementSpec(('boto3',), 'boto3', 'queue-aws'),
 }
 SCHEME_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
     'abfs': RequirementSpec(
