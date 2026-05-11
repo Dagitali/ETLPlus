@@ -13,6 +13,9 @@ Runtime queue clients are intentionally outside this package for now. Queue-back
 endpoints are represented through `etlplus.connector.ConnectorQueue`, which can be converted into
 provider-specific queue config objects with `ConnectorQueue.to_queue_config()`.
 
+The stable public surface is metadata-only: it validates and normalizes queue configuration, but it
+does not create SDK clients, manage credentials, poll messages, or publish messages.
+
 Back to project overview: see the top-level [README](../../README.md).
 
 - [`etlplus.queue` Subpackage](#etlplusqueue-subpackage)
@@ -22,7 +25,12 @@ Back to project overview: see the top-level [README](../../README.md).
   - [AWS SQS Metadata](#aws-sqs-metadata)
   - [Queue Locations](#queue-locations)
   - [Dependency Extras](#dependency-extras)
-  - [Example](#example)
+  - [Examples](#examples)
+    - [AMQP/RabbitMQ](#amqprabbitmq)
+    - [AWS SQS](#aws-sqs)
+    - [Azure Service Bus](#azure-service-bus)
+    - [Google Cloud Pub/Sub](#google-cloud-pubsub)
+    - [Redis](#redis)
   - [See Also](#see-also)
 
 ## Relationship to `etlplus.connector`
@@ -110,7 +118,25 @@ Provider extras:
 - `etlplus[queue-redis]` for Redis queue-like workflows through `redis`
 - `etlplus[queue]` or `etlplus[queue-all]` for all queue provider dependencies
 
-## Example
+## Examples
+
+### AMQP/RabbitMQ
+
+```python
+from etlplus.queue import AmqpQueue
+
+queue = AmqpQueue.from_obj(
+    {
+        'name': 'orders',
+        'url': 'amqp://guest:guest@localhost:5672/%2f',
+        'routing_key': 'orders.created',
+    },
+)
+
+assert queue.to_connector_options()['service'] == 'amqp'
+```
+
+### AWS SQS
 
 ```python
 from etlplus.connector import ConnectorQueue
@@ -133,6 +159,55 @@ queue_config = connector.to_queue_config()
 
 assert queue_config.service.value == 'aws-sqs'
 assert queue_config.queue_type.value == 'fifo'
+```
+
+### Azure Service Bus
+
+```python
+from etlplus.queue import AzureServiceBusQueue
+
+queue = AzureServiceBusQueue.from_obj(
+    {
+        'name': 'orders',
+        'namespace': 'example-bus',
+        'queue_name': 'orders-in',
+    },
+)
+
+assert queue.to_connector_options()['service'] == 'azure-service-bus'
+```
+
+### Google Cloud Pub/Sub
+
+```python
+from etlplus.queue import GcpPubSubQueue
+
+queue = GcpPubSubQueue.from_obj(
+    {
+        'name': 'orders',
+        'project': 'example-project',
+        'subscription': 'etlplus-orders',
+    },
+)
+
+assert queue.to_connector_options()['service'] == 'gcp-pubsub'
+```
+
+### Redis
+
+```python
+from etlplus.queue import RedisQueue
+
+queue = RedisQueue.from_obj(
+    {
+        'name': 'orders',
+        'url': 'redis://localhost:6379/0',
+        'key': 'orders',
+        'database': 0,
+    },
+)
+
+assert queue.to_connector_options()['service'] == 'redis'
 ```
 
 ## See Also
