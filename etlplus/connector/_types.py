@@ -37,4 +37,4 @@ __all__ = [
 
 
 # Literal type for supported connector kinds (strings or enum members)
-type ConnectorType = DataConnectorType | Literal['api', 'database', 'file']
+type ConnectorType = DataConnectorType | Literal['api', 'database', 'file', 'queue']
