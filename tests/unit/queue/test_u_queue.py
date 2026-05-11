@@ -135,6 +135,15 @@ class TestSqsQueue:
                 'url': 123,
                 'arn': False,
                 'region': 'us-east-1',
+                'delay_seconds': '5',
+                'max_messages': '10',
+                'message_retention_period': 345600,
+                'visibility_timeout': '30',
+                'wait_time_seconds': '20',
+                'content_based_deduplication': 'yes',
+                'dead_letter_queue_arn': 'arn:aws:sqs:us-east-1:123:dead',
+                'deduplication_id': 456,
+                'message_group_id': 'events',
                 'attributes': {'VisibilityTimeout': '30'},
             },
         )
@@ -144,12 +153,31 @@ class TestSqsQueue:
         assert connector.url == '123'
         assert connector.arn == 'False'
         assert connector.region == 'us-east-1'
+        assert connector.delay_seconds == 5
+        assert connector.max_messages == 10
+        assert connector.message_retention_period == 345600
+        assert connector.visibility_timeout == 30
+        assert connector.wait_time_seconds == 20
+        assert connector.content_based_deduplication is True
+        assert connector.dead_letter_queue_arn == 'arn:aws:sqs:us-east-1:123:dead'
+        assert connector.deduplication_id == '456'
+        assert connector.message_group_id == 'events'
         assert connector.attributes == {'VisibilityTimeout': '30'}
 
     def test_from_obj_requires_name(self) -> None:
         """Test that :meth:`from_obj` requires a queue name."""
         with pytest.raises(TypeError, match='SqsQueue requires a "name"'):
             SqsQueue.from_obj({'queue_type': 'fifo'})
+
+    def test_from_obj_rejects_invalid_integer_metadata(self) -> None:
+        """Test that integer SQS metadata fields reject non-integer values."""
+        with pytest.raises(TypeError, match='"visibility_timeout" must be an integer'):
+            SqsQueue.from_obj(
+                {
+                    'name': 'events',
+                    'visibility_timeout': 'not-an-int',
+                },
+            )
 
     def test_to_connector_options_returns_plain_mapping(self) -> None:
         """Test that queue metadata can be exposed as connector options."""
@@ -158,6 +186,10 @@ class TestSqsQueue:
                 'name': 'events.fifo',
                 'url': 'https://sqs.us-east-1.amazonaws.com/123/events.fifo',
                 'region': 'us-east-1',
+                'visibility_timeout': 30,
+                'wait_time_seconds': 20,
+                'content_based_deduplication': True,
+                'message_group_id': 'events',
                 'attributes': {'ContentBasedDeduplication': 'true'},
             },
         )
@@ -169,4 +201,8 @@ class TestSqsQueue:
             'queue_name': 'events.fifo',
             'url': 'https://sqs.us-east-1.amazonaws.com/123/events.fifo',
             'region': 'us-east-1',
+            'visibility_timeout': 30,
+            'wait_time_seconds': 20,
+            'content_based_deduplication': True,
+            'message_group_id': 'events',
         }
