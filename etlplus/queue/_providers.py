@@ -186,7 +186,7 @@ class AzureServiceBusQueue(ProviderQueueConfigMixin):
     @classmethod
     def from_obj(cls, obj: StrAnyMap) -> Self:
         """Parse a mapping into an ``AzureServiceBusQueue`` instance."""
-        return cls(
+        queue = cls(
             name=MappingFieldParser.require_str(
                 obj,
                 'name',
@@ -200,6 +200,29 @@ class AzureServiceBusQueue(ProviderQueueConfigMixin):
             subscription=ValueParser.optional_str(obj.get('subscription')),
             options=MappingParser.to_dict(obj.get('options')),
         )
+        queue.validate()
+        return queue
+
+    # -- Instance Methods -- #
+
+    def validate(self) -> None:
+        """
+        Validate Azure Service Bus queue/topic metadata.
+
+        Raises
+        ------
+        ValueError
+            If queue metadata lacks a queue or topic target, or if a subscription
+            is provided without a topic.
+        """
+        if self.subscription is not None and self.topic is None:
+            raise ValueError(
+                'AzureServiceBusQueue "subscription" requires "topic"',
+            )
+        if self.queue_name is None and self.topic is None:
+            raise ValueError(
+                'AzureServiceBusQueue requires "queue_name" or "topic"',
+            )
 
 
 @dataclass(kw_only=True, slots=True)
@@ -228,13 +251,31 @@ class GcpPubSubQueue(ProviderQueueConfigMixin):
     @classmethod
     def from_obj(cls, obj: StrAnyMap) -> Self:
         """Parse a mapping into a ``GcpPubSubQueue`` instance."""
-        return cls(
+        queue = cls(
             name=MappingFieldParser.require_str(obj, 'name', label='GcpPubSubQueue'),
             project=ValueParser.optional_str(obj.get('project')),
             topic=ValueParser.optional_str(obj.get('topic')),
             subscription=ValueParser.optional_str(obj.get('subscription')),
             options=MappingParser.to_dict(obj.get('options')),
         )
+        queue.validate()
+        return queue
+
+    # -- Instance Methods -- #
+
+    def validate(self) -> None:
+        """
+        Validate Google Cloud Pub/Sub metadata.
+
+        Raises
+        ------
+        ValueError
+            If queue metadata lacks a project or Pub/Sub topic/subscription target.
+        """
+        if self.project is None:
+            raise ValueError('GcpPubSubQueue requires "project"')
+        if self.topic is None and self.subscription is None:
+            raise ValueError('GcpPubSubQueue requires "topic" or "subscription"')
 
 
 @dataclass(kw_only=True, slots=True)
@@ -265,7 +306,7 @@ class AmqpQueue(ProviderQueueConfigMixin):
     @classmethod
     def from_obj(cls, obj: StrAnyMap) -> Self:
         """Parse a mapping into an ``AmqpQueue`` instance."""
-        return cls(
+        queue = cls(
             name=MappingFieldParser.require_str(obj, 'name', label='AmqpQueue'),
             url=ValueParser.optional_str(obj.get('url')),
             host=ValueParser.optional_str(obj.get('host')),
@@ -274,6 +315,22 @@ class AmqpQueue(ProviderQueueConfigMixin):
             routing_key=ValueParser.optional_str(obj.get('routing_key')),
             options=MappingParser.to_dict(obj.get('options')),
         )
+        queue.validate()
+        return queue
+
+    # -- Instance Methods -- #
+
+    def validate(self) -> None:
+        """
+        Validate AMQP connection metadata.
+
+        Raises
+        ------
+        ValueError
+            If queue metadata lacks a URL or host.
+        """
+        if self.url is None and self.host is None:
+            raise ValueError('AmqpQueue requires "url" or "host"')
 
 
 @dataclass(kw_only=True, slots=True)
@@ -298,7 +355,7 @@ class RedisQueue(ProviderQueueConfigMixin):
     @classmethod
     def from_obj(cls, obj: StrAnyMap) -> Self:
         """Parse a mapping into a ``RedisQueue`` instance."""
-        return cls(
+        queue = cls(
             name=MappingFieldParser.require_str(obj, 'name', label='RedisQueue'),
             url=ValueParser.optional_str(obj.get('url')),
             key=ValueParser.optional_str(obj.get('key', obj.get('queue_name'))),
@@ -309,3 +366,19 @@ class RedisQueue(ProviderQueueConfigMixin):
             ),
             options=MappingParser.to_dict(obj.get('options')),
         )
+        queue.validate()
+        return queue
+
+    # -- Instance Methods -- #
+
+    def validate(self) -> None:
+        """
+        Validate Redis queue metadata.
+
+        Raises
+        ------
+        ValueError
+            If the Redis database number is negative.
+        """
+        if self.database is not None and self.database < 0:
+            raise ValueError('RedisQueue "database" must be greater than or equal to 0')
