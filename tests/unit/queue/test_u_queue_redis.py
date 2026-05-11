@@ -36,7 +36,13 @@ class TestRedisQueue:
         assert queue.key == 'events'
         assert queue.database == 2
 
-    @pytest.mark.parametrize('database', ['not-an-int', True])
+    @pytest.mark.parametrize(
+        'database',
+        [
+            pytest.param('not-an-int', id='string'),
+            pytest.param(True, id='bool'),
+        ],
+    )
     def test_from_obj_rejects_invalid_database(self, database: object) -> None:
         """Test Redis database metadata rejects non-integer values."""
         with pytest.raises(TypeError, match='"database" must be an integer'):
@@ -66,5 +72,26 @@ class TestRedisQueue:
             'service': 'redis',
             'url': 'redis://localhost:6379/0',
             'key': 'orders',
+            'database': 1,
+        }
+
+    def test_modeled_fields_override_options(self) -> None:
+        """Test top-level Redis fields take precedence over duplicate options."""
+        queue = RedisQueue.from_obj(
+            {
+                'name': 'orders',
+                'key': 'events',
+                'database': 1,
+                'options': {
+                    'service': 'wrong',
+                    'key': 'stale',
+                    'database': 0,
+                },
+            },
+        )
+
+        assert queue.to_connector_options() == {
+            'service': 'redis',
+            'key': 'events',
             'database': 1,
         }

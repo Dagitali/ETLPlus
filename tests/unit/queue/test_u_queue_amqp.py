@@ -48,3 +48,21 @@ class TestAmqpQueue:
             'exchange': 'etlplus',
             'routing_key': 'orders.created',
         }
+
+    def test_modeled_fields_override_options(self) -> None:
+        """Test top-level AMQP fields take precedence over duplicate options."""
+        queue = AmqpQueue.from_obj(
+            {
+                'name': 'orders',
+                'host': 'localhost',
+                'options': {
+                    'service': 'wrong',
+                    'host': 'stale',
+                },
+            },
+        )
+
+        assert queue.to_connector_options() == {
+            'service': 'amqp',
+            'host': 'localhost',
+        }

@@ -57,3 +57,24 @@ class TestGcpPubSubQueue:
             'topic': 'orders-topic',
             'subscription': 'etlplus',
         }
+
+    def test_modeled_fields_override_options(self) -> None:
+        """Test top-level Google Cloud Pub/Sub fields override duplicate options."""
+        queue = GcpPubSubQueue.from_obj(
+            {
+                'name': 'orders',
+                'project': 'example-project',
+                'topic': 'orders-topic',
+                'options': {
+                    'service': 'wrong',
+                    'project': 'stale',
+                    'topic': 'stale',
+                },
+            },
+        )
+
+        assert queue.to_connector_options() == {
+            'service': 'gcp-pubsub',
+            'project': 'example-project',
+            'topic': 'orders-topic',
+        }
