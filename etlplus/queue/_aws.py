@@ -25,21 +25,21 @@ from ._enums import QueueType
 
 __all__ = [
     # Classes
-    'SqsQueue',
-    'SqsQueueConfigDict',
+    'AwsSqsQueue',
+    'AwsSqsQueueConfigDict',
 ]
 
 
 # SECTION: TYPED DICTS ====================================================== #
 
 
-class SqsQueueConfigDict(TypedDict, total=False):
+class AwsSqsQueueConfigDict(TypedDict, total=False):
     """
-    Shape accepted by :meth:`SqsQueue.from_obj` (all keys optional).
+    Shape accepted by :meth:`AwsSqsQueue.from_obj` (all keys optional).
 
     See Also
     --------
-    - :meth:`etlplus.queue.SqsQueue.from_obj`
+    - :meth:`etlplus.queue.AwsSqsQueue.from_obj`
     """
 
     name: str
@@ -89,7 +89,7 @@ _SQS_OPTION_FIELDS = (
 
 
 @dataclass(kw_only=True, slots=True)
-class SqsQueue:
+class AwsSqsQueue:
     """
     Configuration metadata for an AWS SQS queue.
 
@@ -162,7 +162,7 @@ class SqsQueue:
         obj: StrAnyMap,
     ) -> Self:
         """
-        Parse a mapping into an ``SqsQueue`` instance.
+        Parse a mapping into an ``AwsSqsQueue`` instance.
 
         Parameters
         ----------
@@ -174,7 +174,7 @@ class SqsQueue:
         Self
             Parsed queue instance.
         """
-        name = MappingFieldParser.require_str(obj, 'name', label='SqsQueue')
+        name = MappingFieldParser.require_str(obj, 'name', label='AwsSqsQueue')
         queue_type_value = obj.get('queue_type', obj.get('type'))
         queue_type = (
             QueueType.coerce(queue_type_value)
@@ -187,7 +187,7 @@ class SqsQueue:
             field_name: ValueParser.optional_int(
                 obj.get(field_name),
                 field_name=field_name,
-                label='SqsQueue',
+                label='AwsSqsQueue',
             )
             for field_name in cls._integer_ranges
         }
@@ -278,5 +278,6 @@ class SqsQueue:
             value = getattr(self, field_name)
             if value is not None and not minimum <= value <= maximum:
                 raise ValueError(
-                    f'SqsQueue "{field_name}" must be between {minimum} and {maximum}',
+                    f'AwsSqsQueue "{field_name}" must be between '
+                    f'{minimum} and {maximum}',
                 )
