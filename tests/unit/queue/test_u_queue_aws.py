@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import pytest
 
+from etlplus.queue import AwsSqsQueue
 from etlplus.queue import QueueService
 from etlplus.queue import QueueType
-from etlplus.queue import SqsQueue
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -19,13 +19,13 @@ from etlplus.queue import SqsQueue
 # SECTION: TESTS ============================================================ #
 
 
-class TestSqsQueue:
-    """Unit tests for :class:`etlplus.queue.SqsQueue`."""
+class TestAwsSqsQueue:
+    """Unit tests for :class:`etlplus.queue.AwsSqsQueue`."""
 
     def test_fifo_queue_name_must_end_with_fifo_suffix(self) -> None:
         """Test that explicit FIFO queues require the SQS ``.fifo`` suffix."""
         with pytest.raises(ValueError, match='must end with ".fifo"'):
-            SqsQueue.from_obj({'name': 'events', 'queue_type': 'fifo'})
+            AwsSqsQueue.from_obj({'name': 'events', 'queue_type': 'fifo'})
 
     @pytest.mark.parametrize(
         ('payload', 'expected_type'),
@@ -45,7 +45,7 @@ class TestSqsQueue:
         expected_type: QueueType,
     ) -> None:
         """Test that :meth:`from_obj` normalizes SQS queue metadata."""
-        connector = SqsQueue.from_obj(
+        connector = AwsSqsQueue.from_obj(
             {
                 **payload,
                 'url': 123,
@@ -76,18 +76,18 @@ class TestSqsQueue:
 
     def test_from_obj_requires_name(self) -> None:
         """Test that :meth:`from_obj` requires a queue name."""
-        with pytest.raises(TypeError, match='SqsQueue requires a "name"'):
-            SqsQueue.from_obj({'queue_type': 'fifo'})
+        with pytest.raises(TypeError, match='AwsSqsQueue requires a "name"'):
+            AwsSqsQueue.from_obj({'queue_type': 'fifo'})
 
     def test_from_obj_rejects_boolean_integer_metadata(self) -> None:
         """Test that boolean values are not accepted as integer metadata."""
         with pytest.raises(TypeError, match='"visibility_timeout" must be an integer'):
-            SqsQueue.from_obj({'name': 'events', 'visibility_timeout': True})
+            AwsSqsQueue.from_obj({'name': 'events', 'visibility_timeout': True})
 
     def test_from_obj_rejects_invalid_integer_metadata(self) -> None:
         """Test that integer SQS metadata fields reject non-integer values."""
         with pytest.raises(TypeError, match='"visibility_timeout" must be an integer'):
-            SqsQueue.from_obj(
+            AwsSqsQueue.from_obj(
                 {
                     'name': 'events',
                     'visibility_timeout': 'not-an-int',
@@ -115,7 +115,7 @@ class TestSqsQueue:
     ) -> None:
         """Test that bounded SQS metadata fields enforce AWS limits."""
         with pytest.raises(ValueError, match=f'"{field_name}" must be between'):
-            SqsQueue.from_obj(
+            AwsSqsQueue.from_obj(
                 {
                     'name': 'events',
                     field_name: value,
@@ -125,7 +125,7 @@ class TestSqsQueue:
     def test_standard_queue_rejects_fifo_only_metadata(self) -> None:
         """Test that standard queues reject FIFO-only message metadata."""
         with pytest.raises(ValueError, match='FIFO fields require'):
-            SqsQueue.from_obj(
+            AwsSqsQueue.from_obj(
                 {
                     'name': 'events',
                     'message_group_id': 'events',
@@ -137,7 +137,7 @@ class TestSqsQueue:
         arn = 'arn:aws:sqs:us-east-1:123:events'
 
         assert (
-            SqsQueue.from_obj({'name': 'events', 'arn': arn}).to_connector_options()[
+            AwsSqsQueue.from_obj({'name': 'events', 'arn': arn}).to_connector_options()[
                 'arn'
             ]
             == arn
@@ -145,7 +145,7 @@ class TestSqsQueue:
 
     def test_to_connector_options_omits_empty_optional_fields(self) -> None:
         """Test that empty optional SQS metadata does not appear in options."""
-        assert SqsQueue.from_obj({'name': 'events'}).to_connector_options() == {
+        assert AwsSqsQueue.from_obj({'name': 'events'}).to_connector_options() == {
             'service': 'aws-sqs',
             'queue_type': 'standard',
             'queue_name': 'events',
@@ -153,7 +153,7 @@ class TestSqsQueue:
 
     def test_to_connector_options_returns_plain_mapping(self) -> None:
         """Test that queue metadata can be exposed as connector options."""
-        queue = SqsQueue.from_obj(
+        queue = AwsSqsQueue.from_obj(
             {
                 'name': 'events.fifo',
                 'url': 'https://sqs.us-east-1.amazonaws.com/123/events.fifo',
