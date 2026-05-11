@@ -25,7 +25,7 @@ __all__ = [
 class QueueService(CoercibleStrEnum):
     """Supported queue services."""
 
-    # -- Constants -- #
+    # -- Class Constants -- #
 
     AMQP = 'amqp'
     AWS_SQS = 'aws-sqs'
