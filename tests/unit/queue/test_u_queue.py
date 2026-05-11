@@ -58,6 +58,57 @@ class TestProviderQueueConfigs:
     """Unit tests for provider-specific queue config dataclasses."""
 
     @pytest.mark.parametrize(
+        ('queue_cls', 'payload', 'match'),
+        [
+            pytest.param(
+                AmqpQueue,
+                {'name': 'orders'},
+                'requires "url" or "host"',
+                id='amqp-target',
+            ),
+            pytest.param(
+                AzureServiceBusQueue,
+                {'name': 'orders', 'subscription': 'etlplus'},
+                'requires "topic"',
+                id='azure-subscription-topic',
+            ),
+            pytest.param(
+                AzureServiceBusQueue,
+                {'name': 'orders'},
+                'requires "queue_name" or "topic"',
+                id='azure-target',
+            ),
+            pytest.param(
+                GcpPubSubQueue,
+                {'name': 'orders', 'subscription': 'etlplus'},
+                'requires "project"',
+                id='gcp-project',
+            ),
+            pytest.param(
+                GcpPubSubQueue,
+                {'name': 'orders', 'project': 'example-project'},
+                'requires "topic" or "subscription"',
+                id='gcp-target',
+            ),
+            pytest.param(
+                RedisQueue,
+                {'name': 'orders', 'database': -1},
+                'greater than or equal to 0',
+                id='redis-database',
+            ),
+        ],
+    )
+    def test_from_obj_rejects_invalid_provider_metadata(
+        self,
+        queue_cls: type[AmqpQueue | AzureServiceBusQueue | GcpPubSubQueue | RedisQueue],
+        payload: dict[str, object],
+        match: str,
+    ) -> None:
+        """Test provider queue configs reject invalid metadata combinations."""
+        with pytest.raises(ValueError, match=match):
+            queue_cls.from_obj(payload)
+
+    @pytest.mark.parametrize(
         ('queue_cls', 'payload', 'expected_service', 'expected_options'),
         [
             pytest.param(
@@ -156,6 +207,24 @@ class TestProviderQueueConfigs:
     def test_redis_queue_accepts_missing_database(self) -> None:
         """Test Redis database metadata is optional."""
         assert RedisQueue.from_obj({'name': 'orders'}).database is None
+
+    def test_modeled_provider_fields_override_options(self) -> None:
+        """Test top-level provider fields take precedence over duplicate options."""
+        queue = AzureServiceBusQueue.from_obj(
+            {
+                'name': 'orders',
+                'queue_name': 'orders',
+                'options': {
+                    'service': 'wrong',
+                    'queue_name': 'stale',
+                },
+            },
+        )
+
+        assert queue.to_connector_options() == {
+            'service': 'azure-service-bus',
+            'queue_name': 'orders',
+        }
 
     @pytest.mark.parametrize('database', ['not-an-int', True])
     def test_redis_queue_rejects_invalid_database(self, database: object) -> None:
