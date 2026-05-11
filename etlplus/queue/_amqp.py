@@ -13,7 +13,6 @@ from typing import ClassVar
 from typing import Self
 from typing import TypedDict
 
-from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ._base import ProviderQueueConfigMixin
 from ._enums import QueueService
@@ -126,11 +125,14 @@ class AmqpQueue(ProviderQueueConfigMixin):
         """
         queue = cls(
             **cls._common_fields(obj, label='AmqpQueue'),
-            url=ValueParser.optional_str(obj.get('url')),
-            host=ValueParser.optional_str(obj.get('host')),
-            virtual_host=ValueParser.optional_str(obj.get('virtual_host')),
-            exchange=ValueParser.optional_str(obj.get('exchange')),
-            routing_key=ValueParser.optional_str(obj.get('routing_key')),
+            **cls._optional_str_fields(
+                obj,
+                'url',
+                'host',
+                'virtual_host',
+                'exchange',
+                'routing_key',
+            ),
         )
         queue.validate()
         return queue
