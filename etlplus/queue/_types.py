@@ -6,7 +6,7 @@ Queue type aliases.
 
 from __future__ import annotations
 
-from ._aws import SqsQueue
+from ._aws import AwsSqsQueue
 from ._providers import AmqpQueue
 from ._providers import AzureServiceBusQueue
 from ._providers import GcpPubSubQueue
@@ -25,5 +25,5 @@ __all__ = [
 
 
 type QueueConfig = (
-    AmqpQueue | AzureServiceBusQueue | GcpPubSubQueue | RedisQueue | SqsQueue
+    AmqpQueue | AzureServiceBusQueue | GcpPubSubQueue | RedisQueue | AwsSqsQueue
 )
