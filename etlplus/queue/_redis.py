@@ -63,10 +63,10 @@ class RedisQueue(ProviderQueueConfigMixin):
 
     Attributes
     ----------
-    service : QueueService
-        Queue service, always ``'redis'``.
     name : str
         Queue metadata name.
+    service : QueueService
+        Queue service, always ``'redis'``.
     url : str | None
         Optional Redis URL.
     key : str | None
@@ -110,14 +110,16 @@ class RedisQueue(ProviderQueueConfigMixin):
         Self
             Parsed queue instance.
         """
+        optional_str_fields = cls._optional_str_fields(
+            obj,
+            'url',
+            'key',
+            aliases={'key': 'queue_name'},
+        )
         queue = cls(
             **cls._common_fields(obj, label='RedisQueue'),
-            **cls._optional_str_fields(
-                obj,
-                'url',
-                'key',
-                aliases={'key': 'queue_name'},
-            ),
+            url=optional_str_fields['url'],
+            key=optional_str_fields['key'],
             database=ValueParser.optional_int(
                 obj.get('database', obj.get('db')),
                 field_name='database',
