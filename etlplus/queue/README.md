@@ -42,7 +42,7 @@ in pipeline configuration.
 Use `ConnectorQueue` for connector-level metadata such as connector name, connector type, queue
 service, queue name, region, URL, and provider-specific options. Use
 `ConnectorQueue.to_queue_config()` when code needs a provider-specific queue metadata object such as
-`SqsQueue` or `AzureServiceBusQueue`.
+`AwsSqsQueue` or `AzureServiceBusQueue`.
 
 ## Public API
 
@@ -56,7 +56,7 @@ service, queue name, region, URL, and provider-specific options. Use
 - `QueueService`: Queue service enum with aliases for supported providers.
 - `QueueType`: Queue type enum for standard and FIFO queue semantics.
 - `RedisQueue`: Redis queue-like workflow metadata.
-- `SqsQueue`: AWS SQS queue metadata with standard and FIFO validation.
+- `AwsSqsQueue`: AWS SQS queue metadata with standard and FIFO validation.
 
 ## Supported Queue Services
 
@@ -79,11 +79,11 @@ consumes them:
 - `AzureServiceBusQueue` requires `queue_name` or `topic`; `subscription` also requires `topic`.
 - `GcpPubSubQueue` requires `project` plus `topic` or `subscription`.
 - `RedisQueue` rejects negative database numbers.
-- `SqsQueue` validates FIFO naming, FIFO-only metadata, and bounded SQS integer settings.
+- `AwsSqsQueue` validates FIFO naming, FIFO-only metadata, and bounded SQS integer settings.
 
 ## AWS SQS Metadata
 
-`SqsQueue` supports standard and FIFO queue metadata, including:
+`AwsSqsQueue` supports standard and FIFO queue metadata, including:
 
 - Queue name, URL, region, and queue type
 - Delay seconds, visibility timeout, wait time seconds, message retention, and maximum message count
