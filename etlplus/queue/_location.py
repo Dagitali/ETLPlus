@@ -35,10 +35,10 @@ class QueueLocation:
         Original location string.
     service : QueueService
         Normalized queue service.
-    authority : str
-        Optional service authority such as region, namespace, or host.
     path : str
         Queue path/name within the service.
+    authority : str
+        Optional service authority such as region, namespace, or host.
     """
 
     # -- Attributes -- #
