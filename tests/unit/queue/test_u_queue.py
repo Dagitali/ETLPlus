@@ -34,20 +34,20 @@ from etlplus.queue import RedisQueueConfigDict
 
 QUEUE_EXPORTS = [
     ('AmqpQueue', AmqpQueue),
+    ('AwsSqsQueue', AwsSqsQueue),
     ('AzureServiceBusQueue', AzureServiceBusQueue),
     ('GcpPubSubQueue', GcpPubSubQueue),
     ('QueueLocation', QueueLocation),
     ('RedisQueue', RedisQueue),
-    ('AwsSqsQueue', AwsSqsQueue),
     ('QueueService', QueueService),
     ('QueueType', QueueType),
     ('QueueConfigProtocol', QueueConfigProtocol),
     ('QueueConfig', QueueConfig),
     ('AmqpQueueConfigDict', AmqpQueueConfigDict),
+    ('AwsSqsQueueConfigDict', AwsSqsQueueConfigDict),
     ('AzureServiceBusQueueConfigDict', AzureServiceBusQueueConfigDict),
     ('GcpPubSubQueueConfigDict', GcpPubSubQueueConfigDict),
     ('RedisQueueConfigDict', RedisQueueConfigDict),
-    ('AwsSqsQueueConfigDict', AwsSqsQueueConfigDict),
 ]
 
 
