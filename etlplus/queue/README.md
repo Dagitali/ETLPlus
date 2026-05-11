@@ -70,6 +70,10 @@ service, queue name, region, URL, and provider-specific options. Use
 
 The aggregate `queue` and `queue-all` extras include all provider packages listed above.
 
+Canonical service values use hyphenated provider names, such as `aws-sqs` and `azure-service-bus`.
+Common aliases such as `sqs`, `amazon-sqs`, `aws_sqs`, `rabbitmq`, `redis-streams`, and `pubsub` are
+accepted by `QueueService.coerce()`.
+
 ## Provider Validation
 
 Queue config objects perform lightweight metadata validation before runtime integration code
@@ -151,26 +155,20 @@ assert queue.to_connector_options()['service'] == 'amqp'
 ### AWS SQS
 
 ```python
-from etlplus.connector import ConnectorQueue
+from etlplus.queue import AwsSqsQueue
 
-connector = ConnectorQueue.from_obj(
+queue = AwsSqsQueue.from_obj(
     {
-        'name': 'orders',
-        'type': 'queue',
-        'service': 'sqs',
-        'queue_name': 'orders.fifo',
+        'name': 'orders.fifo',
+        'queue_type': 'fifo',
         'region': 'us-east-1',
-        'options': {
-            'visibility_timeout': 30,
-            'message_group_id': 'orders',
-        },
+        'visibility_timeout': 30,
+        'message_group_id': 'orders',
     },
 )
 
-queue_config = connector.to_queue_config()
-
-assert queue_config.service.value == 'aws-sqs'
-assert queue_config.queue_type.value == 'fifo'
+assert queue.service.value == 'aws-sqs'
+assert queue.queue_type.value == 'fifo'
 ```
 
 ### Azure Service Bus
@@ -226,5 +224,9 @@ assert queue.to_connector_options()['service'] == 'redis'
 
 - Top-level CLI and library usage in the main [README](../../README.md)
 - Queue connector metadata in [`etlplus.connector._queue`](../connector/_queue.py)
+- AMQP/RabbitMQ metadata in [`_amqp.py`](_amqp.py)
 - Queue enums in [`_enums.py`](_enums.py)
 - AWS SQS metadata in [`_aws.py`](_aws.py)
+- Azure Service Bus metadata in [`_azure.py`](_azure.py)
+- Google Cloud Pub/Sub metadata in [`_gcp.py`](_gcp.py)
+- Redis metadata in [`_redis.py`](_redis.py)
