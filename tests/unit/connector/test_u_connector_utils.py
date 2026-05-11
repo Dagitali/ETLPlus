@@ -19,6 +19,7 @@ import etlplus.connector._utils as connector_utils
 from etlplus.connector import ConnectorApi
 from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorFile
+from etlplus.connector import ConnectorQueue
 
 from .pytest_connector_support import assert_connector_fields
 
@@ -111,6 +112,16 @@ class TestParseConnector:
                 ConnectorApi,
                 {'name': 'github', 'api': 'gh', 'endpoint': 'issues'},
                 id='api',
+            ),
+            pytest.param(
+                {
+                    'name': 'events',
+                    'type': 'sqs',
+                    'queue_name': 'events.fifo',
+                },
+                ConnectorQueue,
+                {'name': 'events', 'queue_name': 'events.fifo'},
+                id='queue',
             ),
         ],
     )
