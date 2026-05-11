@@ -9,8 +9,19 @@ from __future__ import annotations
 import pytest
 
 import etlplus.queue as queue_pkg
+from etlplus.queue import AmqpQueue
+from etlplus.queue import AmqpQueueConfigDict
+from etlplus.queue import AzureServiceBusQueue
+from etlplus.queue import AzureServiceBusQueueConfigDict
+from etlplus.queue import GcpPubSubQueue
+from etlplus.queue import GcpPubSubQueueConfigDict
+from etlplus.queue import QueueConfig
+from etlplus.queue import QueueConfigProtocol
+from etlplus.queue import QueueLocation
 from etlplus.queue import QueueService
 from etlplus.queue import QueueType
+from etlplus.queue import RedisQueue
+from etlplus.queue import RedisQueueConfigDict
 from etlplus.queue import SqsQueue
 from etlplus.queue import SqsQueueConfigDict
 
@@ -22,14 +33,115 @@ from etlplus.queue import SqsQueueConfigDict
 
 
 QUEUE_EXPORTS = [
+    ('AmqpQueue', AmqpQueue),
+    ('AzureServiceBusQueue', AzureServiceBusQueue),
+    ('GcpPubSubQueue', GcpPubSubQueue),
+    ('QueueLocation', QueueLocation),
+    ('RedisQueue', RedisQueue),
     ('SqsQueue', SqsQueue),
     ('QueueService', QueueService),
     ('QueueType', QueueType),
+    ('QueueConfigProtocol', QueueConfigProtocol),
+    ('QueueConfig', QueueConfig),
+    ('AmqpQueueConfigDict', AmqpQueueConfigDict),
+    ('AzureServiceBusQueueConfigDict', AzureServiceBusQueueConfigDict),
+    ('GcpPubSubQueueConfigDict', GcpPubSubQueueConfigDict),
+    ('RedisQueueConfigDict', RedisQueueConfigDict),
     ('SqsQueueConfigDict', SqsQueueConfigDict),
 ]
 
 
 # SECTION: TESTS ============================================================ #
+
+
+class TestProviderQueueConfigs:
+    """Unit tests for provider-specific queue config dataclasses."""
+
+    def test_amqp_queue_from_obj(self) -> None:
+        """Test AMQP queue metadata parsing."""
+        queue = AmqpQueue.from_obj(
+            {
+                'name': 'orders',
+                'url': 'amqp://guest:guest@localhost:5672/%2f',
+                'exchange': 'etlplus',
+                'routing_key': 'orders.created',
+                'options': {'durable': True},
+            },
+        )
+
+        assert queue.service is QueueService.AMQP
+        assert queue.to_connector_options() == {
+            'durable': True,
+            'service': 'amqp',
+            'url': 'amqp://guest:guest@localhost:5672/%2f',
+            'exchange': 'etlplus',
+            'routing_key': 'orders.created',
+        }
+
+    def test_azure_service_bus_queue_from_obj(self) -> None:
+        """Test Azure Service Bus queue metadata parsing."""
+        queue = AzureServiceBusQueue.from_obj(
+            {
+                'name': 'orders',
+                'namespace': 'example-bus',
+                'queue_name': 'orders-in',
+                'topic': 'orders-topic',
+                'subscription': 'etlplus',
+                'options': {'prefetch_count': 20},
+            },
+        )
+
+        assert queue.service is QueueService.AZURE_SERVICE_BUS
+        assert queue.to_connector_options() == {
+            'prefetch_count': 20,
+            'service': 'azure-service-bus',
+            'namespace': 'example-bus',
+            'queue_name': 'orders-in',
+            'topic': 'orders-topic',
+            'subscription': 'etlplus',
+        }
+
+    def test_gcp_pubsub_queue_from_obj(self) -> None:
+        """Test Google Cloud Pub/Sub queue metadata parsing."""
+        queue = GcpPubSubQueue.from_obj(
+            {
+                'name': 'orders',
+                'project': 'example-project',
+                'topic': 'orders-topic',
+                'subscription': 'etlplus',
+                'options': {'ack_deadline_seconds': 30},
+            },
+        )
+
+        assert queue.service is QueueService.GCP_PUBSUB
+        assert queue.to_connector_options() == {
+            'ack_deadline_seconds': 30,
+            'service': 'gcp-pubsub',
+            'project': 'example-project',
+            'topic': 'orders-topic',
+            'subscription': 'etlplus',
+        }
+
+    def test_redis_queue_from_obj(self) -> None:
+        """Test Redis queue metadata parsing."""
+        queue = RedisQueue.from_obj(
+            {
+                'name': 'orders',
+                'url': 'redis://localhost:6379/0',
+                'key': 'orders',
+                'database': '1',
+                'options': {'consumer_group': 'etlplus'},
+            },
+        )
+
+        assert queue.service is QueueService.REDIS
+        assert queue.to_connector_options() == {
+            'consumer_group': 'etlplus',
+            'service': 'redis',
+            'url': 'redis://localhost:6379/0',
+            'key': 'orders',
+            'database': 1,
+        }
 
 
 class TestQueueEnums:
@@ -99,6 +211,72 @@ class TestQueueEnums:
     ) -> None:
         """Test that queue type aliases coerce to expected enum members."""
         assert QueueType.coerce(value) is expected
+
+
+class TestQueueLocation:
+    """Unit tests for :class:`etlplus.queue.QueueLocation`."""
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(
+                'aws-sqs://us-east-1/events.fifo',
+                {
+                    'service': QueueService.AWS_SQS,
+                    'authority': 'us-east-1',
+                    'path': 'events.fifo',
+                },
+                id='aws-sqs',
+            ),
+            pytest.param(
+                'redis://localhost:6379/0/events',
+                {
+                    'service': QueueService.REDIS,
+                    'authority': 'localhost:6379',
+                    'path': '0/events',
+                },
+                id='redis',
+            ),
+            pytest.param(
+                'sqs://us-east-1/events',
+                {
+                    'service': QueueService.AWS_SQS,
+                    'authority': 'us-east-1',
+                    'path': 'events',
+                },
+                id='sqs-alias',
+            ),
+        ],
+    )
+    def test_from_value_parses_queue_uri(
+        self,
+        value: str,
+        expected: dict[str, object],
+    ) -> None:
+        """Test that queue URIs parse into normalized location parts."""
+        location = QueueLocation.from_value(value)
+
+        assert location.raw == value
+        assert location.service is expected['service']
+        assert location.authority == expected['authority']
+        assert location.path == expected['path']
+
+    @pytest.mark.parametrize(
+        ('value', 'match'),
+        [
+            pytest.param('', 'cannot be empty', id='empty'),
+            pytest.param('events', 'requires a service scheme', id='missing-scheme'),
+            pytest.param('aws-sqs://us-east-1', 'requires a queue path', id='no-path'),
+        ],
+    )
+    def test_from_value_rejects_invalid_queue_uri(
+        self,
+        value: str,
+        match: str,
+    ) -> None:
+        """Test that invalid queue URIs raise descriptive errors."""
+        with pytest.raises(ValueError, match=match):
+            QueueLocation.from_value(value)
 
 
 class TestQueuePackageExports:
