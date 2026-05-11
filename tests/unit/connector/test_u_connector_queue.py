@@ -115,6 +115,60 @@ class TestConnectorQueue:
             ConnectorQueue.from_obj(payload)
 
     @pytest.mark.parametrize(
+        ('payload', 'expected_options'),
+        [
+            pytest.param(
+                {
+                    'name': 'events',
+                    'type': 'queue',
+                    'service': 'aws-sqs',
+                    'queue_name': 'events',
+                    'url': 'https://sqs.us-east-1.amazonaws.com/123/events',
+                    'region': 'us-east-1',
+                    'options': {
+                        'queue_name': 'stale',
+                        'url': 'stale',
+                        'region': 'stale',
+                    },
+                },
+                {
+                    'service': 'aws-sqs',
+                    'queue_type': 'standard',
+                    'queue_name': 'events',
+                    'url': 'https://sqs.us-east-1.amazonaws.com/123/events',
+                    'region': 'us-east-1',
+                },
+                id='top-level-overrides-options',
+            ),
+            pytest.param(
+                {
+                    'name': 'rabbit',
+                    'type': 'queue',
+                    'service': 'amqp',
+                    'options': {
+                        'url': 'amqp://guest:guest@localhost:5672/%2f',
+                    },
+                },
+                {
+                    'service': 'amqp',
+                    'url': 'amqp://guest:guest@localhost:5672/%2f',
+                },
+                id='missing-top-level-preserves-options',
+            ),
+        ],
+    )
+    def test_to_queue_config_field_precedence(
+        self,
+        payload: dict[str, object],
+        expected_options: dict[str, object],
+    ) -> None:
+        """Test queue config conversion field precedence rules."""
+        assert (
+            ConnectorQueue.from_obj(payload).to_queue_config().to_connector_options()
+            == expected_options
+        )
+
+    @pytest.mark.parametrize(
         ('payload', 'expected_cls', 'expected_options'),
         [
             pytest.param(
