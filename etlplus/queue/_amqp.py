@@ -13,12 +13,10 @@ from typing import ClassVar
 from typing import Self
 from typing import TypedDict
 
-from ..utils import MappingFieldParser
-from ..utils import MappingParser
 from ..utils import ValueParser
 from ..utils._types import StrAnyMap
+from ._base import ProviderQueueConfigMixin
 from ._enums import QueueService
-from ._providers import ProviderQueueConfigMixin
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -127,13 +125,12 @@ class AmqpQueue(ProviderQueueConfigMixin):
             Parsed queue instance.
         """
         queue = cls(
-            name=MappingFieldParser.require_str(obj, 'name', label='AmqpQueue'),
+            **cls._common_fields(obj, label='AmqpQueue'),
             url=ValueParser.optional_str(obj.get('url')),
             host=ValueParser.optional_str(obj.get('host')),
             virtual_host=ValueParser.optional_str(obj.get('virtual_host')),
             exchange=ValueParser.optional_str(obj.get('exchange')),
             routing_key=ValueParser.optional_str(obj.get('routing_key')),
-            options=MappingParser.to_dict(obj.get('options')),
         )
         queue.validate()
         return queue
