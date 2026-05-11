@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
+from typing import ClassVar
 from typing import Self
 from typing import TypedDict
 
@@ -80,12 +81,88 @@ class RedisQueueConfigDict(TypedDict, total=False):
     options: StrAnyMap
 
 
+# SECTION: MIXINS =========================================================== #
+
+
+class ProviderQueueConfigMixin:
+    """Shared behavior for provider-specific queue config objects."""
+
+    # -- Dunder Instance Attributes -- #
+
+    __slots__ = ()
+
+    # -- Instance Attributes -- #
+
+    service: QueueService
+    options: dict[str, Any]
+
+    # --Internal Instance Attributes -- #
+
+    _option_fields: ClassVar[tuple[str, ...]] = ()
+
+    # -- Instance Methods -- #
+
+    def to_connector_options(self) -> dict[str, Any]:
+        """
+        Return a connector-friendly options mapping.
+
+        Returns
+        -------
+        dict[str, Any]
+            Queue metadata represented as a plain dictionary.
+        """
+        data = {**self.options, 'service': self.service.value}
+        for field_name in self._option_fields:
+            value = getattr(self, field_name)
+            if value is not None:
+                data[field_name] = value
+        return data
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _optional_int(value: object, *, field_name: str, label: str) -> int | None:
+    """
+    Return one optional integer value.
+
+    Parameters
+    ----------
+    value : object
+        Input value.
+    field_name : str
+        Field name used in validation errors.
+    label : str
+        Human-readable payload label used in validation errors.
+
+    Returns
+    -------
+    int | None
+        Parsed integer value, or ``None`` when absent.
+
+    Raises
+    ------
+    TypeError
+        If the value cannot be parsed as an integer.
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise TypeError(f'{label} "{field_name}" must be an integer')
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise TypeError(f'{label} "{field_name}" must be an integer') from exc
+
+
 # SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(kw_only=True, slots=True)
-class AzureServiceBusQueue:
+class AzureServiceBusQueue(ProviderQueueConfigMixin):
     """Configuration metadata for Azure Service Bus queues/subscriptions."""
+
+    # -- Instance Attributes -- #
 
     name: str
     service: QueueService = QueueService.AZURE_SERVICE_BUS
@@ -95,16 +172,26 @@ class AzureServiceBusQueue:
     subscription: str | None = None
     options: dict[str, Any] = field(default_factory=dict)
 
+    # -- Class Attributes -- #
+
+    _option_fields: ClassVar[tuple[str, ...]] = (
+        'namespace',
+        'queue_name',
+        'topic',
+        'subscription',
+    )
+
+    # -- Class Methods -- #
+
     @classmethod
     def from_obj(cls, obj: StrAnyMap) -> Self:
         """Parse a mapping into an ``AzureServiceBusQueue`` instance."""
-        name = MappingFieldParser.require_str(
-            obj,
-            'name',
-            label='AzureServiceBusQueue',
-        )
         return cls(
-            name=name,
+            name=MappingFieldParser.require_str(
+                obj,
+                'name',
+                label='AzureServiceBusQueue',
+            ),
             namespace=ValueParser.optional_str(obj.get('namespace')),
             queue_name=ValueParser.optional_str(
                 obj.get('queue_name', obj.get('queue')),
@@ -114,21 +201,12 @@ class AzureServiceBusQueue:
             options=MappingParser.to_dict(obj.get('options')),
         )
 
-    def to_connector_options(self) -> dict[str, Any]:
-        """Return a connector-friendly options mapping."""
-        return _options_with_fields(
-            self.options,
-            service=self.service.value,
-            namespace=self.namespace,
-            queue_name=self.queue_name,
-            topic=self.topic,
-            subscription=self.subscription,
-        )
-
 
 @dataclass(kw_only=True, slots=True)
-class GcpPubSubQueue:
+class GcpPubSubQueue(ProviderQueueConfigMixin):
     """Configuration metadata for Google Cloud Pub/Sub topics/subscriptions."""
+
+    # -- Instance Attributes -- #
 
     name: str
     service: QueueService = QueueService.GCP_PUBSUB
@@ -137,31 +215,30 @@ class GcpPubSubQueue:
     subscription: str | None = None
     options: dict[str, Any] = field(default_factory=dict)
 
+    # -- Internal Class Attributes -- #
+
+    _option_fields: ClassVar[tuple[str, ...]] = (
+        'project',
+        'topic',
+        'subscription',
+    )
+
+    # -- Class Methods -- #
+
     @classmethod
     def from_obj(cls, obj: StrAnyMap) -> Self:
         """Parse a mapping into a ``GcpPubSubQueue`` instance."""
-        name = MappingFieldParser.require_str(obj, 'name', label='GcpPubSubQueue')
         return cls(
-            name=name,
+            name=MappingFieldParser.require_str(obj, 'name', label='GcpPubSubQueue'),
             project=ValueParser.optional_str(obj.get('project')),
             topic=ValueParser.optional_str(obj.get('topic')),
             subscription=ValueParser.optional_str(obj.get('subscription')),
             options=MappingParser.to_dict(obj.get('options')),
         )
 
-    def to_connector_options(self) -> dict[str, Any]:
-        """Return a connector-friendly options mapping."""
-        return _options_with_fields(
-            self.options,
-            service=self.service.value,
-            project=self.project,
-            topic=self.topic,
-            subscription=self.subscription,
-        )
-
 
 @dataclass(kw_only=True, slots=True)
-class AmqpQueue:
+class AmqpQueue(ProviderQueueConfigMixin):
     """Configuration metadata for AMQP/RabbitMQ queues."""
 
     name: str
@@ -173,12 +250,23 @@ class AmqpQueue:
     routing_key: str | None = None
     options: dict[str, Any] = field(default_factory=dict)
 
+    # -- Internal Class Attributes -- #
+
+    _option_fields: ClassVar[tuple[str, ...]] = (
+        'url',
+        'host',
+        'virtual_host',
+        'exchange',
+        'routing_key',
+    )
+
+    # -- Class Methods -- #
+
     @classmethod
     def from_obj(cls, obj: StrAnyMap) -> Self:
         """Parse a mapping into an ``AmqpQueue`` instance."""
-        name = MappingFieldParser.require_str(obj, 'name', label='AmqpQueue')
         return cls(
-            name=name,
+            name=MappingFieldParser.require_str(obj, 'name', label='AmqpQueue'),
             url=ValueParser.optional_str(obj.get('url')),
             host=ValueParser.optional_str(obj.get('host')),
             virtual_host=ValueParser.optional_str(obj.get('virtual_host')),
@@ -187,22 +275,12 @@ class AmqpQueue:
             options=MappingParser.to_dict(obj.get('options')),
         )
 
-    def to_connector_options(self) -> dict[str, Any]:
-        """Return a connector-friendly options mapping."""
-        return _options_with_fields(
-            self.options,
-            service=self.service.value,
-            url=self.url,
-            host=self.host,
-            virtual_host=self.virtual_host,
-            exchange=self.exchange,
-            routing_key=self.routing_key,
-        )
-
 
 @dataclass(kw_only=True, slots=True)
-class RedisQueue:
+class RedisQueue(ProviderQueueConfigMixin):
     """Configuration metadata for Redis queue-like workflows."""
+
+    # -- Instance Attributes -- #
 
     name: str
     service: QueueService = QueueService.REDIS
@@ -211,40 +289,23 @@ class RedisQueue:
     database: int | None = None
     options: dict[str, Any] = field(default_factory=dict)
 
+    # -- Internal Class Attributes -- #
+
+    _option_fields: ClassVar[tuple[str, ...]] = ('url', 'key', 'database')
+
+    # -- Class Methods -- #
+
     @classmethod
     def from_obj(cls, obj: StrAnyMap) -> Self:
         """Parse a mapping into a ``RedisQueue`` instance."""
-        name = MappingFieldParser.require_str(obj, 'name', label='RedisQueue')
-        database = obj.get('database', obj.get('db'))
         return cls(
-            name=name,
+            name=MappingFieldParser.require_str(obj, 'name', label='RedisQueue'),
             url=ValueParser.optional_str(obj.get('url')),
             key=ValueParser.optional_str(obj.get('key', obj.get('queue_name'))),
-            database=None if database is None else int(database),
+            database=_optional_int(
+                obj.get('database', obj.get('db')),
+                field_name='database',
+                label='RedisQueue',
+            ),
             options=MappingParser.to_dict(obj.get('options')),
         )
-
-    def to_connector_options(self) -> dict[str, Any]:
-        """Return a connector-friendly options mapping."""
-        return _options_with_fields(
-            self.options,
-            service=self.service.value,
-            url=self.url,
-            key=self.key,
-            database=self.database,
-        )
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _options_with_fields(
-    options: dict[str, Any],
-    **fields: Any,
-) -> dict[str, Any]:
-    """Return options merged with non-empty metadata fields."""
-    data = dict(options)
-    for key, value in fields.items():
-        if value is not None:
-            data[key] = value
-    return data
