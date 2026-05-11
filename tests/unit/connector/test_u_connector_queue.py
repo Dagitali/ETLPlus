@@ -53,7 +53,7 @@ class TestConnectorQueue:
                 {
                     'type': DataConnectorType.QUEUE,
                     'name': 'events_queue',
-                    'service': QueueService.SQS,
+                    'service': QueueService.AWS_SQS,
                     'queue_type': QueueType.STANDARD,
                     'queue_name': 'events',
                     'url': 'https://sqs.us-east-1.amazonaws.com/123/events',
@@ -73,7 +73,7 @@ class TestConnectorQueue:
                 {
                     'type': DataConnectorType.QUEUE,
                     'name': 'fifo_events',
-                    'service': QueueService.SQS,
+                    'service': QueueService.AWS_SQS,
                     'queue_type': QueueType.FIFO,
                     'queue_name': 'events.fifo',
                     'url': None,
