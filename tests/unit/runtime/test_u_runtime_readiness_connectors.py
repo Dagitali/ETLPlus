@@ -441,16 +441,67 @@ class TestReadinessReportBuilderConnectors:
             ),
         ]
 
-    def test_missing_requirement_rows_report_sqs_queue_dependency(
+    @pytest.mark.parametrize(
+        ('service', 'expected_service', 'missing_module', 'extra', 'package'),
+        [
+            pytest.param(
+                'aws-sqs',
+                'aws-sqs',
+                'boto3',
+                'queue',
+                'boto3',
+                id='aws-sqs',
+            ),
+            pytest.param(
+                'sqs',
+                'aws-sqs',
+                'boto3',
+                'queue',
+                'boto3',
+                id='sqs-alias',
+            ),
+            pytest.param('amqp', 'amqp', 'pika', 'queue-amqp', 'pika', id='amqp'),
+            pytest.param(
+                'azure-service-bus',
+                'azure-service-bus',
+                'azure.servicebus',
+                'queue-azure',
+                'azure-servicebus',
+                id='azure-service-bus',
+            ),
+            pytest.param(
+                'gcp-pubsub',
+                'gcp-pubsub',
+                'google.cloud.pubsub',
+                'queue-gcp',
+                'google-cloud-pubsub',
+                id='gcp-pubsub',
+            ),
+            pytest.param(
+                'redis',
+                'redis',
+                'redis',
+                'queue-redis',
+                'redis',
+                id='redis',
+            ),
+        ],
+    )
+    def test_missing_requirement_rows_report_queue_service_dependencies(
         self,
+        service: str,
+        expected_service: str,
+        missing_module: str,
+        extra: str,
+        package: str,
     ) -> None:
-        """Test that SQS queue connectors require the queue extra dependency."""
+        """Test that queue connectors require provider-specific dependencies."""
         cfg = _cfg(
             sources=[
                 SimpleNamespace(
                     name='events',
                     queue_name='events',
-                    service='sqs',
+                    service=service,
                     type='queue',
                 ),
             ],
@@ -459,21 +510,22 @@ class TestReadinessReportBuilderConnectors:
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
                 cfg=cast(Any, cfg),
-                package_available=lambda module_name: module_name != 'boto3',
+                package_available=lambda module_name: module_name != missing_module,
             )
         )
 
         assert rows == [
             _missing_requirement(
                 connector='events',
-                detected_queue_service='sqs',
-                extra='queue',
+                detected_queue_service=expected_service,
+                extra=extra,
                 guidance=(
-                    'Install boto3 directly or install the ETLPlus "queue" '
-                    'extra. Required for "sqs" queue connectors.'
+                    f'Install {package} directly or install the ETLPlus '
+                    f'"{extra}" extra. Required for "{expected_service}" '
+                    'queue connectors.'
                 ),
-                missing_package='boto3',
-                reason='sqs queue connector requires boto3',
+                missing_package=package,
+                reason=f'{expected_service} queue connector requires {package}',
                 role='source',
             ),
         ]
