@@ -6,6 +6,7 @@ Shared queue configuration protocols.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 from typing import ClassVar
 from typing import Protocol
@@ -13,6 +14,7 @@ from typing import runtime_checkable
 
 from ..utils import MappingFieldParser
 from ..utils import MappingParser
+from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ._enums import QueueService
 
@@ -83,6 +85,37 @@ class ProviderQueueConfigMixin:
         return {
             'name': MappingFieldParser.require_str(obj, 'name', label=label),
             options_field: MappingParser.to_dict(obj.get(options_key)),
+        }
+
+    @staticmethod
+    def _optional_str_fields(
+        obj: StrAnyMap,
+        *field_names: str,
+        aliases: Mapping[str, str] | None = None,
+    ) -> dict[str, str | None]:
+        """
+        Return parsed optional string constructor fields.
+
+        Parameters
+        ----------
+        obj : StrAnyMap
+            Input mapping with optional string-like fields.
+        *field_names : str
+            Constructor and preferred input field names to parse.
+        aliases : Mapping[str, str] | None, optional
+            Mapping of constructor field names to fallback input field names.
+
+        Returns
+        -------
+        dict[str, str | None]
+            Parsed optional string fields keyed by constructor field name.
+        """
+        aliases = aliases or {}
+        return {
+            field_name: ValueParser.optional_str(
+                obj.get(field_name, obj.get(aliases.get(field_name, field_name))),
+            )
+            for field_name in field_names
         }
 
     # -- Internal Instance Methods -- #
