@@ -29,6 +29,7 @@ class DataConnectorType(CoercibleStrEnum):
     API = 'api'
     DATABASE = 'database'
     FILE = 'file'
+    QUEUE = 'queue'
 
     # -- Class Methods -- #
 
@@ -49,4 +50,7 @@ class DataConnectorType(CoercibleStrEnum):
             'db': 'database',
             'filesystem': 'file',
             'fs': 'file',
+            'message-queue': 'queue',
+            'mq': 'queue',
+            'sqs': 'queue',
         }
