@@ -9,6 +9,7 @@ from __future__ import annotations
 import pytest
 
 from etlplus.queue import AwsSqsQueue
+from etlplus.queue import QueueConfigProtocol
 from etlplus.queue import QueueService
 from etlplus.queue import QueueType
 
@@ -62,6 +63,7 @@ class TestAwsSqsQueue:
         )
 
         assert connector.service is QueueService.AWS_SQS
+        assert isinstance(connector, QueueConfigProtocol)
         assert connector.queue_type is expected_type
         assert connector.url == '123'
         assert connector.arn == 'False'
