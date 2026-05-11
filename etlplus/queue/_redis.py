@@ -34,13 +34,25 @@ __all__ = [
 
 
 class RedisQueueConfigDict(TypedDict, total=False):
-    """Shape accepted by :meth:`RedisQueue.from_obj`."""
+    """
+    Shape accepted by :meth:`RedisQueue.from_obj` (all keys optional).
+
+    See Also
+    --------
+    - :meth:`etlplus.queue.RedisQueue.from_obj`
+    """
 
     name: str
     url: str
     key: str
     database: int
     options: StrAnyMap
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_REDIS_OPTION_FIELDS = ('url', 'key', 'database')
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -61,13 +73,28 @@ class RedisQueue(ProviderQueueConfigMixin):
 
     # -- Internal Class Attributes -- #
 
-    _option_fields: ClassVar[tuple[str, ...]] = ('url', 'key', 'database')
+    _option_fields: ClassVar[tuple[str, ...]] = _REDIS_OPTION_FIELDS
 
     # -- Class Methods -- #
 
     @classmethod
-    def from_obj(cls, obj: StrAnyMap) -> Self:
-        """Parse a mapping into a ``RedisQueue`` instance."""
+    def from_obj(
+        cls,
+        obj: StrAnyMap,
+    ) -> Self:
+        """
+        Parse a mapping into a ``RedisQueue`` instance.
+
+        Parameters
+        ----------
+        obj : StrAnyMap
+            Mapping with at least ``name``.
+
+        Returns
+        -------
+        Self
+            Parsed queue instance.
+        """
         queue = cls(
             name=MappingFieldParser.require_str(obj, 'name', label='RedisQueue'),
             url=ValueParser.optional_str(obj.get('url')),
