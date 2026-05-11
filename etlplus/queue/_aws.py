@@ -76,6 +76,9 @@ _AWS_SQS_FIFO_FIELDS = (
 )
 
 _AWS_SQS_OPTION_FIELDS = (
+    'url',
+    'arn',
+    'region',
     *_AWS_SQS_INTEGER_RANGES,
     'content_based_deduplication',
     'dead_letter_queue_arn',
@@ -151,6 +154,7 @@ class AwsSqsQueue(ProviderQueueConfigMixin):
 
     _integer_ranges: ClassVar[dict[str, tuple[int, int]]] = _AWS_SQS_INTEGER_RANGES
     _fifo_fields: ClassVar[tuple[str, ...]] = _AWS_SQS_FIFO_FIELDS
+    _options_attr: ClassVar[str] = 'attributes'
     _option_fields: ClassVar[tuple[str, ...]] = _AWS_SQS_OPTION_FIELDS
 
     # -- Class Methods -- #
@@ -230,36 +234,24 @@ class AwsSqsQueue(ProviderQueueConfigMixin):
         """Return whether this queue uses standard SQS semantics."""
         return self.queue_type is QueueType.STANDARD
 
-    # -- Instance Methods -- #
+    # -- Internal Instance Methods -- #
 
-    def to_connector_options(self) -> dict[str, Any]:
+    def _base_connector_options(self) -> dict[str, Any]:
         """
-        Return a connector-friendly options mapping for this queue.
+        Return AWS SQS base connector options.
 
         Returns
         -------
         dict[str, Any]
-            Queue metadata represented as a plain dictionary.
+            Base connector option fields.
         """
-        data: dict[str, Any] = dict(self.attributes)
-        data.update(
-            {
-                'service': self.service.value,
-                'queue_type': self.queue_type.value,
-                'queue_name': self.name,
-            },
-        )
-        if self.url is not None:
-            data['url'] = self.url
-        if self.arn is not None:
-            data['arn'] = self.arn
-        if self.region is not None:
-            data['region'] = self.region
-        for field_name in self._option_fields:
-            value = getattr(self, field_name)
-            if value is not None:
-                data[field_name] = value
-        return data
+        return {
+            'service': self.service.value,
+            'queue_type': self.queue_type.value,
+            'queue_name': self.name,
+        }
+
+    # -- Instance Methods -- #
 
     def validate(self) -> None:
         """
@@ -270,9 +262,9 @@ class AwsSqsQueue(ProviderQueueConfigMixin):
         ValueError
             If queue metadata violates SQS naming, range, or FIFO constraints.
         """
-        if self.is_fifo and not self.name.endswith('.fifo'):
+        if self.queue_type is QueueType.FIFO and not self.name.endswith('.fifo'):
             raise ValueError('SQS FIFO queue names must end with ".fifo"')
-        if self.is_standard and any(
+        if self.queue_type is QueueType.STANDARD and any(
             getattr(self, field_name) is not None for field_name in self._fifo_fields
         ):
             raise ValueError(
