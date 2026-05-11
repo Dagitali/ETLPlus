@@ -227,4 +227,4 @@ assert queue.to_connector_options()['service'] == 'redis'
 - Top-level CLI and library usage in the main [README](../../README.md)
 - Queue connector metadata in [`etlplus.connector._queue`](../connector/_queue.py)
 - Queue enums in [`_enums.py`](_enums.py)
-- AWS SQS metadata in [`_sqs.py`](_sqs.py)
+- AWS SQS metadata in [`_aws.py`](_aws.py)
