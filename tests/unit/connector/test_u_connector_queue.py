@@ -10,8 +10,11 @@ import pytest
 
 from etlplus.connector._enums import DataConnectorType
 from etlplus.connector._queue import ConnectorQueue
+from etlplus.queue import AzureServiceBusQueue
+from etlplus.queue import GcpPubSubQueue
 from etlplus.queue import QueueService
 from etlplus.queue import QueueType
+from etlplus.queue import SqsQueue
 
 from .pytest_connector_support import assert_connector_fields
 
@@ -108,3 +111,73 @@ class TestConnectorQueue:
         """Test that :meth:`from_obj` rejects missing or invalid names."""
         with pytest.raises(TypeError, match='ConnectorQueue requires a "name"'):
             ConnectorQueue.from_obj(payload)
+
+    @pytest.mark.parametrize(
+        ('payload', 'expected_cls', 'expected_options'),
+        [
+            pytest.param(
+                {
+                    'name': 'events',
+                    'type': 'queue',
+                    'service': 'aws-sqs',
+                    'queue_name': 'events.fifo',
+                    'region': 'us-east-1',
+                    'options': {'visibility_timeout': 30},
+                },
+                SqsQueue,
+                {
+                    'service': 'aws-sqs',
+                    'queue_type': 'fifo',
+                    'queue_name': 'events.fifo',
+                    'region': 'us-east-1',
+                    'visibility_timeout': 30,
+                },
+                id='aws-sqs',
+            ),
+            pytest.param(
+                {
+                    'name': 'servicebus',
+                    'type': 'queue',
+                    'service': 'azure-service-bus',
+                    'queue_name': 'orders',
+                    'options': {'namespace': 'example-bus'},
+                },
+                AzureServiceBusQueue,
+                {
+                    'service': 'azure-service-bus',
+                    'namespace': 'example-bus',
+                    'queue_name': 'orders',
+                },
+                id='azure-service-bus',
+            ),
+            pytest.param(
+                {
+                    'name': 'pubsub',
+                    'type': 'queue',
+                    'service': 'gcp-pubsub',
+                    'options': {
+                        'project': 'example-project',
+                        'subscription': 'etlplus',
+                    },
+                },
+                GcpPubSubQueue,
+                {
+                    'service': 'gcp-pubsub',
+                    'project': 'example-project',
+                    'subscription': 'etlplus',
+                },
+                id='gcp-pubsub',
+            ),
+        ],
+    )
+    def test_to_queue_config_returns_provider_specific_config(
+        self,
+        payload: dict[str, object],
+        expected_cls: type[object],
+        expected_options: dict[str, object],
+    ) -> None:
+        """Test conversion into provider-specific queue config objects."""
+        queue_config = ConnectorQueue.from_obj(payload).to_queue_config()
+
+        assert isinstance(queue_config, expected_cls)
+        assert queue_config.to_connector_options() == expected_options
