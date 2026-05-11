@@ -262,9 +262,9 @@ class AwsSqsQueue(ProviderQueueConfigMixin):
         ValueError
             If queue metadata violates SQS naming, range, or FIFO constraints.
         """
-        if self.queue_type is QueueType.FIFO and not self.name.endswith('.fifo'):
+        if self.is_fifo and not self.name.endswith('.fifo'):
             raise ValueError('SQS FIFO queue names must end with ".fifo"')
-        if self.queue_type is QueueType.STANDARD and any(
+        if self.is_standard and any(
             getattr(self, field_name) is not None for field_name in self._fifo_fields
         ):
             raise ValueError(
