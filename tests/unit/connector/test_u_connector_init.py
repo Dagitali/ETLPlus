@@ -19,6 +19,8 @@ from etlplus.connector._database import ConnectorDbConfigDict
 from etlplus.connector._enums import DataConnectorType
 from etlplus.connector._file import ConnectorFile
 from etlplus.connector._file import ConnectorFileConfigDict
+from etlplus.connector._queue import ConnectorQueue
+from etlplus.connector._queue import ConnectorQueueConfigDict
 from etlplus.connector._types import ConnectorType
 from etlplus.connector._utils import parse_connector
 
@@ -32,6 +34,7 @@ CONNECTOR_EXPORTS = [
     ('ConnectorApi', ConnectorApi),
     ('ConnectorDb', ConnectorDb),
     ('ConnectorFile', ConnectorFile),
+    ('ConnectorQueue', ConnectorQueue),
     ('DataConnectorType', DataConnectorType),
     ('parse_connector', parse_connector),
     ('Connector', Connector),
@@ -41,6 +44,7 @@ CONNECTOR_EXPORTS = [
     ('ConnectorApiConfigDict', ConnectorApiConfigDict),
     ('ConnectorDbConfigDict', ConnectorDbConfigDict),
     ('ConnectorFileConfigDict', ConnectorFileConfigDict),
+    ('ConnectorQueueConfigDict', ConnectorQueueConfigDict),
 ]
 
 # SECTION: TESTS ============================================================ #
