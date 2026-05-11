@@ -71,6 +71,8 @@ class ProviderQueueConfigMixin:
         obj: StrAnyMap,
         *,
         label: str,
+        options_field: str = 'options',
+        options_key: str = 'options',
     ) -> dict[str, Any]:
         """
         Return shared provider queue config constructor fields.
@@ -81,11 +83,15 @@ class ProviderQueueConfigMixin:
             Mapping with at least ``name`` and optional ``options``.
         label : str
             Human-readable payload label used in validation errors.
+        options_field : str, optional
+            Constructor field name that receives parsed provider options.
+        options_key : str, optional
+            Input mapping key that contains provider options.
 
         Returns
         -------
         dict[str, Any]
-            Parsed ``name`` and provider-specific ``options`` fields.
+            Parsed ``name`` and provider-specific options fields.
 
         Raises
         ------
@@ -94,7 +100,7 @@ class ProviderQueueConfigMixin:
         """
         return {
             'name': MappingFieldParser.require_str(obj, 'name', label=label),
-            'options': MappingParser.to_dict(obj.get('options')),
+            options_field: MappingParser.to_dict(obj.get(options_key)),
         }
 
 
