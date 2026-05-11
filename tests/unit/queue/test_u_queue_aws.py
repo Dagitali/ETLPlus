@@ -81,6 +81,25 @@ class TestAwsSqsQueue:
         with pytest.raises(TypeError, match='AwsSqsQueue requires a "name"'):
             AwsSqsQueue.from_obj({'queue_type': 'fifo'})
 
+    @pytest.mark.parametrize(
+        ('payload', 'expected_fifo', 'expected_standard'),
+        [
+            pytest.param({'name': 'events'}, False, True, id='standard'),
+            pytest.param({'name': 'events.fifo'}, True, False, id='fifo'),
+        ],
+    )
+    def test_queue_type_getters(
+        self,
+        payload: dict[str, object],
+        expected_fifo: bool,
+        expected_standard: bool,
+    ) -> None:
+        """Test that queue type getters expose normalized SQS semantics."""
+        queue = AwsSqsQueue.from_obj(payload)
+
+        assert queue.is_fifo is expected_fifo
+        assert queue.is_standard is expected_standard
+
     def test_from_obj_rejects_boolean_integer_metadata(self) -> None:
         """Test that boolean values are not accepted as integer metadata."""
         with pytest.raises(TypeError, match='"visibility_timeout" must be an integer'):
