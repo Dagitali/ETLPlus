@@ -57,91 +57,111 @@ QUEUE_EXPORTS = [
 class TestProviderQueueConfigs:
     """Unit tests for provider-specific queue config dataclasses."""
 
-    def test_amqp_queue_from_obj(self) -> None:
-        """Test AMQP queue metadata parsing."""
-        queue = AmqpQueue.from_obj(
-            {
-                'name': 'orders',
-                'url': 'amqp://guest:guest@localhost:5672/%2f',
-                'exchange': 'etlplus',
-                'routing_key': 'orders.created',
-                'options': {'durable': True},
-            },
-        )
+    @pytest.mark.parametrize(
+        ('queue_cls', 'payload', 'expected_service', 'expected_options'),
+        [
+            pytest.param(
+                AmqpQueue,
+                {
+                    'name': 'orders',
+                    'url': 'amqp://guest:guest@localhost:5672/%2f',
+                    'exchange': 'etlplus',
+                    'routing_key': 'orders.created',
+                    'options': {'durable': True},
+                },
+                QueueService.AMQP,
+                {
+                    'durable': True,
+                    'service': 'amqp',
+                    'url': 'amqp://guest:guest@localhost:5672/%2f',
+                    'exchange': 'etlplus',
+                    'routing_key': 'orders.created',
+                },
+                id='amqp',
+            ),
+            pytest.param(
+                AzureServiceBusQueue,
+                {
+                    'name': 'orders',
+                    'namespace': 'example-bus',
+                    'queue_name': 'orders-in',
+                    'topic': 'orders-topic',
+                    'subscription': 'etlplus',
+                    'options': {'prefetch_count': 20},
+                },
+                QueueService.AZURE_SERVICE_BUS,
+                {
+                    'prefetch_count': 20,
+                    'service': 'azure-service-bus',
+                    'namespace': 'example-bus',
+                    'queue_name': 'orders-in',
+                    'topic': 'orders-topic',
+                    'subscription': 'etlplus',
+                },
+                id='azure-service-bus',
+            ),
+            pytest.param(
+                GcpPubSubQueue,
+                {
+                    'name': 'orders',
+                    'project': 'example-project',
+                    'topic': 'orders-topic',
+                    'subscription': 'etlplus',
+                    'options': {'ack_deadline_seconds': 30},
+                },
+                QueueService.GCP_PUBSUB,
+                {
+                    'ack_deadline_seconds': 30,
+                    'service': 'gcp-pubsub',
+                    'project': 'example-project',
+                    'topic': 'orders-topic',
+                    'subscription': 'etlplus',
+                },
+                id='gcp-pubsub',
+            ),
+            pytest.param(
+                RedisQueue,
+                {
+                    'name': 'orders',
+                    'url': 'redis://localhost:6379/0',
+                    'key': 'orders',
+                    'database': '1',
+                    'options': {'consumer_group': 'etlplus'},
+                },
+                QueueService.REDIS,
+                {
+                    'consumer_group': 'etlplus',
+                    'service': 'redis',
+                    'url': 'redis://localhost:6379/0',
+                    'key': 'orders',
+                    'database': 1,
+                },
+                id='redis',
+            ),
+        ],
+    )
+    def test_from_obj_returns_connector_options(
+        self,
+        queue_cls: type[AmqpQueue | AzureServiceBusQueue | GcpPubSubQueue | RedisQueue],
+        payload: dict[str, object],
+        expected_service: QueueService,
+        expected_options: dict[str, object],
+    ) -> None:
+        """Test provider queue metadata parsing and option serialization."""
+        queue = queue_cls.from_obj(payload)
 
-        assert queue.service is QueueService.AMQP
-        assert queue.to_connector_options() == {
-            'durable': True,
-            'service': 'amqp',
-            'url': 'amqp://guest:guest@localhost:5672/%2f',
-            'exchange': 'etlplus',
-            'routing_key': 'orders.created',
-        }
+        assert queue.service is expected_service
+        assert queue.to_connector_options() == expected_options
 
-    def test_azure_service_bus_queue_from_obj(self) -> None:
-        """Test Azure Service Bus queue metadata parsing."""
-        queue = AzureServiceBusQueue.from_obj(
-            {
-                'name': 'orders',
-                'namespace': 'example-bus',
-                'queue_name': 'orders-in',
-                'topic': 'orders-topic',
-                'subscription': 'etlplus',
-                'options': {'prefetch_count': 20},
-            },
-        )
+    def test_redis_queue_accepts_missing_database(self) -> None:
+        """Test Redis database metadata is optional."""
+        assert RedisQueue.from_obj({'name': 'orders'}).database is None
 
-        assert queue.service is QueueService.AZURE_SERVICE_BUS
-        assert queue.to_connector_options() == {
-            'prefetch_count': 20,
-            'service': 'azure-service-bus',
-            'namespace': 'example-bus',
-            'queue_name': 'orders-in',
-            'topic': 'orders-topic',
-            'subscription': 'etlplus',
-        }
-
-    def test_gcp_pubsub_queue_from_obj(self) -> None:
-        """Test Google Cloud Pub/Sub queue metadata parsing."""
-        queue = GcpPubSubQueue.from_obj(
-            {
-                'name': 'orders',
-                'project': 'example-project',
-                'topic': 'orders-topic',
-                'subscription': 'etlplus',
-                'options': {'ack_deadline_seconds': 30},
-            },
-        )
-
-        assert queue.service is QueueService.GCP_PUBSUB
-        assert queue.to_connector_options() == {
-            'ack_deadline_seconds': 30,
-            'service': 'gcp-pubsub',
-            'project': 'example-project',
-            'topic': 'orders-topic',
-            'subscription': 'etlplus',
-        }
-
-    def test_redis_queue_from_obj(self) -> None:
-        """Test Redis queue metadata parsing."""
-        queue = RedisQueue.from_obj(
-            {
-                'name': 'orders',
-                'url': 'redis://localhost:6379/0',
-                'key': 'orders',
-                'database': '1',
-                'options': {'consumer_group': 'etlplus'},
-            },
-        )
-
-        assert queue.service is QueueService.REDIS
-        assert queue.to_connector_options() == {
-            'consumer_group': 'etlplus',
-            'service': 'redis',
-            'url': 'redis://localhost:6379/0',
-            'key': 'orders',
-            'database': 1,
-        }
+    @pytest.mark.parametrize('database', ['not-an-int', True])
+    def test_redis_queue_rejects_invalid_database(self, database: object) -> None:
+        """Test Redis database metadata rejects non-integer values."""
+        with pytest.raises(TypeError, match='"database" must be an integer'):
+            RedisQueue.from_obj({'name': 'orders', 'database': database})
 
 
 class TestQueueEnums:
@@ -366,6 +386,11 @@ class TestSqsQueue:
                 },
             )
 
+    def test_from_obj_rejects_boolean_integer_metadata(self) -> None:
+        """Test that boolean values are not accepted as integer metadata."""
+        with pytest.raises(TypeError, match='"visibility_timeout" must be an integer'):
+            SqsQueue.from_obj({'name': 'events', 'visibility_timeout': True})
+
     @pytest.mark.parametrize(
         ('field_name', 'value'),
         [
@@ -431,3 +456,22 @@ class TestSqsQueue:
             'content_based_deduplication': True,
             'message_group_id': 'events',
         }
+
+    def test_to_connector_options_omits_empty_optional_fields(self) -> None:
+        """Test that empty optional SQS metadata does not appear in options."""
+        assert SqsQueue.from_obj({'name': 'events'}).to_connector_options() == {
+            'service': 'aws-sqs',
+            'queue_type': 'standard',
+            'queue_name': 'events',
+        }
+
+    def test_to_connector_options_includes_arn(self) -> None:
+        """Test that SQS ARN metadata is preserved in connector options."""
+        arn = 'arn:aws:sqs:us-east-1:123:events'
+
+        assert (
+            SqsQueue.from_obj({'name': 'events', 'arn': arn}).to_connector_options()[
+                'arn'
+            ]
+            == arn
+        )
