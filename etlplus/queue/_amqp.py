@@ -68,7 +68,28 @@ _AMQP_OPTION_FIELDS = (
 
 @dataclass(kw_only=True, slots=True)
 class AmqpQueue(ProviderQueueConfigMixin):
-    """Configuration metadata for AMQP/RabbitMQ queues."""
+    """
+    Configuration metadata for AMQP/RabbitMQ queues.
+
+    Attributes
+    ----------
+    service : QueueService
+        Queue service, always ``'amqp'``.
+    name : str
+        Queue metadata name.
+    url : str | None
+        Optional AMQP connection URL.
+    host : str | None
+        Optional AMQP host.
+    virtual_host : str | None
+        Optional AMQP virtual host.
+    exchange : str | None
+        Optional AMQP exchange.
+    routing_key : str | None
+        Optional AMQP routing key.
+    options : dict[str, Any]
+        Optional provider-specific queue options.
+    """
 
     # -- Instance Attributes -- #
 
