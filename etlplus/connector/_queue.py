@@ -20,8 +20,14 @@ from typing import Any
 from typing import Self
 from typing import TypedDict
 
+from ..queue import AmqpQueue
+from ..queue import AzureServiceBusQueue
+from ..queue import GcpPubSubQueue
+from ..queue import QueueConfig
 from ..queue import QueueService
 from ..queue import QueueType
+from ..queue import RedisQueue
+from ..queue import SqsQueue
 from ..utils import MappingFieldParser
 from ..utils import MappingParser
 from ..utils import ValueParser
@@ -169,3 +175,34 @@ class ConnectorQueue(ConnectorBase):
             region=ValueParser.optional_str(obj.get('region')),
             options=MappingParser.to_dict(obj.get('options')),
         )
+
+    # -- Instance Methods -- #
+
+    def to_queue_config(self) -> QueueConfig:
+        """
+        Convert this connector into a provider-specific queue config.
+
+        Returns
+        -------
+        QueueConfig
+            Provider-specific queue configuration object.
+        """
+        data = {
+            **self.options,
+            'name': self.queue_name or self.name,
+            'queue_name': self.queue_name,
+            'queue_type': self.queue_type,
+            'region': self.region,
+            'url': self.url,
+        }
+        match self.service:
+            case QueueService.AWS_SQS:
+                return SqsQueue.from_obj(data)
+            case QueueService.AZURE_SERVICE_BUS:
+                return AzureServiceBusQueue.from_obj(data)
+            case QueueService.GCP_PUBSUB:
+                return GcpPubSubQueue.from_obj(data)
+            case QueueService.AMQP:
+                return AmqpQueue.from_obj(data)
+            case QueueService.REDIS:
+                return RedisQueue.from_obj(data)
