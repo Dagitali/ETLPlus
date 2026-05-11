@@ -124,7 +124,19 @@ FORMAT_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
     'zsav': RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
 }
 QUEUE_SERVICE_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
-    'sqs': RequirementSpec(('boto3',), 'boto3', 'queue'),
+    'amqp': RequirementSpec(('pika',), 'pika', 'queue-amqp'),
+    'azure-service-bus': RequirementSpec(
+        ('azure.servicebus',),
+        'azure-servicebus',
+        'queue-azure',
+    ),
+    'gcp-pubsub': RequirementSpec(
+        ('google.cloud.pubsub',),
+        'google-cloud-pubsub',
+        'queue-gcp',
+    ),
+    'redis': RequirementSpec(('redis',), 'redis', 'queue-redis'),
+    'aws-sqs': RequirementSpec(('boto3',), 'boto3', 'queue'),
 }
 SCHEME_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
     'abfs': RequirementSpec(
