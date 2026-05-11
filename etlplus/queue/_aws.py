@@ -204,20 +204,21 @@ class AwsSqsQueue(ProviderQueueConfigMixin):
         queue = cls(
             **common_fields,
             queue_type=queue_type,
-            url=ValueParser.optional_str(obj.get('url')),
-            arn=ValueParser.optional_str(obj.get('arn')),
-            region=ValueParser.optional_str(obj.get('region')),
+            **cls._optional_str_fields(
+                obj,
+                'url',
+                'arn',
+                'region',
+                'dead_letter_queue_arn',
+                'deduplication_id',
+                'message_group_id',
+            ),
             **integer_values,
             content_based_deduplication=(
                 None
                 if content_based_deduplication is None
                 else ValueParser.bool_flag(content_based_deduplication, default=False)
             ),
-            dead_letter_queue_arn=ValueParser.optional_str(
-                obj.get('dead_letter_queue_arn'),
-            ),
-            deduplication_id=ValueParser.optional_str(obj.get('deduplication_id')),
-            message_group_id=ValueParser.optional_str(obj.get('message_group_id')),
         )
         queue.validate()
         return queue
