@@ -14,6 +14,7 @@ from ._connector import Connector
 from ._database import ConnectorDb
 from ._enums import DataConnectorType
 from ._file import ConnectorFile
+from ._queue import ConnectorQueue
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -31,6 +32,7 @@ _CONNECTOR_CLASSES: dict[DataConnectorType, type[Connector]] = {
     DataConnectorType.API: ConnectorApi,
     DataConnectorType.DATABASE: ConnectorDb,
     DataConnectorType.FILE: ConnectorFile,
+    DataConnectorType.QUEUE: ConnectorQueue,
 }
 
 
