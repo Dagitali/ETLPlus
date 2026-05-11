@@ -101,6 +101,44 @@ class ValueParser:
         return choices.get(TextNormalizer.normalize(text), text)
 
     @staticmethod
+    def optional_int(
+        value: object,
+        *,
+        field_name: str,
+        label: str,
+    ) -> int | None:
+        """
+        Return an optional integer, rejecting booleans.
+
+        Parameters
+        ----------
+        value : object
+            Input value to parse as an optional integer.
+        field_name : str
+            Field name used in validation errors.
+        label : str
+            Human-readable payload label used in validation errors.
+
+        Returns
+        -------
+        int | None
+            Parsed integer value, or ``None`` when absent.
+
+        Raises
+        ------
+        TypeError
+            If the value cannot be parsed as an integer, or if it is a boolean.
+        """
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            raise TypeError(f'{label} "{field_name}" must be an integer')
+        try:
+            return int(value)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(f'{label} "{field_name}" must be an integer') from exc
+
+    @staticmethod
     def optional_str(
         value: object,
     ) -> str | None:
