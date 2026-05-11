@@ -13,8 +13,6 @@ from typing import ClassVar
 from typing import Self
 from typing import TypedDict
 
-from ..utils import MappingFieldParser
-from ..utils import MappingParser
 from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ._base import ProviderQueueConfigMixin
@@ -63,7 +61,7 @@ class AwsSqsQueueConfigDict(TypedDict, total=False):
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_SQS_INTEGER_RANGES: dict[str, tuple[int, int]] = {
+_AWS_SQS_INTEGER_RANGES: dict[str, tuple[int, int]] = {
     'delay_seconds': (0, 900),
     'max_messages': (1, 10),
     'message_retention_period': (60, 1_209_600),
@@ -71,14 +69,14 @@ _SQS_INTEGER_RANGES: dict[str, tuple[int, int]] = {
     'wait_time_seconds': (0, 20),
 }
 
-_SQS_FIFO_FIELDS = (
+_AWS_SQS_FIFO_FIELDS = (
     'content_based_deduplication',
     'deduplication_id',
     'message_group_id',
 )
 
-_SQS_OPTION_FIELDS = (
-    *_SQS_INTEGER_RANGES,
+_AWS_SQS_OPTION_FIELDS = (
+    *_AWS_SQS_INTEGER_RANGES,
     'content_based_deduplication',
     'dead_letter_queue_arn',
     'deduplication_id',
@@ -151,9 +149,9 @@ class AwsSqsQueue(ProviderQueueConfigMixin):
 
     # -- Internal Class Attributes -- #
 
-    _integer_ranges: ClassVar[dict[str, tuple[int, int]]] = _SQS_INTEGER_RANGES
-    _fifo_fields: ClassVar[tuple[str, ...]] = _SQS_FIFO_FIELDS
-    _option_fields: ClassVar[tuple[str, ...]] = _SQS_OPTION_FIELDS
+    _integer_ranges: ClassVar[dict[str, tuple[int, int]]] = _AWS_SQS_INTEGER_RANGES
+    _fifo_fields: ClassVar[tuple[str, ...]] = _AWS_SQS_FIFO_FIELDS
+    _option_fields: ClassVar[tuple[str, ...]] = _AWS_SQS_OPTION_FIELDS
 
     # -- Class Methods -- #
 
@@ -175,7 +173,13 @@ class AwsSqsQueue(ProviderQueueConfigMixin):
         Self
             Parsed queue instance.
         """
-        name = MappingFieldParser.require_str(obj, 'name', label='AwsSqsQueue')
+        common_fields = cls._common_fields(
+            obj,
+            label='AwsSqsQueue',
+            options_field='attributes',
+            options_key='attributes',
+        )
+        name = common_fields['name']
         queue_type_value = obj.get('queue_type', obj.get('type'))
         queue_type = (
             QueueType.coerce(queue_type_value)
@@ -194,7 +198,7 @@ class AwsSqsQueue(ProviderQueueConfigMixin):
         }
         content_based_deduplication = obj.get('content_based_deduplication')
         queue = cls(
-            name=name,
+            **common_fields,
             queue_type=queue_type,
             url=ValueParser.optional_str(obj.get('url')),
             arn=ValueParser.optional_str(obj.get('arn')),
@@ -210,7 +214,6 @@ class AwsSqsQueue(ProviderQueueConfigMixin):
             ),
             deduplication_id=ValueParser.optional_str(obj.get('deduplication_id')),
             message_group_id=ValueParser.optional_str(obj.get('message_group_id')),
-            attributes=MappingParser.to_dict(obj.get('attributes')),
         )
         queue.validate()
         return queue
