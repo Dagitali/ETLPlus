@@ -154,6 +154,11 @@ class ConnectorQueue(ConnectorBase):
         -------
         Self
             Parsed connector instance.
+
+        Raises
+        ------
+        ValueError
+            If an SQS FIFO queue name does not end with ``'.fifo'``.
         """
         name = MappingFieldParser.require_str(obj, 'name', label='ConnectorQueue')
         queue_name = ValueParser.optional_str(obj.get('queue_name', obj.get('queue')))
