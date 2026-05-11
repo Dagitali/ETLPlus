@@ -112,8 +112,12 @@ class RedisQueue(ProviderQueueConfigMixin):
         """
         queue = cls(
             **cls._common_fields(obj, label='RedisQueue'),
-            url=ValueParser.optional_str(obj.get('url')),
-            key=ValueParser.optional_str(obj.get('key', obj.get('queue_name'))),
+            **cls._optional_str_fields(
+                obj,
+                'url',
+                'key',
+                aliases={'key': 'queue_name'},
+            ),
             database=ValueParser.optional_int(
                 obj.get('database', obj.get('db')),
                 field_name='database',
