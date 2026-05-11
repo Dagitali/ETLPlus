@@ -1,7 +1,7 @@
 """
 :mod:`etlplus.queue._aws` module.
 
-AWS SQS queue type helpers.
+AWS SQS queue metadata helpers.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ._enums import QueueService
 from ._enums import QueueType
+from ._providers import ProviderQueueConfigMixin
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -89,7 +90,7 @@ _SQS_OPTION_FIELDS = (
 
 
 @dataclass(kw_only=True, slots=True)
-class AwsSqsQueue:
+class AwsSqsQueue(ProviderQueueConfigMixin):
     """
     Configuration metadata for an AWS SQS queue.
 
