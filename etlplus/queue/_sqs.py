@@ -131,6 +131,40 @@ def _optional_int(
         raise TypeError(f'SqsQueue "{field_name}" must be an integer') from exc
 
 
+def _validate_range(
+    value: int | None,
+    *,
+    field_name: str,
+    minimum: int,
+    maximum: int,
+) -> None:
+    """
+    Validate one optional integer field range.
+
+    Parameters
+    ----------
+    value : int | None
+        Parsed integer value.
+    field_name : str
+        Field name used in validation errors.
+    minimum : int
+        Inclusive minimum value.
+    maximum : int
+        Inclusive maximum value.
+
+    Raises
+    ------
+    ValueError
+        If *value* falls outside the inclusive range.
+    """
+    if value is None:
+        return
+    if value < minimum or value > maximum:
+        raise ValueError(
+            f'SqsQueue "{field_name}" must be between {minimum} and {maximum}',
+        )
+
+
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -142,7 +176,7 @@ class SqsQueue:
     Attributes
     ----------
     service : QueueService
-        Queue service, always ``'sqs'``.
+        Queue service, always ``'aws-sqs'``.
     name : str
         SQS queue name.
     queue_type : QueueType
@@ -178,7 +212,7 @@ class SqsQueue:
     # -- Attributes -- #
 
     name: str
-    service: QueueService = QueueService.SQS
+    service: QueueService = QueueService.AWS_SQS
     queue_type: QueueType = QueueType.STANDARD
     url: str | None = None
     arn: str | None = None
@@ -318,10 +352,48 @@ class SqsQueue:
         Raises
         ------
         ValueError
-            If a FIFO queue name does not end with ``.fifo``.
+            If queue metadata violates SQS naming, range, or FIFO constraints.
         """
         if self.is_fifo and not self.name.endswith('.fifo'):
             raise ValueError('SQS FIFO queue names must end with ".fifo"')
+        if self.is_standard and (
+            self.content_based_deduplication is not None
+            or self.deduplication_id is not None
+            or self.message_group_id is not None
+        ):
+            raise ValueError(
+                'SQS FIFO fields require queue_type="fifo" and a ".fifo" queue name',
+            )
+        _validate_range(
+            self.delay_seconds,
+            field_name='delay_seconds',
+            minimum=0,
+            maximum=900,
+        )
+        _validate_range(
+            self.max_messages,
+            field_name='max_messages',
+            minimum=1,
+            maximum=10,
+        )
+        _validate_range(
+            self.message_retention_period,
+            field_name='message_retention_period',
+            minimum=60,
+            maximum=1_209_600,
+        )
+        _validate_range(
+            self.visibility_timeout,
+            field_name='visibility_timeout',
+            minimum=0,
+            maximum=43_200,
+        )
+        _validate_range(
+            self.wait_time_seconds,
+            field_name='wait_time_seconds',
+            minimum=0,
+            maximum=20,
+        )
 
 
 def from_mapping(
