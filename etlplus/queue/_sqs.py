@@ -6,10 +6,10 @@ AWS SQS queue type helpers.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
+from typing import ClassVar
 from typing import Self
 from typing import TypedDict
 
@@ -59,41 +59,33 @@ class SqsQueueConfigDict(TypedDict, total=False):
     attributes: StrAnyMap
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_SQS_INTEGER_RANGES: dict[str, tuple[int, int]] = {
+    'delay_seconds': (0, 900),
+    'max_messages': (1, 10),
+    'message_retention_period': (60, 1_209_600),
+    'visibility_timeout': (0, 43_200),
+    'wait_time_seconds': (0, 20),
+}
+
+_SQS_FIFO_FIELDS = (
+    'content_based_deduplication',
+    'deduplication_id',
+    'message_group_id',
+)
+
+_SQS_OPTION_FIELDS = (
+    *_SQS_INTEGER_RANGES,
+    'content_based_deduplication',
+    'dead_letter_queue_arn',
+    'deduplication_id',
+    'message_group_id',
+)
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _infer_queue_type(
-    *,
-    name: str,
-    value: object,
-) -> QueueType:
-    """
-    Coerce an explicit queue type or infer FIFO from an SQS name suffix.
-
-    Parameters
-    ----------
-    name : str
-        SQS queue name.
-    value : object
-        Optional explicit queue type value.
-
-    Returns
-    -------
-    QueueType
-        Normalized queue type.
-    """
-    if value is not None:
-        return QueueType.coerce(value)
-    return QueueType.FIFO if name.endswith('.fifo') else QueueType.STANDARD
-
-
-def _optional_bool(
-    value: object,
-) -> bool | None:
-    """Return one optional boolean flag when a value is present."""
-    if value is None:
-        return None
-    return ValueParser.bool_flag(value, default=False)
 
 
 def _optional_int(
@@ -129,40 +121,6 @@ def _optional_int(
         return int(value)
     except (TypeError, ValueError) as exc:
         raise TypeError(f'SqsQueue "{field_name}" must be an integer') from exc
-
-
-def _validate_range(
-    value: int | None,
-    *,
-    field_name: str,
-    minimum: int,
-    maximum: int,
-) -> None:
-    """
-    Validate one optional integer field range.
-
-    Parameters
-    ----------
-    value : int | None
-        Parsed integer value.
-    field_name : str
-        Field name used in validation errors.
-    minimum : int
-        Inclusive minimum value.
-    maximum : int
-        Inclusive maximum value.
-
-    Raises
-    ------
-    ValueError
-        If *value* falls outside the inclusive range.
-    """
-    if value is None:
-        return
-    if value < minimum or value > maximum:
-        raise ValueError(
-            f'SqsQueue "{field_name}" must be between {minimum} and {maximum}',
-        )
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -209,7 +167,7 @@ class SqsQueue:
         Optional SQS queue attributes.
     """
 
-    # -- Attributes -- #
+    # -- Instance Attributes -- #
 
     name: str
     service: QueueService = QueueService.AWS_SQS
@@ -227,6 +185,12 @@ class SqsQueue:
     deduplication_id: str | None = None
     message_group_id: str | None = None
     attributes: dict[str, Any] = field(default_factory=dict)
+
+    # -- Internal Class Attributes -- #
+
+    _integer_ranges: ClassVar[dict[str, tuple[int, int]]] = _SQS_INTEGER_RANGES
+    _fifo_fields: ClassVar[tuple[str, ...]] = _SQS_FIFO_FIELDS
+    _option_fields: ClassVar[tuple[str, ...]] = _SQS_OPTION_FIELDS
 
     # -- Class Methods -- #
 
@@ -249,38 +213,30 @@ class SqsQueue:
             Parsed queue instance.
         """
         name = MappingFieldParser.require_str(obj, 'name', label='SqsQueue')
-        queue_type = _infer_queue_type(
-            name=name,
-            value=obj.get('queue_type', obj.get('type')),
+        queue_type_value = obj.get('queue_type', obj.get('type'))
+        queue_type = (
+            QueueType.coerce(queue_type_value)
+            if queue_type_value is not None
+            else QueueType.FIFO
+            if name.endswith('.fifo')
+            else QueueType.STANDARD
         )
+        integer_values = {
+            field_name: _optional_int(obj.get(field_name), field_name=field_name)
+            for field_name in cls._integer_ranges
+        }
+        content_based_deduplication = obj.get('content_based_deduplication')
         queue = cls(
             name=name,
             queue_type=queue_type,
             url=ValueParser.optional_str(obj.get('url')),
             arn=ValueParser.optional_str(obj.get('arn')),
             region=ValueParser.optional_str(obj.get('region')),
-            delay_seconds=_optional_int(
-                obj.get('delay_seconds'),
-                field_name='delay_seconds',
-            ),
-            max_messages=_optional_int(
-                obj.get('max_messages'),
-                field_name='max_messages',
-            ),
-            message_retention_period=_optional_int(
-                obj.get('message_retention_period'),
-                field_name='message_retention_period',
-            ),
-            visibility_timeout=_optional_int(
-                obj.get('visibility_timeout'),
-                field_name='visibility_timeout',
-            ),
-            wait_time_seconds=_optional_int(
-                obj.get('wait_time_seconds'),
-                field_name='wait_time_seconds',
-            ),
-            content_based_deduplication=_optional_bool(
-                obj.get('content_based_deduplication'),
+            **integer_values,
+            content_based_deduplication=(
+                None
+                if content_based_deduplication is None
+                else ValueParser.bool_flag(content_based_deduplication, default=False)
             ),
             dead_letter_queue_arn=ValueParser.optional_str(
                 obj.get('dead_letter_queue_arn'),
@@ -329,17 +285,7 @@ class SqsQueue:
             data['arn'] = self.arn
         if self.region is not None:
             data['region'] = self.region
-        for field_name in (
-            'delay_seconds',
-            'max_messages',
-            'message_retention_period',
-            'visibility_timeout',
-            'wait_time_seconds',
-            'content_based_deduplication',
-            'dead_letter_queue_arn',
-            'deduplication_id',
-            'message_group_id',
-        ):
+        for field_name in self._option_fields:
             value = getattr(self, field_name)
             if value is not None:
                 data[field_name] = value
@@ -356,60 +302,15 @@ class SqsQueue:
         """
         if self.is_fifo and not self.name.endswith('.fifo'):
             raise ValueError('SQS FIFO queue names must end with ".fifo"')
-        if self.is_standard and (
-            self.content_based_deduplication is not None
-            or self.deduplication_id is not None
-            or self.message_group_id is not None
+        if self.is_standard and any(
+            getattr(self, field_name) is not None for field_name in self._fifo_fields
         ):
             raise ValueError(
                 'SQS FIFO fields require queue_type="fifo" and a ".fifo" queue name',
             )
-        _validate_range(
-            self.delay_seconds,
-            field_name='delay_seconds',
-            minimum=0,
-            maximum=900,
-        )
-        _validate_range(
-            self.max_messages,
-            field_name='max_messages',
-            minimum=1,
-            maximum=10,
-        )
-        _validate_range(
-            self.message_retention_period,
-            field_name='message_retention_period',
-            minimum=60,
-            maximum=1_209_600,
-        )
-        _validate_range(
-            self.visibility_timeout,
-            field_name='visibility_timeout',
-            minimum=0,
-            maximum=43_200,
-        )
-        _validate_range(
-            self.wait_time_seconds,
-            field_name='wait_time_seconds',
-            minimum=0,
-            maximum=20,
-        )
-
-
-def from_mapping(
-    obj: Mapping[str, Any],
-) -> SqsQueue:
-    """
-    Build an SQS queue from any mapping-like configuration.
-
-    Parameters
-    ----------
-    obj : Mapping[str, Any]
-        Mapping with at least ``name``.
-
-    Returns
-    -------
-    SqsQueue
-        Parsed queue instance.
-    """
-    return SqsQueue.from_obj(dict(obj))
+        for field_name, (minimum, maximum) in self._integer_ranges.items():
+            value = getattr(self, field_name)
+            if value is not None and not minimum <= value <= maximum:
+                raise ValueError(
+                    f'SqsQueue "{field_name}" must be between {minimum} and {maximum}',
+                )
