@@ -13,7 +13,6 @@ from typing import ClassVar
 from typing import Self
 from typing import TypedDict
 
-from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ._base import ProviderQueueConfigMixin
 from ._enums import QueueService
@@ -116,9 +115,7 @@ class GcpPubSubQueue(ProviderQueueConfigMixin):
         """
         queue = cls(
             **cls._common_fields(obj, label='GcpPubSubQueue'),
-            project=ValueParser.optional_str(obj.get('project')),
-            topic=ValueParser.optional_str(obj.get('topic')),
-            subscription=ValueParser.optional_str(obj.get('subscription')),
+            **cls._optional_str_fields(obj, 'project', 'topic', 'subscription'),
         )
         queue.validate()
         return queue
