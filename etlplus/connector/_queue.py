@@ -21,13 +21,13 @@ from typing import Self
 from typing import TypedDict
 
 from ..queue import AmqpQueue
+from ..queue import AwsSqsQueue
 from ..queue import AzureServiceBusQueue
 from ..queue import GcpPubSubQueue
 from ..queue import QueueConfig
 from ..queue import QueueService
 from ..queue import QueueType
 from ..queue import RedisQueue
-from ..queue import SqsQueue
 from ..utils import MappingFieldParser
 from ..utils import MappingParser
 from ..utils import ValueParser
@@ -197,7 +197,7 @@ class ConnectorQueue(ConnectorBase):
                 data[field_name] = value
         match self.service:
             case QueueService.AWS_SQS:
-                return SqsQueue.from_obj(data)
+                return AwsSqsQueue.from_obj(data)
             case QueueService.AZURE_SERVICE_BUS:
                 return AzureServiceBusQueue.from_obj(data)
             case QueueService.GCP_PUBSUB:
