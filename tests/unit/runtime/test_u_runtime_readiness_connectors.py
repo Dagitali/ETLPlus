@@ -441,6 +441,43 @@ class TestReadinessReportBuilderConnectors:
             ),
         ]
 
+    def test_missing_requirement_rows_report_sqs_queue_dependency(
+        self,
+    ) -> None:
+        """Test that SQS queue connectors require the queue extra dependency."""
+        cfg = _cfg(
+            sources=[
+                SimpleNamespace(
+                    name='events',
+                    queue_name='events',
+                    service='sqs',
+                    type='queue',
+                ),
+            ],
+        )
+
+        rows = (
+            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
+                cfg=cast(Any, cfg),
+                package_available=lambda module_name: module_name != 'boto3',
+            )
+        )
+
+        assert rows == [
+            _missing_requirement(
+                connector='events',
+                detected_queue_service='sqs',
+                extra='queue',
+                guidance=(
+                    'Install boto3 directly or install the ETLPlus "queue" '
+                    'extra. Required for "sqs" queue connectors.'
+                ),
+                missing_package='boto3',
+                reason='sqs queue connector requires boto3',
+                role='source',
+            ),
+        ]
+
     def test_missing_requirement_rows_respects_package_available_seam(
         self,
         monkeypatch: pytest.MonkeyPatch,
