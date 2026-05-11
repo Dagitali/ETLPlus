@@ -66,10 +66,10 @@ class GcpPubSubQueue(ProviderQueueConfigMixin):
 
     Attributes
     ----------
-    service : QueueService
-        Queue service, always ``'gcp-pubsub'``.
     name : str
         Queue metadata name.
+    service : QueueService
+        Queue service, always ``'gcp-pubsub'``.
     project : str | None
         Optional Google Cloud project ID.
     topic : str | None
@@ -113,9 +113,17 @@ class GcpPubSubQueue(ProviderQueueConfigMixin):
         Self
             Parsed queue instance.
         """
+        optional_str_fields = cls._optional_str_fields(
+            obj,
+            'project',
+            'topic',
+            'subscription',
+        )
         queue = cls(
             **cls._common_fields(obj, label='GcpPubSubQueue'),
-            **cls._optional_str_fields(obj, 'project', 'topic', 'subscription'),
+            project=optional_str_fields['project'],
+            topic=optional_str_fields['topic'],
+            subscription=optional_str_fields['subscription'],
         )
         queue.validate()
         return queue
