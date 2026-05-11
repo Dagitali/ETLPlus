@@ -185,7 +185,7 @@ class TestReadinessReportBuilderConnectors:
                 ),
                 issue='unsupported type',
                 role='source',
-                supported_types=['api', 'database', 'file'],
+                supported_types=['api', 'database', 'file', 'queue'],
                 connector_type='s3',
             ),
         ]
@@ -345,10 +345,10 @@ class TestReadinessReportBuilderConnectors:
     ) -> None:
         """Test actionable guidance for blank and non-storage invalid types."""
         assert readiness_connectors_mod.connector_type_guidance('') == (
-            'Set type to one of: api, database, file.'
+            'Set type to one of: api, database, file, queue.'
         )
         assert readiness_connectors_mod.connector_type_guidance('weird') == (
-            'Use one of the supported connector types: api, database, file.'
+            'Use one of the supported connector types: api, database, file, queue.'
         )
 
     def test_dedupe_rows_preserves_first_occurrence(self) -> None:
