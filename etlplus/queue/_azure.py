@@ -66,7 +66,26 @@ _AZURE_SERVICE_BUS_OPTION_FIELDS = (
 
 @dataclass(kw_only=True, slots=True)
 class AzureServiceBusQueue(ProviderQueueConfigMixin):
-    """Configuration metadata for Azure Service Bus queues/subscriptions."""
+    """
+    Configuration metadata for Azure Service Bus queues/subscriptions.
+
+    Attributes
+    ----------
+    service : QueueService
+        Queue service, always ``'azure-service-bus'``.
+    name : str
+        Queue metadata name.
+    namespace : str | None
+        Optional Azure Service Bus namespace.
+    queue_name : str | None
+        Optional Azure Service Bus queue name.
+    topic : str | None
+        Optional Azure Service Bus topic.
+    subscription : str | None
+        Optional Azure Service Bus subscription.
+    options : dict[str, Any]
+        Optional provider-specific queue options.
+    """
 
     # -- Instance Attributes -- #
 
