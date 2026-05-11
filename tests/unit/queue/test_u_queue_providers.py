@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.queue.test_u_queue_providers` module.
 
-Unit tests for :mod:`etlplus.queue._providers`.
+Unit tests for non-AWS provider queue metadata modules.
 """
 
 from __future__ import annotations
