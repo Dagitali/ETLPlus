@@ -10,10 +10,12 @@ import pytest
 
 from etlplus.connector._enums import DataConnectorType
 from etlplus.connector._queue import ConnectorQueue
+from etlplus.queue import AmqpQueue
 from etlplus.queue import AzureServiceBusQueue
 from etlplus.queue import GcpPubSubQueue
 from etlplus.queue import QueueService
 from etlplus.queue import QueueType
+from etlplus.queue import RedisQueue
 from etlplus.queue import SqsQueue
 
 from .pytest_connector_support import assert_connector_fields
@@ -167,6 +169,42 @@ class TestConnectorQueue:
                     'subscription': 'etlplus',
                 },
                 id='gcp-pubsub',
+            ),
+            pytest.param(
+                {
+                    'name': 'rabbit',
+                    'type': 'queue',
+                    'service': 'rabbitmq',
+                    'options': {
+                        'url': 'amqp://guest:guest@localhost:5672/%2f',
+                        'routing_key': 'orders.created',
+                    },
+                },
+                AmqpQueue,
+                {
+                    'service': 'amqp',
+                    'url': 'amqp://guest:guest@localhost:5672/%2f',
+                    'routing_key': 'orders.created',
+                },
+                id='rabbitmq-alias',
+            ),
+            pytest.param(
+                {
+                    'name': 'redis',
+                    'type': 'queue',
+                    'service': 'redis-streams',
+                    'queue_name': 'orders',
+                    'options': {
+                        'database': '2',
+                    },
+                },
+                RedisQueue,
+                {
+                    'service': 'redis',
+                    'key': 'orders',
+                    'database': 2,
+                },
+                id='redis-streams-alias',
             ),
         ],
     )
