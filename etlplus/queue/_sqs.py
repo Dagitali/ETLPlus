@@ -47,6 +47,15 @@ class SqsQueueConfigDict(TypedDict, total=False):
     url: str
     arn: str
     region: str
+    delay_seconds: int
+    max_messages: int
+    message_retention_period: int
+    visibility_timeout: int
+    wait_time_seconds: int
+    content_based_deduplication: bool
+    dead_letter_queue_arn: str
+    deduplication_id: str
+    message_group_id: str
     attributes: StrAnyMap
 
 
@@ -78,6 +87,50 @@ def _infer_queue_type(
     return QueueType.FIFO if name.endswith('.fifo') else QueueType.STANDARD
 
 
+def _optional_bool(
+    value: object,
+) -> bool | None:
+    """Return one optional boolean flag when a value is present."""
+    if value is None:
+        return None
+    return ValueParser.bool_flag(value, default=False)
+
+
+def _optional_int(
+    value: object,
+    *,
+    field_name: str,
+) -> int | None:
+    """
+    Return one optional integer value.
+
+    Parameters
+    ----------
+    value : object
+        Input value.
+    field_name : str
+        Field name used in validation errors.
+
+    Returns
+    -------
+    int | None
+        Parsed integer value, or ``None`` when absent.
+
+    Raises
+    ------
+    TypeError
+        If the value cannot be parsed as an integer.
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise TypeError(f'SqsQueue "{field_name}" must be an integer')
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise TypeError(f'SqsQueue "{field_name}" must be an integer') from exc
+
+
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -100,6 +153,24 @@ class SqsQueue:
         Optional queue ARN.
     region : str | None
         Optional AWS region.
+    delay_seconds : int | None
+        Optional default message delay in seconds.
+    max_messages : int | None
+        Optional receive batch size hint.
+    message_retention_period : int | None
+        Optional message retention period in seconds.
+    visibility_timeout : int | None
+        Optional visibility timeout in seconds.
+    wait_time_seconds : int | None
+        Optional long-poll wait time in seconds.
+    content_based_deduplication : bool | None
+        Optional FIFO queue content-based deduplication flag.
+    dead_letter_queue_arn : str | None
+        Optional dead-letter queue ARN.
+    deduplication_id : str | None
+        Optional FIFO message deduplication ID hint.
+    message_group_id : str | None
+        Optional FIFO message group ID hint.
     attributes : dict[str, Any]
         Optional SQS queue attributes.
     """
@@ -112,6 +183,15 @@ class SqsQueue:
     url: str | None = None
     arn: str | None = None
     region: str | None = None
+    delay_seconds: int | None = None
+    max_messages: int | None = None
+    message_retention_period: int | None = None
+    visibility_timeout: int | None = None
+    wait_time_seconds: int | None = None
+    content_based_deduplication: bool | None = None
+    dead_letter_queue_arn: str | None = None
+    deduplication_id: str | None = None
+    message_group_id: str | None = None
     attributes: dict[str, Any] = field(default_factory=dict)
 
     # -- Class Methods -- #
@@ -145,6 +225,34 @@ class SqsQueue:
             url=ValueParser.optional_str(obj.get('url')),
             arn=ValueParser.optional_str(obj.get('arn')),
             region=ValueParser.optional_str(obj.get('region')),
+            delay_seconds=_optional_int(
+                obj.get('delay_seconds'),
+                field_name='delay_seconds',
+            ),
+            max_messages=_optional_int(
+                obj.get('max_messages'),
+                field_name='max_messages',
+            ),
+            message_retention_period=_optional_int(
+                obj.get('message_retention_period'),
+                field_name='message_retention_period',
+            ),
+            visibility_timeout=_optional_int(
+                obj.get('visibility_timeout'),
+                field_name='visibility_timeout',
+            ),
+            wait_time_seconds=_optional_int(
+                obj.get('wait_time_seconds'),
+                field_name='wait_time_seconds',
+            ),
+            content_based_deduplication=_optional_bool(
+                obj.get('content_based_deduplication'),
+            ),
+            dead_letter_queue_arn=ValueParser.optional_str(
+                obj.get('dead_letter_queue_arn'),
+            ),
+            deduplication_id=ValueParser.optional_str(obj.get('deduplication_id')),
+            message_group_id=ValueParser.optional_str(obj.get('message_group_id')),
             attributes=MappingParser.to_dict(obj.get('attributes')),
         )
         queue.validate()
@@ -187,6 +295,20 @@ class SqsQueue:
             data['arn'] = self.arn
         if self.region is not None:
             data['region'] = self.region
+        for field_name in (
+            'delay_seconds',
+            'max_messages',
+            'message_retention_period',
+            'visibility_timeout',
+            'wait_time_seconds',
+            'content_based_deduplication',
+            'dead_letter_queue_arn',
+            'deduplication_id',
+            'message_group_id',
+        ):
+            value = getattr(self, field_name)
+            if value is not None:
+                data[field_name] = value
         return data
 
     def validate(self) -> None:
