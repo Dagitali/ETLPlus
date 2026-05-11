@@ -153,7 +153,8 @@ release.
     downstream jobs when an upstream dependency fails
   - Queue connector groundwork includes the `etlplus.queue` SQS metadata surface, the optional queue
     dependency extras for AWS SQS, Azure Service Bus, Google Cloud Pub/Sub, AMQP/RabbitMQ, and
-    Redis, plus readiness diagnostics for missing queue provider dependencies.
+    Redis, an aggregate `queue`/`queue-all` extra, plus readiness diagnostics for missing queue
+    provider dependencies.
 
 ## Current Stable-Line Maintenance Checklist
 
