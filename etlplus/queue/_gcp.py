@@ -64,7 +64,24 @@ _GCP_PUBSUB_OPTION_FIELDS = (
 
 @dataclass(kw_only=True, slots=True)
 class GcpPubSubQueue(ProviderQueueConfigMixin):
-    """Configuration metadata for Google Cloud Pub/Sub topics/subscriptions."""
+    """
+    Configuration metadata for Google Cloud Pub/Sub topics/subscriptions.
+
+    Attributes
+    ----------
+    service : QueueService
+        Queue service, always ``'gcp-pubsub'``.
+    name : str
+        Queue metadata name.
+    project : str | None
+        Optional Google Cloud project ID.
+    topic : str | None
+        Optional Pub/Sub topic.
+    subscription : str | None
+        Optional Pub/Sub subscription.
+    options : dict[str, Any]
+        Optional provider-specific queue options.
+    """
 
     # -- Instance Attributes -- #
 
