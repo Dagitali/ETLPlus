@@ -13,12 +13,10 @@ from typing import ClassVar
 from typing import Self
 from typing import TypedDict
 
-from ..utils import MappingFieldParser
-from ..utils import MappingParser
 from ..utils import ValueParser
 from ..utils._types import StrAnyMap
+from ._base import ProviderQueueConfigMixin
 from ._enums import QueueService
-from ._providers import ProviderQueueConfigMixin
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -122,18 +120,13 @@ class AzureServiceBusQueue(ProviderQueueConfigMixin):
             Parsed queue instance.
         """
         queue = cls(
-            name=MappingFieldParser.require_str(
-                obj,
-                'name',
-                label='AzureServiceBusQueue',
-            ),
+            **cls._common_fields(obj, label='AzureServiceBusQueue'),
             namespace=ValueParser.optional_str(obj.get('namespace')),
             queue_name=ValueParser.optional_str(
                 obj.get('queue_name', obj.get('queue')),
             ),
             topic=ValueParser.optional_str(obj.get('topic')),
             subscription=ValueParser.optional_str(obj.get('subscription')),
-            options=MappingParser.to_dict(obj.get('options')),
         )
         queue.validate()
         return queue
