@@ -44,25 +44,8 @@ class ProviderQueueConfigMixin:
 
     # -- Internal Instance Attributes -- #
 
+    _options_attr: ClassVar[str] = 'options'
     _option_fields: ClassVar[tuple[str, ...]] = ()
-
-    # -- Instance Methods -- #
-
-    def to_connector_options(self) -> dict[str, Any]:
-        """
-        Return a connector-friendly options mapping.
-
-        Returns
-        -------
-        dict[str, Any]
-            Queue metadata represented as a plain dictionary.
-        """
-        data = {**self.options, 'service': self.service.value}
-        for field_name in self._option_fields:
-            value = getattr(self, field_name)
-            if value is not None:
-                data[field_name] = value
-        return data
 
     # -- Internal Static Methods -- #
 
@@ -102,6 +85,38 @@ class ProviderQueueConfigMixin:
             'name': MappingFieldParser.require_str(obj, 'name', label=label),
             options_field: MappingParser.to_dict(obj.get(options_key)),
         }
+
+    # -- Internal Instance Methods -- #
+
+    def _base_connector_options(self) -> dict[str, Any]:
+        """
+        Return provider base connector options.
+
+        Returns
+        -------
+        dict[str, Any]
+            Base connector option fields.
+        """
+        return {'service': self.service.value}
+
+    # -- Instance Methods -- #
+
+    def to_connector_options(self) -> dict[str, Any]:
+        """
+        Return a connector-friendly options mapping.
+
+        Returns
+        -------
+        dict[str, Any]
+            Queue metadata represented as a plain dictionary.
+        """
+        data = dict(getattr(self, self._options_attr))
+        data.update(self._base_connector_options())
+        for field_name in self._option_fields:
+            value = getattr(self, field_name)
+            if value is not None:
+                data[field_name] = value
+        return data
 
 
 # SECTION: PROTOCOLS ======================================================== #
