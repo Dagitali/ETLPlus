@@ -11,12 +11,12 @@ import pytest
 from etlplus.connector._enums import DataConnectorType
 from etlplus.connector._queue import ConnectorQueue
 from etlplus.queue import AmqpQueue
+from etlplus.queue import AwsSqsQueue
 from etlplus.queue import AzureServiceBusQueue
 from etlplus.queue import GcpPubSubQueue
 from etlplus.queue import QueueService
 from etlplus.queue import QueueType
 from etlplus.queue import RedisQueue
-from etlplus.queue import SqsQueue
 
 from .pytest_connector_support import assert_connector_fields
 
@@ -180,7 +180,7 @@ class TestConnectorQueue:
                     'region': 'us-east-1',
                     'options': {'visibility_timeout': 30},
                 },
-                SqsQueue,
+                AwsSqsQueue,
                 {
                     'service': 'aws-sqs',
                     'queue_type': 'fifo',
