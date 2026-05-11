@@ -140,8 +140,8 @@ class AzureServiceBusQueue(ProviderQueueConfigMixin):
         Raises
         ------
         ValueError
-            If queue metadata lacks a queue or topic target, or if a subscription
-            is provided without a topic.
+            If queue metadata lacks a queue or topic target, or if a
+            subscription is provided without a topic.
         """
         if self.subscription is not None and self.topic is None:
             raise ValueError(
