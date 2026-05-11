@@ -1,0 +1,144 @@
+"""
+:mod:`etlplus.queue._redis` module.
+
+Redis queue metadata helpers.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from dataclasses import field
+from typing import Any
+from typing import ClassVar
+from typing import Self
+from typing import TypedDict
+
+from ..utils import ValueParser
+from ..utils._types import StrAnyMap
+from ._base import ProviderQueueConfigMixin
+from ._enums import QueueService
+
+# SECTION: EXPORTS ========================================================== #
+
+
+__all__ = [
+    # Classes
+    'RedisQueue',
+    'RedisQueueConfigDict',
+]
+
+
+# SECTION: TYPED DICTS ====================================================== #
+
+
+class RedisQueueConfigDict(TypedDict, total=False):
+    """
+    Shape accepted by :meth:`RedisQueue.from_obj` (all keys optional).
+
+    See Also
+    --------
+    - :meth:`etlplus.queue.RedisQueue.from_obj`
+    """
+
+    name: str
+    url: str
+    key: str
+    database: int
+    options: StrAnyMap
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_REDIS_OPTION_FIELDS = ('url', 'key', 'database')
+
+
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(kw_only=True, slots=True)
+class RedisQueue(ProviderQueueConfigMixin):
+    """
+    Configuration metadata for Redis queue-like workflows.
+
+    Attributes
+    ----------
+    name : str
+        Queue metadata name.
+    service : QueueService
+        Queue service, always ``'redis'``.
+    url : str | None
+        Optional Redis URL.
+    key : str | None
+        Optional Redis key or queue name.
+    database : int | None
+        Optional Redis database number.
+    options : dict[str, Any]
+        Optional provider-specific queue options.
+    """
+
+    # -- Instance Attributes -- #
+
+    name: str
+    service: QueueService = QueueService.REDIS
+    url: str | None = None
+    key: str | None = None
+    database: int | None = None
+    options: dict[str, Any] = field(default_factory=dict)
+
+    # -- Internal Class Attributes -- #
+
+    _option_fields: ClassVar[tuple[str, ...]] = _REDIS_OPTION_FIELDS
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_obj(
+        cls,
+        obj: StrAnyMap,
+    ) -> Self:
+        """
+        Parse a mapping into a ``RedisQueue`` instance.
+
+        Parameters
+        ----------
+        obj : StrAnyMap
+            Mapping with at least ``name``.
+
+        Returns
+        -------
+        Self
+            Parsed queue instance.
+        """
+        optional_str_fields = cls._optional_str_fields(
+            obj,
+            'url',
+            'key',
+            aliases={'key': 'queue_name'},
+        )
+        queue = cls(
+            **cls._common_fields(obj, label='RedisQueue'),
+            url=optional_str_fields['url'],
+            key=optional_str_fields['key'],
+            database=ValueParser.optional_int(
+                obj.get('database', obj.get('db')),
+                field_name='database',
+                label='RedisQueue',
+            ),
+        )
+        queue.validate()
+        return queue
+
+    # -- Instance Methods -- #
+
+    def validate(self) -> None:
+        """
+        Validate Redis queue metadata.
+
+        Raises
+        ------
+        ValueError
+            If the Redis database number is negative.
+        """
+        if self.database is not None and self.database < 0:
+            raise ValueError('RedisQueue "database" must be greater than or equal to 0')

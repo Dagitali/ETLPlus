@@ -423,6 +423,7 @@ class ReadinessSupportPolicy:
     def missing_requirement_guidance(
         *,
         detected_format: str | None = None,
+        detected_queue_service: str | None = None,
         detected_scheme: str | None = None,
         package: str,
         extra: str | None = None,
@@ -434,6 +435,8 @@ class ReadinessSupportPolicy:
         ----------
         detected_format : str | None
             The detected file format, if any.
+        detected_queue_service : str | None
+            The detected queue service, if any.
         detected_scheme : str | None
             The detected storage scheme, if any.
         package : str
@@ -459,6 +462,11 @@ class ReadinessSupportPolicy:
             )
         if detected_format is not None:
             return f'{install_hint} Required for "{detected_format}" file format.'
+        if detected_queue_service is not None:
+            return (
+                f'{install_hint} Required for "{detected_queue_service}" '
+                'queue connectors.'
+            )
         if detected_scheme is not None:
             return f'{install_hint} Required for "{detected_scheme}" storage paths.'
         return install_hint

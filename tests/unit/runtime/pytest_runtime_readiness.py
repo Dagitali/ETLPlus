@@ -81,6 +81,7 @@ def build_missing_requirement_row(
     extra: str,
     guidance: str | None = None,
     detected_format: str | None = None,
+    detected_queue_service: str | None = None,
     detected_scheme: str | None = None,
 ) -> dict[str, object]:
     """Build one missing-optional-dependency row."""
@@ -95,6 +96,8 @@ def build_missing_requirement_row(
         row['guidance'] = guidance
     if detected_format is not None:
         row['detected_format'] = detected_format
+    if detected_queue_service is not None:
+        row['detected_queue_service'] = detected_queue_service
     if detected_scheme is not None:
         row['detected_scheme'] = detected_scheme
     return row

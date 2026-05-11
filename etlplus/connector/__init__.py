@@ -16,6 +16,8 @@ from ._database import ConnectorDbConfigDict
 from ._enums import DataConnectorType
 from ._file import ConnectorFile
 from ._file import ConnectorFileConfigDict
+from ._queue import ConnectorQueue
+from ._queue import ConnectorQueueConfigDict
 from ._types import ConnectorType
 from ._utils import parse_connector
 
@@ -27,6 +29,7 @@ __all__ = [
     'ConnectorApi',
     'ConnectorDb',
     'ConnectorFile',
+    'ConnectorQueue',
     # Enums
     'DataConnectorType',
     # Functions
@@ -40,4 +43,5 @@ __all__ = [
     'ConnectorApiConfigDict',
     'ConnectorDbConfigDict',
     'ConnectorFileConfigDict',
+    'ConnectorQueueConfigDict',
 ]

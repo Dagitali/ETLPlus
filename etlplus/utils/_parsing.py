@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from collections.abc import Sequence
+from typing import SupportsIndex
+from typing import SupportsInt
 from typing import TypeGuard
 
 from ._text import TextNormalizer
@@ -99,6 +101,49 @@ class ValueParser:
         if (text := ValueParser.optional_str(value)) is None:
             return None
         return choices.get(TextNormalizer.normalize(text), text)
+
+    @staticmethod
+    def optional_int(
+        value: object,
+        *,
+        field_name: str,
+        label: str,
+    ) -> int | None:
+        """
+        Return an optional integer, rejecting booleans.
+
+        Parameters
+        ----------
+        value : object
+            Input value to parse as an optional integer.
+        field_name : str
+            Field name used in validation errors.
+        label : str
+            Human-readable payload label used in validation errors.
+
+        Returns
+        -------
+        int | None
+            Parsed integer value, or ``None`` when absent.
+
+        Raises
+        ------
+        TypeError
+            If the value cannot be parsed as an integer, or if it is a boolean.
+        """
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            raise TypeError(f'{label} "{field_name}" must be an integer')
+        try:
+            if not isinstance(
+                value,
+                str | bytes | bytearray | SupportsInt | SupportsIndex,
+            ):
+                raise TypeError
+            return int(value)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(f'{label} "{field_name}" must be an integer') from exc
 
     @staticmethod
     def optional_str(
