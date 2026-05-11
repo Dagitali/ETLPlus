@@ -68,10 +68,10 @@ class AzureServiceBusQueue(ProviderQueueConfigMixin):
 
     Attributes
     ----------
-    service : QueueService
-        Queue service, always ``'azure-service-bus'``.
     name : str
         Queue metadata name.
+    service : QueueService
+        Queue service, always ``'azure-service-bus'``.
     namespace : str | None
         Optional Azure Service Bus namespace.
     queue_name : str | None
@@ -118,16 +118,20 @@ class AzureServiceBusQueue(ProviderQueueConfigMixin):
         Self
             Parsed queue instance.
         """
+        optional_str_fields = cls._optional_str_fields(
+            obj,
+            'namespace',
+            'queue_name',
+            'topic',
+            'subscription',
+            aliases={'queue_name': 'queue'},
+        )
         queue = cls(
             **cls._common_fields(obj, label='AzureServiceBusQueue'),
-            **cls._optional_str_fields(
-                obj,
-                'namespace',
-                'queue_name',
-                'topic',
-                'subscription',
-                aliases={'queue_name': 'queue'},
-            ),
+            namespace=optional_str_fields['namespace'],
+            queue_name=optional_str_fields['queue_name'],
+            topic=optional_str_fields['topic'],
+            subscription=optional_str_fields['subscription'],
         )
         queue.validate()
         return queue
