@@ -34,7 +34,13 @@ __all__ = [
 
 
 class AmqpQueueConfigDict(TypedDict, total=False):
-    """Shape accepted by :meth:`AmqpQueue.from_obj`."""
+    """
+    Shape accepted by :meth:`AmqpQueue.from_obj` (all keys optional).
+
+    See Also
+    --------
+    - :meth:`etlplus.queue.AmqpQueue.from_obj`
+    """
 
     name: str
     url: str
@@ -45,12 +51,26 @@ class AmqpQueueConfigDict(TypedDict, total=False):
     options: StrAnyMap
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_AMQP_OPTION_FIELDS = (
+    'url',
+    'host',
+    'virtual_host',
+    'exchange',
+    'routing_key',
+)
+
+
 # SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(kw_only=True, slots=True)
 class AmqpQueue(ProviderQueueConfigMixin):
     """Configuration metadata for AMQP/RabbitMQ queues."""
+
+    # -- Instance Attributes -- #
 
     name: str
     service: QueueService = QueueService.AMQP
@@ -63,19 +83,28 @@ class AmqpQueue(ProviderQueueConfigMixin):
 
     # -- Internal Class Attributes -- #
 
-    _option_fields: ClassVar[tuple[str, ...]] = (
-        'url',
-        'host',
-        'virtual_host',
-        'exchange',
-        'routing_key',
-    )
+    _option_fields: ClassVar[tuple[str, ...]] = _AMQP_OPTION_FIELDS
 
     # -- Class Methods -- #
 
     @classmethod
-    def from_obj(cls, obj: StrAnyMap) -> Self:
-        """Parse a mapping into an ``AmqpQueue`` instance."""
+    def from_obj(
+        cls,
+        obj: StrAnyMap,
+    ) -> Self:
+        """
+        Parse a mapping into an ``AmqpQueue`` instance.
+
+        Parameters
+        ----------
+        obj : StrAnyMap
+            Mapping with at least ``name``.
+
+        Returns
+        -------
+        Self
+            Parsed queue instance.
+        """
         queue = cls(
             name=MappingFieldParser.require_str(obj, 'name', label='AmqpQueue'),
             url=ValueParser.optional_str(obj.get('url')),
