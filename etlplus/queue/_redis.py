@@ -13,12 +13,10 @@ from typing import ClassVar
 from typing import Self
 from typing import TypedDict
 
-from ..utils import MappingFieldParser
-from ..utils import MappingParser
 from ..utils import ValueParser
 from ..utils._types import StrAnyMap
+from ._base import ProviderQueueConfigMixin
 from ._enums import QueueService
-from ._providers import ProviderQueueConfigMixin
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -113,7 +111,7 @@ class RedisQueue(ProviderQueueConfigMixin):
             Parsed queue instance.
         """
         queue = cls(
-            name=MappingFieldParser.require_str(obj, 'name', label='RedisQueue'),
+            **cls._common_fields(obj, label='RedisQueue'),
             url=ValueParser.optional_str(obj.get('url')),
             key=ValueParser.optional_str(obj.get('key', obj.get('queue_name'))),
             database=ValueParser.optional_int(
@@ -121,7 +119,6 @@ class RedisQueue(ProviderQueueConfigMixin):
                 field_name='database',
                 label='RedisQueue',
             ),
-            options=MappingParser.to_dict(obj.get('options')),
         )
         queue.validate()
         return queue
