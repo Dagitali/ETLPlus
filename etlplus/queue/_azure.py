@@ -34,7 +34,13 @@ __all__ = [
 
 
 class AzureServiceBusQueueConfigDict(TypedDict, total=False):
-    """Shape accepted by :meth:`AzureServiceBusQueue.from_obj`."""
+    """
+    Shape accepted by :meth:`AzureServiceBusQueue.from_obj` (all keys optional).
+
+    See Also
+    --------
+    - :meth:`etlplus.queue.AzureServiceBusQueue.from_obj`
+    """
 
     name: str
     namespace: str
@@ -42,6 +48,17 @@ class AzureServiceBusQueueConfigDict(TypedDict, total=False):
     topic: str
     subscription: str
     options: StrAnyMap
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_AZURE_SERVICE_BUS_OPTION_FIELDS = (
+    'namespace',
+    'queue_name',
+    'topic',
+    'subscription',
+)
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -61,20 +78,30 @@ class AzureServiceBusQueue(ProviderQueueConfigMixin):
     subscription: str | None = None
     options: dict[str, Any] = field(default_factory=dict)
 
-    # -- Class Attributes -- #
+    # -- Internal Class Attributes -- #
 
-    _option_fields: ClassVar[tuple[str, ...]] = (
-        'namespace',
-        'queue_name',
-        'topic',
-        'subscription',
-    )
+    _option_fields: ClassVar[tuple[str, ...]] = _AZURE_SERVICE_BUS_OPTION_FIELDS
 
     # -- Class Methods -- #
 
     @classmethod
-    def from_obj(cls, obj: StrAnyMap) -> Self:
-        """Parse a mapping into an ``AzureServiceBusQueue`` instance."""
+    def from_obj(
+        cls,
+        obj: StrAnyMap,
+    ) -> Self:
+        """
+        Parse a mapping into an ``AzureServiceBusQueue`` instance.
+
+        Parameters
+        ----------
+        obj : StrAnyMap
+            Mapping with at least ``name``.
+
+        Returns
+        -------
+        Self
+            Parsed queue instance.
+        """
         queue = cls(
             name=MappingFieldParser.require_str(
                 obj,
