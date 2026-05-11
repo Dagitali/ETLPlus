@@ -104,11 +104,11 @@ class ConnectorQueue(ConnectorBase):
     Attributes
     ----------
     type : DataConnectorType
-        Connector kind, always ``'queue'``.
+        Connector kind (always ``'queue'``).
     service : QueueService
-        Queue service provider, currently ``'sqs'``.
+        Queue service provider (e.g., ``'aws-sqs'``).
     queue_type : QueueType
-        Queue ordering/delivery type, e.g. ``'standard'`` or ``'fifo'``.
+        Queue ordering/delivery type: ``'standard'`` or ``'fifo'``.
     queue_name : str | None
         Queue name.
     url : str | None
@@ -122,7 +122,7 @@ class ConnectorQueue(ConnectorBase):
     # -- Attributes -- #
 
     type: DataConnectorType = DataConnectorType.QUEUE
-    service: QueueService = QueueService.SQS
+    service: QueueService = QueueService.AWS_SQS
     queue_type: QueueType = QueueType.STANDARD
     queue_name: str | None = None
     url: str | None = None
@@ -162,7 +162,7 @@ class ConnectorQueue(ConnectorBase):
 
         return cls(
             name=name,
-            service=QueueService.coerce(obj.get('service', QueueService.SQS)),
+            service=QueueService.coerce(obj.get('service', QueueService.AWS_SQS)),
             queue_type=queue_type,
             queue_name=queue_name,
             url=ValueParser.optional_str(obj.get('url')),
