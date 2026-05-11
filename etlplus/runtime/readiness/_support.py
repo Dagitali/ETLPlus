@@ -22,6 +22,7 @@ __all__ = [
     'AZURE_STORAGE_BOOTSTRAP_ENV',
     'AZURE_STORAGE_CREDENTIAL_ENV',
     'FORMAT_EXTRA_REQUIREMENTS',
+    'QUEUE_SERVICE_EXTRA_REQUIREMENTS',
     'SCHEME_EXTRA_REQUIREMENTS',
     'SUPPORTED_PYTHON_RANGE',
     # Classes
@@ -121,6 +122,21 @@ FORMAT_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
     'rds': RequirementSpec(('pyreadr',), 'pyreadr', 'file'),
     'sav': RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
     'zsav': RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),
+}
+QUEUE_SERVICE_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
+    'amqp': RequirementSpec(('pika',), 'pika', 'queue-amqp'),
+    'azure-service-bus': RequirementSpec(
+        ('azure.servicebus',),
+        'azure-servicebus',
+        'queue-azure',
+    ),
+    'gcp-pubsub': RequirementSpec(
+        ('google.cloud.pubsub',),
+        'google-cloud-pubsub',
+        'queue-gcp',
+    ),
+    'redis': RequirementSpec(('redis',), 'redis', 'queue-redis'),
+    'aws-sqs': RequirementSpec(('boto3',), 'boto3', 'queue-aws'),
 }
 SCHEME_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
     'abfs': RequirementSpec(

@@ -12,6 +12,7 @@ import etlplus.connector._connector as connector_mod
 from etlplus.connector import ConnectorApi
 from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorFile
+from etlplus.connector import ConnectorQueue
 from etlplus.connector._connector import Connector
 
 # SECTION: PRAGMAS ========================================================== #
@@ -30,6 +31,7 @@ class TestConnectorAlias:
             pytest.param(ConnectorApi(name='a'), ConnectorApi, id='api'),
             pytest.param(ConnectorDb(name='b'), ConnectorDb, id='database'),
             pytest.param(ConnectorFile(name='c'), ConnectorFile, id='file'),
+            pytest.param(ConnectorQueue(name='q'), ConnectorQueue, id='queue'),
         ],
     )
     def test_connector_alias_supports_all_variants(

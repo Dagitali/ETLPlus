@@ -29,6 +29,9 @@ class TestDataConnectorType:
             'db': 'database',
             'filesystem': 'file',
             'fs': 'file',
+            'message-queue': 'queue',
+            'mq': 'queue',
+            'sqs': 'queue',
         }
 
     @pytest.mark.parametrize(
@@ -38,6 +41,7 @@ class TestDataConnectorType:
             (' rest ', DataConnectorType.API),
             ('db', DataConnectorType.DATABASE),
             ('Fs', DataConnectorType.FILE),
+            ('sqs', DataConnectorType.QUEUE),
         ],
     )
     def test_coerce_aliases(
@@ -51,4 +55,4 @@ class TestDataConnectorType:
     def test_invalid_value_raises_value_error(self) -> None:
         """Test that invalid values raise :class:`ValueError`."""
         with pytest.raises(ValueError, match='Invalid DataConnectorType'):
-            DataConnectorType.coerce('queue')
+            DataConnectorType.coerce('stream')

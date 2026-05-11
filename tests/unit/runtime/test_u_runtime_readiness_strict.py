@@ -215,7 +215,8 @@ class TestReadinessReportBuilderStrict:
         assert issues == [
             _issue(
                 guidance=(
-                    'Use one of the supported connector types: api, database, file.'
+                    'Use one of the supported connector types: '
+                    'api, database, file, queue.'
                 ),
                 index=0,
                 issue='invalid connector entry',
@@ -301,7 +302,7 @@ class TestReadinessReportBuilderStrict:
                 set(),
                 [
                     _issue(
-                        guidance='Set "type" to one of: api, database, file.',
+                        guidance=('Set "type" to one of: api, database, file, queue.'),
                         index=0,
                         issue='invalid connector entry',
                         message='missing connector type',

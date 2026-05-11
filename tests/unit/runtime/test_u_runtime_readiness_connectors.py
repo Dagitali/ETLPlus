@@ -185,7 +185,7 @@ class TestReadinessReportBuilderConnectors:
                 ),
                 issue='unsupported type',
                 role='source',
-                supported_types=['api', 'database', 'file'],
+                supported_types=['api', 'database', 'file', 'queue'],
                 connector_type='s3',
             ),
         ]
@@ -345,10 +345,10 @@ class TestReadinessReportBuilderConnectors:
     ) -> None:
         """Test actionable guidance for blank and non-storage invalid types."""
         assert readiness_connectors_mod.connector_type_guidance('') == (
-            'Set type to one of: api, database, file.'
+            'Set type to one of: api, database, file, queue.'
         )
         assert readiness_connectors_mod.connector_type_guidance('weird') == (
-            'Use one of the supported connector types: api, database, file.'
+            'Use one of the supported connector types: api, database, file, queue.'
         )
 
     def test_dedupe_rows_preserves_first_occurrence(self) -> None:
@@ -437,6 +437,95 @@ class TestReadinessReportBuilderConnectors:
                 ),
                 missing_package='pyreadr',
                 reason='rda format requires pyreadr',
+                role='source',
+            ),
+        ]
+
+    @pytest.mark.parametrize(
+        ('service', 'expected_service', 'missing_module', 'extra', 'package'),
+        [
+            pytest.param(
+                'aws-sqs',
+                'aws-sqs',
+                'boto3',
+                'queue-aws',
+                'boto3',
+                id='aws-sqs',
+            ),
+            pytest.param(
+                'sqs',
+                'aws-sqs',
+                'boto3',
+                'queue-aws',
+                'boto3',
+                id='sqs-alias',
+            ),
+            pytest.param('amqp', 'amqp', 'pika', 'queue-amqp', 'pika', id='amqp'),
+            pytest.param(
+                'azure-service-bus',
+                'azure-service-bus',
+                'azure.servicebus',
+                'queue-azure',
+                'azure-servicebus',
+                id='azure-service-bus',
+            ),
+            pytest.param(
+                'gcp-pubsub',
+                'gcp-pubsub',
+                'google.cloud.pubsub',
+                'queue-gcp',
+                'google-cloud-pubsub',
+                id='gcp-pubsub',
+            ),
+            pytest.param(
+                'redis',
+                'redis',
+                'redis',
+                'queue-redis',
+                'redis',
+                id='redis',
+            ),
+        ],
+    )
+    def test_missing_requirement_rows_report_queue_service_dependencies(
+        self,
+        service: str,
+        expected_service: str,
+        missing_module: str,
+        extra: str,
+        package: str,
+    ) -> None:
+        """Test that queue connectors require provider-specific dependencies."""
+        cfg = _cfg(
+            sources=[
+                SimpleNamespace(
+                    name='events',
+                    queue_name='events',
+                    service=service,
+                    type='queue',
+                ),
+            ],
+        )
+
+        rows = (
+            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
+                cfg=cast(Any, cfg),
+                package_available=lambda module_name: module_name != missing_module,
+            )
+        )
+
+        assert rows == [
+            _missing_requirement(
+                connector='events',
+                detected_queue_service=expected_service,
+                extra=extra,
+                guidance=(
+                    f'Install {package} directly or install the ETLPlus '
+                    f'"{extra}" extra. Required for "{expected_service}" '
+                    'queue connectors.'
+                ),
+                missing_package=package,
+                reason=f'{expected_service} queue connector requires {package}',
                 role='source',
             ),
         ]

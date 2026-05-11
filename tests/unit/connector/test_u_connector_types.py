@@ -27,6 +27,7 @@ class TestConnectorTypes:
             pytest.param(DataConnectorType.API, 'api', id='enum-member'),
             pytest.param('database', 'database', id='database-literal'),
             pytest.param('file', 'file', id='file-literal'),
+            pytest.param('queue', 'queue', id='queue-literal'),
         ],
     )
     def test_alias_accepts_enum_and_literal_values(

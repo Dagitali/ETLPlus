@@ -151,6 +151,10 @@ release.
     with JSONL fallback support
   - DAG execution summaries for `run --all` and dependency-aware `run --job`, including skipped
     downstream jobs when an upstream dependency fails
+  - Queue connector groundwork includes config-only queue metadata objects, queue URI parsing, the
+    `etlplus.queue` SQS metadata surface, optional queue dependency extras for AWS SQS, Azure
+    Service Bus, Google Cloud Pub/Sub, AMQP/RabbitMQ, and Redis, an aggregate `queue`/`queue-all`
+    extra, plus readiness diagnostics for missing queue provider dependencies.
 
 ## Current Stable-Line Maintenance Checklist
 

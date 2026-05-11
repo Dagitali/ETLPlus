@@ -9,6 +9,7 @@ from __future__ import annotations
 from ._api import ConnectorApi
 from ._database import ConnectorDb
 from ._file import ConnectorFile
+from ._queue import ConnectorQueue
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -23,4 +24,4 @@ __all__ = [
 
 
 # Type alias representing any supported connector
-type Connector = ConnectorApi | ConnectorDb | ConnectorFile
+type Connector = ConnectorApi | ConnectorDb | ConnectorFile | ConnectorQueue
