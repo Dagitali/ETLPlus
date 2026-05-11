@@ -11,6 +11,8 @@ import pytest
 import etlplus.queue as queue_pkg
 from etlplus.queue import AmqpQueue
 from etlplus.queue import AmqpQueueConfigDict
+from etlplus.queue import AwsSqsQueue
+from etlplus.queue import AwsSqsQueueConfigDict
 from etlplus.queue import AzureServiceBusQueue
 from etlplus.queue import AzureServiceBusQueueConfigDict
 from etlplus.queue import GcpPubSubQueue
@@ -22,8 +24,6 @@ from etlplus.queue import QueueService
 from etlplus.queue import QueueType
 from etlplus.queue import RedisQueue
 from etlplus.queue import RedisQueueConfigDict
-from etlplus.queue import SqsQueue
-from etlplus.queue import SqsQueueConfigDict
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -38,7 +38,7 @@ QUEUE_EXPORTS = [
     ('GcpPubSubQueue', GcpPubSubQueue),
     ('QueueLocation', QueueLocation),
     ('RedisQueue', RedisQueue),
-    ('SqsQueue', SqsQueue),
+    ('AwsSqsQueue', AwsSqsQueue),
     ('QueueService', QueueService),
     ('QueueType', QueueType),
     ('QueueConfigProtocol', QueueConfigProtocol),
@@ -47,7 +47,7 @@ QUEUE_EXPORTS = [
     ('AzureServiceBusQueueConfigDict', AzureServiceBusQueueConfigDict),
     ('GcpPubSubQueueConfigDict', GcpPubSubQueueConfigDict),
     ('RedisQueueConfigDict', RedisQueueConfigDict),
-    ('SqsQueueConfigDict', SqsQueueConfigDict),
+    ('AwsSqsQueueConfigDict', AwsSqsQueueConfigDict),
 ]
 
 
