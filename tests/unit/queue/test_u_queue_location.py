@@ -51,6 +51,15 @@ class TestQueueLocation:
                 },
                 id='sqs-alias',
             ),
+            pytest.param(
+                'redis://localhost:6379/0/orders%2Fcreated',
+                {
+                    'service': QueueService.REDIS,
+                    'authority': 'localhost:6379',
+                    'path': '0/orders/created',
+                },
+                id='percent-encoded-path',
+            ),
         ],
     )
     def test_from_value_parses_queue_uri(
