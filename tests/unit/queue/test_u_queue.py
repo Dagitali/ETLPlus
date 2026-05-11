@@ -38,16 +38,31 @@ class TestQueueEnums:
     def test_service_aliases_returns_expected_mapping(self) -> None:
         """Test that :meth:`QueueService.aliases` returns expected aliases."""
         assert QueueService.aliases() == {
-            'amazon-sqs': 'sqs',
-            'aws-sqs': 'sqs',
-            'aws_sqs': 'sqs',
+            'aio-pika': 'amqp',
+            'amazon-sqs': 'aws-sqs',
+            'azure-servicebus': 'azure-service-bus',
+            'azure_service_bus': 'azure-service-bus',
+            'aws_sqs': 'aws-sqs',
+            'gcp-pub-sub': 'gcp-pubsub',
+            'google-cloud-pubsub': 'gcp-pubsub',
+            'google-pubsub': 'gcp-pubsub',
+            'pika': 'amqp',
+            'pubsub': 'gcp-pubsub',
+            'rabbitmq': 'amqp',
+            'redis-streams': 'redis',
+            'sqs': 'aws-sqs',
         }
 
     @pytest.mark.parametrize(
         ('value', 'expected'),
         [
-            ('AWS-SQS', QueueService.SQS),
-            ('amazon-sqs', QueueService.SQS),
+            ('AWS-SQS', QueueService.AWS_SQS),
+            ('amazon-sqs', QueueService.AWS_SQS),
+            ('sqs', QueueService.AWS_SQS),
+            ('azure-servicebus', QueueService.AZURE_SERVICE_BUS),
+            ('google-cloud-pubsub', QueueService.GCP_PUBSUB),
+            ('rabbitmq', QueueService.AMQP),
+            ('redis-streams', QueueService.REDIS),
         ],
     )
     def test_service_coerce_aliases(
@@ -140,15 +155,12 @@ class TestSqsQueue:
                 'message_retention_period': 345600,
                 'visibility_timeout': '30',
                 'wait_time_seconds': '20',
-                'content_based_deduplication': 'yes',
                 'dead_letter_queue_arn': 'arn:aws:sqs:us-east-1:123:dead',
-                'deduplication_id': 456,
-                'message_group_id': 'events',
                 'attributes': {'VisibilityTimeout': '30'},
             },
         )
 
-        assert connector.service is QueueService.SQS
+        assert connector.service is QueueService.AWS_SQS
         assert connector.queue_type is expected_type
         assert connector.url == '123'
         assert connector.arn == 'False'
@@ -158,10 +170,7 @@ class TestSqsQueue:
         assert connector.message_retention_period == 345600
         assert connector.visibility_timeout == 30
         assert connector.wait_time_seconds == 20
-        assert connector.content_based_deduplication is True
         assert connector.dead_letter_queue_arn == 'arn:aws:sqs:us-east-1:123:dead'
-        assert connector.deduplication_id == '456'
-        assert connector.message_group_id == 'events'
         assert connector.attributes == {'VisibilityTimeout': '30'}
 
     def test_from_obj_requires_name(self) -> None:
@@ -176,6 +185,44 @@ class TestSqsQueue:
                 {
                     'name': 'events',
                     'visibility_timeout': 'not-an-int',
+                },
+            )
+
+    @pytest.mark.parametrize(
+        ('field_name', 'value'),
+        [
+            pytest.param('delay_seconds', 901, id='delay-seconds'),
+            pytest.param('max_messages', 11, id='max-messages'),
+            pytest.param(
+                'message_retention_period',
+                1_209_601,
+                id='message-retention-period',
+            ),
+            pytest.param('visibility_timeout', 43_201, id='visibility-timeout'),
+            pytest.param('wait_time_seconds', 21, id='wait-time-seconds'),
+        ],
+    )
+    def test_from_obj_rejects_out_of_range_integer_metadata(
+        self,
+        field_name: str,
+        value: int,
+    ) -> None:
+        """Test that bounded SQS metadata fields enforce AWS limits."""
+        with pytest.raises(ValueError, match=f'"{field_name}" must be between'):
+            SqsQueue.from_obj(
+                {
+                    'name': 'events',
+                    field_name: value,
+                },
+            )
+
+    def test_standard_queue_rejects_fifo_only_metadata(self) -> None:
+        """Test that standard queues reject FIFO-only message metadata."""
+        with pytest.raises(ValueError, match='FIFO fields require'):
+            SqsQueue.from_obj(
+                {
+                    'name': 'events',
+                    'message_group_id': 'events',
                 },
             )
 
@@ -196,7 +243,7 @@ class TestSqsQueue:
 
         assert queue.to_connector_options() == {
             'ContentBasedDeduplication': 'true',
-            'service': 'sqs',
+            'service': 'aws-sqs',
             'queue_type': 'fifo',
             'queue_name': 'events.fifo',
             'url': 'https://sqs.us-east-1.amazonaws.com/123/events.fifo',
