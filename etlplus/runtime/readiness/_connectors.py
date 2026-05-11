@@ -11,6 +11,7 @@ from typing import Any
 
 from ..._config import Config
 from ...connector import DataConnectorType
+from ...queue import QueueService
 from ._base import ReadinessSupportPolicy
 from ._support import FORMAT_EXTRA_REQUIREMENTS
 from ._support import QUEUE_SERVICE_EXTRA_REQUIREMENTS
@@ -243,7 +244,15 @@ class ConnectorReadinessPolicy:
             connector_type_name = str(getattr(connector, 'type', '') or '')
             path = getattr(connector, 'path', None)
             format_name = str(getattr(connector, 'format', '') or '').lower()
-            queue_service = str(getattr(connector, 'service', '') or '').lower()
+            queue_service_raw = str(getattr(connector, 'service', '') or '').lower()
+            # TODO: Consider supporting other connector-specific fields that
+            # TODO: may indicate optional dependencies, e.g. database driver
+            # TODO: hints.
+            queue_service = (
+                coerced_service.value
+                if (coerced_service := QueueService.try_coerce(queue_service_raw))
+                else queue_service_raw
+            )
 
             if path:
                 scheme = ReadinessSupportPolicy.coerce_storage_scheme(path)
