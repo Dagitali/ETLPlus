@@ -22,6 +22,7 @@ Back to project overview: see the top-level [README](../../README.md).
   - [Relationship to `etlplus.connector`](#relationship-to-etlplusconnector)
   - [Public API](#public-api)
   - [Supported Queue Services](#supported-queue-services)
+  - [Provider Validation](#provider-validation)
   - [AWS SQS Metadata](#aws-sqs-metadata)
   - [Queue Locations](#queue-locations)
   - [Dependency Extras](#dependency-extras)
@@ -68,6 +69,17 @@ service, queue name, region, URL, and provider-specific options. Use
 | Redis               | `redis`             | `redis`                  | `queue-redis`     |
 
 The aggregate `queue` and `queue-all` extras include all provider packages listed above.
+
+## Provider Validation
+
+Queue config objects perform lightweight metadata validation before runtime integration code
+consumes them:
+
+- `AmqpQueue` requires `url` or `host`.
+- `AzureServiceBusQueue` requires `queue_name` or `topic`; `subscription` also requires `topic`.
+- `GcpPubSubQueue` requires `project` plus `topic` or `subscription`.
+- `RedisQueue` rejects negative database numbers.
+- `SqsQueue` validates FIFO naming, FIFO-only metadata, and bounded SQS integer settings.
 
 ## AWS SQS Metadata
 
