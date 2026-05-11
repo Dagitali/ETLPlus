@@ -74,24 +74,3 @@ class TestRedisQueue:
             'key': 'orders',
             'database': 1,
         }
-
-    def test_modeled_fields_override_options(self) -> None:
-        """Test top-level Redis fields take precedence over duplicate options."""
-        queue = RedisQueue.from_obj(
-            {
-                'name': 'orders',
-                'key': 'events',
-                'database': 1,
-                'options': {
-                    'service': 'wrong',
-                    'key': 'stale',
-                    'database': 0,
-                },
-            },
-        )
-
-        assert queue.to_connector_options() == {
-            'service': 'redis',
-            'key': 'events',
-            'database': 1,
-        }

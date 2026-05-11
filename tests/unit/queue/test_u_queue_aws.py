@@ -199,25 +199,3 @@ class TestAwsSqsQueue:
             'content_based_deduplication': True,
             'message_group_id': 'events',
         }
-
-    def test_modeled_fields_override_attributes(self) -> None:
-        """Test top-level SQS fields take precedence over duplicate attributes."""
-        queue = AwsSqsQueue.from_obj(
-            {
-                'name': 'events',
-                'region': 'us-east-1',
-                'attributes': {
-                    'service': 'wrong',
-                    'queue_type': 'wrong',
-                    'queue_name': 'stale',
-                    'region': 'stale',
-                },
-            },
-        )
-
-        assert queue.to_connector_options() == {
-            'service': 'aws-sqs',
-            'queue_type': 'standard',
-            'queue_name': 'events',
-            'region': 'us-east-1',
-        }

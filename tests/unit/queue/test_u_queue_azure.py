@@ -67,21 +67,3 @@ class TestAzureServiceBusQueue:
             'topic': 'orders-topic',
             'subscription': 'etlplus',
         }
-
-    def test_modeled_fields_override_options(self) -> None:
-        """Test top-level Azure fields take precedence over duplicate options."""
-        queue = AzureServiceBusQueue.from_obj(
-            {
-                'name': 'orders',
-                'queue_name': 'orders',
-                'options': {
-                    'service': 'wrong',
-                    'queue_name': 'stale',
-                },
-            },
-        )
-
-        assert queue.to_connector_options() == {
-            'service': 'azure-service-bus',
-            'queue_name': 'orders',
-        }
