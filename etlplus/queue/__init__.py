@@ -6,8 +6,8 @@ Queue type helpers for message-oriented ETL sources and targets.
 
 from __future__ import annotations
 
-from ._aws import SqsQueue
-from ._aws import SqsQueueConfigDict
+from ._aws import AwsSqsQueue
+from ._aws import AwsSqsQueueConfigDict
 from ._base import QueueConfigProtocol
 from ._enums import QueueService
 from ._enums import QueueType
@@ -28,11 +28,11 @@ from ._types import QueueConfig
 __all__ = [
     # Classes
     'AmqpQueue',
+    'AwsSqsQueue',
     'AzureServiceBusQueue',
     'GcpPubSubQueue',
     'QueueLocation',
     'RedisQueue',
-    'SqsQueue',
     # Enums
     'QueueService',
     'QueueType',
@@ -42,8 +42,8 @@ __all__ = [
     'QueueConfig',
     # Typed Dicts
     'AmqpQueueConfigDict',
+    'AwsSqsQueueConfigDict',
     'AzureServiceBusQueueConfigDict',
     'GcpPubSubQueueConfigDict',
     'RedisQueueConfigDict',
-    'SqsQueueConfigDict',
 ]
