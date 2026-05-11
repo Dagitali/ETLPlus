@@ -60,7 +60,24 @@ _REDIS_OPTION_FIELDS = ('url', 'key', 'database')
 
 @dataclass(kw_only=True, slots=True)
 class RedisQueue(ProviderQueueConfigMixin):
-    """Configuration metadata for Redis queue-like workflows."""
+    """
+    Configuration metadata for Redis queue-like workflows.
+
+    Attributes
+    ----------
+    service : QueueService
+        Queue service, always ``'redis'``.
+    name : str
+        Queue metadata name.
+    url : str | None
+        Optional Redis URL.
+    key : str | None
+        Optional Redis key or queue name.
+    database : int | None
+        Optional Redis database number.
+    options : dict[str, Any]
+        Optional provider-specific queue options.
+    """
 
     # -- Instance Attributes -- #
 
