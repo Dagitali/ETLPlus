@@ -63,16 +63,6 @@ def _connector_gap_row(
     return row
 
 
-def _connector_type(
-    connector_type_str: str,
-) -> DataConnectorType | None:
-    """Return one coerced connector type or ``None`` when unsupported."""
-    try:
-        return DataConnectorType.coerce(connector_type_str)
-    except ValueError:
-        return None
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -85,7 +75,7 @@ def connector_type_choices() -> tuple[str, ...]:
     tuple[str, ...]
         A tuple of supported connector type names.
     """
-    return tuple(str(member.value) for member in DataConnectorType)
+    return DataConnectorType.choices()
 
 
 def connector_type_guidance(
@@ -148,7 +138,7 @@ class ConnectorReadinessPolicy:
         for role, connector in ReadinessSupportPolicy.iter_connectors(cfg):
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
             connector_type_name = str(getattr(connector, 'type', ''))
-            coerced_type = _connector_type(connector_type_name)
+            coerced_type = DataConnectorType.try_coerce(connector_type_name)
 
             if coerced_type is None:
                 gaps.append(
@@ -244,8 +234,12 @@ class ConnectorReadinessPolicy:
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
             connector_type_name = str(getattr(connector, 'type', '') or '')
             path = getattr(connector, 'path', None)
-            format_name = str(getattr(connector, 'format', '') or '').lower()
-            queue_service_raw = str(getattr(connector, 'service', '') or '').lower()
+            format_name = TextNormalizer.normalize(
+                str(getattr(connector, 'format', '') or ''),
+            )
+            queue_service_raw = TextNormalizer.normalize(
+                str(getattr(connector, 'service', '') or ''),
+            )
             # TODO: Consider supporting other connector-specific fields that
             # TODO: may indicate optional dependencies, e.g. database driver
             # TODO: hints.
@@ -278,7 +272,8 @@ class ConnectorReadinessPolicy:
                     )
 
             if (
-                connector_type_name == DataConnectorType.QUEUE.value
+                DataConnectorType.try_coerce(connector_type_name)
+                is DataConnectorType.QUEUE
                 and queue_service in QUEUE_SERVICE_EXTRA_REQUIREMENTS
             ):
                 requirement = QUEUE_SERVICE_EXTRA_REQUIREMENTS[queue_service]
