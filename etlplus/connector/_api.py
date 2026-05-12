@@ -135,15 +135,13 @@ class ConnectorApi(ConnectorBase):
         Self
             Parsed connector instance.
         """
-        headers = MappingParser.to_str_dict(
-            MappingParser.optional(obj.get('headers')),
-        )
-
         return cls(
             name=cls._name_from_obj(obj),
             url=ValueParser.optional_str(obj.get('url')),
             method=ValueParser.optional_str(obj.get('method')),
-            headers=headers,
+            headers=MappingParser.to_str_dict(
+                MappingParser.optional(obj.get('headers')),
+            ),
             query_params=MappingParser.to_dict(obj.get('query_params')),
             pagination=PaginationConfig.from_obj(obj.get('pagination')),
             rate_limit=RateLimitConfig.from_obj(obj.get('rate_limit')),
