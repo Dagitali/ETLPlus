@@ -756,3 +756,120 @@ class TestTelemetryConfiguration:
             == 0
         )
         assert captured['max_concurrency'] == 4
+
+    def test_run_handler_records_scheduler_metadata_without_stdout(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Scheduler-triggered runs should persist additive scheduler metadata."""
+
+        class _FakeHistoryStore:
+            def record_run_started(self, _record: object) -> None:
+                return None
+
+        completion_calls: list[dict[str, object]] = []
+        emitted_payloads: list[dict[str, object]] = []
+        lifecycle_calls: list[dict[str, object]] = []
+        cfg = run_mod.Config.from_dict(
+            {
+                'name': 'Schedule Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [{'name': 'seed'}],
+            },
+        )
+
+        monkeypatch.setattr(run_mod.Config, 'from_yaml', lambda *_args, **_kwargs: cfg)
+        monkeypatch.setattr(
+            run_mod.RuntimeTelemetry,
+            'configure',
+            classmethod(lambda _cls, *_args, **_kwargs: None),
+        )
+        monkeypatch.setattr(
+            run_mod._lifecycle,
+            'start_command',
+            lambda **_kwargs: type(
+                'Ctx',
+                (),
+                {
+                    'command': 'run',
+                    'event_format': 'jsonl',
+                    'run_id': 'run-schedule-1',
+                    'started_at': '2026-05-12T02:00:00+00:00',
+                    'started_perf': 0.0,
+                },
+            )(),
+        )
+        monkeypatch.setattr(
+            run_mod._lifecycle,
+            'failure_boundary',
+            lambda *args, **kwargs: __import__('contextlib').nullcontext(),
+        )
+        monkeypatch.setattr(
+            run_mod._lifecycle,
+            'complete_command',
+            lambda _context, **kwargs: lifecycle_calls.append(dict(kwargs)),
+        )
+        monkeypatch.setattr(
+            run_mod._lifecycle,
+            'record_run_completion',
+            lambda *_args, **kwargs: completion_calls.append(dict(kwargs)),
+        )
+        monkeypatch.setattr(
+            POLICY,
+            'open_history_store',
+            lambda _settings: _FakeHistoryStore(),
+        )
+        monkeypatch.setattr(
+            run_mod,
+            'run',
+            lambda **_kwargs: {'status': 'success', 'rows': 3},
+        )
+
+        assert (
+            run_mod.run_handler(
+                config='pipeline.yml',
+                job='seed',
+                event_format='jsonl',
+                pretty=False,
+                emit_output=False,
+                result_recorder=emitted_payloads.append,
+                schedule_name='nightly-all',
+                schedule_trigger='cron',
+                schedule_triggered_at='2026-05-12T02:00:00+00:00',
+            )
+            == 0
+        )
+        assert emitted_payloads == [
+            {
+                'run_id': 'run-schedule-1',
+                'status': 'ok',
+                'result': {'status': 'success', 'rows': 3},
+            },
+        ]
+        assert completion_calls[0]['result_summary'] == {
+            'rows': 3,
+            'status': 'success',
+            'scheduler': {
+                'catchup': False,
+                'schedule': 'nightly-all',
+                'trigger': 'cron',
+                'triggered_at': '2026-05-12T02:00:00+00:00',
+            },
+        }
+        assert lifecycle_calls == [
+            {
+                'config_path': 'pipeline.yml',
+                'continue_on_fail': False,
+                'etlplus_version': run_mod.__version__,
+                'job': 'seed',
+                'pipeline_name': 'Schedule Pipeline',
+                'result_status': 'success',
+                'run_all': False,
+                'schedule': 'nightly-all',
+                'schedule_catchup': False,
+                'schedule_trigger': 'cron',
+                'schedule_triggered_at': '2026-05-12T02:00:00+00:00',
+                'status': 'ok',
+            },
+        ]
