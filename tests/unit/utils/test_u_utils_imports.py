@@ -109,6 +109,31 @@ class TestDependencyMessages:
         with pytest.raises(ValueError, match='dependency name must not be empty'):
             dependency_label(dependency_names)
 
+    @pytest.mark.parametrize(
+        ('available_modules', 'expected'),
+        [
+            pytest.param({'netCDF4'}, True, id='one-module-available'),
+            pytest.param(set(), False, id='missing'),
+        ],
+    )
+    def test_import_requirement_availability(
+        self,
+        available_modules: set[str],
+        expected: bool,
+    ) -> None:
+        """Test import requirements accept alternate available modules."""
+        requirement = ImportRequirement(
+            modules=('netCDF4', 'h5netcdf'),
+            package='netCDF4',
+        )
+
+        assert (
+            requirement.is_available(
+                availability_checker=available_modules.__contains__,
+            )
+            is expected
+        )
+
     def test_import_requirement_stores_optional_dependency_metadata(self) -> None:
         """Test import requirement metadata is immutable and explicit."""
         requirement = ImportRequirement(
