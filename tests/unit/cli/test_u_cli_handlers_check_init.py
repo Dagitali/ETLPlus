@@ -1024,6 +1024,25 @@ class TestScheduleHandler:
             pretty=True,
         )
 
+    @pytest.mark.parametrize('conflicting_dir', ['data', 'temp'])
+    def test_rejects_existing_file_where_scaffold_directory_is_required(
+        self,
+        tmp_path: Path,
+        conflicting_dir: str,
+    ) -> None:
+        """
+        Test that init handler rejects files where scaffold directories are needed.
+        """
+        project_dir = tmp_path / 'starter'
+        project_dir.mkdir()
+        (project_dir / conflicting_dir).write_text('conflict\n', encoding='utf-8')
+
+        with pytest.raises(
+            ValueError,
+            match='Init target requires a directory but found a file',
+        ):
+            handlers.init_handler(directory=str(project_dir))
+
     def test_returns_error_payload_for_unknown_schedule(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -1058,25 +1077,6 @@ class TestScheduleHandler:
             pretty=True,
         )
 
-    @pytest.mark.parametrize('conflicting_dir', ['data', 'temp'])
-    def test_rejects_existing_file_where_scaffold_directory_is_required(
-        self,
-        tmp_path: Path,
-        conflicting_dir: str,
-    ) -> None:
-        """
-        Test that init handler rejects files where scaffold directories are needed.
-        """
-        project_dir = tmp_path / 'starter'
-        project_dir.mkdir()
-        (project_dir / conflicting_dir).write_text('conflict\n', encoding='utf-8')
-
-        with pytest.raises(
-            ValueError,
-            match='Init target requires a directory but found a file',
-        ):
-            handlers.init_handler(directory=str(project_dir))
-
     def test_run_command_requires_target_and_target_mode(self) -> None:
         """Schedule helper should require a target and one run mode."""
         config_path = Path('cfg.yml').resolve()
@@ -1095,6 +1095,93 @@ class TestScheduleHandler:
                     target=SimpleNamespace(job=None, run_all=False),
                 ),
             )
+
+    def test_run_pending_emits_scheduler_summary(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Schedule handler should delegate due-run execution to the scheduler."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Schedule Test Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+                'schedules': [
+                    {
+                        'name': 'nightly_all',
+                        'cron': '0 2 * * *',
+                        'target': {'run_all': True},
+                    },
+                ],
+            },
+        )
+        captured: dict[str, object] = {}
+        patch_config_from_yaml(monkeypatch, cfg)
+
+        monkeypatch.setattr(
+            schedule_mod.LocalScheduler,
+            'run_pending',
+            classmethod(
+                lambda _cls, **kwargs: captured.update(kwargs) or {
+                    'checked_at': '2026-05-12T02:00:00+00:00',
+                    'dispatched_count': 1,
+                    'name': 'Schedule Test Pipeline',
+                    'run_count': 1,
+                    'runs': [
+                        {
+                            'job': 'job-a',
+                            'run_id': 'run-1',
+                            'schedule': 'nightly_all',
+                            'status': 'ok',
+                            'trigger': 'cron',
+                            'triggered_at': '2026-05-12T02:00:00+00:00',
+                        },
+                    ],
+                    'schedule_count': 1,
+                    'skipped_count': 0,
+                },
+            ),
+        )
+
+        assert (
+            handlers.schedule_handler(
+                config='cfg.yml',
+                event_format='jsonl',
+                pretty=False,
+                run_pending=True,
+                schedule_name='nightly_all',
+            )
+            == 0
+        )
+        assert captured['config_path'] == 'cfg.yml'
+        assert captured['event_format'] == 'jsonl'
+        assert captured['pretty'] is False
+        assert captured['schedule_name'] == 'nightly_all'
+        assert captured['run_callback'] is schedule_mod._run_handler
+        assert_emit_json(
+            capture_io,
+            {
+                'checked_at': '2026-05-12T02:00:00+00:00',
+                'dispatched_count': 1,
+                'name': 'Schedule Test Pipeline',
+                'run_count': 1,
+                'runs': [
+                    {
+                        'job': 'job-a',
+                        'run_id': 'run-1',
+                        'schedule': 'nightly_all',
+                        'status': 'ok',
+                        'trigger': 'cron',
+                        'triggered_at': '2026-05-12T02:00:00+00:00',
+                    },
+                ],
+                'schedule_count': 1,
+                'skipped_count': 0,
+            },
+            pretty=False,
+        )
 
     def test_scaffolds_starter_files(
         self,
