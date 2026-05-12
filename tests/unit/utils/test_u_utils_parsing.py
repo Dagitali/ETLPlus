@@ -86,7 +86,14 @@ class TestValueParser:
             == expected
         )
 
-    @pytest.mark.parametrize('value', ['not-an-int', True])
+    @pytest.mark.parametrize(
+        'value',
+        [
+            pytest.param('not-an-int', id='string'),
+            pytest.param(True, id='bool'),
+            pytest.param(object(), id='object'),
+        ],
+    )
     def test_optional_int_rejects_invalid_values(self, value: object) -> None:
         """Test optional integer parsing rejects invalid values."""
         with pytest.raises(TypeError, match='Example "count" must be an integer'):
