@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from typing import Self
 from typing import TypedDict
 
-from ..utils import MappingFieldParser
 from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ._core import ConnectorBase
@@ -104,10 +103,8 @@ class ConnectorDb(ConnectorBase):
         Self
             Parsed connector instance.
         """
-        name = MappingFieldParser.require_str(obj, 'name', label='ConnectorDb')
-
         return cls(
-            name=name,
+            name=cls._name_from_obj(obj),
             connection_string=ValueParser.optional_str(
                 obj.get('connection_string'),
             ),
