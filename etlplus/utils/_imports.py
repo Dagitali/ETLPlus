@@ -159,13 +159,35 @@ class DependencyImporter:
 
 @dataclass(frozen=True, slots=True)
 class ImportRequirement:
-    """One optional runtime import requirement."""
+    """One optional import requirement."""
 
     # -- Instance Attributes -- #
 
     modules: tuple[str, ...]
     package: str
     extra: str | None = None
+
+    # -- Instance Methods -- #
+
+    def is_available(
+        self,
+        *,
+        availability_checker: Callable[[str], bool],
+    ) -> bool:
+        """
+        Return whether any module for this requirement is available.
+
+        Parameters
+        ----------
+        availability_checker : Callable[[str], bool]
+            Callable used to check module availability.
+
+        Returns
+        -------
+        bool
+            ``True`` when at least one required module is available.
+        """
+        return any(availability_checker(module_name) for module_name in self.modules)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
