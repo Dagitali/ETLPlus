@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from ...connector import parse_connector
+from ...utils import MappingParser
 from ...utils._types import StrAnyMap
 from ...workflow import ScheduleConfig
 from ...workflow import schedule_validation_issues
@@ -285,8 +286,7 @@ class StrictConfigValidator:
                 )
                 continue
 
-            raw_name = entry.get('name')
-            job_name = raw_name.strip() if isinstance(raw_name, str) else None
+            job_name = MappingParser.first_non_empty_str(entry, ('name',))
             if not job_name:
                 issues.append(
                     {
@@ -364,11 +364,11 @@ class StrictConfigValidator:
         if not isinstance(value, list):
             return set()
         return {
-            name.strip()
+            name
             for entry in value
             if isinstance(entry, Mapping)
-            and isinstance(name := entry.get('name'), str)
-            and name.strip()
+            and (name := MappingParser.first_non_empty_str(entry, ('name',)))
+            is not None
         }
 
     @staticmethod
