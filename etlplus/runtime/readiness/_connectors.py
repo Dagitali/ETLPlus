@@ -12,6 +12,7 @@ from typing import Any
 from ..._config import Config
 from ...connector import DataConnectorType
 from ...queue import QueueService
+from ...utils import TextNormalizer
 from ._base import ReadinessSupportPolicy
 from ._support import FORMAT_EXTRA_REQUIREMENTS
 from ._support import QUEUE_SERVICE_EXTRA_REQUIREMENTS
@@ -104,7 +105,7 @@ def connector_type_guidance(
         Actionable guidance for the unsupported connector type.
     """
     supported = ', '.join(connector_type_choices())
-    normalized = connector_type_str.strip().lower()
+    normalized = TextNormalizer.normalize(connector_type_str)
     if not normalized:
         return f'Set type to one of: {supported}.'
     if ReadinessSupportPolicy.coerce_connector_storage_scheme(normalized) is not None:
