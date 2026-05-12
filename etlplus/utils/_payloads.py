@@ -7,8 +7,8 @@ Generic payload parsing and file-hydration helpers shared across ETLPlus.
 from __future__ import annotations
 
 import csv
-import io as _io
 import os
+from io import StringIO
 from typing import cast
 
 from ..file import File
@@ -136,6 +136,6 @@ def parse_text_payload(
     if effective == 'json':
         return JsonCodec.parse(text)
     if effective == 'csv':
-        reader = csv.DictReader(_io.StringIO(text))
+        reader = csv.DictReader(StringIO(text))
         return [dict(row) for row in reader]
     return text
