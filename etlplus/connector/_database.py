@@ -72,7 +72,7 @@ class ConnectorDb(ConnectorBase):
     table : str | None
         Target/source table name (optional).
     mode : str | None
-        Load mode hint (e.g., ``'append'``, ``'replace'``) - future use.
+        Load mode hint: ``'append'``, ``'replace'``, ``'upsert'`` (future use).
     """
 
     # -- Attributes -- #
@@ -81,7 +81,7 @@ class ConnectorDb(ConnectorBase):
     connection_string: str | None = None
     query: str | None = None
     table: str | None = None
-    mode: str | None = None  # append|replace|upsert (future)
+    mode: str | None = None
 
     # -- Class Methods -- #
 
