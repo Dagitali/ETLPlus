@@ -77,7 +77,7 @@ class ConnectorQueue(ConnectorBase):
     Attributes
     ----------
     type : DataConnectorType
-        Connector kind (always ``'queue'``).
+        Connector kind, always ``'queue'``.
     service : QueueService
         Queue service provider (e.g., ``'aws-sqs'``).
     queue_type : QueueType
