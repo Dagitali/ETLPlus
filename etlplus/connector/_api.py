@@ -24,7 +24,6 @@ from ..api import PaginationConfig
 from ..api import PaginationConfigDict
 from ..api import RateLimitConfig
 from ..api import RateLimitConfigDict
-from ..utils import MappingFieldParser
 from ..utils import MappingParser
 from ..utils import ValueParser
 from ..utils._types import StrAnyMap
@@ -136,13 +135,12 @@ class ConnectorApi(ConnectorBase):
         Self
             Parsed connector instance.
         """
-        name = MappingFieldParser.require_str(obj, 'name', label='ConnectorApi')
         headers = MappingParser.to_str_dict(
             MappingParser.optional(obj.get('headers')),
         )
 
         return cls(
-            name=name,
+            name=cls._name_from_obj(obj),
             url=ValueParser.optional_str(obj.get('url')),
             method=ValueParser.optional_str(obj.get('method')),
             headers=headers,
