@@ -447,8 +447,7 @@ class StrictConfigValidator:
             )
             return
 
-        ref_value = value.get(required_key)
-        ref_name = ref_value.strip() if isinstance(ref_value, str) else None
+        ref_name = MappingParser.first_non_empty_str(value, (required_key,))
         if not ref_name:
             issues.append(
                 base_issue
