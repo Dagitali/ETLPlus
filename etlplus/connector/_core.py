@@ -13,6 +13,7 @@ from typing import Protocol
 from typing import Self
 from typing import runtime_checkable
 
+from ..utils import MappingFieldParser
 from ..utils._types import StrAnyMap
 from ._enums import DataConnectorType
 
@@ -86,6 +87,15 @@ class ConnectorBase(ABC, ConnectorProtocol):
 
     name: str
     type: DataConnectorType
+
+    # -- Internal Class Methods -- #
+
+    @classmethod
+    def _name_from_obj(cls, obj: StrAnyMap) -> str:
+        """Return the required connector name for this connector class."""
+        return MappingFieldParser.require_str(obj, 'name', label=cls.__name__)
+
+    # -- Class Methods -- #
 
     @classmethod
     @abstractmethod

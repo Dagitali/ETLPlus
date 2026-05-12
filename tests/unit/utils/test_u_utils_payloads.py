@@ -37,12 +37,45 @@ class TestMaterializeFilePayload:
                 format_explicit=False,
             )
 
+    def test_missing_pathlike_source_raises_file_not_found(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        with pytest.raises(FileNotFoundError, match='File not found: '):
+            payload_mod.materialize_file_payload(
+                tmp_path / 'missing.json',
+                format_hint=None,
+                format_explicit=False,
+            )
+
     def test_parses_inline_json_when_hint_is_explicit(self) -> None:
         assert payload_mod.materialize_file_payload(
             '{"inline": true}',
             format_hint='json',
             format_explicit=True,
         ) == {'inline': True}
+
+    @pytest.mark.parametrize(
+        ('source', 'format_hint', 'expected'),
+        [
+            pytest.param('a\n1\n', 'csv', [{'a': '1'}], id='newline'),
+            pytest.param('a,b', 'csv', [], id='explicit-csv-comma'),
+        ],
+    )
+    def test_parses_inline_csv_when_missing_file_looks_like_text(
+        self,
+        source: str,
+        format_hint: str | None,
+        expected: object,
+    ) -> None:
+        assert (
+            payload_mod.materialize_file_payload(
+                source,
+                format_hint=format_hint,
+                format_explicit=True,
+            )
+            == expected
+        )
 
     def test_reads_existing_structured_sources_via_file(
         self,
@@ -58,6 +91,34 @@ class TestMaterializeFilePayload:
         )
 
         assert payload == {'ok': True}
+
+    @pytest.mark.parametrize(
+        'source',
+        [
+            pytest.param({'ok': True}, id='dict'),
+            pytest.param([{'ok': True}], id='list'),
+            pytest.param(42, id='non-path'),
+        ],
+    )
+    def test_returns_non_file_sources_unchanged(self, source: object) -> None:
+        assert (
+            payload_mod.materialize_file_payload(
+                source,
+                format_hint=None,
+                format_explicit=False,
+            )
+            is source
+        )
+
+    def test_returns_source_when_explicit_format_is_unknown(self) -> None:
+        assert (
+            payload_mod.materialize_file_payload(
+                'inline: true',
+                format_hint='yaml',
+                format_explicit=True,
+            )
+            == 'inline: true'
+        )
 
 
 class TestParseTextPayload:

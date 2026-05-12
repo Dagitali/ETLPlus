@@ -24,6 +24,7 @@ from ...utils import MappingParser
 from ...utils import SubstitutionResolver
 from ...utils import TokenReferenceCollector
 from ...utils._imports import module_available
+from ...utils._imports import safe_module_available
 from ...utils._types import StrAnyMap
 from ._support import SUPPORTED_PYTHON_RANGE
 from ._support import CheckStatus
@@ -167,10 +168,10 @@ class ReadinessBaseMixin:
         bool
             ``True`` if the module is available, ``False`` if not.
         """
-        try:
-            return module_available(module_name)
-        except (ImportError, ModuleNotFoundError, ValueError):
-            return False
+        return safe_module_available(
+            module_name,
+            availability_checker=module_available,
+        )
 
     @staticmethod
     def python_version() -> str:

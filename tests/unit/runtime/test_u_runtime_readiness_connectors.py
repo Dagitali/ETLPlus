@@ -14,7 +14,6 @@ import pytest
 
 import etlplus.runtime.readiness._builder as readiness_builder_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
-from etlplus.connector import DataConnectorType
 from etlplus.runtime.readiness._support import RequirementSpec
 
 from .pytest_runtime_readiness import build_connector_gap_row as _connector_gap
@@ -235,44 +234,40 @@ class TestReadinessReportBuilderConnectors:
 
         assert not rows
 
-    def test_connector_gap_rows_tolerate_unexpected_coerced_type_values(
+    def test_connector_gap_rows_coerce_supported_connector_type_text(
         self,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test defensive fallthrough when the connector-type seam misbehaves."""
+        """Test soft connector-type coercion without a private wrapper seam."""
         cfg = _cfg(
             sources=[
                 SimpleNamespace(
-                    name='weird-source',
-                    path='input.csv',
-                    type='file',
+                    name='file-source',
+                    path=None,
+                    type=' FILE ',
                 ),
                 SimpleNamespace(
-                    name='normal-source',
+                    name='queue-source',
                     path='input.csv',
-                    type='file',
+                    type='QUEUE',
                 ),
             ],
-        )
-        calls = {'count': 0}
-
-        def _connector_type(_connector_type: str) -> object:
-            calls['count'] += 1
-            if calls['count'] == 1:
-                return object()
-            return DataConnectorType.FILE
-
-        monkeypatch.setattr(
-            readiness_connectors_mod,
-            '_connector_type',
-            _connector_type,
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
             cast(Any, cfg),
         )
 
-        assert not rows
+        assert rows == [
+            _connector_gap(
+                connector='file-source',
+                guidance=(
+                    'Set "path" to a local path or storage URI for this file connector.'
+                ),
+                issue='missing path',
+                role='source',
+                connector_type=' FILE ',
+            ),
+        ]
 
     def test_connector_readiness_checks_report_all_ok_states(self) -> None:
         """Test readiness rows when gaps and optional dependency gaps are absent."""
@@ -445,12 +440,12 @@ class TestReadinessReportBuilderConnectors:
         ('service', 'expected_service', 'missing_module', 'extra', 'package'),
         [
             pytest.param(
-                'aws-sqs',
+                ' AWS-SQS ',
                 'aws-sqs',
                 'boto3',
                 'queue-aws',
                 'boto3',
-                id='aws-sqs',
+                id='aws-sqs-normalized',
             ),
             pytest.param(
                 'sqs',
@@ -601,6 +596,12 @@ class TestReadinessReportBuilderConnectors:
                     name='sav-source',
                     path='input.sav',
                     type='file',
+                ),
+                SimpleNamespace(
+                    name='queue-source',
+                    queue_name='events',
+                    service='redis',
+                    type='queue',
                 ),
             ],
         )

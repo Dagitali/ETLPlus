@@ -28,7 +28,6 @@ from ..queue import QueueConfig
 from ..queue import QueueService
 from ..queue import QueueType
 from ..queue import RedisQueue
-from ..utils import MappingFieldParser
 from ..utils import MappingParser
 from ..utils import ValueParser
 from ..utils._types import StrAnyMap
@@ -67,38 +66,6 @@ class ConnectorQueueConfigDict(TypedDict, total=False):
     options: StrAnyMap
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _coerce_queue_type(
-    *,
-    queue_name: str | None,
-    value: object,
-) -> QueueType:
-    """
-    Coerce an explicit queue type or infer FIFO from the queue name.
-
-    Parameters
-    ----------
-    queue_name : str | None
-        Optional queue name.
-    value : object
-        Optional explicit queue type value.
-
-    Returns
-    -------
-    QueueType
-        Normalized queue type.
-    """
-    if value is not None:
-        return QueueType.coerce(value)
-    return (
-        QueueType.FIFO
-        if queue_name is not None and queue_name.endswith('.fifo')
-        else QueueType.STANDARD
-    )
-
-
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -110,7 +77,7 @@ class ConnectorQueue(ConnectorBase):
     Attributes
     ----------
     type : DataConnectorType
-        Connector kind (always ``'queue'``).
+        Connector kind, always ``'queue'``.
     service : QueueService
         Queue service provider (e.g., ``'aws-sqs'``).
     queue_type : QueueType
@@ -160,11 +127,14 @@ class ConnectorQueue(ConnectorBase):
         ValueError
             If an SQS FIFO queue name does not end with ``'.fifo'``.
         """
-        name = MappingFieldParser.require_str(obj, 'name', label='ConnectorQueue')
         queue_name = ValueParser.optional_str(obj.get('queue_name', obj.get('queue')))
-        queue_type = _coerce_queue_type(
-            queue_name=queue_name,
-            value=obj.get('queue_type'),
+        queue_type_value = obj.get('queue_type')
+        queue_type = (
+            QueueType.coerce(queue_type_value)
+            if queue_type_value is not None
+            else QueueType.FIFO
+            if queue_name is not None and queue_name.endswith('.fifo')
+            else QueueType.STANDARD
         )
         if queue_type is QueueType.FIFO and (
             queue_name is not None and not queue_name.endswith('.fifo')
@@ -172,7 +142,7 @@ class ConnectorQueue(ConnectorBase):
             raise ValueError('SQS FIFO queue names must end with ".fifo"')
 
         return cls(
-            name=name,
+            name=cls._name_from_obj(obj),
             service=QueueService.coerce(obj.get('service', QueueService.AWS_SQS)),
             queue_type=queue_type,
             queue_name=queue_name,
@@ -191,6 +161,11 @@ class ConnectorQueue(ConnectorBase):
         -------
         QueueConfig
             Provider-specific queue configuration object.
+
+        Raises
+        ------
+        ValueError
+            If the queue service is unsupported.
         """
         data = {
             **self.options,
@@ -211,3 +186,5 @@ class ConnectorQueue(ConnectorBase):
                 return AmqpQueue.from_obj(data)
             case QueueService.REDIS:
                 return RedisQueue.from_obj(data)
+            case _:
+                raise ValueError(f'Unsupported queue service: {self.service!r}')

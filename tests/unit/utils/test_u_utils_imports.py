@@ -13,11 +13,13 @@ from typing import Any
 import pytest
 
 from etlplus.utils._imports import DependencyImporter
+from etlplus.utils._imports import ImportRequirement
 from etlplus.utils._imports import build_dependency_error_message
 from etlplus.utils._imports import dependency_label
 from etlplus.utils._imports import import_package
 from etlplus.utils._imports import module_available
 from etlplus.utils._imports import normalize_dependency_names
+from etlplus.utils._imports import safe_module_available
 
 # SECTION: HELPERS ========================================================== #
 
@@ -106,6 +108,43 @@ class TestDependencyMessages:
         """Test that dependency labels reject blank dependency names."""
         with pytest.raises(ValueError, match='dependency name must not be empty'):
             dependency_label(dependency_names)
+
+    @pytest.mark.parametrize(
+        ('available_modules', 'expected'),
+        [
+            pytest.param({'netCDF4'}, True, id='one-module-available'),
+            pytest.param(set(), False, id='missing'),
+        ],
+    )
+    def test_import_requirement_availability(
+        self,
+        available_modules: set[str],
+        expected: bool,
+    ) -> None:
+        """Test import requirements accept alternate available modules."""
+        requirement = ImportRequirement(
+            modules=('netCDF4', 'h5netcdf'),
+            package='netCDF4',
+        )
+
+        assert (
+            requirement.is_available(
+                availability_checker=available_modules.__contains__,
+            )
+            is expected
+        )
+
+    def test_import_requirement_stores_optional_dependency_metadata(self) -> None:
+        """Test import requirement metadata is immutable and explicit."""
+        requirement = ImportRequirement(
+            modules=('boto3',),
+            package='boto3',
+            extra='queue-aws',
+        )
+
+        assert requirement.modules == ('boto3',)
+        assert requirement.package == 'boto3'
+        assert requirement.extra == 'queue-aws'
 
     @pytest.mark.parametrize(
         ('module_name', 'pip_name', 'expected_names', 'expected_target'),
@@ -421,3 +460,43 @@ class TestModuleAvailable:
             raise error
 
         assert module_available('broken', spec_finder=_raise) is False
+
+    @pytest.mark.parametrize(
+        ('available', 'expected'),
+        [
+            pytest.param(True, True, id='available'),
+            pytest.param(False, False, id='unavailable'),
+        ],
+    )
+    def test_safe_module_available_delegates_to_checker(
+        self,
+        available: bool,
+        expected: bool,
+    ) -> None:
+        """Test safe availability checks preserve successful checker results."""
+        assert (
+            safe_module_available(
+                'json',
+                availability_checker=lambda _module_name: available,
+            )
+            is expected
+        )
+
+    @pytest.mark.parametrize(
+        'error',
+        [
+            pytest.param(ImportError('missing'), id='import-error'),
+            pytest.param(ModuleNotFoundError('missing'), id='module-not-found'),
+            pytest.param(ValueError('bad name'), id='value-error'),
+        ],
+    )
+    def test_safe_module_available_returns_false_for_checker_errors(
+        self,
+        error: Exception,
+    ) -> None:
+        """Test safe availability checks treat checker errors as unavailable."""
+
+        def _raise(_module_name: str) -> bool:
+            raise error
+
+        assert safe_module_available('broken', availability_checker=_raise) is False
