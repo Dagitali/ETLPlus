@@ -12,6 +12,7 @@ from typing import Any
 from ..._config import Config
 from ...connector import DataConnectorType
 from ...queue import QueueService
+from ...utils import TextNormalizer
 from ._base import ReadinessSupportPolicy
 from ._support import FORMAT_EXTRA_REQUIREMENTS
 from ._support import QUEUE_SERVICE_EXTRA_REQUIREMENTS
@@ -62,16 +63,6 @@ def _connector_gap_row(
     return row
 
 
-def _connector_type(
-    connector_type_str: str,
-) -> DataConnectorType | None:
-    """Return one coerced connector type or ``None`` when unsupported."""
-    try:
-        return DataConnectorType.coerce(connector_type_str)
-    except ValueError:
-        return None
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -84,7 +75,7 @@ def connector_type_choices() -> tuple[str, ...]:
     tuple[str, ...]
         A tuple of supported connector type names.
     """
-    return tuple(str(member.value) for member in DataConnectorType)
+    return DataConnectorType.choices()
 
 
 def connector_type_guidance(
@@ -104,7 +95,7 @@ def connector_type_guidance(
         Actionable guidance for the unsupported connector type.
     """
     supported = ', '.join(connector_type_choices())
-    normalized = connector_type_str.strip().lower()
+    normalized = TextNormalizer.normalize(connector_type_str)
     if not normalized:
         return f'Set type to one of: {supported}.'
     if ReadinessSupportPolicy.coerce_connector_storage_scheme(normalized) is not None:
@@ -147,7 +138,7 @@ class ConnectorReadinessPolicy:
         for role, connector in ReadinessSupportPolicy.iter_connectors(cfg):
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
             connector_type_name = str(getattr(connector, 'type', ''))
-            coerced_type = _connector_type(connector_type_name)
+            coerced_type = DataConnectorType.try_coerce(connector_type_name)
 
             if coerced_type is None:
                 gaps.append(
@@ -243,8 +234,12 @@ class ConnectorReadinessPolicy:
             connector_name = str(getattr(connector, 'name', '<unnamed>'))
             connector_type_name = str(getattr(connector, 'type', '') or '')
             path = getattr(connector, 'path', None)
-            format_name = str(getattr(connector, 'format', '') or '').lower()
-            queue_service_raw = str(getattr(connector, 'service', '') or '').lower()
+            format_name = TextNormalizer.normalize(
+                str(getattr(connector, 'format', '') or ''),
+            )
+            queue_service_raw = TextNormalizer.normalize(
+                str(getattr(connector, 'service', '') or ''),
+            )
             # TODO: Consider supporting other connector-specific fields that
             # TODO: may indicate optional dependencies, e.g. database driver
             # TODO: hints.
@@ -260,9 +255,8 @@ class ConnectorReadinessPolicy:
                 if (
                     scheme
                     and requirement
-                    and not cls.requirement_available(
-                        requirement,
-                        package_available=package_available,
+                    and not requirement.is_available(
+                        availability_checker=package_available,
                     )
                 ):
                     rows.append(
@@ -278,13 +272,13 @@ class ConnectorReadinessPolicy:
                     )
 
             if (
-                connector_type_name == DataConnectorType.QUEUE.value
+                DataConnectorType.try_coerce(connector_type_name)
+                is DataConnectorType.QUEUE
                 and queue_service in QUEUE_SERVICE_EXTRA_REQUIREMENTS
             ):
                 requirement = QUEUE_SERVICE_EXTRA_REQUIREMENTS[queue_service]
-                if not cls.requirement_available(
-                    requirement,
-                    package_available=package_available,
+                if not requirement.is_available(
+                    availability_checker=package_available,
                 ):
                     rows.append(
                         cls.requirement_row(
@@ -321,9 +315,8 @@ class ConnectorReadinessPolicy:
                 continue
 
             requirement = FORMAT_EXTRA_REQUIREMENTS.get(format_name)
-            if requirement and not cls.requirement_available(
-                requirement,
-                package_available=package_available,
+            if requirement and not requirement.is_available(
+                availability_checker=package_available,
             ):
                 rows.append(
                     cls.requirement_row(
@@ -430,32 +423,6 @@ class ConnectorReadinessPolicy:
         """
         return package_available('xarray') and (
             package_available('netCDF4') or package_available('h5netcdf')
-        )
-
-    @staticmethod
-    def requirement_available(
-        requirement: RequirementSpec,
-        *,
-        package_available: Callable[[str], bool],
-    ) -> bool:
-        """
-        Return whether any module for one requirement is importable.
-
-        Parameters
-        ----------
-        requirement : RequirementSpec
-            The requirement specification containing the modules to check.
-        package_available : Callable[[str], bool]
-            A function that returns whether a package is available.
-
-        Returns
-        -------
-        bool
-            ``True`` if any module for the requirement is importable, ``False``
-            if not.
-        """
-        return any(
-            package_available(module_name) for module_name in requirement.modules
         )
 
     @staticmethod

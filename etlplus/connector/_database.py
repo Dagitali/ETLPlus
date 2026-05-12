@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from typing import Self
 from typing import TypedDict
 
-from ..utils import MappingFieldParser
 from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ._core import ConnectorBase
@@ -73,7 +72,7 @@ class ConnectorDb(ConnectorBase):
     table : str | None
         Target/source table name (optional).
     mode : str | None
-        Load mode hint (e.g., ``'append'``, ``'replace'``) - future use.
+        Load mode hint: ``'append'``, ``'replace'``, ``'upsert'`` (future use).
     """
 
     # -- Attributes -- #
@@ -82,7 +81,7 @@ class ConnectorDb(ConnectorBase):
     connection_string: str | None = None
     query: str | None = None
     table: str | None = None
-    mode: str | None = None  # append|replace|upsert (future)
+    mode: str | None = None
 
     # -- Class Methods -- #
 
@@ -104,10 +103,8 @@ class ConnectorDb(ConnectorBase):
         Self
             Parsed connector instance.
         """
-        name = MappingFieldParser.require_str(obj, 'name', label='ConnectorDb')
-
         return cls(
-            name=name,
+            name=cls._name_from_obj(obj),
             connection_string=ValueParser.optional_str(
                 obj.get('connection_string'),
             ),

@@ -11,6 +11,7 @@ from typing import Any
 from typing import Final
 from typing import Literal
 
+from ...utils._imports import ImportRequirement as RequirementSpec
 from ...utils._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
@@ -42,17 +43,6 @@ type ReadinessRow = dict[str, Any]
 
 
 # SECTION: DATA CLASSES ===================================================== #
-
-
-@dataclass(frozen=True, slots=True)
-class RequirementSpec:
-    """One optional runtime dependency requirement."""
-
-    # -- Instance Methods -- #
-
-    modules: tuple[str, ...]
-    package: str
-    extra: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

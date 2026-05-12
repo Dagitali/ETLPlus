@@ -20,7 +20,6 @@ from typing import Any
 from typing import Self
 from typing import TypedDict
 
-from ..utils import MappingFieldParser
 from ..utils import MappingParser
 from ..utils import ValueParser
 from ..utils._types import StrAnyMap
@@ -103,10 +102,8 @@ class ConnectorFile(ConnectorBase):
         Self
             Parsed connector instance.
         """
-        name = MappingFieldParser.require_str(obj, 'name', label='ConnectorFile')
-
         return cls(
-            name=name,
+            name=cls._name_from_obj(obj),
             format=ValueParser.optional_str(obj.get('format')),
             path=ValueParser.optional_str(obj.get('path')),
             options=MappingParser.to_dict(obj.get('options')),

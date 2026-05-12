@@ -15,7 +15,6 @@ import pytest
 import etlplus.runtime.readiness._builder as readiness_builder_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
 import etlplus.runtime.readiness._providers as readiness_providers_mod
-from etlplus.connector import DataConnectorType
 from etlplus.runtime.readiness._support import RequirementSpec
 
 from .pytest_runtime_readiness import build_provider_check as _provider_check
@@ -510,9 +509,6 @@ class TestReadinessReportBuilderProviders:
                 'azure-blob://container@account.blob.core.windows.net/data.csv',
             )
             is True
-        )
-        assert (
-            readiness_connectors_mod._connector_type('file') is DataConnectorType.FILE
         )
         assert readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
             connector='out',
