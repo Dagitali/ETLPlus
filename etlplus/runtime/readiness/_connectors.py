@@ -261,9 +261,8 @@ class ConnectorReadinessPolicy:
                 if (
                     scheme
                     and requirement
-                    and not cls.requirement_available(
-                        requirement,
-                        package_available=package_available,
+                    and not requirement.is_available(
+                        availability_checker=package_available,
                     )
                 ):
                     rows.append(
@@ -283,9 +282,8 @@ class ConnectorReadinessPolicy:
                 and queue_service in QUEUE_SERVICE_EXTRA_REQUIREMENTS
             ):
                 requirement = QUEUE_SERVICE_EXTRA_REQUIREMENTS[queue_service]
-                if not cls.requirement_available(
-                    requirement,
-                    package_available=package_available,
+                if not requirement.is_available(
+                    availability_checker=package_available,
                 ):
                     rows.append(
                         cls.requirement_row(
@@ -322,9 +320,8 @@ class ConnectorReadinessPolicy:
                 continue
 
             requirement = FORMAT_EXTRA_REQUIREMENTS.get(format_name)
-            if requirement and not cls.requirement_available(
-                requirement,
-                package_available=package_available,
+            if requirement and not requirement.is_available(
+                availability_checker=package_available,
             ):
                 rows.append(
                     cls.requirement_row(
@@ -431,32 +428,6 @@ class ConnectorReadinessPolicy:
         """
         return package_available('xarray') and (
             package_available('netCDF4') or package_available('h5netcdf')
-        )
-
-    @staticmethod
-    def requirement_available(
-        requirement: RequirementSpec,
-        *,
-        package_available: Callable[[str], bool],
-    ) -> bool:
-        """
-        Return whether any module for one requirement is importable.
-
-        Parameters
-        ----------
-        requirement : RequirementSpec
-            The requirement specification containing the modules to check.
-        package_available : Callable[[str], bool]
-            A function that returns whether a package is available.
-
-        Returns
-        -------
-        bool
-            ``True`` if any module for the requirement is importable, ``False``
-            if not.
-        """
-        return any(
-            package_available(module_name) for module_name in requirement.modules
         )
 
     @staticmethod
