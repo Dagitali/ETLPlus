@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.connector._queue`.
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from etlplus.connector._enums import DataConnectorType
@@ -167,6 +169,16 @@ class TestConnectorQueue:
             ConnectorQueue.from_obj(payload).to_queue_config().to_connector_options()
             == expected_options
         )
+
+    def test_to_queue_config_rejects_unsupported_service(self) -> None:
+        """Test queue config conversion rejects impossible service values."""
+        connector = ConnectorQueue(
+            name='events',
+            service=cast(QueueService, 'unsupported'),
+        )
+
+        with pytest.raises(ValueError, match='Unsupported queue service'):
+            connector.to_queue_config()
 
     @pytest.mark.parametrize(
         ('payload', 'expected_cls', 'expected_options'),
