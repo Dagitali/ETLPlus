@@ -19,12 +19,14 @@ from typing import Any
 __all__ = [
     # Classes
     'DependencyImporter',
+    'ImportRequirement',
     # Functions
     'build_dependency_error_message',
     'dependency_label',
     'import_package',
     'module_available',
     'normalize_dependency_names',
+    'safe_module_available',
     # Type Aliases
     'DependencyNames',
 ]
@@ -153,6 +155,17 @@ class DependencyImporter:
                 required=required,
             ),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class ImportRequirement:
+    """One optional runtime import requirement."""
+
+    # -- Instance Attributes -- #
+
+    modules: tuple[str, ...]
+    package: str
+    extra: str | None = None
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -380,5 +393,33 @@ def module_available(
     try:
         normalized = _clean_dependency_name(module_name, label='module_name')
         return spec_finder(normalized) is not None
+    except (ImportError, ModuleNotFoundError, ValueError):
+        return False
+
+
+def safe_module_available(
+    module_name: str,
+    *,
+    availability_checker: Callable[[str], bool] = module_available,
+) -> bool:
+    """
+    Return whether *module_name* is available, treating checker errors as false.
+
+    Parameters
+    ----------
+    module_name : str
+        Module name to inspect.
+    availability_checker : Callable[[str], bool], optional
+        Callable used to check module availability. Defaults to
+        :func:`module_available`.
+
+    Returns
+    -------
+    bool
+        ``True`` when the checker reports the module is available; ``False``
+        when unavailable or when the checker raises an import/name error.
+    """
+    try:
+        return availability_checker(module_name)
     except (ImportError, ModuleNotFoundError, ValueError):
         return False
