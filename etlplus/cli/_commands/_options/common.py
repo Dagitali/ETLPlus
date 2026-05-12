@@ -32,6 +32,7 @@ __all__ = [
     'PipelineOption',
     'PrettyOption',
     'QuietOption',
+    'RunPendingSchedulesOption',
     'RunAllOption',
     'ScheduleNameOption',
     'StructuredEventFormatOption',
@@ -164,6 +165,11 @@ QuietOption = typer_flag_option_alias(
 RunAllOption = typer_flag_option_alias(
     '--all',
     help_text='Run all configured jobs in DAG order.',
+)
+
+RunPendingSchedulesOption = typer_flag_option_alias(
+    '--run-pending',
+    help_text='Run due configured schedules once using the local scheduler.',
 )
 
 ScheduleNameOption = typer_value_option_alias(
