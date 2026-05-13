@@ -109,7 +109,7 @@ class TestRunPending:
             dispatch_calls.append(dict(kwargs))
             recorder = kwargs.get('result_recorder')
             assert callable(recorder)
-            recorder({'run_id': f"run-{len(dispatch_calls)}", 'status': 'ok'})
+            recorder({'run_id': f'run-{len(dispatch_calls)}', 'status': 'ok'})
             return 0
 
         payload = scheduler_mod.LocalScheduler.run_pending(
