@@ -11,7 +11,9 @@ from pathlib import Path
 from shlex import quote as shell_quote
 
 from ... import Config
+from ...runtime._scheduler import LocalScheduler
 from . import _output
+from .run import run_handler as _run_handler
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -304,8 +306,10 @@ def _schedule_payload(
 def schedule_handler(
     *,
     config: str,
+    event_format: str | None = None,
     emit: str | None = None,
     pretty: bool = True,
+    run_pending: bool = False,
     schedule_name: str | None = None,
 ) -> int:
     """
@@ -315,10 +319,14 @@ def schedule_handler(
     ----------
     config : str
         Path to the ETLPlus config YAML file.
+    event_format : str | None, optional
+        Structured event output format forwarded to scheduled runs.
     emit : str | None, optional
         Optional helper format to emit for one named schedule.
     pretty : bool, optional
         Whether to pretty-print the output JSON. Defaults to ``True``.
+    run_pending : bool, optional
+        Whether to execute due schedules once in local mode.
     schedule_name : str | None, optional
         Optional schedule name filter.
 
@@ -331,7 +339,16 @@ def schedule_handler(
     try:
         selected_schedule = _resolve_schedule(cfg, schedule_name=schedule_name)
         payload = (
-            _schedule_payload(cfg, schedule_name=schedule_name)
+            LocalScheduler.run_pending(
+                cfg=cfg,
+                config_path=config,
+                event_format=event_format,
+                pretty=pretty,
+                run_callback=_run_handler,
+                schedule_name=schedule_name,
+            )
+            if run_pending
+            else _schedule_payload(cfg, schedule_name=schedule_name)
             if emit is None
             else _schedule_emit_payload(
                 config_path=config,

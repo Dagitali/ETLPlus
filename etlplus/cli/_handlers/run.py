@@ -7,6 +7,7 @@ Run-command handler.
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from collections.abc import Mapping
 from typing import Any
 from typing import Final
@@ -495,6 +496,8 @@ class RunHistoryPolicy:
             },
         )
 
+    # -- Static Methods -- #
+
     @staticmethod
     def resolved_history_settings(
         config: HistoryConfig | None,
@@ -592,6 +595,61 @@ class RunHistoryPolicy:
             )
         return 'DAG execution failed'
 
+    @staticmethod
+    def with_schedule_metadata(
+        summary: JSONData | None,
+        *,
+        schedule_name: str | None,
+        schedule_trigger: str | None,
+        schedule_catchup: bool,
+        schedule_triggered_at: str | None,
+    ) -> JSONData | None:
+        """
+        Return *summary* with additive scheduler metadata when present.
+
+        Parameters
+        ----------
+        summary : JSONData | None
+            The run summary to augment.
+        schedule_name : str | None
+            The name of the schedule.
+        schedule_trigger : str | None
+            The trigger type of the schedule.
+        schedule_catchup : bool
+            Whether the schedule should catch up missed runs.
+        schedule_triggered_at : str | None
+            The timestamp when the schedule was triggered.
+
+        Returns
+        -------
+        JSONData | None
+            The augmented run summary. If *schedule_name* is ``None``,
+            *summary* is returned unmodified.
+        """
+        if schedule_name is None:
+            return summary
+        scheduler_payload = {
+            key: value
+            for key, value in {
+                'catchup': schedule_catchup,
+                'schedule': schedule_name,
+                'trigger': schedule_trigger,
+                'triggered_at': schedule_triggered_at,
+            }.items()
+            if value is not None
+        }
+        if isinstance(summary, Mapping):
+            return cast(JSONData, dict(summary) | {'scheduler': scheduler_payload})
+        if summary is not None:
+            return cast(
+                JSONData,
+                {
+                    'result': summary,
+                    'scheduler': scheduler_payload,
+                },
+            )
+        return cast(JSONData, {'scheduler': scheduler_payload})
+
 
 # SECTION: FUNCTIONS ======================================================== #
 
@@ -610,6 +668,12 @@ def run_handler(
     capture_tracebacks: bool | None = None,
     event_format: str | None = None,
     pretty: bool = True,
+    emit_output: bool = True,
+    result_recorder: Callable[[dict[str, object]], None] | None = None,
+    schedule_name: str | None = None,
+    schedule_trigger: str | None = None,
+    schedule_catchup: bool = False,
+    schedule_triggered_at: str | None = None,
 ) -> int:
     """
     Execute a configured ETL job or pipeline.
@@ -643,6 +707,18 @@ def run_handler(
         Structured event output format. Default is ``None``.
     pretty : bool, optional
         Whether to pretty-print JSON output. Default is ``True``.
+    emit_output : bool, optional
+        Whether to emit the final payload to STDOUT. Default is ``True``.
+    result_recorder : Callable[[dict[str, object]], None] | None, optional
+        Optional callback receiving the final payload before output emission.
+    schedule_name : str | None, optional
+        Optional schedule name when the run was scheduler-triggered.
+    schedule_trigger : str | None, optional
+        Optional schedule trigger type (e.g. ``cron`` or ``interval``).
+    schedule_catchup : bool, optional
+        Whether the scheduled run is catching up a missed trigger.
+    schedule_triggered_at : str | None, optional
+        Scheduled trigger timestamp in ISO-8601 UTC form.
 
     Returns
     -------
@@ -667,6 +743,17 @@ def run_handler(
     if not job_name and not run_all:
         return _output.emit_json_payload(_summary.pipeline_summary(cfg), pretty=pretty)
 
+    schedule_event_fields: dict[str, Any] = {
+        key: value
+        for key, value in {
+            'schedule': schedule_name,
+            'schedule_catchup': schedule_catchup if schedule_name is not None else None,
+            'schedule_trigger': schedule_trigger,
+            'schedule_triggered_at': schedule_triggered_at,
+        }.items()
+        if value is not None
+    }
+
     context = _lifecycle.start_command(
         command='run',
         event_format=event_format,
@@ -676,6 +763,7 @@ def run_handler(
         job=job_name,
         run_all=run_all,
         pipeline_name=cfg.name,
+        **schedule_event_fields,
         status='running',
     )
     history_store = RunHistoryPolicy.open_history_store(history_settings)
@@ -713,6 +801,7 @@ def run_handler(
         job=job_name,
         pipeline_name=cfg.name,
         run_all=run_all,
+        **schedule_event_fields,
     ):
         result = run(
             job=job_name,
@@ -739,7 +828,13 @@ def run_handler(
             job_name=None if run_all else job_name,
             config_path=config,
             etlplus_version=__version__,
-            result_summary=RunHistoryPolicy.persisted_run_summary(result),
+            result_summary=RunHistoryPolicy.with_schedule_metadata(
+                RunHistoryPolicy.persisted_run_summary(result),
+                schedule_name=schedule_name,
+                schedule_trigger=schedule_trigger,
+                schedule_catchup=schedule_catchup,
+                schedule_triggered_at=schedule_triggered_at,
+            ),
             error_message=failure_message,
             error_type='RunExecutionFailed' if result_failed else None,
         )
@@ -750,6 +845,10 @@ def run_handler(
         'status': 'error' if result_failed else 'ok',
         'result': result,
     }
+
+    if result_recorder is not None:
+        result_recorder(dict(payload))
+
     if result_failed:
         _lifecycle.emit_lifecycle_event(
             command=context.command,
@@ -766,9 +865,28 @@ def run_handler(
             pipeline_name=cfg.name,
             result_status=result_status,
             run_all=run_all,
+            **schedule_event_fields,
             status='error',
         )
+        if not emit_output:
+            return 1
         return _output.emit_json_payload(payload, pretty=pretty, exit_code=1)
+
+    if not emit_output:
+        _lifecycle.complete_command(
+            context,
+            config_path=config,
+            continue_on_fail=continue_on_fail,
+            etlplus_version=__version__,
+            job=job_name,
+            pipeline_name=cfg.name,
+            result_status=result_status,
+            run_all=run_all,
+            **schedule_event_fields,
+            status='ok',
+        )
+        return 0
+
     return _completion.complete_output(
         context,
         payload,
@@ -781,5 +899,6 @@ def run_handler(
         pipeline_name=cfg.name,
         result_status=result_status,
         run_all=run_all,
+        **schedule_event_fields,
         status='ok',
     )

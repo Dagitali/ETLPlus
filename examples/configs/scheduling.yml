@@ -1,0 +1,60 @@
+---
+# ETLPlus scheduling example
+#
+# This example intentionally mixes remote object storage with the portable
+# schedule model to show that scheduled runs are not limited to localhost-only
+# resources. Substitute the credential environment variables in your runtime
+# environment before invoking ETLPlus.
+
+name: Scheduled Customer Sync
+version: "1"
+
+history:
+  enabled: true
+  backend: sqlite
+
+profile:
+  env:
+    AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+    AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+    AZURE_STORAGE_CONNECTION_STRING: "${AZURE_STORAGE_CONNECTION_STRING}"
+
+sources:
+  - name: inbound_customers
+    type: file
+    format: csv
+    path: "s3://acme-landing/customers/customers.csv"
+
+targets:
+  - name: curated_customers
+    type: file
+    format: json
+    path: "azure-blob://analytics/customers/curated/customers.json"
+
+jobs:
+  - name: sync_customers
+    source: inbound_customers
+    target: curated_customers
+
+schedules:
+  - name: hourly_sync
+    interval:
+      minutes: 60
+    target:
+      job: sync_customers
+    backfill:
+      enabled: true
+      max_catchup_runs: 2
+      start_at: "2026-05-01T00:00:00Z"
+
+  - name: nightly_all
+    cron: "0 2 * * *"
+    timezone: UTC
+    target:
+      run_all: true
+
+  - name: paused_rebuild
+    cron: "30 6 * * 1"
+    paused: true
+    target:
+      job: sync_customers
