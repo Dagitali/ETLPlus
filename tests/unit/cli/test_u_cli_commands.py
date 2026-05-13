@@ -6,7 +6,11 @@ Unit tests for :mod:`etlplus.cli._commands`.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
+from datetime import UTC
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 from typing import cast
 
@@ -25,6 +29,7 @@ import etlplus.cli._commands.run as run_mod
 import etlplus.cli._commands.schedule as schedule_mod
 import etlplus.cli._commands.status as status_mod
 import etlplus.cli._commands.transform as transform_mod
+import etlplus.cli._handlers.schedule as schedule_handler_mod
 from etlplus.cli._commands._state import CliState
 from etlplus.file import FileFormat
 
@@ -785,6 +790,85 @@ class TestCliInvokeParsing:
         result = invoke_cli(*argv)
         assert result.exit_code == 0
         assert_mapping_contains(captured, expected)
+
+    def test_schedule_run_pending_persists_state_across_cli_invocations(
+        self,
+        invoke_cli: InvokeCli,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Repeated CLI schedule dispatch should not re-run the same due trigger."""
+        config_path = tmp_path / 'pipeline.yml'
+        config_path.write_text(
+            '\n'.join(
+                (
+                    'name: CLI Scheduler Test',
+                    'sources: []',
+                    'targets: []',
+                    'jobs: []',
+                    'schedules:',
+                    '  - name: nightly_all',
+                    '    cron: "0 2 11 5 1"',
+                    '    timezone: UTC',
+                    '    target:',
+                    '      run_all: true',
+                    '',
+                ),
+            ),
+            encoding='utf-8',
+        )
+        state_dir = tmp_path / 'state'
+        dispatch_calls: list[dict[str, object]] = []
+
+        monkeypatch.setenv('ETLPLUS_STATE_DIR', str(state_dir))
+        monkeypatch.setattr(
+            schedule_handler_mod.LocalScheduler,
+            'utc_now',
+            staticmethod(lambda: datetime(2026, 5, 11, 2, 0, tzinfo=UTC)),
+        )
+
+        def _stub_run_handler(**kwargs: object) -> int:
+            dispatch_calls.append(dict(kwargs))
+            recorder = kwargs.get('result_recorder')
+            assert callable(recorder)
+            recorder({'run_id': f'run-{len(dispatch_calls)}', 'status': 'ok'})
+            return 0
+
+        monkeypatch.setattr(schedule_handler_mod, '_run_handler', _stub_run_handler)
+
+        first_result = invoke_cli(
+            'schedule',
+            '--config',
+            str(config_path),
+            '--run-pending',
+        )
+        second_result = invoke_cli(
+            'schedule',
+            '--config',
+            str(config_path),
+            '--run-pending',
+        )
+
+        assert first_result.exit_code == 0
+        assert second_result.exit_code == 0
+        assert len(dispatch_calls) == 1
+
+        first_payload = json.loads(first_result.stdout)
+        second_payload = json.loads(second_result.stdout)
+
+        assert first_payload['dispatched_count'] == 1
+        assert first_payload['run_count'] == 1
+        assert first_payload['runs'][0]['run_id'] == 'run-1'
+        assert second_payload['dispatched_count'] == 0
+        assert second_payload['run_count'] == 0
+        assert second_payload['schedule_count'] == 1
+        assert json.loads((state_dir / 'scheduler-state.json').read_text()) == {
+            'schedules': {
+                'nightly_all': {
+                    'last_triggered_at': '2026-05-11T02:00:00+00:00',
+                },
+            },
+        }
 
 
 class TestCommandsMissingInputs:
