@@ -9,6 +9,10 @@
 # (Makefile task, Python runner, CI job, etc.) can read and execute via
 # etlplus.ops.extract/validate/transform/load.
 #
+# Local paths and localhost databases are convenient for development, but the
+# same config surface is intended to work with managed databases and remote
+# storage backends as first-class options.
+#
 # Notes
 # - Source types: file | database | api
 # - File formats: json | csv | xml | yaml
