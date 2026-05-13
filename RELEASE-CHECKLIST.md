@@ -149,6 +149,10 @@ release.
     commands: `extract`, `load`, `run`, `transform`, and `validate`
   - Local run-history persistence keyed by `run_id` for `etlplus run`, backed by SQLite by default
     with JSONL fallback support
+  - Portable schedule config plus `etlplus schedule` summary and `crontab`/`systemd` helper emission
+    for external schedulers
+  - A first local scheduler runtime slice via `etlplus schedule --run-pending`, reusing `etlplus
+    run` with additive scheduler metadata in events and persisted run summaries
   - DAG execution summaries for `run --all` and dependency-aware `run --job`, including skipped
     downstream jobs when an upstream dependency fails
   - Queue connector groundwork includes config-only queue metadata objects, queue URI parsing, the
@@ -184,9 +188,15 @@ These are the active follow-up items for the `v1.x` line.
 - [x] Add opt-in bounded concurrency for independent DAG jobs.
   - Keep serial execution as the default stable behavior.
   - Define deterministic ready-job ordering and failure semantics before enabling parallelism.
-- [ ] Start scheduling with portable schedule config and OS helper output.
-  - Prefer config validation plus `crontab`/`systemd` snippet emission before adding a long-running
-    local scheduler process.
+- [x] Add portable schedule config and OS helper output.
+  - `etlplus schedule` now exposes the supported schedule summary surface and can emit
+    `crontab`/`systemd` snippets from the portable config model.
+- [x] Add a first local scheduler runtime slice.
+  - `etlplus schedule --run-pending` now dispatches due schedules once, uses bounded catch-up plus
+    per-schedule overlap locks, and reuses the stable `run` event/history path.
+- [ ] Decide whether scheduling should remain a one-shot external-trigger model in `v1.x`.
+  - Keep recurring invocation delegated to `cron`, `systemd`, or CI unless there is a clear
+    stable-line need for a resident ETLPlus scheduler process.
 - [ ] Decide whether any local run-history UI ships in core or as an optional extra/package.
   - Keep the existing normalized history read path as the only supported data source.
 - [x] Decide when the local run-history work becomes part of the documented stable CLI surface.
