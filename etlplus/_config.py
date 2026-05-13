@@ -30,7 +30,7 @@ from .connector import parse_connector
 from .file import File
 from .file import FileFormat
 from .history._config import HistoryConfig
-from .runtime import TelemetryConfig
+from .runtime.telemetry import TelemetryConfig
 from .utils import MappingParser
 from .utils import SubstitutionResolver
 from .utils._types import StrAnyMap
