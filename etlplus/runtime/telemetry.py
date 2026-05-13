@@ -1,5 +1,5 @@
 """
-:mod:`etlplus.runtime._telemetry` module.
+:mod:`etlplus.runtime.telemetry` module.
 
 Optional runtime telemetry adapters built on top of structured event payloads.
 """

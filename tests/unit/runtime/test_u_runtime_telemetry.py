@@ -1,7 +1,7 @@
 """
 :mod:`tests.unit.runtime.test_u_runtime_telemetry` module.
 
-Unit tests for :mod:`etlplus.runtime._telemetry`.
+Unit tests for :mod:`etlplus.runtime.telemetry`.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from typing import cast
 
 import pytest
 
-import etlplus.runtime._telemetry as telemetry_mod
+import etlplus.runtime.telemetry as telemetry_mod
 
 # SECTION: PRAGMAS ========================================================== #
 
