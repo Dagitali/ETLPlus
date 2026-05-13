@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 import sys
 from pathlib import Path
 
@@ -95,7 +96,12 @@ myst_heading_anchors = 6
 # -- Options for HTML Output -- #
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_baseurl = 'https://etlplus.readthedocs.io/en/stable/'
+_rtd_canonical_url = os.getenv('READTHEDOCS_CANONICAL_URL')
+_rtd_version = os.getenv('READTHEDOCS_VERSION', 'stable')
+if _rtd_canonical_url:
+    html_baseurl = _rtd_canonical_url.rstrip('/') + '/'
+else:
+    html_baseurl = f'https://etlplus.readthedocs.io/en/{_rtd_version}/'
 html_static_path = ['_static'] if (DOCS / '_static').is_dir() else []
 html_theme = 'sphinx_rtd_theme'
 html_title = f'{project} {release}'
