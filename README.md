@@ -50,6 +50,7 @@ package and command-line interface for data extraction, validation, transformati
       - [Validate Data](#validate-data)
       - [Transform Data](#transform-data)
       - [Inspect Run History](#inspect-run-history)
+      - [Schedule Configured Runs](#schedule-configured-runs)
       - [Load Data](#load-data)
     - [Python API](#python-api-1)
     - [Complete ETL Pipeline Example](#complete-etl-pipeline-example)
@@ -99,6 +100,8 @@ ETLPlus currently supports Python 3.13 and 3.14.
   the remaining scientific and specialty format dependencies.
 - Use `pip install -e ".[storage]"` when you want remote storage backends for `s3://`,
   `azure-blob://`, `abfs://`, or `hdfs://` URIs through `etlplus.storage` and `etlplus.file.File`.
+- Treat local paths, localhost databases, and Docker Compose helpers as development conveniences;
+  the same config surface is designed to work with interchangeable remote backing services.
 - Expect the most stable execution surface from the documented CLI commands, `etlplus.ops`,
   implemented file handlers, and `etlplus.api`.
 - See [docs/source/getting-started/compatibility.md](docs/source/getting-started/compatibility.md)
@@ -185,6 +188,11 @@ Maintainer-facing policy and automation references are also available in
   - List normalized runs with filters and table output
   - Stream raw append events for backend-level troubleshooting
   - Inspect the latest run or aggregate success and duration metrics by job, status, or day
+
+- **Schedule** configured runs without a resident ETLPlus daemon:
+  - Inspect portable cron/interval schedule definitions from config
+  - Emit `crontab` or `systemd` helper snippets for external schedulers
+  - Dispatch currently due schedules once with `etlplus schedule --run-pending`
 
 ## Installation
 
@@ -787,6 +795,9 @@ still a documented placeholder.
 summary on the parent run row and also persist one per-job history row for each executed job. Use
 the read/query commands to inspect that history without opening the backend directly.
 
+Scheduler-triggered runs dispatched through `etlplus schedule --run-pending` reuse the same history
+path and add scheduler metadata additively under `result_summary.scheduler`.
+
 List recent normalized runs:
 ```bash
 etlplus history --job file_to_file_customers --status succeeded --limit 10 --table
@@ -826,6 +837,29 @@ Aggregate per-job history by pipeline:
 ```bash
 etlplus report --level job --group-by pipeline --since 2026-03-01T00:00:00Z --table
 ```
+
+#### Schedule Configured Runs
+
+Use `etlplus schedule` to inspect schedule config, emit OS helper snippets, or dispatch due
+schedules one time while reusing the normal `etlplus run` execution path.
+
+Inspect configured schedules:
+```bash
+etlplus schedule --config examples/configs/scheduling.yml
+```
+
+Emit a `systemd` helper for one schedule:
+```bash
+etlplus schedule --config examples/configs/scheduling.yml --schedule hourly_sync --emit systemd
+```
+
+Dispatch currently due schedules and forward structured lifecycle events:
+```bash
+etlplus schedule --config examples/configs/scheduling.yml --run-pending --event-format jsonl
+```
+
+`--run-pending` is intentionally one-shot. Invoke it from `cron`, `systemd`, or CI if you want
+recurring execution without adding a resident ETLPlus scheduler process.
 
 #### Load Data
 
