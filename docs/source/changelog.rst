@@ -11,6 +11,12 @@ Current Release
 
 The documentation published here tracks ETLPlus |release|.
 
+Recent stable-line additions reflected in the current docs include:
+
+- Portable schedule config inspection via ``etlplus schedule``
+- One-shot local due-run dispatch via ``etlplus schedule --run-pending``
+- Additive scheduler metadata carried through the existing ``run`` event and local-history contracts
+
 Release History
 ---------------
 

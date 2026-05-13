@@ -32,6 +32,10 @@ read/query commands in the CLI.
 - DAG-style `run --job` / `run --all` executions also persist one per-job history row for each
   executed/succeeded/failed/skipped job, including plan order, timing, terminal status, and
   per-job result summaries.
+- `etlplus schedule --run-pending` reuses the same `etlplus run` path, so scheduled dispatches are
+  recorded in the same local history store.
+- Scheduler-triggered runs may add a nested `result_summary.scheduler` object with the schedule
+  name, trigger kind, catch-up flag, and original scheduled timestamp.
 
 When traceback capture is enabled, failed runs also persist a capped `error_traceback` string in the
 run-level history row.
@@ -130,6 +134,8 @@ etlplus report --level job --group-by pipeline --since 2026-03-01T00:00:00Z --ta
   `result_summary` keys may grow additively over time for richer DAG summaries. DAG-aware run-level
   summaries stay compact and aggregate-oriented; detailed per-job execution data is available
   through `--level job`.
+- Scheduler metadata is additive-only; scheduled runs still use the same top-level run and job
+  shapes as manual `etlplus run` invocations.
 
 ## Stable Normalized Fields
 
@@ -210,6 +216,7 @@ one-event-per-job stream contract.
 ## Related Documentation
 
 - {doc}`examples`
+- {doc}`scheduling`
 - {doc}`structured runtime events <structured-events>`
 - {doc}`pipeline-authoring`
 - {doc}`../api/operations`

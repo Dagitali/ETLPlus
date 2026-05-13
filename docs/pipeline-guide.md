@@ -74,6 +74,8 @@ vars:
 
 - `profile.env` is a convenient place to document expected environment variables. Resolve them in
   your runner before invoking ETLPlus functions.
+- Treat repository-local env loaders as a development convenience. The intended runtime contract is
+  still environment-injected configuration from the invoking shell, container, CI job, or scheduler.
 - `vars` collects reusable paths/values for templating.
 
 ## APIs
@@ -304,6 +306,8 @@ File source notes:
 
 - File connector `path` values can be local paths or supported remote URIs such as `s3://...`, Azure
   Blob/Data Lake URIs, and HTTP/HTTPS URLs.
+- Local paths are useful for quick iteration, but the same connector surface is intended to work
+  unchanged with interchangeable backing services such as object storage or managed filesystems.
 - Connector-level `options` are forwarded to file reads. Job-level `jobs[].extract.options` values
   override connector-level file options for that job.
 - ETLPlus still infers the format from the filename extension (`.csv`, `.json`, `.xml`, `.yaml`).
