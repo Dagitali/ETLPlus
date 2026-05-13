@@ -1124,24 +1124,27 @@ class TestScheduleHandler:
             schedule_mod.LocalScheduler,
             'run_pending',
             classmethod(
-                lambda _cls, **kwargs: captured.update(kwargs) or {
-                    'checked_at': '2026-05-12T02:00:00+00:00',
-                    'dispatched_count': 1,
-                    'name': 'Schedule Test Pipeline',
-                    'run_count': 1,
-                    'runs': [
-                        {
-                            'job': 'job-a',
-                            'run_id': 'run-1',
-                            'schedule': 'nightly_all',
-                            'status': 'ok',
-                            'trigger': 'cron',
-                            'triggered_at': '2026-05-12T02:00:00+00:00',
-                        },
-                    ],
-                    'schedule_count': 1,
-                    'skipped_count': 0,
-                },
+                lambda _cls, **kwargs: (
+                    captured.update(kwargs)
+                    or {
+                        'checked_at': '2026-05-12T02:00:00+00:00',
+                        'dispatched_count': 1,
+                        'name': 'Schedule Test Pipeline',
+                        'run_count': 1,
+                        'runs': [
+                            {
+                                'job': 'job-a',
+                                'run_id': 'run-1',
+                                'schedule': 'nightly_all',
+                                'status': 'ok',
+                                'trigger': 'cron',
+                                'triggered_at': '2026-05-12T02:00:00+00:00',
+                            },
+                        ],
+                        'schedule_count': 1,
+                        'skipped_count': 0,
+                    }
+                ),
             ),
         )
 
