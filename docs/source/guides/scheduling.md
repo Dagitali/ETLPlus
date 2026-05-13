@@ -15,8 +15,8 @@ snippets, or dispatch currently due schedules once with `--run-pending`.
 
 ## Example Configuration
 
-See [examples/configs/scheduling.yml](../../../../examples/configs/scheduling.yml) for a complete
-example. The relevant schedule shape is:
+See [examples/configs/scheduling.yml][scheduling.yml] for a complete example. The relevant schedule
+shape is:
 
 ```yaml
 history:
@@ -134,3 +134,5 @@ remote backing services remain first-class.
 Local filesystem paths, Docker Compose, localhost Postgres, or Adminer are still useful for
 development, but they should be treated as convenience tooling rather than the canonical operating
 model.
+
+[scheduling.yml]: https://github.com/Dagitali/ETLPlus/blob/main/examples/configs/scheduling.yml
