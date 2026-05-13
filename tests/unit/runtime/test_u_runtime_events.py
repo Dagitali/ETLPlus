@@ -14,7 +14,7 @@ from uuid import UUID
 import pytest
 
 import etlplus.runtime._events as events_mod
-import etlplus.runtime._telemetry as telemetry_mod
+import etlplus.runtime.telemetry as telemetry_mod
 
 # SECTION: PRAGMAS ========================================================== #
 
