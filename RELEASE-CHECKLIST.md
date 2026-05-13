@@ -91,6 +91,9 @@ release.
   of the committed tree are not part of tagged release artifacts.
 - Regenerated demo/version snippets and GitHub Releases should be treated as the canonical source
   for the latest published stable version number when preparing a tag.
+- Read the Docs version activation is separate from `.github/workflows/cd.yml`: after publishing a
+  release tag, confirm the tagged version is active on Read the Docs, `stable` points at the
+  intended newest stable tag, and `latest` has rebuilt from the default branch.
 - The completed items in the archived sections landed across the path to `v1.0.0` and the early
   stable releases; they are retained here as audit history rather than as pending work.
 - Protected branches change the release maintainer workflow: treat GitHub pull requests as the
