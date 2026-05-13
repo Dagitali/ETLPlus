@@ -160,10 +160,12 @@ class _ScheduleLock:
         schedule_name: str,
     ) -> None:
         lock_dir = state_dir / _SCHEDULER_LOCK_DIR
-        slug = ''.join(
-            ch if ch.isalnum() else '-'
-            for ch in schedule_name.casefold()
-        ).strip('-') or 'schedule'
+        slug = (
+            ''.join(
+                ch if ch.isalnum() else '-' for ch in schedule_name.casefold()
+            ).strip('-')
+            or 'schedule'
+        )
         self._lock_path = lock_dir / f'{slug}.lock'
         self._fd: int | None = None
 
