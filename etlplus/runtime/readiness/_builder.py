@@ -40,21 +40,6 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
     # -- Internal Class Methods -- #
 
     @classmethod
-    def _build_report(
-        cls,
-        *,
-        checks: list[dict[str, Any]],
-        include_python_version: bool,
-    ) -> dict[str, Any]:
-        """Return one normalized readiness report payload."""
-        return ReadinessReport(
-            checks=checks,
-            etlplus_version=_ETLPLUS_VERSION,
-            status=cls.overall_status(checks),
-            python_version=(cls.python_version() if include_python_version else None),
-        ).to_payload()
-
-    @classmethod
     def _provider_checks(
         cls,
         *,
@@ -102,10 +87,13 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         checks: list[dict[str, Any]] = [cls.supported_python_check()]
         if config_path:
             try:
-                config_kwargs: dict[str, Any] = {'env': env}
-                if strict:
-                    config_kwargs['strict'] = True
-                checks.extend(cls.config_checks(config_path, **config_kwargs))
+                checks.extend(
+                    cls.config_checks(
+                        config_path,
+                        env=env,
+                        **({'strict': True} if strict else {}),
+                    ),
+                )
             except (OSError, TypeError, ValueError) as exc:
                 checks.append(
                     cls.make_check(
@@ -127,7 +115,12 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
                 ),
             )
 
-        return cls._build_report(checks=checks, include_python_version=True)
+        return ReadinessReport(
+            checks=checks,
+            etlplus_version=_ETLPLUS_VERSION,
+            status=cls.overall_status(checks),
+            python_version=cls.python_version(),
+        ).to_payload()
 
     @classmethod
     def config_checks(
@@ -299,7 +292,12 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             strict=True,
             include_runtime_checks=False,
         )
-        return cls._build_report(checks=checks, include_python_version=False)
+        return ReadinessReport(
+            checks=checks,
+            etlplus_version=_ETLPLUS_VERSION,
+            status=cls.overall_status(checks),
+            python_version=None,
+        ).to_payload()
 
     # -- Internal Static Methods -- #
 
