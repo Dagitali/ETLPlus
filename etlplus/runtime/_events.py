@@ -143,7 +143,7 @@ class RuntimeEvents:
             Structured event format selector. Only ``jsonl`` is currently
             supported; falsy values disable emission.
         """
-        from .telemetry import RuntimeTelemetry
+        from ..telemetry import RuntimeTelemetry
 
         RuntimeTelemetry.emit_event(event)
         if event_format != 'jsonl':
