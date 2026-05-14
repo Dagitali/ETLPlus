@@ -126,7 +126,7 @@ class _SchedulerStateStore:
         schedule_name: str,
     ) -> str | None:
         """
-        Return the last recorded trigger timestamp for one schedule.
+        Return the last completed trigger timestamp for one schedule.
 
         Parameters
         ----------
@@ -136,14 +136,62 @@ class _SchedulerStateStore:
         Returns
         -------
         str | None
-            The last recorded trigger timestamp as an ISO-8601 string, or
+            The last completed trigger timestamp as an ISO-8601 string, or
             ``None`` if no valid record is found.
         """
+        return self.last_completed_at(schedule_name)
+
+    def last_completed_at(
+        self,
+        schedule_name: str,
+    ) -> str | None:
+        """Return the last completed trigger timestamp for one schedule."""
         schedule_state = self._load().get(schedule_name)
         if not isinstance(schedule_state, dict):
             return None
-        value = schedule_state.get('last_triggered_at')
+        value = (
+            schedule_state.get('last_completed_at')
+            or schedule_state.get('last_triggered_at')
+        )
         return value if isinstance(value, str) and value else None
+
+    def record_attempt(
+        self,
+        *,
+        schedule_name: str,
+        triggered_at: str,
+    ) -> None:
+        """Persist one attempted schedule trigger timestamp."""
+        schedules = self._load()
+        schedule_state = schedules.get(schedule_name, {})
+        if not isinstance(schedule_state, dict):
+            schedule_state = {}
+        schedule_state['last_attempted_at'] = triggered_at
+        schedules[schedule_name] = schedule_state
+        self._save(schedules)
+
+    def record_completion(
+        self,
+        *,
+        schedule_name: str,
+        triggered_at: str,
+        status: str,
+        run_id: str | None = None,
+    ) -> None:
+        """Persist one completed schedule trigger timestamp and outcome."""
+        schedules = self._load()
+        schedule_state = schedules.get(schedule_name, {})
+        if not isinstance(schedule_state, dict):
+            schedule_state = {}
+        schedule_state['last_attempted_at'] = triggered_at
+        schedule_state['last_completed_at'] = triggered_at
+        schedule_state['last_status'] = status
+        if run_id is None:
+            schedule_state.pop('last_run_id', None)
+        else:
+            schedule_state['last_run_id'] = run_id
+        schedules[schedule_name] = schedule_state
+        self._save(schedules)
 
     def record_trigger(
         self,
@@ -161,9 +209,11 @@ class _SchedulerStateStore:
         triggered_at : str
             Trigger timestamp as an ISO-8601 string to record for the schedule.
         """
-        schedules = self._load()
-        schedules[schedule_name] = {'last_triggered_at': triggered_at}
-        self._save(schedules)
+        self.record_completion(
+            schedule_name=schedule_name,
+            triggered_at=triggered_at,
+            status='ok',
+        )
 
 
 class _ScheduleLock:
@@ -403,13 +453,13 @@ class LocalScheduler:
                 cls._interval_due_times(
                     schedule,
                     now=now,
-                    previous_triggered_at=state_store.last_triggered_at(resolved.name),
+                    previous_triggered_at=state_store.last_completed_at(resolved.name),
                 )
                 if resolved.trigger == 'interval'
                 else cls._cron_due_times(
                     schedule,
                     now=now,
-                    previous_triggered_at=state_store.last_triggered_at(resolved.name),
+                    previous_triggered_at=state_store.last_completed_at(resolved.name),
                 )
             )
             for due_time in due_times:
@@ -470,7 +520,7 @@ class LocalScheduler:
                 )
                 continue
             try:
-                state_store.record_trigger(
+                state_store.record_attempt(
                     schedule_name=request.schedule_name,
                     triggered_at=request.triggered_at,
                 )
@@ -494,10 +544,17 @@ class LocalScheduler:
             dispatched_count += 1
             raw_run_id = captured.get('run_id')
             run_id: str | None = raw_run_id if isinstance(raw_run_id, str) else None
+            status = 'ok' if exit_code == 0 else 'error'
+            state_store.record_completion(
+                schedule_name=request.schedule_name,
+                triggered_at=request.triggered_at,
+                status=status,
+                run_id=run_id,
+            )
             results.append(
                 _schedule_metadata(
                     request,
-                    status='ok' if exit_code == 0 else 'error',
+                    status=status,
                     run_id=run_id,
                 ),
             )
