@@ -17,7 +17,7 @@ from typing import Literal
 from ...history import RunCompletion
 from ...history import RunState
 from ...runtime import RuntimeEvents
-from ...runtime import RuntimeTelemetry
+from ...telemetry import RuntimeTelemetry
 from ...utils._types import JSONData
 
 # SECTION: EXPORTS ========================================================== #
