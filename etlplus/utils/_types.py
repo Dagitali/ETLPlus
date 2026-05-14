@@ -55,17 +55,19 @@ __all__ = [
     'Records',
     'JSONRecord',
     'JSONRecords',
+    # Type Aliases (Diagnostics)
+    'IssueSeverity',
     # Type Aliases (File System)
     'StrPath',
-    # Type Aliases (Transform Specs)
-    'StrAnyMap',
-    'StrSeqMap',
-    'StrStrMap',
     # Type Aliases (Networking / Runtime)
     'Sleeper',
     'Timeout',
     # Type Aliases (Templates)
     'TemplateKey',
+    # Type Aliases (Transform Specs)
+    'StrAnyMap',
+    'StrSeqMap',
+    'StrStrMap',
     # Type Aliases (Validation)
     'NonEmptyStr',
     'NonEmptyStrList',
@@ -108,10 +110,20 @@ type JSONRecord = JSONDict
 # List of :data:`JSONRecord` values returned by pagination utilities.
 type JSONRecords = list[JSONRecord]
 
+# -- Diagnostics -- #
+
+# Shared warn/error severity contract used by runtime diagnostics.
+type IssueSeverity = Literal['warn', 'error']
+
 # -- File System -- #
 
 # Path-like inputs accepted by file helpers.
 type StrPath = str | Path | PathLike[str]
+
+# -- Templates -- #
+
+# Allowed template keys for bundled DDL rendering.
+type TemplateKey = Literal['ddl', 'view']
 
 # -- Transform Specs -- #
 
@@ -135,11 +147,6 @@ type Sleeper = Callable[[float], None]
 
 # Numeric timeout in seconds or ``None`` for no timeout.
 type Timeout = float | None
-
-# -- Templates -- #
-
-# Allowed template keys for bundled DDL rendering.
-type TemplateKey = Literal['ddl', 'view']
 
 # -- Validation -- #
 
