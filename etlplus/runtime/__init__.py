@@ -11,9 +11,6 @@ from ._events import EVENT_SCHEMA_VERSION
 from ._events import RuntimeEvents
 from ._logging import RuntimeLoggingPolicy
 from .readiness import ReadinessReportBuilder
-from .telemetry import ResolvedTelemetryConfig
-from .telemetry import RuntimeTelemetry
-from .telemetry import TelemetryConfig
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -23,9 +20,6 @@ __all__ = [
     'ReadinessReportBuilder',
     'RuntimeEvents',
     'RuntimeLoggingPolicy',
-    'RuntimeTelemetry',
-    'TelemetryConfig',
-    'ResolvedTelemetryConfig',
     # Constants
     'EVENT_SCHEMA',
     'EVENT_SCHEMA_VERSION',
