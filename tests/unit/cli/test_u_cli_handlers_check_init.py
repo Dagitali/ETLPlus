@@ -7,6 +7,7 @@ Unit tests for config-check, init, and shared helper entry points in
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
@@ -957,6 +958,84 @@ class TestScheduleHandler:
                         'target': {'job': 'job-a'},
                     },
                 ],
+            },
+            pretty=True,
+        )
+
+    def test_emits_schedule_summary_with_state(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Schedule handler should optionally include persisted scheduler state."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Schedule Test Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+                'schedules': [
+                    {
+                        'name': 'nightly_all',
+                        'cron': '0 2 * * *',
+                        'target': {'run_all': True},
+                    },
+                    {
+                        'name': 'customers_every_30m',
+                        'interval': {'minutes': 30},
+                        'target': {'job': 'job-a'},
+                    },
+                ],
+            },
+        )
+        patch_config_from_yaml(monkeypatch, cfg)
+        state_dir = Path('state-dir').resolve()
+        monkeypatch.setenv('ETLPLUS_STATE_DIR', str(state_dir))
+        state_dir.mkdir(parents=True, exist_ok=True)
+        (state_dir / 'scheduler-state.json').write_text(
+            json.dumps(
+                {
+                    'schedules': {
+                        'nightly_all': {
+                            'last_attempted_at': '2026-05-12T02:00:00+00:00',
+                            'last_completed_at': '2026-05-12T02:00:00+00:00',
+                            'last_run_id': 'run-1',
+                            'last_status': 'ok',
+                        },
+                    },
+                },
+            ),
+            encoding='utf-8',
+        )
+
+        assert handlers.schedule_handler(config='cfg.yml', show_state=True) == 0
+        assert_emit_json(
+            capture_io,
+            {
+                'name': 'Schedule Test Pipeline',
+                'schedule_count': 2,
+                'schedules': [
+                    {
+                        'cron': '0 2 * * *',
+                        'name': 'nightly_all',
+                        'paused': False,
+                        'state': {
+                            'last_attempted_at': '2026-05-12T02:00:00+00:00',
+                            'last_completed_at': '2026-05-12T02:00:00+00:00',
+                            'last_run_id': 'run-1',
+                            'last_status': 'ok',
+                        },
+                        'target': {'run_all': True},
+                    },
+                    {
+                        'interval': {'minutes': 30},
+                        'name': 'customers_every_30m',
+                        'paused': False,
+                        'state': {},
+                        'target': {'job': 'job-a'},
+                    },
+                ],
+                'state_dir': str(state_dir),
             },
             pretty=True,
         )
