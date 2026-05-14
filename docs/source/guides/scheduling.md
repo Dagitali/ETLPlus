@@ -120,8 +120,17 @@ That means scheduled runs keep the same stable contracts:
 
 The local scheduler also keeps minimal trigger state under `${ETLPLUS_STATE_DIR:-~/.etlplus}`:
 
-- `scheduler-state.json` stores the last dispatched trigger per schedule
+- `scheduler-state.json` stores the last attempted and last completed trigger per schedule, plus the
+  last recorded outcome metadata
 - `scheduler-locks/` prevents overlapping dispatch for the same schedule
+
+Trigger consumption rules:
+
+- overlapping or paused schedules do not consume a due trigger
+- callback exceptions record an attempted trigger but leave the due time eligible for replay on the
+  next invocation
+- handled run outcomes that return normally consume the trigger and update the completed timestamp,
+  even when the underlying run exits nonzero
 
 ## Backing-Service Posture
 
