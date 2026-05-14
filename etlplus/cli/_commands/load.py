@@ -8,17 +8,14 @@ from __future__ import annotations
 
 import typer
 
-from ...file import FileFormat
 from .._handlers.dataops import load_handler
 from ._app import app
-from ._constants import FILE_FORMATS
 from ._helpers import CommandHelperPolicy
 from ._options.common import StructuredEventFormatOption
 from ._options.resources import SourceFormatOption
 from ._options.resources import TargetArg
 from ._options.resources import TargetFormatOption
 from ._options.resources import TargetTypeOption
-from ._state import ResourceTypeResolver
 from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
@@ -66,18 +63,6 @@ def load_cmd(
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
     state = ensure_state(ctx)
-    source_format_hint = (
-        None
-        if (
-            normalized_source_format := ResourceTypeResolver.optional_choice(
-                None if source_format is None else str(source_format),
-                FILE_FORMATS,
-                label='source_format',
-            )
-        )
-        is None
-        else FileFormat.coerce(normalized_source_format)
-    )
     resolved_target = CommandHelperPolicy.resolve_resource(
         state,
         role='target',
@@ -90,6 +75,7 @@ def load_cmd(
         state,
         role='source',
         value='-',
+        format_value=source_format,
         soft_inference=True,
     )
 
@@ -97,7 +83,7 @@ def load_cmd(
         load_handler,
         state=state,
         source=resolved_source.value,
-        source_format=source_format_hint,
+        source_format=resolved_source.format_hint,
         target=resolved_target.value,
         target_type=resolved_target.require_resource_type(),
         target_format=resolved_target.format_hint,
