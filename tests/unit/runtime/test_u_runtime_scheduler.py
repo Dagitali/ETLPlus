@@ -67,6 +67,100 @@ class TestDueRequests:
             ),
         ]
 
+    @pytest.mark.parametrize(
+        ('schedule_name', 'expected_requests', 'expected_skipped'),
+        [
+            pytest.param(
+                None,
+                [
+                    scheduler_mod.ScheduledRunRequest(
+                        catchup=False,
+                        job_name='seed',
+                        run_all=False,
+                        schedule_name='seed-every-15m',
+                        trigger='interval',
+                        triggered_at='2026-05-12T00:15:00+00:00',
+                    ),
+                ],
+                [
+                    {
+                        'catchup': False,
+                        'job': 'seed',
+                        'reason': 'paused',
+                        'schedule': 'paused-seed',
+                        'status': 'skipped',
+                        'trigger': 'interval',
+                        'triggered_at': '2026-05-12T00:15:00+00:00',
+                    },
+                ],
+                id='returns-due-and-paused-schedules',
+            ),
+            pytest.param(
+                'seed-every-15m',
+                [
+                    scheduler_mod.ScheduledRunRequest(
+                        catchup=False,
+                        job_name='seed',
+                        run_all=False,
+                        schedule_name='seed-every-15m',
+                        trigger='interval',
+                        triggered_at='2026-05-12T00:15:00+00:00',
+                    ),
+                ],
+                [],
+                id='filters-to-selected-schedule',
+            ),
+        ],
+    )
+    def test_due_requests_normalizes_schedule_shape_once(
+        self,
+        tmp_path: Path,
+        schedule_name: str | None,
+        expected_requests: list[scheduler_mod.ScheduledRunRequest],
+        expected_skipped: list[dict[str, object]],
+    ) -> None:
+        """Valid schedules should share one normalized request-building path."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Scheduler Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [{'name': 'seed'}],
+                'schedules': [
+                    {
+                        'name': 'seed-every-15m',
+                        'interval': {'minutes': 15},
+                        'target': {'job': 'seed'},
+                    },
+                    {
+                        'name': 'paused-seed',
+                        'interval': {'minutes': 15},
+                        'paused': True,
+                        'target': {'job': 'seed'},
+                    },
+                    {
+                        'name': 'ignored-missing-target',
+                        'interval': {'minutes': 15},
+                    },
+                ],
+            },
+        )
+        state_store = scheduler_mod._SchedulerStateStore(tmp_path)
+        state_store.record_trigger(
+            schedule_name='seed-every-15m',
+            triggered_at='2026-05-12T00:00:00+00:00',
+        )
+
+        requests, skipped = scheduler_mod.LocalScheduler.due_requests(
+            cfg,
+            now=datetime(2026, 5, 12, 0, 15, tzinfo=UTC),
+            schedule_name=schedule_name,
+            state_store=state_store,
+        )
+
+        assert requests == expected_requests
+        assert skipped == expected_skipped
+
 
 class TestRunPending:
     """Unit tests for local schedule-trigger execution."""
