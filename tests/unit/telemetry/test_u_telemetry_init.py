@@ -21,9 +21,9 @@ from etlplus.telemetry import TelemetryConfig
 
 
 EXPECTED_EXPORTS = [
-    ('RuntimeTelemetry', RuntimeTelemetry),  # foo
-    ('TelemetryConfig', TelemetryConfig),  # foo
-    ('ResolvedTelemetryConfig', ResolvedTelemetryConfig),  # foo
+    ('RuntimeTelemetry', RuntimeTelemetry),
+    ('ResolvedTelemetryConfig', ResolvedTelemetryConfig),
+    ('TelemetryConfig', TelemetryConfig),
 ]
 
 # SECTION: TESTS ============================================================ #
