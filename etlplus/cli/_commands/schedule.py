@@ -17,6 +17,7 @@ from ._options.common import ConfigOption
 from ._options.common import EmitScheduleFormatOption
 from ._options.common import RunPendingSchedulesOption
 from ._options.common import ScheduleNameOption
+from ._options.common import ShowScheduleStateOption
 from ._options.common import StructuredEventFormatOption
 from ._state import ensure_state
 
@@ -39,6 +40,7 @@ def schedule_cmd(
     schedule: ScheduleNameOption = None,
     emit: EmitScheduleFormatOption = None,
     run_pending: RunPendingSchedulesOption = False,
+    show_state: ShowScheduleStateOption = False,
     event_format: StructuredEventFormatOption = None,
 ) -> int:
     """
@@ -56,6 +58,8 @@ def schedule_cmd(
         Optional helper format to emit for a named schedule.
     run_pending : RunPendingSchedulesOption, optional
         Whether to execute due schedules once in local mode.
+    show_state : ShowScheduleStateOption, optional
+        Whether to include persisted local scheduler state in summary output.
     event_format : StructuredEventFormatOption, optional
         Structured event output format forwarded to scheduled runs.
 
@@ -76,6 +80,8 @@ def schedule_cmd(
         'emit': emit,
         'schedule_name': schedule,
     }
+    if show_state:
+        handler_kwargs['show_state'] = True
     if run_pending:
         handler_kwargs['run_pending'] = True
     if event_format is not None:

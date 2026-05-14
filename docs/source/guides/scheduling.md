@@ -65,6 +65,17 @@ Inspect all configured schedules:
 etlplus schedule --config examples/configs/scheduling.yml
 ```
 
+Inspect schedules plus persisted local scheduler state:
+
+```bash
+etlplus schedule --config examples/configs/scheduling.yml --show-state
+```
+
+Typical `--show-state` output for one healthy schedule includes the last attempted trigger, the last
+completed trigger, and the last recorded run id/status. A schedule that recently failed before
+completion will also show `last_error_type` and `last_error_message` until the next successful
+completion clears those diagnostics.
+
 Emit a `crontab` snippet for one schedule:
 
 ```bash
@@ -103,9 +114,14 @@ etlplus schedule \
   --event-format jsonl
 ```
 
+When a bounded catch-up batch stops early because one due run raises before completion, the command
+returns a nonzero exit code with a partial JSON summary. That summary includes additive
+`due_count`, `attempted_count`, `completed_count`, and `pending_count` fields plus `pending_runs`
+for due triggers left eligible for replay.
+
 This mode is intentionally one-shot. The expected operating model is to invoke it from `cron`,
-`systemd`, CI, or another external trigger rather than to keep a resident ETLPlus scheduler
-process running continuously.
+`systemd`, CI, or another external trigger rather than to keep a resident ETLPlus scheduler process
+running continuously.
 
 ## Observability And State
 
@@ -113,23 +129,38 @@ process running continuously.
 
 That means scheduled runs keep the same stable contracts:
 
-- lifecycle events still use `etlplus.event.v1`
-- local history still records the run through the same SQLite-default or JSONL fallback backend
-- additive scheduler metadata is attached to events and persisted under
+- Lifecycle events still use `etlplus.event.v1`
+- Local history still records the run through the same SQLite-default or JSONL fallback backend
+- Sdditive scheduler metadata is attached to events and persisted under
   `result_summary.scheduler`
 
 The local scheduler also keeps minimal trigger state under `${ETLPLUS_STATE_DIR:-~/.etlplus}`:
 
-- `scheduler-state.json` stores the last dispatched trigger per schedule
+- `scheduler-state.json` stores the last attempted and last completed trigger per schedule, plus the
+  last recorded outcome metadata
 - `scheduler-locks/` prevents overlapping dispatch for the same schedule
+- Stale lock files left behind by dead scheduler processes are reclaimed automatically on the next
+  matching dispatch attempt
+
+Trigger consumption rules:
+
+- Overlapping or paused schedules do not consume a due trigger
+- Callback exceptions record an attempted trigger but leave the due time eligible for replay on the
+  next invocation
+- Callback exceptions also persist the latest exception type and message summary in
+  `scheduler-state.json`
+- The next successful completion for that schedule clears the stale exception diagnostics and keeps
+  only the latest healthy completion metadata
+- Handled run outcomes that return normally consume the trigger and update the completed timestamp,
+  even when the underlying run exits nonzero
 
 ## Backing-Service Posture
 
 Scheduling does not change ETLPlus' backing-service model.
 
 The same schedule surface can target local paths, managed databases, or remote object-storage URIs.
-The example config uses `s3://...` and `azure-blob://...` endpoints deliberately to show that
-remote backing services remain first-class.
+The example config uses `s3://...` and `azure-blob://...` endpoints deliberately to show that remote
+backing services remain first-class.
 
 Local filesystem paths, Docker Compose, localhost Postgres, or Adminer are still useful for
 development, but they should be treated as convenience tooling rather than the canonical operating

@@ -449,6 +449,7 @@ class TestDelegatingCommands:
                 'schedule_handler',
                 {
                     'config': 'pipeline.yml',
+                    'show_state': True,
                     'emit': 'crontab',
                     'schedule': 'nightly_all',
                 },
@@ -457,6 +458,7 @@ class TestDelegatingCommands:
                     'emit': 'crontab',
                     'pretty': False,
                     'schedule_name': 'nightly_all',
+                    'show_state': True,
                 },
                 0,
                 id='schedule',
@@ -633,6 +635,31 @@ class TestDelegatingCommands:
                 run_all=True,
             )
 
+    def test_schedule_allows_show_state_without_emit_or_run_pending(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+    ) -> None:
+        """Schedule state inspection should forward the explicit show-state flag."""
+        monkeypatch.setattr(
+            schedule_mod.CommandHelperPolicy,
+            'call_handler',
+            lambda handler, *, state, **kwargs: kwargs,
+        )
+        monkeypatch.setattr(
+            schedule_mod,
+            'ensure_state',
+            lambda _ctx: CliState(pretty=False),
+        )
+
+        payload = commands_mod.schedule_cmd(
+            typer_ctx_factory(),
+            config='pipeline.yml',
+            show_state=True,
+        )
+
+        assert payload['show_state'] is True
+
     def test_schedule_emit_requires_named_schedule(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -751,6 +778,7 @@ class TestCliInvokeParsing:
                     'schedule',
                     '--config',
                     'pipeline.yml',
+                    '--show-state',
                     '--schedule',
                     'nightly_all',
                     '--emit',
@@ -762,6 +790,7 @@ class TestCliInvokeParsing:
                     'config': 'pipeline.yml',
                     'emit': 'systemd',
                     'schedule_name': 'nightly_all',
+                    'show_state': True,
                 },
                 id='schedule-emit-systemd',
             ),
@@ -928,7 +957,10 @@ class TestCliInvokeParsing:
         assert json.loads((state_dir / 'scheduler-state.json').read_text()) == {
             'schedules': {
                 'nightly_all': {
-                    'last_triggered_at': '2026-05-11T02:00:00+00:00',
+                    'last_attempted_at': '2026-05-11T02:00:00+00:00',
+                    'last_completed_at': '2026-05-11T02:00:00+00:00',
+                    'last_run_id': 'run-1',
+                    'last_status': 'ok',
                 },
             },
         }
