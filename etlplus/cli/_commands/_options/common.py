@@ -35,6 +35,7 @@ __all__ = [
     'RunPendingSchedulesOption',
     'RunAllOption',
     'ScheduleNameOption',
+    'ShowScheduleStateOption',
     'StructuredEventFormatOption',
     'VerboseOption',
     'VersionOption',
@@ -178,6 +179,11 @@ ScheduleNameOption = typer_value_option_alias(
     help_text='Name of the configured schedule to inspect or emit.',
     metavar='NAME',
     show_default=None,
+)
+
+ShowScheduleStateOption = typer_flag_option_alias(
+    '--show-state',
+    help_text='Include persisted local scheduler state in schedule summary output.',
 )
 
 StructuredEventFormatOption = typer_value_option_alias(

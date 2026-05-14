@@ -33,6 +33,7 @@ __all__ = [
     # Classes
     'LocalScheduler',
     'ScheduledRunRequest',
+    'SchedulerDispatchError',
 ]
 
 
@@ -121,49 +122,101 @@ class _SchedulerStateStore:
 
     # -- Instance Methods -- #
 
-    def last_triggered_at(
+    def last_completed_at(
         self,
         schedule_name: str,
     ) -> str | None:
-        """
-        Return the last recorded trigger timestamp for one schedule.
-
-        Parameters
-        ----------
-        schedule_name : str
-            Schedule name to query for the last trigger timestamp.
-
-        Returns
-        -------
-        str | None
-            The last recorded trigger timestamp as an ISO-8601 string, or
-            ``None`` if no valid record is found.
-        """
+        """Return the last completed trigger timestamp for one schedule."""
         schedule_state = self._load().get(schedule_name)
         if not isinstance(schedule_state, dict):
             return None
-        value = schedule_state.get('last_triggered_at')
+        value = schedule_state.get('last_completed_at') or schedule_state.get(
+            'last_triggered_at',
+        )
         return value if isinstance(value, str) and value else None
 
-    def record_trigger(
+    def record_attempt(
         self,
         *,
         schedule_name: str,
         triggered_at: str,
     ) -> None:
-        """
-        Persist one schedule trigger timestamp.
-
-        Parameters
-        ----------
-        schedule_name : str
-            Schedule name to record the trigger timestamp for.
-        triggered_at : str
-            Trigger timestamp as an ISO-8601 string to record for the schedule.
-        """
+        """Persist one attempted schedule trigger timestamp."""
         schedules = self._load()
-        schedules[schedule_name] = {'last_triggered_at': triggered_at}
+        schedule_state = self._state_for(schedules, schedule_name)
+        schedule_state['last_attempted_at'] = triggered_at
+        schedules[schedule_name] = schedule_state
         self._save(schedules)
+
+    def record_completion(
+        self,
+        *,
+        schedule_name: str,
+        triggered_at: str,
+        status: str,
+        run_id: str | None = None,
+    ) -> None:
+        """Persist one completed schedule trigger timestamp and outcome."""
+        schedules = self._load()
+        schedule_state = self._state_for(schedules, schedule_name)
+        schedule_state['last_attempted_at'] = triggered_at
+        schedule_state['last_completed_at'] = triggered_at
+        schedule_state['last_status'] = status
+        schedule_state.pop('last_error_message', None)
+        schedule_state.pop('last_error_type', None)
+        if run_id is None:
+            schedule_state.pop('last_run_id', None)
+        else:
+            schedule_state['last_run_id'] = run_id
+        schedules[schedule_name] = schedule_state
+        self._save(schedules)
+
+    def record_exception(
+        self,
+        *,
+        schedule_name: str,
+        triggered_at: str,
+        exc: Exception,
+    ) -> None:
+        """Persist one failed dispatch attempt without consuming the trigger."""
+        schedules = self._load()
+        schedule_state = self._state_for(schedules, schedule_name)
+        schedule_state['last_attempted_at'] = triggered_at
+        schedule_state['last_status'] = 'exception'
+        schedule_state['last_error_type'] = type(exc).__name__
+        message = str(exc).strip()
+        if message:
+            schedule_state['last_error_message'] = message
+        else:
+            schedule_state.pop('last_error_message', None)
+        schedule_state.pop('last_run_id', None)
+        schedules[schedule_name] = schedule_state
+        self._save(schedules)
+
+    def state(
+        self,
+        schedule_name: str,
+    ) -> dict[str, str]:
+        """Return persisted scheduler metadata for one schedule."""
+        schedule_state = self._load().get(schedule_name)
+        if not isinstance(schedule_state, dict):
+            return {}
+        return {
+            key: value
+            for key, value in schedule_state.items()
+            if isinstance(key, str) and isinstance(value, str) and value
+        }
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def _state_for(
+        schedules: dict[str, dict[str, str]],
+        schedule_name: str,
+    ) -> dict[str, str]:
+        """Return a mutable state mapping for one schedule name."""
+        schedule_state = schedules.get(schedule_name)
+        return schedule_state if isinstance(schedule_state, dict) else {}
 
 
 class _ScheduleLock:
@@ -186,21 +239,71 @@ class _ScheduleLock:
         self._lock_path = lock_dir / f'{slug}.lock'
         self._fd: int | None = None
 
+    # -- Internal Instance Methods -- #
+
+    def _current_payload(self) -> dict[str, object]:
+        """Return the JSON payload written to one active lock file."""
+        return {
+            'created_at': datetime.now(UTC).isoformat(),
+            'pid': os.getpid(),
+        }
+
+    def _existing_pid(self) -> int | None:
+        """Return the PID from one existing lock file when recognizable."""
+        if not self._lock_path.exists():
+            return None
+        text = self._lock_path.read_text(encoding='utf-8').strip()
+        if not text:
+            return None
+        try:
+            payload = JsonCodec.parse(text)
+        except ValueError:
+            payload = None
+        if isinstance(payload, dict):
+            pid = payload.get('pid')
+            return pid if isinstance(pid, int) and pid > 0 else None
+        try:
+            pid = int(text)
+        except ValueError:
+            return None
+        return pid if pid > 0 else None
+
+    def _is_stale(self) -> bool:
+        """Return whether an existing lock file points at a dead process."""
+        pid = self._existing_pid()
+        if pid is None:
+            return False
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        except PermissionError:
+            return False
+        return False
+
     # -- Instance Methods -- #
 
     def acquire(self) -> bool:
         """Return whether the schedule lock was acquired."""
         self._lock_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            self._fd = os.open(
-                self._lock_path,
-                os.O_CREAT | os.O_EXCL | os.O_WRONLY,
-                0o644,
+        for _attempt in range(2):
+            try:
+                self._fd = os.open(
+                    self._lock_path,
+                    os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+                    0o644,
+                )
+            except FileExistsError:
+                if not self._is_stale():
+                    return False
+                self._lock_path.unlink(missing_ok=True)
+                continue
+            os.write(
+                self._fd,
+                JsonCodec().serialize(self._current_payload()).encode('utf-8'),
             )
-        except FileExistsError:
-            return False
-        os.write(self._fd, str(os.getpid()).encode('utf-8'))
-        return True
+            return True
+        return False
 
     def release(self) -> None:
         """Release the acquired schedule lock when present."""
@@ -342,6 +445,71 @@ def _schedule_metadata(
     return payload
 
 
+def _schedule_error_metadata(
+    request: ScheduledRunRequest,
+    *,
+    exc: Exception,
+    status: str,
+) -> dict[str, object]:
+    """Return scheduler metadata row with additive exception details."""
+    payload = _schedule_metadata(
+        request,
+        status=status,
+        reason='exception',
+    )
+    payload['error_type'] = type(exc).__name__
+    message = str(exc).strip()
+    if message:
+        payload['error_message'] = message
+    return payload
+
+
+def _pending_schedule_metadata(
+    request: ScheduledRunRequest,
+    *,
+    reason: str,
+) -> dict[str, object]:
+    """Return one pending due-run row for summary payloads."""
+    return _schedule_metadata(
+        request,
+        status='pending',
+        reason=reason,
+    )
+
+
+def _scheduler_summary_payload(
+    *,
+    checked_at: str,
+    cfg_name: str,
+    completed_count: int,
+    due_count: int,
+    dispatched_count: int,
+    pending_runs: list[dict[str, object]],
+    results: list[dict[str, object]],
+    schedule_count: int,
+    stopped_early: bool,
+    attempted_count: int,
+) -> dict[str, object]:
+    """Return one additive summary payload for scheduler dispatch."""
+    return {
+        'attempted_count': attempted_count,
+        'checked_at': checked_at,
+        'completed_count': completed_count,
+        'dispatched_count': dispatched_count,
+        'due_count': due_count,
+        'name': cfg_name,
+        'pending_count': due_count - completed_count,
+        'pending_runs': pending_runs,
+        'run_count': len(results),
+        'runs': results,
+        'schedule_count': schedule_count,
+        'skipped_count': len(
+            [row for row in results if row.get('status') == 'skipped'],
+        ),
+        'stopped_early': stopped_early,
+    }
+
+
 def _iter_matching_schedules(
     cfg: Config,
     *,
@@ -357,6 +525,24 @@ def _iter_matching_schedules(
 
 
 # SECTION: CLASSES ========================================================== #
+
+
+class SchedulerDispatchError(RuntimeError):
+    """Raised when one scheduler dispatch stops early with partial results."""
+
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __init__(
+        self,
+        *,
+        payload: dict[str, object],
+        cause: Exception | None = None,
+    ) -> None:
+        self.payload = payload
+        message = (
+            str(cause).strip() if cause is not None else 'scheduler dispatch failed'
+        )
+        super().__init__(message or 'scheduler dispatch failed')
 
 
 class LocalScheduler:
@@ -403,13 +589,13 @@ class LocalScheduler:
                 cls._interval_due_times(
                     schedule,
                     now=now,
-                    previous_triggered_at=state_store.last_triggered_at(resolved.name),
+                    previous_triggered_at=state_store.last_completed_at(resolved.name),
                 )
                 if resolved.trigger == 'interval'
                 else cls._cron_due_times(
                     schedule,
                     now=now,
-                    previous_triggered_at=state_store.last_triggered_at(resolved.name),
+                    previous_triggered_at=state_store.last_completed_at(resolved.name),
                 )
             )
             for due_time in due_times:
@@ -452,13 +638,17 @@ class LocalScheduler:
             schedule_name=schedule_name,
             state_store=state_store,
         )
+        due_count = len(requests)
         schedule_count = len(
             _iter_matching_schedules(cfg, schedule_name=schedule_name),
         )
+        cfg_name = cfg.name or ''
 
         results: list[dict[str, object]] = list(skipped)
+        attempted_count = 0
+        completed_count = 0
         dispatched_count = 0
-        for request in requests:
+        for index, request in enumerate(requests):
             lock = _ScheduleLock(settings.state_dir, request.schedule_name)
             if not lock.acquire():
                 results.append(
@@ -470,49 +660,102 @@ class LocalScheduler:
                 )
                 continue
             try:
-                state_store.record_trigger(
+                state_store.record_attempt(
                     schedule_name=request.schedule_name,
                     triggered_at=request.triggered_at,
                 )
+                attempted_count += 1
                 captured: dict[str, object] = {}
-                exit_code = run_callback(
-                    config=config_path,
-                    event_format=event_format,
-                    job=request.job_name,
-                    pretty=pretty,
-                    result_recorder=captured.update,
-                    run_all=request.run_all,
-                    schedule_catchup=request.catchup,
-                    schedule_name=request.schedule_name,
-                    schedule_trigger=request.trigger,
-                    schedule_triggered_at=request.triggered_at,
-                    emit_output=False,
-                )
+                try:
+                    exit_code = run_callback(
+                        config=config_path,
+                        event_format=event_format,
+                        job=request.job_name,
+                        pretty=pretty,
+                        result_recorder=captured.update,
+                        run_all=request.run_all,
+                        schedule_catchup=request.catchup,
+                        schedule_name=request.schedule_name,
+                        schedule_trigger=request.trigger,
+                        schedule_triggered_at=request.triggered_at,
+                        emit_output=False,
+                    )
+                except Exception as exc:
+                    state_store.record_exception(
+                        schedule_name=request.schedule_name,
+                        triggered_at=request.triggered_at,
+                        exc=exc,
+                    )
+                    results.append(
+                        _schedule_error_metadata(
+                            request,
+                            exc=exc,
+                            status='error',
+                        ),
+                    )
+                    pending_runs = [
+                        _schedule_error_metadata(
+                            request,
+                            exc=exc,
+                            status='pending',
+                        ),
+                        *[
+                            _pending_schedule_metadata(
+                                pending_request,
+                                reason='deferred',
+                            )
+                            for pending_request in requests[index + 1:]
+                        ],
+                    ]
+                    raise SchedulerDispatchError(
+                        payload=_scheduler_summary_payload(
+                            attempted_count=attempted_count,
+                            checked_at=now.isoformat(),
+                            cfg_name=cfg_name,
+                            completed_count=completed_count,
+                            dispatched_count=dispatched_count,
+                            due_count=due_count,
+                            pending_runs=pending_runs,
+                            results=results,
+                            schedule_count=schedule_count,
+                            stopped_early=True,
+                        ),
+                        cause=exc,
+                    ) from exc
             finally:
                 lock.release()
 
             dispatched_count += 1
             raw_run_id = captured.get('run_id')
             run_id: str | None = raw_run_id if isinstance(raw_run_id, str) else None
+            status = 'ok' if exit_code == 0 else 'error'
+            state_store.record_completion(
+                schedule_name=request.schedule_name,
+                triggered_at=request.triggered_at,
+                status=status,
+                run_id=run_id,
+            )
+            completed_count += 1
             results.append(
                 _schedule_metadata(
                     request,
-                    status='ok' if exit_code == 0 else 'error',
+                    status=status,
                     run_id=run_id,
                 ),
             )
 
-        return {
-            'checked_at': now.isoformat(),
-            'dispatched_count': dispatched_count,
-            'name': cfg.name,
-            'run_count': len(results),
-            'schedule_count': schedule_count,
-            'runs': results,
-            'skipped_count': len(
-                [row for row in results if row.get('status') == 'skipped'],
-            ),
-        }
+        return _scheduler_summary_payload(
+            attempted_count=attempted_count,
+            checked_at=now.isoformat(),
+            cfg_name=cfg_name,
+            completed_count=completed_count,
+            dispatched_count=dispatched_count,
+            due_count=due_count,
+            pending_runs=[],
+            results=results,
+            schedule_count=schedule_count,
+            stopped_early=False,
+        )
 
     # -- Internal Static Methods -- #
 
