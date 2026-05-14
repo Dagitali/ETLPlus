@@ -7,6 +7,8 @@ Direct unit tests for :mod:`etlplus.cli._handlers.run`.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
+from typing import cast
 
 import pytest
 
@@ -503,6 +505,145 @@ class TestPersistedRunSummary:
         assert POLICY.persisted_run_summary(result) == result
 
 
+class TestRunHandlerFailureOutput:
+    """Unit tests for direct failure-output branches in run_handler."""
+
+    @staticmethod
+    def _configure_failed_run_handler_dependencies(
+        monkeypatch: pytest.MonkeyPatch,
+        *,
+        lifecycle_calls: list[dict[str, object]],
+    ) -> None:
+        cfg = run_mod.Config.from_dict(
+            {
+                'name': 'Failure Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [{'name': 'seed'}],
+            },
+        )
+
+        monkeypatch.setattr(run_mod.Config, 'from_yaml', lambda *_args, **_kwargs: cfg)
+        monkeypatch.setattr(
+            run_mod.RuntimeTelemetry,
+            'configure',
+            classmethod(lambda _cls, *_args, **_kwargs: None),
+        )
+        monkeypatch.setattr(
+            run_mod._lifecycle,
+            'start_command',
+            lambda **_kwargs: type(
+                'Ctx',
+                (),
+                {
+                    'command': 'run',
+                    'event_format': None,
+                    'run_id': 'run-fail-1',
+                    'started_at': '2026-05-12T02:00:00+00:00',
+                    'started_perf': 0.0,
+                },
+            )(),
+        )
+        monkeypatch.setattr(
+            run_mod._lifecycle,
+            'failure_boundary',
+            lambda *args, **kwargs: __import__('contextlib').nullcontext(),
+        )
+        monkeypatch.setattr(
+            run_mod._lifecycle,
+            'emit_lifecycle_event',
+            lambda **kwargs: lifecycle_calls.append(dict(kwargs)),
+        )
+        monkeypatch.setattr(
+            run_mod._lifecycle,
+            'elapsed_ms',
+            lambda _started_perf: 12.5,
+        )
+        monkeypatch.setattr(POLICY, 'open_history_store', lambda _settings: None)
+        monkeypatch.setattr(
+            run_mod,
+            'run',
+            lambda **_kwargs: {
+                'failed_jobs': ['seed'],
+                'skipped_jobs': [],
+                'status': 'failed',
+            },
+        )
+
+    def test_run_handler_emits_json_for_failed_results_when_output_enabled(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Failed runs should still emit the error payload when output is enabled."""
+        lifecycle_calls: list[dict[str, object]] = []
+        emitted: list[dict[str, object]] = []
+
+        self._configure_failed_run_handler_dependencies(
+            monkeypatch,
+            lifecycle_calls=lifecycle_calls,
+        )
+
+        def _emit_json_payload(
+            payload: object,
+            *,
+            pretty: bool,
+            exit_code: int = 0,
+        ) -> int:
+            emitted.append(
+                {
+                    'exit_code': exit_code,
+                    'payload': payload,
+                    'pretty': pretty,
+                },
+            )
+            return exit_code
+
+        monkeypatch.setattr(run_mod._output, 'emit_json_payload', _emit_json_payload)
+
+        assert run_mod.run_handler(config='pipeline.yml', job='seed', pretty=False) == 1
+        assert emitted == [
+            {
+                'exit_code': 1,
+                'payload': {
+                    'run_id': 'run-fail-1',
+                    'status': 'error',
+                    'result': {
+                        'failed_jobs': ['seed'],
+                        'skipped_jobs': [],
+                        'status': 'failed',
+                    },
+                },
+                'pretty': False,
+            },
+        ]
+        assert lifecycle_calls[0]['lifecycle'] == 'failed'
+        assert lifecycle_calls[0]['status'] == 'error'
+
+    def test_run_handler_returns_nonzero_without_emitting_failed_output(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Failed runs should still return an error when output emission is disabled."""
+        lifecycle_calls: list[dict[str, object]] = []
+
+        self._configure_failed_run_handler_dependencies(
+            monkeypatch,
+            lifecycle_calls=lifecycle_calls,
+        )
+
+        assert (
+            run_mod.run_handler(
+                config='pipeline.yml',
+                job='seed',
+                pretty=False,
+                emit_output=False,
+            )
+            == 1
+        )
+        assert lifecycle_calls[0]['lifecycle'] == 'failed'
+        assert lifecycle_calls[0]['status'] == 'error'
+
+
 class TestRunSummaryHelpers:
     """Unit tests for compact DAG-summary helper functions."""
 
@@ -643,6 +784,54 @@ class TestRunSummaryHelpers:
         Test that persisted run summaries preserve null and non-mapping shapes.
         """
         assert POLICY.persisted_run_summary(result) == expected
+
+
+class TestScheduleMetadata:
+    """Unit tests for scheduler-aware run summary decoration."""
+
+    @pytest.mark.parametrize(
+        ('summary', 'expected'),
+        [
+            pytest.param(
+                'ok',
+                {
+                    'result': 'ok',
+                    'scheduler': {
+                        'catchup': True,
+                        'schedule': 'nightly',
+                        'trigger': 'cron',
+                        'triggered_at': '2026-05-12T02:00:00+00:00',
+                    },
+                },
+                id='scalar-summary',
+            ),
+            pytest.param(
+                None,
+                {
+                    'scheduler': {
+                        'catchup': True,
+                        'schedule': 'nightly',
+                        'trigger': 'cron',
+                        'triggered_at': '2026-05-12T02:00:00+00:00',
+                    },
+                },
+                id='missing-summary',
+            ),
+        ],
+    )
+    def test_with_schedule_metadata_handles_scalar_and_missing_summaries(
+        self,
+        summary: object,
+        expected: dict[str, object],
+    ) -> None:
+        """Scheduler metadata should be preserved for non-mapping summaries too."""
+        assert POLICY.with_schedule_metadata(
+            cast(Any, summary),
+            schedule_name='nightly',
+            schedule_trigger='cron',
+            schedule_catchup=True,
+            schedule_triggered_at='2026-05-12T02:00:00+00:00',
+        ) == expected
 
 
 class TestTelemetryConfiguration:
