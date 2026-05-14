@@ -184,6 +184,77 @@ class TestSchedulerLock:
 class TestRunPending:
     """Unit tests for local schedule-trigger execution."""
 
+    def test_run_pending_consumes_trigger_after_handled_callback_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Nonzero callback exits should still consume the dispatched trigger."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Scheduler Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [{'name': 'seed'}],
+                'schedules': [
+                    {
+                        'name': 'seed-every-15m',
+                        'interval': {'minutes': 15},
+                        'target': {'job': 'seed'},
+                        'backfill': {
+                            'enabled': True,
+                            'max_catchup_runs': 1,
+                            'start_at': '2026-05-12T00:00:00+00:00',
+                        },
+                    },
+                ],
+            },
+        )
+
+        monkeypatch.setattr(
+            scheduler_mod.LocalScheduler,
+            'utc_now',
+            staticmethod(lambda: datetime(2026, 5, 12, 0, 1, tzinfo=UTC)),
+        )
+
+        payload = scheduler_mod.LocalScheduler.run_pending(
+            cfg=cfg,
+            config_path='pipeline.yml',
+            event_format=None,
+            pretty=False,
+            run_callback=lambda **_kwargs: 2,
+            state_dir=tmp_path,
+        )
+
+        assert payload['runs'] == [
+            {
+                'catchup': True,
+                'job': 'seed',
+                'schedule': 'seed-every-15m',
+                'status': 'error',
+                'trigger': 'interval',
+                'triggered_at': '2026-05-12T00:00:00+00:00',
+            },
+        ]
+        state_payload = json.loads((tmp_path / 'scheduler-state.json').read_text())
+        assert state_payload == {
+            'schedules': {
+                'seed-every-15m': {
+                    'last_attempted_at': '2026-05-12T00:00:00+00:00',
+                    'last_completed_at': '2026-05-12T00:00:00+00:00',
+                    'last_status': 'error',
+                },
+            },
+        }
+        requests, skipped = scheduler_mod.LocalScheduler.due_requests(
+            cfg,
+            now=datetime(2026, 5, 12, 0, 1, tzinfo=UTC),
+            schedule_name=None,
+            state_store=scheduler_mod._SchedulerStateStore(tmp_path),
+        )
+        assert skipped == []
+        assert requests == []
+
     def test_run_pending_dispatches_due_interval_runs_and_persists_state(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -247,10 +318,84 @@ class TestRunPending:
         assert state_payload == {
             'schedules': {
                 'seed-every-15m': {
-                    'last_triggered_at': '2026-05-12T00:15:00+00:00',
+                    'last_attempted_at': '2026-05-12T00:15:00+00:00',
+                    'last_completed_at': '2026-05-12T00:15:00+00:00',
+                    'last_run_id': 'run-2',
+                    'last_status': 'ok',
                 },
             },
         }
+
+    def test_run_pending_does_not_consume_trigger_when_callback_raises(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Callback exceptions should leave the due trigger eligible for replay."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Scheduler Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [{'name': 'seed'}],
+                'schedules': [
+                    {
+                        'name': 'seed-every-15m',
+                        'interval': {'minutes': 15},
+                        'target': {'job': 'seed'},
+                        'backfill': {
+                            'enabled': True,
+                            'max_catchup_runs': 1,
+                            'start_at': '2026-05-12T00:00:00+00:00',
+                        },
+                    },
+                ],
+            },
+        )
+
+        monkeypatch.setattr(
+            scheduler_mod.LocalScheduler,
+            'utc_now',
+            staticmethod(lambda: datetime(2026, 5, 12, 0, 1, tzinfo=UTC)),
+        )
+
+        with pytest.raises(RuntimeError, match='dispatch failed'):
+            scheduler_mod.LocalScheduler.run_pending(
+                cfg=cfg,
+                config_path='pipeline.yml',
+                event_format=None,
+                pretty=False,
+                run_callback=lambda **_kwargs: (_ for _ in ()).throw(
+                    RuntimeError('dispatch failed'),
+                ),
+                state_dir=tmp_path,
+            )
+
+        state_payload = json.loads((tmp_path / 'scheduler-state.json').read_text())
+        assert state_payload == {
+            'schedules': {
+                'seed-every-15m': {
+                    'last_attempted_at': '2026-05-12T00:00:00+00:00',
+                },
+            },
+        }
+        requests, skipped = scheduler_mod.LocalScheduler.due_requests(
+            cfg,
+            now=datetime(2026, 5, 12, 0, 1, tzinfo=UTC),
+            schedule_name=None,
+            state_store=scheduler_mod._SchedulerStateStore(tmp_path),
+        )
+        assert skipped == []
+        assert requests == [
+            scheduler_mod.ScheduledRunRequest(
+                catchup=True,
+                job_name='seed',
+                run_all=False,
+                schedule_name='seed-every-15m',
+                trigger='interval',
+                triggered_at='2026-05-12T00:00:00+00:00',
+            ),
+        ]
 
     def test_run_pending_skips_locked_schedule(
         self,
@@ -657,6 +802,22 @@ class TestSchedulerInternals:
             scheduler_mod._SchedulerStateStore(tmp_path).last_triggered_at('valid')
             == expected
         )
+
+    def test_state_store_treats_legacy_trigger_timestamp_as_completed_state(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Legacy state files should remain readable as completed trigger state."""
+        state_file = tmp_path / 'scheduler-state.json'
+        state_file.write_text(
+            '{"schedules": {"nightly": {"last_triggered_at": '
+            '"2026-05-12T00:15:00+00:00"}}}',
+            encoding='utf-8',
+        )
+
+        state_store = scheduler_mod._SchedulerStateStore(tmp_path)
+
+        assert state_store.last_triggered_at('nightly') == '2026-05-12T00:15:00+00:00'
 
     def test_utc_now_returns_current_utc_datetime(
         self,
