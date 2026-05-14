@@ -75,18 +75,16 @@ def transform_cmd(
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
     state = ensure_state(ctx)
-    _, resolved_source = CommandHelperPolicy.resolve_command_resource(
-        ctx,
-        state=state,
+    resolved_source = CommandHelperPolicy.resolve_resource(
+        state,
         role='source',
         value=source,
         connector_type=source_type,
         format_value=source_format,
         soft_inference=True,
     )
-    _, resolved_target = CommandHelperPolicy.resolve_command_resource(
-        ctx,
-        state=state,
+    resolved_target = CommandHelperPolicy.resolve_resource(
+        state,
         role='target',
         value=target,
         connector_type=target_type,

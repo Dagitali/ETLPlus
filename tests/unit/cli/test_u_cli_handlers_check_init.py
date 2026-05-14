@@ -158,7 +158,7 @@ class TestCheckHandler:
         monkeypatch.setattr(
             handlers.ReadinessReportBuilder,
             'build',
-            lambda config_path: {
+            lambda config_path, strict=False: {
                 'checks': [],
                 'status': 'error',
             },
@@ -180,7 +180,7 @@ class TestCheckHandler:
         monkeypatch.setattr(
             handlers.ReadinessReportBuilder,
             'build',
-            lambda config_path: {
+            lambda config_path, strict=False: {
                 'checks': [],
                 'status': 'warn',
             },
@@ -1250,7 +1250,7 @@ class TestScheduleHandler:
             ],
         )
 
-        assert schedule_mod._schedule_payload(cfg) == {
+        assert schedule_mod._schedule_payload(cast(Config, cfg)) == {
             'name': 'Schedule Test Pipeline',
             'schedule_count': 1,
             'schedules': [
@@ -1337,7 +1337,7 @@ class TestScheduleHandler:
             ],
         )
 
-        assert schedule_mod._schedule_payload(cfg) == {
+        assert schedule_mod._schedule_payload(cast(Config, cfg)) == {
             'name': 'Schedule Test Pipeline',
             'schedule_count': 1,
             'schedules': [
@@ -1367,7 +1367,7 @@ class TestScheduleHandler:
             ],
         )
 
-        assert schedule_mod._schedule_payload(cfg) == {
+        assert schedule_mod._schedule_payload(cast(Config, cfg)) == {
             'name': 'Schedule Test Pipeline',
             'schedule_count': 1,
             'schedules': [

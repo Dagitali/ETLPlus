@@ -84,13 +84,9 @@ def check_handler(
         If the config file is required but not provided.
     """
     if readiness:
-        report = (
-            ReadinessReportBuilder.build(
-                config_path=config,
-                strict=True,
-            )
-            if strict
-            else ReadinessReportBuilder.build(config_path=config)
+        report = ReadinessReportBuilder.build(
+            config_path=config,
+            strict=strict,
         )
         return _output.emit_json_payload(
             report,
