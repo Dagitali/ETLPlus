@@ -97,9 +97,9 @@ class TestSchedulerLock:
         monkeypatch.setattr(
             scheduler_mod.os,
             'kill',
-            lambda pid, _sig: (_ for _ in ()).throw(ProcessLookupError())
-            if pid == 424242
-            else None,
+            lambda pid, _sig: (
+                (_ for _ in ()).throw(ProcessLookupError()) if pid == 424242 else None
+            ),
         )
 
         assert lock.acquire() is True
@@ -108,6 +108,45 @@ class TestSchedulerLock:
         assert persisted['pid'] == os.getpid()
         assert isinstance(persisted['created_at'], str)
         lock.release()
+
+    def test_acquire_keeps_malformed_lock_payload_authoritative(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Malformed lock payloads should not be reclaimed speculatively."""
+        lock = scheduler_mod._ScheduleLock(tmp_path, 'nightly-all')
+        lock._lock_path.parent.mkdir(parents=True, exist_ok=True)
+        lock._lock_path.write_text('{not-json', encoding='utf-8')
+
+        assert lock.acquire() is False
+        assert lock._lock_path.read_text(encoding='utf-8') == '{not-json'
+
+    def test_acquire_keeps_lock_when_pid_check_is_permission_denied(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Permission failures should keep the existing lock authoritative."""
+        lock = scheduler_mod._ScheduleLock(tmp_path, 'nightly-all')
+        lock._lock_path.parent.mkdir(parents=True, exist_ok=True)
+        lock._lock_path.write_text(
+            json.dumps(
+                {
+                    'created_at': '2026-05-12T00:00:00+00:00',
+                    'pid': 424242,
+                },
+            ),
+            encoding='utf-8',
+        )
+        monkeypatch.setattr(
+            scheduler_mod.os,
+            'kill',
+            lambda pid, _sig: (
+                (_ for _ in ()).throw(PermissionError()) if pid == 424242 else None
+            ),
+        )
+
+        assert lock.acquire() is False
 
     @pytest.mark.parametrize(
         ('schedule_name', 'expected_requests', 'expected_skipped'),
@@ -432,6 +471,180 @@ class TestRunPending:
                 triggered_at='2026-05-12T00:00:00+00:00',
             ),
         ]
+
+    def test_run_pending_raises_partial_summary_for_catchup_exception(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Catch-up exceptions should return a partial summary via the raised error."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Scheduler Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [{'name': 'seed'}],
+                'schedules': [
+                    {
+                        'name': 'seed-every-15m',
+                        'interval': {'minutes': 15},
+                        'target': {'job': 'seed'},
+                        'backfill': {
+                            'enabled': True,
+                            'max_catchup_runs': 3,
+                            'start_at': '2026-05-12T00:00:00+00:00',
+                        },
+                    },
+                ],
+            },
+        )
+        calls = 0
+
+        monkeypatch.setattr(
+            scheduler_mod.LocalScheduler,
+            'utc_now',
+            staticmethod(lambda: datetime(2026, 5, 12, 0, 31, tzinfo=UTC)),
+        )
+
+        def _run_callback(**kwargs: object) -> int:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                recorder = kwargs.get('result_recorder')
+                assert callable(recorder)
+                recorder({'run_id': 'run-1', 'status': 'ok'})
+                return 0
+            raise RuntimeError('dispatch failed')
+
+        with pytest.raises(scheduler_mod.SchedulerDispatchError) as exc_info:
+            scheduler_mod.LocalScheduler.run_pending(
+                cfg=cfg,
+                config_path='pipeline.yml',
+                event_format=None,
+                pretty=False,
+                run_callback=_run_callback,
+                state_dir=tmp_path,
+            )
+
+        payload = exc_info.value.payload
+        assert payload['due_count'] == 3
+        assert payload['attempted_count'] == 2
+        assert payload['completed_count'] == 1
+        assert payload['pending_count'] == 2
+        assert payload['stopped_early'] is True
+        assert payload['runs'] == [
+            {
+                'catchup': True,
+                'job': 'seed',
+                'run_id': 'run-1',
+                'schedule': 'seed-every-15m',
+                'status': 'ok',
+                'trigger': 'interval',
+                'triggered_at': '2026-05-12T00:00:00+00:00',
+            },
+            {
+                'catchup': True,
+                'error_message': 'dispatch failed',
+                'error_type': 'RuntimeError',
+                'job': 'seed',
+                'reason': 'exception',
+                'schedule': 'seed-every-15m',
+                'status': 'error',
+                'trigger': 'interval',
+                'triggered_at': '2026-05-12T00:15:00+00:00',
+            },
+        ]
+        assert payload['pending_runs'] == [
+            {
+                'catchup': True,
+                'error_message': 'dispatch failed',
+                'error_type': 'RuntimeError',
+                'job': 'seed',
+                'reason': 'exception',
+                'schedule': 'seed-every-15m',
+                'status': 'pending',
+                'trigger': 'interval',
+                'triggered_at': '2026-05-12T00:15:00+00:00',
+            },
+            {
+                'catchup': True,
+                'job': 'seed',
+                'reason': 'deferred',
+                'schedule': 'seed-every-15m',
+                'status': 'pending',
+                'trigger': 'interval',
+                'triggered_at': '2026-05-12T00:30:00+00:00',
+            },
+        ]
+
+    def test_run_pending_success_clears_exception_metadata_after_recovery(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """A successful retry should clear the stale exception diagnostics."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Scheduler Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [{'name': 'seed'}],
+                'schedules': [
+                    {
+                        'name': 'seed-every-15m',
+                        'interval': {'minutes': 15},
+                        'target': {'job': 'seed'},
+                        'backfill': {
+                            'enabled': True,
+                            'max_catchup_runs': 1,
+                            'start_at': '2026-05-12T00:00:00+00:00',
+                        },
+                    },
+                ],
+            },
+        )
+
+        monkeypatch.setattr(
+            scheduler_mod.LocalScheduler,
+            'utc_now',
+            staticmethod(lambda: datetime(2026, 5, 12, 0, 1, tzinfo=UTC)),
+        )
+
+        with pytest.raises(scheduler_mod.SchedulerDispatchError):
+            scheduler_mod.LocalScheduler.run_pending(
+                cfg=cfg,
+                config_path='pipeline.yml',
+                event_format=None,
+                pretty=False,
+                run_callback=lambda **_kwargs: (_ for _ in ()).throw(
+                    RuntimeError('dispatch failed'),
+                ),
+                state_dir=tmp_path,
+            )
+
+        payload = scheduler_mod.LocalScheduler.run_pending(
+            cfg=cfg,
+            config_path='pipeline.yml',
+            event_format=None,
+            pretty=False,
+            run_callback=lambda **kwargs: (
+                kwargs['result_recorder']({'run_id': 'run-1', 'status': 'ok'}) or 0
+            ),
+            state_dir=tmp_path,
+        )
+
+        assert payload['completed_count'] == 1
+        state_payload = json.loads((tmp_path / 'scheduler-state.json').read_text())
+        assert state_payload == {
+            'schedules': {
+                'seed-every-15m': {
+                    'last_attempted_at': '2026-05-12T00:00:00+00:00',
+                    'last_completed_at': '2026-05-12T00:00:00+00:00',
+                    'last_run_id': 'run-1',
+                    'last_status': 'ok',
+                },
+            },
+        }
 
     def test_run_pending_skips_locked_schedule(
         self,
