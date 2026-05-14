@@ -186,10 +186,36 @@ class _SchedulerStateStore:
         schedule_state['last_attempted_at'] = triggered_at
         schedule_state['last_completed_at'] = triggered_at
         schedule_state['last_status'] = status
+        schedule_state.pop('last_error_message', None)
+        schedule_state.pop('last_error_type', None)
         if run_id is None:
             schedule_state.pop('last_run_id', None)
         else:
             schedule_state['last_run_id'] = run_id
+        schedules[schedule_name] = schedule_state
+        self._save(schedules)
+
+    def record_exception(
+        self,
+        *,
+        schedule_name: str,
+        triggered_at: str,
+        exc: Exception,
+    ) -> None:
+        """Persist one failed dispatch attempt without consuming the trigger."""
+        schedules = self._load()
+        schedule_state = schedules.get(schedule_name, {})
+        if not isinstance(schedule_state, dict):
+            schedule_state = {}
+        schedule_state['last_attempted_at'] = triggered_at
+        schedule_state['last_status'] = 'exception'
+        schedule_state['last_error_type'] = type(exc).__name__
+        message = str(exc).strip()
+        if message:
+            schedule_state['last_error_message'] = message
+        else:
+            schedule_state.pop('last_error_message', None)
+        schedule_state.pop('last_run_id', None)
         schedules[schedule_name] = schedule_state
         self._save(schedules)
 
@@ -215,6 +241,20 @@ class _SchedulerStateStore:
             status='ok',
         )
 
+    def state(
+        self,
+        schedule_name: str,
+    ) -> dict[str, str]:
+        """Return persisted scheduler metadata for one schedule."""
+        schedule_state = self._load().get(schedule_name)
+        if not isinstance(schedule_state, dict):
+            return {}
+        return {
+            key: value
+            for key, value in schedule_state.items()
+            if isinstance(key, str) and isinstance(value, str) and value
+        }
+
 
 class _ScheduleLock:
     """Best-effort filesystem lock for one schedule name."""
@@ -236,21 +276,71 @@ class _ScheduleLock:
         self._lock_path = lock_dir / f'{slug}.lock'
         self._fd: int | None = None
 
+    # -- Internal Instance Methods -- #
+
+    def _current_payload(self) -> dict[str, object]:
+        """Return the JSON payload written to one active lock file."""
+        return {
+            'created_at': datetime.now(UTC).isoformat(),
+            'pid': os.getpid(),
+        }
+
+    def _existing_pid(self) -> int | None:
+        """Return the PID from one existing lock file when recognizable."""
+        if not self._lock_path.exists():
+            return None
+        text = self._lock_path.read_text(encoding='utf-8').strip()
+        if not text:
+            return None
+        try:
+            payload = JsonCodec.parse(text)
+        except ValueError:
+            payload = None
+        if isinstance(payload, dict):
+            pid = payload.get('pid')
+            return pid if isinstance(pid, int) and pid > 0 else None
+        try:
+            pid = int(text)
+        except ValueError:
+            return None
+        return pid if pid > 0 else None
+
+    def _is_stale(self) -> bool:
+        """Return whether an existing lock file points at a dead process."""
+        pid = self._existing_pid()
+        if pid is None:
+            return False
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        except PermissionError:
+            return False
+        return False
+
     # -- Instance Methods -- #
 
     def acquire(self) -> bool:
         """Return whether the schedule lock was acquired."""
         self._lock_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            self._fd = os.open(
-                self._lock_path,
-                os.O_CREAT | os.O_EXCL | os.O_WRONLY,
-                0o644,
+        for _attempt in range(2):
+            try:
+                self._fd = os.open(
+                    self._lock_path,
+                    os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+                    0o644,
+                )
+            except FileExistsError:
+                if not self._is_stale():
+                    return False
+                self._lock_path.unlink(missing_ok=True)
+                continue
+            os.write(
+                self._fd,
+                JsonCodec().serialize(self._current_payload()).encode('utf-8'),
             )
-        except FileExistsError:
-            return False
-        os.write(self._fd, str(os.getpid()).encode('utf-8'))
-        return True
+            return True
+        return False
 
     def release(self) -> None:
         """Release the acquired schedule lock when present."""
@@ -525,19 +615,27 @@ class LocalScheduler:
                     triggered_at=request.triggered_at,
                 )
                 captured: dict[str, object] = {}
-                exit_code = run_callback(
-                    config=config_path,
-                    event_format=event_format,
-                    job=request.job_name,
-                    pretty=pretty,
-                    result_recorder=captured.update,
-                    run_all=request.run_all,
-                    schedule_catchup=request.catchup,
-                    schedule_name=request.schedule_name,
-                    schedule_trigger=request.trigger,
-                    schedule_triggered_at=request.triggered_at,
-                    emit_output=False,
-                )
+                try:
+                    exit_code = run_callback(
+                        config=config_path,
+                        event_format=event_format,
+                        job=request.job_name,
+                        pretty=pretty,
+                        result_recorder=captured.update,
+                        run_all=request.run_all,
+                        schedule_catchup=request.catchup,
+                        schedule_name=request.schedule_name,
+                        schedule_trigger=request.trigger,
+                        schedule_triggered_at=request.triggered_at,
+                        emit_output=False,
+                    )
+                except Exception as exc:
+                    state_store.record_exception(
+                        schedule_name=request.schedule_name,
+                        triggered_at=request.triggered_at,
+                        exc=exc,
+                    )
+                    raise
             finally:
                 lock.release()
 
