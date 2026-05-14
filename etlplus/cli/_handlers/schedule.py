@@ -6,12 +6,15 @@ Schedule-config inspection helpers for the CLI facade.
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from shlex import quote as shell_quote
 
 from ... import Config
+from ...history._config import ResolvedHistoryConfig
 from ...runtime._scheduler import LocalScheduler
+from ...runtime._scheduler import _SchedulerStateStore
 from . import _output
 from .run import run_handler as _run_handler
 
@@ -244,8 +247,18 @@ def _schedule_payload(
     cfg: Config,
     *,
     schedule_name: str | None = None,
+    show_state: bool = False,
 ) -> dict[str, object]:
     """Return one JSON payload describing configured schedules."""
+    state_store: _SchedulerStateStore | None = None
+    state_dir: str | None = None
+    if show_state:
+        resolved_history = ResolvedHistoryConfig.resolve(
+            getattr(cfg, 'history', None),
+            env=os.environ,
+        )
+        state_store = _SchedulerStateStore(resolved_history.state_dir)
+        state_dir = str(resolved_history.state_dir)
     schedules: list[dict[str, object]] = []
     for schedule in getattr(cfg, 'schedules', []):
         resolved_name = getattr(schedule, 'name', None)
@@ -291,13 +304,18 @@ def _schedule_payload(
             }
             if backfill_payload:
                 schedule_payload['backfill'] = backfill_payload
+        if state_store is not None:
+            schedule_payload['state'] = state_store.state(resolved_name)
         schedules.append(schedule_payload)
 
-    return {
+    payload = {
         'name': cfg.name,
         'schedule_count': len(schedules),
         'schedules': schedules,
     }
+    if state_dir is not None:
+        payload['state_dir'] = state_dir
+    return payload
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -311,6 +329,7 @@ def schedule_handler(
     pretty: bool = True,
     run_pending: bool = False,
     schedule_name: str | None = None,
+    show_state: bool = False,
 ) -> int:
     """
     List configured portable schedules from one ETLPlus config.
@@ -329,6 +348,8 @@ def schedule_handler(
         Whether to execute due schedules once in local mode.
     schedule_name : str | None, optional
         Optional schedule name filter.
+    show_state : bool, optional
+        Whether to include persisted scheduler state in schedule summary output.
 
     Returns
     -------
@@ -348,7 +369,11 @@ def schedule_handler(
                 schedule_name=schedule_name,
             )
             if run_pending
-            else _schedule_payload(cfg, schedule_name=schedule_name)
+            else _schedule_payload(
+                cfg,
+                schedule_name=schedule_name,
+                show_state=show_state,
+            )
             if emit is None
             else _schedule_emit_payload(
                 config_path=config,
