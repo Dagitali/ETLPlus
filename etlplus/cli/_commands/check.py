@@ -104,8 +104,8 @@ def check_cmd(
             '--graph cannot be combined with inspection flags.',
         )
 
-    if not readiness and not config:
-        CommandHelperPolicy.require_value(
+    if not readiness:
+        config = CommandHelperPolicy.require_value(
             config,
             message="Missing required option '--config'.",
         )
