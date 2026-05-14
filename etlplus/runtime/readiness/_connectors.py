@@ -7,6 +7,7 @@ Connector and optional-dependency readiness helpers.
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from ..._config import Config
@@ -30,6 +31,22 @@ __all__ = [
     'connector_type_choices',
     'connector_type_guidance',
 ]
+
+
+# SECTION: INTERNAL DATA CLASSES ============================================ #
+
+
+@dataclass(frozen=True, slots=True)
+class _ResolvedConnector:
+    """Normalized connector state reused by readiness policies."""
+
+    connector: object
+    format_name: str
+    name: str
+    path: str | None
+    queue_service: str
+    role: str
+    type_name: str
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -61,6 +78,39 @@ def _connector_gap_row(
     if supported_types is not None:
         row['supported_types'] = list(supported_types)
     return row
+
+
+def _resolve_queue_service(
+    connector: object,
+) -> str:
+    """Return one normalized queue service name for *connector*."""
+    queue_service_raw = TextNormalizer.normalize(
+        str(getattr(connector, 'service', '') or ''),
+    )
+    coerced_service = QueueService.try_coerce(queue_service_raw)
+    return coerced_service.value if coerced_service else queue_service_raw
+
+
+def _iter_connectors(
+    cfg: Config,
+) -> tuple[_ResolvedConnector, ...]:
+    """Return normalized connector rows reused across readiness policies."""
+    return tuple(
+        _ResolvedConnector(
+            connector=connector,
+            format_name=TextNormalizer.normalize(
+                str(getattr(connector, 'format', '') or ''),
+            ),
+            name=str(getattr(connector, 'name', '<unnamed>')),
+            path=path
+            if isinstance(path := getattr(connector, 'path', None), str)
+            else None,
+            queue_service=_resolve_queue_service(connector),
+            role=role,
+            type_name=str(getattr(connector, 'type', '') or ''),
+        )
+        for role, connector in ReadinessSupportPolicy.iter_connectors(cfg)
+    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -135,70 +185,71 @@ class ConnectorReadinessPolicy:
         """
         gaps: list[ReadinessRow] = []
         supported_types = connector_type_choices()
-        for role, connector in ReadinessSupportPolicy.iter_connectors(cfg):
-            connector_name = str(getattr(connector, 'name', '<unnamed>'))
-            connector_type_name = str(getattr(connector, 'type', ''))
-            coerced_type = DataConnectorType.try_coerce(connector_type_name)
+        for resolved in _iter_connectors(cfg):
+            coerced_type = DataConnectorType.try_coerce(resolved.type_name)
 
             if coerced_type is None:
                 gaps.append(
                     _connector_gap_row(
-                        connector=connector_name,
-                        connector_type_str=connector_type_name,
+                        connector=resolved.name,
+                        connector_type_str=resolved.type_name,
                         issue='unsupported type',
-                        role=role,
+                        role=resolved.role,
                         supported_types=supported_types,
                     ),
                 )
                 continue
 
             match coerced_type:
-                case DataConnectorType.FILE if not getattr(connector, 'path', None):
+                case DataConnectorType.FILE if not resolved.path:
                     gaps.append(
                         _connector_gap_row(
-                            connector=connector_name,
-                            connector_type_str=connector_type_name,
+                            connector=resolved.name,
+                            connector_type_str=resolved.type_name,
                             issue='missing path',
-                            role=role,
+                            role=resolved.role,
                         ),
                     )
                 case DataConnectorType.API:
-                    api_reference_value = getattr(connector, 'api', None)
+                    api_reference_value = getattr(resolved.connector, 'api', None)
                     api_reference = (
                         api_reference_value
                         if isinstance(api_reference_value, str)
                         else None
                     )
-                    if not getattr(connector, 'url', None) and not api_reference:
+                    if (
+                        not getattr(resolved.connector, 'url', None)
+                        and not api_reference
+                    ):
                         gaps.append(
                             _connector_gap_row(
-                                connector=connector_name,
-                                connector_type_str=connector_type_name,
+                                connector=resolved.name,
+                                connector_type_str=resolved.type_name,
                                 issue='missing url or api reference',
-                                role=role,
+                                role=resolved.role,
                             ),
                         )
                     elif api_reference and api_reference not in cfg.apis:
                         gaps.append(
                             _connector_gap_row(
                                 api_reference=api_reference,
-                                connector=connector_name,
-                                connector_type_str=connector_type_name,
+                                connector=resolved.name,
+                                connector_type_str=resolved.type_name,
                                 issue=f'unknown api reference: {api_reference}',
-                                role=role,
+                                role=resolved.role,
                             ),
                         )
                 case DataConnectorType.DATABASE if not getattr(
-                    connector,
+                    resolved.connector,
                     'connection_string',
                     None,
                 ):
                     gaps.append(
                         _connector_gap_row(
-                            connector=connector_name,
-                            connector_type_str=connector_type_name,
+                            connector=resolved.name,
+                            connector_type_str=resolved.type_name,
                             issue='missing connection_string',
-                            role=role,
+                            role=resolved.role,
                         ),
                     )
                 case _:
@@ -230,27 +281,9 @@ class ConnectorReadinessPolicy:
             dependencies.
         """
         rows: list[ReadinessRow] = []
-        for role, connector in ReadinessSupportPolicy.iter_connectors(cfg):
-            connector_name = str(getattr(connector, 'name', '<unnamed>'))
-            connector_type_name = str(getattr(connector, 'type', '') or '')
-            path = getattr(connector, 'path', None)
-            format_name = TextNormalizer.normalize(
-                str(getattr(connector, 'format', '') or ''),
-            )
-            queue_service_raw = TextNormalizer.normalize(
-                str(getattr(connector, 'service', '') or ''),
-            )
-            # TODO: Consider supporting other connector-specific fields that
-            # TODO: may indicate optional dependencies, e.g. database driver
-            # TODO: hints.
-            queue_service = (
-                coerced_service.value
-                if (coerced_service := QueueService.try_coerce(queue_service_raw))
-                else queue_service_raw
-            )
-
-            if path:
-                scheme = ReadinessSupportPolicy.coerce_storage_scheme(path)
+        for resolved in _iter_connectors(cfg):
+            if resolved.path:
+                scheme = ReadinessSupportPolicy.coerce_storage_scheme(resolved.path)
                 requirement = SCHEME_EXTRA_REQUIREMENTS.get(scheme or '')
                 if (
                     scheme
@@ -261,45 +294,45 @@ class ConnectorReadinessPolicy:
                 ):
                     rows.append(
                         cls.requirement_row(
-                            connector=connector_name,
+                            connector=resolved.name,
                             detected_scheme=scheme,
                             reason=(
                                 f'{scheme} storage path requires {requirement.package}'
                             ),
                             requirement=requirement,
-                            role=role,
+                            role=resolved.role,
                         ),
                     )
 
             if (
-                DataConnectorType.try_coerce(connector_type_name)
+                DataConnectorType.try_coerce(resolved.type_name)
                 is DataConnectorType.QUEUE
-                and queue_service in QUEUE_SERVICE_EXTRA_REQUIREMENTS
+                and resolved.queue_service in QUEUE_SERVICE_EXTRA_REQUIREMENTS
             ):
-                requirement = QUEUE_SERVICE_EXTRA_REQUIREMENTS[queue_service]
+                requirement = QUEUE_SERVICE_EXTRA_REQUIREMENTS[resolved.queue_service]
                 if not requirement.is_available(
                     availability_checker=package_available,
                 ):
                     rows.append(
                         cls.requirement_row(
-                            connector=connector_name,
-                            detected_queue_service=queue_service,
+                            connector=resolved.name,
+                            detected_queue_service=resolved.queue_service,
                             reason=(
-                                f'{queue_service} queue connector requires '
+                                f'{resolved.queue_service} queue connector requires '
                                 f'{requirement.package}'
                             ),
                             requirement=requirement,
-                            role=role,
+                            role=resolved.role,
                         ),
                     )
 
-            if format_name == 'nc':
+            if resolved.format_name == 'nc':
                 if not cls.netcdf_available(
                     package_available=package_available,
                 ):
                     rows.append(
                         cls.requirement_row(
-                            connector=connector_name,
+                            connector=resolved.name,
                             detected_format='nc',
                             reason=(
                                 'nc format requires xarray and netCDF4 or h5netcdf'
@@ -309,22 +342,25 @@ class ConnectorReadinessPolicy:
                                 package='xarray/netCDF4',
                                 extra='file',
                             ),
-                            role=role,
+                            role=resolved.role,
                         ),
                     )
                 continue
 
-            requirement = FORMAT_EXTRA_REQUIREMENTS.get(format_name)
+            requirement = FORMAT_EXTRA_REQUIREMENTS.get(resolved.format_name)
             if requirement and not requirement.is_available(
                 availability_checker=package_available,
             ):
                 rows.append(
                     cls.requirement_row(
-                        connector=connector_name,
-                        detected_format=format_name,
-                        reason=f'{format_name} format requires {requirement.package}',
+                        connector=resolved.name,
+                        detected_format=resolved.format_name,
+                        reason=(
+                            f'{resolved.format_name} format requires '
+                            f'{requirement.package}'
+                        ),
                         requirement=requirement,
-                        role=role,
+                        role=resolved.role,
                     ),
                 )
 
