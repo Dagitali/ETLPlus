@@ -65,6 +65,12 @@ Inspect all configured schedules:
 etlplus schedule --config examples/configs/scheduling.yml
 ```
 
+Inspect schedules plus persisted local scheduler state:
+
+```bash
+etlplus schedule --config examples/configs/scheduling.yml --show-state
+```
+
 Emit a `crontab` snippet for one schedule:
 
 ```bash
@@ -123,12 +129,16 @@ The local scheduler also keeps minimal trigger state under `${ETLPLUS_STATE_DIR:
 - `scheduler-state.json` stores the last attempted and last completed trigger per schedule, plus the
   last recorded outcome metadata
 - `scheduler-locks/` prevents overlapping dispatch for the same schedule
+- stale lock files left behind by dead scheduler processes are reclaimed automatically on the next
+  matching dispatch attempt
 
 Trigger consumption rules:
 
 - overlapping or paused schedules do not consume a due trigger
 - callback exceptions record an attempted trigger but leave the due time eligible for replay on the
   next invocation
+- callback exceptions also persist the latest exception type and message summary in
+  `scheduler-state.json`
 - handled run outcomes that return normally consume the trigger and update the completed timestamp,
   even when the underlying run exits nonzero
 
