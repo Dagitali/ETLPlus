@@ -312,6 +312,30 @@ class TestDelegatingCommands:
                 id='check',
             ),
             pytest.param(
+                check_mod,
+                commands_mod.check_cmd,
+                'check_handler',
+                {
+                    'config': None,
+                    'readiness': True,
+                },
+                {
+                    'config': None,
+                    'graph': False,
+                    'jobs': False,
+                    'pipelines': False,
+                    'readiness': True,
+                    'sources': False,
+                    'strict': False,
+                    'summary': False,
+                    'targets': False,
+                    'transforms': False,
+                    'pretty': False,
+                },
+                0,
+                id='check-readiness-only',
+            ),
+            pytest.param(
                 run_mod,
                 commands_mod.run_cmd,
                 'run_handler',
@@ -436,6 +460,26 @@ class TestDelegatingCommands:
                 },
                 0,
                 id='schedule',
+            ),
+            pytest.param(
+                schedule_mod,
+                commands_mod.schedule_cmd,
+                'schedule_handler',
+                {
+                    'config': 'pipeline.yml',
+                    'run_pending': True,
+                    'event_format': 'jsonl',
+                },
+                {
+                    'config': 'pipeline.yml',
+                    'emit': None,
+                    'event_format': 'jsonl',
+                    'pretty': False,
+                    'run_pending': True,
+                    'schedule_name': None,
+                },
+                0,
+                id='schedule-run-pending',
             ),
             pytest.param(
                 report_mod,
@@ -609,6 +653,30 @@ class TestDelegatingCommands:
                 typer_ctx_factory(),
                 config='pipeline.yml',
                 emit='crontab',
+            )
+
+    def test_schedule_rejects_run_pending_with_emit(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
+    ) -> None:
+        """Run-pending mode should reject helper emission combinations."""
+        monkeypatch.setattr(
+            schedule_mod.CommandHelperPolicy,
+            'fail_usage',
+            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
+        )
+
+        with pytest.raises(
+            typer.BadParameter,
+            match='--run-pending cannot be combined with --emit',
+        ):
+            commands_mod.schedule_cmd(
+                typer_ctx_factory(),
+                config='pipeline.yml',
+                schedule='nightly_all',
+                emit='crontab',
+                run_pending=True,
             )
 
 
