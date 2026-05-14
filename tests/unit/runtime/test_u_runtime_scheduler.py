@@ -27,6 +27,10 @@ from etlplus.runtime import _scheduler as scheduler_mod
 class TestDueRequests:
     """Unit tests for due schedule request selection."""
 
+    def test_cron_field_matches_rejects_non_numeric_literals(self) -> None:
+        """Malformed numeric cron fields should fail closed instead of raising."""
+        assert scheduler_mod._cron_field_matches('not-a-number', 15) is False
+
     def test_due_requests_returns_matching_cron_entry(
         self,
         tmp_path: Path,
@@ -56,7 +60,7 @@ class TestDueRequests:
             state_store=scheduler_mod._SchedulerStateStore(tmp_path),
         )
 
-        assert skipped == []
+        assert not skipped
         assert requests == [
             scheduler_mod.ScheduledRunRequest(
                 catchup=False,
@@ -67,6 +71,20 @@ class TestDueRequests:
                 triggered_at='2026-05-11T02:00:00+00:00',
             ),
         ]
+
+
+class TestSchedulerLock:
+    """Unit tests for the local scheduler file lock."""
+
+    def test_release_without_acquire_is_a_safe_noop(self, tmp_path: Path) -> None:
+        """Releasing an unacquired lock should still clean up without raising."""
+        lock = scheduler_mod._ScheduleLock(tmp_path, 'nightly-all')
+
+        lock.release()
+
+        assert not (
+            tmp_path / scheduler_mod._SCHEDULER_LOCK_DIR / 'nightly-all.lock'
+        ).exists()
 
     @pytest.mark.parametrize(
         ('schedule_name', 'expected_requests', 'expected_skipped'),
@@ -649,6 +667,7 @@ class TestSchedulerInternals:
         class _FakeDateTime:
             @staticmethod
             def now(tz: object) -> datetime:
+                """Return one fixed UTC timestamp for the scheduler clock test."""
                 assert tz is UTC
                 return datetime(2026, 5, 12, 0, 45, tzinfo=UTC)
 
