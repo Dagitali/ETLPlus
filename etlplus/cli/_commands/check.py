@@ -88,12 +88,9 @@ def check_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    inspection_requested = any(
-        (graph, jobs, pipelines, sources, summary, targets, transforms),
-    )
-    section_inspection_requested = any(
-        (jobs, pipelines, sources, summary, targets, transforms),
-    )
+    section_flags = (jobs, pipelines, sources, summary, targets, transforms)
+    section_inspection_requested = any(section_flags)
+    inspection_requested = graph or section_inspection_requested
 
     if readiness and inspection_requested:
         CommandHelperPolicy.fail_usage(
@@ -104,8 +101,8 @@ def check_cmd(
             '--graph cannot be combined with inspection flags.',
         )
 
-    if not readiness and not config:
-        CommandHelperPolicy.require_value(
+    if not readiness:
+        config = CommandHelperPolicy.require_value(
             config,
             message="Missing required option '--config'.",
         )

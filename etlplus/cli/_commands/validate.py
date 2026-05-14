@@ -98,9 +98,8 @@ def validate_cmd(
         )
 
     state = ensure_state(ctx)
-    _, resolved_source = CommandHelperPolicy.resolve_command_resource(
-        ctx,
-        state=state,
+    resolved_source = CommandHelperPolicy.resolve_resource(
+        state,
         role='source',
         value=source,
         connector_type=source_type,

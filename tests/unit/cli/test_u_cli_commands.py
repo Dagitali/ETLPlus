@@ -173,22 +173,17 @@ class TestCommandsInternalHelpers:
                 '--ops',
             )
 
-    def test_resolve_command_resource_reuses_supplied_state(self) -> None:
+    def test_resolve_resource_reuses_supplied_state(self) -> None:
         """Command resource resolution should reuse the injected CLI state."""
         state = CliState(pretty=False)
 
-        resolved_state, resolved = (
-            helpers_mod.CommandHelperPolicy.resolve_command_resource(
-                cast(typer.Context, object()),
-                state=state,
-                role='source',
-                value='payload.json',
-                connector_type='file',
-                format_value='json',
-            )
+        resolved = helpers_mod.CommandHelperPolicy.resolve_resource(
+            state,
+            role='source',
+            value='payload.json',
+            connector_type='file',
+            format_value='json',
         )
-
-        assert resolved_state is state
         assert resolved.require_resource_type() == 'file'
         assert resolved.format_explicit is True
 

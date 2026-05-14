@@ -171,10 +171,14 @@ class CommandHelperPolicy:
             The exit code returned by *handler*.
         """
         history_state = ensure_state(ctx) if state is None else state
-        history_kwargs = {
+        history_kwargs: dict[str, Any] = {
             key: value for key, value in kwargs.items() if value is not _MISSING
         }
-        return handler(pretty=history_state.pretty, **history_kwargs)
+        return CommandHelperPolicy.call_handler(
+            handler,
+            state=history_state,
+            **history_kwargs,
+        )
 
     @staticmethod
     def fail_usage(
@@ -344,61 +348,4 @@ class CommandHelperPolicy:
                 is None
                 else FileFormat.coerce(normalized_format)
             ),
-        )
-
-    @staticmethod
-    def resolve_command_resource(
-        ctx: typer.Context,
-        *,
-        role: DataConnectorContext,
-        value: str | None,
-        state: CliState | None = None,
-        connector_type: str | None = None,
-        format_value: FileFormat | str | None = None,
-        positional: bool = False,
-        soft_inference: bool = False,
-        default_value: str = '-',
-    ) -> tuple[CliState, _ResolvedResource]:
-        """
-        Return one CLI state plus one normalized resource for a command
-        wrapper.
-
-        Parameters
-        ----------
-        ctx : typer.Context
-            Typer context used to initialize CLI state when *state* is not
-            given.
-        role : DataConnectorContext
-            The resource role for error messages ('source' or 'target').
-        value : str | None
-            The raw CLI value to resolve.
-        state : CliState | None, optional
-            Existing CLI state to reuse (defaults to ``None``, which means
-            :func:`ensure_state` will be called).
-        connector_type : str | None, optional
-            An explicit connector type override.
-        format_value : FileFormat | str | None, optional
-            An explicit file format override.
-        positional : bool, optional
-            Whether the value comes from a positional argument.
-        soft_inference : bool, optional
-            Whether to tolerate failed connector-type inference.
-        default_value : str, optional
-            The fallback CLI value to use when *value* is ``None``.
-
-        Returns
-        -------
-        tuple[CliState, _ResolvedResource]
-            The CLI state plus the normalized resource.
-        """
-        resolved_state = ensure_state(ctx) if state is None else state
-        return resolved_state, CommandHelperPolicy.resolve_resource(
-            resolved_state,
-            role=role,
-            value=value,
-            connector_type=connector_type,
-            format_value=format_value,
-            positional=positional,
-            soft_inference=soft_inference,
-            default_value=default_value,
         )

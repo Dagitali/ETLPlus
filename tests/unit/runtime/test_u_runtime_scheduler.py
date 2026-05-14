@@ -397,10 +397,16 @@ class TestSchedulerInternals:
         ('cron', 'when_local', 'expected'),
         [
             pytest.param(
-                None, datetime(2026, 5, 11, 2, 0, tzinfo=UTC), False, id='missing-cron',
+                None,
+                datetime(2026, 5, 11, 2, 0, tzinfo=UTC),
+                False,
+                id='missing-cron',
             ),
             pytest.param(
-                '', datetime(2026, 5, 11, 2, 0, tzinfo=UTC), False, id='blank-cron',
+                '',
+                datetime(2026, 5, 11, 2, 0, tzinfo=UTC),
+                False,
+                id='blank-cron',
             ),
             pytest.param(
                 '0 2 * *',
@@ -526,7 +532,9 @@ class TestSchedulerInternals:
                 id='missing-name',
             ),
             pytest.param(
-                SimpleNamespace(name='nightly', target=None), None, id='missing-target',
+                SimpleNamespace(name='nightly', target=None),
+                None,
+                id='missing-target',
             ),
             pytest.param(
                 SimpleNamespace(
@@ -633,7 +641,8 @@ class TestSchedulerInternals:
         )
 
     def test_utc_now_returns_current_utc_datetime(
-        self, monkeypatch: pytest.MonkeyPatch,
+        self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The UTC clock helper should delegate to ``datetime.now(UTC)``."""
 
