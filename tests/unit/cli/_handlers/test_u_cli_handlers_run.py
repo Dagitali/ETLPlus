@@ -825,13 +825,16 @@ class TestScheduleMetadata:
         expected: dict[str, object],
     ) -> None:
         """Scheduler metadata should be preserved for non-mapping summaries too."""
-        assert POLICY.with_schedule_metadata(
-            cast(Any, summary),
-            schedule_name='nightly',
-            schedule_trigger='cron',
-            schedule_catchup=True,
-            schedule_triggered_at='2026-05-12T02:00:00+00:00',
-        ) == expected
+        assert (
+            POLICY.with_schedule_metadata(
+                cast(Any, summary),
+                schedule_name='nightly',
+                schedule_trigger='cron',
+                schedule_catchup=True,
+                schedule_triggered_at='2026-05-12T02:00:00+00:00',
+            )
+            == expected
+        )
 
 
 class TestTelemetryConfiguration:
