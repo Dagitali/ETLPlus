@@ -158,7 +158,7 @@ class TestCheckHandler:
         monkeypatch.setattr(
             handlers.ReadinessReportBuilder,
             'build',
-            lambda config_path: {
+            lambda config_path, strict=False: {
                 'checks': [],
                 'status': 'error',
             },
@@ -180,7 +180,7 @@ class TestCheckHandler:
         monkeypatch.setattr(
             handlers.ReadinessReportBuilder,
             'build',
-            lambda config_path: {
+            lambda config_path, strict=False: {
                 'checks': [],
                 'status': 'warn',
             },
