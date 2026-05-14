@@ -78,18 +78,16 @@ def load_cmd(
         is None
         else FileFormat.coerce(normalized_source_format)
     )
-    _, resolved_target = CommandHelperPolicy.resolve_command_resource(
-        ctx,
-        state=state,
+    resolved_target = CommandHelperPolicy.resolve_resource(
+        state,
         role='target',
         value=target,
         connector_type=target_type,
         format_value=target_format,
         positional=True,
     )
-    _, resolved_source = CommandHelperPolicy.resolve_command_resource(
-        ctx,
-        state=state,
+    resolved_source = CommandHelperPolicy.resolve_resource(
+        state,
         role='source',
         value='-',
         soft_inference=True,
