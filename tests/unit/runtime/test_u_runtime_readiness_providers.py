@@ -75,9 +75,8 @@ class TestReadinessReportBuilderProviders:
     ) -> None:
         """Explicit AWS credential diagnostics should cover all short-circuit cases."""
         assert (
-            readiness_providers_mod.ProviderEnvironmentPolicy.explicit_aws_credential_gap(
-                env,
-            )
+            readiness_providers_mod.ProviderEnvironmentPolicy
+            .explicit_aws_credential_gap(env)
             == expected
         )
 
@@ -247,6 +246,29 @@ class TestReadinessReportBuilderProviders:
         )
 
         assert checks == expected
+
+    def test_provider_environment_rows_ignore_unhandled_connector_schemes(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Unhandled schemes should be ignored without producing provider rows."""
+        monkeypatch.setattr(
+            readiness_providers_mod,
+            '_iter_connector_paths',
+            lambda _cfg: [
+                SimpleNamespace(
+                    connector='local-source',
+                    path='input.csv',
+                    role='source',
+                    scheme='file',
+                ),
+            ],
+        )
+
+        assert readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows(
+            cfg=cast(Any, _cfg()),
+            env={},
+        ) == []
 
     @pytest.mark.parametrize(
         ('cfg', 'env', 'expected'),
