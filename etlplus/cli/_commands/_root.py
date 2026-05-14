@@ -12,7 +12,7 @@ import typer
 
 from ... import __version__
 from ...runtime import RuntimeLoggingPolicy
-from ...runtime import RuntimeTelemetry
+from ...telemetry import RuntimeTelemetry
 from ._app import app
 from ._options.common import PrettyOption
 from ._options.common import QuietOption

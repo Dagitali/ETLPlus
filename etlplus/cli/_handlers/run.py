@@ -21,7 +21,7 @@ from ...history._config import HistoryConfig
 from ...history._config import ResolvedHistoryConfig
 from ...history._store import JobRunRecord
 from ...ops import run
-from ...runtime import RuntimeTelemetry
+from ...telemetry import RuntimeTelemetry
 from ...utils._types import JSONData
 from . import _completion
 from . import _lifecycle
