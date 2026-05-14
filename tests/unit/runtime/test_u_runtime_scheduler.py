@@ -148,6 +148,22 @@ class TestSchedulerLock:
 
         assert lock.acquire() is False
 
+    def test_acquire_returns_false_when_stale_lock_reappears(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Repeated file-exists races should fail closed after stale cleanup."""
+        lock = scheduler_mod._ScheduleLock(tmp_path, 'nightly-all')
+        monkeypatch.setattr(lock, '_is_stale', lambda: True)
+        monkeypatch.setattr(
+            scheduler_mod.os,
+            'open',
+            lambda *_args: (_ for _ in ()).throw(FileExistsError()),
+        )
+
+        assert lock.acquire() is False
+
     @pytest.mark.parametrize(
         ('schedule_name', 'expected_requests', 'expected_skipped'),
         [
@@ -227,9 +243,10 @@ class TestSchedulerLock:
             },
         )
         state_store = scheduler_mod._SchedulerStateStore(tmp_path)
-        state_store.record_trigger(
+        state_store.record_completion(
             schedule_name='seed-every-15m',
             triggered_at='2026-05-12T00:00:00+00:00',
+            status='ok',
         )
 
         requests, skipped = scheduler_mod.LocalScheduler.due_requests(
@@ -251,6 +268,30 @@ class TestSchedulerLock:
         assert not (
             tmp_path / scheduler_mod._SCHEDULER_LOCK_DIR / 'nightly-all.lock'
         ).exists()
+
+    @pytest.mark.parametrize(
+        ('payload', 'expected'),
+        [
+            pytest.param(None, None, id='missing-lock-file'),
+            pytest.param('', None, id='blank-lock-file'),
+            pytest.param('0', None, id='non-positive-text-pid'),
+            pytest.param('123', 123, id='text-pid'),
+            pytest.param('{"pid": 0}', None, id='non-positive-json-pid'),
+        ],
+    )
+    def test_existing_pid_parses_authoritative_lock_payloads(
+        self,
+        tmp_path: Path,
+        payload: str | None,
+        expected: int | None,
+    ) -> None:
+        """Lock PID parsing should accept only positive recognizable PIDs."""
+        lock = scheduler_mod._ScheduleLock(tmp_path, 'nightly-all')
+        lock._lock_path.parent.mkdir(parents=True, exist_ok=True)
+        if payload is not None:
+            lock._lock_path.write_text(payload, encoding='utf-8')
+
+        assert lock._existing_pid() == expected
 
 
 class TestRunPending:
@@ -812,6 +853,7 @@ class TestSchedulerInternals:
         expected: bool,
     ) -> None:
         """Cron field matching should short-circuit wildcards and bad values."""
+        assert scheduler_mod._cron_field_matches(field, value) is expected
 
     @pytest.mark.parametrize(
         ('cron', 'when_local', 'expected'),
@@ -1033,6 +1075,32 @@ class TestSchedulerInternals:
             'triggered_at': '2026-05-12T00:15:00+00:00',
         }
 
+    def test_schedule_error_metadata_omits_blank_error_message(self) -> None:
+        """Empty exception text should not add a noisy error_message field."""
+        request = scheduler_mod.ScheduledRunRequest(
+            catchup=False,
+            job_name=None,
+            run_all=True,
+            schedule_name='nightly-all',
+            trigger='cron',
+            triggered_at='2026-05-12T02:00:00+00:00',
+        )
+
+        assert scheduler_mod._schedule_error_metadata(
+            request,
+            exc=RuntimeError(),
+            status='error',
+        ) == {
+            'catchup': False,
+            'error_type': 'RuntimeError',
+            'reason': 'exception',
+            'run_all': True,
+            'schedule': 'nightly-all',
+            'status': 'error',
+            'trigger': 'cron',
+            'triggered_at': '2026-05-12T02:00:00+00:00',
+        }
+
     @pytest.mark.parametrize(
         ('payload', 'expected'),
         [
@@ -1056,7 +1124,7 @@ class TestSchedulerInternals:
         state_file.write_text(payload, encoding='utf-8')
 
         assert (
-            scheduler_mod._SchedulerStateStore(tmp_path).last_triggered_at('valid')
+            scheduler_mod._SchedulerStateStore(tmp_path).last_completed_at('valid')
             == expected
         )
 
@@ -1081,6 +1149,42 @@ class TestSchedulerInternals:
             'last_status': 'ok',
         }
 
+    def test_state_store_returns_empty_mapping_for_non_mapping_state(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """State inspection should ignore corrupted non-mapping schedule rows."""
+        (tmp_path / 'scheduler-state.json').write_text(
+            '{"schedules": {"nightly": "bad-state"}}',
+            encoding='utf-8',
+        )
+
+        assert scheduler_mod._SchedulerStateStore(tmp_path).state('nightly') == {}
+
+    def test_state_store_blank_exception_clears_stale_error_message(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Blank exception text should clear stale persisted error messages."""
+        state_store = scheduler_mod._SchedulerStateStore(tmp_path)
+        state_store.record_exception(
+            schedule_name='nightly',
+            triggered_at='2026-05-12T00:15:00+00:00',
+            exc=RuntimeError('old failure'),
+        )
+
+        state_store.record_exception(
+            schedule_name='nightly',
+            triggered_at='2026-05-12T00:30:00+00:00',
+            exc=RuntimeError(),
+        )
+
+        assert state_store.state('nightly') == {
+            'last_attempted_at': '2026-05-12T00:30:00+00:00',
+            'last_error_type': 'RuntimeError',
+            'last_status': 'exception',
+        }
+
     def test_state_store_treats_legacy_trigger_timestamp_as_completed_state(
         self,
         tmp_path: Path,
@@ -1095,7 +1199,7 @@ class TestSchedulerInternals:
 
         state_store = scheduler_mod._SchedulerStateStore(tmp_path)
 
-        assert state_store.last_triggered_at('nightly') == '2026-05-12T00:15:00+00:00'
+        assert state_store.last_completed_at('nightly') == '2026-05-12T00:15:00+00:00'
 
     def test_utc_now_returns_current_utc_datetime(
         self,
