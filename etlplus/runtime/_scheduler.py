@@ -33,6 +33,7 @@ __all__ = [
     # Classes
     'LocalScheduler',
     'ScheduledRunRequest',
+    'SchedulerDispatchError',
 ]
 
 
@@ -129,9 +130,8 @@ class _SchedulerStateStore:
         schedule_state = self._load().get(schedule_name)
         if not isinstance(schedule_state, dict):
             return None
-        value = (
-            schedule_state.get('last_completed_at')
-            or schedule_state.get('last_triggered_at')
+        value = schedule_state.get('last_completed_at') or schedule_state.get(
+            'last_triggered_at',
         )
         return value if isinstance(value, str) and value else None
 
@@ -482,6 +482,71 @@ def _schedule_metadata(
     return payload
 
 
+def _schedule_error_metadata(
+    request: ScheduledRunRequest,
+    *,
+    exc: Exception,
+    status: str,
+) -> dict[str, object]:
+    """Return scheduler metadata row with additive exception details."""
+    payload = _schedule_metadata(
+        request,
+        status=status,
+        reason='exception',
+    )
+    payload['error_type'] = type(exc).__name__
+    message = str(exc).strip()
+    if message:
+        payload['error_message'] = message
+    return payload
+
+
+def _pending_schedule_metadata(
+    request: ScheduledRunRequest,
+    *,
+    reason: str,
+) -> dict[str, object]:
+    """Return one pending due-run row for summary payloads."""
+    return _schedule_metadata(
+        request,
+        status='pending',
+        reason=reason,
+    )
+
+
+def _scheduler_summary_payload(
+    *,
+    checked_at: str,
+    cfg_name: str,
+    completed_count: int,
+    due_count: int,
+    dispatched_count: int,
+    pending_runs: list[dict[str, object]],
+    results: list[dict[str, object]],
+    schedule_count: int,
+    stopped_early: bool,
+    attempted_count: int,
+) -> dict[str, object]:
+    """Return one additive summary payload for scheduler dispatch."""
+    return {
+        'attempted_count': attempted_count,
+        'checked_at': checked_at,
+        'completed_count': completed_count,
+        'dispatched_count': dispatched_count,
+        'due_count': due_count,
+        'name': cfg_name,
+        'pending_count': due_count - completed_count,
+        'pending_runs': pending_runs,
+        'run_count': len(results),
+        'runs': results,
+        'schedule_count': schedule_count,
+        'skipped_count': len(
+            [row for row in results if row.get('status') == 'skipped'],
+        ),
+        'stopped_early': stopped_early,
+    }
+
+
 def _iter_matching_schedules(
     cfg: Config,
     *,
@@ -497,6 +562,24 @@ def _iter_matching_schedules(
 
 
 # SECTION: CLASSES ========================================================== #
+
+
+class SchedulerDispatchError(RuntimeError):
+    """Raised when one scheduler dispatch stops early with partial results."""
+
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __init__(
+        self,
+        *,
+        payload: dict[str, object],
+        cause: Exception | None = None,
+    ) -> None:
+        self.payload = payload
+        message = (
+            str(cause).strip() if cause is not None else 'scheduler dispatch failed'
+        )
+        super().__init__(message or 'scheduler dispatch failed')
 
 
 class LocalScheduler:
@@ -592,13 +675,16 @@ class LocalScheduler:
             schedule_name=schedule_name,
             state_store=state_store,
         )
+        due_count = len(requests)
         schedule_count = len(
             _iter_matching_schedules(cfg, schedule_name=schedule_name),
         )
 
         results: list[dict[str, object]] = list(skipped)
+        attempted_count = 0
+        completed_count = 0
         dispatched_count = 0
-        for request in requests:
+        for index, request in enumerate(requests):
             lock = _ScheduleLock(settings.state_dir, request.schedule_name)
             if not lock.acquire():
                 results.append(
@@ -614,6 +700,7 @@ class LocalScheduler:
                     schedule_name=request.schedule_name,
                     triggered_at=request.triggered_at,
                 )
+                attempted_count += 1
                 captured: dict[str, object] = {}
                 try:
                     exit_code = run_callback(
@@ -635,7 +722,42 @@ class LocalScheduler:
                         triggered_at=request.triggered_at,
                         exc=exc,
                     )
-                    raise
+                    results.append(
+                        _schedule_error_metadata(
+                            request,
+                            exc=exc,
+                            status='error',
+                        ),
+                    )
+                    pending_runs = [
+                        _schedule_error_metadata(
+                            request,
+                            exc=exc,
+                            status='pending',
+                        ),
+                        *[
+                            _pending_schedule_metadata(
+                                pending_request,
+                                reason='deferred',
+                            )
+                            for pending_request in requests[index + 1:]
+                        ],
+                    ]
+                    raise SchedulerDispatchError(
+                        payload=_scheduler_summary_payload(
+                            attempted_count=attempted_count,
+                            checked_at=now.isoformat(),
+                            cfg_name=cfg.name,
+                            completed_count=completed_count,
+                            dispatched_count=dispatched_count,
+                            due_count=due_count,
+                            pending_runs=pending_runs,
+                            results=results,
+                            schedule_count=schedule_count,
+                            stopped_early=True,
+                        ),
+                        cause=exc,
+                    ) from exc
             finally:
                 lock.release()
 
@@ -649,6 +771,7 @@ class LocalScheduler:
                 status=status,
                 run_id=run_id,
             )
+            completed_count += 1
             results.append(
                 _schedule_metadata(
                     request,
@@ -657,17 +780,18 @@ class LocalScheduler:
                 ),
             )
 
-        return {
-            'checked_at': now.isoformat(),
-            'dispatched_count': dispatched_count,
-            'name': cfg.name,
-            'run_count': len(results),
-            'schedule_count': schedule_count,
-            'runs': results,
-            'skipped_count': len(
-                [row for row in results if row.get('status') == 'skipped'],
-            ),
-        }
+        return _scheduler_summary_payload(
+            attempted_count=attempted_count,
+            checked_at=now.isoformat(),
+            cfg_name=cfg.name,
+            completed_count=completed_count,
+            dispatched_count=dispatched_count,
+            due_count=due_count,
+            pending_runs=[],
+            results=results,
+            schedule_count=schedule_count,
+            stopped_early=False,
+        )
 
     # -- Internal Static Methods -- #
 
