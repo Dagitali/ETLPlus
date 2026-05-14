@@ -14,6 +14,7 @@ from shlex import quote as shell_quote
 from ... import Config
 from ...history._config import ResolvedHistoryConfig
 from ...runtime._scheduler import LocalScheduler
+from ...runtime._scheduler import SchedulerDispatchError
 from ...runtime._scheduler import _SchedulerStateStore
 from . import _output
 from .run import run_handler as _run_handler
@@ -387,6 +388,12 @@ def schedule_handler(
                 'message': str(exc),
                 'status': 'error',
             },
+            pretty=pretty,
+            exit_code=1,
+        )
+    except SchedulerDispatchError as exc:
+        return _output.emit_json_payload(
+            exc.payload,
             pretty=pretty,
             exit_code=1,
         )
