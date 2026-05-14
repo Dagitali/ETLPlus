@@ -135,26 +135,6 @@ class _SchedulerStateStore:
         )
         return value if isinstance(value, str) and value else None
 
-    def last_triggered_at(
-        self,
-        schedule_name: str,
-    ) -> str | None:
-        """
-        Return the last completed trigger timestamp for one schedule.
-
-        Parameters
-        ----------
-        schedule_name : str
-            Schedule name to query for the last trigger timestamp.
-
-        Returns
-        -------
-        str | None
-            The last completed trigger timestamp as an ISO-8601 string, or
-            ``None`` if no valid record is found.
-        """
-        return self.last_completed_at(schedule_name)
-
     def record_attempt(
         self,
         *,
@@ -163,9 +143,7 @@ class _SchedulerStateStore:
     ) -> None:
         """Persist one attempted schedule trigger timestamp."""
         schedules = self._load()
-        schedule_state = schedules.get(schedule_name, {})
-        if not isinstance(schedule_state, dict):
-            schedule_state = {}
+        schedule_state = self._state_for(schedules, schedule_name)
         schedule_state['last_attempted_at'] = triggered_at
         schedules[schedule_name] = schedule_state
         self._save(schedules)
@@ -180,9 +158,7 @@ class _SchedulerStateStore:
     ) -> None:
         """Persist one completed schedule trigger timestamp and outcome."""
         schedules = self._load()
-        schedule_state = schedules.get(schedule_name, {})
-        if not isinstance(schedule_state, dict):
-            schedule_state = {}
+        schedule_state = self._state_for(schedules, schedule_name)
         schedule_state['last_attempted_at'] = triggered_at
         schedule_state['last_completed_at'] = triggered_at
         schedule_state['last_status'] = status
@@ -204,9 +180,7 @@ class _SchedulerStateStore:
     ) -> None:
         """Persist one failed dispatch attempt without consuming the trigger."""
         schedules = self._load()
-        schedule_state = schedules.get(schedule_name, {})
-        if not isinstance(schedule_state, dict):
-            schedule_state = {}
+        schedule_state = self._state_for(schedules, schedule_name)
         schedule_state['last_attempted_at'] = triggered_at
         schedule_state['last_status'] = 'exception'
         schedule_state['last_error_type'] = type(exc).__name__
@@ -218,28 +192,6 @@ class _SchedulerStateStore:
         schedule_state.pop('last_run_id', None)
         schedules[schedule_name] = schedule_state
         self._save(schedules)
-
-    def record_trigger(
-        self,
-        *,
-        schedule_name: str,
-        triggered_at: str,
-    ) -> None:
-        """
-        Persist one schedule trigger timestamp.
-
-        Parameters
-        ----------
-        schedule_name : str
-            Schedule name to record the trigger timestamp for.
-        triggered_at : str
-            Trigger timestamp as an ISO-8601 string to record for the schedule.
-        """
-        self.record_completion(
-            schedule_name=schedule_name,
-            triggered_at=triggered_at,
-            status='ok',
-        )
 
     def state(
         self,
@@ -254,6 +206,17 @@ class _SchedulerStateStore:
             for key, value in schedule_state.items()
             if isinstance(key, str) and isinstance(value, str) and value
         }
+
+    # -- Static Methods -- #
+
+    @staticmethod
+    def _state_for(
+        schedules: dict[str, dict[str, str]],
+        schedule_name: str,
+    ) -> dict[str, str]:
+        """Return a mutable state mapping for one schedule name."""
+        schedule_state = schedules.get(schedule_name)
+        return schedule_state if isinstance(schedule_state, dict) else {}
 
 
 class _ScheduleLock:
@@ -679,6 +642,7 @@ class LocalScheduler:
         schedule_count = len(
             _iter_matching_schedules(cfg, schedule_name=schedule_name),
         )
+        cfg_name = cfg.name or ''
 
         results: list[dict[str, object]] = list(skipped)
         attempted_count = 0
@@ -747,7 +711,7 @@ class LocalScheduler:
                         payload=_scheduler_summary_payload(
                             attempted_count=attempted_count,
                             checked_at=now.isoformat(),
-                            cfg_name=cfg.name,
+                            cfg_name=cfg_name,
                             completed_count=completed_count,
                             dispatched_count=dispatched_count,
                             due_count=due_count,
@@ -783,7 +747,7 @@ class LocalScheduler:
         return _scheduler_summary_payload(
             attempted_count=attempted_count,
             checked_at=now.isoformat(),
-            cfg_name=cfg.name,
+            cfg_name=cfg_name,
             completed_count=completed_count,
             dispatched_count=dispatched_count,
             due_count=due_count,
