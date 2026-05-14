@@ -22,6 +22,7 @@ from typing import TypedDict
 from typing import cast
 
 from ..utils import TextChoiceResolver
+from ..utils._types import IssueSeverity
 from ..utils._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
@@ -56,8 +57,7 @@ type Ruleset = StrAnyMap
 
 type ValidationPhase = Literal['before_transform', 'after_transform']
 type ValidationWindow = Literal['before_transform', 'after_transform', 'both']
-type ValidationSeverity = Literal['warn', 'error']
-type ValidationChoice = ValidationPhase | ValidationWindow | ValidationSeverity
+type ValidationChoice = ValidationPhase | ValidationWindow | IssueSeverity
 
 type ValidateFn = Callable[[Any, Ruleset], ValidationResultDict]
 type PrintFn = Callable[[Any], None]
@@ -106,7 +106,7 @@ class ValidationSettings:
     window : ValidationWindow
         Configured validation window. Accepts ``"before_transform"``,
         ``"after_transform"``, or ``"both"``.
-    severity : ValidationSeverity
+    severity : IssueSeverity
         Failure severity (``"warn"`` or ``"error"``).
     """
 
@@ -116,7 +116,7 @@ class ValidationSettings:
     rules: Ruleset | None
     phase: ValidationPhase
     window: ValidationWindow
-    severity: ValidationSeverity
+    severity: IssueSeverity
 
     # -- Class Methods -- #
 
@@ -255,7 +255,7 @@ def _normalize_phase(
 
 def _normalize_severity(
     value: str | None,
-) -> ValidationSeverity:
+) -> IssueSeverity:
     """
     Normalize severity, defaulting to ``"error"`` when unspecified.
 
@@ -266,7 +266,7 @@ def _normalize_severity(
 
     Returns
     -------
-    ValidationSeverity
+    IssueSeverity
         Normalized severity. Defaults to ``"error"`` when unspecified.
     """
     return _normalize_choice(
