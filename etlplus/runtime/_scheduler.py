@@ -121,6 +121,20 @@ class _SchedulerStateStore:
 
     # -- Instance Methods -- #
 
+    def last_completed_at(
+        self,
+        schedule_name: str,
+    ) -> str | None:
+        """Return the last completed trigger timestamp for one schedule."""
+        schedule_state = self._load().get(schedule_name)
+        if not isinstance(schedule_state, dict):
+            return None
+        value = (
+            schedule_state.get('last_completed_at')
+            or schedule_state.get('last_triggered_at')
+        )
+        return value if isinstance(value, str) and value else None
+
     def last_triggered_at(
         self,
         schedule_name: str,
@@ -140,20 +154,6 @@ class _SchedulerStateStore:
             ``None`` if no valid record is found.
         """
         return self.last_completed_at(schedule_name)
-
-    def last_completed_at(
-        self,
-        schedule_name: str,
-    ) -> str | None:
-        """Return the last completed trigger timestamp for one schedule."""
-        schedule_state = self._load().get(schedule_name)
-        if not isinstance(schedule_state, dict):
-            return None
-        value = (
-            schedule_state.get('last_completed_at')
-            or schedule_state.get('last_triggered_at')
-        )
-        return value if isinstance(value, str) and value else None
 
     def record_attempt(
         self,
