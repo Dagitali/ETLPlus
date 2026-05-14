@@ -20,9 +20,6 @@ from etlplus.runtime._events import EVENT_SCHEMA_VERSION
 from etlplus.runtime._events import RuntimeEvents
 from etlplus.runtime._logging import RuntimeLoggingPolicy
 from etlplus.runtime.readiness import ReadinessReportBuilder
-from etlplus.runtime.telemetry import ResolvedTelemetryConfig
-from etlplus.runtime.telemetry import RuntimeTelemetry
-from etlplus.runtime.telemetry import TelemetryConfig
 
 from ..pytest_export_contracts import assert_helper_module_exports_match_facade_usage
 
@@ -37,9 +34,6 @@ EXPECTED_EXPORTS = [
     ('ReadinessReportBuilder', ReadinessReportBuilder),
     ('RuntimeEvents', RuntimeEvents),
     ('RuntimeLoggingPolicy', RuntimeLoggingPolicy),
-    ('RuntimeTelemetry', RuntimeTelemetry),
-    ('TelemetryConfig', TelemetryConfig),
-    ('ResolvedTelemetryConfig', ResolvedTelemetryConfig),
     ('EVENT_SCHEMA', EVENT_SCHEMA),
     ('EVENT_SCHEMA_VERSION', EVENT_SCHEMA_VERSION),
 ]
