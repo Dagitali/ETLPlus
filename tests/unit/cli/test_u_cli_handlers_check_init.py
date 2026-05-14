@@ -1175,6 +1175,119 @@ class TestScheduleHandler:
                 ),
             )
 
+    def test_run_pending_emits_partial_summary_when_scheduler_stops_early(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+    ) -> None:
+        """Schedule handler should emit the scheduler's partial summary on failure."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Schedule Test Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+                'schedules': [
+                    {
+                        'name': 'nightly_all',
+                        'cron': '0 2 * * *',
+                        'target': {'run_all': True},
+                    },
+                ],
+            },
+        )
+        patch_config_from_yaml(monkeypatch, cfg)
+
+        monkeypatch.setattr(
+            schedule_mod.LocalScheduler,
+            'run_pending',
+            classmethod(
+                lambda _cls, **_kwargs: (_ for _ in ()).throw(
+                    schedule_mod.SchedulerDispatchError(
+                        payload={
+                            'attempted_count': 1,
+                            'checked_at': '2026-05-12T02:00:00+00:00',
+                            'completed_count': 0,
+                            'dispatched_count': 0,
+                            'due_count': 2,
+                            'name': 'Schedule Test Pipeline',
+                            'pending_count': 2,
+                            'pending_runs': [
+                                {
+                                    'reason': 'exception',
+                                    'schedule': 'nightly_all',
+                                    'status': 'pending',
+                                    'trigger': 'cron',
+                                    'triggered_at': '2026-05-12T02:00:00+00:00',
+                                },
+                            ],
+                            'run_count': 1,
+                            'runs': [
+                                {
+                                    'error_message': 'dispatch failed',
+                                    'error_type': 'RuntimeError',
+                                    'reason': 'exception',
+                                    'schedule': 'nightly_all',
+                                    'status': 'error',
+                                    'trigger': 'cron',
+                                    'triggered_at': '2026-05-12T02:00:00+00:00',
+                                },
+                            ],
+                            'schedule_count': 1,
+                            'skipped_count': 0,
+                            'stopped_early': True,
+                        },
+                    ),
+                ),
+            ),
+        )
+
+        assert (
+            handlers.schedule_handler(
+                config='cfg.yml',
+                pretty=False,
+                run_pending=True,
+            )
+            == 1
+        )
+        assert_emit_json(
+            capture_io,
+            {
+                'attempted_count': 1,
+                'checked_at': '2026-05-12T02:00:00+00:00',
+                'completed_count': 0,
+                'dispatched_count': 0,
+                'due_count': 2,
+                'name': 'Schedule Test Pipeline',
+                'pending_count': 2,
+                'pending_runs': [
+                    {
+                        'reason': 'exception',
+                        'schedule': 'nightly_all',
+                        'status': 'pending',
+                        'trigger': 'cron',
+                        'triggered_at': '2026-05-12T02:00:00+00:00',
+                    },
+                ],
+                'run_count': 1,
+                'runs': [
+                    {
+                        'error_message': 'dispatch failed',
+                        'error_type': 'RuntimeError',
+                        'reason': 'exception',
+                        'schedule': 'nightly_all',
+                        'status': 'error',
+                        'trigger': 'cron',
+                        'triggered_at': '2026-05-12T02:00:00+00:00',
+                    },
+                ],
+                'schedule_count': 1,
+                'skipped_count': 0,
+                'stopped_early': True,
+            },
+            pretty=False,
+        )
+
     def test_run_pending_emits_scheduler_summary(
         self,
         monkeypatch: pytest.MonkeyPatch,
