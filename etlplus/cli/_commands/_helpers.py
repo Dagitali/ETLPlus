@@ -171,10 +171,14 @@ class CommandHelperPolicy:
             The exit code returned by *handler*.
         """
         history_state = ensure_state(ctx) if state is None else state
-        history_kwargs = {
+        history_kwargs: dict[str, Any] = {
             key: value for key, value in kwargs.items() if value is not _MISSING
         }
-        return handler(pretty=history_state.pretty, **history_kwargs)
+        return CommandHelperPolicy.call_handler(
+            handler,
+            state=history_state,
+            **history_kwargs,
+        )
 
     @staticmethod
     def fail_usage(
