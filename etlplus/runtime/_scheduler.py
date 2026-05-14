@@ -13,6 +13,7 @@ from datetime import datetime
 from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import Literal
 from zoneinfo import ZoneInfo
 from zoneinfo import ZoneInfoNotFoundError
 
@@ -41,6 +42,22 @@ __all__ = [
 _SCHEDULER_STATE_FILE = 'scheduler-state.json'
 _SCHEDULER_LOCK_DIR = 'scheduler-locks'
 _MINUTE = timedelta(minutes=1)
+
+
+# SECTION: INTERNAL DATA CLASSES ============================================ #
+
+
+@dataclass(slots=True, frozen=True)
+class _ResolvedSchedule:
+    """Normalized internal schedule view for dispatch decisions."""
+
+    # -- Instance Attributes -- #
+
+    job_name: str | None
+    name: str
+    paused: bool
+    run_all: bool
+    trigger: Literal['cron', 'interval']
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -265,6 +282,27 @@ def _parse_timestamp(
     return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed
 
 
+def _resolve_schedule(
+    schedule: object,
+) -> _ResolvedSchedule | None:
+    """Return one normalized schedule shape or ``None`` when incomplete."""
+    name = getattr(schedule, 'name', None)
+    target = getattr(schedule, 'target', None)
+    if not isinstance(name, str) or target is None:
+        return None
+
+    raw_job_name = getattr(target, 'job', None)
+    return _ResolvedSchedule(
+        job_name=raw_job_name if isinstance(raw_job_name, str) else None,
+        name=name,
+        paused=bool(getattr(schedule, 'paused', False)),
+        run_all=bool(getattr(target, 'run_all', False)),
+        trigger=(
+            'interval' if getattr(schedule, 'interval', None) is not None else 'cron'
+        ),
+    )
+
+
 def _resolve_timezone(
     schedule: object,
 ) -> ZoneInfo:
@@ -304,6 +342,20 @@ def _schedule_metadata(
     return payload
 
 
+def _iter_matching_schedules(
+    cfg: Config,
+    *,
+    schedule_name: str | None,
+) -> tuple[tuple[object, _ResolvedSchedule], ...]:
+    """Return normalized schedules filtered to one optional schedule name."""
+    return tuple(
+        (schedule, resolved)
+        for schedule in getattr(cfg, 'schedules', [])
+        if (resolved := _resolve_schedule(schedule)) is not None
+        and (schedule_name is None or resolved.name == schedule_name)
+    )
+
+
 # SECTION: CLASSES ========================================================== #
 
 
@@ -324,29 +376,21 @@ class LocalScheduler:
         """Return due schedule requests and skipped rows for paused schedules."""
         requests: list[ScheduledRunRequest] = []
         skipped: list[dict[str, object]] = []
+        current_minute_utc = _floor_to_minute(now.astimezone(UTC))
 
-        for schedule in getattr(cfg, 'schedules', []):
-            resolved_name = getattr(schedule, 'name', None)
-            if not isinstance(resolved_name, str):
-                continue
-            if schedule_name is not None and resolved_name != schedule_name:
-                continue
-            target = getattr(schedule, 'target', None)
-            if target is None:
-                continue
-            if getattr(schedule, 'paused', False):
+        for schedule, resolved in _iter_matching_schedules(
+            cfg,
+            schedule_name=schedule_name,
+        ):
+            if resolved.paused:
                 skipped.append(
                     _schedule_metadata(
                         ScheduledRunRequest(
                             catchup=False,
-                            job_name=getattr(target, 'job', None),
-                            run_all=bool(getattr(target, 'run_all', False)),
-                            schedule_name=resolved_name,
-                            trigger=(
-                                'interval'
-                                if getattr(schedule, 'interval', None) is not None
-                                else 'cron'
-                            ),
+                            job_name=resolved.job_name,
+                            run_all=resolved.run_all,
+                            schedule_name=resolved.name,
+                            trigger=resolved.trigger,
                             triggered_at=now.isoformat(),
                         ),
                         status='skipped',
@@ -359,33 +403,25 @@ class LocalScheduler:
                 cls._interval_due_times(
                     schedule,
                     now=now,
-                    previous_triggered_at=state_store.last_triggered_at(resolved_name),
+                    previous_triggered_at=state_store.last_triggered_at(resolved.name),
                 )
-                if getattr(schedule, 'interval', None) is not None
+                if resolved.trigger == 'interval'
                 else cls._cron_due_times(
                     schedule,
                     now=now,
-                    previous_triggered_at=state_store.last_triggered_at(resolved_name),
+                    previous_triggered_at=state_store.last_triggered_at(resolved.name),
                 )
             )
             for due_time in due_times:
-                trigger = (
-                    'interval'
-                    if getattr(schedule, 'interval', None) is not None
-                    else 'cron'
-                )
+                triggered_at = due_time.astimezone(UTC)
                 requests.append(
                     ScheduledRunRequest(
-                        catchup=due_time.astimezone(UTC) < _floor_to_minute(now),
-                        job_name=(
-                            getattr(target, 'job', None)
-                            if isinstance(getattr(target, 'job', None), str)
-                            else None
-                        ),
-                        run_all=bool(getattr(target, 'run_all', False)),
-                        schedule_name=resolved_name,
-                        trigger=trigger,
-                        triggered_at=due_time.astimezone(UTC).isoformat(),
+                        catchup=triggered_at < current_minute_utc,
+                        job_name=resolved.job_name,
+                        run_all=resolved.run_all,
+                        schedule_name=resolved.name,
+                        trigger=resolved.trigger,
+                        triggered_at=triggered_at.isoformat(),
                     ),
                 )
         return requests, skipped
@@ -415,6 +451,9 @@ class LocalScheduler:
             now=now,
             schedule_name=schedule_name,
             state_store=state_store,
+        )
+        schedule_count = len(
+            _iter_matching_schedules(cfg, schedule_name=schedule_name),
         )
 
         results: list[dict[str, object]] = list(skipped)
@@ -468,14 +507,7 @@ class LocalScheduler:
             'dispatched_count': dispatched_count,
             'name': cfg.name,
             'run_count': len(results),
-            'schedule_count': len(
-                [
-                    schedule
-                    for schedule in getattr(cfg, 'schedules', [])
-                    if schedule_name is None
-                    or getattr(schedule, 'name', None) == schedule_name
-                ],
-            ),
+            'schedule_count': schedule_count,
             'runs': results,
             'skipped_count': len(
                 [row for row in results if row.get('status') == 'skipped'],

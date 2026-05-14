@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
-from typing import Literal
 from typing import TypedDict
 from urllib.parse import urlsplit
 
 from ..._config import Config
+from ...utils._types import IssueSeverity
 from ._base import ReadinessSupportPolicy
 from ._support import AWS_ENV_HINTS
 from ._support import AZURE_STORAGE_BOOTSTRAP_ENV
@@ -29,12 +30,6 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL TYPE ALIASES ============================================ #
-
-
-type _ProviderGapSeverity = Literal['error', 'warn']
-
-
 # SECTION: INTERNAL TYPED DICTS ============================================= #
 
 
@@ -45,7 +40,7 @@ class _ProviderGapDetails(TypedDict):
     missing_env: list[str]
     provider: str
     reason: str
-    severity: _ProviderGapSeverity
+    severity: IssueSeverity
 
 
 class _ProviderGapRow(_ProviderGapDetails):
@@ -60,6 +55,19 @@ type _ProviderEnvironmentRowsFn = Callable[
     [Config, Mapping[str, str]],
     list[_ProviderGapRow],
 ]
+
+
+# SECTION: INTERNAL DATA CLASSES ============================================ #
+
+
+@dataclass(frozen=True, slots=True)
+class _ResolvedConnectorPath:
+    """Normalized connector path state reused by provider checks."""
+
+    connector: str
+    path: str
+    role: str
+    scheme: str
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -79,28 +87,42 @@ def _azure_authority_has_account_host(path: str) -> bool:
     return bool(separator and account_host)
 
 
-def _provider_gap_row(
+def _provider_gap_from_details(
     *,
     connector: str,
-    guidance: str,
-    missing_env: list[str],
-    provider: str,
-    reason: str,
+    details: _ProviderGapDetails,
     role: str,
     scheme: str,
-    severity: _ProviderGapSeverity,
 ) -> _ProviderGapRow:
-    """Return one normalized provider-environment gap row."""
-    return {
-        'connector': connector,
-        'guidance': guidance,
-        'missing_env': missing_env,
-        'provider': provider,
-        'reason': reason,
-        'role': role,
-        'scheme': scheme,
-        'severity': severity,
-    }
+    """Attach connector context to provider-gap details."""
+    return _ProviderGapRow(
+        connector=connector,
+        guidance=details['guidance'],
+        missing_env=details['missing_env'],
+        provider=details['provider'],
+        reason=details['reason'],
+        role=role,
+        scheme=scheme,
+        severity=details['severity'],
+    )
+
+
+def _iter_connector_paths(
+    cfg: Config,
+) -> tuple[_ResolvedConnectorPath, ...]:
+    """Return normalized connector-path rows for provider policy checks."""
+    return tuple(
+        _ResolvedConnectorPath(
+            connector=str(getattr(connector, 'name', '<unnamed>')),
+            path=path,
+            role=role,
+            scheme=scheme,
+        )
+        for role, connector in ReadinessSupportPolicy.iter_connectors(cfg)
+        if isinstance(path := getattr(connector, 'path', None), str)
+        and bool(path)
+        and (scheme := ReadinessSupportPolicy.coerce_storage_scheme(path)) is not None
+    )
 
 
 def _azure_provider_gaps(
@@ -117,7 +139,7 @@ def _azure_provider_gaps(
     authority_has_account_host = _azure_authority_has_account_host(path)
     if not (azure_connection_string or azure_account_url or authority_has_account_host):
         return [
-            _provider_gap_row(
+            _ProviderGapRow(
                 connector=connector,
                 guidance=(
                     'Set AZURE_STORAGE_CONNECTION_STRING, set '
@@ -140,7 +162,7 @@ def _azure_provider_gaps(
         return []
 
     return [
-        _provider_gap_row(
+        _ProviderGapRow(
             connector=connector,
             guidance=(
                 'Set AZURE_STORAGE_CREDENTIAL when the target is '
@@ -173,21 +195,17 @@ def _s3_provider_gaps(
     explicit_gap = ProviderEnvironmentPolicy.explicit_aws_credential_gap(env)
     if explicit_gap:
         return [
-            _provider_gap_row(
+            _provider_gap_from_details(
                 connector=connector,
-                guidance=explicit_gap['guidance'],
-                missing_env=explicit_gap['missing_env'],
-                provider=explicit_gap['provider'],
-                reason=explicit_gap['reason'],
+                details=explicit_gap,
                 role=role,
                 scheme='s3',
-                severity=explicit_gap['severity'],
             ),
         ]
     if has_aws_hints:
         return []
     return [
-        _provider_gap_row(
+        _ProviderGapRow(
             connector=connector,
             guidance=(
                 'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/'
@@ -356,19 +374,14 @@ class ProviderEnvironmentPolicy:
         azure_credential = bool(env.get(AZURE_STORAGE_CREDENTIAL_ENV))
         has_aws_hints = _aws_env_hint_present(env)
 
-        for role, connector in ReadinessSupportPolicy.iter_connectors(cfg):
-            connector_name = str(getattr(connector, 'name', '<unnamed>'))
-            path = getattr(connector, 'path', None)
-            if not isinstance(path, str) or not path:
-                continue
-
-            match ReadinessSupportPolicy.coerce_storage_scheme(path):
+        for resolved in _iter_connector_paths(cfg):
+            match resolved.scheme:
                 case 'azure-blob' | 'abfs' as scheme:
                     rows.extend(
                         _azure_provider_gaps(
-                            connector=connector_name,
-                            path=path,
-                            role=role,
+                            connector=resolved.connector,
+                            path=resolved.path,
+                            role=resolved.role,
                             scheme=scheme,
                             azure_account_url=azure_account_url,
                             azure_connection_string=azure_connection_string,
@@ -378,10 +391,10 @@ class ProviderEnvironmentPolicy:
                 case 's3':
                     rows.extend(
                         _s3_provider_gaps(
-                            connector=connector_name,
+                            connector=resolved.connector,
                             env=env,
                             has_aws_hints=has_aws_hints,
-                            role=role,
+                            role=resolved.role,
                         ),
                     )
                 case _:
