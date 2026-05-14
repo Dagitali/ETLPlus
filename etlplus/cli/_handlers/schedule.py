@@ -309,7 +309,7 @@ def _schedule_payload(
             schedule_payload['state'] = state_store.state(resolved_name)
         schedules.append(schedule_payload)
 
-    payload = {
+    payload: dict[str, object] = {
         'name': cfg.name,
         'schedule_count': len(schedules),
         'schedules': schedules,
