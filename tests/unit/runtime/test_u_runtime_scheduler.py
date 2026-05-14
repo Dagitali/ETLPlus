@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.runtime._scheduler`.
 from __future__ import annotations
 
 import json
+import os
 from datetime import UTC
 from datetime import datetime
 from pathlib import Path
@@ -76,15 +77,37 @@ class TestDueRequests:
 class TestSchedulerLock:
     """Unit tests for the local scheduler file lock."""
 
-    def test_release_without_acquire_is_a_safe_noop(self, tmp_path: Path) -> None:
-        """Releasing an unacquired lock should still clean up without raising."""
+    def test_acquire_reclaims_stale_lock_for_dead_pid(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Dead-process lock files should be treated as stale and reclaimed."""
         lock = scheduler_mod._ScheduleLock(tmp_path, 'nightly-all')
+        lock._lock_path.parent.mkdir(parents=True, exist_ok=True)
+        lock._lock_path.write_text(
+            json.dumps(
+                {
+                    'created_at': '2026-05-12T00:00:00+00:00',
+                    'pid': 424242,
+                },
+            ),
+            encoding='utf-8',
+        )
+        monkeypatch.setattr(
+            scheduler_mod.os,
+            'kill',
+            lambda pid, _sig: (_ for _ in ()).throw(ProcessLookupError())
+            if pid == 424242
+            else None,
+        )
 
+        assert lock.acquire() is True
+
+        persisted = json.loads(lock._lock_path.read_text(encoding='utf-8'))
+        assert persisted['pid'] == os.getpid()
+        assert isinstance(persisted['created_at'], str)
         lock.release()
-
-        assert not (
-            tmp_path / scheduler_mod._SCHEDULER_LOCK_DIR / 'nightly-all.lock'
-        ).exists()
 
     @pytest.mark.parametrize(
         ('schedule_name', 'expected_requests', 'expected_skipped'),
@@ -179,6 +202,16 @@ class TestSchedulerLock:
 
         assert requests == expected_requests
         assert skipped == expected_skipped
+
+    def test_release_without_acquire_is_a_safe_noop(self, tmp_path: Path) -> None:
+        """Releasing an unacquired lock should still clean up without raising."""
+        lock = scheduler_mod._ScheduleLock(tmp_path, 'nightly-all')
+
+        lock.release()
+
+        assert not (
+            tmp_path / scheduler_mod._SCHEDULER_LOCK_DIR / 'nightly-all.lock'
+        ).exists()
 
 
 class TestRunPending:
@@ -375,7 +408,10 @@ class TestRunPending:
         assert state_payload == {
             'schedules': {
                 'seed-every-15m': {
+                    'last_error_message': 'dispatch failed',
+                    'last_error_type': 'RuntimeError',
                     'last_attempted_at': '2026-05-12T00:00:00+00:00',
+                    'last_status': 'exception',
                 },
             },
         }
@@ -421,7 +457,15 @@ class TestRunPending:
         )
         lock_dir = tmp_path / 'scheduler-locks'
         lock_dir.mkdir(parents=True)
-        (lock_dir / 'nightly-all.lock').write_text('123\n', encoding='utf-8')
+        (lock_dir / 'nightly-all.lock').write_text(
+            json.dumps(
+                {
+                    'created_at': '2026-05-12T00:00:00+00:00',
+                    'pid': os.getpid(),
+                },
+            ),
+            encoding='utf-8',
+        )
 
         monkeypatch.setattr(
             scheduler_mod.LocalScheduler,
@@ -802,6 +846,27 @@ class TestSchedulerInternals:
             scheduler_mod._SchedulerStateStore(tmp_path).last_triggered_at('valid')
             == expected
         )
+
+    def test_state_store_returns_current_state_payload(self, tmp_path: Path) -> None:
+        """Scheduler state inspection should surface the stored metadata mapping."""
+        state_store = scheduler_mod._SchedulerStateStore(tmp_path)
+        state_store.record_attempt(
+            schedule_name='nightly',
+            triggered_at='2026-05-12T00:15:00+00:00',
+        )
+        state_store.record_completion(
+            schedule_name='nightly',
+            triggered_at='2026-05-12T00:15:00+00:00',
+            status='ok',
+            run_id='run-1',
+        )
+
+        assert state_store.state('nightly') == {
+            'last_attempted_at': '2026-05-12T00:15:00+00:00',
+            'last_completed_at': '2026-05-12T00:15:00+00:00',
+            'last_run_id': 'run-1',
+            'last_status': 'ok',
+        }
 
     def test_state_store_treats_legacy_trigger_timestamp_as_completed_state(
         self,
