@@ -29,7 +29,6 @@ from ..queue import QueueConfig
 from ..queue import QueueService
 from ..queue import QueueType
 from ..queue import RedisQueue
-from ..utils import MappingParser
 from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ._core import ConnectorBase
@@ -199,7 +198,7 @@ class ConnectorQueue(ConnectorBase):
             queue_name=queue_name,
             url=cls._optional_str(obj, 'url'),
             region=cls._optional_str(obj, 'region'),
-            options=MappingParser.to_dict(obj.get('options')),
+            options=cls._dict_field(obj, 'options'),
         )
 
     # -- Instance Methods -- #
