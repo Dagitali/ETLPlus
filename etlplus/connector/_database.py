@@ -42,6 +42,9 @@ _DATABASE_PROVIDER_ALIASES: Final[dict[str, str]] = {
     'google-bigquery': 'bigquery',
     'mssql': 'sqlserver',
     'postgresql': 'postgres',
+    'sf': 'snowflake',
+    'snowflake-db': 'snowflake',
+    'snowflake': 'snowflake',
     'sqlserver': 'sqlserver',
 }
 
@@ -65,6 +68,10 @@ class ConnectorDbConfigDict(TypedDict, total=False):
     project: str
     dataset: str
     location: str
+    account: str
+    database: str
+    schema: str
+    warehouse: str
     query: str
     table: str
     mode: str
@@ -92,6 +99,14 @@ class ConnectorDb(ConnectorBase):
         Optional provider-specific dataset identifier.
     location : str | None
         Optional provider-specific regional location hint.
+    account : str | None
+        Optional Snowflake account identifier.
+    database : str | None
+        Optional Snowflake database identifier.
+    schema : str | None
+        Optional Snowflake schema identifier.
+    warehouse : str | None
+        Optional Snowflake warehouse identifier.
     query : str | None
         Query to execute for extraction (optional).
     table : str | None
@@ -108,6 +123,10 @@ class ConnectorDb(ConnectorBase):
     project: str | None = None
     dataset: str | None = None
     location: str | None = None
+    account: str | None = None
+    database: str | None = None
+    schema: str | None = None
+    warehouse: str | None = None
     query: str | None = None
     table: str | None = None
     mode: str | None = None
@@ -125,6 +144,11 @@ class ConnectorDb(ConnectorBase):
             return _DATABASE_PROVIDER_ALIASES.get(normalized, normalized)
         if any(obj.get(key) is not None for key in ('project', 'dataset', 'location')):
             return 'bigquery'
+        if any(
+            obj.get(key) is not None
+            for key in ('account', 'database', 'schema', 'warehouse')
+        ):
+            return 'snowflake'
         return None
 
     # -- Class Methods -- #
@@ -156,6 +180,10 @@ class ConnectorDb(ConnectorBase):
             project=ValueParser.optional_str(obj.get('project')),
             dataset=ValueParser.optional_str(obj.get('dataset')),
             location=ValueParser.optional_str(obj.get('location')),
+            account=ValueParser.optional_str(obj.get('account')),
+            database=ValueParser.optional_str(obj.get('database')),
+            schema=ValueParser.optional_str(obj.get('schema')),
+            warehouse=ValueParser.optional_str(obj.get('warehouse')),
             query=ValueParser.optional_str(obj.get('query')),
             table=ValueParser.optional_str(obj.get('table')),
             mode=ValueParser.optional_str(obj.get('mode')),
