@@ -12,6 +12,7 @@ Notes
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -386,6 +387,52 @@ jobs: []
 
         with pytest.raises(TypeError, match='mapping/object root'):
             Config.from_yaml('ignored.yml')
+
+    def test_from_yaml_resolves_secret_tokens_incrementally(
+        self,
+        pipeline_builder: Callable[..., Config],
+        tmp_path: Path,
+    ) -> None:
+        """Test config substitution can resolve environment and file secrets."""
+        secrets_path = tmp_path / 'secrets.json'
+        secrets_path.write_text(
+            json.dumps({'service': {'password': 'file-secret'}}),
+            encoding='utf-8',
+        )
+        yml = (
+            """
+name: Test
+sources:
+  - name: source
+    type: file
+    format: json
+    path: "${secret:DATA_PATH}"
+targets:
+  - name: target
+    type: api
+    api: service
+    endpoint: users
+    headers:
+      Authorization: "Bearer ${secret:file:service.password}"
+jobs: []
+"""
+        ).strip()
+
+        cfg = pipeline_builder(
+            yml,
+            env={
+                'DATA_PATH': '/tmp/input.json',
+                'ETLPLUS_SECRETS_FILE': str(secrets_path),
+            },
+        )
+
+        source = next(item for item in cfg.sources if item.name == 'source')
+        target = next(item for item in cfg.targets if item.name == 'target')
+        assert getattr(source, 'path', None) == '/tmp/input.json'
+        assert (
+            getattr(target, 'headers', {}).get('Authorization')
+            == 'Bearer file-secret'
+        )
 
     def test_from_yaml_without_substitution_skips_token_resolution(
         self,
