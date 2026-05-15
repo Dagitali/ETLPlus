@@ -115,6 +115,51 @@ class ConnectorQueue(ConnectorBase):
     region: str | None = None
     options: dict[str, Any] = field(default_factory=dict)
 
+    # -- Internal Class Methods -- #
+
+    @classmethod
+    def _queue_name_from_obj(
+        cls,
+        obj: StrAnyMap,
+    ) -> str | None:
+        """Return the first normalized queue name alias with a value."""
+        for field_name in ('queue_name', 'queue'):
+            if (
+                queue_name := ValueParser.optional_str(obj.get(field_name))
+            ) is not None:
+                return queue_name
+        return None
+
+    @classmethod
+    def _queue_type_from_obj(
+        cls,
+        obj: StrAnyMap,
+        *,
+        queue_name: str | None,
+    ) -> QueueType:
+        """Return the normalized queue type inferred from payload fields."""
+        queue_type_value = obj.get('queue_type')
+        return (
+            QueueType.coerce(queue_type_value)
+            if queue_type_value is not None
+            else QueueType.FIFO
+            if queue_name is not None and queue_name.endswith('.fifo')
+            else QueueType.STANDARD
+        )
+
+    @classmethod
+    def _service_from_obj(
+        cls,
+        obj: StrAnyMap,
+    ) -> QueueService:
+        """Return the normalized queue service, defaulting to AWS SQS."""
+        service = obj.get('service')
+        return (
+            QueueService.AWS_SQS
+            if service is None
+            else QueueService.coerce(service)
+        )
+
     # -- Class Methods -- #
 
     @classmethod
@@ -140,15 +185,8 @@ class ConnectorQueue(ConnectorBase):
         ValueError
             If an SQS FIFO queue name does not end with ``'.fifo'``.
         """
-        queue_name = ValueParser.optional_str(obj.get('queue_name', obj.get('queue')))
-        queue_type_value = obj.get('queue_type')
-        queue_type = (
-            QueueType.coerce(queue_type_value)
-            if queue_type_value is not None
-            else QueueType.FIFO
-            if queue_name is not None and queue_name.endswith('.fifo')
-            else QueueType.STANDARD
-        )
+        queue_name = cls._queue_name_from_obj(obj)
+        queue_type = cls._queue_type_from_obj(obj, queue_name=queue_name)
         if queue_type is QueueType.FIFO and (
             queue_name is not None and not queue_name.endswith('.fifo')
         ):
@@ -156,7 +194,7 @@ class ConnectorQueue(ConnectorBase):
 
         return cls(
             name=cls._name_from_obj(obj),
-            service=QueueService.coerce(obj.get('service', QueueService.AWS_SQS)),
+            service=cls._service_from_obj(obj),
             queue_type=queue_type,
             queue_name=queue_name,
             url=cls._optional_str(obj, 'url'),
