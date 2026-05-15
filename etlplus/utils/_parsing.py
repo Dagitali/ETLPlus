@@ -177,16 +177,6 @@ class MappingFieldParser(ValueParser):
     - This class only extracts typed fields once a mapping is already known.
     """
 
-    # -- Internal Static Methods -- #
-
-    @staticmethod
-    def _str_field(
-        data: Mapping[str, object],
-        key: str,
-    ) -> str | None:
-        """Return one string field value when present and valid."""
-        return value if isinstance(value := data.get(key), str) else None
-
     # -- Static Methods -- #
 
     @staticmethod
@@ -209,7 +199,7 @@ class MappingFieldParser(ValueParser):
         str | None
             The string value if present and valid, otherwise None.
         """
-        return MappingFieldParser._str_field(data, key)
+        return value if isinstance(value := data.get(key), str) else None
 
     @staticmethod
     def require_str(
@@ -240,7 +230,7 @@ class MappingFieldParser(ValueParser):
         TypeError
             If *key* is missing or its value is not a string.
         """
-        if (value := MappingFieldParser._str_field(data, key)) is not None:
+        if (value := MappingFieldParser.required_str(data, key)) is not None:
             return value
         raise TypeError(f'{label} requires a "{key}" (str)')
 
