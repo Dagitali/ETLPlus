@@ -23,6 +23,7 @@ from etlplus.connector import ConnectorQueue
 from tests.pytest_shared_support import get_cloud_database_provider_case
 
 from .pytest_connector_support import assert_connector_fields
+from .pytest_connector_support import get_queue_connector_provider_case
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -31,6 +32,7 @@ from .pytest_connector_support import assert_connector_fields
 # SECTION: HELPERS ========================================================== #
 
 
+AWS_SQS_CASE = get_queue_connector_provider_case('aws-sqs')
 BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
 SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
 
@@ -145,13 +147,9 @@ class TestParseConnector:
                 id='api',
             ),
             pytest.param(
-                {
-                    'name': 'events',
-                    'type': 'sqs',
-                    'queue_name': 'events.fifo',
-                },
+                AWS_SQS_CASE.connector_payload(type='sqs'),
                 ConnectorQueue,
-                {'name': 'events', 'queue_name': 'events.fifo'},
+                AWS_SQS_CASE.expected_connector_attrs(),
                 id='queue',
             ),
         ],
