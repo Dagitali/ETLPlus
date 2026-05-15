@@ -94,6 +94,20 @@ class TestConnectorDb:
                 id='infers-bigquery-provider',
             ),
             pytest.param(
+                BIGQUERY_CASE.connector_payload(
+                    include_provider=False,
+                    omit_fields=('location',),
+                    name='warehouse',
+                )
+                | {'provider': None, 'engine': 'gcp-bigquery'},
+                BIGQUERY_CASE.expected_connector_attrs(
+                    name='warehouse',
+                    omit_fields=('location',),
+                )
+                | {'type': DataConnectorType.DATABASE},
+                id='engine-used-when-provider-empty',
+            ),
+            pytest.param(
                 SNOWFLAKE_CASE.connector_payload(
                     use_alias=True,
                     name='snowflake_wh',
