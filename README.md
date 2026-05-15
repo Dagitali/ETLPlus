@@ -240,12 +240,22 @@ For runtime cloud-storage support:
 pip install -e ".[storage]"
 ```
 
+For optional BigQuery connector metadata and readiness support:
+
+```bash
+pip install -e ".[database-bigquery]"
+```
+
 The `file` extra is now reserved for the remaining scientific and specialty format dependencies such
 as `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`.
 
 That split is also intentional: the `file` extra is reserved for narrower optional workflows rather
 than for the built-in formats that ETLPlus expects most users of the default runtime to have
 available.
+
+The `database-bigquery` extra installs the optional packages used by the additive BigQuery database
+connector shape (`provider: bigquery` plus `project` and `dataset` when you are not supplying a
+connection string).
 
 <!-- docs:getting-started-installation:end -->
 
