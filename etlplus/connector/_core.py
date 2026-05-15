@@ -14,6 +14,7 @@ from typing import Self
 from typing import runtime_checkable
 
 from ..utils import MappingFieldParser
+from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ._enums import DataConnectorType
 
@@ -65,8 +66,14 @@ class ConnectorProtocol(Protocol):
         -------
         Self
             Parsed connector instance.
+
+        Raises
+        ------
+        NotImplementedError
+            Protocol placeholder. Concrete connector classes provide the
+            implementation.
         """
-        ...
+        raise NotImplementedError
 
 
 # SECTION: ABSTRACT BASE DATA CLASSES ======================================= #
@@ -94,6 +101,18 @@ class ConnectorBase(ABC, ConnectorProtocol):
     def _name_from_obj(cls, obj: StrAnyMap) -> str:
         """Return the required connector name for this connector class."""
         return MappingFieldParser.require_str(obj, 'name', label=cls.__name__)
+
+    @classmethod
+    def _optional_str(
+        cls,
+        obj: StrAnyMap,
+        *field_names: str,
+    ) -> str | None:
+        """Return the first optional string field present in *obj*."""
+        for field_name in field_names:
+            if field_name in obj:
+                return ValueParser.optional_str(obj.get(field_name))
+        return None
 
     # -- Class Methods -- #
 
