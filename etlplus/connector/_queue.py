@@ -14,6 +14,7 @@ Notes
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
@@ -42,6 +43,18 @@ __all__ = [
     'ConnectorQueue',
     'ConnectorQueueConfigDict',
 ]
+
+
+type QueueConfigFactory = Callable[[StrAnyMap], QueueConfig]
+
+
+_QUEUE_CONFIG_FACTORIES: dict[QueueService, QueueConfigFactory] = {
+    QueueService.AWS_SQS: AwsSqsQueue.from_obj,
+    QueueService.AZURE_SERVICE_BUS: AzureServiceBusQueue.from_obj,
+    QueueService.GCP_PUBSUB: GcpPubSubQueue.from_obj,
+    QueueService.AMQP: AmqpQueue.from_obj,
+    QueueService.REDIS: RedisQueue.from_obj,
+}
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -146,8 +159,8 @@ class ConnectorQueue(ConnectorBase):
             service=QueueService.coerce(obj.get('service', QueueService.AWS_SQS)),
             queue_type=queue_type,
             queue_name=queue_name,
-            url=ValueParser.optional_str(obj.get('url')),
-            region=ValueParser.optional_str(obj.get('region')),
+            url=cls._optional_str(obj, 'url'),
+            region=cls._optional_str(obj, 'region'),
             options=MappingParser.to_dict(obj.get('options')),
         )
 
@@ -175,16 +188,9 @@ class ConnectorQueue(ConnectorBase):
         for field_name in ('queue_name', 'region', 'url'):
             if (value := getattr(self, field_name)) is not None:
                 data[field_name] = value
-        match self.service:
-            case QueueService.AWS_SQS:
-                return AwsSqsQueue.from_obj(data)
-            case QueueService.AZURE_SERVICE_BUS:
-                return AzureServiceBusQueue.from_obj(data)
-            case QueueService.GCP_PUBSUB:
-                return GcpPubSubQueue.from_obj(data)
-            case QueueService.AMQP:
-                return AmqpQueue.from_obj(data)
-            case QueueService.REDIS:
-                return RedisQueue.from_obj(data)
-            case _:
-                raise ValueError(f'Unsupported queue service: {self.service!r}')
+        try:
+            return _QUEUE_CONFIG_FACTORIES[self.service](data)
+        except KeyError as exc:
+            raise ValueError(
+                f'Unsupported queue service: {self.service!r}',
+            ) from exc
