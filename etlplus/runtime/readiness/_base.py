@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 
 from ..._config import Config
 from ...connector import Connector
+from ...connector import ConnectorDb
 from ...file import File
 from ...file import FileFormat
 from ...storage import StorageScheme
@@ -357,11 +358,9 @@ class ReadinessSupportPolicy:
                     'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
                 )
             case 'missing connection_string or bigquery project/dataset':
-                return (
-                    'Set "connection_string" to a database DSN or SQLAlchemy-style '
-                    'URL, or define both "project" and "dataset" for this '
-                    'BigQuery connector.'
-                )
+                return ConnectorDb.provider_missing_connection_guidance('bigquery')
+            case 'missing connection_string or snowflake account/database/schema':
+                return ConnectorDb.provider_missing_connection_guidance('snowflake')
             case issue_text if issue_text.startswith('unknown api reference: '):
                 if api_reference:
                     return (

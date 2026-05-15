@@ -20,12 +20,20 @@ from etlplus.connector import ConnectorApi
 from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorFile
 from etlplus.connector import ConnectorQueue
+from tests.pytest_shared_support import get_cloud_database_provider_case
 
 from .pytest_connector_support import assert_connector_fields
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
+SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -92,24 +100,38 @@ class TestParseConnector:
                 id='file',
             ),
             pytest.param(
-                {
-                    'name': 'warehouse',
-                    'type': 'database',
-                    'provider': 'bigquery',
-                    'project': 'analytics-project',
-                    'dataset': 'warehouse',
-                    'table': 'events',
-                    'engine': 'sqlite',
-                },
+                BIGQUERY_CASE.connector_payload(
+                    name='warehouse',
+                    table='events',
+                )
+                | {'engine': 'sqlite'},
                 ConnectorDb,
                 {
                     'name': 'warehouse',
                     'provider': 'bigquery',
-                    'project': 'analytics-project',
-                    'dataset': 'warehouse',
+                    'project': BIGQUERY_CASE.metadata['project'],
+                    'dataset': BIGQUERY_CASE.metadata['dataset'],
                     'table': 'events',
                 },
                 id='database-provider',
+            ),
+            pytest.param(
+                SNOWFLAKE_CASE.connector_payload(
+                    use_alias=True,
+                    name='snowflake-events',
+                    table='events',
+                ),
+                ConnectorDb,
+                {
+                    'name': 'snowflake-events',
+                    'provider': 'snowflake',
+                    'account': SNOWFLAKE_CASE.metadata['account'],
+                    'database': SNOWFLAKE_CASE.metadata['database'],
+                    'schema': SNOWFLAKE_CASE.metadata['schema'],
+                    'warehouse': SNOWFLAKE_CASE.metadata['warehouse'],
+                    'table': 'events',
+                },
+                id='database-snowflake-provider',
             ),
             pytest.param(
                 {

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..._config import Config
+from ...connector import ConnectorDb
 from ...connector import DataConnectorType
 from ...queue import QueueService
 from ...utils import TextNormalizer
@@ -41,10 +42,13 @@ __all__ = [
 class _ResolvedConnector:
     """Normalized connector state reused by readiness policies."""
 
+    database_account: str | None
     connector: object
     database_dataset: str | None
+    database_name: str | None
     database_project: str | None
     database_provider: str
+    database_schema: str | None
     format_name: str
     name: str
     path: str | None
@@ -101,9 +105,15 @@ def _iter_connectors(
     """Return normalized connector rows reused across readiness policies."""
     return tuple(
         _ResolvedConnector(
+            database_account=account
+            if isinstance(account := getattr(connector, 'account', None), str)
+            else None,
             connector=connector,
             database_dataset=dataset
             if isinstance(dataset := getattr(connector, 'dataset', None), str)
+            else None,
+            database_name=database_name
+            if isinstance(database_name := getattr(connector, 'database', None), str)
             else None,
             database_project=project
             if isinstance(project := getattr(connector, 'project', None), str)
@@ -111,6 +121,9 @@ def _iter_connectors(
             database_provider=TextNormalizer.normalize(
                 str(getattr(connector, 'provider', '') or ''),
             ),
+            database_schema=schema
+            if isinstance(schema := getattr(connector, 'schema', None), str)
+            else None,
             format_name=TextNormalizer.normalize(
                 str(getattr(connector, 'format', '') or ''),
             ),
@@ -257,18 +270,20 @@ class ConnectorReadinessPolicy:
                     'connection_string',
                     None,
                 ):
+                    provider_issue = ConnectorDb.provider_missing_connection_issue(
+                        resolved.database_provider,
+                    )
+                    missing_provider_fields = ConnectorDb.missing_provider_fields(
+                        resolved.connector,
+                        provider=resolved.database_provider,
+                    )
                     gaps.append(
                         _connector_gap_row(
                             connector=resolved.name,
                             connector_type_str=resolved.type_name,
                             issue=(
-                                'missing connection_string or bigquery '
-                                'project/dataset'
-                                if resolved.database_provider == 'bigquery'
-                                and not (
-                                    resolved.database_project
-                                    and resolved.database_dataset
-                                )
+                                provider_issue
+                                if provider_issue and missing_provider_fields
                                 else 'missing connection_string'
                             ),
                             role=resolved.role,

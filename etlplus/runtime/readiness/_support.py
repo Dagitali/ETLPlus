@@ -87,9 +87,9 @@ class ResolvedConfigContext:
 # SECTION: CONSTANTS ======================================================== #
 
 
-# TODO: Conform constants for AWS and Azure to a more systematic structure with
-# TODO: provider-specific sections and hints for other services (e.g. GCP,
-# TODO: Databricks, Snowflake).
+# TODO: Conform constants for provider hints to a more systematic structure
+# TODO: with provider-specific sections and guidance for additional services
+# TODO: (for example, GCP and Databricks).
 
 AWS_ENV_HINTS: Final[tuple[str, ...]] = (
     'AWS_ACCESS_KEY_ID',
@@ -115,6 +115,11 @@ DATABASE_PROVIDER_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
         ('google.cloud.bigquery', 'sqlalchemy_bigquery'),
         'google-cloud-bigquery/sqlalchemy-bigquery',
         'database-bigquery',
+    ),
+    'snowflake': RequirementSpec(
+        ('snowflake.connector', 'snowflake.sqlalchemy'),
+        'snowflake-connector-python/snowflake-sqlalchemy',
+        'database-snowflake',
     ),
 }
 

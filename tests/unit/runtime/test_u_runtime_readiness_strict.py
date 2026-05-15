@@ -14,12 +14,20 @@ from typing import cast
 import pytest
 
 import etlplus.runtime.readiness._strict as readiness_strict_mod
+from tests.pytest_shared_support import get_cloud_database_provider_case
 
 from .pytest_runtime_readiness import build_issue_row as _issue
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
+SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -230,6 +238,85 @@ class TestReadinessReportBuilderStrict:
                 section='sources',
             ),
         ]
+
+    @pytest.mark.parametrize(
+        ('raw', 'expected_names', 'expected_issues'),
+        [
+            pytest.param(
+                {
+                    'sources': [
+                        BIGQUERY_CASE.connector_payload(
+                            omit_fields=('dataset', 'location'),
+                        ),
+                    ],
+                },
+                {BIGQUERY_CASE.connector_name},
+                [
+                    _issue(
+                        connector=BIGQUERY_CASE.connector_name,
+                        guidance=(
+                            'Set "connection_string" to a database DSN or '
+                            'SQLAlchemy-style URL, or define both "project" '
+                            'and "dataset" for this BigQuery connector.'
+                        ),
+                        index=0,
+                        issue='missing connection_string or bigquery project/dataset',
+                        missing_fields=['dataset'],
+                        provider='bigquery',
+                        section='sources',
+                    ),
+                ],
+                id='bigquery-provider-gap',
+            ),
+            pytest.param(
+                {
+                    'sources': [
+                        SNOWFLAKE_CASE.connector_payload(
+                            omit_fields=('schema', 'warehouse'),
+                        ),
+                    ],
+                },
+                {SNOWFLAKE_CASE.connector_name},
+                [
+                    _issue(
+                        connector=SNOWFLAKE_CASE.connector_name,
+                        guidance=(
+                            'Set "connection_string" to a database DSN or '
+                            'SQLAlchemy-style URL, or define "account", '
+                            '"database", and "schema" for this Snowflake '
+                            'connector.'
+                        ),
+                        index=0,
+                        issue=(
+                            'missing connection_string '
+                            'or snowflake account/database/schema'
+                        ),
+                        missing_fields=['schema'],
+                        provider='snowflake',
+                        section='sources',
+                    ),
+                ],
+                id='snowflake-provider-gap',
+            ),
+        ],
+    )
+    def test_strict_connector_names_report_provider_specific_metadata_gaps(
+        self,
+        raw: dict[str, object],
+        expected_names: set[str],
+        expected_issues: list[dict[str, object]],
+    ) -> None:
+        """Strict connector validation should surface provider metadata gaps."""
+        issues: list[dict[str, Any]] = []
+
+        names = readiness_strict_mod.StrictConfigValidator.connector_names(
+            raw=raw,
+            section='sources',
+            issues=issues,
+        )
+
+        assert names == expected_names
+        assert cast(list[dict[str, object]], issues) == expected_issues
 
     @pytest.mark.parametrize(
         (

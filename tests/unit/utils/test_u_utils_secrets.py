@@ -102,7 +102,9 @@ class TestSecretResolver:
         [
             pytest.param('secret:', None, id='empty-implicit-env-key'),
             pytest.param(
-                'secret:env:', {'API_TOKEN': 'env-secret'}, id='empty-explicit-env-key',
+                'secret:env:',
+                {'API_TOKEN': 'env-secret'},
+                id='empty-explicit-env-key',
             ),
         ],
     )
@@ -119,7 +121,10 @@ class TestSecretResolver:
         [
             pytest.param('', {'API_TOKEN': 'env-secret'}, None, id='empty-env-key'),
             pytest.param(
-                'service.password', {}, None, id='missing-secrets-file-env-var',
+                'service.password',
+                {},
+                None,
+                id='missing-secrets-file-env-var',
             ),
             pytest.param(
                 'service.password',

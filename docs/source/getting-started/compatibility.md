@@ -35,6 +35,7 @@ packaging and entrypoint regressions before release.
 | Docs | `pip install -e ".[docs]"` | Sphinx and Read the Docs-compatible documentation builds. |
 | File extras | `pip install -e ".[file]"` | Remaining scientific and specialty format dependencies such as `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`. |
 | BigQuery connector extra | `pip install -e ".[database-bigquery]"` | Optional BigQuery connector metadata/readiness support via `provider: bigquery` plus `project` and `dataset` fields when no connection string is supplied. |
+| Snowflake connector extra | `pip install -e ".[database-snowflake]"` | Optional Snowflake connector metadata/readiness support via `provider: snowflake` plus `account`, `database`, and `schema` fields when no connection string is supplied. |
 | Storage extras | `pip install -e ".[storage]"` | Remote storage backends for `s3://`, `azure-blob://`, `abfs://`, and `hdfs://` locations through `etlplus.storage` and `etlplus.file.File`. |
 
 The broad base runtime is intentional. For the `v1.x` stable line, ETLPlus treats the documented
@@ -43,7 +44,8 @@ supported experience, so their dependencies stay in the base install rather than
 multiple extras. The `file` extra is reserved for narrower scientific and specialty workflows, and
 the `storage` extra is reserved for optional remote-storage backends. The `database-bigquery` extra
 is reserved for optional BigQuery connector metadata and readiness checks rather than the default
-runtime surface.
+runtime surface. The `database-snowflake` extra is reserved for optional Snowflake connector
+metadata and readiness checks rather than the default runtime surface.
 
 ## Release interpretation
 
