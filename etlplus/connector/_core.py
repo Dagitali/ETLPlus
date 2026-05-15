@@ -120,8 +120,10 @@ class ConnectorBase(ABC, ConnectorProtocol):
     ) -> str | None:
         """Return the first optional string field present in *obj*."""
         for field_name in field_names:
-            if field_name in obj:
-                return ValueParser.optional_str(obj.get(field_name))
+            if field_name not in obj:
+                continue
+            if (value := ValueParser.optional_str(obj.get(field_name))) is not None:
+                return value
         return None
 
     @classmethod
