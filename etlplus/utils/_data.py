@@ -14,7 +14,6 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from typing import TextIO
-from typing import TypeGuard
 from typing import cast
 
 from ._types import JSONData
@@ -38,20 +37,13 @@ __all__ = [
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _is_object_list(
-    value: object,
-) -> TypeGuard[JSONList]:
-    """Return whether *value* is a list of dictionary objects."""
-    return isinstance(value, list) and all(isinstance(item, dict) for item in value)
-
-
 def _record_payload_or_none(
     value: object,
 ) -> JSONData | None:
     """Return one validated record payload or ``None`` for unsupported shapes."""
     if isinstance(value, dict):
         return cast(JSONDict, value)
-    if _is_object_list(value):
+    if isinstance(value, list) and all(isinstance(item, dict) for item in value):
         return value
     return None
 
