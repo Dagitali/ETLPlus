@@ -15,6 +15,7 @@ from ...connector import DataConnectorType
 from ...queue import QueueService
 from ...utils import TextNormalizer
 from ._base import ReadinessSupportPolicy
+from ._support import DATABASE_PROVIDER_EXTRA_REQUIREMENTS
 from ._support import FORMAT_EXTRA_REQUIREMENTS
 from ._support import QUEUE_SERVICE_EXTRA_REQUIREMENTS
 from ._support import SCHEME_EXTRA_REQUIREMENTS
@@ -41,6 +42,9 @@ class _ResolvedConnector:
     """Normalized connector state reused by readiness policies."""
 
     connector: object
+    database_dataset: str | None
+    database_project: str | None
+    database_provider: str
     format_name: str
     name: str
     path: str | None
@@ -98,6 +102,15 @@ def _iter_connectors(
     return tuple(
         _ResolvedConnector(
             connector=connector,
+            database_dataset=dataset
+            if isinstance(dataset := getattr(connector, 'dataset', None), str)
+            else None,
+            database_project=project
+            if isinstance(project := getattr(connector, 'project', None), str)
+            else None,
+            database_provider=TextNormalizer.normalize(
+                str(getattr(connector, 'provider', '') or ''),
+            ),
             format_name=TextNormalizer.normalize(
                 str(getattr(connector, 'format', '') or ''),
             ),
@@ -248,7 +261,16 @@ class ConnectorReadinessPolicy:
                         _connector_gap_row(
                             connector=resolved.name,
                             connector_type_str=resolved.type_name,
-                            issue='missing connection_string',
+                            issue=(
+                                'missing connection_string or bigquery '
+                                'project/dataset'
+                                if resolved.database_provider == 'bigquery'
+                                and not (
+                                    resolved.database_project
+                                    and resolved.database_dataset
+                                )
+                                else 'missing connection_string'
+                            ),
                             role=resolved.role,
                         ),
                     )
@@ -282,13 +304,33 @@ class ConnectorReadinessPolicy:
         """
         rows: list[ReadinessRow] = []
         for resolved in _iter_connectors(cfg):
+            if resolved.database_provider in DATABASE_PROVIDER_EXTRA_REQUIREMENTS:
+                requirement = DATABASE_PROVIDER_EXTRA_REQUIREMENTS[
+                    resolved.database_provider
+                ]
+                if not requirement.is_available(
+                    availability_checker=package_available,
+                ):
+                    rows.append(
+                        cls.requirement_row(
+                            connector=resolved.name,
+                            detected_database_provider=resolved.database_provider,
+                            reason=(
+                                f'{resolved.database_provider} database connector '
+                                f'requires {requirement.package}'
+                            ),
+                            requirement=requirement,
+                            role=resolved.role,
+                        ),
+                    )
+
             if resolved.path:
                 scheme = ReadinessSupportPolicy.coerce_storage_scheme(resolved.path)
-                requirement = SCHEME_EXTRA_REQUIREMENTS.get(scheme or '')
+                scheme_requirement = SCHEME_EXTRA_REQUIREMENTS.get(scheme or '')
                 if (
                     scheme
-                    and requirement
-                    and not requirement.is_available(
+                    and scheme_requirement
+                    and not scheme_requirement.is_available(
                         availability_checker=package_available,
                     )
                 ):
@@ -297,9 +339,10 @@ class ConnectorReadinessPolicy:
                             connector=resolved.name,
                             detected_scheme=scheme,
                             reason=(
-                                f'{scheme} storage path requires {requirement.package}'
+                                f'{scheme} storage path requires '
+                                f'{scheme_requirement.package}'
                             ),
-                            requirement=requirement,
+                            requirement=scheme_requirement,
                             role=resolved.role,
                         ),
                     )
@@ -347,8 +390,8 @@ class ConnectorReadinessPolicy:
                     )
                 continue
 
-            requirement = FORMAT_EXTRA_REQUIREMENTS.get(resolved.format_name)
-            if requirement and not requirement.is_available(
+            format_requirement = FORMAT_EXTRA_REQUIREMENTS.get(resolved.format_name)
+            if format_requirement and not format_requirement.is_available(
                 availability_checker=package_available,
             ):
                 rows.append(
@@ -357,9 +400,9 @@ class ConnectorReadinessPolicy:
                         detected_format=resolved.format_name,
                         reason=(
                             f'{resolved.format_name} format requires '
-                            f'{requirement.package}'
+                            f'{format_requirement.package}'
                         ),
-                        requirement=requirement,
+                        requirement=format_requirement,
                         role=resolved.role,
                     ),
                 )
@@ -465,6 +508,7 @@ class ConnectorReadinessPolicy:
     def requirement_row(
         *,
         connector: str,
+        detected_database_provider: str | None = None,
         detected_format: str | None = None,
         detected_queue_service: str | None = None,
         detected_scheme: str | None = None,
@@ -477,6 +521,7 @@ class ConnectorReadinessPolicy:
             'connector': connector,
             'extra': requirement.extra or '',
             'guidance': ReadinessSupportPolicy.missing_requirement_guidance(
+                detected_database_provider=detected_database_provider,
                 detected_format=detected_format,
                 detected_queue_service=detected_queue_service,
                 detected_scheme=detected_scheme,
@@ -487,6 +532,8 @@ class ConnectorReadinessPolicy:
             'reason': reason,
             'role': role,
         }
+        if detected_database_provider is not None:
+            row['detected_database_provider'] = detected_database_provider
         if detected_format is not None:
             row['detected_format'] = detected_format
         if detected_queue_service is not None:

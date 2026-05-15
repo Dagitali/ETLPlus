@@ -36,8 +36,12 @@ def _connector_checks(cfg: object) -> list[dict[str, object]]:
         connector_gap_rows_fn=(
             readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows
         ),
-        make_check=readiness_builder_mod.ReadinessReportBuilder.make_check,
-        package_available=readiness_builder_mod.ReadinessReportBuilder.package_available,
+        make_check=(
+            readiness_builder_mod.ReadinessReportBuilder.make_check
+        ),
+        package_available=(
+            readiness_builder_mod.ReadinessReportBuilder.package_available
+        ),
     )
 
 
@@ -103,7 +107,10 @@ class TestReadinessReportBuilderConnectors:
             targets=[
                 SimpleNamespace(
                     connection_string=None,
+                    dataset=None,
                     name='db-target',
+                    project='analytics-project',
+                    provider='bigquery',
                     type='database',
                 ),
             ],
@@ -147,9 +154,11 @@ class TestReadinessReportBuilderConnectors:
             _connector_gap(
                 connector='db-target',
                 guidance=(
-                    'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
+                    'Set "connection_string" to a database DSN or SQLAlchemy-style '
+                    'URL, or define both "project" and "dataset" for this '
+                    'BigQuery connector.'
                 ),
-                issue='missing connection_string',
+                issue='missing connection_string or bigquery project/dataset',
                 role='target',
                 connector_type='database',
             ),
@@ -269,6 +278,49 @@ class TestReadinessReportBuilderConnectors:
             ),
         ]
 
+    def test_connector_missing_requirement_rows_cover_database_provider_extras(
+        self,
+    ) -> None:
+        """Test requirement rows for provider-specific database extras."""
+        cfg = _cfg(
+            targets=[
+                SimpleNamespace(
+                    connection_string=None,
+                    dataset='warehouse',
+                    name='db-target',
+                    project='analytics-project',
+                    provider='bigquery',
+                    type='database',
+                ),
+            ],
+        )
+
+        rows = (
+            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
+                cfg=cast(Any, cfg),
+                package_available=lambda _module: False,
+            )
+        )
+
+        assert rows == [
+            _missing_requirement(
+                connector='db-target',
+                detected_database_provider='bigquery',
+                extra='database-bigquery',
+                guidance=(
+                    'Install google-cloud-bigquery/sqlalchemy-bigquery directly '
+                    'or install the ETLPlus "database-bigquery" extra. Required '
+                    'for "bigquery" database connectors.'
+                ),
+                missing_package='google-cloud-bigquery/sqlalchemy-bigquery',
+                reason=(
+                    'bigquery database connector requires '
+                    'google-cloud-bigquery/sqlalchemy-bigquery'
+                ),
+                role='target',
+            ),
+        ]
+
     def test_connector_readiness_checks_report_all_ok_states(self) -> None:
         """Test readiness rows when gaps and optional dependency gaps are absent."""
         cfg = _cfg()
@@ -367,7 +419,8 @@ class TestReadinessReportBuilderConnectors:
     ) -> None:
         """Missing-dependency guidance should fall back to one plain install hint."""
         assert (
-            readiness_connectors_mod.ReadinessSupportPolicy.missing_requirement_guidance(
+            readiness_connectors_mod.ReadinessSupportPolicy
+            .missing_requirement_guidance(
                 package='tables',
                 extra=None,
             )
@@ -646,6 +699,44 @@ class TestReadinessReportBuilderConnectors:
             'missing_package': 'pyarrow',
             'reason': 'csv format requires pyarrow',
             'role': 'target',
+        }
+
+    def test_requirement_row_keeps_database_provider_context(
+        self,
+    ) -> None:
+        """Requirement rows should preserve provider-specific DB context."""
+        requirement = RequirementSpec(
+            ('google.cloud.bigquery', 'sqlalchemy_bigquery'),
+            'google-cloud-bigquery/sqlalchemy-bigquery',
+            'database-bigquery',
+        )
+
+        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
+            connector='warehouse',
+            detected_database_provider='bigquery',
+            reason=(
+                'bigquery database connector requires '
+                'google-cloud-bigquery/sqlalchemy-bigquery'
+            ),
+            requirement=requirement,
+            role='source',
+        )
+
+        assert row == {
+            'connector': 'warehouse',
+            'detected_database_provider': 'bigquery',
+            'extra': 'database-bigquery',
+            'guidance': (
+                'Install google-cloud-bigquery/sqlalchemy-bigquery directly or '
+                'install the ETLPlus "database-bigquery" extra. Required for '
+                '"bigquery" database connectors.'
+            ),
+            'missing_package': 'google-cloud-bigquery/sqlalchemy-bigquery',
+            'reason': (
+                'bigquery database connector requires '
+                'google-cloud-bigquery/sqlalchemy-bigquery'
+            ),
+            'role': 'source',
         }
 
     def test_requirement_row_keeps_format_without_scheme(

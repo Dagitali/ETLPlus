@@ -15,9 +15,11 @@ Notes
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Final
 from typing import Self
 from typing import TypedDict
 
+from ..utils import TextNormalizer
 from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ._core import ConnectorBase
@@ -31,6 +33,17 @@ __all__ = [
     'ConnectorDb',
     'ConnectorDbConfigDict',
 ]
+
+
+_DATABASE_PROVIDER_ALIASES: Final[dict[str, str]] = {
+    'bigquery': 'bigquery',
+    'bq': 'bigquery',
+    'gcp-bigquery': 'bigquery',
+    'google-bigquery': 'bigquery',
+    'mssql': 'sqlserver',
+    'postgresql': 'postgres',
+    'sqlserver': 'sqlserver',
+}
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -48,6 +61,10 @@ class ConnectorDbConfigDict(TypedDict, total=False):
     name: str
     type: ConnectorType
     connection_string: str
+    provider: str
+    project: str
+    dataset: str
+    location: str
     query: str
     table: str
     mode: str
@@ -67,6 +84,14 @@ class ConnectorDb(ConnectorBase):
         Connector kind, always ``'database'``.
     connection_string : str | None
         Connection string/DSN for the database.
+    provider : str | None
+        Optional normalized database provider hint.
+    project : str | None
+        Optional provider-specific project identifier.
+    dataset : str | None
+        Optional provider-specific dataset identifier.
+    location : str | None
+        Optional provider-specific regional location hint.
     query : str | None
         Query to execute for extraction (optional).
     table : str | None
@@ -79,9 +104,28 @@ class ConnectorDb(ConnectorBase):
 
     type: DataConnectorType = DataConnectorType.DATABASE
     connection_string: str | None = None
+    provider: str | None = None
+    project: str | None = None
+    dataset: str | None = None
+    location: str | None = None
     query: str | None = None
     table: str | None = None
     mode: str | None = None
+
+    # -- Internal Class Methods -- #
+
+    @classmethod
+    def _provider_from_obj(
+        cls,
+        obj: StrAnyMap,
+    ) -> str | None:
+        """Return one normalized provider hint when present."""
+        explicit = ValueParser.optional_str(obj.get('provider', obj.get('engine')))
+        if explicit is not None and (normalized := TextNormalizer.normalize(explicit)):
+            return _DATABASE_PROVIDER_ALIASES.get(normalized, normalized)
+        if any(obj.get(key) is not None for key in ('project', 'dataset', 'location')):
+            return 'bigquery'
+        return None
 
     # -- Class Methods -- #
 
@@ -108,6 +152,10 @@ class ConnectorDb(ConnectorBase):
             connection_string=ValueParser.optional_str(
                 obj.get('connection_string'),
             ),
+            provider=cls._provider_from_obj(obj),
+            project=ValueParser.optional_str(obj.get('project')),
+            dataset=ValueParser.optional_str(obj.get('dataset')),
+            location=ValueParser.optional_str(obj.get('location')),
             query=ValueParser.optional_str(obj.get('query')),
             table=ValueParser.optional_str(obj.get('table')),
             mode=ValueParser.optional_str(obj.get('mode')),
