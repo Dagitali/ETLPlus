@@ -232,6 +232,92 @@ class TestReadinessReportBuilderStrict:
         ]
 
     @pytest.mark.parametrize(
+        ('raw', 'expected_names', 'expected_issues'),
+        [
+            pytest.param(
+                {
+                    'sources': [
+                        {
+                            'name': 'warehouse_bigquery',
+                            'type': 'database',
+                            'provider': 'bigquery',
+                            'project': 'analytics-project',
+                        },
+                    ],
+                },
+                {'warehouse_bigquery'},
+                [
+                    _issue(
+                        connector='warehouse_bigquery',
+                        guidance=(
+                            'Set "connection_string" to a database DSN or '
+                            'SQLAlchemy-style URL, or define both "project" '
+                            'and "dataset" for this BigQuery connector.'
+                        ),
+                        index=0,
+                        issue='missing connection_string or bigquery project/dataset',
+                        missing_fields=['dataset'],
+                        provider='bigquery',
+                        section='sources',
+                    ),
+                ],
+                id='bigquery-provider-gap',
+            ),
+            pytest.param(
+                {
+                    'sources': [
+                        {
+                            'name': 'warehouse_snowflake',
+                            'type': 'database',
+                            'provider': 'snowflake',
+                            'account': 'acme.us-east-1',
+                            'database': 'ANALYTICS',
+                        },
+                    ],
+                },
+                {'warehouse_snowflake'},
+                [
+                    _issue(
+                        connector='warehouse_snowflake',
+                        guidance=(
+                            'Set "connection_string" to a database DSN or '
+                            'SQLAlchemy-style URL, or define "account", '
+                            '"database", and "schema" for this Snowflake '
+                            'connector.'
+                        ),
+                        index=0,
+                        issue=(
+                            'missing connection_string '
+                            'or snowflake account/database/schema'
+                        ),
+                        missing_fields=['schema'],
+                        provider='snowflake',
+                        section='sources',
+                    ),
+                ],
+                id='snowflake-provider-gap',
+            ),
+        ],
+    )
+    def test_strict_connector_names_report_provider_specific_metadata_gaps(
+        self,
+        raw: dict[str, object],
+        expected_names: set[str],
+        expected_issues: list[dict[str, object]],
+    ) -> None:
+        """Strict connector validation should surface provider metadata gaps."""
+        issues: list[dict[str, Any]] = []
+
+        names = readiness_strict_mod.StrictConfigValidator.connector_names(
+            raw=raw,
+            section='sources',
+            issues=issues,
+        )
+
+        assert names == expected_names
+        assert cast(list[dict[str, object]], issues) == expected_issues
+
+    @pytest.mark.parametrize(
         (
             'parse_connector',
             'raw',
