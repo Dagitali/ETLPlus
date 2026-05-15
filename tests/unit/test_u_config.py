@@ -430,8 +430,7 @@ jobs: []
         target = next(item for item in cfg.targets if item.name == 'target')
         assert getattr(source, 'path', None) == '/tmp/input.json'
         assert (
-            getattr(target, 'headers', {}).get('Authorization')
-            == 'Bearer file-secret'
+            getattr(target, 'headers', {}).get('Authorization') == 'Bearer file-secret'
         )
 
     def test_from_yaml_without_substitution_skips_token_resolution(
