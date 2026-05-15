@@ -286,8 +286,7 @@ def normalize_dependency_names(
     if not module_name:
         raise ValueError('module_name must not be an empty tuple')
     dependency_names = tuple(
-        _clean_dependency_name(name, label='module_name')
-        for name in module_name
+        _clean_dependency_name(name, label='module_name') for name in module_name
     )
     return dependency_names, normalized_pip_name or dependency_names[0]
 
