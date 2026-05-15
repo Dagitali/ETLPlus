@@ -204,9 +204,13 @@ class StrictConfigValidator:
                 )
                 continue
 
-            provider = ConnectorDb.normalize_provider(
-                ValueParser.optional_str(getattr(connector, 'provider', None)),
-            ) if isinstance(connector, ConnectorDb) else None
+            provider = (
+                ConnectorDb.normalize_provider(
+                    ValueParser.optional_str(getattr(connector, 'provider', None)),
+                )
+                if isinstance(connector, ConnectorDb)
+                else None
+            )
             missing_provider_fields = (
                 ConnectorDb.missing_provider_fields(connector, provider=provider)
                 if isinstance(connector, ConnectorDb)
