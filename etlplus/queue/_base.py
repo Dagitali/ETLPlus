@@ -6,7 +6,6 @@ Shared queue configuration protocols.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Any
 from typing import ClassVar
 from typing import Protocol
@@ -83,35 +82,34 @@ class ProviderQueueConfigMixin:
         }
 
     @staticmethod
-    def _optional_str_fields(
+    def _optional_str(
         obj: StrAnyMap,
-        *field_names: str,
-        aliases: Mapping[str, str] | None = None,
-    ) -> dict[str, str | None]:
+        field_name: str,
+        *,
+        alias: str | None = None,
+    ) -> str | None:
         """
-        Return parsed optional string constructor fields.
+        Return one parsed optional string field.
 
         Parameters
         ----------
         obj : StrAnyMap
             Input mapping with optional string-like fields.
-        *field_names : str
-            Constructor and preferred input field names to parse.
-        aliases : Mapping[str, str] | None, optional
-            Mapping of constructor field names to fallback input field names.
+        field_name : str
+            Preferred input field name to parse.
+        alias : str | None, optional
+            Fallback input field name when *field_name* is absent.
 
         Returns
         -------
-        dict[str, str | None]
-            Parsed optional string fields keyed by constructor field name.
+        str | None
+            Parsed optional string field.
         """
-        aliases = aliases or {}
-        return {
-            field_name: ValueParser.optional_str(
-                obj.get(field_name, obj.get(aliases.get(field_name, field_name))),
-            )
-            for field_name in field_names
-        }
+        if field_name in obj:
+            return ValueParser.optional_str(obj.get(field_name))
+        if alias is not None and alias in obj:
+            return ValueParser.optional_str(obj.get(alias))
+        return None
 
     # -- Internal Instance Methods -- #
 
@@ -168,5 +166,11 @@ class QueueConfigProtocol(Protocol):
         -------
         dict[str, Any]
             Queue metadata represented as a plain dictionary.
+
+        Raises
+        ------
+        NotImplementedError
+            Protocol placeholder. Concrete queue config classes provide the
+            implementation.
         """
-        ...
+        raise NotImplementedError
