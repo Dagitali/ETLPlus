@@ -34,6 +34,16 @@ __all__ = [
 _DEFAULT_TOKEN_PATTERN: Final[Pattern[str]] = re.compile(r'\$\{([^}]+)\}')
 
 
+def _merged_substitutions(
+    vars_map: StrAnyMap | None,
+    env_map: Mapping[str, object] | None,
+) -> tuple[tuple[str, Any], ...]:
+    """Return merged substitutions in replacement order."""
+    if not vars_map and not env_map:
+        return ()
+    return tuple(MappingParser.merge_to_dict(vars_map, env_map).items())
+
+
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -56,24 +66,6 @@ class SubstitutionResolver:
     vars_map: StrAnyMap | None = None
     env_map: Mapping[str, object] | None = None
 
-    # -- Getters -- #
-
-    @property
-    def secret_resolver(
-        self,
-    ) -> SecretResolver:
-        """Return the additive secret resolver for this substitution pass."""
-        return SecretResolver(self.env_map)
-
-    @property
-    def substitutions(self) -> tuple[tuple[str, Any], ...]:
-        """Return merged substitutions in replacement order."""
-        if not self.vars_map and not self.env_map:
-            return ()
-        return tuple(
-            MappingParser.merge_to_dict(self.vars_map, self.env_map).items(),
-        )
-
     # -- Instance Methods -- #
 
     def deep(
@@ -95,10 +87,11 @@ class SubstitutionResolver:
         Any
             New structure with substitutions applied where tokens were found.
         """
-        substitutions = self.substitutions
-        secret_resolver = self.secret_resolver
+        substitutions = _merged_substitutions(self.vars_map, self.env_map)
         if not substitutions and self.env_map is None:
             return value
+
+        secret_resolver = SecretResolver(self.env_map)
 
         def _apply(node: Any) -> Any:
             match node:

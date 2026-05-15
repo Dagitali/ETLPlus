@@ -39,13 +39,6 @@ class MappingParser:
     # -- Internal Static Methods -- #
 
     @staticmethod
-    def _item_name(
-        item: object,
-    ) -> str | None:
-        """Return one usable item name derived from a ``name`` attribute."""
-        return MappingParser._non_empty_str(getattr(item, 'name', None))
-
-    @staticmethod
     def _non_empty_str(
         value: object,
     ) -> str | None:
@@ -152,7 +145,11 @@ class MappingParser:
         """
         indexed: dict[str, ItemT] = {}
         for item in items:
-            if (name := MappingParser._item_name(item)) is None:
+            if (
+                name := MappingParser._non_empty_str(
+                    getattr(item, 'name', None),
+                )
+            ) is None:
                 continue
             if name in indexed:
                 raise ValueError(f'Duplicate {item_label} name: {name}')

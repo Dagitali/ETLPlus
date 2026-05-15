@@ -29,6 +29,7 @@ from etlplus.utils._parsing import SequenceParser
 from etlplus.utils._parsing import ValueParser
 from etlplus.utils._paths import PathHasher
 from etlplus.utils._paths import PathParser
+from etlplus.utils._secrets import SecretResolver
 from etlplus.utils._substitution import SubstitutionResolver
 from etlplus.utils._substitution import TokenReferenceCollector
 from etlplus.utils._text import TextChoiceResolver
@@ -50,6 +51,7 @@ STABLE_UTILS_EXPORTS = [
     ('MappingParser', MappingParser),
     ('NamedDependencyGraph', NamedDependencyGraph),
     ('PathParser', PathParser),
+    ('SecretResolver', SecretResolver),
     ('SequenceParser', SequenceParser),
     ('SubstitutionResolver', SubstitutionResolver),
     ('TextChoiceResolver', TextChoiceResolver),

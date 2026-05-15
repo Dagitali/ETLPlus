@@ -115,7 +115,12 @@ class TextChoiceResolver:
         str
             Normalized mapped value or configured fallback.
         """
-        return self.mapping.get(self.normalize(value), self.default)
+        return self.resolve_mapping(
+            self.mapping,
+            self.default,
+            value,
+            normalize=self.normalize,
+        )
 
     # -- Static Methods -- #
 

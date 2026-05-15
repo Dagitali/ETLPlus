@@ -150,5 +150,5 @@ class CoercibleStrEnum(enum.StrEnum):
         """
         try:
             return cls.coerce(value)
-        except (ValueError, TypeError, KeyError):
+        except ValueError:
             return None

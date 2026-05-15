@@ -102,11 +102,10 @@ def materialize_file_payload(
     if not file.exists():
         if isinstance(source, str):
             stripped = source.lstrip()
-            hint = (format_hint or '').strip().lower()
             if (
                 stripped.startswith(('{', '['))
                 or '\n' in source
-                or (hint == 'csv' and ',' in source)
+                or (normalized_hint == 'csv' and ',' in source)
             ):
                 return parse_text_payload(source, format_hint)
         raise FileNotFoundError(f'File not found: {source}')
@@ -136,6 +135,5 @@ def parse_text_payload(
     if effective == 'json':
         return JsonCodec.parse(text)
     if effective == 'csv':
-        reader = csv.DictReader(StringIO(text))
-        return [dict(row) for row in reader]
+        return [dict(row) for row in csv.DictReader(StringIO(text))]
     return text
