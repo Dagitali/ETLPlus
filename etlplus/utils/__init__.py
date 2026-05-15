@@ -26,6 +26,7 @@ from ._parsing import SequenceParser
 from ._parsing import ValueParser
 from ._paths import PathHasher
 from ._paths import PathParser
+from ._secrets import SecretResolver
 from ._substitution import SubstitutionResolver
 from ._substitution import TokenReferenceCollector
 from ._text import TextChoiceResolver
@@ -52,6 +53,7 @@ __all__ = [
     'MappingParser',
     'NamedDependencyGraph',
     'PathParser',
+    'SecretResolver',
     'SequenceParser',
     'SubstitutionResolver',
     'TextChoiceResolver',

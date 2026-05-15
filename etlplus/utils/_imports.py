@@ -205,15 +205,6 @@ def _clean_dependency_name(
     return cleaned
 
 
-def _clean_dependency_names(
-    values: tuple[str, ...],
-    *,
-    label: str = 'module_name',
-) -> tuple[str, ...]:
-    """Return stripped dependency names or raise a clear error."""
-    return tuple(_clean_dependency_name(value, label=label) for value in values)
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -240,9 +231,9 @@ def dependency_label(
     """
     if not dependency_names:
         raise ValueError('dependency_names must not be empty')
-    cleaned_names = _clean_dependency_names(
-        dependency_names,
-        label='dependency name',
+    cleaned_names = tuple(
+        _clean_dependency_name(name, label='dependency name')
+        for name in dependency_names
     )
     quoted = tuple(f'"{name}"' for name in cleaned_names)
     if len(quoted) == 1:
@@ -294,7 +285,10 @@ def normalize_dependency_names(
         return (dependency_display_name,), dependency_display_name
     if not module_name:
         raise ValueError('module_name must not be an empty tuple')
-    dependency_names = _clean_dependency_names(module_name, label='module_name')
+    dependency_names = tuple(
+        _clean_dependency_name(name, label='module_name')
+        for name in module_name
+    )
     return dependency_names, normalized_pip_name or dependency_names[0]
 
 

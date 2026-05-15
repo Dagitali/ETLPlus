@@ -48,16 +48,6 @@ class SecretResolver:
 
     # -- Internal Instance Methods -- #
 
-    def _parse_reference(
-        self,
-        remainder: str,
-    ) -> tuple[str, str]:
-        """Return the normalized provider and key for one secret reference."""
-        provider, separator, key = remainder.partition(':')
-        if not separator:
-            return ('env', provider)
-        return (provider, key)
-
     def _resolve_env_secret(
         self,
         key: str,
@@ -104,13 +94,16 @@ class SecretResolver:
         if not token_name.startswith('secret:'):
             return None
 
-        _, remainder = token_name.split(':', 1)
-        provider, key = self._parse_reference(remainder)
-        if provider == 'env':
-            return self._resolve_env_secret(key)
-        if provider == 'file':
-            return self._resolve_file_secret(key)
-        return None
+        provider, separator, key = token_name.removeprefix('secret:').partition(':')
+        provider, key = ('env', provider) if not separator else (provider, key)
+
+        match provider:
+            case 'env':
+                return self._resolve_env_secret(key)
+            case 'file':
+                return self._resolve_file_secret(key)
+            case _:
+                return None
 
     # -- Static Methods -- #
 
@@ -123,10 +116,9 @@ class SecretResolver:
             return None
 
         text = path.read_text(encoding='utf-8')
-        if path.suffix.lower() == '.json':
-            payload = json.loads(text)
-        else:
-            payload = yaml.safe_load(text)
+        payload = (
+            json.loads(text) if path.suffix.lower() == '.json' else yaml.safe_load(text)
+        )
 
         return MappingParser.to_dict(payload) if isinstance(payload, Mapping) else None
 

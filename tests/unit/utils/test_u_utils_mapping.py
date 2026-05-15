@@ -178,7 +178,7 @@ class TestMappingHelpers:
     )
     def test_index_named_items_skips_unusable_names(self, item: object) -> None:
         """Test that objects without usable names are not indexed."""
-        assert MappingParser.index_named_items([item], item_label='job') == {}
+        assert not MappingParser.index_named_items([item], item_label='job')
 
     def test_merge_to_dict_excludes_reserved_keys(self) -> None:
         """Test that later mappings win and excluded keys are removed."""

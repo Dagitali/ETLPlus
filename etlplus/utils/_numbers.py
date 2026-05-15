@@ -125,21 +125,6 @@ class _NumberParser:
     # -- Internal Class Methods -- #
 
     @classmethod
-    def _bounded[Num: (int, float)](
-        cls,
-        parser: Callable[[object, Num | None], Num | None],
-        value: object,
-        default: Num,
-        *,
-        bound: Callable[[Num, Num], Num],
-    ) -> Num:
-        """Parse a value and compare it with a required default bound."""
-        return bound(
-            default if (result := parser(value, default)) is None else result,
-            default,
-        )
-
-    @classmethod
     def _clamp[Num: (int, float)](
         cls,
         value: Num,
@@ -270,7 +255,7 @@ class FloatParser(_NumberParser):
         float
             Greater of *default* and parsed float value.
         """
-        return cls._bounded(cls.parse, value, default, bound=max)
+        return max(default, cls.parse(value, default) or default)
 
     @classmethod
     def at_most(
@@ -293,7 +278,7 @@ class FloatParser(_NumberParser):
         float
             Lesser of *default* and parsed float value.
         """
-        return cls._bounded(cls.parse, value, default, bound=min)
+        return min(default, cls.parse(value, default) or default)
 
     @classmethod
     def coerce(
@@ -302,7 +287,6 @@ class FloatParser(_NumberParser):
     ) -> float | None:
         """
         Best-effort float coercion that ignores booleans and blanks.
-
 
         Parameters
         ----------
@@ -434,7 +418,7 @@ class IntParser(_NumberParser):
         int
             Greater of *default* and the parsed integer value.
         """
-        return cls._bounded(cls.parse, value, default, bound=max)
+        return max(default, cls.parse(value, default) or default)
 
     @classmethod
     def at_most(
@@ -457,7 +441,7 @@ class IntParser(_NumberParser):
         int
             Lesser of *default* and the parsed integer value.
         """
-        return cls._bounded(cls.parse, value, default, bound=min)
+        return min(default, cls.parse(value, default) or default)
 
     @classmethod
     def coerce(
