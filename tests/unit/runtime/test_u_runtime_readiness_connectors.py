@@ -15,6 +15,7 @@ import pytest
 import etlplus.runtime.readiness._builder as readiness_builder_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
 from etlplus.runtime.readiness._support import RequirementSpec
+from tests.pytest_shared_support import get_cloud_database_provider_case
 
 from .pytest_runtime_readiness import build_connector_gap_row as _connector_gap
 from .pytest_runtime_readiness import (
@@ -41,6 +42,10 @@ def _connector_checks(cfg: object) -> list[dict[str, object]]:
             readiness_builder_mod.ReadinessReportBuilder.package_available
         ),
     )
+
+
+BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
+SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
 
 
 # SECTION: TESTS ============================================================ #
@@ -91,16 +96,13 @@ class TestReadinessReportBuilderConnectors:
         ('connector', 'expected'),
         [
             pytest.param(
-                SimpleNamespace(
+                BIGQUERY_CASE.runtime_connector(
                     connection_string=None,
-                    dataset=None,
-                    name='db-target',
-                    project='analytics-project',
-                    provider='bigquery',
-                    type='database',
+                    name='warehouse_bigquery',
+                    omit_fields=('dataset',),
                 ),
                 _connector_gap(
-                    connector='db-target',
+                    connector='warehouse_bigquery',
                     guidance=(
                         'Set "connection_string" to a database DSN or SQLAlchemy-style '
                         'URL, or define both "project" and "dataset" for this '
@@ -113,17 +115,13 @@ class TestReadinessReportBuilderConnectors:
                 id='bigquery',
             ),
             pytest.param(
-                SimpleNamespace(
-                    account='acme.us-east-1',
+                SNOWFLAKE_CASE.runtime_connector(
                     connection_string=None,
-                    database='ANALYTICS',
-                    name='snowflake-target',
-                    provider='snowflake',
-                    schema=None,
-                    type='database',
+                    name='warehouse_snowflake',
+                    omit_fields=('schema',),
                 ),
                 _connector_gap(
-                    connector='snowflake-target',
+                    connector='warehouse_snowflake',
                     guidance=(
                         'Set "connection_string" to a database DSN or SQLAlchemy-style '
                         'URL, or define "account", "database", and "schema" for '
@@ -343,16 +341,12 @@ class TestReadinessReportBuilderConnectors:
         ('connector', 'expected'),
         [
             pytest.param(
-                SimpleNamespace(
+                BIGQUERY_CASE.runtime_connector(
                     connection_string=None,
-                    dataset='warehouse',
-                    name='db-target',
-                    project='analytics-project',
-                    provider='bigquery',
-                    type='database',
+                    name='warehouse_bigquery',
                 ),
                 _missing_requirement(
-                    connector='db-target',
+                    connector='warehouse_bigquery',
                     detected_database_provider='bigquery',
                     extra='database-bigquery',
                     guidance=(
@@ -360,7 +354,7 @@ class TestReadinessReportBuilderConnectors:
                         'or install the ETLPlus "database-bigquery" extra. Required '
                         'for "bigquery" database connectors.'
                     ),
-                    missing_package='google-cloud-bigquery/sqlalchemy-bigquery',
+                    missing_package=BIGQUERY_CASE.missing_package,
                     reason=(
                         'bigquery database connector requires '
                         'google-cloud-bigquery/sqlalchemy-bigquery'
@@ -370,17 +364,12 @@ class TestReadinessReportBuilderConnectors:
                 id='bigquery',
             ),
             pytest.param(
-                SimpleNamespace(
-                    account='acme.us-east-1',
+                SNOWFLAKE_CASE.runtime_connector(
                     connection_string=None,
-                    database='ANALYTICS',
-                    name='snowflake-target',
-                    provider='snowflake',
-                    schema='PUBLIC',
-                    type='database',
+                    name='warehouse_snowflake',
                 ),
                 _missing_requirement(
-                    connector='snowflake-target',
+                    connector='warehouse_snowflake',
                     detected_database_provider='snowflake',
                     extra='database-snowflake',
                     guidance=(
@@ -388,7 +377,7 @@ class TestReadinessReportBuilderConnectors:
                         'directly or install the ETLPlus "database-snowflake" '
                         'extra. Required for "snowflake" database connectors.'
                     ),
-                    missing_package='snowflake-connector-python/snowflake-sqlalchemy',
+                    missing_package=SNOWFLAKE_CASE.missing_package,
                     reason=(
                         'snowflake database connector requires '
                         'snowflake-connector-python/snowflake-sqlalchemy'
@@ -516,7 +505,8 @@ class TestReadinessReportBuilderConnectors:
     ) -> None:
         """Missing-dependency guidance should fall back to one plain install hint."""
         assert (
-            readiness_connectors_mod.ReadinessSupportPolicy.missing_requirement_guidance(
+            readiness_connectors_mod.ReadinessSupportPolicy
+            .missing_requirement_guidance(
                 package='tables',
                 extra=None,
             )
