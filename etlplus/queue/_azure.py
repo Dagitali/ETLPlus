@@ -118,20 +118,12 @@ class AzureServiceBusQueue(ProviderQueueConfigMixin):
         Self
             Parsed queue instance.
         """
-        optional_str_fields = cls._optional_str_fields(
-            obj,
-            'namespace',
-            'queue_name',
-            'topic',
-            'subscription',
-            aliases={'queue_name': 'queue'},
-        )
         queue = cls(
             **cls._common_fields(obj, label='AzureServiceBusQueue'),
-            namespace=optional_str_fields['namespace'],
-            queue_name=optional_str_fields['queue_name'],
-            topic=optional_str_fields['topic'],
-            subscription=optional_str_fields['subscription'],
+            namespace=cls._optional_str(obj, 'namespace'),
+            queue_name=cls._optional_str(obj, 'queue_name', alias='queue'),
+            topic=cls._optional_str(obj, 'topic'),
+            subscription=cls._optional_str(obj, 'subscription'),
         )
         queue.validate()
         return queue
