@@ -261,15 +261,15 @@ pip install -e ".[database-snowflake]"
 Then keep the same `type: database` connector shape and add the Snowflake-specific fields:
 
 ```yaml
-targets:
+sources:
   - name: warehouse_events_snowflake
     type: database
     provider: snowflake
     account: acme.us-east-1
-    database: ANALYTICS
-    schema: PUBLIC
-    warehouse: TRANSFORMING
-    table: EVENTS
+    database: analytics
+    schema: public
+    warehouse: transforming
+    table: events
 ```
 
 If you already have a SQLAlchemy-style Snowflake connection string, you can still provide it through
