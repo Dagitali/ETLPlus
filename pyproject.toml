@@ -126,6 +126,7 @@ telemetry = [
 
 [project.scripts]
 etlplus = "etlplus.cli:main"
+# etlplus-ui = "etlplus_ui:main"
 
 [project.urls]
 Changelog = "https://etlplus.readthedocs.io/en/stable/changelog.html"

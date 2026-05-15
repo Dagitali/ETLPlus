@@ -15,6 +15,7 @@ from typing import Any
 from typing import Final
 
 from ._mapping import MappingParser
+from ._secrets import SecretResolver
 from ._types import StrAnyMap
 
 # SECTION: EXPORTS ========================================================== #
@@ -50,10 +51,19 @@ class SubstitutionResolver:
         precedence).
     """
 
+    # -- Instance Attributes -- #
+
     vars_map: StrAnyMap | None = None
     env_map: Mapping[str, object] | None = None
 
     # -- Getters -- #
+
+    @property
+    def secret_resolver(
+        self,
+    ) -> SecretResolver:
+        """Return the additive secret resolver for this substitution pass."""
+        return SecretResolver(self.env_map)
 
     @property
     def substitutions(self) -> tuple[tuple[str, Any], ...]:
@@ -86,15 +96,18 @@ class SubstitutionResolver:
             New structure with substitutions applied where tokens were found.
         """
         substitutions = self.substitutions
-        if not substitutions:
+        secret_resolver = self.secret_resolver
+        if not substitutions and self.env_map is None:
             return value
 
         def _apply(node: Any) -> Any:
             match node:
                 case str():
-                    for name, replacement in substitutions:
-                        node = node.replace(f'${{{name}}}', str(replacement))
-                    return node
+                    return _resolve_string(
+                        node,
+                        substitutions=substitutions,
+                        secret_resolver=secret_resolver,
+                    )
                 case Mapping():
                     return {k: _apply(v) for k, v in node.items()}
                 case list() | tuple() as seq:
@@ -108,6 +121,25 @@ class SubstitutionResolver:
                     return node
 
         return _apply(value)
+
+
+def _resolve_string(
+    value: str,
+    *,
+    substitutions: tuple[tuple[str, Any], ...],
+    secret_resolver: SecretResolver,
+) -> str:
+    """Return one string with standard and secret token substitutions applied."""
+    resolved = value
+    for name, replacement in substitutions:
+        resolved = resolved.replace(f'${{{name}}}', str(replacement))
+
+    def _replace(match: re.Match[str]) -> str:
+        token_name = match.group(1)
+        replacement = secret_resolver.resolve_token(token_name)
+        return match.group(0) if replacement is None else str(replacement)
+
+    return _DEFAULT_TOKEN_PATTERN.sub(_replace, resolved)
 
 
 @dataclass(slots=True)
