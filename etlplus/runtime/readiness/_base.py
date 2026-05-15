@@ -362,6 +362,12 @@ class ReadinessSupportPolicy:
                     'URL, or define both "project" and "dataset" for this '
                     'BigQuery connector.'
                 )
+            case 'missing connection_string or snowflake account/database/schema':
+                return (
+                    'Set "connection_string" to a database DSN or SQLAlchemy-style '
+                    'URL, or define "account", "database", and "schema" for '
+                    'this Snowflake connector.'
+                )
             case issue_text if issue_text.startswith('unknown api reference: '):
                 if api_reference:
                     return (
