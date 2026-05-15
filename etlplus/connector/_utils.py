@@ -39,39 +39,6 @@ _CONNECTOR_CLASSES: dict[DataConnectorType, type[Connector]] = {
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _coerce_connector_type(
-    obj: Mapping[str, Any],
-) -> DataConnectorType:
-    """
-    Normalize and validate the connector ``type`` field.
-
-    Parameters
-    ----------
-    obj : Mapping[str, Any]
-        Mapping with a ``type`` entry.
-
-    Returns
-    -------
-    DataConnectorType
-        Normalized connector type enum.
-
-    Raises
-    ------
-    TypeError
-        If ``type`` is missing or unsupported.
-    """
-    if 'type' not in obj:
-        raise TypeError('Connector requires a "type"')
-    try:
-        return DataConnectorType.coerce(obj.get('type'))
-    except ValueError as exc:
-        allowed = ', '.join(DataConnectorType.choices())
-        raise TypeError(
-            f'Unsupported connector type: {obj.get("type")!r}. '
-            f'Expected one of {allowed}.',
-        ) from exc
-
-
 def parse_connector(
     obj: Mapping[str, Any],
 ) -> Connector:
@@ -102,4 +69,16 @@ def parse_connector(
     """
     if not isinstance(obj, Mapping):
         raise TypeError('Connector configuration must be a mapping.')
-    return _CONNECTOR_CLASSES[_coerce_connector_type(obj)].from_obj(obj)
+    if 'type' not in obj:
+        raise TypeError('Connector requires a "type"')
+
+    try:
+        connector_type = DataConnectorType.coerce(obj.get('type'))
+    except ValueError as exc:
+        allowed = ', '.join(DataConnectorType.choices())
+        raise TypeError(
+            f'Unsupported connector type: {obj.get("type")!r}. '
+            f'Expected one of {allowed}.',
+        ) from exc
+
+    return _CONNECTOR_CLASSES[connector_type].from_obj(obj)
