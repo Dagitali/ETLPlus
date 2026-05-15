@@ -21,10 +21,21 @@ from etlplus.queue import QueueType
 from etlplus.queue import RedisQueue
 
 from .pytest_connector_support import assert_connector_fields
+from .pytest_connector_support import get_queue_connector_provider_case
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+AWS_SQS_CASE = get_queue_connector_provider_case('aws-sqs')
+AZURE_SERVICE_BUS_CASE = get_queue_connector_provider_case('azure-service-bus')
+GCP_PUBSUB_CASE = get_queue_connector_provider_case('gcp-pubsub')
+RABBITMQ_CASE = get_queue_connector_provider_case('rabbitmq')
+REDIS_STREAMS_CASE = get_queue_connector_provider_case('redis-streams')
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -222,92 +233,33 @@ class TestConnectorQueue:
         ('payload', 'expected_cls', 'expected_options'),
         [
             pytest.param(
-                {
-                    'name': 'events',
-                    'type': 'queue',
-                    'service': 'aws-sqs',
-                    'queue_name': 'events.fifo',
-                    'region': 'us-east-1',
-                    'options': {'visibility_timeout': 30},
-                },
+                AWS_SQS_CASE.connector_payload(),
                 AwsSqsQueue,
-                {
-                    'service': 'aws-sqs',
-                    'queue_type': 'fifo',
-                    'queue_name': 'events.fifo',
-                    'region': 'us-east-1',
-                    'visibility_timeout': 30,
-                },
+                AWS_SQS_CASE.expected_queue_options,
                 id='aws-sqs',
             ),
             pytest.param(
-                {
-                    'name': 'servicebus',
-                    'type': 'queue',
-                    'service': 'azure-service-bus',
-                    'queue_name': 'orders',
-                    'options': {'namespace': 'example-bus'},
-                },
+                AZURE_SERVICE_BUS_CASE.connector_payload(),
                 AzureServiceBusQueue,
-                {
-                    'service': 'azure-service-bus',
-                    'namespace': 'example-bus',
-                    'queue_name': 'orders',
-                },
+                AZURE_SERVICE_BUS_CASE.expected_queue_options,
                 id='azure-service-bus',
             ),
             pytest.param(
-                {
-                    'name': 'pubsub',
-                    'type': 'queue',
-                    'service': 'gcp-pubsub',
-                    'options': {
-                        'project': 'example-project',
-                        'subscription': 'etlplus',
-                    },
-                },
+                GCP_PUBSUB_CASE.connector_payload(),
                 GcpPubSubQueue,
-                {
-                    'service': 'gcp-pubsub',
-                    'project': 'example-project',
-                    'subscription': 'etlplus',
-                },
+                GCP_PUBSUB_CASE.expected_queue_options,
                 id='gcp-pubsub',
             ),
             pytest.param(
-                {
-                    'name': 'rabbit',
-                    'type': 'queue',
-                    'service': 'rabbitmq',
-                    'options': {
-                        'url': 'amqp://guest:guest@localhost:5672/%2f',
-                        'routing_key': 'orders.created',
-                    },
-                },
+                RABBITMQ_CASE.connector_payload(),
                 AmqpQueue,
-                {
-                    'service': 'amqp',
-                    'url': 'amqp://guest:guest@localhost:5672/%2f',
-                    'routing_key': 'orders.created',
-                },
+                RABBITMQ_CASE.expected_queue_options,
                 id='rabbitmq-alias',
             ),
             pytest.param(
-                {
-                    'name': 'redis',
-                    'type': 'queue',
-                    'service': 'redis-streams',
-                    'queue_name': 'orders',
-                    'options': {
-                        'database': '2',
-                    },
-                },
+                REDIS_STREAMS_CASE.connector_payload(),
                 RedisQueue,
-                {
-                    'service': 'redis',
-                    'key': 'orders',
-                    'database': 2,
-                },
+                REDIS_STREAMS_CASE.expected_queue_options,
                 id='redis-streams-alias',
             ),
         ],
