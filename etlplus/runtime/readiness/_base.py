@@ -356,6 +356,12 @@ class ReadinessSupportPolicy:
                 return (
                     'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
                 )
+            case 'missing connection_string or bigquery project/dataset':
+                return (
+                    'Set "connection_string" to a database DSN or SQLAlchemy-style '
+                    'URL, or define both "project" and "dataset" for this '
+                    'BigQuery connector.'
+                )
             case issue_text if issue_text.startswith('unknown api reference: '):
                 if api_reference:
                     return (
@@ -423,6 +429,7 @@ class ReadinessSupportPolicy:
     @staticmethod
     def missing_requirement_guidance(
         *,
+        detected_database_provider: str | None = None,
         detected_format: str | None = None,
         detected_queue_service: str | None = None,
         detected_scheme: str | None = None,
@@ -434,6 +441,8 @@ class ReadinessSupportPolicy:
 
         Parameters
         ----------
+        detected_database_provider : str | None
+            The detected database provider, if any.
         detected_format : str | None
             The detected file format, if any.
         detected_queue_service : str | None
@@ -460,6 +469,11 @@ class ReadinessSupportPolicy:
             return (
                 'Install xarray plus one of netCDF4 or h5netcdf, or install the '
                 'ETLPlus "file" extra.'
+            )
+        if detected_database_provider is not None:
+            return (
+                f'{install_hint} Required for "{detected_database_provider}" '
+                'database connectors.'
             )
         if detected_format is not None:
             return f'{install_hint} Required for "{detected_format}" file format.'
