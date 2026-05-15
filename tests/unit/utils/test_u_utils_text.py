@@ -15,7 +15,6 @@ from etlplus.utils import TextNormalizer
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-
 # SECTION: TESTS ============================================================ #
 
 

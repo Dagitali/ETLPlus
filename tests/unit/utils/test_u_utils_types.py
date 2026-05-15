@@ -19,6 +19,8 @@ from etlplus.utils import _types as core_types
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: TESTS ============================================================ #
+
 
 class TestTypesModule:
     """Unit tests for exported aliases in :mod:`etlplus.utils._types`."""

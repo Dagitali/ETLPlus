@@ -13,6 +13,10 @@ import pytest
 import etlplus.utils._payloads as payload_mod
 from etlplus.utils import JsonCodec
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 

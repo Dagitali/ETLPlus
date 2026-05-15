@@ -21,6 +21,10 @@ from etlplus.utils._imports import module_available
 from etlplus.utils._imports import normalize_dependency_names
 from etlplus.utils._imports import safe_module_available
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: HELPERS ========================================================== #
 
 

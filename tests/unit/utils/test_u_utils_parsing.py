@@ -14,6 +14,10 @@ from etlplus.utils._parsing import MappingFieldParser
 from etlplus.utils._parsing import SequenceParser
 from etlplus.utils._parsing import ValueParser
 
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
 # SECTION: TESTS ============================================================ #
 
 
