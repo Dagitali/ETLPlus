@@ -160,7 +160,7 @@ class ConnectorDb(ConnectorBase):
         obj: StrAnyMap,
     ) -> str | None:
         """Return one normalized provider hint when present."""
-        explicit = ValueParser.optional_str(obj.get('provider', obj.get('engine')))
+        explicit = cls._optional_str(obj, 'provider', 'engine')
         if explicit is not None and (normalized := TextNormalizer.normalize(explicit)):
             return cls.normalize_provider(normalized)
         for provider, fields in _DATABASE_PROVIDER_HINT_FIELDS.items():
@@ -295,18 +295,16 @@ class ConnectorDb(ConnectorBase):
         """
         return cls(
             name=cls._name_from_obj(obj),
-            connection_string=ValueParser.optional_str(
-                obj.get('connection_string'),
-            ),
             provider=cls._provider_from_obj(obj),
-            project=ValueParser.optional_str(obj.get('project')),
-            dataset=ValueParser.optional_str(obj.get('dataset')),
-            location=ValueParser.optional_str(obj.get('location')),
-            account=ValueParser.optional_str(obj.get('account')),
-            database=ValueParser.optional_str(obj.get('database')),
-            schema=ValueParser.optional_str(obj.get('schema')),
-            warehouse=ValueParser.optional_str(obj.get('warehouse')),
-            query=ValueParser.optional_str(obj.get('query')),
-            table=ValueParser.optional_str(obj.get('table')),
-            mode=ValueParser.optional_str(obj.get('mode')),
+            connection_string=cls._optional_str(obj, 'connection_string'),
+            project=cls._optional_str(obj, 'project'),
+            dataset=cls._optional_str(obj, 'dataset'),
+            location=cls._optional_str(obj, 'location'),
+            account=cls._optional_str(obj, 'account'),
+            database=cls._optional_str(obj, 'database'),
+            schema=cls._optional_str(obj, 'schema'),
+            warehouse=cls._optional_str(obj, 'warehouse'),
+            query=cls._optional_str(obj, 'query'),
+            table=cls._optional_str(obj, 'table'),
+            mode=cls._optional_str(obj, 'mode'),
         )
