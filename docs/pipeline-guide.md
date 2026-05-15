@@ -571,10 +571,50 @@ jobs:
 ## Tips
 
 - Use environment variables for secrets and org-specific values; resolve them in your runner.
+- ETLPlus also supports additive secret tokens during config substitution:
+  - `${secret:NAME}` or `${secret:env:NAME}` resolves from the active environment mapping.
+  - `${secret:file:path.to.key}` resolves from a local JSON or YAML mapping file referenced by
+    `ETLPLUS_SECRETS_FILE`.
+- Missing secret tokens remain unchanged so `etlplus check --readiness` and strict config
+  diagnostics can still report unresolved substitution requirements.
 - Apply safety caps for API pagination (`max_pages`, `max_records`) when running in CI.
 - Validation controls: set `severity: warn|error` and
   `phase: before_transform|after_transform|both`.
 - Keep pipelines composable; factor common transforms into named pipelines reused across jobs.
+
+Example secret token usage:
+
+```yaml
+profile:
+  env:
+    API_BASE_URL: https://api.example.test
+sources:
+  - name: remote_payload
+    type: api
+    api: upstream
+    endpoint: customers
+    headers:
+      Authorization: "Bearer ${secret:API_TOKEN}"
+targets:
+  - name: warehouse_file
+    type: file
+    format: json
+    path: "${secret:file:paths.customer_export}"
+```
+
+With a local secrets file:
+
+```bash
+export ETLPLUS_SECRETS_FILE="$PWD/.etlplus-secrets.json"
+```
+
+```json
+{
+  "paths": {
+    "customer_export": "./out/customers.json"
+  }
+}
+```
 
 For the HTTP client and pagination API, see `etlplus/api/README.md`.
 

@@ -200,8 +200,11 @@ These are the active follow-up items for the `v1.x` line.
 - [ ] Decide whether scheduling should remain a one-shot external-trigger model in `v1.x`.
   - Keep recurring invocation delegated to `cron`, `systemd`, or CI unless there is a clear
     stable-line need for a resident ETLPlus scheduler process.
-- [ ] Decide whether any local run-history UI ships in core or as an optional extra/package.
-  - Keep the existing normalized history read path as the only supported data source.
+- [x] Decide whether any local run-history UI ships in core or as an optional extra/package.
+  - The `v1.x` line keeps the stable local-history read/query surface CLI-only: `history`, `log`,
+    `status`, and `report` remain the supported interfaces.
+  - Any browser-based local history UI is deferred to `v2.0.0`, where packaging, test layout, and
+    shared-runtime boundary decisions can be revisited together.
 - [x] Decide when the local run-history work becomes part of the documented stable CLI surface.
   - `history`, `log`, `status`, and `report` are now documented as stable `v1.x` CLI commands.
   - Contract coverage exists in the public-surface meta tests.

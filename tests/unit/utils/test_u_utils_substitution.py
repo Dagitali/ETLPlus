@@ -6,6 +6,7 @@ Unit tests for :mod:`etlplus.utils._substitution`.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -140,6 +141,35 @@ class TestDeepSubstitute:
 
         with pytest.raises(AttributeError):
             resolver.vars_map = {}  # type: ignore[misc]
+
+    def test_secret_env_tokens_are_resolved_from_env_map(self) -> None:
+        """Test ``${secret:...}`` tokens default to environment lookup."""
+        assert SubstitutionResolver(env_map={'DB_PASSWORD': 's3cr3t'}).deep(
+            {'password': '${secret:DB_PASSWORD}'},
+        ) == {'password': 's3cr3t'}
+
+    def test_secret_file_tokens_are_resolved_from_local_mapping_file(
+        self,
+        tmp_path,
+    ) -> None:
+        """Test ``${secret:file:...}`` tokens resolve from a local JSON file."""
+        secrets_path = tmp_path / 'secrets.json'
+        secrets_path.write_text(
+            json.dumps({'warehouse': {'password': 'json-secret'}}),
+            encoding='utf-8',
+        )
+
+        result = SubstitutionResolver(
+            env_map={'ETLPLUS_SECRETS_FILE': str(secrets_path)},
+        ).deep({'password': '${secret:file:warehouse.password}'})
+
+        assert result == {'password': 'json-secret'}
+
+    def test_missing_secret_tokens_remain_unresolved(self) -> None:
+        """Test unknown secret tokens remain intact for readiness diagnostics."""
+        assert SubstitutionResolver(env_map={}).deep(
+            {'password': '${secret:file:missing.value}'},
+        ) == {'password': '${secret:file:missing.value}'}
 
 
 class TestTokenReferenceCollector:
