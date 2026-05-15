@@ -20,7 +20,6 @@ from typing import Any
 from typing import Self
 from typing import TypedDict
 
-from ..utils import MappingParser
 from ..utils._types import StrAnyMap
 from ._core import ConnectorBase
 from ._enums import DataConnectorType
@@ -105,5 +104,5 @@ class ConnectorFile(ConnectorBase):
             name=cls._name_from_obj(obj),
             format=cls._optional_str(obj, 'format'),
             path=cls._optional_str(obj, 'path'),
-            options=MappingParser.to_dict(obj.get('options')),
+            options=cls._dict_field(obj, 'options'),
         )
