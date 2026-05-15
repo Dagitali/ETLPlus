@@ -45,6 +45,44 @@ class TestConnectorQueue:
             )
 
     @pytest.mark.parametrize(
+        ('payload', 'expected_queue_name', 'expected_service'),
+        [
+            pytest.param(
+                {
+                    'name': 'events',
+                    'type': 'queue',
+                    'queue_name': None,
+                    'queue': 'events.fifo',
+                },
+                'events.fifo',
+                QueueService.AWS_SQS,
+                id='queue-alias-used-when-primary-empty',
+            ),
+            pytest.param(
+                {
+                    'name': 'events',
+                    'type': 'queue',
+                    'service': None,
+                },
+                None,
+                QueueService.AWS_SQS,
+                id='service-none-uses-default',
+            ),
+        ],
+    )
+    def test_from_obj_normalizes_queue_alias_and_service_defaults(
+        self,
+        payload: dict[str, object],
+        expected_queue_name: str | None,
+        expected_service: QueueService,
+    ) -> None:
+        """Queue aliases and missing-like services should normalize consistently."""
+        connector = ConnectorQueue.from_obj(payload)
+
+        assert connector.queue_name == expected_queue_name
+        assert connector.service is expected_service
+
+    @pytest.mark.parametrize(
         ('payload', 'expected'),
         [
             pytest.param(
