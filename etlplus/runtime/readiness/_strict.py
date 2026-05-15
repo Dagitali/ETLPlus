@@ -10,8 +10,10 @@ from collections.abc import Callable
 from collections.abc import Mapping
 from typing import Any
 
+from ...connector import ConnectorDb
 from ...connector import parse_connector
 from ...utils import MappingParser
+from ...utils import ValueParser
 from ...utils._types import StrAnyMap
 from ...workflow import ScheduleConfig
 from ...workflow import schedule_validation_issues
@@ -201,6 +203,35 @@ class StrictConfigValidator:
                     },
                 )
                 continue
+
+            provider = ConnectorDb.normalize_provider(
+                ValueParser.optional_str(getattr(connector, 'provider', None)),
+            ) if isinstance(connector, ConnectorDb) else None
+            missing_provider_fields = (
+                ConnectorDb.missing_provider_fields(connector, provider=provider)
+                if isinstance(connector, ConnectorDb)
+                and not getattr(connector, 'connection_string', None)
+                else ()
+            )
+            provider_issue = (
+                ConnectorDb.provider_missing_connection_issue(provider)
+                if missing_provider_fields
+                else None
+            )
+            if provider_issue is not None:
+                issues.append(
+                    {
+                        'connector': str(getattr(connector, 'name', '') or '').strip(),
+                        'guidance': ConnectorDb.provider_missing_connection_guidance(
+                            provider,
+                        ),
+                        'index': index,
+                        'issue': provider_issue,
+                        'missing_fields': list(missing_provider_fields),
+                        'provider': provider,
+                        'section': section,
+                    },
+                )
 
             name = str(getattr(connector, 'name', '') or '').strip()
             if not name:
