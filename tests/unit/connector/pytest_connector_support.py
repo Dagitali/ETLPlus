@@ -35,6 +35,17 @@ class QueueConnectorProviderCase:
         payload.update(extra_fields)
         return payload
 
+    def expected_connector_attrs(self, **overrides: object) -> dict[str, object]:
+        """Return normalized connector attrs for this provider case."""
+        expected: dict[str, object] = {
+            'name': self.connector_name,
+            'service': self.expected_queue_options['service'],
+        }
+        for field_name in ('queue_name', 'url', 'region'):
+            expected[field_name] = self.top_level_fields.get(field_name)
+        expected.update(overrides)
+        return expected
+
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
