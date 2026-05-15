@@ -117,9 +117,7 @@ class SecretResolver:
 
         text = path.read_text(encoding='utf-8')
         payload = (
-            json.loads(text)
-            if path.suffix.lower() == '.json'
-            else yaml.safe_load(text)
+            json.loads(text) if path.suffix.lower() == '.json' else yaml.safe_load(text)
         )
 
         return MappingParser.to_dict(payload) if isinstance(payload, Mapping) else None
