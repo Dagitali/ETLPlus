@@ -69,6 +69,47 @@ result = run_job(
 print(result["status"], result.get("records"))
 ```
 
+## Cloud Database Connector Snippets
+
+Use the same additive `type: database` connector shape for both cloud database providers.
+
+BigQuery:
+
+```bash
+pip install -e ".[database-bigquery]"
+```
+
+```yaml
+sources:
+  - name: warehouse_events_bigquery
+    type: database
+    provider: bigquery
+    project: analytics-project
+    dataset: warehouse
+    table: events
+```
+
+Snowflake:
+
+```bash
+pip install -e ".[database-snowflake]"
+```
+
+```yaml
+sources:
+  - name: warehouse_events_snowflake
+    type: database
+    provider: snowflake
+    account: acme.us-east-1
+    database: ANALYTICS
+    schema: PUBLIC
+    warehouse: TRANSFORMING
+    table: EVENTS
+```
+
+Both connector shapes can also use `connection_string` directly when you already have a
+provider-specific SQLAlchemy-style DSN.
+
 Design notes on config typing and merges:
 - Mapping inputs, dict outputs, and merge semantics are documented in
   `docs/pipeline-guide.md#design-notes-mapping-inputs-dict-outputs`.

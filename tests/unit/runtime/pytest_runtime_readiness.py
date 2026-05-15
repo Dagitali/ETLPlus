@@ -75,6 +75,7 @@ def build_issue_row(**fields: object) -> dict[str, object]:
 def build_missing_requirement_row(
     *,
     connector: str,
+    detected_database_provider: str | None = None,
     missing_package: str,
     reason: str,
     role: str,
@@ -94,6 +95,8 @@ def build_missing_requirement_row(
     }
     if guidance is not None:
         row['guidance'] = guidance
+    if detected_database_provider is not None:
+        row['detected_database_provider'] = detected_database_provider
     if detected_format is not None:
         row['detected_format'] = detected_format
     if detected_queue_service is not None:

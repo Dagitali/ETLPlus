@@ -231,6 +231,50 @@ databases:
 Note: Database extract/load in ETLPlus is minimal today; consider this a placeholder for
 orchestration that calls into DB clients.
 
+For BigQuery-oriented configs, install the optional extra first:
+
+```bash
+pip install -e ".[database-bigquery]"
+```
+
+Then you can keep the normal `type: database` connector shape and add the provider-specific fields:
+
+```yaml
+sources:
+  - name: warehouse_events
+    type: database
+    provider: bigquery
+    project: analytics-project
+    dataset: warehouse
+    table: events
+```
+
+If you already have a SQLAlchemy-style BigQuery connection string, you can still provide it through
+`connection_string` and omit `project`/`dataset`.
+
+For Snowflake-oriented configs, install the matching optional extra:
+
+```bash
+pip install -e ".[database-snowflake]"
+```
+
+Then keep the same `type: database` connector shape and add the Snowflake-specific fields:
+
+```yaml
+sources:
+  - name: warehouse_events_snowflake
+    type: database
+    provider: snowflake
+    account: acme.us-east-1
+    database: analytics
+    schema: public
+    warehouse: transforming
+    table: events
+```
+
+If you already have a SQLAlchemy-style Snowflake connection string, you can still provide it through
+`connection_string` and omit the provider-specific fields.
+
 ## File Systems
 
 Point to local/cloud locations and logical folders:

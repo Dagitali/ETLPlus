@@ -22,6 +22,7 @@ __all__ = [
     'AWS_ENV_HINTS',
     'AZURE_STORAGE_BOOTSTRAP_ENV',
     'AZURE_STORAGE_CREDENTIAL_ENV',
+    'DATABASE_PROVIDER_EXTRA_REQUIREMENTS',
     'FORMAT_EXTRA_REQUIREMENTS',
     'QUEUE_SERVICE_EXTRA_REQUIREMENTS',
     'SCHEME_EXTRA_REQUIREMENTS',
@@ -86,6 +87,10 @@ class ResolvedConfigContext:
 # SECTION: CONSTANTS ======================================================== #
 
 
+# TODO: Conform constants for provider hints to a more systematic structure
+# TODO: with provider-specific sections and guidance for additional services
+# TODO: (for example, GCP and Databricks).
+
 AWS_ENV_HINTS: Final[tuple[str, ...]] = (
     'AWS_ACCESS_KEY_ID',
     'AWS_SECRET_ACCESS_KEY',
@@ -104,6 +109,19 @@ AZURE_STORAGE_BOOTSTRAP_ENV: Final[tuple[str, ...]] = (
     'AZURE_STORAGE_ACCOUNT_URL',
 )
 AZURE_STORAGE_CREDENTIAL_ENV: Final[str] = 'AZURE_STORAGE_CREDENTIAL'
+
+DATABASE_PROVIDER_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
+    'bigquery': RequirementSpec(
+        ('google.cloud.bigquery', 'sqlalchemy_bigquery'),
+        'google-cloud-bigquery/sqlalchemy-bigquery',
+        'database-bigquery',
+    ),
+    'snowflake': RequirementSpec(
+        ('snowflake.connector', 'snowflake.sqlalchemy'),
+        'snowflake-connector-python/snowflake-sqlalchemy',
+        'database-snowflake',
+    ),
+}
 
 FORMAT_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
     'dta': RequirementSpec(('pyreadstat',), 'pyreadstat', 'file'),

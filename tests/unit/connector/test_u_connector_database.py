@@ -10,12 +10,20 @@ import pytest
 
 from etlplus.connector._database import ConnectorDb
 from etlplus.connector._enums import DataConnectorType
+from tests.pytest_shared_support import get_cloud_database_provider_case
 
 from .pytest_connector_support import assert_connector_fields
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
+SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -27,23 +35,23 @@ class TestConnectorDb:
         ('payload', 'expected'),
         [
             pytest.param(
-                {
-                    'name': 'warehouse',
-                    'type': 'database',
-                    'connection_string': 'sqlite:///warehouse.db',
-                    'query': 'select * from events',
-                    'table': 'events',
-                    'mode': 'append',
-                },
-                {
-                    'type': DataConnectorType.DATABASE,
-                    'name': 'warehouse',
-                    'connection_string': 'sqlite:///warehouse.db',
-                    'query': 'select * from events',
-                    'table': 'events',
-                    'mode': 'append',
-                },
-                id='strings',
+                BIGQUERY_CASE.connector_payload(
+                    use_alias=True,
+                    name='warehouse',
+                    connection_string='sqlite:///warehouse.db',
+                    query='select * from events',
+                    table='events',
+                    mode='append',
+                ),
+                BIGQUERY_CASE.expected_connector_attrs(
+                    name='warehouse',
+                    connection_string='sqlite:///warehouse.db',
+                    query='select * from events',
+                    table='events',
+                    mode='append',
+                )
+                | {'type': DataConnectorType.DATABASE},
+                id='provider-normalization',
             ),
             pytest.param(
                 {
@@ -58,11 +66,58 @@ class TestConnectorDb:
                     'type': DataConnectorType.DATABASE,
                     'name': 'warehouse',
                     'connection_string': '123',
+                    'provider': None,
+                    'project': None,
+                    'dataset': None,
+                    'location': None,
+                    'account': None,
+                    'database': None,
+                    'schema': None,
+                    'warehouse': None,
                     'query': 'False',
                     'table': '456',
                     'mode': None,
                 },
                 id='coerces-optional-strings',
+            ),
+            pytest.param(
+                BIGQUERY_CASE.connector_payload(
+                    include_provider=False,
+                    omit_fields=('location',),
+                    name='warehouse',
+                ),
+                BIGQUERY_CASE.expected_connector_attrs(
+                    name='warehouse',
+                    omit_fields=('location',),
+                )
+                | {'type': DataConnectorType.DATABASE},
+                id='infers-bigquery-provider',
+            ),
+            pytest.param(
+                SNOWFLAKE_CASE.connector_payload(
+                    use_alias=True,
+                    name='snowflake_wh',
+                    table='events',
+                ),
+                SNOWFLAKE_CASE.expected_connector_attrs(
+                    name='snowflake_wh',
+                    table='events',
+                )
+                | {'type': DataConnectorType.DATABASE},
+                id='snowflake-provider-normalization',
+            ),
+            pytest.param(
+                SNOWFLAKE_CASE.connector_payload(
+                    include_provider=False,
+                    omit_fields=('warehouse',),
+                    name='snowflake_wh',
+                ),
+                SNOWFLAKE_CASE.expected_connector_attrs(
+                    name='snowflake_wh',
+                    omit_fields=('warehouse',),
+                )
+                | {'type': DataConnectorType.DATABASE},
+                id='infers-snowflake-provider',
             ),
         ],
     )
