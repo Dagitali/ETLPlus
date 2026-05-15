@@ -113,6 +113,29 @@ class TestParseConnector:
             ),
             pytest.param(
                 {
+                    'name': 'snowflake-events',
+                    'type': 'database',
+                    'provider': 'snowflake-db',
+                    'account': 'acme.us-east-1',
+                    'database': 'ANALYTICS',
+                    'schema': 'PUBLIC',
+                    'warehouse': 'TRANSFORMING',
+                    'table': 'EVENTS',
+                },
+                ConnectorDb,
+                {
+                    'name': 'snowflake-events',
+                    'provider': 'snowflake',
+                    'account': 'acme.us-east-1',
+                    'database': 'ANALYTICS',
+                    'schema': 'PUBLIC',
+                    'warehouse': 'TRANSFORMING',
+                    'table': 'EVENTS',
+                },
+                id='database-snowflake-provider',
+            ),
+            pytest.param(
+                {
                     'name': 'github',
                     'type': 'api',
                     'api': 'gh',
