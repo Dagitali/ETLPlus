@@ -78,6 +78,27 @@ class TestConnectorApi:
                 {
                     'name': 'users_api',
                     'type': 'api',
+                    'api': None,
+                    'service': 'fallback',
+                },
+                {
+                    'type': DataConnectorType.API,
+                    'name': 'users_api',
+                    'api': 'fallback',
+                    'url': None,
+                    'method': None,
+                    'headers': {},
+                    'query_params': {},
+                    'endpoint': None,
+                },
+                None,
+                None,
+                id='service-used-when-api-empty',
+            ),
+            pytest.param(
+                {
+                    'name': 'users_api',
+                    'type': 'api',
                     'url': 123,
                     'method': False,
                     'api': 456,
