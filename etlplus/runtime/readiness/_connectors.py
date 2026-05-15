@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..._config import Config
+from ...connector import ConnectorDb
 from ...connector import DataConnectorType
 from ...queue import QueueService
 from ...utils import TextNormalizer
@@ -269,29 +270,21 @@ class ConnectorReadinessPolicy:
                     'connection_string',
                     None,
                 ):
+                    provider_issue = ConnectorDb.provider_missing_connection_issue(
+                        resolved.database_provider,
+                    )
+                    missing_provider_fields = ConnectorDb.missing_provider_fields(
+                        resolved.connector,
+                        provider=resolved.database_provider,
+                    )
                     gaps.append(
                         _connector_gap_row(
                             connector=resolved.name,
                             connector_type_str=resolved.type_name,
                             issue=(
-                                'missing connection_string or bigquery '
-                                'project/dataset'
-                                if resolved.database_provider == 'bigquery'
-                                and not (
-                                    resolved.database_project
-                                    and resolved.database_dataset
-                                )
-                                else (
-                                    'missing connection_string or snowflake '
-                                    'account/database/schema'
-                                    if resolved.database_provider == 'snowflake'
-                                    and not (
-                                        resolved.database_account
-                                        and resolved.database_name
-                                        and resolved.database_schema
-                                    )
-                                    else 'missing connection_string'
-                                )
+                                provider_issue
+                                if provider_issue and missing_provider_fields
+                                else 'missing connection_string'
                             ),
                             role=resolved.role,
                         ),
