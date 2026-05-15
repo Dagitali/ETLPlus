@@ -95,12 +95,21 @@ class TestParseConnector:
                 {
                     'name': 'warehouse',
                     'type': 'database',
+                    'provider': 'bigquery',
+                    'project': 'analytics-project',
+                    'dataset': 'warehouse',
                     'table': 'events',
                     'engine': 'sqlite',
                 },
                 ConnectorDb,
-                {'name': 'warehouse', 'table': 'events'},
-                id='database',
+                {
+                    'name': 'warehouse',
+                    'provider': 'bigquery',
+                    'project': 'analytics-project',
+                    'dataset': 'warehouse',
+                    'table': 'events',
+                },
+                id='database-provider',
             ),
             pytest.param(
                 {
