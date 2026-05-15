@@ -164,6 +164,42 @@ class TestReadinessReportBuilderConnectors:
             ),
         ]
 
+    def test_connector_gap_rows_cover_missing_required_snowflake_fields(
+        self,
+    ) -> None:
+        """Test Snowflake gap rows when provider metadata is incomplete."""
+        cfg = _cfg(
+            targets=[
+                SimpleNamespace(
+                    account='acme.us-east-1',
+                    connection_string=None,
+                    database='ANALYTICS',
+                    name='snowflake-target',
+                    provider='snowflake',
+                    schema=None,
+                    type='database',
+                ),
+            ],
+        )
+
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
+            cast(Any, cfg),
+        )
+
+        assert rows == [
+            _connector_gap(
+                connector='snowflake-target',
+                guidance=(
+                    'Set "connection_string" to a database DSN or SQLAlchemy-style '
+                    'URL, or define "account", "database", and "schema" for '
+                    'this Snowflake connector.'
+                ),
+                issue='missing connection_string or snowflake account/database/schema',
+                role='target',
+                connector_type='database',
+            ),
+        ]
+
     def test_connector_gap_rows_report_actionable_unsupported_type_details(
         self,
     ) -> None:
@@ -316,6 +352,50 @@ class TestReadinessReportBuilderConnectors:
                 reason=(
                     'bigquery database connector requires '
                     'google-cloud-bigquery/sqlalchemy-bigquery'
+                ),
+                role='target',
+            ),
+        ]
+
+    def test_connector_missing_requirement_rows_cover_snowflake_provider_extras(
+        self,
+    ) -> None:
+        """Test requirement rows for Snowflake-specific database extras."""
+        cfg = _cfg(
+            targets=[
+                SimpleNamespace(
+                    account='acme.us-east-1',
+                    connection_string=None,
+                    database='ANALYTICS',
+                    name='snowflake-target',
+                    provider='snowflake',
+                    schema='PUBLIC',
+                    type='database',
+                ),
+            ],
+        )
+
+        rows = (
+            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
+                cfg=cast(Any, cfg),
+                package_available=lambda _module: False,
+            )
+        )
+
+        assert rows == [
+            _missing_requirement(
+                connector='snowflake-target',
+                detected_database_provider='snowflake',
+                extra='database-snowflake',
+                guidance=(
+                    'Install snowflake-connector-python/snowflake-sqlalchemy '
+                    'directly or install the ETLPlus "database-snowflake" '
+                    'extra. Required for "snowflake" database connectors.'
+                ),
+                missing_package='snowflake-connector-python/snowflake-sqlalchemy',
+                reason=(
+                    'snowflake database connector requires '
+                    'snowflake-connector-python/snowflake-sqlalchemy'
                 ),
                 role='target',
             ),
@@ -735,6 +815,44 @@ class TestReadinessReportBuilderConnectors:
             'reason': (
                 'bigquery database connector requires '
                 'google-cloud-bigquery/sqlalchemy-bigquery'
+            ),
+            'role': 'source',
+        }
+
+    def test_requirement_row_keeps_snowflake_provider_context(
+        self,
+    ) -> None:
+        """Requirement rows should preserve Snowflake provider context."""
+        requirement = RequirementSpec(
+            ('snowflake.connector', 'snowflake.sqlalchemy'),
+            'snowflake-connector-python/snowflake-sqlalchemy',
+            'database-snowflake',
+        )
+
+        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
+            connector='snowflake_wh',
+            detected_database_provider='snowflake',
+            reason=(
+                'snowflake database connector requires '
+                'snowflake-connector-python/snowflake-sqlalchemy'
+            ),
+            requirement=requirement,
+            role='source',
+        )
+
+        assert row == {
+            'connector': 'snowflake_wh',
+            'detected_database_provider': 'snowflake',
+            'extra': 'database-snowflake',
+            'guidance': (
+                'Install snowflake-connector-python/snowflake-sqlalchemy '
+                'directly or install the ETLPlus "database-snowflake" extra. '
+                'Required for "snowflake" database connectors.'
+            ),
+            'missing_package': 'snowflake-connector-python/snowflake-sqlalchemy',
+            'reason': (
+                'snowflake database connector requires '
+                'snowflake-connector-python/snowflake-sqlalchemy'
             ),
             'role': 'source',
         }
