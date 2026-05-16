@@ -348,7 +348,6 @@ class ProviderEnvironmentPolicy:
 
     @staticmethod
     def environment_rows(
-        *,
         cfg: Config,
         env: Mapping[str, str],
     ) -> list[_ProviderGapRow]:
