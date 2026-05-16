@@ -85,9 +85,7 @@ def _effective_service_defaults(
     TypeError
         If no profiles are defined and *fallback_base* is not a string.
     """
-    if profiles:
-        name = 'default' if 'default' in profiles else next(iter(profiles))
-        selected = profiles[name]
+    if selected := _selected_profile(profiles):
         headers = dict(selected.headers)
         if fallback_headers:
             headers |= fallback_headers
@@ -179,6 +177,19 @@ def _parse_profiles(raw: Any) -> dict[str, ApiProfileConfig]:
             continue
         parsed[str(name)] = ApiProfileConfig.from_obj(profile_map)
     return parsed
+
+
+def _selected_profile(
+    profiles: Mapping[str, ApiProfileConfig],
+) -> ApiProfileConfig | None:
+    """Return the active profile, preferring ``default`` when present."""
+    if not profiles:
+        return None
+    return (
+        profiles['default']
+        if 'default' in profiles
+        else next(iter(profiles.values()))
+    )
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -362,11 +373,9 @@ class ApiConfig:
 
     def effective_base_path(self) -> str | None:
         """Return the selected profile's ``base_path``, if any."""
-        if not (profiles := self.profiles):
-            return None
-        name = 'default' if 'default' in profiles else next(iter(profiles))
-        prof = profiles.get(name)
-        return getattr(prof, 'base_path', None) if prof else None
+        if profile := _selected_profile(self.profiles):
+            return profile.base_path
+        return None
 
     def effective_base_url(self) -> str:
         """
@@ -387,19 +396,15 @@ class ApiConfig:
 
     def effective_pagination_defaults(self) -> PaginationConfig | None:
         """Return selected profile ``pagination_defaults``, if any."""
-        if not (profiles := self.profiles):
-            return None
-        name = 'default' if 'default' in profiles else next(iter(profiles))
-        prof = profiles.get(name)
-        return getattr(prof, 'pagination_defaults', None) if prof else None
+        if profile := _selected_profile(self.profiles):
+            return profile.pagination_defaults
+        return None
 
     def effective_rate_limit_defaults(self) -> RateLimitConfig | None:
         """Return selected profile ``rate_limit_defaults``, if any."""
-        if not (profiles := self.profiles):
-            return None
-        name = 'default' if 'default' in profiles else next(iter(profiles))
-        prof = profiles.get(name)
-        return getattr(prof, 'rate_limit_defaults', None) if prof else None
+        if profile := _selected_profile(self.profiles):
+            return profile.rate_limit_defaults
+        return None
 
     # -- Class Methods -- #
 

@@ -110,16 +110,10 @@ class RedisQueue(ProviderQueueConfigMixin):
         Self
             Parsed queue instance.
         """
-        optional_str_fields = cls._optional_str_fields(
-            obj,
-            'url',
-            'key',
-            aliases={'key': 'queue_name'},
-        )
         queue = cls(
             **cls._common_fields(obj, label='RedisQueue'),
-            url=optional_str_fields['url'],
-            key=optional_str_fields['key'],
+            url=cls._optional_str(obj, 'url'),
+            key=cls._optional_str(obj, 'key', alias='queue_name'),
             database=ValueParser.optional_int(
                 obj.get('database', obj.get('db')),
                 field_name='database',

@@ -14,6 +14,7 @@ Notes
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
@@ -28,7 +29,6 @@ from ..queue import QueueConfig
 from ..queue import QueueService
 from ..queue import QueueType
 from ..queue import RedisQueue
-from ..utils import MappingParser
 from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ._core import ConnectorBase
@@ -42,6 +42,18 @@ __all__ = [
     'ConnectorQueue',
     'ConnectorQueueConfigDict',
 ]
+
+
+type QueueConfigFactory = Callable[[StrAnyMap], QueueConfig]
+
+
+_QUEUE_CONFIG_FACTORIES: dict[QueueService, QueueConfigFactory] = {
+    QueueService.AWS_SQS: AwsSqsQueue.from_obj,
+    QueueService.AZURE_SERVICE_BUS: AzureServiceBusQueue.from_obj,
+    QueueService.GCP_PUBSUB: GcpPubSubQueue.from_obj,
+    QueueService.AMQP: AmqpQueue.from_obj,
+    QueueService.REDIS: RedisQueue.from_obj,
+}
 
 
 # SECTION: TYPED DICTS ====================================================== #
@@ -102,6 +114,51 @@ class ConnectorQueue(ConnectorBase):
     region: str | None = None
     options: dict[str, Any] = field(default_factory=dict)
 
+    # -- Internal Class Methods -- #
+
+    @classmethod
+    def _queue_name_from_obj(
+        cls,
+        obj: StrAnyMap,
+    ) -> str | None:
+        """Return the first normalized queue name alias with a value."""
+        for field_name in ('queue_name', 'queue'):
+            if (
+                queue_name := ValueParser.optional_str(obj.get(field_name))
+            ) is not None:
+                return queue_name
+        return None
+
+    @classmethod
+    def _queue_type_from_obj(
+        cls,
+        obj: StrAnyMap,
+        *,
+        queue_name: str | None,
+    ) -> QueueType:
+        """Return the normalized queue type inferred from payload fields."""
+        queue_type_value = obj.get('queue_type')
+        return (
+            QueueType.coerce(queue_type_value)
+            if queue_type_value is not None
+            else QueueType.FIFO
+            if queue_name is not None and queue_name.endswith('.fifo')
+            else QueueType.STANDARD
+        )
+
+    @classmethod
+    def _service_from_obj(
+        cls,
+        obj: StrAnyMap,
+    ) -> QueueService:
+        """Return the normalized queue service, defaulting to AWS SQS."""
+        service = obj.get('service')
+        return (
+            QueueService.AWS_SQS
+            if service is None
+            else QueueService.coerce(service)
+        )
+
     # -- Class Methods -- #
 
     @classmethod
@@ -127,15 +184,8 @@ class ConnectorQueue(ConnectorBase):
         ValueError
             If an SQS FIFO queue name does not end with ``'.fifo'``.
         """
-        queue_name = ValueParser.optional_str(obj.get('queue_name', obj.get('queue')))
-        queue_type_value = obj.get('queue_type')
-        queue_type = (
-            QueueType.coerce(queue_type_value)
-            if queue_type_value is not None
-            else QueueType.FIFO
-            if queue_name is not None and queue_name.endswith('.fifo')
-            else QueueType.STANDARD
-        )
+        queue_name = cls._queue_name_from_obj(obj)
+        queue_type = cls._queue_type_from_obj(obj, queue_name=queue_name)
         if queue_type is QueueType.FIFO and (
             queue_name is not None and not queue_name.endswith('.fifo')
         ):
@@ -143,12 +193,12 @@ class ConnectorQueue(ConnectorBase):
 
         return cls(
             name=cls._name_from_obj(obj),
-            service=QueueService.coerce(obj.get('service', QueueService.AWS_SQS)),
+            service=cls._service_from_obj(obj),
             queue_type=queue_type,
             queue_name=queue_name,
-            url=ValueParser.optional_str(obj.get('url')),
-            region=ValueParser.optional_str(obj.get('region')),
-            options=MappingParser.to_dict(obj.get('options')),
+            url=cls._optional_str(obj, 'url'),
+            region=cls._optional_str(obj, 'region'),
+            options=cls._dict_field(obj, 'options'),
         )
 
     # -- Instance Methods -- #
@@ -175,16 +225,9 @@ class ConnectorQueue(ConnectorBase):
         for field_name in ('queue_name', 'region', 'url'):
             if (value := getattr(self, field_name)) is not None:
                 data[field_name] = value
-        match self.service:
-            case QueueService.AWS_SQS:
-                return AwsSqsQueue.from_obj(data)
-            case QueueService.AZURE_SERVICE_BUS:
-                return AzureServiceBusQueue.from_obj(data)
-            case QueueService.GCP_PUBSUB:
-                return GcpPubSubQueue.from_obj(data)
-            case QueueService.AMQP:
-                return AmqpQueue.from_obj(data)
-            case QueueService.REDIS:
-                return RedisQueue.from_obj(data)
-            case _:
-                raise ValueError(f'Unsupported queue service: {self.service!r}')
+        try:
+            return _QUEUE_CONFIG_FACTORIES[self.service](data)
+        except KeyError as exc:
+            raise ValueError(
+                f'Unsupported queue service: {self.service!r}',
+            ) from exc

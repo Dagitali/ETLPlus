@@ -113,17 +113,11 @@ class GcpPubSubQueue(ProviderQueueConfigMixin):
         Self
             Parsed queue instance.
         """
-        optional_str_fields = cls._optional_str_fields(
-            obj,
-            'project',
-            'topic',
-            'subscription',
-        )
         queue = cls(
             **cls._common_fields(obj, label='GcpPubSubQueue'),
-            project=optional_str_fields['project'],
-            topic=optional_str_fields['topic'],
-            subscription=optional_str_fields['subscription'],
+            project=cls._optional_str(obj, 'project'),
+            topic=cls._optional_str(obj, 'topic'),
+            subscription=cls._optional_str(obj, 'subscription'),
         )
         queue.validate()
         return queue

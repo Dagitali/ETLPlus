@@ -200,22 +200,13 @@ class AwsSqsQueue(ProviderQueueConfigMixin):
             )
             for field_name in cls._integer_ranges
         }
-        optional_str_fields = cls._optional_str_fields(
-            obj,
-            'url',
-            'arn',
-            'region',
-            'dead_letter_queue_arn',
-            'deduplication_id',
-            'message_group_id',
-        )
         content_based_deduplication = obj.get('content_based_deduplication')
         queue = cls(
             **common_fields,
             queue_type=queue_type,
-            url=optional_str_fields['url'],
-            arn=optional_str_fields['arn'],
-            region=optional_str_fields['region'],
+            url=cls._optional_str(obj, 'url'),
+            arn=cls._optional_str(obj, 'arn'),
+            region=cls._optional_str(obj, 'region'),
             delay_seconds=integer_values['delay_seconds'],
             max_messages=integer_values['max_messages'],
             message_retention_period=integer_values['message_retention_period'],
@@ -226,9 +217,9 @@ class AwsSqsQueue(ProviderQueueConfigMixin):
                 if content_based_deduplication is None
                 else ValueParser.bool_flag(content_based_deduplication, default=False)
             ),
-            dead_letter_queue_arn=optional_str_fields['dead_letter_queue_arn'],
-            deduplication_id=optional_str_fields['deduplication_id'],
-            message_group_id=optional_str_fields['message_group_id'],
+            dead_letter_queue_arn=cls._optional_str(obj, 'dead_letter_queue_arn'),
+            deduplication_id=cls._optional_str(obj, 'deduplication_id'),
+            message_group_id=cls._optional_str(obj, 'message_group_id'),
         )
         queue.validate()
         return queue
