@@ -168,6 +168,22 @@ class ConnectorDb(ConnectorBase):
                 return provider
         return None
 
+    @classmethod
+    def _provider_from_value(
+        cls,
+        obj: Mapping[str, object] | object,
+        *,
+        provider: str | None = None,
+    ) -> str | None:
+        """Return one normalized provider resolved from an object or mapping."""
+        if provider is not None:
+            return cls.normalize_provider(provider)
+        if isinstance(obj, Mapping):
+            return cls._provider_from_obj(obj)
+        return cls.normalize_provider(
+            ValueParser.optional_str(getattr(obj, 'provider', None)),
+        )
+
     # -- Class Methods -- #
 
     @classmethod
@@ -178,14 +194,7 @@ class ConnectorDb(ConnectorBase):
         provider: str | None = None,
     ) -> tuple[str, ...]:
         """Return required provider fields missing from *obj*."""
-        normalized = cls.normalize_provider(
-            provider
-            or (
-                ValueParser.optional_str(obj.get('provider'))
-                if isinstance(obj, Mapping)
-                else ValueParser.optional_str(getattr(obj, 'provider', None))
-            ),
-        )
+        normalized = cls._provider_from_value(obj, provider=provider)
         if normalized is None:
             return ()
 
