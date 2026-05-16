@@ -16,6 +16,7 @@ import etlplus.runtime.readiness._base as readiness_base_mod
 import etlplus.runtime.readiness._builder as readiness_builder_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
 import etlplus.runtime.readiness._providers as readiness_providers_mod
+import etlplus.runtime.readiness._strict as readiness_strict_mod
 
 from .pytest_runtime_readiness import build_runtime_cfg as _cfg
 from .pytest_runtime_readiness import (
@@ -359,9 +360,9 @@ class TestReadinessReportBuilderCore:
             lambda *_args, **_kwargs: [{'name': 'connector-readiness', 'status': 'ok'}],
         )
         monkeypatch.setattr(
-            readiness_builder_mod.ReadinessReportBuilder,
-            '_provider_checks',
-            lambda *, cfg, env: [{'name': 'provider-environment', 'status': 'ok'}],
+            readiness_providers_mod.ProviderEnvironmentPolicy,
+            'environment_checks',
+            lambda **_kwargs: [{'name': 'provider-environment', 'status': 'ok'}],
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -441,9 +442,9 @@ class TestReadinessReportBuilderCore:
             resolved_cfg=resolved_cfg,
         )
         monkeypatch.setattr(
-            readiness_builder_mod.ReadinessReportBuilder,
-            '_strict_config_issues',
-            lambda *, raw: [],
+            readiness_strict_mod.StrictConfigValidator,
+            'config_issue_rows',
+            lambda **_kwargs: [],
         )
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
@@ -451,9 +452,9 @@ class TestReadinessReportBuilderCore:
             lambda *_args, **_kwargs: [{'name': 'connector-readiness', 'status': 'ok'}],
         )
         monkeypatch.setattr(
-            readiness_builder_mod.ReadinessReportBuilder,
-            '_provider_checks',
-            lambda *, cfg, env: [{'name': 'provider-environment', 'status': 'ok'}],
+            readiness_providers_mod.ProviderEnvironmentPolicy,
+            'environment_checks',
+            lambda **_kwargs: [{'name': 'provider-environment', 'status': 'ok'}],
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -494,9 +495,9 @@ class TestReadinessReportBuilderCore:
             lambda *_args, **_kwargs: [{'name': 'connector-readiness', 'status': 'ok'}],
         )
         monkeypatch.setattr(
-            readiness_builder_mod.ReadinessReportBuilder,
-            '_provider_checks',
-            lambda *, cfg, env: [{'name': 'provider-environment', 'status': 'ok'}],
+            readiness_providers_mod.ProviderEnvironmentPolicy,
+            'environment_checks',
+            lambda **_kwargs: [{'name': 'provider-environment', 'status': 'ok'}],
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -780,12 +781,26 @@ class TestReadinessReportBuilderCore:
             is False
         )
 
-    def test_provider_checks_delegate_to_provider_environment_policy(
+    def test_config_checks_delegate_to_provider_environment_policy(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
     ) -> None:
-        """Provider checks should forward config, env, and builder seams."""
+        """Config checks should forward provider seams into the policy call."""
         captured: dict[str, object] = {}
+
+        config_path = write_pipeline_config(tmp_path)
+        resolved_cfg = _cfg()
+        _patch_config_resolution(
+            monkeypatch,
+            raw={'name': 'pipeline'},
+            resolved_cfg=resolved_cfg,
+        )
+        monkeypatch.setattr(
+            readiness_connectors_mod.ConnectorReadinessPolicy,
+            'readiness_checks',
+            lambda *_args, **_kwargs: [],
+        )
 
         def _environment_checks(
             *,
@@ -809,21 +824,20 @@ class TestReadinessReportBuilderCore:
             'environment_checks',
             _environment_checks,
         )
-        cfg = _cfg()
         env = {'AWS_PROFILE': 'dev'}
 
-        checks = readiness_builder_mod.ReadinessReportBuilder._provider_checks(
-            cfg=cfg,
+        checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
+            str(config_path),
             env=env,
         )
 
-        assert checks == [{'name': 'provider-environment', 'status': 'ok'}]
+        assert checks[-1:] == [{'name': 'provider-environment', 'status': 'ok'}]
         assert captured == {
-            'cfg': cfg,
+            'cfg': resolved_cfg,
             'env': env,
             'make_check': readiness_builder_mod.ReadinessReportBuilder.make_check,
             'provider_environment_rows_fn': (
-                readiness_builder_mod.ReadinessReportBuilder._provider_environment_rows
+                readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows
             ),
         }
 

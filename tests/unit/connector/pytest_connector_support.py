@@ -122,6 +122,7 @@ _QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
 
 # SECTION: FUNCTIONS ======================================================== #
 
+
 def assert_connector_fields(
     actual: object,
     expected: Mapping[str, object],

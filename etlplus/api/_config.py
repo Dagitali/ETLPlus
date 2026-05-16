@@ -186,9 +186,7 @@ def _selected_profile(
     if not profiles:
         return None
     return (
-        profiles['default']
-        if 'default' in profiles
-        else next(iter(profiles.values()))
+        profiles['default'] if 'default' in profiles else next(iter(profiles.values()))
     )
 
 
