@@ -153,11 +153,7 @@ class ConnectorQueue(ConnectorBase):
     ) -> QueueService:
         """Return the normalized queue service, defaulting to AWS SQS."""
         service = obj.get('service')
-        return (
-            QueueService.AWS_SQS
-            if service is None
-            else QueueService.coerce(service)
-        )
+        return QueueService.AWS_SQS if service is None else QueueService.coerce(service)
 
     # -- Class Methods -- #
 

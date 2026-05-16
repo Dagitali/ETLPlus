@@ -242,7 +242,7 @@ class TestReadinessReportBuilderProviders:
             env={},
             make_check=readiness_builder_mod.ReadinessReportBuilder.make_check,
             provider_environment_rows_fn=(
-                readiness_builder_mod.ReadinessReportBuilder._provider_environment_rows
+                readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows
             ),
         )
 

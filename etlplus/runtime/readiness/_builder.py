@@ -14,7 +14,6 @@ from typing import cast
 from ...__version__ import __version__ as _ETLPLUS_VERSION
 from ..._config import Config
 from ...utils import TokenReferenceCollector
-from ...utils._types import StrAnyMap
 from ...workflow._schedule import schedule_validation_issues
 from . import _connectors
 from . import _providers
@@ -36,26 +35,6 @@ __all__ = [
 
 class ReadinessReportBuilder(ReadinessBaseMixin):
     """Shared builder for ETLPlus runtime readiness reports."""
-
-    # -- Internal Class Methods -- #
-
-    @classmethod
-    def _provider_checks(
-        cls,
-        *,
-        cfg: Config,
-        env: Mapping[str, str],
-    ) -> list[dict[str, Any]]:
-        """
-        Return provider-specific environment readiness checks for one resolved
-        config.
-        """
-        return _providers.ProviderEnvironmentPolicy.environment_checks(
-            cfg=cfg,
-            env=env,
-            make_check=cls.make_check,
-            provider_environment_rows_fn=cls._provider_environment_rows,
-        )
 
     # -- Class Methods -- #
 
@@ -204,7 +183,11 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         resolved_cfg = cast(Config, context.resolved_cfg)
 
         if strict:
-            strict_issues = cls._strict_config_issues(raw=context.resolved_raw)
+            strict_issues = _strict.StrictConfigValidator.config_issue_rows(
+                raw=context.resolved_raw,
+                connector_type_guidance=_connectors.connector_type_guidance,
+                connector_type_choices=_connectors.connector_type_choices,
+            )
             if strict_issues:
                 checks.append(
                     cls.make_check(
@@ -256,9 +239,13 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             ),
         )
         checks.extend(
-            cls._provider_checks(
+            _providers.ProviderEnvironmentPolicy.environment_checks(
                 cfg=resolved_cfg,
                 env=context.effective_env,
+                make_check=cls.make_check,
+                provider_environment_rows_fn=(
+                    _providers.ProviderEnvironmentPolicy.environment_rows
+                ),
             ),
         )
         return checks
@@ -298,30 +285,3 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             status=cls.overall_status(checks),
             python_version=None,
         ).to_payload()
-
-    # -- Internal Static Methods -- #
-
-    @staticmethod
-    def _provider_environment_rows(
-        cfg: Config,
-        env: Mapping[str, str],
-    ) -> list[Any]:
-        """Return provider-environment rows for one resolved config."""
-        return _providers.ProviderEnvironmentPolicy.environment_rows(
-            cfg=cfg,
-            env=env,
-        )
-
-    @staticmethod
-    def _strict_config_issues(
-        *,
-        raw: StrAnyMap,
-    ) -> list[dict[str, Any]]:
-        """
-        Return strict-mode config issues for one resolved raw config mapping.
-        """
-        return _strict.StrictConfigValidator.config_issue_rows(
-            raw=raw,
-            connector_type_guidance=_connectors.connector_type_guidance,
-            connector_type_choices=_connectors.connector_type_choices,
-        )
