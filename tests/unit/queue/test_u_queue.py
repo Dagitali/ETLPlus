@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.queue` package exports.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 import etlplus.queue as queue_pkg
@@ -69,3 +71,10 @@ class TestQueuePackageExports:
     def test_expected_symbols(self) -> None:
         """Test that package facade preserves the documented export order."""
         assert queue_pkg.__all__ == [name for name, _value in QUEUE_EXPORTS]
+
+    def test_protocol_placeholder_to_connector_options_raises_not_implemented(
+        self,
+    ) -> None:
+        """The protocol placeholder should fail closed when called directly."""
+        with pytest.raises(NotImplementedError):
+            QueueConfigProtocol.to_connector_options(SimpleNamespace())
