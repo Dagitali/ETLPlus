@@ -127,9 +127,7 @@ class CloudDatabaseProviderCase:
             'type': 'database',
         }
         if include_provider:
-            payload['provider'] = (
-                self.provider_alias if use_alias else self.provider
-            )
+            payload['provider'] = self.provider_alias if use_alias else self.provider
         for field, value in self.metadata.items():
             if field not in omitted:
                 payload[field] = value
