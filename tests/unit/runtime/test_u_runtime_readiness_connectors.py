@@ -505,8 +505,7 @@ class TestReadinessReportBuilderConnectors:
     ) -> None:
         """Missing-dependency guidance should fall back to one plain install hint."""
         assert (
-            readiness_connectors_mod.ReadinessSupportPolicy
-            .missing_requirement_guidance(
+            readiness_connectors_mod.ReadinessSupportPolicy.missing_requirement_guidance(
                 package='tables',
                 extra=None,
             )
