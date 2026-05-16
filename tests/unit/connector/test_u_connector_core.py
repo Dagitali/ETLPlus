@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.connector._core`.
 
 from __future__ import annotations
 
+import pytest
+
 from etlplus.connector import ConnectorFile
 from etlplus.connector._core import ConnectorProtocol
 
@@ -31,3 +33,8 @@ class TestConnectorCore:
             },
         )
         assert isinstance(connector, ConnectorProtocol)
+
+    def test_protocol_placeholder_from_obj_raises_not_implemented(self) -> None:
+        """The protocol placeholder should fail closed when called directly."""
+        with pytest.raises(NotImplementedError):
+            ConnectorProtocol.from_obj({'name': 'payload'})
