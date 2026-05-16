@@ -574,6 +574,29 @@ class TestReadinessReportBuilderConnectors:
             ),
         ]
 
+    def test_missing_requirement_rows_ignore_storage_schemes_without_extras(
+        self,
+    ) -> None:
+        """Unknown storage schemes should not emit optional dependency rows."""
+        cfg = _cfg(
+            sources=[
+                SimpleNamespace(
+                    name='custom-source',
+                    path='custom://bucket/input.csv',
+                    type='file',
+                ),
+            ],
+        )
+
+        rows = (
+            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
+                cfg=cast(Any, cfg),
+                package_available=lambda _name: False,
+            )
+        )
+
+        assert rows == []
+
     @pytest.mark.parametrize(
         ('service', 'expected_service', 'missing_module', 'extra', 'package'),
         [
@@ -752,6 +775,28 @@ class TestReadinessReportBuilderConnectors:
         )
 
         assert not rows
+
+    def test_missing_requirement_rows_skip_database_provider_when_available(
+        self,
+    ) -> None:
+        """Installed database-provider extras should not emit dependency rows."""
+        cfg = _cfg(
+            targets=[
+                BIGQUERY_CASE.runtime_connector(
+                    connection_string=None,
+                    name='warehouse_bigquery',
+                ),
+            ],
+        )
+
+        rows = (
+            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
+                cfg=cast(Any, cfg),
+                package_available=lambda _name: True,
+            )
+        )
+
+        assert rows == []
 
     def test_requirement_row_adds_optional_format_and_scheme_context(
         self,

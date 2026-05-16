@@ -6,8 +6,11 @@ Unit tests for :mod:`etlplus.connector._database`.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
+import etlplus.connector._database as database_mod
 from etlplus.connector._database import ConnectorDb
 from etlplus.connector._enums import DataConnectorType
 from tests.pytest_shared_support import get_cloud_database_provider_case
@@ -195,3 +198,125 @@ class TestConnectorDb:
     ) -> None:
         """Provider field detection should match raw mapping inference rules."""
         assert ConnectorDb.missing_provider_fields(payload) == expected_missing_fields
+
+    @pytest.mark.parametrize(
+        ('obj', 'provider', 'expected'),
+        [
+            pytest.param(
+                {'project': 'analytics-project'},
+                'sf',
+                'snowflake',
+                id='explicit-provider-argument-wins',
+            ),
+            pytest.param(
+                SimpleNamespace(provider='gcp-bigquery'),
+                None,
+                'bigquery',
+                id='object-provider-attribute-is-normalized',
+            ),
+        ],
+    )
+    def test_provider_from_value_covers_mapping_and_object_paths(
+        self,
+        obj: object,
+        provider: str | None,
+        expected: str,
+    ) -> None:
+        """Provider resolution should normalize both explicit and object hints."""
+        assert ConnectorDb._provider_from_value(obj, provider=provider) == expected
+
+    @pytest.mark.parametrize(
+        ('provider', 'expected_name', 'expected_fields', 'expected_issue'),
+        [
+            pytest.param(
+                'postgresql',
+                'Postgres',
+                (),
+                None,
+                id='alias-normalization-and-display-fallback',
+            ),
+            pytest.param(
+                'bigquery',
+                'BigQuery',
+                ('project', 'dataset'),
+                'missing connection_string or bigquery project/dataset',
+                id='known-provider-metadata',
+            ),
+            pytest.param(
+                None,
+                None,
+                (),
+                None,
+                id='missing-provider',
+            ),
+        ],
+    )
+    def test_provider_metadata_helpers_cover_supported_alias_and_none_paths(
+        self,
+        provider: str | None,
+        expected_name: str | None,
+        expected_fields: tuple[str, ...],
+        expected_issue: str | None,
+    ) -> None:
+        """Provider helper methods should stay aligned on normalization rules."""
+        assert ConnectorDb.provider_display_name(provider) == expected_name
+        assert ConnectorDb.provider_required_fields(provider) == expected_fields
+        assert ConnectorDb.provider_missing_connection_issue(provider) == expected_issue
+
+    @pytest.mark.parametrize(
+        ('provider', 'expected'),
+        [
+            pytest.param(
+                'bigquery',
+                (
+                    'Set "connection_string" to a database DSN or SQLAlchemy-style '
+                    'URL, or define both "project" and "dataset" for this '
+                    'BigQuery connector.'
+                ),
+                id='two-required-fields',
+            ),
+            pytest.param(
+                'snowflake',
+                (
+                    'Set "connection_string" to a database DSN or SQLAlchemy-style '
+                    'URL, or define "account", "database", and "schema" for '
+                    'this Snowflake connector.'
+                ),
+                id='three-required-fields',
+            ),
+            pytest.param(
+                'postgres',
+                None,
+                id='no-provider-specific-fields',
+            ),
+        ],
+    )
+    def test_provider_missing_connection_guidance_covers_supported_branches(
+        self,
+        provider: str,
+        expected: str | None,
+    ) -> None:
+        """Guidance text should adapt to provider field-count requirements."""
+        assert ConnectorDb.provider_missing_connection_guidance(provider) == expected
+
+    def test_provider_missing_connection_guidance_returns_none_without_provider(
+        self,
+    ) -> None:
+        """Missing provider input should short-circuit guidance generation."""
+        assert ConnectorDb.provider_missing_connection_guidance(None) is None
+
+    def test_provider_missing_connection_guidance_supports_one_required_field(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Guidance formatting should also cover single-field provider rules."""
+        monkeypatch.setitem(
+            database_mod._DATABASE_PROVIDER_REQUIRED_FIELDS,
+            'sqlite-local',
+            ('file',),
+        )
+
+        assert ConnectorDb.provider_missing_connection_guidance('sqlite-local') == (
+            'Set "connection_string" to a database DSN or SQLAlchemy-style URL, '
+            'or define "file" for this Sqlite-Local connector.'
+        )
