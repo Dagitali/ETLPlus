@@ -120,6 +120,18 @@ class _SchedulerStateStore:
             encoding='utf-8',
         )
 
+    def _update_state(
+        self,
+        schedule_name: str,
+        updater: Callable[[dict[str, str]], None],
+    ) -> None:
+        """Load, mutate, and persist state for one schedule name."""
+        schedules = self._load()
+        schedule_state = self._state_for(schedules, schedule_name)
+        updater(schedule_state)
+        schedules[schedule_name] = schedule_state
+        self._save(schedules)
+
     # -- Instance Methods -- #
 
     def last_completed_at(
@@ -142,11 +154,13 @@ class _SchedulerStateStore:
         triggered_at: str,
     ) -> None:
         """Persist one attempted schedule trigger timestamp."""
-        schedules = self._load()
-        schedule_state = self._state_for(schedules, schedule_name)
-        schedule_state['last_attempted_at'] = triggered_at
-        schedules[schedule_name] = schedule_state
-        self._save(schedules)
+        self._update_state(
+            schedule_name,
+            lambda schedule_state: schedule_state.__setitem__(
+                'last_attempted_at',
+                triggered_at,
+            ),
+        )
 
     def record_completion(
         self,
@@ -157,19 +171,19 @@ class _SchedulerStateStore:
         run_id: str | None = None,
     ) -> None:
         """Persist one completed schedule trigger timestamp and outcome."""
-        schedules = self._load()
-        schedule_state = self._state_for(schedules, schedule_name)
-        schedule_state['last_attempted_at'] = triggered_at
-        schedule_state['last_completed_at'] = triggered_at
-        schedule_state['last_status'] = status
-        schedule_state.pop('last_error_message', None)
-        schedule_state.pop('last_error_type', None)
-        if run_id is None:
-            schedule_state.pop('last_run_id', None)
-        else:
-            schedule_state['last_run_id'] = run_id
-        schedules[schedule_name] = schedule_state
-        self._save(schedules)
+
+        def _apply(schedule_state: dict[str, str]) -> None:
+            schedule_state['last_attempted_at'] = triggered_at
+            schedule_state['last_completed_at'] = triggered_at
+            schedule_state['last_status'] = status
+            schedule_state.pop('last_error_message', None)
+            schedule_state.pop('last_error_type', None)
+            if run_id is None:
+                schedule_state.pop('last_run_id', None)
+            else:
+                schedule_state['last_run_id'] = run_id
+
+        self._update_state(schedule_name, _apply)
 
     def record_exception(
         self,
@@ -179,19 +193,19 @@ class _SchedulerStateStore:
         exc: Exception,
     ) -> None:
         """Persist one failed dispatch attempt without consuming the trigger."""
-        schedules = self._load()
-        schedule_state = self._state_for(schedules, schedule_name)
-        schedule_state['last_attempted_at'] = triggered_at
-        schedule_state['last_status'] = 'exception'
-        schedule_state['last_error_type'] = type(exc).__name__
         message = str(exc).strip()
-        if message:
-            schedule_state['last_error_message'] = message
-        else:
-            schedule_state.pop('last_error_message', None)
-        schedule_state.pop('last_run_id', None)
-        schedules[schedule_name] = schedule_state
-        self._save(schedules)
+
+        def _apply(schedule_state: dict[str, str]) -> None:
+            schedule_state['last_attempted_at'] = triggered_at
+            schedule_state['last_status'] = 'exception'
+            schedule_state['last_error_type'] = type(exc).__name__
+            if message:
+                schedule_state['last_error_message'] = message
+            else:
+                schedule_state.pop('last_error_message', None)
+            schedule_state.pop('last_run_id', None)
+
+        self._update_state(schedule_name, _apply)
 
     def state(
         self,
@@ -464,19 +478,6 @@ def _schedule_error_metadata(
     return payload
 
 
-def _pending_schedule_metadata(
-    request: ScheduledRunRequest,
-    *,
-    reason: str,
-) -> dict[str, object]:
-    """Return one pending due-run row for summary payloads."""
-    return _schedule_metadata(
-        request,
-        status='pending',
-        reason=reason,
-    )
-
-
 def _scheduler_summary_payload(
     *,
     checked_at: str,
@@ -700,8 +701,9 @@ class LocalScheduler:
                             status='pending',
                         ),
                         *[
-                            _pending_schedule_metadata(
+                            _schedule_metadata(
                                 pending_request,
+                                status='pending',
                                 reason='deferred',
                             )
                             for pending_request in requests[index + 1:]
