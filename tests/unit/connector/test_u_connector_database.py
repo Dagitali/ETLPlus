@@ -94,6 +94,20 @@ class TestConnectorDb:
                 id='infers-bigquery-provider',
             ),
             pytest.param(
+                BIGQUERY_CASE.connector_payload(
+                    include_provider=False,
+                    omit_fields=('location',),
+                    name='warehouse',
+                )
+                | {'provider': None, 'engine': 'gcp-bigquery'},
+                BIGQUERY_CASE.expected_connector_attrs(
+                    name='warehouse',
+                    omit_fields=('location',),
+                )
+                | {'type': DataConnectorType.DATABASE},
+                id='engine-used-when-provider-empty',
+            ),
+            pytest.param(
                 SNOWFLAKE_CASE.connector_payload(
                     use_alias=True,
                     name='snowflake_wh',
@@ -150,3 +164,34 @@ class TestConnectorDb:
         """
         with pytest.raises(TypeError, match='ConnectorDb requires a "name"'):
             ConnectorDb.from_obj(payload)
+
+    @pytest.mark.parametrize(
+        ('payload', 'expected_missing_fields'),
+        [
+            pytest.param(
+                {
+                    'provider': None,
+                    'engine': 'gcp-bigquery',
+                    'project': 'analytics-project',
+                },
+                ('dataset',),
+                id='mapping-uses-engine-when-provider-empty',
+            ),
+            pytest.param(
+                {
+                    'provider': None,
+                    'account': 'acme.us-east-1',
+                    'database': 'analytics',
+                },
+                ('schema',),
+                id='mapping-uses-hint-fields-when-provider-empty',
+            ),
+        ],
+    )
+    def test_missing_provider_fields_infers_provider_for_raw_mapping(
+        self,
+        payload: dict[str, object],
+        expected_missing_fields: tuple[str, ...],
+    ) -> None:
+        """Provider field detection should match raw mapping inference rules."""
+        assert ConnectorDb.missing_provider_fields(payload) == expected_missing_fields

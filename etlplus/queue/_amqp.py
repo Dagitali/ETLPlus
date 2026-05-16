@@ -123,21 +123,13 @@ class AmqpQueue(ProviderQueueConfigMixin):
         Self
             Parsed queue instance.
         """
-        optional_str_fields = cls._optional_str_fields(
-            obj,
-            'url',
-            'host',
-            'virtual_host',
-            'exchange',
-            'routing_key',
-        )
         queue = cls(
             **cls._common_fields(obj, label='AmqpQueue'),
-            url=optional_str_fields['url'],
-            host=optional_str_fields['host'],
-            virtual_host=optional_str_fields['virtual_host'],
-            exchange=optional_str_fields['exchange'],
-            routing_key=optional_str_fields['routing_key'],
+            url=cls._optional_str(obj, 'url'),
+            host=cls._optional_str(obj, 'host'),
+            virtual_host=cls._optional_str(obj, 'virtual_host'),
+            exchange=cls._optional_str(obj, 'exchange'),
+            routing_key=cls._optional_str(obj, 'routing_key'),
         )
         queue.validate()
         return queue

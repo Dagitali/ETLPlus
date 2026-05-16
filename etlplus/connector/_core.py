@@ -14,6 +14,8 @@ from typing import Self
 from typing import runtime_checkable
 
 from ..utils import MappingFieldParser
+from ..utils import MappingParser
+from ..utils import ValueParser
 from ..utils._types import StrAnyMap
 from ._enums import DataConnectorType
 
@@ -65,8 +67,14 @@ class ConnectorProtocol(Protocol):
         -------
         Self
             Parsed connector instance.
+
+        Raises
+        ------
+        NotImplementedError
+            Protocol placeholder. Concrete connector classes provide the
+            implementation.
         """
-        ...
+        raise NotImplementedError
 
 
 # SECTION: ABSTRACT BASE DATA CLASSES ======================================= #
@@ -91,9 +99,41 @@ class ConnectorBase(ABC, ConnectorProtocol):
     # -- Internal Class Methods -- #
 
     @classmethod
+    def _dict_field(
+        cls,
+        obj: StrAnyMap,
+        field_name: str,
+    ) -> dict[str, object]:
+        """Return one mapping-like field as a plain ``dict``."""
+        return MappingParser.to_dict(obj.get(field_name))
+
+    @classmethod
     def _name_from_obj(cls, obj: StrAnyMap) -> str:
         """Return the required connector name for this connector class."""
         return MappingFieldParser.require_str(obj, 'name', label=cls.__name__)
+
+    @classmethod
+    def _optional_str(
+        cls,
+        obj: StrAnyMap,
+        *field_names: str,
+    ) -> str | None:
+        """Return the first optional string field present in *obj*."""
+        for field_name in field_names:
+            if field_name not in obj:
+                continue
+            if (value := ValueParser.optional_str(obj.get(field_name))) is not None:
+                return value
+        return None
+
+    @classmethod
+    def _str_dict_field(
+        cls,
+        obj: StrAnyMap,
+        field_name: str,
+    ) -> dict[str, str]:
+        """Return one mapping-like field as a plain ``dict[str, str]``."""
+        return MappingParser.to_str_dict(MappingParser.optional(obj.get(field_name)))
 
     # -- Class Methods -- #
 
