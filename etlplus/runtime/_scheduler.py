@@ -127,7 +127,9 @@ class _SchedulerStateStore:
     ) -> None:
         """Load, mutate, and persist state for one schedule name."""
         schedules = self._load()
-        schedule_state = self._state_for(schedules, schedule_name)
+        schedule_state = schedules.get(schedule_name)
+        if not isinstance(schedule_state, dict):
+            schedule_state = {}
         updater(schedule_state)
         schedules[schedule_name] = schedule_state
         self._save(schedules)
@@ -154,13 +156,10 @@ class _SchedulerStateStore:
         triggered_at: str,
     ) -> None:
         """Persist one attempted schedule trigger timestamp."""
-        self._update_state(
-            schedule_name,
-            lambda schedule_state: schedule_state.__setitem__(
-                'last_attempted_at',
-                triggered_at,
-            ),
-        )
+        def _apply(schedule_state: dict[str, str]) -> None:
+            schedule_state['last_attempted_at'] = triggered_at
+
+        self._update_state(schedule_name, _apply)
 
     def record_completion(
         self,
@@ -220,17 +219,6 @@ class _SchedulerStateStore:
             for key, value in schedule_state.items()
             if isinstance(key, str) and isinstance(value, str) and value
         }
-
-    # -- Static Methods -- #
-
-    @staticmethod
-    def _state_for(
-        schedules: dict[str, dict[str, str]],
-        schedule_name: str,
-    ) -> dict[str, str]:
-        """Return a mutable state mapping for one schedule name."""
-        schedule_state = schedules.get(schedule_name)
-        return schedule_state if isinstance(schedule_state, dict) else {}
 
 
 class _ScheduleLock:
@@ -807,6 +795,7 @@ class LocalScheduler:
         current_local = now.astimezone(timezone)
         step = timedelta(minutes=minutes)
         previous = _parse_timestamp(previous_triggered_at)
+
         if previous is not None:
             next_due = previous.astimezone(timezone) + step
             due_times: list[datetime] = []
