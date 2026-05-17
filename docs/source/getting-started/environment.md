@@ -66,6 +66,12 @@ Typical approaches:
 
 ### Azure Blob Storage and ADLS Gen2
 
+Combined Azure environment hint set used by readiness reporting:
+
+- `AZURE_STORAGE_CONNECTION_STRING`
+- `AZURE_STORAGE_ACCOUNT_URL`
+- `AZURE_STORAGE_CREDENTIAL`
+
 Bootstrap variables checked by readiness:
 
 - `AZURE_STORAGE_CONNECTION_STRING`
@@ -76,7 +82,8 @@ Explicit credential variable checked by readiness:
 - `AZURE_STORAGE_CREDENTIAL`
 
 If your `azure-blob://...` or `abfs://...` path already embeds the account host, ETLPlus can use
-that as bootstrap context. Explicit credentials are still recommended for non-public targets.
+that as bootstrap context. Readiness still evaluates Azure in two phases: bootstrap first, then
+explicit credentials for non-public targets.
 
 ### BigQuery
 
