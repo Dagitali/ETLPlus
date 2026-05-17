@@ -1,0 +1,69 @@
+# action.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Composite GitHub Action for supported installer smoke testing.
+#
+# Responsibilities
+# - Install the built ETLPlus wheel artifact through supported package installers.
+# - Verify the installed console script through the same user-facing commands
+#   documented for each installer path.
+#
+# Maintainer Notes
+# - This action is intentionally package-artifact oriented. It should run after
+#   distribution build and validation so installer regressions are caught
+#   before release.
+# - Keep the command list small and stable; deeper behavior belongs in unit,
+#   integration, or package-behavior smoke tests.
+
+---
+
+name: Smoke-Test Supported Installers
+
+description: >-
+  Installs a built ETLPlus wheel artifact with pip, pipx, and uv tool install,
+  then verifies the CLI entrypoint with version and help commands.
+
+inputs:
+  artifact-wheel:
+    description: Glob or path for the built wheel artifact passed to supported installers
+    required: false
+    default: dist/*.whl
+  venv-path:
+    description: Path to the temporary virtual environment used for pip smoke testing
+    required: false
+    default: .installer-pip-venv
+
+runs:
+  using: composite
+  steps:
+    - name: Smoke-test pip wheel install
+      shell: bash
+      run: |
+        python -m venv "${{ inputs.venv-path }}"
+        "${{ inputs.venv-path }}/bin/python" -m pip install --upgrade pip
+        "${{ inputs.venv-path }}/bin/python" -m pip install ${{ inputs.artifact-wheel }}
+        "${{ inputs.venv-path }}/bin/etlplus" --version
+        "${{ inputs.venv-path }}/bin/etlplus" --help
+        "${{ inputs.venv-path }}/bin/etlplus" check --help
+
+    - name: Smoke-test pipx wheel install
+      shell: bash
+      run: |
+        python -m pip install --upgrade pipx
+        python -m pipx ensurepath
+        python -m pipx install ${{ inputs.artifact-wheel }}
+        "$HOME/.local/bin/etlplus" --version
+        "$HOME/.local/bin/etlplus" --help
+        "$HOME/.local/bin/etlplus" check --help
+        python -m pipx uninstall etlplus
+
+    - name: Smoke-test uv tool wheel install
+      shell: bash
+      run: |
+        python -m pip install --upgrade uv
+        uv tool install --force ${{ inputs.artifact-wheel }}
+        "$HOME/.local/bin/etlplus" --version
+        "$HOME/.local/bin/etlplus" --help
+        "$HOME/.local/bin/etlplus" check --help

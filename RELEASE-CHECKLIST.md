@@ -167,6 +167,26 @@ release.
 
 These are the active follow-up items for the `v1.x` line.
 
+## Next Minor Installer Expansion Checklist
+
+The next minor release should make alternate CLI installer paths first-class without changing the
+stable package metadata contract.
+
+- [x] Keep `pyproject.toml` as the canonical packaging metadata source and leave `setup.py` as the
+  minimal compatibility shim.
+- [x] Document `pipx install etlplus` and `uv tool install etlplus` as supported isolated CLI
+  installer paths for the base PyPI artifact.
+- [x] Preserve the broad `v1.x` default dependency posture for `pip`, `pipx`, and `uv tool install`.
+  A smaller default install would be a future major-version packaging decision because it could
+  narrow what users receive from the documented base install.
+- [x] Keep installer parity explicit: `pip`, `pipx`, and `uv tool install` must install the same
+  base PyPI artifact and expose the same `etlplus` CLI entrypoint.
+- [x] Centralize release-path installer smoke coverage for the built wheel artifact through `pip`,
+  `pipx`, and `uv tool install`, verifying `etlplus --version`, `etlplus --help`, and `etlplus check
+  --help`.
+- [ ] Consider conda-forge as follow-up packaging work after installer smoke coverage has stabilized
+  and after dependency-footprint feedback is available.
+
 ## Maintain In `v1.x`
 
 - [ ] Continue tightening docstring-style enforcement pragmatically.
@@ -302,6 +322,8 @@ The current stable-line posture is:
 
 - Keep the release surface coherent and predictable across `v1.0.x`.
 - Continue execution-hygiene work that supports the documented CLI/runtime contract.
-- Leave alternative installer/channel expansion (`pipx`, `uv`, `conda`) as explicit `v2.0.0`
-  packaging work rather than mixing it into `v1.x` runtime-hygiene follow-up.
+- Ship `pipx` and `uv tool install` support as non-breaking packaging and smoke-test improvements
+  for the existing PyPI artifact.
+- Leave conda-forge and any smaller default dependency split as explicit follow-up packaging work
+  rather than mixing them into `v1.x` runtime-hygiene follow-up.
 - Treat the archived pre-1.0 sections above as audit history, not as the active roadmap.

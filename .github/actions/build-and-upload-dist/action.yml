@@ -9,11 +9,13 @@
 # Responsibilities
 # - Install the requested Python runtime and build dependency set.
 # - Build and verify distributions from the checked-out repository.
-# - Smoke-test the built wheel and upload the resulting artifacts.
+# - Smoke-test supported installers and packaged behavior for the built wheel
+#   artifact, then upload the resulting artifacts.
 #
 # Maintainer Notes
 # - This action preserves the repository's release safeguards by composing the
-#   existing distribution build, wheel smoke, and artifact upload steps.
+#   existing distribution build, installer smoke, package-behavior smoke, and
+#   artifact upload steps.
 # - Workflow jobs must check out the repository before invoking this local
 #   action.
 # - External GitHub Actions are pinned to full commit SHAs to reduce supply-
@@ -25,7 +27,8 @@ name: Build And Upload Distributions
 
 description: >-
   Installs build dependencies, builds ETLPlus distributions, validates them,
-  smoke-tests the wheel, and uploads the artifacts from the checked-out
+  smoke-tests supported installers and packaged behavior, and uploads the
+  artifacts from the checked-out
   repository.
 
 inputs:
@@ -45,8 +48,8 @@ inputs:
     description: Arguments passed to "pip install" for build dependencies
     required: false
     default: 'build twine'
-  wheel-path:
-    description: Glob or path passed to pip install for the built wheel
+  artifact-wheel:
+    description: Glob or path for the built wheel artifact used by smoke tests
     required: false
     default: dist/*.whl
 
@@ -62,9 +65,13 @@ runs:
       with:
         dist-glob: ${{ inputs.dist-glob }}
 
+    - uses: ./.github/actions/installer-smoke
+      with:
+        artifact-wheel: ${{ inputs.artifact-wheel }}
+
     - uses: ./.github/actions/wheel-smoke
       with:
-        wheel-path: ${{ inputs.wheel-path }}
+        artifact-wheel: ${{ inputs.artifact-wheel }}
 
     - name: Upload distributions
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # Pinned v7.0.0
