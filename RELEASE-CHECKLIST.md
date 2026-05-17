@@ -179,6 +179,8 @@ stable package metadata contract.
 - [x] Preserve the broad `v1.x` default dependency posture for `pip`, `pipx`, and `uv tool install`.
   A smaller default install would be a future major-version packaging decision because it could
   narrow what users receive from the documented base install.
+- [x] Keep installer parity explicit: `pip`, `pipx`, and `uv tool install` must install the same
+  base PyPI artifact and expose the same `etlplus` CLI entrypoint.
 - [x] Centralize release-path installer smoke coverage for the built wheel through `pip`,
   `pipx`, and `uv tool install`, verifying `etlplus --version`, `etlplus --help`, and
   `etlplus check --help`.
