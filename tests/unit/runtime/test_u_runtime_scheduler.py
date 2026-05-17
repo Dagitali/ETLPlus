@@ -259,16 +259,6 @@ class TestSchedulerLock:
         assert requests == expected_requests
         assert skipped == expected_skipped
 
-    def test_release_without_acquire_is_a_safe_noop(self, tmp_path: Path) -> None:
-        """Releasing an unacquired lock should still clean up without raising."""
-        lock = scheduler_mod._ScheduleLock(tmp_path, 'nightly-all')
-
-        lock.release()
-
-        assert not (
-            tmp_path / scheduler_mod._SCHEDULER_LOCK_DIR / 'nightly-all.lock'
-        ).exists()
-
     @pytest.mark.parametrize(
         ('payload', 'expected'),
         [
@@ -292,6 +282,31 @@ class TestSchedulerLock:
             lock._lock_path.write_text(payload, encoding='utf-8')
 
         assert lock._existing_pid() == expected
+
+    def test_release_after_failed_acquire_preserves_existing_lock(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Locks owned by another process must not be deleted by failed acquires."""
+        lock = scheduler_mod._ScheduleLock(tmp_path, 'nightly-all')
+        lock._lock_path.parent.mkdir(parents=True, exist_ok=True)
+        lock._lock_path.write_text(str(os.getpid()), encoding='utf-8')
+
+        assert lock.acquire() is False
+
+        lock.release()
+
+        assert lock._lock_path.read_text(encoding='utf-8') == str(os.getpid())
+
+    def test_release_without_acquire_is_a_safe_noop(self, tmp_path: Path) -> None:
+        """Releasing an unacquired lock should still clean up without raising."""
+        lock = scheduler_mod._ScheduleLock(tmp_path, 'nightly-all')
+
+        lock.release()
+
+        assert not (
+            tmp_path / scheduler_mod._SCHEDULER_LOCK_DIR / 'nightly-all.lock'
+        ).exists()
 
 
 class TestRunPending:
