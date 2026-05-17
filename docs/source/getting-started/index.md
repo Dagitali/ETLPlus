@@ -4,6 +4,7 @@
 :maxdepth: 1
 
 installation
+environment
 quickstart
 compatibility
 ```
