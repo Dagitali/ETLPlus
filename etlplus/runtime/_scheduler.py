@@ -7,6 +7,8 @@ Local schedule-trigger execution helpers.
 from __future__ import annotations
 
 import os
+from collections.abc import Iterable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC
 from datetime import datetime
@@ -120,17 +122,21 @@ class _SchedulerStateStore:
             encoding='utf-8',
         )
 
-    def _update_state(
+    def _merge_state(
         self,
         schedule_name: str,
-        updater: Callable[[dict[str, str]], None],
+        *,
+        clear: Iterable[str] = (),
+        values: Mapping[str, str],
     ) -> None:
-        """Load, mutate, and persist state for one schedule name."""
+        """Load, merge, and persist state for one schedule name."""
         schedules = self._load()
         schedule_state = schedules.get(schedule_name)
         if not isinstance(schedule_state, dict):
             schedule_state = {}
-        updater(schedule_state)
+        for key in clear:
+            schedule_state.pop(key, None)
+        schedule_state.update(values)
         schedules[schedule_name] = schedule_state
         self._save(schedules)
 
@@ -156,11 +162,10 @@ class _SchedulerStateStore:
         triggered_at: str,
     ) -> None:
         """Persist one attempted schedule trigger timestamp."""
-
-        def _apply(schedule_state: dict[str, str]) -> None:
-            schedule_state['last_attempted_at'] = triggered_at
-
-        self._update_state(schedule_name, _apply)
+        self._merge_state(
+            schedule_name,
+            values={'last_attempted_at': triggered_at},
+        )
 
     def record_completion(
         self,
@@ -171,19 +176,22 @@ class _SchedulerStateStore:
         run_id: str | None = None,
     ) -> None:
         """Persist one completed schedule trigger timestamp and outcome."""
-
-        def _apply(schedule_state: dict[str, str]) -> None:
-            schedule_state['last_attempted_at'] = triggered_at
-            schedule_state['last_completed_at'] = triggered_at
-            schedule_state['last_status'] = status
-            schedule_state.pop('last_error_message', None)
-            schedule_state.pop('last_error_type', None)
-            if run_id is None:
-                schedule_state.pop('last_run_id', None)
-            else:
-                schedule_state['last_run_id'] = run_id
-
-        self._update_state(schedule_name, _apply)
+        values = {
+            'last_attempted_at': triggered_at,
+            'last_completed_at': triggered_at,
+            'last_status': status,
+        }
+        if run_id is not None:
+            values['last_run_id'] = run_id
+        self._merge_state(
+            schedule_name,
+            clear=(
+                'last_error_message',
+                'last_error_type',
+                *(('last_run_id',) if run_id is None else ()),
+            ),
+            values=values,
+        )
 
     def record_exception(
         self,
@@ -194,18 +202,21 @@ class _SchedulerStateStore:
     ) -> None:
         """Persist one failed dispatch attempt without consuming the trigger."""
         message = str(exc).strip()
-
-        def _apply(schedule_state: dict[str, str]) -> None:
-            schedule_state['last_attempted_at'] = triggered_at
-            schedule_state['last_status'] = 'exception'
-            schedule_state['last_error_type'] = type(exc).__name__
-            if message:
-                schedule_state['last_error_message'] = message
-            else:
-                schedule_state.pop('last_error_message', None)
-            schedule_state.pop('last_run_id', None)
-
-        self._update_state(schedule_name, _apply)
+        values = {
+            'last_attempted_at': triggered_at,
+            'last_status': 'exception',
+            'last_error_type': type(exc).__name__,
+        }
+        if message:
+            values['last_error_message'] = message
+        self._merge_state(
+            schedule_name,
+            clear=(
+                'last_run_id',
+                *(('last_error_message',) if not message else ()),
+            ),
+            values=values,
+        )
 
     def state(
         self,
@@ -310,9 +321,10 @@ class _ScheduleLock:
 
     def release(self) -> None:
         """Release the acquired schedule lock when present."""
-        if self._fd is not None:
-            os.close(self._fd)
-            self._fd = None
+        if self._fd is None:
+            return
+        os.close(self._fd)
+        self._fd = None
         self._lock_path.unlink(missing_ok=True)
 
 
