@@ -98,6 +98,8 @@ ETLPlus currently supports Python 3.13 and 3.14.
 
 - Install with `pip install etlplus` for the supported CLI, `etlplus.ops`, the API client, and the
   built-in implemented file handlers.
+- Use `pipx install etlplus` or `uv tool install etlplus` when you want ETLPlus as an isolated CLI
+  tool instead of a package installed into the current environment.
 - Use `pip install -e ".[dev]"` for contributor tooling and `pip install -e ".[file]"` when you need
   the remaining scientific and specialty format dependencies.
 - Use `pip install -e ".[storage]"` when you want remote storage backends for `s3://`,
@@ -214,6 +216,16 @@ Maintainer-facing policy and automation references are also available in
 pip install etlplus
 ```
 
+For an isolated CLI install, use either `pipx` or `uv`:
+
+```bash
+pipx install etlplus
+uv tool install etlplus
+```
+
+These installer paths are first-class for the base CLI artifact. They install the same PyPI package
+as `pip install etlplus`, including the stable-line default dependency set.
+
 For development:
 
 ```bash
@@ -228,6 +240,10 @@ This is intentional for the stable line. ETLPlus treats the documented CLI, `etl
 `etlplus.api`, and the implemented built-in file handlers as one supported default runtime surface,
 so the base install keeps the dependencies needed for that surface together instead of pushing core
 implemented handlers behind extras.
+
+The installer review keeps that dependency posture unchanged: `pip`, `pipx`, and `uv tool install`
+all install the same broad base runtime. A leaner default install would be a separate
+breaking-design decision for a future major release, not a minor `v1.x` change.
 
 For development with full optional file-format support:
 
