@@ -156,6 +156,7 @@ class _SchedulerStateStore:
         triggered_at: str,
     ) -> None:
         """Persist one attempted schedule trigger timestamp."""
+
         def _apply(schedule_state: dict[str, str]) -> None:
             schedule_state['last_attempted_at'] = triggered_at
 
