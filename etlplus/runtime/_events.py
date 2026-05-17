@@ -119,7 +119,7 @@ class RuntimeEvents:
             'schema_version': EVENT_SCHEMA_VERSION,
             'timestamp': timestamp or RuntimeEvents.utc_now_iso(),
         }
-        return dict(cast(_RuntimeEventDict, dict(event) | fields))
+        return cast(dict[str, Any], event | fields)
 
     @staticmethod
     def create_run_id() -> str:
