@@ -15,6 +15,9 @@ import pytest
 import etlplus.runtime.readiness._builder as readiness_builder_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
 import etlplus.runtime.readiness._providers as readiness_providers_mod
+from etlplus.runtime.readiness._support import AZURE_ENV_HINTS
+from etlplus.runtime.readiness._support import AZURE_STORAGE_BOOTSTRAP_ENV
+from etlplus.runtime.readiness._support import AZURE_STORAGE_CREDENTIAL_ENV
 from etlplus.runtime.readiness._support import RequirementSpec
 
 from .pytest_runtime_readiness import build_provider_check as _provider_check
@@ -30,6 +33,15 @@ from .pytest_runtime_readiness import build_runtime_cfg as _cfg
 
 class TestReadinessReportBuilderProviders:
     """Provider readiness unit tests for :class:`ReadinessReportBuilder`."""
+
+    def test_azure_env_hints_alias_stays_aligned_with_split_azure_constants(
+        self,
+    ) -> None:
+        """Azure umbrella hints should remain derived from the split constants."""
+        assert AZURE_ENV_HINTS == (
+            *AZURE_STORAGE_BOOTSTRAP_ENV,
+            AZURE_STORAGE_CREDENTIAL_ENV,
+        )
 
     @pytest.mark.parametrize(
         ('env', 'expected'),
