@@ -566,13 +566,10 @@ class TestReadinessReportBuilderProviders:
             },
         ]
 
-    def test_runtime_wrapper_helpers_delegate_to_extracted_helpers(
+    def test_runtime_helpers_cover_env_hints_and_requirement_rows(
         self,
     ) -> None:
-        """
-        Thin readiness wrapper methods should preserve the extracted helper
-        behavior.
-        """
+        """Shared helpers should cover env hints and requirement row context."""
         requirement = RequirementSpec(
             ('boto3',),
             'boto3',
@@ -580,8 +577,9 @@ class TestReadinessReportBuilderProviders:
         )
 
         assert (
-            readiness_providers_mod._aws_env_hint_present(
+            readiness_providers_mod._env_hint_present(
                 {'AWS_PROFILE': 'default'},
+                ('AWS_PROFILE',),
             )
             is True
         )
