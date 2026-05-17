@@ -8,7 +8,7 @@
 #
 # Responsibilities
 # - Build, audit, validate, and smoke-test tagged distribution artifacts,
-#   including pipx and uv tool installer checks for the built wheel.
+#   including supported installer checks for the built wheel.
 # - Publish the tagged GitHub Release before publishing the package to PyPI.
 # - Validate the tagged documentation build locally; hosted publication is
 #   handled by the Read the Docs GitHub App.
