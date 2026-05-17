@@ -19,7 +19,6 @@ from . import _connectors
 from . import _providers
 from . import _strict
 from ._base import ReadinessBaseMixin
-from ._support import ReadinessReport
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -46,12 +45,14 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         python_version: str | None,
     ) -> dict[str, Any]:
         """Return one normalized readiness-report payload."""
-        return ReadinessReport(
-            checks=checks,
-            etlplus_version=_ETLPLUS_VERSION,
-            status=cls.overall_status(checks),
-            python_version=python_version,
-        ).to_payload()
+        payload: dict[str, Any] = {
+            'checks': checks,
+            'etlplus_version': _ETLPLUS_VERSION,
+            'status': cls.overall_status(checks),
+        }
+        if python_version is not None:
+            payload['python_version'] = python_version
+        return payload
 
     # -- Class Methods -- #
 
