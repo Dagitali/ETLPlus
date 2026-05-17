@@ -510,6 +510,34 @@ class TestReadinessReportBuilderProviders:
                 },
                 id='snowflake-env-hint',
             ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        SimpleNamespace(
+                            connection_string=None,
+                            name='warehouse_generic',
+                            provider=None,
+                            type='database',
+                        ),
+                    ],
+                ),
+                {},
+                id='database-without-provider',
+            ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        SimpleNamespace(
+                            connection_string=None,
+                            name='warehouse_postgres',
+                            provider='postgres',
+                            type='database',
+                        ),
+                    ],
+                ),
+                {},
+                id='database-provider-without-env-policy',
+            ),
         ],
     )
     def test_provider_environment_rows_return_empty_when_auth_hints_exist(
