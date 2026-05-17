@@ -20,12 +20,15 @@ from ...utils._types import StrAnyMap
 __all__ = [
     # Constants
     'AWS_ENV_HINTS',
+    'AZURE_ENV_HINTS',
     'AZURE_STORAGE_BOOTSTRAP_ENV',
     'AZURE_STORAGE_CREDENTIAL_ENV',
     'DATABASE_PROVIDER_EXTRA_REQUIREMENTS',
     'FORMAT_EXTRA_REQUIREMENTS',
+    'GCP_ENV_HINTS',
     'QUEUE_SERVICE_EXTRA_REQUIREMENTS',
     'SCHEME_EXTRA_REQUIREMENTS',
+    'SNOWFLAKE_ENV_HINTS',
     'SUPPORTED_PYTHON_RANGE',
     # Classes
     'ReadinessReport',
@@ -87,6 +90,8 @@ class ResolvedConfigContext:
 # SECTION: CONSTANTS ======================================================== #
 
 
+AZURE_STORAGE_CREDENTIAL_ENV: Final[str] = 'AZURE_STORAGE_CREDENTIAL'
+
 # TODO: Conform constants for provider hints to a more systematic structure
 # TODO: with provider-specific sections and guidance for additional services
 # TODO: (for example, GCP and Databricks).
@@ -108,7 +113,23 @@ AZURE_STORAGE_BOOTSTRAP_ENV: Final[tuple[str, ...]] = (
     'AZURE_STORAGE_CONNECTION_STRING',
     'AZURE_STORAGE_ACCOUNT_URL',
 )
-AZURE_STORAGE_CREDENTIAL_ENV: Final[str] = 'AZURE_STORAGE_CREDENTIAL'
+AZURE_ENV_HINTS: Final[tuple[str, ...]] = (
+    *AZURE_STORAGE_BOOTSTRAP_ENV,
+    AZURE_STORAGE_CREDENTIAL_ENV,
+)
+GCP_ENV_HINTS: Final[tuple[str, ...]] = (
+    'GOOGLE_APPLICATION_CREDENTIALS',
+    'GOOGLE_CLOUD_PROJECT',
+    'GCLOUD_PROJECT',
+    'CLOUDSDK_CONFIG',
+)
+SNOWFLAKE_ENV_HINTS: Final[tuple[str, ...]] = (
+    'SNOWFLAKE_USER',
+    'SNOWFLAKE_PASSWORD',
+    'SNOWFLAKE_AUTHENTICATOR',
+    'SNOWFLAKE_PRIVATE_KEY_PATH',
+    'SNOWFLAKE_PRIVATE_KEY',
+)
 
 DATABASE_PROVIDER_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
     'bigquery': RequirementSpec(
