@@ -337,6 +337,23 @@ class TestReadinessReportBuilderConnectors:
             ),
         ]
 
+    def test_connector_gap_rows_return_empty_for_complete_cloud_database_metadata(
+        self,
+    ) -> None:
+        """Complete cloud-database metadata should suppress generic DSN gaps."""
+        cfg = _cfg(
+            targets=[
+                BIGQUERY_CASE.runtime_connector(connection_string=None),
+                SNOWFLAKE_CASE.runtime_connector(connection_string=None),
+            ],
+        )
+
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
+            cast(Any, cfg),
+        )
+
+        assert not rows
+
     @pytest.mark.parametrize(
         ('connector', 'expected'),
         [
