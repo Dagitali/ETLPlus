@@ -277,6 +277,8 @@ class ConnectorReadinessPolicy:
                         resolved.connector,
                         provider=resolved.database_provider,
                     )
+                    if provider_issue and not missing_provider_fields:
+                        continue
                     gaps.append(
                         _connector_gap_row(
                             connector=resolved.name,
