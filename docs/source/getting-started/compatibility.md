@@ -54,6 +54,15 @@ install`. Splitting the default install into a smaller CLI core plus larger extr
 major-version packaging decision because it could change what existing users receive from the
 documented base install.
 
+## Installer policy
+
+- Use `pip install etlplus` when ETLPlus should be available as both a Python package and CLI in the
+  active environment.
+- Use `pipx install etlplus` for the preferred isolated CLI installation path.
+- Use `uv tool install etlplus` when uv is the local tool installer.
+- Conda/conda-forge is not yet a supported ETLPlus install channel; it is tracked as follow-up
+  packaging work.
+
 ## Release interpretation
 
 - “Supported” means the combination is covered by package metadata and some CI validation.
