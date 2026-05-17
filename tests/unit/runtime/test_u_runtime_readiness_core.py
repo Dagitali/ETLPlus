@@ -124,7 +124,9 @@ class TestReadinessReportBuilderCore:
         monkeypatch.setattr(
             readiness_builder_mod.ReadinessReportBuilder,
             'config_checks',
-            lambda _config_path, env=None: (_ for _ in ()).throw(TypeError('boom')),
+            lambda _config_path, env=None, strict=False: (
+                _ for _ in ()
+            ).throw(TypeError('boom')),
         )
 
         report = readiness_builder_mod.ReadinessReportBuilder.build(
