@@ -103,9 +103,7 @@ def _connector_parse_issue(
     if isinstance(raw_type, str):
         guidance = connector_type_guidance(raw_type)
     elif raw_type is None:
-        guidance = (
-            'Set "type" to one of: ' + ', '.join(connector_type_choices()) + '.'
-        )
+        guidance = 'Set "type" to one of: ' + ', '.join(connector_type_choices()) + '.'
     return {
         'guidance': guidance,
         'index': index,
