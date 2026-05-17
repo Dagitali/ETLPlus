@@ -6,7 +6,7 @@
 # Composite GitHub Action for supported installer smoke testing.
 #
 # Responsibilities
-# - Install the built ETLPlus wheel through supported package installers.
+# - Install the built ETLPlus wheel artifact through supported package installers.
 # - Verify the installed console script through the same user-facing commands
 #   documented for each installer path.
 #
@@ -22,12 +22,12 @@
 name: Smoke-Test Supported Installers
 
 description: >-
-  Installs a built ETLPlus wheel with pip, pipx, and uv tool install, then
-  verifies the CLI entrypoint with version and help commands.
+  Installs a built ETLPlus wheel artifact with pip, pipx, and uv tool install,
+  then verifies the CLI entrypoint with version and help commands.
 
 inputs:
-  wheel-path:
-    description: Glob or path passed to supported installers for the built wheel
+  artifact-wheel:
+    description: Glob or path for the built wheel artifact passed to supported installers
     required: false
     default: dist/*.whl
   venv-path:
@@ -43,7 +43,7 @@ runs:
       run: |
         python -m venv "${{ inputs.venv-path }}"
         "${{ inputs.venv-path }}/bin/python" -m pip install --upgrade pip
-        "${{ inputs.venv-path }}/bin/python" -m pip install ${{ inputs.wheel-path }}
+        "${{ inputs.venv-path }}/bin/python" -m pip install ${{ inputs.artifact-wheel }}
         "${{ inputs.venv-path }}/bin/etlplus" --version
         "${{ inputs.venv-path }}/bin/etlplus" --help
         "${{ inputs.venv-path }}/bin/etlplus" check --help
@@ -53,7 +53,7 @@ runs:
       run: |
         python -m pip install --upgrade pipx
         python -m pipx ensurepath
-        python -m pipx install ${{ inputs.wheel-path }}
+        python -m pipx install ${{ inputs.artifact-wheel }}
         "$HOME/.local/bin/etlplus" --version
         "$HOME/.local/bin/etlplus" --help
         "$HOME/.local/bin/etlplus" check --help
@@ -63,7 +63,7 @@ runs:
       shell: bash
       run: |
         python -m pip install --upgrade uv
-        uv tool install --force ${{ inputs.wheel-path }}
+        uv tool install --force ${{ inputs.artifact-wheel }}
         "$HOME/.local/bin/etlplus" --version
         "$HOME/.local/bin/etlplus" --help
         "$HOME/.local/bin/etlplus" check --help

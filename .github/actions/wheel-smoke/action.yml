@@ -6,7 +6,7 @@
 # Composite GitHub Action for package-behavior wheel smoke testing.
 #
 # Responsibilities
-# - Create an isolated virtual environment for a built wheel.
+# - Create an isolated virtual environment for a built wheel artifact.
 # - Run the schema-validation smoke checks against the installed package.
 #
 # Maintainer Notes
@@ -18,12 +18,12 @@
 name: Smoke-Test Built Wheel Behavior
 
 description: >-
-  Creates an isolated virtual environment, installs the built ETLPlus wheel,
-  and runs schema-validation smoke checks.
+  Creates an isolated virtual environment, installs the built ETLPlus wheel
+  artifact, and runs schema-validation smoke checks.
 
 inputs:
-  wheel-path:
-    description: Glob or path passed to pip install for the built wheel
+  artifact-wheel:
+    description: Glob or path for the built wheel artifact passed to pip install
     required: false
     default: dist/*.whl
   venv-path:
@@ -41,5 +41,5 @@ runs:
         python -m venv "${{ inputs.venv-path }}"
         "${{ inputs.venv-path }}/bin/python" -m pip install --upgrade pip
         smoke_python="${{ inputs.venv-path }}/bin/python"
-        "$smoke_python" -m pip install ${{ inputs.wheel-path }}
+        "$smoke_python" -m pip install ${{ inputs.artifact-wheel }}
         "$smoke_python" tools/smoke_test_schema_validation.py "$smoke_python"
