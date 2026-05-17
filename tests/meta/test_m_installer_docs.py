@@ -39,18 +39,18 @@ INSTALLER_CONTRACTS = (
     InstallerContract(
         name='pip',
         docs_command='pip install etlplus',
-        smoke_pattern=re.compile(r'-m pip install \$\{\{ inputs\.wheel-path \}\}'),
+        smoke_pattern=re.compile(r'-m pip install \$\{\{ inputs\.artifact-wheel \}\}'),
     ),
     InstallerContract(
         name='pipx',
         docs_command='pipx install etlplus',
-        smoke_pattern=re.compile(r'-m pipx install \$\{\{ inputs\.wheel-path \}\}'),
+        smoke_pattern=re.compile(r'-m pipx install \$\{\{ inputs\.artifact-wheel \}\}'),
     ),
     InstallerContract(
         name='uv',
         docs_command='uv tool install etlplus',
         smoke_pattern=re.compile(
-            r'uv tool install --force \$\{\{ inputs\.wheel-path \}\}',
+            r'uv tool install --force \$\{\{ inputs\.artifact-wheel \}\}',
         ),
     ),
 )
