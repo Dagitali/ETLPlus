@@ -12,6 +12,9 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 import pytest
+import yaml
+
+from tests.pytest_shared_support import get_cloud_database_provider_case
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
@@ -21,6 +24,12 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
+SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
 
 # SECTION: TESTS ============================================================ #
 
@@ -200,6 +209,123 @@ class TestCliCheck:
             if check['name'] == 'config-substitution'
         )
         assert substitution_check['status'] == 'ok'
+
+    @pytest.mark.parametrize(
+        ('connector', 'expected_gap'),
+        [
+            pytest.param(
+                BIGQUERY_CASE.connector_payload(connection_string=None),
+                {
+                    'connector': BIGQUERY_CASE.connector_name,
+                    'guidance': (
+                        'Set GOOGLE_APPLICATION_CREDENTIALS for an explicit '
+                        'service-account credential, or rely on gcloud '
+                        'Application Default Credentials, workload identity, '
+                        'or instance metadata.'
+                    ),
+                    'missing_env': [
+                        'GOOGLE_APPLICATION_CREDENTIALS',
+                        'GOOGLE_CLOUD_PROJECT',
+                        'GCLOUD_PROJECT',
+                        'CLOUDSDK_CONFIG',
+                    ],
+                    'provider': 'gcp-bigquery',
+                    'reason': (
+                        'No common Google Cloud credential-chain environment '
+                        'hints were detected for this BigQuery connector.'
+                    ),
+                    'role': 'target',
+                    'scheme': 'bigquery',
+                    'severity': 'warn',
+                },
+                id='bigquery',
+            ),
+            pytest.param(
+                SNOWFLAKE_CASE.connector_payload(connection_string=None),
+                {
+                    'connector': SNOWFLAKE_CASE.connector_name,
+                    'guidance': (
+                        'Set SNOWFLAKE_USER plus SNOWFLAKE_PASSWORD or '
+                        'SNOWFLAKE_PRIVATE_KEY_PATH, or rely on external SSO '
+                        'or secret injection used by your runtime.'
+                    ),
+                    'missing_env': [
+                        'SNOWFLAKE_USER',
+                        'SNOWFLAKE_PASSWORD',
+                        'SNOWFLAKE_AUTHENTICATOR',
+                        'SNOWFLAKE_PRIVATE_KEY_PATH',
+                        'SNOWFLAKE_PRIVATE_KEY',
+                    ],
+                    'provider': 'snowflake',
+                    'reason': (
+                        'No common Snowflake credential environment hints '
+                        'were detected for this connector.'
+                    ),
+                    'role': 'target',
+                    'scheme': 'snowflake',
+                    'severity': 'warn',
+                },
+                id='snowflake',
+            ),
+        ],
+    )
+    def test_readiness_cloud_database_provider_warnings_exit_zero(
+        self,
+        tmp_path: Path,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        monkeypatch: pytest.MonkeyPatch,
+        connector: dict[str, object],
+        expected_gap: dict[str, object],
+    ) -> None:
+        """Cloud database provider auth-hint warnings should stay advisory."""
+        from etlplus.runtime import ReadinessReportBuilder
+
+        monkeypatch.setattr(
+            ReadinessReportBuilder,
+            'package_available',
+            lambda _module_name: True,
+        )
+        for variable in (
+            'GOOGLE_APPLICATION_CREDENTIALS',
+            'GOOGLE_CLOUD_PROJECT',
+            'GCLOUD_PROJECT',
+            'CLOUDSDK_CONFIG',
+            'SNOWFLAKE_USER',
+            'SNOWFLAKE_PASSWORD',
+            'SNOWFLAKE_AUTHENTICATOR',
+            'SNOWFLAKE_PRIVATE_KEY_PATH',
+            'SNOWFLAKE_PRIVATE_KEY',
+        ):
+            monkeypatch.delenv(variable, raising=False)
+
+        config_path = tmp_path / 'check_readiness_cloud_database_provider_warning.yml'
+        config_path.write_text(
+            yaml.safe_dump(
+                {
+                    'name': 'Readiness Check',
+                    'targets': [connector],
+                },
+                sort_keys=False,
+            ),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            ('check', '--readiness', '--config', str(config_path)),
+        )
+
+        assert code == 0
+        assert err == ''
+        payload = parse_json_output(out)
+        assert payload['status'] == 'warn'
+        provider_check = next(
+            check
+            for check in payload['checks']
+            if check['name'] == 'provider-environment'
+        )
+        assert provider_check['status'] == 'warn'
+        assert provider_check['environment_gaps'] == [expected_gap]
 
     def test_readiness_incomplete_explicit_aws_credentials_exit_one(
         self,
