@@ -91,7 +91,7 @@ class RuntimeLoggingPolicy:
         level = cls.resolve_level(quiet=quiet, verbose=verbose, env=env)
         logging.basicConfig(
             level=level,
-            stream=stream or sys.stderr,
+            stream=sys.stderr if stream is None else stream,
             format=_LOG_FORMAT,
             force=force,
         )
@@ -126,8 +126,8 @@ class RuntimeLoggingPolicy:
         """
         env_map = os.environ if env is None else env
         explicit = (env_map.get('ETLPLUS_LOG_LEVEL') or '').strip().upper()
-        if explicit in _LOG_LEVELS:
-            return _LOG_LEVELS[explicit]
+        if (explicit_level := _LOG_LEVELS.get(explicit)) is not None:
+            return explicit_level
         if quiet:
             return _LOG_LEVELS[_QUIET_LEVEL_NAME]
         if verbose:
