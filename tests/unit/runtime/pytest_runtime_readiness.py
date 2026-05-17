@@ -163,6 +163,25 @@ def build_resolved_config_context(
     )
 
 
+def build_readiness_check(
+    *,
+    name: str,
+    status: str,
+    message: str,
+    details_key: str | None = None,
+    rows: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
+    """Build one generic readiness check row for connector/provider tests."""
+    return _row(
+        {
+            'message': message,
+            'name': name,
+            'status': status,
+        },
+        optional_fields={details_key: rows} if details_key is not None else None,
+    )
+
+
 def patch_config_resolution(
     monkeypatch: pytest.MonkeyPatch,
     *,
