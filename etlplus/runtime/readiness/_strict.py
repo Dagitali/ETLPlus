@@ -27,6 +27,93 @@ __all__ = [
     'StrictConfigValidator',
 ]
 
+# SECTION: CONSTANTS ======================================================== #
+
+
+_SCHEDULE_ISSUE_GUIDANCE = {
+    'cron helper emission currently supports exactly five cron fields': (
+        'Use a five-field cron expression: minute hour day month weekday.'
+    ),
+    'cron helper emission currently supports only single values or "*" fields': (
+        'Use single cron field values or "*" for helper-compatible schedules.'
+    ),
+    'schedule must define a target': (
+        'Add a target mapping with either "job" or "run_all".'
+    ),
+    'schedule must define exactly one target: cron or interval': None,
+    'schedule must define exactly one trigger: cron or interval': (
+        'Set exactly one of "cron" or "interval" for each schedule.'
+    ),
+    'schedule target must define exactly one mode: job or run_all': (
+        'Set exactly one of target.job or target.run_all.'
+    ),
+}
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _invalid_entry_issue(
+    *,
+    guidance: str,
+    index: int,
+    issue: str,
+    section: str,
+    value: object,
+) -> dict[str, Any]:
+    """Return one invalid entry diagnostic row."""
+    return {
+        'guidance': guidance,
+        'index': index,
+        'issue': issue,
+        'observed_type': type(value).__name__,
+        'section': section,
+    }
+
+
+def _invalid_section_issue(
+    *,
+    expected: str,
+    guidance: str,
+    section: str,
+    value: object,
+) -> dict[str, Any]:
+    """Return one invalid top-level section diagnostic row."""
+    return {
+        'expected': expected,
+        'guidance': guidance,
+        'issue': 'invalid section type',
+        'observed_type': type(value).__name__,
+        'section': section,
+    }
+
+
+def _connector_parse_issue(
+    *,
+    connector_type_choices: Callable[[], tuple[str, ...]],
+    connector_type_guidance: Callable[[str], str],
+    entry: Mapping[str, Any],
+    exc: TypeError,
+    index: int,
+    section: str,
+) -> dict[str, Any]:
+    """Return one connector parse diagnostic row."""
+    raw_type = entry.get('type')
+    guidance = None
+    if isinstance(raw_type, str):
+        guidance = connector_type_guidance(raw_type)
+    elif raw_type is None:
+        guidance = (
+            'Set "type" to one of: ' + ', '.join(connector_type_choices()) + '.'
+        )
+    return {
+        'guidance': guidance,
+        'index': index,
+        'issue': 'invalid connector entry',
+        'message': str(exc),
+        'section': section,
+    }
+
 
 # SECTION: CLASSES ========================================================== #
 
@@ -150,15 +237,12 @@ class StrictConfigValidator:
             return set()
         if not isinstance(value, list):
             issues.append(
-                {
-                    'expected': 'list',
-                    'guidance': (
-                        f'Define {section} as a YAML list of connector mappings.'
-                    ),
-                    'issue': 'invalid section type',
-                    'observed_type': type(value).__name__,
-                    'section': section,
-                },
+                _invalid_section_issue(
+                    expected='list',
+                    guidance=f'Define {section} as a YAML list of connector mappings.',
+                    section=section,
+                    value=value,
+                ),
             )
             return None
 
@@ -167,40 +251,31 @@ class StrictConfigValidator:
         for index, entry in enumerate(value):
             if not isinstance(entry, Mapping):
                 issues.append(
-                    {
-                        'guidance': (
+                    _invalid_entry_issue(
+                        guidance=(
                             'Define each connector as a mapping with at least '
                             '"name" and "type" fields.'
                         ),
-                        'index': index,
-                        'issue': 'invalid connector entry',
-                        'observed_type': type(entry).__name__,
-                        'section': section,
-                    },
+                        index=index,
+                        issue='invalid connector entry',
+                        section=section,
+                        value=entry,
+                    ),
                 )
                 continue
 
             try:
                 connector = parse_connector(entry)
             except TypeError as exc:
-                raw_type = entry.get('type')
-                guidance = None
-                if isinstance(raw_type, str):
-                    guidance = connector_type_guidance(raw_type)
-                elif raw_type is None:
-                    guidance = (
-                        'Set "type" to one of: '
-                        + ', '.join(connector_type_choices())
-                        + '.'
-                    )
                 issues.append(
-                    {
-                        'guidance': guidance,
-                        'index': index,
-                        'issue': 'invalid connector entry',
-                        'message': str(exc),
-                        'section': section,
-                    },
+                    _connector_parse_issue(
+                        connector_type_choices=connector_type_choices,
+                        connector_type_guidance=connector_type_guidance,
+                        entry=entry,
+                        exc=exc,
+                        index=index,
+                        section=section,
+                    ),
                 )
                 continue
 
@@ -294,13 +369,12 @@ class StrictConfigValidator:
             return
         if not isinstance(value, list):
             issues.append(
-                {
-                    'expected': 'list',
-                    'guidance': 'Define jobs as a YAML list of job mappings.',
-                    'issue': 'invalid section type',
-                    'observed_type': type(value).__name__,
-                    'section': 'jobs',
-                },
+                _invalid_section_issue(
+                    expected='list',
+                    guidance='Define jobs as a YAML list of job mappings.',
+                    section='jobs',
+                    value=value,
+                ),
             )
             return
 
@@ -308,16 +382,16 @@ class StrictConfigValidator:
         for index, entry in enumerate(value):
             if not isinstance(entry, Mapping):
                 issues.append(
-                    {
-                        'guidance': (
+                    _invalid_entry_issue(
+                        guidance=(
                             'Define each job as a mapping with "name", '
                             '"extract", and "load" sections.'
                         ),
-                        'index': index,
-                        'issue': 'invalid job entry',
-                        'observed_type': type(entry).__name__,
-                        'section': 'jobs',
-                    },
+                        index=index,
+                        issue='invalid job entry',
+                        section='jobs',
+                        value=entry,
+                    ),
                 )
                 continue
 
@@ -539,13 +613,12 @@ class StrictConfigValidator:
             return set()
         if not isinstance(value, Mapping):
             issues.append(
-                {
-                    'expected': 'mapping',
-                    'guidance': guidance,
-                    'issue': 'invalid section type',
-                    'observed_type': type(value).__name__,
-                    'section': section,
-                },
+                _invalid_section_issue(
+                    expected='mapping',
+                    guidance=guidance,
+                    section=section,
+                    value=value,
+                ),
             )
             return None
         return {str(name) for name in value}
@@ -557,26 +630,10 @@ class StrictConfigValidator:
         """Return one guidance message for a strict schedule issue."""
         if issue.startswith('duplicate schedule name: '):
             return 'Use unique schedule names within schedules.'
-        if issue == 'schedule must define exactly one target: cron or interval':
-            return None
-        if issue == 'schedule must define exactly one trigger: cron or interval':
-            return 'Set exactly one of "cron" or "interval" for each schedule.'
-        if issue == 'schedule must define a target':
-            return 'Add a target mapping with either "job" or "run_all".'
-        if issue == 'schedule target must define exactly one mode: job or run_all':
-            return 'Set exactly one of target.job or target.run_all.'
         if issue.startswith('unknown scheduled job reference: '):
             job_name = issue.split(': ', maxsplit=1)[1]
             return f'Define "{job_name}" under top-level jobs or update target.job.'
-        if issue == 'cron helper emission currently supports exactly five cron fields':
-            return 'Use a five-field cron expression: minute hour day month weekday.'
-        if issue == (
-            'cron helper emission currently supports only single values or "*" fields'
-        ):
-            return (
-                'Use single cron field values or "*" for helper-compatible schedules.'
-            )
-        return None
+        return _SCHEDULE_ISSUE_GUIDANCE.get(issue)
 
     @staticmethod
     def schedule_issue_rows(
@@ -591,13 +648,12 @@ class StrictConfigValidator:
             return
         if not isinstance(value, list):
             issues.append(
-                {
-                    'expected': 'list',
-                    'guidance': 'Define schedules as a YAML list of schedule mappings.',
-                    'issue': 'invalid section type',
-                    'observed_type': type(value).__name__,
-                    'section': 'schedules',
-                },
+                _invalid_section_issue(
+                    expected='list',
+                    guidance='Define schedules as a YAML list of schedule mappings.',
+                    section='schedules',
+                    value=value,
+                ),
             )
             return
 
@@ -605,16 +661,16 @@ class StrictConfigValidator:
         for index, entry in enumerate(value):
             if not isinstance(entry, Mapping):
                 issues.append(
-                    {
-                        'guidance': (
+                    _invalid_entry_issue(
+                        guidance=(
                             'Define each schedule as a mapping with "name" plus '
                             'portable trigger and target fields.'
                         ),
-                        'index': index,
-                        'issue': 'invalid schedule entry',
-                        'observed_type': type(entry).__name__,
-                        'section': 'schedules',
-                    },
+                        index=index,
+                        issue='invalid schedule entry',
+                        section='schedules',
+                        value=entry,
+                    ),
                 )
                 continue
             schedule = ScheduleConfig.from_obj(entry)
