@@ -116,13 +116,11 @@ class ReadinessBaseMixin:
         **details: Any,
     ) -> dict[str, Any]:
         """Return one readiness check row."""
-        payload: dict[str, Any] = {
+        return {
             'name': name,
             'status': status,
             'message': message,
-        }
-        payload.update(details)
-        return payload
+        } | details
 
     @staticmethod
     def overall_status(
@@ -141,10 +139,9 @@ class ReadinessBaseMixin:
         CheckStatus
             The overall status derived from the individual checks.
         """
-        statuses = {cast(CheckStatus, check['status']) for check in checks}
-        if 'error' in statuses:
+        if any(check.get('status') == 'error' for check in checks):
             return 'error'
-        if 'warn' in statuses:
+        if any(check.get('status') == 'warn' for check in checks):
             return 'warn'
         return 'ok'
 

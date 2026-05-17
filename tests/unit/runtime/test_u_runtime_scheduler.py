@@ -259,16 +259,6 @@ class TestSchedulerLock:
         assert requests == expected_requests
         assert skipped == expected_skipped
 
-    def test_release_without_acquire_is_a_safe_noop(self, tmp_path: Path) -> None:
-        """Releasing an unacquired lock should still clean up without raising."""
-        lock = scheduler_mod._ScheduleLock(tmp_path, 'nightly-all')
-
-        lock.release()
-
-        assert not (
-            tmp_path / scheduler_mod._SCHEDULER_LOCK_DIR / 'nightly-all.lock'
-        ).exists()
-
     @pytest.mark.parametrize(
         ('payload', 'expected'),
         [
@@ -292,6 +282,31 @@ class TestSchedulerLock:
             lock._lock_path.write_text(payload, encoding='utf-8')
 
         assert lock._existing_pid() == expected
+
+    def test_release_after_failed_acquire_preserves_existing_lock(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Locks owned by another process must not be deleted by failed acquires."""
+        lock = scheduler_mod._ScheduleLock(tmp_path, 'nightly-all')
+        lock._lock_path.parent.mkdir(parents=True, exist_ok=True)
+        lock._lock_path.write_text(str(os.getpid()), encoding='utf-8')
+
+        assert lock.acquire() is False
+
+        lock.release()
+
+        assert lock._lock_path.read_text(encoding='utf-8') == str(os.getpid())
+
+    def test_release_without_acquire_is_a_safe_noop(self, tmp_path: Path) -> None:
+        """Releasing an unacquired lock should still clean up without raising."""
+        lock = scheduler_mod._ScheduleLock(tmp_path, 'nightly-all')
+
+        lock.release()
+
+        assert not (
+            tmp_path / scheduler_mod._SCHEDULER_LOCK_DIR / 'nightly-all.lock'
+        ).exists()
 
 
 class TestRunPending:
@@ -1127,6 +1142,15 @@ class TestSchedulerInternals:
             scheduler_mod._SchedulerStateStore(tmp_path).last_completed_at('valid')
             == expected
         )
+
+    def test_state_store_ignores_malformed_json_payload(self, tmp_path: Path) -> None:
+        """State loading should fail closed when the JSON state file is corrupted."""
+        (tmp_path / 'scheduler-state.json').write_text('{not-json', encoding='utf-8')
+
+        state_store = scheduler_mod._SchedulerStateStore(tmp_path)
+
+        assert state_store.last_completed_at('nightly') is None
+        assert state_store.state('nightly') == {}
 
     def test_state_store_returns_current_state_payload(self, tmp_path: Path) -> None:
         """Scheduler state inspection should surface the stored metadata mapping."""

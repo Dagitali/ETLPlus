@@ -178,13 +178,13 @@ databases:
         timeout: 30
   postgres:
     default:
-      host: "localhost"
-      port: 5432
-      database: "demo"
-      username: "${PG_USER}"
-      password: "${PG_PASSWORD}"
+      host: "${PGHOST}"
+      port: "${PGPORT}"
+      database: "${PGDATABASE}"
+      username: "${PGUSER}"
+      password: "${PGPASSWORD}"
       options:
-        sslmode: "prefer"
+        sslmode: "require"
         connection_timeout: 30
         application_name: "ETLPlus"
 
@@ -202,8 +202,7 @@ file_systems:
     bucket: "my-etlplus-bucket"
     prefix: "data/"
     region: "us-east-1"
-    access_key_id: "${AWS_ACCESS_KEY_ID}"
-    secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+    profile: "${AWS_PROFILE}"
 
 sources:
   # 1) File sources ---------------------------------------------------------

@@ -221,8 +221,19 @@ databases:
         trust_server_certificate: "yes"
         connection_timeout: 30
         application_name: "ETLPlus"
+  postgres:
+    warehouse:
+      host: "${PGHOST}"
+      port: "${PGPORT}"
+      database: "${PGDATABASE}"
+      username: "${PGUSER}"
+      password: "${PGPASSWORD}"
+      options:
+        sslmode: require
+        connection_timeout: 30
+        application_name: "ETLPlus"
   sqlite:
-    default:
+    local:
       database: "./${data_dir}/demo.db"
       options:
         timeout: 30
@@ -230,6 +241,10 @@ databases:
 
 Note: Database extract/load in ETLPlus is minimal today; consider this a placeholder for
 orchestration that calls into DB clients.
+
+Managed databases are a first-class configuration path. Localhost DSNs and Docker-backed databases
+remain useful for development, but ETLPlus expects the same connector surface to work with
+env-injected credentials and hosted database endpoints.
 
 For BigQuery-oriented configs, install the optional extra first:
 
@@ -290,9 +305,12 @@ file_systems:
     bucket: "my-etlplus-bucket"
     prefix: "data/"
     region: "us-east-1"
-    access_key_id: "${AWS_ACCESS_KEY_ID}"
-    secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+    profile: "${AWS_PROFILE}"
 ```
+
+Prefer provider SDK credential chains or runtime-injected environment variables over checked-in
+secrets. For remote-storage and cloud-database jobs, run `etlplus check --readiness --config ...`
+to confirm the relevant extras and common provider-credential hints.
 
 ## Sources
 
@@ -350,8 +368,8 @@ File source notes:
 
 - File connector `path` values can be local paths or supported remote URIs such as `s3://...`, Azure
   Blob/Data Lake URIs, and HTTP/HTTPS URLs.
-- Local paths are useful for quick iteration, but the same connector surface is intended to work
-  unchanged with interchangeable backing services such as object storage or managed filesystems.
+- Local paths are useful for quick iteration, but remote object storage and managed filesystems are
+  also first-class targets for the same connector surface.
 - Connector-level `options` are forwarded to file reads. Job-level `jobs[].extract.options` values
   override connector-level file options for that job.
 - ETLPlus still infers the format from the filename extension (`.csv`, `.json`, `.xml`, `.yaml`).

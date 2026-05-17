@@ -7,6 +7,8 @@ Local schedule-trigger execution helpers.
 from __future__ import annotations
 
 import os
+from collections.abc import Iterable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC
 from datetime import datetime
@@ -98,7 +100,10 @@ class _SchedulerStateStore:
     def _load(self) -> dict[str, dict[str, str]]:
         if not self._state_file.exists():
             return {}
-        data = JsonCodec.parse(self._state_file.read_text(encoding='utf-8'))
+        try:
+            data = JsonCodec.parse(self._state_file.read_text(encoding='utf-8'))
+        except ValueError:
+            return {}
         if not isinstance(data, dict):
             return {}
         schedules = data.get('schedules')
@@ -120,15 +125,21 @@ class _SchedulerStateStore:
             encoding='utf-8',
         )
 
-    def _update_state(
+    def _merge_state(
         self,
         schedule_name: str,
-        updater: Callable[[dict[str, str]], None],
+        *,
+        clear: Iterable[str] = (),
+        values: Mapping[str, str],
     ) -> None:
-        """Load, mutate, and persist state for one schedule name."""
+        """Load, merge, and persist state for one schedule name."""
         schedules = self._load()
-        schedule_state = self._state_for(schedules, schedule_name)
-        updater(schedule_state)
+        schedule_state = schedules.get(schedule_name)
+        if not isinstance(schedule_state, dict):
+            schedule_state = {}
+        for key in clear:
+            schedule_state.pop(key, None)
+        schedule_state.update(values)
         schedules[schedule_name] = schedule_state
         self._save(schedules)
 
@@ -154,12 +165,9 @@ class _SchedulerStateStore:
         triggered_at: str,
     ) -> None:
         """Persist one attempted schedule trigger timestamp."""
-        self._update_state(
+        self._merge_state(
             schedule_name,
-            lambda schedule_state: schedule_state.__setitem__(
-                'last_attempted_at',
-                triggered_at,
-            ),
+            values={'last_attempted_at': triggered_at},
         )
 
     def record_completion(
@@ -171,19 +179,22 @@ class _SchedulerStateStore:
         run_id: str | None = None,
     ) -> None:
         """Persist one completed schedule trigger timestamp and outcome."""
-
-        def _apply(schedule_state: dict[str, str]) -> None:
-            schedule_state['last_attempted_at'] = triggered_at
-            schedule_state['last_completed_at'] = triggered_at
-            schedule_state['last_status'] = status
-            schedule_state.pop('last_error_message', None)
-            schedule_state.pop('last_error_type', None)
-            if run_id is None:
-                schedule_state.pop('last_run_id', None)
-            else:
-                schedule_state['last_run_id'] = run_id
-
-        self._update_state(schedule_name, _apply)
+        values = {
+            'last_attempted_at': triggered_at,
+            'last_completed_at': triggered_at,
+            'last_status': status,
+        }
+        if run_id is not None:
+            values['last_run_id'] = run_id
+        self._merge_state(
+            schedule_name,
+            clear=(
+                'last_error_message',
+                'last_error_type',
+                *(('last_run_id',) if run_id is None else ()),
+            ),
+            values=values,
+        )
 
     def record_exception(
         self,
@@ -194,18 +205,21 @@ class _SchedulerStateStore:
     ) -> None:
         """Persist one failed dispatch attempt without consuming the trigger."""
         message = str(exc).strip()
-
-        def _apply(schedule_state: dict[str, str]) -> None:
-            schedule_state['last_attempted_at'] = triggered_at
-            schedule_state['last_status'] = 'exception'
-            schedule_state['last_error_type'] = type(exc).__name__
-            if message:
-                schedule_state['last_error_message'] = message
-            else:
-                schedule_state.pop('last_error_message', None)
-            schedule_state.pop('last_run_id', None)
-
-        self._update_state(schedule_name, _apply)
+        values = {
+            'last_attempted_at': triggered_at,
+            'last_status': 'exception',
+            'last_error_type': type(exc).__name__,
+        }
+        if message:
+            values['last_error_message'] = message
+        self._merge_state(
+            schedule_name,
+            clear=(
+                'last_run_id',
+                *(('last_error_message',) if not message else ()),
+            ),
+            values=values,
+        )
 
     def state(
         self,
@@ -220,17 +234,6 @@ class _SchedulerStateStore:
             for key, value in schedule_state.items()
             if isinstance(key, str) and isinstance(value, str) and value
         }
-
-    # -- Static Methods -- #
-
-    @staticmethod
-    def _state_for(
-        schedules: dict[str, dict[str, str]],
-        schedule_name: str,
-    ) -> dict[str, str]:
-        """Return a mutable state mapping for one schedule name."""
-        schedule_state = schedules.get(schedule_name)
-        return schedule_state if isinstance(schedule_state, dict) else {}
 
 
 class _ScheduleLock:
@@ -321,9 +324,10 @@ class _ScheduleLock:
 
     def release(self) -> None:
         """Release the acquired schedule lock when present."""
-        if self._fd is not None:
-            os.close(self._fd)
-            self._fd = None
+        if self._fd is None:
+            return
+        os.close(self._fd)
+        self._fd = None
         self._lock_path.unlink(missing_ok=True)
 
 
@@ -807,6 +811,7 @@ class LocalScheduler:
         current_local = now.astimezone(timezone)
         step = timedelta(minutes=minutes)
         previous = _parse_timestamp(previous_triggered_at)
+
         if previous is not None:
             next_due = previous.astimezone(timezone) + step
             due_times: list[datetime] = []

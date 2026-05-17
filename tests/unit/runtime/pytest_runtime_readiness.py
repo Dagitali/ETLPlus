@@ -22,6 +22,22 @@ from etlplus.runtime.readiness._support import ResolvedConfigContext
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _row(
+    fields: Mapping[str, object],
+    *,
+    optional_fields: Mapping[str, object] | None = None,
+) -> dict[str, object]:
+    """Return one test row with optional non-``None`` fields attached."""
+    if optional_fields:
+        return dict(fields) | {
+            key: value for key, value in optional_fields.items() if value is not None
+        }
+    return dict(fields)
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -53,23 +69,23 @@ def build_connector_gap_row(
     supported_types: list[str] | None = None,
 ) -> dict[str, object]:
     """Build one connector-gap row for readiness assertions."""
-    row: dict[str, object] = {
-        'connector': connector,
-        'issue': issue,
-        'role': role,
-    }
-    if connector_type is not None:
-        row['type'] = connector_type
-    if guidance is not None:
-        row['guidance'] = guidance
-    if supported_types is not None:
-        row['supported_types'] = supported_types
-    return row
+    return _row(
+        {
+            'connector': connector,
+            'issue': issue,
+            'role': role,
+        },
+        optional_fields={
+            'guidance': guidance,
+            'supported_types': supported_types,
+            'type': connector_type,
+        },
+    )
 
 
 def build_issue_row(**fields: object) -> dict[str, object]:
     """Build one expected strict-validation issue row."""
-    return dict(fields)
+    return _row(fields)
 
 
 def build_missing_requirement_row(
@@ -86,24 +102,22 @@ def build_missing_requirement_row(
     detected_scheme: str | None = None,
 ) -> dict[str, object]:
     """Build one missing-optional-dependency row."""
-    row: dict[str, object] = {
-        'connector': connector,
-        'extra': extra,
-        'missing_package': missing_package,
-        'reason': reason,
-        'role': role,
-    }
-    if guidance is not None:
-        row['guidance'] = guidance
-    if detected_database_provider is not None:
-        row['detected_database_provider'] = detected_database_provider
-    if detected_format is not None:
-        row['detected_format'] = detected_format
-    if detected_queue_service is not None:
-        row['detected_queue_service'] = detected_queue_service
-    if detected_scheme is not None:
-        row['detected_scheme'] = detected_scheme
-    return row
+    return _row(
+        {
+            'connector': connector,
+            'extra': extra,
+            'missing_package': missing_package,
+            'reason': reason,
+            'role': role,
+        },
+        optional_fields={
+            'detected_database_provider': detected_database_provider,
+            'detected_format': detected_format,
+            'detected_queue_service': detected_queue_service,
+            'detected_scheme': detected_scheme,
+            'guidance': guidance,
+        },
+    )
 
 
 def build_provider_check(
@@ -113,19 +127,19 @@ def build_provider_check(
     rows: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     """Build one provider-environment check row."""
-    row: dict[str, object] = {
-        'message': message,
-        'name': 'provider-environment',
-        'status': status,
-    }
-    if rows is not None:
-        row['environment_gaps'] = rows
-    return row
+    return _row(
+        {
+            'message': message,
+            'name': 'provider-environment',
+            'status': status,
+        },
+        optional_fields={'environment_gaps': rows},
+    )
 
 
 def build_provider_gap_row(**fields: object) -> dict[str, object]:
     """Build one provider-environment gap row for wrapper-level tests."""
-    return dict(fields)
+    return _row(fields)
 
 
 def build_resolved_config_context(
@@ -146,6 +160,25 @@ def build_resolved_config_context(
             Any,
             build_runtime_cfg() if resolved_cfg is None else resolved_cfg,
         ),
+    )
+
+
+def build_readiness_check(
+    *,
+    name: str,
+    status: str,
+    message: str,
+    details_key: str | None = None,
+    rows: list[dict[str, object]] | None = None,
+) -> dict[str, object]:
+    """Build one generic readiness check row for connector/provider tests."""
+    return _row(
+        {
+            'message': message,
+            'name': name,
+            'status': status,
+        },
+        optional_fields={details_key: rows} if details_key is not None else None,
     )
 
 

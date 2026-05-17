@@ -4,7 +4,21 @@
 
 A few self-contained examples to get you started quickly.
 
-## Python quickstart
+- [Examples](#examples)
+  - [Quickstarts](#quickstarts)
+    - [Python](#python)
+    - [CLI](#cli)
+  - [Pipelines](#pipelines)
+    - [Python](#python-1)
+    - [CLI](#cli-1)
+  - [Cloud Database Connector Snippets](#cloud-database-connector-snippets)
+    - [BigQuery](#bigquery)
+    - [Snowflake](#snowflake)
+  - [Remote Object Storage Snippets](#remote-object-storage-snippets)
+
+## Quickstarts
+
+### Python
 
 Run a tiny ETL in Python using the sample data shipped in this repo.
 
@@ -18,7 +32,7 @@ What it does:
 - Validates fields exist
 - Writes `temp/sample_output.json`
 
-## CLI quickstart
+### CLI
 
 Try similar steps with the CLI:
 
@@ -44,7 +58,19 @@ integrate the same config into your own orchestration or helper script.
 - Runner internals and Python entrypoint: see `etlplus.ops.run` docstrings and
   `docs/pipeline-guide.md`.
 
-CLI examples:
+### Python
+
+```python
+from etlplus.ops.run import run as run_job
+
+result = run_job(
+    job="file_to_file_customers",
+    config_path="examples/configs/pipeline.yml",
+)
+print(result["status"], result.get("records"))
+```
+
+### CLI
 
 ```bash
 # List jobs defined in a pipeline file
@@ -57,23 +83,11 @@ etlplus check --config examples/configs/pipeline.yml --summary
 etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
 ```
 
-Python example:
-
-```python
-from etlplus.ops.run import run as run_job
-
-result = run_job(
-    job="file_to_file_customers",
-    config_path="examples/configs/pipeline.yml",
-)
-print(result["status"], result.get("records"))
-```
-
 ## Cloud Database Connector Snippets
 
 Use the same additive `type: database` connector shape for both cloud database providers.
 
-BigQuery:
+### BigQuery
 
 ```bash
 pip install -e ".[database-bigquery]"
@@ -89,7 +103,14 @@ sources:
     table: events
 ```
 
-Snowflake:
+  Typical runtime environment:
+
+  ```bash
+  export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.config/gcloud/etlplus.json"
+  export GOOGLE_CLOUD_PROJECT="analytics-project"
+  ```
+
+### Snowflake
 
 ```bash
 pip install -e ".[database-snowflake]"
@@ -105,6 +126,39 @@ sources:
     schema: PUBLIC
     warehouse: TRANSFORMING
     table: EVENTS
+```
+
+Typical runtime environment:
+
+```bash
+export SNOWFLAKE_USER="etlplus"
+export SNOWFLAKE_PASSWORD="${SNOWFLAKE_PASSWORD}"
+```
+
+## Remote Object Storage Snippets
+
+Use the same `type: file` connector shape for both local paths and remote object storage.
+
+```yaml
+sources:
+  - name: landing_customers
+    type: file
+    format: csv
+    path: "s3://acme-landing/customers/customers.csv"
+
+targets:
+  - name: curated_customers
+    type: file
+    format: json
+    path: "azure-blob://analytics/customers/curated/customers.json"
+```
+
+Typical runtime environment:
+
+```bash
+export AWS_PROFILE="etlplus-dev"
+export AZURE_STORAGE_ACCOUNT_URL="https://analytics.blob.core.windows.net"
+export AZURE_STORAGE_CREDENTIAL="${AZURE_STORAGE_CREDENTIAL}"
 ```
 
 Both connector shapes can also use `connection_string` directly when you already have a
