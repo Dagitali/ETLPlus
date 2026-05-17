@@ -75,14 +75,16 @@ class TestReadinessReportBuilderProviders:
     ) -> None:
         """Explicit AWS credential diagnostics should cover all short-circuit cases."""
         assert (
-            readiness_providers_mod.ProviderEnvironmentPolicy.explicit_aws_credential_gap(
+            (
+                readiness_providers_mod.ProviderEnvironmentPolicy
+            ).explicit_aws_credential_gap(
                 env,
             )
             == expected
         )
 
     @pytest.mark.parametrize(
-        ('rows', 'expected'),
+        ('rows', 'status', 'message'),
         [
             pytest.param(
                 [
@@ -108,45 +110,14 @@ class TestReadinessReportBuilderProviders:
                         severity='error',
                     ),
                 ],
-                [
-                    _provider_check(
-                        message='Provider environment gaps: 1 error(s), 0 warning(s).',
-                        rows=[
-                            _provider_gap(
-                                connector='blob-source',
-                                guidance=(
-                                    'Set AZURE_STORAGE_CONNECTION_STRING, set '
-                                    'AZURE_STORAGE_ACCOUNT_URL, or include the '
-                                    'account host in the path authority.'
-                                ),
-                                missing_env=[
-                                    'AZURE_STORAGE_CONNECTION_STRING',
-                                    'AZURE_STORAGE_ACCOUNT_URL',
-                                ],
-                                provider='azure-storage',
-                                reason=(
-                                    'azure-blob path does not provide an account host '
-                                    'and no Azure storage bootstrap settings were '
-                                    'found.'
-                                ),
-                                role='source',
-                                scheme='azure-blob',
-                                severity='error',
-                            ),
-                        ],
-                        status='error',
-                    ),
-                ],
+                'error',
+                'Provider environment gaps: 1 error(s), 0 warning(s).',
                 id='error-rows',
             ),
             pytest.param(
                 [],
-                [
-                    _provider_check(
-                        message='No provider-specific environment gaps were detected.',
-                        status='ok',
-                    ),
-                ],
+                'ok',
+                'No provider-specific environment gaps were detected.',
                 id='no-rows',
             ),
             pytest.param(
@@ -182,44 +153,8 @@ class TestReadinessReportBuilderProviders:
                         severity='warn',
                     ),
                 ],
-                [
-                    _provider_check(
-                        message='Provider environment warnings: 1.',
-                        rows=[
-                            _provider_gap(
-                                connector='s3-source',
-                                guidance=(
-                                    'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/'
-                                    'AWS_SECRET_ACCESS_KEY, or rely on shared config '
-                                    'files, container credentials, or instance '
-                                    'metadata.'
-                                ),
-                                missing_env=[
-                                    'AWS_ACCESS_KEY_ID',
-                                    'AWS_SECRET_ACCESS_KEY',
-                                    'AWS_SESSION_TOKEN',
-                                    'AWS_PROFILE',
-                                    'AWS_DEFAULT_PROFILE',
-                                    'AWS_ROLE_ARN',
-                                    'AWS_WEB_IDENTITY_TOKEN_FILE',
-                                    'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI',
-                                    'AWS_CONTAINER_CREDENTIALS_FULL_URI',
-                                    'AWS_SHARED_CREDENTIALS_FILE',
-                                    'AWS_CONFIG_FILE',
-                                ],
-                                provider='aws-s3',
-                                reason=(
-                                    'No common AWS credential-chain environment hints '
-                                    'were detected for this S3 path.'
-                                ),
-                                role='source',
-                                scheme='s3',
-                                severity='warn',
-                            ),
-                        ],
-                        status='warn',
-                    ),
-                ],
+                'warn',
+                'Provider environment warnings: 1.',
                 id='warn-rows',
             ),
         ],
@@ -228,7 +163,8 @@ class TestReadinessReportBuilderProviders:
         self,
         monkeypatch: pytest.MonkeyPatch,
         rows: list[dict[str, object]],
-        expected: list[dict[str, object]],
+        status: str,
+        message: str,
     ) -> None:
         """Provider check wrappers should map row severities into report rows."""
         monkeypatch.setattr(
@@ -246,7 +182,9 @@ class TestReadinessReportBuilderProviders:
             ),
         )
 
-        assert checks == expected
+        assert checks == [
+            _provider_check(message=message, rows=(rows or None), status=status),
+        ]
 
     def test_provider_environment_rows_ignore_unhandled_connector_schemes(
         self,
