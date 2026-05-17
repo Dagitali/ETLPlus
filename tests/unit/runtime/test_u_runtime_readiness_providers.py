@@ -75,13 +75,10 @@ class TestReadinessReportBuilderProviders:
     ) -> None:
         """Explicit AWS credential diagnostics should cover all short-circuit cases."""
         assert (
-            (
-                readiness_providers_mod.ProviderEnvironmentPolicy
-            ).explicit_aws_credential_gap(
-                env,
-            )
-            == expected
-        )
+            readiness_providers_mod.ProviderEnvironmentPolicy
+        ).explicit_aws_credential_gap(
+            env,
+        ) == expected
 
     @pytest.mark.parametrize(
         ('rows', 'status', 'message'),
