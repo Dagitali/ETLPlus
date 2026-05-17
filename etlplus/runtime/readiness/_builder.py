@@ -19,7 +19,6 @@ from . import _connectors
 from . import _providers
 from . import _strict
 from ._base import ReadinessBaseMixin
-from ._support import ReadinessReport
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -28,6 +27,26 @@ __all__ = [
     # Classes
     'ReadinessReportBuilder',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _report_payload(
+    *,
+    checks: list[dict[str, Any]],
+    python_version: str | None = None,
+    status: str,
+) -> dict[str, Any]:
+    """Return one normalized readiness-report payload."""
+    payload: dict[str, Any] = {
+        'checks': checks,
+        'etlplus_version': _ETLPLUS_VERSION,
+        'status': status,
+    }
+    if python_version is not None:
+        payload['python_version'] = python_version
+    return payload
 
 
 # SECTION: CLASSES ========================================================== #
@@ -66,13 +85,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         checks: list[dict[str, Any]] = [cls.supported_python_check()]
         if config_path:
             try:
-                checks.extend(
-                    cls.config_checks(
-                        config_path,
-                        env=env,
-                        **({'strict': True} if strict else {}),
-                    ),
-                )
+                checks.extend(cls.config_checks(config_path, env=env, strict=strict))
             except (OSError, TypeError, ValueError) as exc:
                 checks.append(
                     cls.make_check(
@@ -94,12 +107,11 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
                 ),
             )
 
-        return ReadinessReport(
+        return _report_payload(
             checks=checks,
-            etlplus_version=_ETLPLUS_VERSION,
-            status=cls.overall_status(checks),
             python_version=cls.python_version(),
-        ).to_payload()
+            status=cls.overall_status(checks),
+        )
 
     @classmethod
     def config_checks(
@@ -158,17 +170,17 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         )
 
         context = cls.resolve_config_context(raw, env=env)
-        if context.unresolved_tokens:
+        if unresolved_tokens := context.unresolved_tokens:
             checks.append(
                 cls.make_check(
                     'config-substitution',
                     'error',
                     'Configuration still contains unresolved substitution tokens.',
-                    missing_env=context.unresolved_tokens,
+                    missing_env=unresolved_tokens,
                     references=TokenReferenceCollector.collect_rows(
                         context.resolved_raw,
                     ),
-                    unresolved_tokens=context.unresolved_tokens,
+                    unresolved_tokens=unresolved_tokens,
                 ),
             )
             return checks
@@ -279,9 +291,4 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             strict=True,
             include_runtime_checks=False,
         )
-        return ReadinessReport(
-            checks=checks,
-            etlplus_version=_ETLPLUS_VERSION,
-            status=cls.overall_status(checks),
-            python_version=None,
-        ).to_payload()
+        return _report_payload(checks=checks, status=cls.overall_status(checks))

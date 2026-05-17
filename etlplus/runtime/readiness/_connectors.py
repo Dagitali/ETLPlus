@@ -42,13 +42,8 @@ __all__ = [
 class _ResolvedConnector:
     """Normalized connector state reused by readiness policies."""
 
-    database_account: str | None
     connector: object
-    database_dataset: str | None
-    database_name: str | None
-    database_project: str | None
     database_provider: str
-    database_schema: str | None
     format_name: str
     name: str
     path: str | None
@@ -88,15 +83,23 @@ def _connector_gap_row(
     return row
 
 
-def _resolve_queue_service(
-    connector: object,
-) -> str:
-    """Return one normalized queue service name for *connector*."""
-    queue_service_raw = TextNormalizer.normalize(
-        str(getattr(connector, 'service', '') or ''),
+def _readiness_check(
+    *,
+    make_check: Callable[..., dict[str, Any]],
+    message_when_missing: str,
+    message_when_ready: str,
+    name: str,
+    rows: list[ReadinessRow],
+    rows_key: str,
+) -> dict[str, Any]:
+    """Return one normalized readiness check for optional detail rows."""
+    has_rows = bool(rows)
+    return make_check(
+        name,
+        'error' if has_rows else 'ok',
+        message_when_missing if has_rows else message_when_ready,
+        **({rows_key: rows} if has_rows else {}),
     )
-    coerced_service = QueueService.try_coerce(queue_service_raw)
-    return coerced_service.value if coerced_service else queue_service_raw
 
 
 def _iter_connectors(
@@ -105,25 +108,10 @@ def _iter_connectors(
     """Return normalized connector rows reused across readiness policies."""
     return tuple(
         _ResolvedConnector(
-            database_account=account
-            if isinstance(account := getattr(connector, 'account', None), str)
-            else None,
             connector=connector,
-            database_dataset=dataset
-            if isinstance(dataset := getattr(connector, 'dataset', None), str)
-            else None,
-            database_name=database_name
-            if isinstance(database_name := getattr(connector, 'database', None), str)
-            else None,
-            database_project=project
-            if isinstance(project := getattr(connector, 'project', None), str)
-            else None,
             database_provider=TextNormalizer.normalize(
                 str(getattr(connector, 'provider', '') or ''),
             ),
-            database_schema=schema
-            if isinstance(schema := getattr(connector, 'schema', None), str)
-            else None,
             format_name=TextNormalizer.normalize(
                 str(getattr(connector, 'format', '') or ''),
             ),
@@ -131,7 +119,17 @@ def _iter_connectors(
             path=path
             if isinstance(path := getattr(connector, 'path', None), str)
             else None,
-            queue_service=_resolve_queue_service(connector),
+            queue_service=(
+                coerced_service.value
+                if (
+                    coerced_service := QueueService.try_coerce(
+                        queue_service_raw := TextNormalizer.normalize(
+                            str(getattr(connector, 'service', '') or ''),
+                        ),
+                    )
+                )
+                else queue_service_raw
+            ),
             role=role,
             type_name=str(getattr(connector, 'type', '') or ''),
         )
@@ -277,6 +275,8 @@ class ConnectorReadinessPolicy:
                         resolved.connector,
                         provider=resolved.database_provider,
                     )
+                    if provider_issue and not missing_provider_fields:
+                        continue
                     gaps.append(
                         _connector_gap_row(
                             connector=resolved.name,
@@ -452,47 +452,40 @@ class ConnectorReadinessPolicy:
         list[ReadinessRow]
             A list of dictionaries representing the readiness checks.
         """
-        checks: list[ReadinessRow] = []
         gaps = connector_gap_rows_fn(cfg)
-        checks.append(
-            make_check(
-                'connector-readiness',
-                'error' if gaps else 'ok',
-                (
-                    'One or more configured connectors are missing required '
-                    'runtime fields or use unsupported connector types.'
-                    if gaps
-                    else 'Configured connectors include the required runtime fields.'
-                ),
-                **({'gaps': gaps} if gaps else {}),
-            ),
-        )
-
         missing_requirements = cls.missing_requirement_rows(
             cfg=cfg,
             package_available=package_available,
         )
-        checks.append(
-            make_check(
-                'optional-dependencies',
-                'error' if missing_requirements else 'ok',
-                (
+        return [
+            _readiness_check(
+                make_check=make_check,
+                message_when_missing=(
+                    'One or more configured connectors are missing required '
+                    'runtime fields or use unsupported connector types.'
+                ),
+                message_when_ready=(
+                    'Configured connectors include the required runtime fields.'
+                ),
+                name='connector-readiness',
+                rows=gaps,
+                rows_key='gaps',
+            ),
+            _readiness_check(
+                make_check=make_check,
+                message_when_missing=(
                     'Configured connectors require optional dependencies that '
                     'are not installed.'
-                    if missing_requirements
-                    else (
-                        'No missing optional dependencies were detected for '
-                        'configured connectors.'
-                    )
                 ),
-                **(
-                    {'missing_requirements': missing_requirements}
-                    if missing_requirements
-                    else {}
+                message_when_ready=(
+                    'No missing optional dependencies were detected for '
+                    'configured connectors.'
                 ),
+                name='optional-dependencies',
+                rows=missing_requirements,
+                rows_key='missing_requirements',
             ),
-        )
-        return checks
+        ]
 
     # -- Static Methods -- #
 

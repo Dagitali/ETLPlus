@@ -20,15 +20,17 @@ from ...utils._types import StrAnyMap
 __all__ = [
     # Constants
     'AWS_ENV_HINTS',
+    'AZURE_ENV_HINTS',
     'AZURE_STORAGE_BOOTSTRAP_ENV',
     'AZURE_STORAGE_CREDENTIAL_ENV',
     'DATABASE_PROVIDER_EXTRA_REQUIREMENTS',
     'FORMAT_EXTRA_REQUIREMENTS',
+    'GCP_ENV_HINTS',
     'QUEUE_SERVICE_EXTRA_REQUIREMENTS',
     'SCHEME_EXTRA_REQUIREMENTS',
+    'SNOWFLAKE_ENV_HINTS',
     'SUPPORTED_PYTHON_RANGE',
     # Classes
-    'ReadinessReport',
     'RequirementSpec',
     'ResolvedConfigContext',
     # Type Aliases
@@ -47,31 +49,6 @@ type ReadinessRow = dict[str, Any]
 
 
 @dataclass(frozen=True, slots=True)
-class ReadinessReport:
-    """One normalized runtime-readiness report payload."""
-
-    # -- Instance Methods -- #
-
-    checks: list[dict[str, Any]]
-    etlplus_version: str
-    status: CheckStatus
-    python_version: str | None = None
-
-    # -- Instance Methods -- #
-
-    def to_payload(self) -> dict[str, Any]:
-        """Return one JSON-serializable readiness report mapping."""
-        payload: dict[str, Any] = {
-            'status': self.status,
-            'etlplus_version': self.etlplus_version,
-            'checks': self.checks,
-        }
-        if self.python_version is not None:
-            payload['python_version'] = self.python_version
-        return payload
-
-
-@dataclass(frozen=True, slots=True)
 class ResolvedConfigContext:
     """Resolved config state reused across config readiness checks."""
 
@@ -86,6 +63,8 @@ class ResolvedConfigContext:
 
 # SECTION: CONSTANTS ======================================================== #
 
+
+AZURE_STORAGE_CREDENTIAL_ENV: Final[str] = 'AZURE_STORAGE_CREDENTIAL'
 
 # TODO: Conform constants for provider hints to a more systematic structure
 # TODO: with provider-specific sections and guidance for additional services
@@ -108,7 +87,23 @@ AZURE_STORAGE_BOOTSTRAP_ENV: Final[tuple[str, ...]] = (
     'AZURE_STORAGE_CONNECTION_STRING',
     'AZURE_STORAGE_ACCOUNT_URL',
 )
-AZURE_STORAGE_CREDENTIAL_ENV: Final[str] = 'AZURE_STORAGE_CREDENTIAL'
+AZURE_ENV_HINTS: Final[tuple[str, ...]] = (
+    *AZURE_STORAGE_BOOTSTRAP_ENV,
+    AZURE_STORAGE_CREDENTIAL_ENV,
+)
+GCP_ENV_HINTS: Final[tuple[str, ...]] = (
+    'GOOGLE_APPLICATION_CREDENTIALS',
+    'GOOGLE_CLOUD_PROJECT',
+    'GCLOUD_PROJECT',
+    'CLOUDSDK_CONFIG',
+)
+SNOWFLAKE_ENV_HINTS: Final[tuple[str, ...]] = (
+    'SNOWFLAKE_USER',
+    'SNOWFLAKE_PASSWORD',
+    'SNOWFLAKE_AUTHENTICATOR',
+    'SNOWFLAKE_PRIVATE_KEY_PATH',
+    'SNOWFLAKE_PRIVATE_KEY',
+)
 
 DATABASE_PROVIDER_EXTRA_REQUIREMENTS: Final[dict[str, RequirementSpec]] = {
     'bigquery': RequirementSpec(

@@ -21,6 +21,7 @@ from .pytest_runtime_readiness import build_connector_gap_row as _connector_gap
 from .pytest_runtime_readiness import (
     build_missing_requirement_row as _missing_requirement,
 )
+from .pytest_runtime_readiness import build_readiness_check as _readiness_check
 from .pytest_runtime_readiness import build_runtime_cfg as _cfg
 
 # SECTION: PRAGMAS ========================================================== #
@@ -337,6 +338,23 @@ class TestReadinessReportBuilderConnectors:
             ),
         ]
 
+    def test_connector_gap_rows_return_empty_for_complete_cloud_database_metadata(
+        self,
+    ) -> None:
+        """Complete cloud-database metadata should suppress generic DSN gaps."""
+        cfg = _cfg(
+            targets=[
+                BIGQUERY_CASE.runtime_connector(connection_string=None),
+                SNOWFLAKE_CASE.runtime_connector(connection_string=None),
+            ],
+        )
+
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
+            cast(Any, cfg),
+        )
+
+        assert not rows
+
     @pytest.mark.parametrize(
         ('connector', 'expected'),
         [
@@ -407,71 +425,85 @@ class TestReadinessReportBuilderConnectors:
 
         assert rows == [expected]
 
-    def test_connector_readiness_checks_report_all_ok_states(self) -> None:
-        """Test readiness rows when gaps and optional dependency gaps are absent."""
-        cfg = _cfg()
-
-        checks = _connector_checks(cfg)
-
-        assert checks == [
-            {
-                'message': 'Configured connectors include the required runtime fields.',
-                'name': 'connector-readiness',
-                'status': 'ok',
-            },
-            {
-                'message': (
-                    'No missing optional dependencies were detected for '
-                    'configured connectors.'
-                ),
-                'name': 'optional-dependencies',
-                'status': 'ok',
-            },
-        ]
-
-    def test_connector_readiness_checks_report_gap_and_dependency_errors(
+    @pytest.mark.parametrize(
+        ('gap_rows', 'missing_rows', 'expected'),
+        [
+            pytest.param(
+                [],
+                [],
+                [
+                    _readiness_check(
+                        name='connector-readiness',
+                        status='ok',
+                        message=(
+                            'Configured connectors include the required runtime fields.'
+                        ),
+                    ),
+                    _readiness_check(
+                        name='optional-dependencies',
+                        status='ok',
+                        message=(
+                            'No missing optional dependencies were detected for '
+                            'configured connectors.'
+                        ),
+                    ),
+                ],
+                id='all-ok',
+            ),
+            pytest.param(
+                [{'connector': 'bad-source'}],
+                [{'connector': 'bad-source', 'missing_package': 'boto3'}],
+                [
+                    _readiness_check(
+                        name='connector-readiness',
+                        status='error',
+                        message=(
+                            'One or more configured connectors are missing required '
+                            'runtime fields or use unsupported connector types.'
+                        ),
+                        details_key='gaps',
+                        rows=[{'connector': 'bad-source'}],
+                    ),
+                    _readiness_check(
+                        name='optional-dependencies',
+                        status='error',
+                        message=(
+                            'Configured connectors require optional dependencies '
+                            'that are not installed.'
+                        ),
+                        details_key='missing_requirements',
+                        rows=[
+                            {'connector': 'bad-source', 'missing_package': 'boto3'},
+                        ],
+                    ),
+                ],
+                id='gap-and-dependency-errors',
+            ),
+        ],
+    )
+    def test_connector_readiness_checks_wrap_gap_and_dependency_rows(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        gap_rows: list[dict[str, object]],
+        missing_rows: list[dict[str, object]],
+        expected: list[dict[str, object]],
     ) -> None:
-        """Test readiness rows when connector and dependency errors exist."""
+        """Connector readiness checks should wrap gap and dependency rows."""
         cfg = _cfg()
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'gap_rows',
-            lambda _cfg: [{'connector': 'bad-source'}],
+            lambda _cfg: gap_rows,
         )
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'missing_requirement_rows',
-            lambda *, cfg, package_available: [
-                {'connector': 'bad-source', 'missing_package': 'boto3'},
-            ],
+            lambda *, cfg, package_available: missing_rows,
         )
 
         checks = _connector_checks(cfg)
 
-        assert checks == [
-            {
-                'gaps': [{'connector': 'bad-source'}],
-                'message': (
-                    'One or more configured connectors are missing required '
-                    'runtime fields or use unsupported connector types.'
-                ),
-                'name': 'connector-readiness',
-                'status': 'error',
-            },
-            {
-                'message': (
-                    'Configured connectors require optional dependencies that are '
-                    'not installed.'
-                ),
-                'missing_requirements': [
-                    {'connector': 'bad-source', 'missing_package': 'boto3'},
-                ],
-                'name': 'optional-dependencies',
-                'status': 'error',
-            },
-        ]
+        assert checks == expected
 
     def test_connector_type_guidance_covers_blank_and_generic_invalid_values(
         self,
@@ -505,12 +537,11 @@ class TestReadinessReportBuilderConnectors:
     ) -> None:
         """Missing-dependency guidance should fall back to one plain install hint."""
         assert (
-            readiness_connectors_mod.ReadinessSupportPolicy.missing_requirement_guidance(
-                package='tables',
-                extra=None,
-            )
-            == 'Install tables.'
-        )
+            readiness_connectors_mod.ReadinessSupportPolicy
+        ).missing_requirement_guidance(
+            package='tables',
+            extra=None,
+        ) == 'Install tables.'
 
     def test_missing_requirement_rows_cover_netcdf_and_format_specific_branches(
         self,

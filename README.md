@@ -85,6 +85,8 @@ as a Python library or from the command line.
 To get started:
 
 - See [Installation](#installation) for setup instructions.
+- See the Getting Started environment reference for the current environment-variable and
+  provider-credential guidance.
 - Try the [Quickstart](#quickstart) for a minimal working example (CLI and Python).
 - Explore [Usage](#usage) for more detailed options and workflows.
 - See [SUPPORT.md](SUPPORT.md) for the current support policy, supported Python versions, and
@@ -104,8 +106,13 @@ ETLPlus currently supports Python 3.13 and 3.14.
   the same config surface is designed to work with interchangeable remote backing services.
 - Expect the most stable execution surface from the documented CLI commands, `etlplus.ops`,
   implemented file handlers, and `etlplus.api`.
+- Use `etlplus check --readiness --config <pipeline.yml>` to confirm config substitution, optional
+  extras, and common provider-credential hints before running remote-storage or cloud-database
+  jobs.
 - See [docs/source/getting-started/compatibility.md](docs/source/getting-started/compatibility.md)
   for the supported Python versions, platform coverage, and dependency groups.
+- See the Getting Started environment reference for the current runtime, storage, BigQuery, and
+  Snowflake environment variables that readiness checks understand.
 - See [docs/source/getting-started/quickstart.md](docs/source/getting-started/quickstart.md) if you
   want the shortest path from install to a working ETL flow.
 
@@ -266,6 +273,10 @@ connection string).
 The `database-snowflake` extra installs the optional packages used by the additive Snowflake
 database connector shape (`provider: snowflake` plus `account`, `database`, and `schema` when you
 are not supplying a connection string).
+
+See the Getting Started environment reference for the current environment-variable reference,
+including provider credential hints that `etlplus check --readiness` understands for S3, Azure
+storage, BigQuery, and Snowflake.
 
 <!-- docs:getting-started-installation:end -->
 

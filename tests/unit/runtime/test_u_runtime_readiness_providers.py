@@ -75,14 +75,13 @@ class TestReadinessReportBuilderProviders:
     ) -> None:
         """Explicit AWS credential diagnostics should cover all short-circuit cases."""
         assert (
-            readiness_providers_mod.ProviderEnvironmentPolicy.explicit_aws_credential_gap(
-                env,
-            )
-            == expected
-        )
+            readiness_providers_mod.ProviderEnvironmentPolicy
+        ).explicit_aws_credential_gap(
+            env,
+        ) == expected
 
     @pytest.mark.parametrize(
-        ('rows', 'expected'),
+        ('rows', 'status', 'message'),
         [
             pytest.param(
                 [
@@ -108,45 +107,14 @@ class TestReadinessReportBuilderProviders:
                         severity='error',
                     ),
                 ],
-                [
-                    _provider_check(
-                        message='Provider environment gaps: 1 error(s), 0 warning(s).',
-                        rows=[
-                            _provider_gap(
-                                connector='blob-source',
-                                guidance=(
-                                    'Set AZURE_STORAGE_CONNECTION_STRING, set '
-                                    'AZURE_STORAGE_ACCOUNT_URL, or include the '
-                                    'account host in the path authority.'
-                                ),
-                                missing_env=[
-                                    'AZURE_STORAGE_CONNECTION_STRING',
-                                    'AZURE_STORAGE_ACCOUNT_URL',
-                                ],
-                                provider='azure-storage',
-                                reason=(
-                                    'azure-blob path does not provide an account host '
-                                    'and no Azure storage bootstrap settings were '
-                                    'found.'
-                                ),
-                                role='source',
-                                scheme='azure-blob',
-                                severity='error',
-                            ),
-                        ],
-                        status='error',
-                    ),
-                ],
+                'error',
+                'Provider environment gaps: 1 error(s), 0 warning(s).',
                 id='error-rows',
             ),
             pytest.param(
                 [],
-                [
-                    _provider_check(
-                        message='No provider-specific environment gaps were detected.',
-                        status='ok',
-                    ),
-                ],
+                'ok',
+                'No provider-specific environment gaps were detected.',
                 id='no-rows',
             ),
             pytest.param(
@@ -182,44 +150,8 @@ class TestReadinessReportBuilderProviders:
                         severity='warn',
                     ),
                 ],
-                [
-                    _provider_check(
-                        message='Provider environment warnings: 1.',
-                        rows=[
-                            _provider_gap(
-                                connector='s3-source',
-                                guidance=(
-                                    'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/'
-                                    'AWS_SECRET_ACCESS_KEY, or rely on shared config '
-                                    'files, container credentials, or instance '
-                                    'metadata.'
-                                ),
-                                missing_env=[
-                                    'AWS_ACCESS_KEY_ID',
-                                    'AWS_SECRET_ACCESS_KEY',
-                                    'AWS_SESSION_TOKEN',
-                                    'AWS_PROFILE',
-                                    'AWS_DEFAULT_PROFILE',
-                                    'AWS_ROLE_ARN',
-                                    'AWS_WEB_IDENTITY_TOKEN_FILE',
-                                    'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI',
-                                    'AWS_CONTAINER_CREDENTIALS_FULL_URI',
-                                    'AWS_SHARED_CREDENTIALS_FILE',
-                                    'AWS_CONFIG_FILE',
-                                ],
-                                provider='aws-s3',
-                                reason=(
-                                    'No common AWS credential-chain environment hints '
-                                    'were detected for this S3 path.'
-                                ),
-                                role='source',
-                                scheme='s3',
-                                severity='warn',
-                            ),
-                        ],
-                        status='warn',
-                    ),
-                ],
+                'warn',
+                'Provider environment warnings: 1.',
                 id='warn-rows',
             ),
         ],
@@ -228,7 +160,8 @@ class TestReadinessReportBuilderProviders:
         self,
         monkeypatch: pytest.MonkeyPatch,
         rows: list[dict[str, object]],
-        expected: list[dict[str, object]],
+        status: str,
+        message: str,
     ) -> None:
         """Provider check wrappers should map row severities into report rows."""
         monkeypatch.setattr(
@@ -246,7 +179,9 @@ class TestReadinessReportBuilderProviders:
             ),
         )
 
-        assert checks == expected
+        assert checks == [
+            _provider_check(message=message, rows=(rows or None), status=status),
+        ]
 
     def test_provider_environment_rows_ignore_unhandled_connector_schemes(
         self,
@@ -360,6 +295,90 @@ class TestReadinessReportBuilderProviders:
                 ],
                 id='s3-credential-warning',
             ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        SimpleNamespace(
+                            connection_string=None,
+                            dataset='warehouse',
+                            name='warehouse_bigquery',
+                            project='analytics-project',
+                            provider='bigquery',
+                            type='database',
+                        ),
+                    ],
+                ),
+                {},
+                [
+                    _provider_gap(
+                        connector='warehouse_bigquery',
+                        guidance=(
+                            'Set GOOGLE_APPLICATION_CREDENTIALS for an '
+                            'explicit service-account credential, or rely on '
+                            'gcloud Application Default Credentials, workload '
+                            'identity, or instance metadata.'
+                        ),
+                        missing_env=[
+                            'GOOGLE_APPLICATION_CREDENTIALS',
+                            'GOOGLE_CLOUD_PROJECT',
+                            'GCLOUD_PROJECT',
+                            'CLOUDSDK_CONFIG',
+                        ],
+                        provider='gcp-bigquery',
+                        reason=(
+                            'No common Google Cloud credential-chain '
+                            'environment hints were detected for this '
+                            'BigQuery connector.'
+                        ),
+                        role='target',
+                        scheme='bigquery',
+                        severity='warn',
+                    ),
+                ],
+                id='bigquery-credential-warning',
+            ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        SimpleNamespace(
+                            account='acme.us-east-1',
+                            connection_string=None,
+                            database='ANALYTICS',
+                            name='warehouse_snowflake',
+                            provider='snowflake',
+                            schema='PUBLIC',
+                            type='database',
+                        ),
+                    ],
+                ),
+                {},
+                [
+                    _provider_gap(
+                        connector='warehouse_snowflake',
+                        guidance=(
+                            'Set SNOWFLAKE_USER plus SNOWFLAKE_PASSWORD or '
+                            'SNOWFLAKE_PRIVATE_KEY_PATH, or rely on external '
+                            'SSO or secret injection used by your runtime.'
+                        ),
+                        missing_env=[
+                            'SNOWFLAKE_USER',
+                            'SNOWFLAKE_PASSWORD',
+                            'SNOWFLAKE_AUTHENTICATOR',
+                            'SNOWFLAKE_PRIVATE_KEY_PATH',
+                            'SNOWFLAKE_PRIVATE_KEY',
+                        ],
+                        provider='snowflake',
+                        reason=(
+                            'No common Snowflake credential environment hints '
+                            'were detected for this connector.'
+                        ),
+                        role='target',
+                        scheme='snowflake',
+                        severity='warn',
+                    ),
+                ],
+                id='snowflake-credential-warning',
+            ),
         ],
     )
     def test_provider_environment_rows_report_expected_gaps(
@@ -455,6 +474,42 @@ class TestReadinessReportBuilderProviders:
                 {'AWS_PROFILE': 'default'},
                 id='s3-env-hint',
             ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        SimpleNamespace(
+                            connection_string=None,
+                            dataset='warehouse',
+                            name='warehouse_bigquery',
+                            project='analytics-project',
+                            provider='bigquery',
+                            type='database',
+                        ),
+                    ],
+                ),
+                {'GOOGLE_APPLICATION_CREDENTIALS': '/tmp/etlplus-bigquery.json'},
+                id='bigquery-env-hint',
+            ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        SimpleNamespace(
+                            account='acme.us-east-1',
+                            connection_string=None,
+                            database='ANALYTICS',
+                            name='warehouse_snowflake',
+                            provider='snowflake',
+                            schema='PUBLIC',
+                            type='database',
+                        ),
+                    ],
+                ),
+                {
+                    'SNOWFLAKE_USER': 'etlplus',
+                    'SNOWFLAKE_PASSWORD': 'secret',
+                },
+                id='snowflake-env-hint',
+            ),
         ],
     )
     def test_provider_environment_rows_return_empty_when_auth_hints_exist(
@@ -511,13 +566,10 @@ class TestReadinessReportBuilderProviders:
             },
         ]
 
-    def test_runtime_wrapper_helpers_delegate_to_extracted_helpers(
+    def test_runtime_helpers_cover_env_hints_and_requirement_rows(
         self,
     ) -> None:
-        """
-        Thin readiness wrapper methods should preserve the extracted helper
-        behavior.
-        """
+        """Shared helpers should cover env hints and requirement row context."""
         requirement = RequirementSpec(
             ('boto3',),
             'boto3',
@@ -525,8 +577,9 @@ class TestReadinessReportBuilderProviders:
         )
 
         assert (
-            readiness_providers_mod._aws_env_hint_present(
+            readiness_providers_mod._env_hint_present(
                 {'AWS_PROFILE': 'default'},
+                ('AWS_PROFILE',),
             )
             is True
         )
