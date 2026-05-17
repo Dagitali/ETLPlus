@@ -14,11 +14,15 @@ from typing import TypedDict
 from urllib.parse import urlsplit
 
 from ..._config import Config
+from ...connector import ConnectorDb
+from ...connector import DataConnectorType
 from ...utils._types import IssueSeverity
 from ._base import ReadinessSupportPolicy
 from ._support import AWS_ENV_HINTS
 from ._support import AZURE_STORAGE_BOOTSTRAP_ENV
 from ._support import AZURE_STORAGE_CREDENTIAL_ENV
+from ._support import GCP_ENV_HINTS
+from ._support import SNOWFLAKE_ENV_HINTS
 from ._support import ReadinessRow
 
 # SECTION: EXPORTS ========================================================== #
@@ -85,6 +89,20 @@ def _azure_authority_has_account_host(path: str) -> bool:
     authority = urlsplit(path).netloc
     _, separator, account_host = authority.partition('@')
     return bool(separator and account_host)
+
+
+def _gcp_env_hint_present(
+    env: Mapping[str, str],
+) -> bool:
+    """Return whether common Google Cloud auth hints are present."""
+    return any(bool(env.get(name)) for name in GCP_ENV_HINTS)
+
+
+def _snowflake_env_hint_present(
+    env: Mapping[str, str],
+) -> bool:
+    """Return whether common Snowflake auth hints are present."""
+    return any(bool(env.get(name)) for name in SNOWFLAKE_ENV_HINTS)
 
 
 def _provider_gap_from_details(
@@ -220,6 +238,68 @@ def _s3_provider_gaps(
             ),
             role=role,
             scheme='s3',
+            severity='warn',
+        ),
+    ]
+
+
+def _bigquery_provider_gaps(
+    *,
+    connector: str,
+    has_connection_string: bool,
+    has_gcp_hints: bool,
+    role: str,
+) -> list[_ProviderGapRow]:
+    """Return BigQuery provider gaps for one database connector."""
+    if has_connection_string or has_gcp_hints:
+        return []
+    return [
+        _ProviderGapRow(
+            connector=connector,
+            guidance=(
+                'Set GOOGLE_APPLICATION_CREDENTIALS for an explicit '
+                'service-account credential, or rely on gcloud Application '
+                'Default Credentials, workload identity, or instance metadata.'
+            ),
+            missing_env=list(GCP_ENV_HINTS),
+            provider='gcp-bigquery',
+            reason=(
+                'No common Google Cloud credential-chain environment hints '
+                'were detected for this BigQuery connector.'
+            ),
+            role=role,
+            scheme='bigquery',
+            severity='warn',
+        ),
+    ]
+
+
+def _snowflake_provider_gaps(
+    *,
+    connector: str,
+    has_connection_string: bool,
+    has_snowflake_hints: bool,
+    role: str,
+) -> list[_ProviderGapRow]:
+    """Return Snowflake provider gaps for one database connector."""
+    if has_connection_string or has_snowflake_hints:
+        return []
+    return [
+        _ProviderGapRow(
+            connector=connector,
+            guidance=(
+                'Set SNOWFLAKE_USER plus SNOWFLAKE_PASSWORD or '
+                'SNOWFLAKE_PRIVATE_KEY_PATH, or rely on external SSO or '
+                'secret injection used by your runtime.'
+            ),
+            missing_env=list(SNOWFLAKE_ENV_HINTS),
+            provider='snowflake',
+            reason=(
+                'No common Snowflake credential environment hints were '
+                'detected for this connector.'
+            ),
+            role=role,
+            scheme='snowflake',
             severity='warn',
         ),
     ]
@@ -372,6 +452,8 @@ class ProviderEnvironmentPolicy:
         azure_account_url = bool(env.get('AZURE_STORAGE_ACCOUNT_URL'))
         azure_credential = bool(env.get(AZURE_STORAGE_CREDENTIAL_ENV))
         has_aws_hints = _aws_env_hint_present(env)
+        has_gcp_hints = _gcp_env_hint_present(env)
+        has_snowflake_hints = _snowflake_env_hint_present(env)
 
         for resolved in _iter_connector_paths(cfg):
             match resolved.scheme:
@@ -394,6 +476,47 @@ class ProviderEnvironmentPolicy:
                             env=env,
                             has_aws_hints=has_aws_hints,
                             role=resolved.role,
+                        ),
+                    )
+                case _:
+                    continue
+
+        for role, connector in ReadinessSupportPolicy.iter_connectors(cfg):
+            connector_type = DataConnectorType.try_coerce(
+                str(getattr(connector, 'type', '') or ''),
+            )
+            if connector_type is not DataConnectorType.DATABASE:
+                continue
+
+            provider = ConnectorDb.normalize_provider(
+                getattr(connector, 'provider', None),
+            )
+            if provider is None:
+                continue
+
+            connection_string = getattr(connector, 'connection_string', None)
+            has_connection_string = isinstance(connection_string, str) and bool(
+                connection_string.strip(),
+            )
+            connector_name = str(getattr(connector, 'name', '<unnamed>'))
+
+            match provider:
+                case 'bigquery':
+                    rows.extend(
+                        _bigquery_provider_gaps(
+                            connector=connector_name,
+                            has_connection_string=has_connection_string,
+                            has_gcp_hints=has_gcp_hints,
+                            role=role,
+                        ),
+                    )
+                case 'snowflake':
+                    rows.extend(
+                        _snowflake_provider_gaps(
+                            connector=connector_name,
+                            has_connection_string=has_connection_string,
+                            has_snowflake_hints=has_snowflake_hints,
+                            role=role,
                         ),
                     )
                 case _:
