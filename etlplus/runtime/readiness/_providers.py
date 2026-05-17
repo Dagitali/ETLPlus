@@ -77,11 +77,12 @@ class _ResolvedConnectorPath:
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _aws_env_hint_present(
+def _env_hint_present(
     env: Mapping[str, str],
+    names: tuple[str, ...],
 ) -> bool:
-    """Return whether common AWS credential-chain *env* hints are present."""
-    return any(bool(env.get(name)) for name in AWS_ENV_HINTS)
+    """Return whether any named environment hint is present."""
+    return any(bool(env.get(name)) for name in names)
 
 
 def _azure_authority_has_account_host(path: str) -> bool:
@@ -91,18 +92,25 @@ def _azure_authority_has_account_host(path: str) -> bool:
     return bool(separator and account_host)
 
 
+def _aws_env_hint_present(
+    env: Mapping[str, str],
+) -> bool:
+    """Return whether common AWS credential-chain *env* hints are present."""
+    return _env_hint_present(env, AWS_ENV_HINTS)
+
+
 def _gcp_env_hint_present(
     env: Mapping[str, str],
 ) -> bool:
     """Return whether common Google Cloud auth hints are present."""
-    return any(bool(env.get(name)) for name in GCP_ENV_HINTS)
+    return _env_hint_present(env, GCP_ENV_HINTS)
 
 
 def _snowflake_env_hint_present(
     env: Mapping[str, str],
 ) -> bool:
     """Return whether common Snowflake auth hints are present."""
-    return any(bool(env.get(name)) for name in SNOWFLAKE_ENV_HINTS)
+    return _env_hint_present(env, SNOWFLAKE_ENV_HINTS)
 
 
 def _provider_gap_from_details(
