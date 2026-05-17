@@ -181,9 +181,9 @@ stable package metadata contract.
   narrow what users receive from the documented base install.
 - [x] Keep installer parity explicit: `pip`, `pipx`, and `uv tool install` must install the same
   base PyPI artifact and expose the same `etlplus` CLI entrypoint.
-- [x] Centralize release-path installer smoke coverage for the built wheel through `pip`,
-  `pipx`, and `uv tool install`, verifying `etlplus --version`, `etlplus --help`, and
-  `etlplus check --help`.
+- [x] Centralize release-path installer smoke coverage for the built wheel artifact through `pip`,
+  `pipx`, and `uv tool install`, verifying `etlplus --version`, `etlplus --help`, and `etlplus check
+  --help`.
 - [ ] Consider conda-forge as follow-up packaging work after installer smoke coverage has stabilized
   and after dependency-footprint feedback is available.
 
