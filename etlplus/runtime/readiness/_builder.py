@@ -16,9 +16,9 @@ from ..._config import Config
 from ...utils import TokenReferenceCollector
 from ...workflow._schedule import schedule_validation_issues
 from . import _connectors
+from . import _providers
+from . import _strict
 from ._base import ReadinessBaseMixin
-from ._providers import ProviderEnvironmentPolicy
-from ._strict import StrictConfigValidator
 from ._support import ReadinessReport
 
 # SECTION: EXPORTS ========================================================== #
@@ -192,7 +192,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         resolved_cfg = cast(Config, context.resolved_cfg)
 
         if strict:
-            strict_issues = StrictConfigValidator.config_issue_rows(
+            strict_issues = _strict.StrictConfigValidator.config_issue_rows(
                 raw=context.resolved_raw,
                 connector_type_guidance=_connectors.connector_type_guidance,
                 connector_type_choices=_connectors.connector_type_choices,
@@ -248,11 +248,13 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             ),
         )
         checks.extend(
-            ProviderEnvironmentPolicy.environment_checks(
+            _providers.ProviderEnvironmentPolicy.environment_checks(
                 cfg=resolved_cfg,
                 env=context.effective_env,
                 make_check=cls.make_check,
-                provider_environment_rows_fn=ProviderEnvironmentPolicy.environment_rows,
+                provider_environment_rows_fn=(
+                    _providers.ProviderEnvironmentPolicy.environment_rows
+                ),
             ),
         )
         return checks
