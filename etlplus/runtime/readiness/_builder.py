@@ -29,30 +29,31 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _report_payload(
+    *,
+    checks: list[dict[str, Any]],
+    python_version: str | None = None,
+    status: str,
+) -> dict[str, Any]:
+    """Return one normalized readiness-report payload."""
+    payload: dict[str, Any] = {
+        'checks': checks,
+        'etlplus_version': _ETLPLUS_VERSION,
+        'status': status,
+    }
+    if python_version is not None:
+        payload['python_version'] = python_version
+    return payload
+
+
 # SECTION: CLASSES ========================================================== #
 
 
 class ReadinessReportBuilder(ReadinessBaseMixin):
     """Shared builder for ETLPlus runtime readiness reports."""
-
-    # -- Internal Class Methods -- #
-
-    @classmethod
-    def _report_payload(
-        cls,
-        *,
-        checks: list[dict[str, Any]],
-        python_version: str | None,
-    ) -> dict[str, Any]:
-        """Return one normalized readiness-report payload."""
-        payload: dict[str, Any] = {
-            'checks': checks,
-            'etlplus_version': _ETLPLUS_VERSION,
-            'status': cls.overall_status(checks),
-        }
-        if python_version is not None:
-            payload['python_version'] = python_version
-        return payload
 
     # -- Class Methods -- #
 
@@ -106,9 +107,10 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
                 ),
             )
 
-        return cls._report_payload(
+        return _report_payload(
             checks=checks,
             python_version=cls.python_version(),
+            status=cls.overall_status(checks),
         )
 
     @classmethod
@@ -289,4 +291,4 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             strict=True,
             include_runtime_checks=False,
         )
-        return cls._report_payload(checks=checks, python_version=None)
+        return _report_payload(checks=checks, status=cls.overall_status(checks))
