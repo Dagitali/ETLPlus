@@ -360,6 +360,90 @@ class TestReadinessReportBuilderProviders:
                 ],
                 id='s3-credential-warning',
             ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        SimpleNamespace(
+                            connection_string=None,
+                            dataset='warehouse',
+                            name='warehouse_bigquery',
+                            project='analytics-project',
+                            provider='bigquery',
+                            type='database',
+                        ),
+                    ],
+                ),
+                {},
+                [
+                    _provider_gap(
+                        connector='warehouse_bigquery',
+                        guidance=(
+                            'Set GOOGLE_APPLICATION_CREDENTIALS for an '
+                            'explicit service-account credential, or rely on '
+                            'gcloud Application Default Credentials, workload '
+                            'identity, or instance metadata.'
+                        ),
+                        missing_env=[
+                            'GOOGLE_APPLICATION_CREDENTIALS',
+                            'GOOGLE_CLOUD_PROJECT',
+                            'GCLOUD_PROJECT',
+                            'CLOUDSDK_CONFIG',
+                        ],
+                        provider='gcp-bigquery',
+                        reason=(
+                            'No common Google Cloud credential-chain '
+                            'environment hints were detected for this '
+                            'BigQuery connector.'
+                        ),
+                        role='target',
+                        scheme='bigquery',
+                        severity='warn',
+                    ),
+                ],
+                id='bigquery-credential-warning',
+            ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        SimpleNamespace(
+                            account='acme.us-east-1',
+                            connection_string=None,
+                            database='ANALYTICS',
+                            name='warehouse_snowflake',
+                            provider='snowflake',
+                            schema='PUBLIC',
+                            type='database',
+                        ),
+                    ],
+                ),
+                {},
+                [
+                    _provider_gap(
+                        connector='warehouse_snowflake',
+                        guidance=(
+                            'Set SNOWFLAKE_USER plus SNOWFLAKE_PASSWORD or '
+                            'SNOWFLAKE_PRIVATE_KEY_PATH, or rely on external '
+                            'SSO or secret injection used by your runtime.'
+                        ),
+                        missing_env=[
+                            'SNOWFLAKE_USER',
+                            'SNOWFLAKE_PASSWORD',
+                            'SNOWFLAKE_AUTHENTICATOR',
+                            'SNOWFLAKE_PRIVATE_KEY_PATH',
+                            'SNOWFLAKE_PRIVATE_KEY',
+                        ],
+                        provider='snowflake',
+                        reason=(
+                            'No common Snowflake credential environment hints '
+                            'were detected for this connector.'
+                        ),
+                        role='target',
+                        scheme='snowflake',
+                        severity='warn',
+                    ),
+                ],
+                id='snowflake-credential-warning',
+            ),
         ],
     )
     def test_provider_environment_rows_report_expected_gaps(
@@ -454,6 +538,42 @@ class TestReadinessReportBuilderProviders:
                 ),
                 {'AWS_PROFILE': 'default'},
                 id='s3-env-hint',
+            ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        SimpleNamespace(
+                            connection_string=None,
+                            dataset='warehouse',
+                            name='warehouse_bigquery',
+                            project='analytics-project',
+                            provider='bigquery',
+                            type='database',
+                        ),
+                    ],
+                ),
+                {'GOOGLE_APPLICATION_CREDENTIALS': '/tmp/etlplus-bigquery.json'},
+                id='bigquery-env-hint',
+            ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        SimpleNamespace(
+                            account='acme.us-east-1',
+                            connection_string=None,
+                            database='ANALYTICS',
+                            name='warehouse_snowflake',
+                            provider='snowflake',
+                            schema='PUBLIC',
+                            type='database',
+                        ),
+                    ],
+                ),
+                {
+                    'SNOWFLAKE_USER': 'etlplus',
+                    'SNOWFLAKE_PASSWORD': 'secret',
+                },
+                id='snowflake-env-hint',
             ),
         ],
     )
