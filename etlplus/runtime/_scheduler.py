@@ -100,7 +100,10 @@ class _SchedulerStateStore:
     def _load(self) -> dict[str, dict[str, str]]:
         if not self._state_file.exists():
             return {}
-        data = JsonCodec.parse(self._state_file.read_text(encoding='utf-8'))
+        try:
+            data = JsonCodec.parse(self._state_file.read_text(encoding='utf-8'))
+        except ValueError:
+            return {}
         if not isinstance(data, dict):
             return {}
         schedules = data.get('schedules')
