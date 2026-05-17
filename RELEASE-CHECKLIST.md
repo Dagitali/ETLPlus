@@ -180,6 +180,13 @@ These are the active follow-up items for the `v1.x` line.
 - [ ] Expand performance-smoke and cross-platform confidence based on real `v1.x` usage.
   - Add coverage where support load or issue history shows weak spots.
   - Keep the release path proportionate rather than turning CI into a bottleneck.
+- [x] Tighten config discovery and backing-service posture on the stable line.
+  - Publish a user-facing environment-variable reference for runtime knobs plus common provider
+    credentials.
+  - Extend `check --readiness` with provider-aware credential guidance for cloud database extras and
+    remote storage backends.
+  - Keep managed databases and remote object storage visible in docs/examples rather than treating
+    localhost-only helpers as the default mental model.
 - [x] Add opt-in OpenTelemetry adapters on top of the stable event/history contracts.
   - Reuse `etlplus.event.v1` plus the normalized local history shapes rather than introducing a
     second observability contract.
@@ -295,4 +302,6 @@ The current stable-line posture is:
 
 - Keep the release surface coherent and predictable across `v1.0.x`.
 - Continue execution-hygiene work that supports the documented CLI/runtime contract.
+- Leave alternative installer/channel expansion (`pipx`, `uv`, `conda`) as explicit `v2.0.0`
+  packaging work rather than mixing it into `v1.x` runtime-hygiene follow-up.
 - Treat the archived pre-1.0 sections above as audit history, not as the active roadmap.
