@@ -19,7 +19,7 @@ policy in `SUPPORT.md`.
 
 | Platform | Coverage level | Notes |
 | --- | --- | --- |
-| Linux | Full CI path | Lint, tests, docs, build, artifact audit, and wheel smoke test run on Ubuntu. |
+| Linux | Full CI path | Lint, tests, docs, build, artifact audit, wheel smoke test, and supported-installer smoke tests run on Ubuntu. |
 | macOS | Smoke install | Clean package install and CLI entrypoint verification run in CI. |
 | Windows | Smoke install | Clean package install and CLI entrypoint verification run in CI. |
 
@@ -31,6 +31,8 @@ packaging and entrypoint regressions before release.
 | Install target | Command | Intended use |
 | --- | --- | --- |
 | Base runtime | `pip install etlplus` | Documented CLI commands, `etlplus.ops`, `etlplus.api`, and implemented built-in file handlers. |
+| Isolated CLI with pipx | `pipx install etlplus` | Base ETLPlus CLI installed as an isolated command-line application. |
+| Isolated CLI with uv | `uv tool install etlplus` | Base ETLPlus CLI installed as an isolated command-line application through uv's tool installer. |
 | Development | `pip install -e ".[dev]"` | Local development, linting, type-checking, tests, and packaging work. |
 | Docs | `pip install -e ".[docs]"` | Sphinx and Read the Docs-compatible documentation builds. |
 | File extras | `pip install -e ".[file]"` | Remaining scientific and specialty format dependencies such as `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`. |
@@ -46,6 +48,20 @@ the `storage` extra is reserved for optional remote-storage backends. The `datab
 is reserved for optional BigQuery connector metadata and readiness checks rather than the default
 runtime surface. The `database-snowflake` extra is reserved for optional Snowflake connector
 metadata and readiness checks rather than the default runtime surface.
+
+The installer review keeps that broad base runtime unchanged for `pip`, `pipx`, and `uv tool
+install`. Splitting the default install into a smaller CLI core plus larger extras would be a future
+major-version packaging decision because it could change what existing users receive from the
+documented base install.
+
+## Installer policy
+
+- Use `pip install etlplus` when ETLPlus should be available as both a Python package and CLI in the
+  active environment.
+- Use `pipx install etlplus` for the preferred isolated CLI installation path.
+- Use `uv tool install etlplus` when uv is the local tool installer.
+- Conda/conda-forge is not yet a supported ETLPlus install channel; it is tracked as follow-up
+  packaging work.
 
 ## Release interpretation
 
