@@ -9,7 +9,8 @@
 # Responsibilities
 # - Install the requested Python runtime and build dependency set.
 # - Build and verify distributions from the checked-out repository.
-# - Smoke-test the built wheel and upload the resulting artifacts.
+# - Smoke-test the built wheel through pip and alternate CLI installers, then
+#   upload the resulting artifacts.
 #
 # Maintainer Notes
 # - This action preserves the repository's release safeguards by composing the
@@ -63,6 +64,10 @@ runs:
         dist-glob: ${{ inputs.dist-glob }}
 
     - uses: ./.github/actions/wheel-smoke
+      with:
+        wheel-path: ${{ inputs.wheel-path }}
+
+    - uses: ./.github/actions/installer-smoke
       with:
         wheel-path: ${{ inputs.wheel-path }}
 
