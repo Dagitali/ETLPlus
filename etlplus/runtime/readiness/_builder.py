@@ -15,10 +15,8 @@ from ...__version__ import __version__ as _ETLPLUS_VERSION
 from ..._config import Config
 from ...utils import TokenReferenceCollector
 from ...workflow._schedule import schedule_validation_issues
+from . import _connectors
 from ._base import ReadinessBaseMixin
-from ._connectors import ConnectorReadinessPolicy
-from ._connectors import connector_type_choices
-from ._connectors import connector_type_guidance
 from ._providers import ProviderEnvironmentPolicy
 from ._strict import StrictConfigValidator
 from ._support import ReadinessReport
@@ -196,8 +194,8 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         if strict:
             strict_issues = StrictConfigValidator.config_issue_rows(
                 raw=context.resolved_raw,
-                connector_type_guidance=connector_type_guidance,
-                connector_type_choices=connector_type_choices,
+                connector_type_guidance=_connectors.connector_type_guidance,
+                connector_type_choices=_connectors.connector_type_choices,
             )
             if strict_issues:
                 checks.append(
@@ -242,9 +240,9 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             return checks
 
         checks.extend(
-            ConnectorReadinessPolicy.readiness_checks(
+            _connectors.ConnectorReadinessPolicy.readiness_checks(
                 resolved_cfg,
-                connector_gap_rows_fn=ConnectorReadinessPolicy.gap_rows,
+                connector_gap_rows_fn=_connectors.ConnectorReadinessPolicy.gap_rows,
                 make_check=cls.make_check,
                 package_available=cls.package_available,
             ),
