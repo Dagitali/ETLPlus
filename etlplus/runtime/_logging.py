@@ -43,10 +43,6 @@ _LOG_LEVELS: Final[dict[str, int]] = {
 }
 _LOG_FORMAT: Final[str] = '%(levelname)s %(name)s: %(message)s'
 
-_DEFAULT_LEVEL_NAME: Final[str] = 'WARNING'
-_QUIET_LEVEL_NAME: Final[str] = 'ERROR'
-_VERBOSE_LEVEL_NAME: Final[str] = 'INFO'
-
 
 # SECTION: CLASSES ========================================================== #
 
@@ -129,7 +125,7 @@ class RuntimeLoggingPolicy:
         if (explicit_level := _LOG_LEVELS.get(explicit)) is not None:
             return explicit_level
         if quiet:
-            return _LOG_LEVELS[_QUIET_LEVEL_NAME]
+            return logging.ERROR
         if verbose:
-            return _LOG_LEVELS[_VERBOSE_LEVEL_NAME]
-        return _LOG_LEVELS[_DEFAULT_LEVEL_NAME]
+            return logging.INFO
+        return logging.WARNING
