@@ -537,14 +537,11 @@ class TestReadinessReportBuilderConnectors:
     ) -> None:
         """Missing-dependency guidance should fall back to one plain install hint."""
         assert (
-            (
-                readiness_connectors_mod.ReadinessSupportPolicy
-            ).missing_requirement_guidance(
-                package='tables',
-                extra=None,
-            )
-            == 'Install tables.'
-        )
+            readiness_connectors_mod.ReadinessSupportPolicy
+        ).missing_requirement_guidance(
+            package='tables',
+            extra=None,
+        ) == 'Install tables.'
 
     def test_missing_requirement_rows_cover_netcdf_and_format_specific_branches(
         self,
