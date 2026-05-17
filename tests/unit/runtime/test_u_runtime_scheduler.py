@@ -1143,6 +1143,15 @@ class TestSchedulerInternals:
             == expected
         )
 
+    def test_state_store_ignores_malformed_json_payload(self, tmp_path: Path) -> None:
+        """State loading should fail closed when the JSON state file is corrupted."""
+        (tmp_path / 'scheduler-state.json').write_text('{not-json', encoding='utf-8')
+
+        state_store = scheduler_mod._SchedulerStateStore(tmp_path)
+
+        assert state_store.last_completed_at('nightly') is None
+        assert state_store.state('nightly') == {}
+
     def test_state_store_returns_current_state_payload(self, tmp_path: Path) -> None:
         """Scheduler state inspection should surface the stored metadata mapping."""
         state_store = scheduler_mod._SchedulerStateStore(tmp_path)
