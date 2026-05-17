@@ -15,10 +15,12 @@ from ...__version__ import __version__ as _ETLPLUS_VERSION
 from ..._config import Config
 from ...utils import TokenReferenceCollector
 from ...workflow._schedule import schedule_validation_issues
-from . import _connectors
-from . import _providers
-from . import _strict
 from ._base import ReadinessBaseMixin
+from ._connectors import ConnectorReadinessPolicy
+from ._connectors import connector_type_choices
+from ._connectors import connector_type_guidance
+from ._providers import ProviderEnvironmentPolicy
+from ._strict import StrictConfigValidator
 from ._support import ReadinessReport
 
 # SECTION: EXPORTS ========================================================== #
@@ -35,6 +37,23 @@ __all__ = [
 
 class ReadinessReportBuilder(ReadinessBaseMixin):
     """Shared builder for ETLPlus runtime readiness reports."""
+
+    # -- Internal Class Methods -- #
+
+    @classmethod
+    def _report_payload(
+        cls,
+        *,
+        checks: list[dict[str, Any]],
+        python_version: str | None,
+    ) -> dict[str, Any]:
+        """Return one normalized readiness-report payload."""
+        return ReadinessReport(
+            checks=checks,
+            etlplus_version=_ETLPLUS_VERSION,
+            status=cls.overall_status(checks),
+            python_version=python_version,
+        ).to_payload()
 
     # -- Class Methods -- #
 
@@ -66,13 +85,7 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         checks: list[dict[str, Any]] = [cls.supported_python_check()]
         if config_path:
             try:
-                checks.extend(
-                    cls.config_checks(
-                        config_path,
-                        env=env,
-                        **({'strict': True} if strict else {}),
-                    ),
-                )
+                checks.extend(cls.config_checks(config_path, env=env, strict=strict))
             except (OSError, TypeError, ValueError) as exc:
                 checks.append(
                     cls.make_check(
@@ -94,12 +107,10 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
                 ),
             )
 
-        return ReadinessReport(
+        return cls._report_payload(
             checks=checks,
-            etlplus_version=_ETLPLUS_VERSION,
-            status=cls.overall_status(checks),
             python_version=cls.python_version(),
-        ).to_payload()
+        )
 
     @classmethod
     def config_checks(
@@ -158,17 +169,17 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         )
 
         context = cls.resolve_config_context(raw, env=env)
-        if context.unresolved_tokens:
+        if unresolved_tokens := context.unresolved_tokens:
             checks.append(
                 cls.make_check(
                     'config-substitution',
                     'error',
                     'Configuration still contains unresolved substitution tokens.',
-                    missing_env=context.unresolved_tokens,
+                    missing_env=unresolved_tokens,
                     references=TokenReferenceCollector.collect_rows(
                         context.resolved_raw,
                     ),
-                    unresolved_tokens=context.unresolved_tokens,
+                    unresolved_tokens=unresolved_tokens,
                 ),
             )
             return checks
@@ -183,10 +194,10 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
         resolved_cfg = cast(Config, context.resolved_cfg)
 
         if strict:
-            strict_issues = _strict.StrictConfigValidator.config_issue_rows(
+            strict_issues = StrictConfigValidator.config_issue_rows(
                 raw=context.resolved_raw,
-                connector_type_guidance=_connectors.connector_type_guidance,
-                connector_type_choices=_connectors.connector_type_choices,
+                connector_type_guidance=connector_type_guidance,
+                connector_type_choices=connector_type_choices,
             )
             if strict_issues:
                 checks.append(
@@ -231,21 +242,19 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             return checks
 
         checks.extend(
-            _connectors.ConnectorReadinessPolicy.readiness_checks(
+            ConnectorReadinessPolicy.readiness_checks(
                 resolved_cfg,
-                connector_gap_rows_fn=_connectors.ConnectorReadinessPolicy.gap_rows,
+                connector_gap_rows_fn=ConnectorReadinessPolicy.gap_rows,
                 make_check=cls.make_check,
                 package_available=cls.package_available,
             ),
         )
         checks.extend(
-            _providers.ProviderEnvironmentPolicy.environment_checks(
+            ProviderEnvironmentPolicy.environment_checks(
                 cfg=resolved_cfg,
                 env=context.effective_env,
                 make_check=cls.make_check,
-                provider_environment_rows_fn=(
-                    _providers.ProviderEnvironmentPolicy.environment_rows
-                ),
+                provider_environment_rows_fn=ProviderEnvironmentPolicy.environment_rows,
             ),
         )
         return checks
@@ -279,9 +288,4 @@ class ReadinessReportBuilder(ReadinessBaseMixin):
             strict=True,
             include_runtime_checks=False,
         )
-        return ReadinessReport(
-            checks=checks,
-            etlplus_version=_ETLPLUS_VERSION,
-            status=cls.overall_status(checks),
-            python_version=None,
-        ).to_payload()
+        return cls._report_payload(checks=checks, python_version=None)
