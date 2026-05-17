@@ -92,47 +92,6 @@ def _azure_authority_has_account_host(path: str) -> bool:
     return bool(separator and account_host)
 
 
-def _aws_env_hint_present(
-    env: Mapping[str, str],
-) -> bool:
-    """Return whether common AWS credential-chain *env* hints are present."""
-    return _env_hint_present(env, AWS_ENV_HINTS)
-
-
-def _gcp_env_hint_present(
-    env: Mapping[str, str],
-) -> bool:
-    """Return whether common Google Cloud auth hints are present."""
-    return _env_hint_present(env, GCP_ENV_HINTS)
-
-
-def _snowflake_env_hint_present(
-    env: Mapping[str, str],
-) -> bool:
-    """Return whether common Snowflake auth hints are present."""
-    return _env_hint_present(env, SNOWFLAKE_ENV_HINTS)
-
-
-def _provider_gap_from_details(
-    *,
-    connector: str,
-    details: _ProviderGapDetails,
-    role: str,
-    scheme: str,
-) -> _ProviderGapRow:
-    """Attach connector context to provider-gap details."""
-    return _ProviderGapRow(
-        connector=connector,
-        guidance=details['guidance'],
-        missing_env=details['missing_env'],
-        provider=details['provider'],
-        reason=details['reason'],
-        role=role,
-        scheme=scheme,
-        severity=details['severity'],
-    )
-
-
 def _iter_connector_paths(
     cfg: Config,
 ) -> tuple[_ResolvedConnectorPath, ...]:
@@ -221,11 +180,15 @@ def _s3_provider_gaps(
     explicit_gap = ProviderEnvironmentPolicy.explicit_aws_credential_gap(env)
     if explicit_gap:
         return [
-            _provider_gap_from_details(
+            _ProviderGapRow(
                 connector=connector,
-                details=explicit_gap,
+                guidance=explicit_gap['guidance'],
+                missing_env=explicit_gap['missing_env'],
+                provider=explicit_gap['provider'],
+                reason=explicit_gap['reason'],
                 role=role,
                 scheme='s3',
+                severity=explicit_gap['severity'],
             ),
         ]
     if has_aws_hints:
@@ -459,9 +422,9 @@ class ProviderEnvironmentPolicy:
         azure_connection_string = bool(env.get('AZURE_STORAGE_CONNECTION_STRING'))
         azure_account_url = bool(env.get('AZURE_STORAGE_ACCOUNT_URL'))
         azure_credential = bool(env.get(AZURE_STORAGE_CREDENTIAL_ENV))
-        has_aws_hints = _aws_env_hint_present(env)
-        has_gcp_hints = _gcp_env_hint_present(env)
-        has_snowflake_hints = _snowflake_env_hint_present(env)
+        has_aws_hints = _env_hint_present(env, AWS_ENV_HINTS)
+        has_gcp_hints = _env_hint_present(env, GCP_ENV_HINTS)
+        has_snowflake_hints = _env_hint_present(env, SNOWFLAKE_ENV_HINTS)
 
         for resolved in _iter_connector_paths(cfg):
             match resolved.scheme:
