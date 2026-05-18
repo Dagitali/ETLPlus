@@ -188,15 +188,16 @@ stable package metadata contract.
 - [x] Centralize release-path installer smoke coverage for the built wheel artifact through `pip`,
   `pipx`, and `uv tool install`, verifying `etlplus --version`, `etlplus --help`, and `etlplus check
   --help`.
-- [x] Complete the conda-forge feasibility spike after installer smoke coverage stabilized.
-  - Spike details and the candidate recipe are captured in `CONDA-FORGE-SPIKE.md`.
+- [x] Complete the conda-forge feedstock-preparation pass after installer smoke coverage stabilized.
+  - Preparation details and the candidate recipe are captured in
+    `packaging/conda/FEEDSTOCK-PREP.md`.
   - A corrected conda-forge base solve succeeded for Python 3.13 on `osx-arm64`; PyPI `msgpack`
     maps to conda-forge `msgpack-python`.
   - A temporary conda prefix installed ETLPlus from local source with conda-resolved dependencies and
     `pip --no-deps --no-build-isolation`, then verified `etlplus --version`, `etlplus --help`,
     `etlplus check --help`, and `import etlplus`.
   - Feedstock preparation now includes `packaging/conda/meta.yaml.j2`,
-    `tools/render_conda_recipe.py`, and meta tests checking the draft recipe against
+    `tools/render_conda_recipe.py`, and meta tests checking the candidate recipe against
     `pyproject.toml` dependency names and the expected CLI entrypoint smoke commands.
   - A clean local source snapshot rendered with `--source-path` built a `.conda` artifact with
     `conda-build` on `osx-arm64` and passed the recipe smoke tests for `etlplus --version`, `etlplus
