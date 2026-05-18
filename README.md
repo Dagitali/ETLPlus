@@ -106,6 +106,9 @@ ETLPlus currently supports Python 3.13 and 3.14.
   `azure-blob://`, `abfs://`, or `hdfs://` URIs through `etlplus.storage` and `etlplus.file.File`.
 - Treat local paths, localhost databases, and Docker Compose helpers as development conveniences;
   the same config surface is designed to work with interchangeable remote backing services.
+- Use `secret:NAME` or `secret:env:NAME` for environment-backed config secrets; keep
+  `secret:file:path.to.key` as a local-development compatibility path while encrypted files and
+  cloud secret backends remain deferred.
 - Expect the most stable execution surface from the documented CLI commands, `etlplus.ops`,
   implemented file handlers, and `etlplus.api`.
 - Use `etlplus check --readiness --config <pipeline.yml>` to confirm config substitution, optional
@@ -296,8 +299,8 @@ database connector shape (`provider: snowflake` plus `account`, `database`, and 
 are not supplying a connection string).
 
 See the Getting Started environment reference for the current environment-variable reference,
-including provider credential hints that `etlplus check --readiness` understands for S3, Azure
-storage, BigQuery, and Snowflake.
+environment-first secret tokens, and provider credential hints that `etlplus check --readiness`
+understands for S3, Azure storage, BigQuery, and Snowflake.
 
 <!-- docs:getting-started-installation:end -->
 
@@ -389,6 +392,11 @@ DSNs, SQLite files, and Docker-backed Postgres/MSSQL instances as development fi
 File connectors use the same `type: file` shape for local paths and remote object-storage URIs.
 Install the `storage` extra when you need first-class `s3://`, `azure-blob://`, `abfs://`, or
 `hdfs://` locations; treat local filesystem paths as quick-iteration inputs and outputs.
+
+Connector diagnostics share the same remediation wording in readiness and strict config checks. For
+secrets in connector configs, prefer `secret:NAME` or `secret:env:NAME` so values come from the
+runtime environment; reserve `secret:file:path.to.key` for local development files selected by
+`ETLPLUS_SECRETS_FILE`.
 
 Recognized file formats are listed in the tables below. Support for reading to or writing from a recognized file format is marked as:
 
