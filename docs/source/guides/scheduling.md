@@ -131,7 +131,7 @@ That means scheduled runs keep the same stable contracts:
 
 - Lifecycle events still use `etlplus.event.v1`
 - Local history still records the run through the same SQLite-default or JSONL fallback backend
-- Sdditive scheduler metadata is attached to events and persisted under
+- Additive scheduler metadata is attached to events and persisted under
   `result_summary.scheduler`
 
 The local scheduler also keeps minimal trigger state under `${ETLPLUS_STATE_DIR:-~/.etlplus}`:

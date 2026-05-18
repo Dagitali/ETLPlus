@@ -186,6 +186,8 @@ stable package metadata contract.
   --help`.
 - [ ] Consider conda-forge as follow-up packaging work after installer smoke coverage has stabilized
   and after dependency-footprint feedback is available.
+  - Treat the next step as a feasibility spike covering recipe viability, dependency footprint,
+    optional-extra mapping, and CLI entrypoint behavior rather than a supported-channel commitment.
 
 ## Maintain In `v1.x`
 
@@ -224,9 +226,11 @@ stable package metadata contract.
 - [x] Add a first local scheduler runtime slice.
   - `etlplus schedule --run-pending` now dispatches due schedules once, uses bounded catch-up plus
     per-schedule overlap locks, and reuses the stable `run` event/history path.
-- [ ] Decide whether scheduling should remain a one-shot external-trigger model in `v1.x`.
+- [ ] Harden the one-shot local scheduler model before revisiting resident scheduling.
   - Keep recurring invocation delegated to `cron`, `systemd`, or CI unless there is a clear
     stable-line need for a resident ETLPlus scheduler process.
+  - Prioritize repeat-invocation behavior, overlap handling, bounded catch-up documentation, and
+    scheduler event/history metadata before any resident-process design.
 - [x] Decide whether any local run-history UI ships in core or as an optional extra/package.
   - The `v1.x` line keeps the stable local-history read/query surface CLI-only: `history`, `log`,
     `status`, and `report` remain the supported interfaces.
@@ -310,8 +314,7 @@ hotfix, and post-release sync flows.
 ### Next Minor Release
 
 - Treat the run/job history query surface as stable and prioritize the next execution-hygiene slice
-  in this order: OpenTelemetry adapters, job-level retries, bounded DAG concurrency, scheduling
-  helper output, and then a UI packaging decision.
+  around scheduler hardening, backing-service guidance, and connector/secrets consistency.
 - Review dependency-group ergonomics and installation footprint with actual user feedback.
 - Expand confidence coverage where the stable line has shown friction on platforms, large-file
   workflows, or optional backends.
@@ -322,8 +325,9 @@ The current stable-line posture is:
 
 - Keep the release surface coherent and predictable across `v1.0.x`.
 - Continue execution-hygiene work that supports the documented CLI/runtime contract.
-- Ship `pipx` and `uv tool install` support as non-breaking packaging and smoke-test improvements
-  for the existing PyPI artifact.
-- Leave conda-forge and any smaller default dependency split as explicit follow-up packaging work
-  rather than mixing them into `v1.x` runtime-hygiene follow-up.
+- Keep `pipx` and `uv tool install` support stable as non-breaking packaging and smoke-test
+  improvements for the existing PyPI artifact.
+- Make scheduler hardening and backing-service/connector clarity the next product-facing work.
+- Leave conda-forge and any smaller default dependency split as explicit follow-up packaging
+  decisions rather than mixing them into `v1.x` runtime-hygiene follow-up.
 - Treat the archived pre-1.0 sections above as audit history, not as the active roadmap.
