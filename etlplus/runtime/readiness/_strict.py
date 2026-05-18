@@ -11,6 +11,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from ...connector import ConnectorDb
+from ...connector import ConnectorDiagnosticPolicy
 from ...connector import parse_connector
 from ...utils import MappingParser
 from ...utils import ValueParser
@@ -251,8 +252,7 @@ class StrictConfigValidator:
                 issues.append(
                     _invalid_entry_issue(
                         guidance=(
-                            'Define each connector as a mapping with at least '
-                            '"name" and "type" fields.'
+                            ConnectorDiagnosticPolicy.invalid_entry_guidance()
                         ),
                         index=index,
                         issue='invalid connector entry',
@@ -314,7 +314,7 @@ class StrictConfigValidator:
             if not name:
                 issues.append(
                     {
-                        'guidance': 'Set "name" to a non-empty string.',
+                        'guidance': ConnectorDiagnosticPolicy.missing_name_guidance(),
                         'index': index,
                         'issue': 'blank connector name',
                         'section': section,
