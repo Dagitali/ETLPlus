@@ -251,9 +251,7 @@ class StrictConfigValidator:
             if not isinstance(entry, Mapping):
                 issues.append(
                     _invalid_entry_issue(
-                        guidance=(
-                            ConnectorDiagnosticPolicy.invalid_entry_guidance()
-                        ),
+                        guidance=ConnectorDiagnosticPolicy.invalid_entry_guidance(),
                         index=index,
                         issue='invalid connector entry',
                         section=section,
