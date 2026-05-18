@@ -1,7 +1,7 @@
 """
 :mod:`tests.meta.test_m_conda_feedstock` module.
 
-Guardrails for the draft conda-forge feedstock preparation recipe.
+Guardrails for the candidate conda-forge feedstock preparation recipe.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ _CONDA_NAME_MAP = {
 PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
 CONDA_RECIPE_PATH = REPO_ROOT / 'packaging/conda/meta.yaml.j2'
 CONDA_README_PATH = REPO_ROOT / 'packaging/conda/README.md'
-CONDA_SPIKE_PATH = REPO_ROOT / 'CONDA-FORGE-SPIKE.md'
+CONDA_PREP_PATH = REPO_ROOT / 'packaging/conda/FEEDSTOCK-PREP.md'
 
 
 def _canonical_requirement_name(requirement: str) -> str:
@@ -37,7 +37,7 @@ def _canonical_requirement_name(requirement: str) -> str:
 
 
 def _conda_run_requirements(recipe_text: str) -> set[str]:
-    """Return normalized run dependency names from the draft conda recipe."""
+    """Return normalized run dependency names from the candidate conda recipe."""
     in_run_section = False
     names: set[str] = set()
 
@@ -58,7 +58,7 @@ def _conda_run_requirements(recipe_text: str) -> set[str]:
 
 def test_conda_recipe_tracks_base_pyproject_dependencies() -> None:
     """
-    Test that the draft conda recipe includes the base runtime dependency set.
+    Test that the candidate conda recipe includes the base runtime dependency set.
     """
     pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
     recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
@@ -84,7 +84,7 @@ def test_conda_recipe_documents_expected_name_mappings() -> None:
 
 
 def test_conda_recipe_preserves_cli_entrypoint_and_smoke_commands() -> None:
-    """Test the draft feedstock recipe exposes and verifies the ETLPlus CLI."""
+    """Test the candidate feedstock recipe exposes and verifies the ETLPlus CLI."""
     recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
 
     assert 'etlplus = etlplus.cli:main' in recipe_text
@@ -164,9 +164,9 @@ def test_conda_recipe_validation_workflow_is_manual_linux_first() -> None:
 def test_conda_docs_reference_template_recipe_source() -> None:
     """Test conda docs point maintainers at the Jinja recipe source."""
     readme_text = CONDA_README_PATH.read_text(encoding='utf-8')
-    spike_text = CONDA_SPIKE_PATH.read_text(encoding='utf-8')
+    prep_text = CONDA_PREP_PATH.read_text(encoding='utf-8')
 
     assert 'meta.yaml.j2' in readme_text
-    assert 'meta.yaml.j2' in spike_text
+    assert 'meta.yaml.j2' in prep_text
     assert 'tools/render_conda_recipe.py' in readme_text
-    assert 'tools/render_conda_recipe.py' in spike_text
+    assert 'tools/render_conda_recipe.py' in prep_text

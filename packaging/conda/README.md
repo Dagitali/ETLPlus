@@ -1,10 +1,8 @@
 # Conda Feedstock Preparation
 
-Status: feedstock-preparation draft. This directory is not a supported ETLPlus install channel and
-is not published to conda-forge.
-
-The draft recipe in this directory is intended to seed a future conda-forge staged-recipes
-submission if maintainers accept feedstock ownership.
+This directory contains candidate conda-forge feedstock materials for maintainer review. ETLPlus is
+not published on conda-forge yet; use the supported PyPI installation paths until a conda-forge
+feedstock is accepted and maintained.
 
 - [Conda Feedstock Preparation](#conda-feedstock-preparation)
   - [Current Scope](#current-scope)
@@ -73,9 +71,9 @@ Minimum validation before declaring conda-forge supported:
 ## CI Validation
 
 The manual `Conda Recipe Validation` workflow in `.github/workflows/conda-recipe.yml` renders the
-draft recipe from the current checkout, builds it with `conda-build`, and runs the recipe smoke
-tests. It defaults to Linux-only validation so maintainers can check the lowest-cost path first.
-The initial workflow pins `conda-build=25` because the local validation environment exposed a
+candidate recipe from the current checkout, builds it with `conda-build`, and runs the recipe smoke
+tests. It defaults to Linux-only validation so maintainers can check the lowest-cost path first. The
+initial workflow pins `conda-build=25` because the local validation environment exposed a
 rattler-backed solver plugin crash in the newer tooling line unrelated to the ETLPlus recipe.
 
 Before declaring conda-forge supported, rerun the workflow with `platform_scope: all` so Linux,
@@ -93,4 +91,5 @@ differences are:
 | `PyYAML` | `pyyaml` |
 | `SQLAlchemy` | `sqlalchemy` |
 
-See `CONDA-FORGE-SPIKE.md` for the feasibility-spike evidence and commands.
+See `packaging/conda/FEEDSTOCK-PREP.md` for the public feedstock-preparation status, validation
+path, and support gates.
