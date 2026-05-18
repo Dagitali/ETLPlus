@@ -29,8 +29,7 @@ _GUIDANCE: Final[dict[str, str]] = {
         'Set "path" to a local path or storage URI for this file connector.'
     ),
     'missing url or api reference': (
-        'Set "url" to a reachable endpoint or "api" to a configured '
-        'top-level API name.'
+        'Set "url" to a reachable endpoint or "api" to a configured top-level API name.'
     ),
     'missing connection_string': (
         'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
@@ -137,8 +136,7 @@ class ConnectorDiagnosticPolicy:
     def invalid_entry_guidance() -> str:
         """Return guidance for invalid connector entry shapes."""
         return (
-            'Define each connector as a mapping with at least "name" and "type" '
-            'fields.'
+            'Define each connector as a mapping with at least "name" and "type" fields.'
         )
 
     @staticmethod
