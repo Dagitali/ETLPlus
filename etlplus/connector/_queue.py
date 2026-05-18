@@ -136,16 +136,17 @@ class ConnectorQueue(ConnectorBase):
         obj: StrAnyMap,
         *,
         queue_name: str | None,
+        service: QueueService,
     ) -> QueueType:
         """Return the normalized queue type inferred from payload fields."""
         queue_type_value = obj.get('queue_type')
-        return (
-            QueueType.coerce(queue_type_value)
-            if queue_type_value is not None
-            else QueueType.FIFO
-            if queue_name is not None and queue_name.endswith('.fifo')
-            else QueueType.STANDARD
-        )
+        if queue_type_value is not None:
+            return QueueType.coerce(queue_type_value)
+        if service is QueueService.AWS_SQS and (
+            queue_name is not None and queue_name.endswith('.fifo')
+        ):
+            return QueueType.FIFO
+        return QueueType.STANDARD
 
     @classmethod
     def _service_from_obj(
@@ -185,8 +186,12 @@ class ConnectorQueue(ConnectorBase):
             If an SQS FIFO queue name does not end with ``'.fifo'``.
         """
         queue_name = cls._queue_name_from_obj(obj)
-        queue_type = cls._queue_type_from_obj(obj, queue_name=queue_name)
         service = cls._service_from_obj(obj)
+        queue_type = cls._queue_type_from_obj(
+            obj,
+            queue_name=queue_name,
+            service=service,
+        )
         if (
             service is QueueService.AWS_SQS
             and queue_type is QueueType.FIFO
