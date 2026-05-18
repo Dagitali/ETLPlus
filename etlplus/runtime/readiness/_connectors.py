@@ -12,6 +12,7 @@ from typing import Any
 
 from ..._config import Config
 from ...connector import ConnectorDb
+from ...connector import ConnectorDiagnosticPolicy
 from ...connector import DataConnectorType
 from ...queue import QueueService
 from ...utils import TextNormalizer
@@ -149,7 +150,7 @@ def connector_type_choices() -> tuple[str, ...]:
     tuple[str, ...]
         A tuple of supported connector type names.
     """
-    return DataConnectorType.choices()
+    return ConnectorDiagnosticPolicy.connector_type_choices()
 
 
 def connector_type_guidance(
@@ -168,17 +169,7 @@ def connector_type_guidance(
     str
         Actionable guidance for the unsupported connector type.
     """
-    supported = ', '.join(connector_type_choices())
-    normalized = TextNormalizer.normalize(connector_type_str)
-    if not normalized:
-        return f'Set type to one of: {supported}.'
-    if ReadinessSupportPolicy.coerce_connector_storage_scheme(normalized) is not None:
-        return (
-            f'"{normalized}" is a storage scheme, not a connector type. '
-            'Use connector type "file" and keep the provider in the path '
-            'or URI scheme.'
-        )
-    return f'Use one of the supported connector types: {supported}.'
+    return ConnectorDiagnosticPolicy.connector_type_guidance(connector_type_str)
 
 
 # SECTION: INTERNAL CLASSES ================================================= #
