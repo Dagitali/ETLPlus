@@ -9,9 +9,10 @@
 # (Makefile task, Python runner, CI job, etc.) can read and execute via
 # etlplus.ops.extract/validate/transform/load.
 #
-# Local paths and localhost databases are convenient for development, but the
-# same config surface is intended to work with managed databases and remote
-# storage backends as first-class options.
+# Remote object storage and managed databases are first-class options for the
+# same connector shapes used below. Local paths, localhost databases, and
+# Docker-backed services are also supported,not as the only supported operating
+# model but as common development and testing fixtures.
 #
 # Notes
 # - Source types: file | database | api
@@ -159,16 +160,15 @@ databases:
   mssql:
     default:
       driver: "ODBC Driver 18 for SQL Server"
-      server: "localhost,1433"
-      database: "Demo"
-      trusted_connection: true
-      # Alternatively, use username/password:
-      # username: "${DB_USER}"
-      # password: "${DB_PASSWORD}"
+      # Use localhost for a development fixture, or set MSSQL_SERVER to a
+      # managed database endpoint such as "prod-sql.example.net,1433".
+      server: "${MSSQL_SERVER}"
+      database: "${MSSQL_DATABASE}"
+      username: "${MSSQL_USER}"
+      password: "${MSSQL_PASSWORD}"
       # Optional additional params:
       options:
         encrypt: "yes"
-        trust_server_certificate: "yes"
         connection_timeout: 30
         application_name: "ETLPlus"
   sqlite:
@@ -230,9 +230,11 @@ sources:
     type: database
     connection_string: >
       Driver={ODBC Driver 18 for SQL Server};
-      Server=tcp:localhost,1433;
-      Database=Demo;
-      Trusted_Connection=yes;
+      Server=tcp:${MSSQL_SERVER};
+      Database=${MSSQL_DATABASE};
+      Uid=${MSSQL_USER};
+      Pwd=${MSSQL_PASSWORD};
+      Encrypt=yes;
     # Optional: When you implement DB extraction, a query can be included.
     query: |
       SELECT CustomerId, FirstName, LastName, Email, Status, CreatedAt
@@ -399,9 +401,11 @@ targets:
     type: database
     connection_string: >
       Driver={ODBC Driver 18 for SQL Server};
-      Server=tcp:localhost,1433;
-      Database=Demo;
-      Trusted_Connection=yes;
+      Server=tcp:${MSSQL_SERVER};
+      Database=${MSSQL_DATABASE};
+      Uid=${MSSQL_USER};
+      Pwd=${MSSQL_PASSWORD};
+      Encrypt=yes;
     table: dbo.Customers_Staging
     # Hint for your runner (ETLPlus DB load is a placeholder today)
     mode: append

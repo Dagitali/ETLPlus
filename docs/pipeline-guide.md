@@ -208,13 +208,19 @@ when the job runs.
 
 Declare connection defaults or named connections you’ll use in sources/targets:
 
+Prefer managed database endpoints plus runtime-injected credentials for deployable pipelines.
+Localhost DSNs, SQLite files, and Docker-backed databases are useful fixtures for development and
+CI smoke checks, but they are not the canonical operating model.
+
 ```yaml
 databases:
   mssql:
     default:
       driver: "ODBC Driver 18 for SQL Server"
-      server: "localhost,1433"
-      database: "Demo"
+      server: "${MSSQL_SERVER}"  # localhost,1433
+      database: "${MSSQL_DATABASE}"
+      username: "${MSSQL_USER}"
+      password: "${MSSQL_PASSWORD}"
       trusted_connection: true
       options:
         encrypt: "yes"
@@ -239,12 +245,12 @@ databases:
         timeout: 30
 ```
 
-Note: Database extract/load in ETLPlus is minimal today; consider this a placeholder for
-orchestration that calls into DB clients.
-
 Managed databases are a first-class configuration path. Localhost DSNs and Docker-backed databases
 remain useful for development, but ETLPlus expects the same connector surface to work with
 env-injected credentials and hosted database endpoints.
+
+Note: Database extract/load in ETLPlus is minimal today; consider this a placeholder for
+orchestration that calls into DB clients.
 
 For BigQuery-oriented configs, install the optional extra first:
 

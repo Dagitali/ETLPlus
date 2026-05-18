@@ -40,6 +40,11 @@ packaging and entrypoint regressions before release.
 | Snowflake connector extra | `pip install -e ".[database-snowflake]"` | Optional Snowflake connector metadata/readiness support via `provider: snowflake` plus `account`, `database`, and `schema` fields when no connection string is supplied. |
 | Storage extras | `pip install -e ".[storage]"` | Remote storage backends for `s3://`, `azure-blob://`, `abfs://`, and `hdfs://` locations through `etlplus.storage` and `etlplus.file.File`. |
 
+Remote object storage and managed database metadata are first-class stable-line configuration paths.
+Local filesystem paths, SQLite files, localhost databases, and Docker Compose services are still
+useful for development and smoke tests, but they should not be treated as the only supported
+operating model.
+
 The broad base runtime is intentional. For the `v1.x` stable line, ETLPlus treats the documented
 CLI, `etlplus.ops`, `etlplus.api`, and the implemented built-in file handlers as one default
 supported experience, so their dependencies stay in the base install rather than being split across

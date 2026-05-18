@@ -4,6 +4,11 @@
 
 A few self-contained examples to get you started quickly.
 
+The quickstarts use local files so they run without external services. The pipeline and connector
+snippets also show the intended deployable posture: the same connector shapes can point at remote
+object storage and managed databases with credentials injected by the shell, CI runner, container
+runtime, or scheduler.
+
 - [Examples](#examples)
   - [Quickstarts](#quickstarts)
     - [Python](#python)
@@ -85,7 +90,9 @@ etlplus run --config examples/configs/pipeline.yml --job file_to_file_customers
 
 ## Cloud Database Connector Snippets
 
-Use the same additive `type: database` connector shape for both cloud database providers.
+Use the same additive `type: database` connector shape for both cloud database providers. Local
+Postgres, SQLite, and localhost DSNs are useful development fixtures, but managed databases with
+runtime-injected credentials are the expected production path.
 
 ### BigQuery
 
@@ -138,6 +145,8 @@ export SNOWFLAKE_PASSWORD="${SNOWFLAKE_PASSWORD}"
 ## Remote Object Storage Snippets
 
 Use the same `type: file` connector shape for both local paths and remote object storage.
+Local paths are intentionally convenient for quickstarts; remote object storage should feel like the
+normal target for shared or scheduled pipelines.
 
 ```yaml
 sources:
