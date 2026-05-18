@@ -201,6 +201,9 @@ stable package metadata contract.
   - A clean local source snapshot rendered with `--source-path` built a `.conda` artifact with
     `conda-build` on `osx-arm64` and passed the recipe smoke tests for `etlplus --version`, `etlplus
     --help`, and `etlplus check --help`.
+  - A manual `Conda Recipe Validation` workflow now renders and builds the recipe with
+    `conda-build`, defaulting to Linux first with an opt-in Linux/macOS/Windows matrix before
+    conda-forge support is declared.
 - [ ] Decide whether to promote conda-forge from feasible packaging follow-up to a maintained
   supported install channel.
   - Keep conda-forge as a packaging follow-up rather than a supported-channel commitment until
