@@ -10,6 +10,7 @@ import re
 import tomllib
 
 from tests.meta.pytest_meta_support import REPO_ROOT
+from tools.render_conda_recipe import render_recipe
 
 # SECTION: HELPERS ========================================================== #
 
@@ -23,6 +24,7 @@ _CONDA_NAME_MAP = {
 PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
 CONDA_RECIPE_PATH = REPO_ROOT / 'packaging/conda/meta.yaml.j2'
 CONDA_README_PATH = REPO_ROOT / 'packaging/conda/README.md'
+CONDA_SPIKE_PATH = REPO_ROOT / 'CONDA-FORGE-SPIKE.md'
 
 
 def _canonical_requirement_name(requirement: str) -> str:
@@ -98,3 +100,56 @@ def test_conda_recipe_keeps_feedstock_placeholders_explicit() -> None:
     assert '<release-version>' in recipe_text
     assert '<sdist-sha256>' in recipe_text
     assert '<maintainer-github-handle>' in recipe_text
+
+
+def test_conda_recipe_render_helper_replaces_release_placeholders(
+    tmp_path,
+) -> None:
+    """Test the render helper produces a concrete recipe for build tools."""
+    output_path = tmp_path / 'meta.yaml'
+
+    render_recipe(
+        template_path=CONDA_RECIPE_PATH,
+        output_path=output_path,
+        version='1.2.3',
+        sha256='a' * 64,
+        maintainer='dagitali-maintainer',
+    )
+
+    rendered = output_path.read_text(encoding='utf-8')
+    assert '<release-version>' not in rendered
+    assert '<sdist-sha256>' not in rendered
+    assert '<maintainer-github-handle>' not in rendered
+    assert '{% set version = "1.2.3" %}' in rendered
+    assert 'sha256: ' + ('a' * 64) in rendered
+    assert '    - dagitali-maintainer' in rendered
+
+
+def test_conda_recipe_render_helper_supports_local_source_path(tmp_path) -> None:
+    """Test local validation builds can render a path-based source recipe."""
+    output_path = tmp_path / 'meta.yaml'
+
+    render_recipe(
+        template_path=CONDA_RECIPE_PATH,
+        output_path=output_path,
+        version='0.0.0',
+        sha256='0' * 64,
+        maintainer='dagitali-maintainer',
+        source_path=REPO_ROOT,
+    )
+
+    rendered = output_path.read_text(encoding='utf-8')
+    assert f'  path: {REPO_ROOT.resolve()}' in rendered
+    assert '  url: https://pypi.org/' not in rendered
+    assert '  sha256: ' not in rendered
+
+
+def test_conda_docs_reference_template_recipe_source() -> None:
+    """Test conda docs point maintainers at the Jinja recipe source."""
+    readme_text = CONDA_README_PATH.read_text(encoding='utf-8')
+    spike_text = CONDA_SPIKE_PATH.read_text(encoding='utf-8')
+
+    assert 'meta.yaml.j2' in readme_text
+    assert 'meta.yaml.j2' in spike_text
+    assert 'tools/render_conda_recipe.py' in readme_text
+    assert 'tools/render_conda_recipe.py' in spike_text
