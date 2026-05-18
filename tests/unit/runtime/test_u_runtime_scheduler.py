@@ -528,6 +528,102 @@ class TestRunPending:
             ),
         ]
 
+    def test_run_pending_keeps_overlap_pending_when_later_dispatch_raises(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Pending overlap rows should survive partial summaries from later
+        dispatch exceptions.
+        """
+        cfg = Config.from_dict(
+            {
+                'name': 'Scheduler Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [{'name': 'seed'}, {'name': 'sync'}],
+                'schedules': [
+                    {
+                        'name': 'locked-seed',
+                        'interval': {'minutes': 15},
+                        'target': {'job': 'seed'},
+                        'backfill': {
+                            'enabled': True,
+                            'max_catchup_runs': 1,
+                            'start_at': '2026-05-12T00:00:00+00:00',
+                        },
+                    },
+                    {
+                        'name': 'sync-every-15m',
+                        'interval': {'minutes': 15},
+                        'target': {'job': 'sync'},
+                        'backfill': {
+                            'enabled': True,
+                            'max_catchup_runs': 1,
+                            'start_at': '2026-05-12T00:00:00+00:00',
+                        },
+                    },
+                ],
+            },
+        )
+        lock_dir = tmp_path / 'scheduler-locks'
+        lock_dir.mkdir(parents=True)
+        (lock_dir / 'locked-seed.lock').write_text(
+            json.dumps(
+                {
+                    'created_at': '2026-05-12T00:00:00+00:00',
+                    'pid': os.getpid(),
+                },
+            ),
+            encoding='utf-8',
+        )
+
+        monkeypatch.setattr(
+            scheduler_mod.LocalScheduler,
+            'utc_now',
+            staticmethod(lambda: datetime(2026, 5, 12, 0, 1, tzinfo=UTC)),
+        )
+
+        with pytest.raises(scheduler_mod.SchedulerDispatchError) as exc_info:
+            scheduler_mod.LocalScheduler.run_pending(
+                cfg=cfg,
+                config_path='pipeline.yml',
+                event_format=None,
+                pretty=False,
+                run_callback=lambda **_kwargs: (_ for _ in ()).throw(
+                    RuntimeError('dispatch failed'),
+                ),
+                state_dir=tmp_path,
+            )
+
+        payload = exc_info.value.payload
+        assert payload['due_count'] == 2
+        assert payload['completed_count'] == 0
+        assert payload['pending_count'] == 2
+        assert payload['pending_runs'] == [
+            {
+                'catchup': True,
+                'job': 'seed',
+                'reason': 'overlap',
+                'schedule': 'locked-seed',
+                'status': 'pending',
+                'trigger': 'interval',
+                'triggered_at': '2026-05-12T00:00:00+00:00',
+            },
+            {
+                'catchup': True,
+                'error_message': 'dispatch failed',
+                'error_type': 'RuntimeError',
+                'job': 'sync',
+                'reason': 'exception',
+                'schedule': 'sync-every-15m',
+                'status': 'pending',
+                'trigger': 'interval',
+                'triggered_at': '2026-05-12T00:00:00+00:00',
+            },
+        ]
+
     def test_run_pending_raises_partial_summary_for_catchup_exception(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -752,6 +848,18 @@ class TestRunPending:
         )
 
         assert payload['dispatched_count'] == 0
+        assert payload['pending_count'] == 1
+        assert payload['pending_runs'] == [
+            {
+                'catchup': False,
+                'reason': 'overlap',
+                'run_all': True,
+                'schedule': 'nightly-all',
+                'status': 'pending',
+                'trigger': 'cron',
+                'triggered_at': '2026-05-11T02:00:00+00:00',
+            },
+        ]
         assert payload['skipped_count'] == 1
         assert payload['runs'] == [
             {
