@@ -47,9 +47,28 @@ DEFAULT_SECRETS_FILE_ENV_VAR: Final[str] = 'ETLPLUS_SECRETS_FILE'
 class SecretProvider(Protocol):
     """Provider contract for resolving one secret key."""
 
-    # -- Attributes -- #
+    # -- Properties -- #
 
-    name: str
+    @property
+    def name(self) -> str:
+        """
+        Return the provider name used in ``secret:<provider>:...`` tokens.
+
+        This is used for diagnostics and should not be confused with the set of
+        supported storage schemes, which are not secret providers but may be
+        used in secrets file paths or URI schemes.
+
+        Returns
+        -------
+        str
+            The provider name for this secret provider.
+
+        Raises
+        ------
+        NotImplementedError
+            If the provider does not implement this property.
+        """
+        raise NotImplementedError
 
     # -- Instance Methods -- #
 
