@@ -201,6 +201,8 @@ stable package metadata contract.
   supported install channel.
   - Keep conda-forge as a packaging follow-up rather than a supported-channel commitment until
     maintainers accept the broad default dependency footprint and feedstock maintenance burden.
+  - Feedstock preparation now exists under `packaging/conda/`, with meta tests checking the draft
+    recipe against `pyproject.toml` dependency names and the expected CLI entrypoint smoke commands.
   - Before submitting a feedstock, run an actual recipe build/test with `conda-build` or
     `rattler-build` and verify Linux, macOS, and Windows behavior.
   - Optional extras should stay mapped as separate follow-up outputs or variants rather than being
