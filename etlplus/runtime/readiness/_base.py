@@ -17,7 +17,6 @@ from urllib.parse import urlsplit
 
 from ..._config import Config
 from ...connector import Connector
-from ...connector import ConnectorDiagnosticPolicy
 from ...file import File
 from ...file import FileFormat
 from ...storage import StorageScheme
@@ -316,34 +315,6 @@ class ReadinessSupportPolicy:
             return str(StorageScheme.coerce(parsed.scheme))
         except ValueError:
             return parsed.scheme.lower()
-
-    @staticmethod
-    def connector_gap_guidance(
-        *,
-        api_reference: str | None = None,
-        issue: str,
-    ) -> str | None:
-        """
-        Return one actionable guidance string for a blocking connector gap.
-
-        Parameters
-        ----------
-        api_reference : str | None
-            The API reference associated with the connector, if any.
-        issue : str
-            The specific issue encountered with the connector.
-
-        Returns
-        -------
-        str | None
-            An actionable guidance string for resolving the connector gap, or
-            ``None`` if no guidance is available.
-
-        """
-        return ConnectorDiagnosticPolicy.gap_guidance(
-            api_reference=api_reference,
-            issue=issue,
-        )
 
     @staticmethod
     def dedupe_rows(
