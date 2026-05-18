@@ -193,28 +193,57 @@ class ConnectorDb(ConnectorBase):
         *,
         provider: str | None = None,
     ) -> tuple[str, ...]:
-        """Return required provider fields missing from *obj*."""
+        """
+        Return required provider fields missing from *obj*.
+
+        Parameters
+        ----------
+        obj : Mapping[str, object] | object
+            Object or mapping to check for missing provider-specific fields.
+        provider : str | None
+            Optional provider hint to check against. If not provided, the
+            provider will be inferred from *obj* if possible.
+
+        Returns
+        -------
+        tuple[str, ...]
+            Tuple of missing provider-specific field names.
+        """
         normalized = cls._provider_from_value(obj, provider=provider)
         if normalized is None:
             return ()
 
-        missing: list[str] = []
-        for field in cls.provider_required_fields(normalized):
-            value = (
-                obj.get(field)
-                if isinstance(obj, Mapping)
-                else getattr(obj, field, None)
+        fields = cls.provider_required_fields(normalized)
+        if isinstance(obj, Mapping):
+            return tuple(
+                field_name
+                for field_name in fields
+                if ValueParser.optional_str(obj.get(field_name)) is None
             )
-            if ValueParser.optional_str(value) is None:
-                missing.append(field)
-        return tuple(missing)
+        return tuple(
+            field_name
+            for field_name in fields
+            if ValueParser.optional_str(getattr(obj, field_name, None)) is None
+        )
 
     @classmethod
     def normalize_provider(
         cls,
         provider: str | None,
     ) -> str | None:
-        """Return one normalized provider name when present."""
+        """
+        Return one normalized provider name when present.
+
+        Parameters
+        ----------
+        provider : str | None
+            Provider name to normalize.
+
+        Returns
+        -------
+        str | None
+            Normalized provider name, or ``None`` if not present.
+        """
         if provider is None:
             return None
         normalized = TextNormalizer.normalize(provider)
@@ -227,7 +256,19 @@ class ConnectorDb(ConnectorBase):
         cls,
         provider: str | None,
     ) -> str | None:
-        """Return one human-readable provider name when supported."""
+        """
+        Return one human-readable provider name when supported.
+
+        Parameters
+        ----------
+        provider : str | None
+            Provider name to get the display name for.
+
+        Returns
+        -------
+        str | None
+            Human-readable provider name, or ``None`` if not supported.
+        """
         normalized = cls.normalize_provider(provider)
         if normalized is None:
             return None
@@ -238,7 +279,19 @@ class ConnectorDb(ConnectorBase):
         cls,
         provider: str | None,
     ) -> tuple[str, ...]:
-        """Return required provider-specific metadata fields."""
+        """
+        Return required provider-specific metadata fields.
+
+        Parameters
+        ----------
+        provider : str | None
+            Provider name to get the required fields for.
+
+        Returns
+        -------
+        tuple[str, ...]
+            Tuple of required provider-specific field names.
+        """
         normalized = cls.normalize_provider(provider)
         if normalized is None:
             return ()
@@ -249,7 +302,19 @@ class ConnectorDb(ConnectorBase):
         cls,
         provider: str | None,
     ) -> str | None:
-        """Return one normalized remediation string for provider metadata gaps."""
+        """
+        Return one normalized remediation string for provider metadata gaps.
+
+        Parameters
+        ----------
+        provider : str | None
+            Provider name to get the guidance for.
+
+        Returns
+        -------
+        str | None
+            Normalized remediation string, or ``None`` if not applicable.
+        """
         normalized = cls.normalize_provider(provider)
         if normalized is None:
             return None
@@ -276,7 +341,20 @@ class ConnectorDb(ConnectorBase):
         cls,
         provider: str | None,
     ) -> str | None:
-        """Return the normalized missing-metadata issue id for *provider*."""
+        """
+        Return the normalized missing-metadata issue id for *provider*.
+
+        Parameters
+        ----------
+        provider : str | None
+            Provider name to get the issue id for.
+
+        Returns
+        -------
+        str | None
+            Normalized missing-metadata issue id, or ``None`` if not
+            applicable.
+        """
         normalized = cls.normalize_provider(provider)
         if normalized is None:
             return None
