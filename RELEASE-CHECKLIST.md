@@ -231,6 +231,8 @@ stable package metadata contract.
     stable-line need for a resident ETLPlus scheduler process.
   - Prioritize repeat-invocation behavior, overlap handling, bounded catch-up documentation, and
     scheduler event/history metadata before any resident-process design.
+  - Overlap-skipped due triggers now appear in `pending_runs` with `reason: overlap`, so operators
+    can distinguish replayable overlap from consumed handled outcomes.
 - [x] Decide whether any local run-history UI ships in core or as an optional extra/package.
   - The `v1.x` line keeps the stable local-history read/query surface CLI-only: `history`, `log`,
     `status`, and `report` remain the supported interfaces.
