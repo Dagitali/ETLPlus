@@ -6,6 +6,8 @@ Shared connector diagnostic wording and remediation policy.
 
 from __future__ import annotations
 
+from typing import Final
+
 from ..storage import StorageScheme
 from ..utils import TextNormalizer
 from ._database import ConnectorDb
@@ -22,7 +24,7 @@ __all__ = [
 
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
-_GUIDANCE = {
+_GUIDANCE: Final[dict[str, str]] = {
     'missing path': (
         'Set "path" to a local path or storage URI for this file connector.'
     ),
@@ -113,9 +115,8 @@ class ConnectorDiagnosticPolicy:
             Guidance message for the specified connector config gap, or
             ``None`` if no guidance is available.
         """
-        _GUIDANCE.get(issue)
-        if _GUIDANCE is not None:
-            return _GUIDANCE
+        if (guidance := _GUIDANCE.get(issue)) is not None:
+            return guidance
 
         match issue:
             case 'missing connection_string or bigquery project/dataset':
