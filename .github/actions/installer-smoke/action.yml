@@ -54,9 +54,10 @@ runs:
         python -m pip install --upgrade pipx
         python -m pipx ensurepath
         python -m pipx install ${{ inputs.artifact-wheel }}
-        "$HOME/.local/bin/etlplus" --version
-        "$HOME/.local/bin/etlplus" --help
-        "$HOME/.local/bin/etlplus" check --help
+        etlplus_bin="$(command -v etlplus)"
+        "$etlplus_bin" --version
+        "$etlplus_bin" --help
+        "$etlplus_bin" check --help
         python -m pipx uninstall etlplus
 
     - name: Smoke-test uv tool wheel install
@@ -64,6 +65,7 @@ runs:
       run: |
         python -m pip install --upgrade uv
         uv tool install --force ${{ inputs.artifact-wheel }}
-        "$HOME/.local/bin/etlplus" --version
-        "$HOME/.local/bin/etlplus" --help
-        "$HOME/.local/bin/etlplus" check --help
+        etlplus_bin="$(command -v etlplus)"
+        "$etlplus_bin" --version
+        "$etlplus_bin" --help
+        "$etlplus_bin" check --help

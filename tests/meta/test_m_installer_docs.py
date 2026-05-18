@@ -114,3 +114,13 @@ def test_conda_status_is_documented_as_follow_up(path: Path) -> None:
 
     assert 'conda-forge' in text
     assert 'follow-up' in text
+
+
+def test_installer_smoke_resolves_tool_installer_entrypoint_from_path(
+    installer_smoke_action_text: str,
+) -> None:
+    """
+    Test that tool-installer smoke checks do not assume a fixed app-bin path.
+    """
+    assert '$HOME/.local/bin/etlplus' not in installer_smoke_action_text
+    assert 'etlplus_bin="$(command -v etlplus)"' in installer_smoke_action_text
