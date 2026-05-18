@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 
 from ..._config import Config
 from ...connector import Connector
-from ...connector import ConnectorDb
+from ...connector import ConnectorDiagnosticPolicy
 from ...file import File
 from ...file import FileFormat
 from ...storage import StorageScheme
@@ -340,33 +340,10 @@ class ReadinessSupportPolicy:
             ``None`` if no guidance is available.
 
         """
-        match issue:
-            case 'missing path':
-                return (
-                    'Set "path" to a local path or storage URI for this file connector.'
-                )
-            case 'missing url or api reference':
-                return (
-                    'Set "url" to a reachable endpoint or "api" to a configured '
-                    'top-level API name.'
-                )
-            case 'missing connection_string':
-                return (
-                    'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
-                )
-            case 'missing connection_string or bigquery project/dataset':
-                return ConnectorDb.provider_missing_connection_guidance('bigquery')
-            case 'missing connection_string or snowflake account/database/schema':
-                return ConnectorDb.provider_missing_connection_guidance('snowflake')
-            case issue_text if issue_text.startswith('unknown api reference: '):
-                if api_reference:
-                    return (
-                        f'Define "{api_reference}" under top-level "apis" or '
-                        'update the connector "api" reference.'
-                    )
-                return 'Define the referenced API under top-level "apis".'
-            case _:
-                return None
+        return ConnectorDiagnosticPolicy.gap_guidance(
+            api_reference=api_reference,
+            issue=issue,
+        )
 
     @staticmethod
     def dedupe_rows(
