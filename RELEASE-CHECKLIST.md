@@ -162,6 +162,10 @@ release.
     `etlplus.queue` SQS metadata surface, optional queue dependency extras for AWS SQS, Azure
     Service Bus, Google Cloud Pub/Sub, AMQP/RabbitMQ, and Redis, an aggregate `queue`/`queue-all`
     extra, plus readiness diagnostics for missing queue provider dependencies.
+  - Connector diagnostics now share remediation wording between readiness and strict config checks.
+    Secret references are environment-first through `secret:NAME` or `secret:env:NAME`; explicit
+    `secret:file:path.to.key` local files remain a development compatibility path while encrypted
+    local files and cloud secret backends stay deferred until the provider interface is stable.
 
 ## Current Stable-Line Maintenance Checklist
 
