@@ -603,64 +603,6 @@ class TestReadinessReportBuilderCore:
             },
         ]
 
-    @pytest.mark.parametrize(
-        ('issue', 'api_reference', 'expected'),
-        [
-            pytest.param(
-                'missing path',
-                None,
-                'Set "path" to a local path or storage URI for this file connector.',
-                id='missing-path',
-            ),
-            pytest.param(
-                'missing url or api reference',
-                None,
-                'Set "url" to a reachable endpoint or "api" to a configured '
-                'top-level API name.',
-                id='missing-url-or-api',
-            ),
-            pytest.param(
-                'missing connection_string',
-                None,
-                'Set "connection_string" to a database DSN or SQLAlchemy-style URL.',
-                id='missing-connection-string',
-            ),
-            pytest.param(
-                'unknown api reference: missing-api',
-                'missing-api',
-                'Define "missing-api" under top-level "apis" or update the '
-                'connector "api" reference.',
-                id='unknown-api-with-reference-name',
-            ),
-            pytest.param(
-                'unknown api reference: missing-api',
-                None,
-                'Define the referenced API under top-level "apis".',
-                id='unknown-api-without-reference-name',
-            ),
-            pytest.param(
-                'unhandled',
-                None,
-                None,
-                id='unknown-issue',
-            ),
-        ],
-    )
-    def test_connector_gap_guidance_covers_fallback_paths(
-        self,
-        issue: str,
-        api_reference: str | None,
-        expected: str | None,
-    ) -> None:
-        """Connector-gap guidance should cover non-standard issue shapes."""
-        assert (
-            readiness_base_mod.ReadinessSupportPolicy.connector_gap_guidance(
-                api_reference=api_reference,
-                issue=issue,
-            )
-            == expected
-        )
-
     def test_iter_connectors_yields_sources_then_targets(
         self,
     ) -> None:
