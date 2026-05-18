@@ -29,6 +29,9 @@ from etlplus.utils._parsing import SequenceParser
 from etlplus.utils._parsing import ValueParser
 from etlplus.utils._paths import PathHasher
 from etlplus.utils._paths import PathParser
+from etlplus.utils._secrets import EnvironmentSecretProvider
+from etlplus.utils._secrets import LocalFileSecretProvider
+from etlplus.utils._secrets import SecretProvider
 from etlplus.utils._secrets import SecretResolver
 from etlplus.utils._substitution import SubstitutionResolver
 from etlplus.utils._substitution import TokenReferenceCollector
@@ -51,6 +54,8 @@ STABLE_UTILS_EXPORTS = [
     ('MappingParser', MappingParser),
     ('NamedDependencyGraph', NamedDependencyGraph),
     ('PathParser', PathParser),
+    ('EnvironmentSecretProvider', EnvironmentSecretProvider),
+    ('LocalFileSecretProvider', LocalFileSecretProvider),
     ('SecretResolver', SecretResolver),
     ('SequenceParser', SequenceParser),
     ('SubstitutionResolver', SubstitutionResolver),
@@ -75,6 +80,7 @@ TRANSITIONAL_UTILS_EXPORTS = [
     ('BoundsWarningsMixin', BoundsWarningsMixin),
     ('NonEmptyStr', NonEmptyStr),
     ('NonEmptyStrList', NonEmptyStrList),
+    ('SecretProvider', SecretProvider),
 ]
 
 UTILS_EXPORTS = [*STABLE_UTILS_EXPORTS, *TRANSITIONAL_UTILS_EXPORTS]

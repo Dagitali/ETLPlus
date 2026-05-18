@@ -13,6 +13,7 @@ from ._core import ConnectorBase
 from ._core import ConnectorProtocol
 from ._database import ConnectorDb
 from ._database import ConnectorDbConfigDict
+from ._diagnostics import ConnectorDiagnosticPolicy
 from ._enums import DataConnectorType
 from ._file import ConnectorFile
 from ._file import ConnectorFileConfigDict
@@ -28,6 +29,7 @@ __all__ = [
     # Data Classes
     'ConnectorApi',
     'ConnectorDb',
+    'ConnectorDiagnosticPolicy',
     'ConnectorFile',
     'ConnectorQueue',
     # Enums

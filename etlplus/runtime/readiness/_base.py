@@ -17,7 +17,6 @@ from urllib.parse import urlsplit
 
 from ..._config import Config
 from ...connector import Connector
-from ...connector import ConnectorDb
 from ...file import File
 from ...file import FileFormat
 from ...storage import StorageScheme
@@ -316,57 +315,6 @@ class ReadinessSupportPolicy:
             return str(StorageScheme.coerce(parsed.scheme))
         except ValueError:
             return parsed.scheme.lower()
-
-    @staticmethod
-    def connector_gap_guidance(
-        *,
-        api_reference: str | None = None,
-        issue: str,
-    ) -> str | None:
-        """
-        Return one actionable guidance string for a blocking connector gap.
-
-        Parameters
-        ----------
-        api_reference : str | None
-            The API reference associated with the connector, if any.
-        issue : str
-            The specific issue encountered with the connector.
-
-        Returns
-        -------
-        str | None
-            An actionable guidance string for resolving the connector gap, or
-            ``None`` if no guidance is available.
-
-        """
-        match issue:
-            case 'missing path':
-                return (
-                    'Set "path" to a local path or storage URI for this file connector.'
-                )
-            case 'missing url or api reference':
-                return (
-                    'Set "url" to a reachable endpoint or "api" to a configured '
-                    'top-level API name.'
-                )
-            case 'missing connection_string':
-                return (
-                    'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
-                )
-            case 'missing connection_string or bigquery project/dataset':
-                return ConnectorDb.provider_missing_connection_guidance('bigquery')
-            case 'missing connection_string or snowflake account/database/schema':
-                return ConnectorDb.provider_missing_connection_guidance('snowflake')
-            case issue_text if issue_text.startswith('unknown api reference: '):
-                if api_reference:
-                    return (
-                        f'Define "{api_reference}" under top-level "apis" or '
-                        'update the connector "api" reference.'
-                    )
-                return 'Define the referenced API under top-level "apis".'
-            case _:
-                return None
 
     @staticmethod
     def dedupe_rows(

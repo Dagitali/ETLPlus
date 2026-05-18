@@ -8,14 +8,15 @@ invoking shell, CI job, container runtime, or scheduler.
 
 - [Environment Reference](#environment-reference)
   - [Precedence](#precedence)
-  - [Runtime knobs](#runtime-knobs)
-  - [Storage and provider credentials](#storage-and-provider-credentials)
+  - [Runtime Knobs](#runtime-knobs)
+  - [Secret References](#secret-references)
+  - [Storage and Provider Credentials](#storage-and-provider-credentials)
     - [AWS S3](#aws-s3)
     - [Azure Blob Storage and ADLS Gen2](#azure-blob-storage-and-adls-gen2)
     - [BigQuery](#bigquery)
     - [Snowflake](#snowflake)
-  - [Example shell setup](#example-shell-setup)
-  - [Related docs](#related-docs)
+  - [Example Shell Setup](#example-shell-setup)
+  - [Related Docs](#related-docs)
 
 ## Precedence
 
@@ -27,7 +28,7 @@ For config substitution, ETLPlus currently resolves values in this order:
 
 That means external environment variables override `profile.env`.
 
-## Runtime knobs
+## Runtime Knobs
 
 | Variable | Purpose | Notes |
 | --- | --- | --- |
@@ -37,7 +38,23 @@ That means external environment variables override `profile.env`.
 | `ETLPLUS_TELEMETRY_EXPORTER` | Select the telemetry exporter bridge. | Current supported values are `opentelemetry` and `none`. |
 | `ETLPLUS_TELEMETRY_SERVICE_NAME` | Set the service name used by the telemetry bridge. | Useful when the same workstation or runner hosts multiple ETLPlus workloads. |
 
-## Storage and provider credentials
+## Secret References
+
+For pipeline config values that should not be committed, ETLPlus supports additive `secret:...`
+tokens during config substitution.
+
+- Use `secret:NAME` for the stable environment-first form. It resolves `NAME` from the effective
+  runtime environment.
+- Use `secret:env:NAME` when you want the provider name to be explicit. It is equivalent to
+  `secret:NAME`.
+- Use `secret:file:path.to.key` only for local-development compatibility. It reads a JSON or YAML
+  mapping file selected by `ETLPLUS_SECRETS_FILE`.
+
+Encrypted local secret files and cloud secret-manager backends are intentionally deferred until the
+provider interface is stable. In shared, scheduled, or production-like deployments, prefer
+environment injection or platform identity over repository-local secret files.
+
+## Storage and Provider Credentials
 
 `etlplus check --readiness --config pipeline.yml` now reports provider-specific
 environment gaps for common remote-storage and cloud-database paths.
@@ -131,7 +148,7 @@ Recommended posture:
 - Inject user/password, key-based auth, or SSO-specific environment at runtime
 - Use a full `connection_string` when you already have a managed DSN surface
 
-## Example shell setup
+## Example Shell Setup
 
 ```bash
 export AWS_PROFILE=etlplus-dev
@@ -143,7 +160,7 @@ export SNOWFLAKE_PASSWORD="${SNOWFLAKE_PASSWORD}"
 etlplus check --readiness --config examples/configs/pipeline.yml
 ```
 
-## Related docs
+## Related Docs
 
 - {doc}`installation`
 - {doc}`compatibility`
