@@ -224,7 +224,7 @@ uv tool install etlplus
 ```
 
 Choose `pip install etlplus` when you want the ETLPlus library and CLI in the active Python
-environment. Choose `pipx install etlplus` for the preferred isolated CLI install, or `uv tool
+environment. Choose `pipx install etlplus` for the preferred isolated CLI install or `uv tool
 install etlplus` when you manage command-line tools through uv.
 
 These installer paths are first-class for the base CLI artifact. They install the same PyPI package
