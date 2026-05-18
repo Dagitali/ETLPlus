@@ -76,6 +76,21 @@ class TestConnectorQueue:
                 },
             )
 
+    def test_fifo_suffix_inference_is_sqs_specific(self) -> None:
+        """Non-SQS queue names ending in .fifo should not imply FIFO semantics."""
+        connector = ConnectorQueue.from_obj(
+            {
+                'name': 'events',
+                'type': 'queue',
+                'service': 'amqp',
+                'queue_name': 'events.fifo',
+                'options': {'url': 'amqp://guest:guest@localhost:5672/%2f'},
+            },
+        )
+
+        assert connector.service is QueueService.AMQP
+        assert connector.queue_type is QueueType.STANDARD
+
     def test_fifo_suffix_rule_is_sqs_specific(self) -> None:
         """Test that non-SQS FIFO-like metadata does not use SQS naming rules."""
         connector = ConnectorQueue.from_obj(
