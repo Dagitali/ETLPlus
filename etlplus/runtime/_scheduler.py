@@ -650,6 +650,7 @@ class LocalScheduler:
         cfg_name = cfg.name or ''
 
         results: list[dict[str, object]] = list(skipped)
+        pending_runs: list[dict[str, object]] = []
         attempted_count = 0
         completed_count = 0
         dispatched_count = 0
@@ -660,6 +661,13 @@ class LocalScheduler:
                     _schedule_metadata(
                         request,
                         status='skipped',
+                        reason='overlap',
+                    ),
+                )
+                pending_runs.append(
+                    _schedule_metadata(
+                        request,
+                        status='pending',
                         reason='overlap',
                     ),
                 )
@@ -699,6 +707,7 @@ class LocalScheduler:
                         ),
                     )
                     pending_runs = [
+                        *pending_runs,
                         _schedule_error_metadata(
                             request,
                             exc=exc,
@@ -757,7 +766,7 @@ class LocalScheduler:
             completed_count=completed_count,
             dispatched_count=dispatched_count,
             due_count=due_count,
-            pending_runs=[],
+            pending_runs=pending_runs,
             results=results,
             schedule_count=schedule_count,
             stopped_early=False,
