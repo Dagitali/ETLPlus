@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
+from typing import Final
 
 from ._api import ConnectorApi
 from ._connector import Connector
@@ -28,7 +29,7 @@ __all__ = [
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_CONNECTOR_CLASSES: dict[DataConnectorType, type[Connector]] = {
+_CONNECTOR_CLASSES: Final[dict[DataConnectorType, type[Connector]]] = {
     DataConnectorType.API: ConnectorApi,
     DataConnectorType.DATABASE: ConnectorDb,
     DataConnectorType.FILE: ConnectorFile,
