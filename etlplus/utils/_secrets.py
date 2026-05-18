@@ -96,6 +96,19 @@ class LocalFileSecretProvider:
     name: str = 'file'
     secrets_file_env_var: str = DEFAULT_SECRETS_FILE_ENV_VAR
 
+    # -- Internal Instance Methods -- #
+
+    def _secrets_file_path(
+        self,
+    ) -> Path | None:
+        """Return the configured local secrets file path, if any."""
+        if self.env_map is None:
+            return None
+        raw_path = self.env_map.get(self.secrets_file_env_var)
+        if not isinstance(raw_path, str) or not raw_path:
+            return None
+        return Path(raw_path).expanduser()
+
     # -- Instance Methods -- #
 
     def resolve(
@@ -112,19 +125,6 @@ class LocalFileSecretProvider:
         if payload is None:
             return None
         return self._lookup_mapping_key(payload, key)
-
-    # -- Internal Instance Methods -- #
-
-    def _secrets_file_path(
-        self,
-    ) -> Path | None:
-        """Return the configured local secrets file path, if any."""
-        if self.env_map is None:
-            return None
-        raw_path = self.env_map.get(self.secrets_file_env_var)
-        if not isinstance(raw_path, str) or not raw_path:
-            return None
-        return Path(raw_path).expanduser()
 
     # -- Static Methods -- #
 
