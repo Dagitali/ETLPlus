@@ -26,6 +26,9 @@ from ._parsing import SequenceParser
 from ._parsing import ValueParser
 from ._paths import PathHasher
 from ._paths import PathParser
+from ._secrets import EnvironmentSecretProvider
+from ._secrets import LocalFileSecretProvider
+from ._secrets import SecretProvider
 from ._secrets import SecretResolver
 from ._substitution import SubstitutionResolver
 from ._substitution import TokenReferenceCollector
@@ -53,6 +56,8 @@ __all__ = [
     'MappingParser',
     'NamedDependencyGraph',
     'PathParser',
+    'EnvironmentSecretProvider',
+    'LocalFileSecretProvider',
     'SecretResolver',
     'SequenceParser',
     'SubstitutionResolver',
@@ -80,4 +85,5 @@ __all__ = [
     # Type Aliases
     'NonEmptyStr',
     'NonEmptyStrList',
+    'SecretProvider',
 ]
