@@ -6,8 +6,6 @@ Shared connector diagnostic wording and remediation policy.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from ..storage import StorageScheme
 from ..utils import TextNormalizer
 from ._database import ConnectorDb
@@ -22,10 +20,25 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+_GUIDANCE = {
+    'missing path': (
+        'Set "path" to a local path or storage URI for this file connector.'
+    ),
+    'missing url or api reference': (
+        'Set "url" to a reachable endpoint or "api" to a configured '
+        'top-level API name.'
+    ),
+    'missing connection_string': (
+        'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
+    ),
+}
+
+
 # SECTION: CLASSES ========================================================== #
 
 
-@dataclass(frozen=True, slots=True)
 class ConnectorDiagnosticPolicy:
     """Centralized wording for connector config diagnostics."""
 
@@ -100,20 +113,11 @@ class ConnectorDiagnosticPolicy:
             Guidance message for the specified connector config gap, or
             ``None`` if no guidance is available.
         """
+        _GUIDANCE.get(issue)
+        if _GUIDANCE is not None:
+            return _GUIDANCE
+
         match issue:
-            case 'missing path':
-                return (
-                    'Set "path" to a local path or storage URI for this file connector.'
-                )
-            case 'missing url or api reference':
-                return (
-                    'Set "url" to a reachable endpoint or "api" to a configured '
-                    'top-level API name.'
-                )
-            case 'missing connection_string':
-                return (
-                    'Set "connection_string" to a database DSN or SQLAlchemy-style URL.'
-                )
             case 'missing connection_string or bigquery project/dataset':
                 return ConnectorDb.provider_missing_connection_guidance('bigquery')
             case 'missing connection_string or snowflake account/database/schema':
