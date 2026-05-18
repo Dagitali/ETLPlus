@@ -75,7 +75,7 @@ def _connector_gap_row(
     if issue == 'unsupported type':
         row['guidance'] = connector_type_guidance(connector_type_str)
     else:
-        row['guidance'] = ReadinessSupportPolicy.connector_gap_guidance(
+        row['guidance'] = ConnectorDiagnosticPolicy.gap_guidance(
             api_reference=api_reference,
             issue=issue,
         )
