@@ -16,6 +16,7 @@ from etlplus.connector._core import ConnectorBase
 from etlplus.connector._core import ConnectorProtocol
 from etlplus.connector._database import ConnectorDb
 from etlplus.connector._database import ConnectorDbConfigDict
+from etlplus.connector._diagnostics import ConnectorDiagnosticPolicy
 from etlplus.connector._enums import DataConnectorType
 from etlplus.connector._file import ConnectorFile
 from etlplus.connector._file import ConnectorFileConfigDict
@@ -33,6 +34,7 @@ from etlplus.connector._utils import parse_connector
 CONNECTOR_EXPORTS = [
     ('ConnectorApi', ConnectorApi),
     ('ConnectorDb', ConnectorDb),
+    ('ConnectorDiagnosticPolicy', ConnectorDiagnosticPolicy),
     ('ConnectorFile', ConnectorFile),
     ('ConnectorQueue', ConnectorQueue),
     ('DataConnectorType', DataConnectorType),

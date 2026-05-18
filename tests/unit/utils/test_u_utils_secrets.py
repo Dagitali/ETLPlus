@@ -12,6 +12,8 @@ from pathlib import Path
 import pytest
 
 from etlplus.utils._secrets import DEFAULT_SECRETS_FILE_ENV_VAR
+from etlplus.utils._secrets import EnvironmentSecretProvider
+from etlplus.utils._secrets import LocalFileSecretProvider
 from etlplus.utils._secrets import SecretResolver
 
 # SECTION: PRAGMAS ========================================================== #
@@ -48,6 +50,40 @@ def yaml_secrets_path_fixture(
 
 
 # SECTION: TESTS ============================================================ #
+
+
+class TestSecretProviders:
+    """Unit tests for explicit secret provider classes."""
+
+    def test_environment_provider_resolves_non_empty_values(self) -> None:
+        """Environment provider should be the stable first provider."""
+        provider = EnvironmentSecretProvider({'API_TOKEN': 'env-secret', 'EMPTY': ''})
+
+        assert provider.name == 'env'
+        assert provider.resolve('API_TOKEN') == 'env-secret'
+        assert provider.resolve('EMPTY') is None
+        assert provider.resolve('MISSING') is None
+
+    def test_local_file_provider_uses_explicit_file_provider_name(
+        self,
+        json_secrets_path: Path,
+    ) -> None:
+        """Local file provider remains explicit and additive."""
+        provider = LocalFileSecretProvider(
+            {DEFAULT_SECRETS_FILE_ENV_VAR: str(json_secrets_path)},
+        )
+
+        assert provider.name == 'file'
+        assert provider.resolve('service.password') == 'json-secret'
+
+    def test_resolver_keeps_environment_as_unqualified_secret_provider(self) -> None:
+        """Unqualified secret tokens should keep resolving through env first."""
+        resolver = SecretResolver({'API_TOKEN': 'env-secret'})
+
+        providers = resolver._provider_map()
+
+        assert list(providers) == ['env', 'file']
+        assert resolver.resolve_token('secret:API_TOKEN') == 'env-secret'
 
 
 class TestSecretResolver:
