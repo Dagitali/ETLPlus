@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 from pathlib import Path
 
@@ -69,9 +70,10 @@ def render_recipe(
         .replace('<maintainer-github-handle>', maintainer)
     )
     if source_path is not None:
+        quoted_source_path = json.dumps(str(source_path.resolve()))
         rendered = re.sub(
             r'source:\n  url: .+\n  sha256: .+\n',
-            f'source:\n  path: {source_path.resolve()}\n',
+            f'source:\n  path: {quoted_source_path}\n',
             rendered,
         )
     output_path.parent.mkdir(parents=True, exist_ok=True)
