@@ -209,6 +209,9 @@ stable package metadata contract.
     remote storage backends.
   - Keep managed databases and remote object storage visible in docs/examples rather than treating
     localhost-only helpers as the default mental model.
+  - The README, pipeline guide, compatibility/environment docs, and example pipeline now frame
+    remote object storage and managed databases as first-class paths while keeping localhost,
+    SQLite, local files, and Docker-backed services as development fixtures.
 - [x] Add opt-in OpenTelemetry adapters on top of the stable event/history contracts.
   - Reuse `etlplus.event.v1` plus the normalized local history shapes rather than introducing a
     second observability contract.

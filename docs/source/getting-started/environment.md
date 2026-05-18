@@ -42,6 +42,10 @@ That means external environment variables override `profile.env`.
 `etlplus check --readiness --config pipeline.yml` now reports provider-specific
 environment gaps for common remote-storage and cloud-database paths.
 
+Use this page as the default runtime posture for shared or scheduled pipelines: keep provider
+metadata in config, inject secrets through the process environment or platform identity, and reserve
+local files or localhost services for development fixtures.
+
 ### AWS S3
 
 Common credential-chain hints checked by readiness:

@@ -380,7 +380,15 @@ Database connectors use connection strings for extraction and loading, and DDL c
 table specs for migrations or schema checks. Database extract/load operations are currently
 placeholders; plan to integrate a database client in your runner.
 
+Managed database endpoints are the intended production shape for database connector configs. Use
+environment-injected credentials or provider metadata for BigQuery and Snowflake; keep localhost
+DSNs, SQLite files, and Docker-backed Postgres/MSSQL instances as development fixtures.
+
 ### Files (`file`)
+
+File connectors use the same `type: file` shape for local paths and remote object-storage URIs.
+Install the `storage` extra when you need first-class `s3://`, `azure-blob://`, `abfs://`, or
+`hdfs://` locations; treat local filesystem paths as quick-iteration inputs and outputs.
 
 Recognized file formats are listed in the tables below. Support for reading to or writing from a recognized file format is marked as:
 
