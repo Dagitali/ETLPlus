@@ -139,9 +139,26 @@ def test_conda_recipe_render_helper_supports_local_source_path(tmp_path) -> None
     )
 
     rendered = output_path.read_text(encoding='utf-8')
-    assert f'  path: {REPO_ROOT.resolve()}' in rendered
+    assert f'  path: "{REPO_ROOT.resolve()}"' in rendered
     assert '  url: https://pypi.org/' not in rendered
     assert '  sha256: ' not in rendered
+
+
+def test_conda_recipe_validation_workflow_is_manual_linux_first() -> None:
+    """Test conda recipe CI remains manual and Linux-first before support."""
+    workflow_text = (
+        REPO_ROOT / '.github/workflows/conda-recipe.yml'
+    ).read_text(encoding='utf-8')
+
+    assert 'workflow_dispatch:' in workflow_text
+    assert 'default: linux' in workflow_text
+    assert 'ubuntu-latest' in workflow_text
+    assert 'macos-latest' in workflow_text
+    assert 'windows-latest' in workflow_text
+    assert 'inputs.platform_scope == \'all\'' in workflow_text
+    assert 'conda-build=25' in workflow_text
+    assert 'tools/render_conda_recipe.py' in workflow_text
+    assert 'conda-build "${RUNNER_TEMP}/etlplus-conda-recipe"' in workflow_text
 
 
 def test_conda_docs_reference_template_recipe_source() -> None:
