@@ -119,6 +119,9 @@ returns a nonzero exit code with a partial JSON summary. That summary includes a
 `due_count`, `attempted_count`, `completed_count`, and `pending_count` fields plus `pending_runs`
 for due triggers left eligible for replay.
 
+Overlap-skipped runs are also reported in `pending_runs` with `reason: overlap`. They are not
+consumed; the next invocation can dispatch them after the existing per-schedule lock is released.
+
 This mode is intentionally one-shot. The expected operating model is to invoke it from `cron`,
 `systemd`, CI, or another external trigger rather than to keep a resident ETLPlus scheduler process
 running continuously.
@@ -144,7 +147,9 @@ The local scheduler also keeps minimal trigger state under `${ETLPLUS_STATE_DIR:
 
 Trigger consumption rules:
 
-- Overlapping or paused schedules do not consume a due trigger
+- Overlapping schedules do not consume a due trigger and are listed as pending with
+  `reason: overlap`
+- Paused schedules do not consume or create due triggers
 - Callback exceptions record an attempted trigger but leave the due time eligible for replay on the
   next invocation
 - Callback exceptions also persist the latest exception type and message summary in
