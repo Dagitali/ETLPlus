@@ -1,0 +1,100 @@
+# conda-recipe.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Manual GitHub Actions workflow for validating the draft conda-forge recipe.
+#
+# Responsibilities
+# - Render the Jinja recipe template into a concrete local-source recipe.
+# - Build and test the recipe with conda-build against conda-forge packages.
+# - Validate Linux first by default; optionally run macOS and Windows before
+#   maintainers consider conda-forge a supported install channel.
+#
+# Maintainer Notes
+# - This workflow is intentionally manual while conda-forge remains a prepared
+#   but unsupported install channel.
+# - Global permissions are intentionally omitted; each job declares the minimum
+#   permissions it needs.
+# - External GitHub Actions are pinned to full commit SHAs to reduce supply-
+#   chain risk.
+
+---
+
+name: Conda Recipe Validation
+
+run-name: >-
+  ${{
+    inputs.platform_scope == 'all' &&
+    'Conda recipe validation: Linux, macOS, Windows' ||
+    'Conda recipe validation: Linux'
+  }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform_scope:
+        description: >-
+          Platforms to validate. Run Linux first; use all before declaring
+          conda-forge supported.
+        required: true
+        default: linux
+        type: choice
+        options:
+          - linux
+          - all
+
+permissions: {}
+
+env:
+  DEFAULT_PYTHON_VERSION: '3.13'
+
+jobs:
+  validate:
+    name: Validate recipe on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.platform_scope == 'all' && '["ubuntu-latest", "macos-latest", "windows-latest"]' || '["ubuntu-latest"]') }}
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash -leo pipefail {0}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
+
+      - name: Install micromamba and conda-build
+        uses: mamba-org/setup-micromamba@d7c9bd84e824b79d2af72a2d4196c7f4300d3476  # Pinned v3.0.0
+        with:
+          environment-name: conda-recipe-validation
+          create-args: >-
+            python=${{ env.DEFAULT_PYTHON_VERSION }}
+            conda-build=25
+            pip
+          init-shell: bash
+          cache-environment: false
+          cache-downloads: false
+          post-cleanup: all
+
+      - name: Render local-source recipe
+        run: |
+          recipe_dir="${RUNNER_TEMP}/etlplus-conda-recipe"
+          mkdir -p "$recipe_dir"
+
+          python tools/render_conda_recipe.py \
+            --template packaging/conda/meta.yaml.j2 \
+            --output "${recipe_dir}/meta.yaml" \
+            --version 0.0.0 \
+            --sha256 0000000000000000000000000000000000000000000000000000000000000000 \
+            --maintainer dagitali-maintainer \
+            --source-path "${GITHUB_WORKSPACE}"
+
+          cat "${recipe_dir}/meta.yaml"
+
+      - name: Build and test conda recipe
+        run: |
+          conda-build "${RUNNER_TEMP}/etlplus-conda-recipe" \
+            --channel conda-forge \
+            --output-folder "${RUNNER_TEMP}/etlplus-conda-build"
