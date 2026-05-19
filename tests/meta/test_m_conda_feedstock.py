@@ -25,6 +25,9 @@ PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
 CONDA_RECIPE_PATH = REPO_ROOT / 'packaging/conda/meta.yaml.j2'
 CONDA_README_PATH = REPO_ROOT / 'packaging/conda/README.md'
 CONDA_PREP_PATH = REPO_ROOT / 'packaging/conda/FEEDSTOCK-PREP.md'
+CONDA_SUBMISSION_PATH = (
+    REPO_ROOT / 'packaging/conda/STAGED-RECIPES-SUBMISSION.md'
+)
 
 
 def _canonical_requirement_name(requirement: str) -> str:
@@ -110,15 +113,42 @@ def test_conda_docs_reference_platform_isolation_options() -> None:
     assert '`platform_scope: all`' in prep_text
 
 
+def test_conda_docs_reference_staged_recipes_submission_path() -> None:
+    """Test conda docs point maintainers at the staged-recipes submission path."""
+    readme_text = CONDA_README_PATH.read_text(encoding='utf-8')
+    prep_text = CONDA_PREP_PATH.read_text(encoding='utf-8')
+    submission_text = CONDA_SUBMISSION_PATH.read_text(encoding='utf-8')
+
+    assert 'STAGED-RECIPES-SUBMISSION.md' in readme_text
+    assert 'STAGED-RECIPES-SUBMISSION.md' in prep_text
+    assert '`conda-forge/staged-recipes`' in submission_text
+    assert 'recipes/etlplus/meta.yaml' in submission_text
+    assert 'released-version-without-leading-v' in submission_text
+
+
 def test_conda_docs_reference_template_recipe_source() -> None:
     """Test conda docs point maintainers at the Jinja recipe source."""
     readme_text = CONDA_README_PATH.read_text(encoding='utf-8')
     prep_text = CONDA_PREP_PATH.read_text(encoding='utf-8')
+    submission_text = CONDA_SUBMISSION_PATH.read_text(encoding='utf-8')
 
     assert 'meta.yaml.j2' in readme_text
     assert 'meta.yaml.j2' in prep_text
+    assert 'meta.yaml.j2' in submission_text
     assert 'tools/render_conda_recipe.py' in readme_text
     assert 'tools/render_conda_recipe.py' in prep_text
+    assert 'tools/render_conda_recipe.py' in submission_text
+
+
+def test_conda_submission_docs_preserve_base_recipe_scope() -> None:
+    """Test staged-recipes docs preserve the base-only feedstock scope."""
+    submission_text = CONDA_SUBMISSION_PATH.read_text(encoding='utf-8')
+
+    assert 'broad base PyPI runtime contract' in submission_text
+    assert 'Do not add optional extras to the first recipe' in submission_text
+    assert '`msgpack` | `msgpack-python`' in submission_text
+    assert '`PyYAML` | `pyyaml`' in submission_text
+    assert '`SQLAlchemy` | `sqlalchemy`' in submission_text
 
 
 def test_conda_recipe_documents_expected_name_mappings() -> None:
