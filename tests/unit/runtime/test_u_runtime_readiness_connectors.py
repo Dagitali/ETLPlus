@@ -14,6 +14,7 @@ import pytest
 
 import etlplus.runtime.readiness._builder as readiness_builder_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
+from etlplus.connector import ConnectorDiagnosticPolicy
 from etlplus.runtime.readiness._support import RequirementSpec
 from tests.pytest_shared_support import get_cloud_database_provider_case
 
@@ -54,6 +55,41 @@ SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
 
 class TestReadinessReportBuilderConnectors:
     """Connector readiness tests for :class:`ReadinessReportBuilder`."""
+
+    def test_connector_gap_rows_coerce_supported_connector_type_text(
+        self,
+    ) -> None:
+        """Test soft connector-type coercion without a private wrapper seam."""
+        cfg = _cfg(
+            sources=[
+                SimpleNamespace(
+                    name='file-source',
+                    path=None,
+                    type=' FILE ',
+                ),
+                SimpleNamespace(
+                    name='queue-source',
+                    path='input.csv',
+                    type='QUEUE',
+                ),
+            ],
+        )
+
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
+            cast(Any, cfg),
+        )
+
+        assert rows == [
+            _connector_gap(
+                connector='file-source',
+                guidance=(
+                    'Set "path" to a local path or storage URI for this file connector.'
+                ),
+                issue='missing path',
+                role='source',
+                connector_type=' FILE ',
+            ),
+        ]
 
     def test_connector_gap_rows_continue_after_complete_database_connector(
         self,
@@ -303,41 +339,6 @@ class TestReadinessReportBuilderConnectors:
 
         assert not rows
 
-    def test_connector_gap_rows_coerce_supported_connector_type_text(
-        self,
-    ) -> None:
-        """Test soft connector-type coercion without a private wrapper seam."""
-        cfg = _cfg(
-            sources=[
-                SimpleNamespace(
-                    name='file-source',
-                    path=None,
-                    type=' FILE ',
-                ),
-                SimpleNamespace(
-                    name='queue-source',
-                    path='input.csv',
-                    type='QUEUE',
-                ),
-            ],
-        )
-
-        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
-        )
-
-        assert rows == [
-            _connector_gap(
-                connector='file-source',
-                guidance=(
-                    'Set "path" to a local path or storage URI for this file connector.'
-                ),
-                issue='missing path',
-                role='source',
-                connector_type=' FILE ',
-            ),
-        ]
-
     def test_connector_gap_rows_return_empty_for_complete_cloud_database_metadata(
         self,
     ) -> None:
@@ -354,6 +355,39 @@ class TestReadinessReportBuilderConnectors:
         )
 
         assert not rows
+
+    def test_connector_gap_rows_reuse_shared_diagnostic_policy_wording(
+        self,
+    ) -> None:
+        """Readiness gaps should not drift from strict connector diagnostics."""
+        cfg = _cfg(
+            sources=[
+                SimpleNamespace(name='file-source', path=None, type='file'),
+                SimpleNamespace(name='api-source', api=None, type='api', url=None),
+            ],
+            targets=[
+                SimpleNamespace(
+                    connection_string=None,
+                    name='db-target',
+                    type='database',
+                ),
+            ],
+            apis={},
+        )
+
+        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
+            cast(Any, cfg),
+        )
+
+        assert [row['guidance'] for row in rows] == [
+            ConnectorDiagnosticPolicy.gap_guidance(issue='missing path'),
+            ConnectorDiagnosticPolicy.gap_guidance(
+                issue='missing url or api reference',
+            ),
+            ConnectorDiagnosticPolicy.gap_guidance(
+                issue='missing connection_string',
+            ),
+        ]
 
     @pytest.mark.parametrize(
         ('connector', 'expected'),
