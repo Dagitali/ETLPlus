@@ -104,6 +104,7 @@ def test_conda_docs_reference_platform_isolation_options() -> None:
     prep_text = CONDA_PREP_PATH.read_text(encoding='utf-8')
 
     assert 'isolate macOS or Windows runs' in readme_text
+    assert 'pins `micromamba` and `conda-build=25`' in readme_text
     assert '`platform_scope: macos`' in prep_text
     assert '`platform_scope: windows`' in prep_text
     assert '`platform_scope: all`' in prep_text
@@ -271,6 +272,8 @@ def test_conda_recipe_validation_workflow_is_manual_linux_first() -> None:
     assert "inputs.platform_scope == 'all'" in workflow_text
     assert "inputs.platform_scope == 'macos'" in workflow_text
     assert "inputs.platform_scope == 'windows'" in workflow_text
+    assert "MICROMAMBA_VERSION: '2.0.5-0'" in workflow_text
+    assert 'micromamba-version: ${{ env.MICROMAMBA_VERSION }}' in workflow_text
     assert 'conda-build=25' in workflow_text
     assert 'Diagnose conda tooling' in workflow_text
     assert 'micromamba --version' in workflow_text
