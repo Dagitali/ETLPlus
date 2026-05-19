@@ -8,6 +8,7 @@ feedstock is accepted and maintained.
   - [Current Scope](#current-scope)
   - [Validation Checklist](#validation-checklist)
   - [CI Validation](#ci-validation)
+  - [Staged-Recipes Submission](#staged-recipes-submission)
   - [Known Package Name Mappings](#known-package-name-mappings)
 
 ## Current Scope
@@ -85,6 +86,12 @@ The candidate base recipe is expected to match the broad base dependency set in 
 Only documented conda-forge package-name mappings should differ from the PyPI requirement names; do
 not add optional extras to the first base recipe unless maintainers choose separate conda outputs or
 variants.
+
+## Staged-Recipes Submission
+
+When the tagged-sdist validation gate passes and maintainers accept feedstock ownership, use
+`packaging/conda/STAGED-RECIPES-SUBMISSION.md` to render the base-only recipe into a
+`conda-forge/staged-recipes` checkout under `recipes/etlplus/meta.yaml`.
 
 ## Known Package Name Mappings
 
