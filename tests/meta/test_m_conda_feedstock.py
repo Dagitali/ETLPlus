@@ -121,7 +121,7 @@ def test_conda_recipe_run_requirements_match_base_pyproject_dependencies() -> No
     pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
     recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
 
-    python_requirement = f"python {pyproject['project']['requires-python']}"
+    python_requirement = f'python {pyproject["project"]["requires-python"]}'
     expected = {
         _normalized_requirement_line(python_requirement),
         *{
