@@ -76,9 +76,14 @@ tests. It defaults to Linux-only validation so maintainers can check the lowest-
 initial workflow pins `conda-build=25` because the local validation environment exposed a
 rattler-backed solver plugin crash in the newer tooling line unrelated to the ETLPlus recipe.
 
-Before declaring conda-forge supported, rerun the workflow with `platform_scope: all` so Linux,
-macOS, and Windows all pass, then repeat the process from a tagged PyPI sdist with a pinned
-`sha256`.
+Before declaring conda-forge supported, run the workflow with `source_mode: tagged-sdist`,
+`release_version`, and `sdist_sha256` set from the released PyPI sdist. Use `platform_scope: all`
+for that support-gate run so Linux, macOS, and Windows all pass from the same released artifact.
+
+The candidate base recipe is expected to match the broad base dependency set in `pyproject.toml`.
+Only documented conda-forge package-name mappings should differ from the PyPI requirement names; do
+not add optional extras to the first base recipe unless maintainers choose separate conda outputs or
+variants.
 
 ## Known Package Name Mappings
 
