@@ -80,6 +80,7 @@ permissions: {}
 
 env:
   DEFAULT_PYTHON_VERSION: '3.13'
+  MICROMAMBA_VERSION: '2.0.5-0'
 
 jobs:
   validate:
@@ -111,6 +112,7 @@ jobs:
       - name: Install micromamba and conda-build
         uses: mamba-org/setup-micromamba@d7c9bd84e824b79d2af72a2d4196c7f4300d3476  # Pinned v3.0.0
         with:
+          micromamba-version: ${{ env.MICROMAMBA_VERSION }}
           environment-name: conda-recipe-validation
           create-args: >-
             python=${{ env.DEFAULT_PYTHON_VERSION }}
