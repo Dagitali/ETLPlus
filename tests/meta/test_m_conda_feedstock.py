@@ -98,39 +98,26 @@ def _conda_runtime_requirement(requirement: str) -> str:
 # SECTION: TESTS ============================================================ #
 
 
-def test_conda_recipe_tracks_base_pyproject_dependencies() -> None:
-    """
-    Test that the candidate conda recipe includes the base runtime dependency set.
-    """
-    pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
-    recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
+def test_conda_docs_reference_platform_isolation_options() -> None:
+    """Test conda docs explain platform-specific validation dispatch options."""
+    readme_text = CONDA_README_PATH.read_text(encoding='utf-8')
+    prep_text = CONDA_PREP_PATH.read_text(encoding='utf-8')
 
-    pyproject_names = {
-        _CONDA_NAME_MAP.get(name, name)
-        for requirement in pyproject['project']['dependencies']
-        for name in [_canonical_requirement_name(requirement)]
-    }
-
-    assert pyproject_names <= _conda_run_requirements(recipe_text)
+    assert 'isolate macOS or Windows runs' in readme_text
+    assert '`platform_scope: macos`' in prep_text
+    assert '`platform_scope: windows`' in prep_text
+    assert '`platform_scope: all`' in prep_text
 
 
-def test_conda_recipe_run_requirements_match_base_pyproject_dependencies() -> None:
-    """
-    Test that conda run requirements stay aligned with the broad PyPI base.
-    """
-    pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
-    recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
+def test_conda_docs_reference_template_recipe_source() -> None:
+    """Test conda docs point maintainers at the Jinja recipe source."""
+    readme_text = CONDA_README_PATH.read_text(encoding='utf-8')
+    prep_text = CONDA_PREP_PATH.read_text(encoding='utf-8')
 
-    python_requirement = f'python {pyproject["project"]["requires-python"]}'
-    expected = {
-        _normalized_requirement_line(python_requirement),
-        *{
-            _conda_runtime_requirement(requirement)
-            for requirement in pyproject['project']['dependencies']
-        },
-    }
-
-    assert _conda_run_requirement_lines(recipe_text) == expected
+    assert 'meta.yaml.j2' in readme_text
+    assert 'meta.yaml.j2' in prep_text
+    assert 'tools/render_conda_recipe.py' in readme_text
+    assert 'tools/render_conda_recipe.py' in prep_text
 
 
 def test_conda_recipe_documents_expected_name_mappings() -> None:
@@ -144,6 +131,15 @@ def test_conda_recipe_documents_expected_name_mappings() -> None:
     assert '`SQLAlchemy` | `sqlalchemy`' in readme_text
 
 
+def test_conda_recipe_keeps_feedstock_placeholders_explicit() -> None:
+    """Test release-specific feedstock values remain obvious placeholders."""
+    recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
+
+    assert '<release-version>' in recipe_text
+    assert '<sdist-sha256>' in recipe_text
+    assert '<maintainer-github-handle>' in recipe_text
+
+
 def test_conda_recipe_preserves_cli_entrypoint_and_smoke_commands() -> None:
     """Test the candidate feedstock recipe exposes and verifies the ETLPlus CLI."""
     recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
@@ -152,15 +148,6 @@ def test_conda_recipe_preserves_cli_entrypoint_and_smoke_commands() -> None:
     assert 'etlplus --version' in recipe_text
     assert 'etlplus --help' in recipe_text
     assert 'etlplus check --help' in recipe_text
-
-
-def test_conda_recipe_keeps_feedstock_placeholders_explicit() -> None:
-    """Test release-specific feedstock values remain obvious placeholders."""
-    recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
-
-    assert '<release-version>' in recipe_text
-    assert '<sdist-sha256>' in recipe_text
-    assert '<maintainer-github-handle>' in recipe_text
 
 
 def test_conda_recipe_render_helper_replaces_release_placeholders(
@@ -184,6 +171,41 @@ def test_conda_recipe_render_helper_replaces_release_placeholders(
     assert '{% set version = "1.2.3" %}' in rendered
     assert 'sha256: ' + ('a' * 64) in rendered
     assert '    - dagitali-maintainer' in rendered
+
+
+def test_conda_recipe_run_requirements_match_base_pyproject_dependencies() -> None:
+    """
+    Test that conda run requirements stay aligned with the broad PyPI base.
+    """
+    pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
+    recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
+
+    python_requirement = f'python {pyproject["project"]["requires-python"]}'
+    expected = {
+        _normalized_requirement_line(python_requirement),
+        *{
+            _conda_runtime_requirement(requirement)
+            for requirement in pyproject['project']['dependencies']
+        },
+    }
+
+    assert _conda_run_requirement_lines(recipe_text) == expected
+
+
+def test_conda_recipe_tracks_base_pyproject_dependencies() -> None:
+    """
+    Test that the candidate conda recipe includes the base runtime dependency set.
+    """
+    pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
+    recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
+
+    pyproject_names = {
+        _CONDA_NAME_MAP.get(name, name)
+        for requirement in pyproject['project']['dependencies']
+        for name in [_canonical_requirement_name(requirement)]
+    }
+
+    assert pyproject_names <= _conda_run_requirements(recipe_text)
 
 
 def test_conda_recipe_render_helper_rejects_invalid_release_sha256(
@@ -244,7 +266,11 @@ def test_conda_recipe_validation_workflow_is_manual_linux_first() -> None:
     assert 'ubuntu-latest' in workflow_text
     assert 'macos-latest' in workflow_text
     assert 'windows-latest' in workflow_text
+    assert '- macos' in workflow_text
+    assert '- windows' in workflow_text
     assert "inputs.platform_scope == 'all'" in workflow_text
+    assert "inputs.platform_scope == 'macos'" in workflow_text
+    assert "inputs.platform_scope == 'windows'" in workflow_text
     assert 'conda-build=25' in workflow_text
     assert 'Diagnose conda tooling' in workflow_text
     assert 'micromamba --version' in workflow_text
@@ -252,14 +278,3 @@ def test_conda_recipe_validation_workflow_is_manual_linux_first() -> None:
     assert 'conda info' in workflow_text
     assert 'tools/render_conda_recipe.py' in workflow_text
     assert 'conda-build "${RUNNER_TEMP}/etlplus-conda-recipe"' in workflow_text
-
-
-def test_conda_docs_reference_template_recipe_source() -> None:
-    """Test conda docs point maintainers at the Jinja recipe source."""
-    readme_text = CONDA_README_PATH.read_text(encoding='utf-8')
-    prep_text = CONDA_PREP_PATH.read_text(encoding='utf-8')
-
-    assert 'meta.yaml.j2' in readme_text
-    assert 'meta.yaml.j2' in prep_text
-    assert 'tools/render_conda_recipe.py' in readme_text
-    assert 'tools/render_conda_recipe.py' in prep_text
