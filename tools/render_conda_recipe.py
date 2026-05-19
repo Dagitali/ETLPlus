@@ -62,7 +62,30 @@ def render_recipe(
     maintainer: str,
     source_path: Path | None = None,
 ) -> None:
-    """Render one conda recipe template with release-specific values."""
+    """
+    Render one conda recipe template with release-specific values.
+
+    Parameters
+    ----------
+    template_path
+        Path to the conda recipe template containing placeholders.
+    output_path
+        Path where the rendered recipe should be written.
+    version
+        Release version to substitute for <release-version>.
+    sha256
+        PyPI sdist SHA256 to substitute for <sdist-sha256>.
+    maintainer
+        GitHub maintainer handle to substitute for <maintainer-github-handle>.
+    source_path
+        Optional local source path for validation builds. When provided, the
+        rendered recipe uses `source: path` instead of the PyPI sdist URL and
+        SHA256.
+    """
+    if source_path is None and not re.fullmatch(r'[0-9a-fA-F]{64}', sha256):
+        msg = 'Release-sdist recipes require a 64-character hexadecimal SHA256.'
+        raise ValueError(msg)
+
     text = template_path.read_text(encoding='utf-8')
     rendered = (
         text.replace('<release-version>', version)
@@ -81,7 +104,18 @@ def render_recipe(
 
 
 def main() -> int:
-    """Render the conda recipe template and return a process exit code."""
+    """
+    Render the conda recipe template and return a process exit code.
+
+    This function is intended as the main entry point for command-line usage.
+    It parses command-line arguments and invokes the render_recipe function
+    with the appropriate parameters.
+
+    Returns
+    -------
+    int
+        A conventional POSIX exit code: zero on success, non-zero on error.
+    """
     args = _parser().parse_args()
     render_recipe(
         template_path=Path(args.template),
