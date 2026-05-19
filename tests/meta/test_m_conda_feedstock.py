@@ -246,6 +246,10 @@ def test_conda_recipe_validation_workflow_is_manual_linux_first() -> None:
     assert 'windows-latest' in workflow_text
     assert "inputs.platform_scope == 'all'" in workflow_text
     assert 'conda-build=25' in workflow_text
+    assert 'Diagnose conda tooling' in workflow_text
+    assert 'micromamba --version' in workflow_text
+    assert 'conda-build --version' in workflow_text
+    assert 'conda info' in workflow_text
     assert 'tools/render_conda_recipe.py' in workflow_text
     assert 'conda-build "${RUNNER_TEMP}/etlplus-conda-recipe"' in workflow_text
 
