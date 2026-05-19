@@ -74,8 +74,8 @@ The manual `Conda Recipe Validation` workflow in `.github/workflows/conda-recipe
 candidate recipe from the current checkout, builds it with `conda-build`, and runs the recipe smoke
 tests. It defaults to Linux-only validation so maintainers can check the lowest-cost path first, and
 it can also isolate macOS or Windows runs when platform-specific failures need investigation. The
-initial workflow pins `conda-build=25` because the local validation environment exposed a
-rattler-backed solver plugin crash in the newer tooling line unrelated to the ETLPlus recipe.
+initial workflow pins `micromamba` and `conda-build=25` because local and GitHub-hosted validation
+exposed toolchain failures unrelated to the ETLPlus recipe.
 
 Before declaring conda-forge supported, run the workflow with `source_mode: tagged-sdist`,
 `release_version`, and `sdist_sha256` set from the released PyPI sdist. Use `platform_scope: all`
