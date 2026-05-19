@@ -20,8 +20,8 @@ policy in `SUPPORT.md`.
 | Platform | Coverage level | Notes |
 | --- | --- | --- |
 | Linux | Full CI path | Lint, tests, docs, build, artifact audit, wheel smoke test, and supported-installer smoke tests run on Ubuntu. |
-| macOS | Smoke install | Clean package install and CLI entrypoint verification run in CI. |
-| Windows | Smoke install | Clean package install and CLI entrypoint verification run in CI. |
+| macOS | Smoke install | Clean package install and and CLI entrypoint/help verification run in CI: `etlplus --version`, `etlplus --help`, and `etlplus check --help`. |
+| Windows | Smoke install | Clean package and CLI entrypoint/help verification run in CI:  `etlplus --version`, `etlplus --help`, and `etlplus check --help`. |
 
 The Linux job remains the primary validation path. macOS and Windows coverage is intended to catch
 packaging and entrypoint regressions before release.
@@ -71,5 +71,6 @@ documented base install.
 ## Release interpretation
 
 - “Supported” means the combination is covered by package metadata and some CI validation.
-- “Smoke install” means install and CLI entrypoint confidence, not a full behavioral test matrix.
+- “Smoke install” means install and CLI entrypoint/help confidence, not a full behavioral test
+  matrix.
 - File-format coverage still depends on the handler status documented in the file-handler matrix.
