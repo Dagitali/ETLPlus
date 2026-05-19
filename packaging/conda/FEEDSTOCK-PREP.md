@@ -12,6 +12,7 @@ contributors who want to review or improve the candidate feedstock.
   - [Recipe Source](#recipe-source)
   - [Dependency Mapping](#dependency-mapping)
   - [Validation Path](#validation-path)
+  - [Staged-Recipes Submission](#staged-recipes-submission)
   - [Support Gates](#support-gates)
 
 ## Current Result
@@ -87,6 +88,15 @@ The recipe test phase should verify:
 - `etlplus --help`
 - `etlplus check --help`
 - `python -c "import etlplus; print(etlplus.__version__)"`
+
+## Staged-Recipes Submission
+
+After the tagged-sdist support gate passes, prepare the upstream conda-forge submission through
+`conda-forge/staged-recipes`. Render the base-only recipe into `recipes/etlplus/meta.yaml` by
+following `packaging/conda/STAGED-RECIPES-SUBMISSION.md`.
+
+The first staged-recipes pull request should keep optional extras out of the recipe and preserve the
+documented package-name mappings above.
 
 ## Support Gates
 
