@@ -6,7 +6,8 @@
 # Manual GitHub Actions workflow for validating the draft conda-forge recipe.
 #
 # Responsibilities
-# - Render the Jinja recipe template into a concrete local-source recipe.
+# - Render the Jinja recipe template into a concrete local-source or tagged
+#   PyPI sdist recipe.
 # - Build and test the recipe with conda-build against conda-forge packages.
 # - Validate Linux first by default; optionally run macOS and Windows before
 #   maintainers consider conda-forge a supported install channel.
@@ -43,6 +44,31 @@ on:
         options:
           - linux
           - all
+      source_mode:
+        description: >-
+          Recipe source to validate. Use tagged-sdist with a released version
+          and PyPI sdist SHA256 before submitting a feedstock.
+        required: true
+        default: local-source
+        type: choice
+        options:
+          - local-source
+          - tagged-sdist
+      release_version:
+        description: 'Released ETLPlus version for tagged-sdist validation.'
+        required: false
+        default: ''
+        type: string
+      sdist_sha256:
+        description: 'PyPI sdist SHA256 for tagged-sdist validation.'
+        required: false
+        default: ''
+        type: string
+      maintainer:
+        description: 'Conda-forge recipe maintainer GitHub handle.'
+        required: true
+        default: dagitali-maintainer
+        type: string
 
 permissions: {}
 
@@ -78,18 +104,35 @@ jobs:
           cache-downloads: false
           post-cleanup: all
 
-      - name: Render local-source recipe
+      - name: Render recipe
         run: |
           recipe_dir="${RUNNER_TEMP}/etlplus-conda-recipe"
           mkdir -p "$recipe_dir"
 
-          python tools/render_conda_recipe.py \
-            --template packaging/conda/meta.yaml.j2 \
-            --output "${recipe_dir}/meta.yaml" \
-            --version 0.0.0 \
-            --sha256 0000000000000000000000000000000000000000000000000000000000000000 \
-            --maintainer dagitali-maintainer \
-            --source-path "${GITHUB_WORKSPACE}"
+          if [[ "${{ inputs.source_mode }}" == "tagged-sdist" ]]; then
+            if [[ -z "${{ inputs.release_version }}" || -z "${{ inputs.sdist_sha256 }}" ]]; then
+              echo "tagged-sdist validation requires release_version and sdist_sha256." >&2
+              exit 2
+            fi
+            if [[ ! "${{ inputs.sdist_sha256 }}" =~ ^[0-9a-fA-F]{64}$ ]]; then
+              echo "sdist_sha256 must be a 64-character hexadecimal SHA256." >&2
+              exit 2
+            fi
+            python tools/render_conda_recipe.py \
+              --template packaging/conda/meta.yaml.j2 \
+              --output "${recipe_dir}/meta.yaml" \
+              --version "${{ inputs.release_version }}" \
+              --sha256 "${{ inputs.sdist_sha256 }}" \
+              --maintainer "${{ inputs.maintainer }}"
+          else
+            python tools/render_conda_recipe.py \
+              --template packaging/conda/meta.yaml.j2 \
+              --output "${recipe_dir}/meta.yaml" \
+              --version 0.0.0 \
+              --sha256 0000000000000000000000000000000000000000000000000000000000000000 \
+              --maintainer "${{ inputs.maintainer }}" \
+              --source-path "${GITHUB_WORKSPACE}"
+          fi
 
           cat "${recipe_dir}/meta.yaml"
 

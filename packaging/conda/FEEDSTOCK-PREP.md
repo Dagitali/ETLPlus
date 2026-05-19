@@ -65,9 +65,13 @@ decide otherwise.
 
 ## Validation Path
 
-The manual `Conda Recipe Validation` GitHub Actions workflow provides non-release validation for the
-candidate recipe. It runs Linux by default and can be dispatched with `platform_scope: all` to
-include Linux, macOS, and Windows.
+The manual `Conda Recipe Validation` GitHub Actions workflow provides non-release and release-sdist
+validation for the candidate recipe. It runs Linux by default and can be dispatched with
+`platform_scope: all` to include Linux, macOS, and Windows.
+
+Use `source_mode: local-source` for pre-release checks from the current checkout. Before submitting
+to conda-forge, use `source_mode: tagged-sdist` with the released version and PyPI sdist SHA256, and
+run with `platform_scope: all`.
 
 Before submitting to conda-forge, maintainers should also build and test a recipe rendered from the
 tagged PyPI sdist with a pinned SHA256:
@@ -91,3 +95,5 @@ Before documenting conda-forge as a supported ETLPlus install channel:
 - The recipe builds from a tagged PyPI sdist with a pinned SHA256.
 - Linux, macOS, and Windows recipe build/test runs pass.
 - The published feedstock exposes the same base CLI/runtime contract as the PyPI artifact.
+- The base recipe run requirements match `pyproject.toml` base dependencies except for documented
+  conda-forge package-name mappings; optional extras remain separate follow-up outputs or variants.

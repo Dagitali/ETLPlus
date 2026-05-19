@@ -205,6 +205,11 @@ stable package metadata contract.
   - A manual `Conda Recipe Validation` workflow now renders and builds the recipe with
     `conda-build`, defaulting to Linux first with an opt-in Linux/macOS/Windows matrix before
     conda-forge support is declared.
+  - The manual workflow now has an explicit tagged-sdist validation mode requiring the released
+    version and PyPI sdist SHA256 before maintainers submit a feedstock.
+  - Meta tests keep the base conda run requirements aligned with `pyproject.toml`, allowing only the
+    documented conda-forge package-name mappings and keeping optional extras out of the first base
+    recipe.
 - [ ] Decide whether to promote conda-forge from feasible packaging follow-up to a maintained
   supported install channel.
   - Keep conda-forge as a packaging follow-up rather than a supported-channel commitment until
