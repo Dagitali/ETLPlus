@@ -25,9 +25,7 @@ PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
 CONDA_RECIPE_PATH = REPO_ROOT / 'packaging/conda/meta.yaml.j2'
 CONDA_README_PATH = REPO_ROOT / 'packaging/conda/README.md'
 CONDA_PREP_PATH = REPO_ROOT / 'packaging/conda/FEEDSTOCK-PREP.md'
-CONDA_SUBMISSION_PATH = (
-    REPO_ROOT / 'packaging/conda/STAGED-RECIPES-SUBMISSION.md'
-)
+CONDA_SUBMISSION_PATH = REPO_ROOT / 'packaging/conda/STAGED-RECIPES-SUBMISSION.md'
 
 
 def _canonical_requirement_name(requirement: str) -> str:
