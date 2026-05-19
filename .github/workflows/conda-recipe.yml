@@ -136,6 +136,18 @@ jobs:
 
           cat "${recipe_dir}/meta.yaml"
 
+      - name: Diagnose conda tooling
+        run: |
+          echo "runner.os=${{ runner.os }}"
+          echo "PATH=${PATH}"
+          command -v micromamba
+          micromamba --version
+          command -v conda-build
+          conda-build --version
+          command -v python
+          python --version
+          conda info
+
       - name: Build and test conda recipe
         run: |
           conda-build "${RUNNER_TEMP}/etlplus-conda-recipe" \
