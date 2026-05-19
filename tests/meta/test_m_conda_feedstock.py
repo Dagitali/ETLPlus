@@ -53,6 +53,48 @@ def _conda_run_requirements(recipe_text: str) -> set[str]:
     return names
 
 
+def _conda_run_requirement_lines(recipe_text: str) -> set[str]:
+    """Return normalized run dependency lines from the candidate conda recipe."""
+    in_run_section = False
+    requirements: set[str] = set()
+
+    for line in recipe_text.splitlines():
+        if line == '  run:':
+            in_run_section = True
+            continue
+        if in_run_section and line and not line.startswith('    '):
+            break
+        if in_run_section and line.startswith('    - '):
+            requirements.add(
+                _normalized_requirement_line(line.removeprefix('    - ')),
+            )
+
+    return requirements
+
+
+def _normalized_requirement_line(requirement: str) -> str:
+    """Return a normalized requirement string for recipe/pyproject comparison."""
+    return re.sub(
+        r'\s*(<=|>=|==|!=|~=|<|>)\s*',
+        r'\1',
+        requirement.strip().lower(),
+    )
+
+
+def _conda_runtime_requirement(requirement: str) -> str:
+    """Return the expected conda-forge requirement for a PyPI dependency."""
+    name = _canonical_requirement_name(requirement)
+    conda_name = _CONDA_NAME_MAP.get(name, name)
+    return _normalized_requirement_line(
+        re.sub(
+            r'^\s*[A-Za-z0-9_.-]+',
+            conda_name,
+            requirement,
+            count=1,
+        ),
+    )
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -70,6 +112,25 @@ def test_conda_recipe_tracks_base_pyproject_dependencies() -> None:
     }
 
     assert pyproject_names <= _conda_run_requirements(recipe_text)
+
+
+def test_conda_recipe_run_requirements_match_base_pyproject_dependencies() -> None:
+    """
+    Test that conda run requirements stay aligned with the broad PyPI base.
+    """
+    pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
+    recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
+
+    python_requirement = f"python {pyproject['project']['requires-python']}"
+    expected = {
+        _normalized_requirement_line(python_requirement),
+        *{
+            _conda_runtime_requirement(requirement)
+            for requirement in pyproject['project']['dependencies']
+        },
+    }
+
+    assert _conda_run_requirement_lines(recipe_text) == expected
 
 
 def test_conda_recipe_documents_expected_name_mappings() -> None:
@@ -125,6 +186,26 @@ def test_conda_recipe_render_helper_replaces_release_placeholders(
     assert '    - dagitali-maintainer' in rendered
 
 
+def test_conda_recipe_render_helper_rejects_invalid_release_sha256(
+    tmp_path,
+) -> None:
+    """Test tagged-sdist recipes require a real SHA256-looking value."""
+    output_path = tmp_path / 'meta.yaml'
+
+    try:
+        render_recipe(
+            template_path=CONDA_RECIPE_PATH,
+            output_path=output_path,
+            version='1.2.3',
+            sha256='not-a-sha',
+            maintainer='dagitali-maintainer',
+        )
+    except ValueError as exc:
+        assert '64-character hexadecimal SHA256' in str(exc)
+    else:
+        raise AssertionError('Expected invalid release SHA256 to be rejected.')
+
+
 def test_conda_recipe_render_helper_supports_local_source_path(tmp_path) -> None:
     """Test local validation builds can render a path-based source recipe."""
     output_path = tmp_path / 'meta.yaml'
@@ -152,6 +233,14 @@ def test_conda_recipe_validation_workflow_is_manual_linux_first() -> None:
 
     assert 'workflow_dispatch:' in workflow_text
     assert 'default: linux' in workflow_text
+    assert 'source_mode:' in workflow_text
+    assert 'tagged-sdist' in workflow_text
+    assert 'release_version' in workflow_text
+    assert 'sdist_sha256' in workflow_text
+    assert (
+        'tagged-sdist validation requires release_version and sdist_sha256'
+        in workflow_text
+    )
     assert 'ubuntu-latest' in workflow_text
     assert 'macos-latest' in workflow_text
     assert 'windows-latest' in workflow_text
