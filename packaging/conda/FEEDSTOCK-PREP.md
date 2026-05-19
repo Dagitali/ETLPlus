@@ -67,7 +67,8 @@ decide otherwise.
 
 The manual `Conda Recipe Validation` GitHub Actions workflow provides non-release and release-sdist
 validation for the candidate recipe. It runs Linux by default and can be dispatched with
-`platform_scope: all` to include Linux, macOS, and Windows.
+`platform_scope: macos` or `platform_scope: windows` to isolate platform-specific failures. Use
+`platform_scope: all` to include Linux, macOS, and Windows in the support-gate run.
 
 Use `source_mode: local-source` for pre-release checks from the current checkout. Before submitting
 to conda-forge, use `source_mode: tagged-sdist` with the released version and PyPI sdist SHA256, and

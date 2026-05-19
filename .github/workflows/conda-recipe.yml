@@ -28,6 +28,10 @@ run-name: >-
   ${{
     inputs.platform_scope == 'all' &&
     'Conda recipe validation: Linux, macOS, Windows' ||
+    inputs.platform_scope == 'macos' &&
+    'Conda recipe validation: macOS' ||
+    inputs.platform_scope == 'windows' &&
+    'Conda recipe validation: Windows' ||
     'Conda recipe validation: Linux'
   }}
 
@@ -43,6 +47,8 @@ on:
         type: choice
         options:
           - linux
+          - macos
+          - windows
           - all
       source_mode:
         description: >-
@@ -55,12 +61,12 @@ on:
           - local-source
           - tagged-sdist
       release_version:
-        description: 'Released ETLPlus version for tagged-sdist validation.'
+        description: 'Released ETLPlus version (e.g., 1.2.3) for tagged-sdist validation.'
         required: false
         default: ''
         type: string
       sdist_sha256:
-        description: 'PyPI sdist SHA256 for tagged-sdist validation.'
+        description: 'PyPI sdist SHA256 (64-character hexadecimal) for tagged-sdist validation.'
         required: false
         default: ''
         type: string
@@ -82,7 +88,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(inputs.platform_scope == 'all' && '["ubuntu-latest", "macos-latest", "windows-latest"]' || '["ubuntu-latest"]') }}
+        os: >-
+          ${{
+            fromJSON(
+              inputs.platform_scope == 'all' &&
+              '["ubuntu-latest", "macos-latest", "windows-latest"]' ||
+              inputs.platform_scope == 'macos' &&
+              '["macos-latest"]' ||
+              inputs.platform_scope == 'windows' &&
+              '["windows-latest"]' ||
+              '["ubuntu-latest"]'
+            )
+          }}
     permissions:
       contents: read
     defaults:

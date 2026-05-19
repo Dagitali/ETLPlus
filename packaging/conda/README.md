@@ -72,7 +72,8 @@ Minimum validation before declaring conda-forge supported:
 
 The manual `Conda Recipe Validation` workflow in `.github/workflows/conda-recipe.yml` renders the
 candidate recipe from the current checkout, builds it with `conda-build`, and runs the recipe smoke
-tests. It defaults to Linux-only validation so maintainers can check the lowest-cost path first. The
+tests. It defaults to Linux-only validation so maintainers can check the lowest-cost path first, and
+it can also isolate macOS or Windows runs when platform-specific failures need investigation. The
 initial workflow pins `conda-build=25` because the local validation environment exposed a
 rattler-backed solver plugin crash in the newer tooling line unrelated to the ETLPlus recipe.
 
