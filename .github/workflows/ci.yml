@@ -87,6 +87,8 @@ jobs:
         run: |
           python -m etlplus --version
           etlplus --version
+          etlplus --help
+          etlplus check --help
 
   build:
     name: Build distributions
