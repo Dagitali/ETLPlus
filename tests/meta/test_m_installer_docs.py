@@ -20,6 +20,8 @@ from tests.meta.pytest_meta_support import REPO_ROOT
 README_PATH = REPO_ROOT / 'README.md'
 RELEASE_CHECKLIST_PATH = REPO_ROOT / 'RELEASE-CHECKLIST.md'
 COMPATIBILITY_PATH = REPO_ROOT / 'docs/source/getting-started/compatibility.md'
+
+CI_WORKFLOW_PATH = REPO_ROOT / '.github/workflows/ci.yml'
 INSTALLER_SMOKE_ACTION_PATH = REPO_ROOT / '.github/actions/installer-smoke/action.yml'
 
 
@@ -124,3 +126,13 @@ def test_installer_smoke_resolves_tool_installer_entrypoint_from_path(
     """
     assert '$HOME/.local/bin/etlplus' not in installer_smoke_action_text
     assert 'etlplus_bin="$(command -v etlplus)"' in installer_smoke_action_text
+
+
+def test_cross_platform_smoke_checks_cli_help_surfaces() -> None:
+    """Test macOS/Windows smoke coverage checks stable CLI help surfaces."""
+    workflow_text = CI_WORKFLOW_PATH.read_text(encoding='utf-8')
+
+    assert 'os: [macos-latest, windows-latest]' in workflow_text
+    assert 'etlplus --version' in workflow_text
+    assert 'etlplus --help' in workflow_text
+    assert 'etlplus check --help' in workflow_text

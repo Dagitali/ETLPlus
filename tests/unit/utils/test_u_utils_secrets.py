@@ -85,6 +85,22 @@ class TestSecretProviders:
         assert list(providers) == ['env', 'file']
         assert resolver.resolve_token('secret:API_TOKEN') == 'env-secret'
 
+    def test_resolver_keeps_file_provider_explicit_when_env_has_same_key(
+        self,
+        json_secrets_path: Path,
+    ) -> None:
+        """Unqualified secrets must not fall through to local files."""
+        resolver = SecretResolver(
+            {
+                DEFAULT_SECRETS_FILE_ENV_VAR: str(json_secrets_path),
+                'service.password': 'env-secret',
+            },
+        )
+
+        assert resolver.resolve_token('secret:service.password') == 'env-secret'
+        assert resolver.resolve_token('secret:env:service.password') == 'env-secret'
+        assert resolver.resolve_token('secret:file:service.password') == 'json-secret'
+
 
 class TestSecretResolver:
     """Unit tests for direct secret-token resolution."""

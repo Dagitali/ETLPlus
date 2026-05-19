@@ -729,6 +729,77 @@ class TestRunPending:
             },
         ]
 
+    def test_run_pending_regression_keeps_scheduler_callback_contract(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Scheduled dispatch should pass only additive scheduler metadata."""
+        cfg = Config.from_dict(
+            {
+                'name': 'Scheduler Pipeline',
+                'sources': [],
+                'targets': [],
+                'jobs': [],
+                'schedules': [
+                    {
+                        'name': 'nightly-all',
+                        'cron': '0 2 11 5 1',
+                        'timezone': 'UTC',
+                        'target': {'run_all': True},
+                    },
+                ],
+            },
+        )
+        dispatch_calls: list[dict[str, object]] = []
+
+        monkeypatch.setattr(
+            scheduler_mod.LocalScheduler,
+            'utc_now',
+            staticmethod(lambda: datetime(2026, 5, 11, 2, 0, tzinfo=UTC)),
+        )
+
+        def _run_callback(**kwargs: object) -> int:
+            dispatch_calls.append(dict(kwargs))
+            kwargs['result_recorder']({'run_id': 'run-scheduled', 'status': 'ok'})
+            return 0
+
+        payload = scheduler_mod.LocalScheduler.run_pending(
+            cfg=cfg,
+            config_path='pipeline.yml',
+            event_format='jsonl',
+            pretty=True,
+            run_callback=_run_callback,
+            state_dir=tmp_path,
+        )
+
+        assert payload['runs'] == [
+            {
+                'catchup': False,
+                'run_all': True,
+                'run_id': 'run-scheduled',
+                'schedule': 'nightly-all',
+                'status': 'ok',
+                'trigger': 'cron',
+                'triggered_at': '2026-05-11T02:00:00+00:00',
+            },
+        ]
+        assert dispatch_calls == [
+            {
+                'config': 'pipeline.yml',
+                'emit_output': False,
+                'event_format': 'jsonl',
+                'job': None,
+                'pretty': True,
+                'result_recorder': dispatch_calls[0]['result_recorder'],
+                'run_all': True,
+                'schedule_catchup': False,
+                'schedule_name': 'nightly-all',
+                'schedule_trigger': 'cron',
+                'schedule_triggered_at': '2026-05-11T02:00:00+00:00',
+            },
+        ]
+
     def test_run_pending_success_clears_exception_metadata_after_recovery(
         self,
         monkeypatch: pytest.MonkeyPatch,
