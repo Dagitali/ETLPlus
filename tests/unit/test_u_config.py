@@ -475,8 +475,7 @@ schedules:
 
         source = next(item for item in cfg.sources if item.name == 'raw_s3')
         target = next(
-            item for item in cfg.targets if item.name ==
-            'warehouse_snowflake'
+            item for item in cfg.targets if item.name == 'warehouse_snowflake'
         )
         assert getattr(source, 'path', None) == 's3://etlplus-test/raw/customers.csv'
         assert getattr(target, 'schema', None) == 'PUBLIC'
