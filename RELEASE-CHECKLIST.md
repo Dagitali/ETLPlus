@@ -203,19 +203,17 @@ stable package metadata contract.
     `conda-build` on `osx-arm64` and passed the recipe smoke tests for `etlplus --version`, `etlplus
     --help`, and `etlplus check --help`.
   - A manual `Conda Recipe Validation` workflow now renders and builds the recipe with
-    `conda-build`, defaulting to Linux first with an opt-in Linux/macOS/Windows matrix before
-    conda-forge support is declared.
+    `conda-build`, defaulting to Linux first with an opt-in Linux/macOS/Windows matrix; the
+    tagged-sdist support gate has passed on all three platforms.
   - The manual workflow now has an explicit tagged-sdist validation mode requiring the released
     version and PyPI sdist SHA256 before maintainers submit a feedstock.
   - Meta tests keep the base conda run requirements aligned with `pyproject.toml`, allowing only the
     documented conda-forge package-name mappings and keeping optional extras out of the first base
     recipe.
-- [ ] Decide whether to promote conda-forge from feasible packaging follow-up to a maintained
-  supported install channel.
-  - Keep conda-forge as a packaging follow-up rather than a supported-channel commitment until
-    maintainers accept the broad default dependency footprint and feedstock maintenance burden.
-  - Before submitting a feedstock, repeat the recipe build/test from a tagged PyPI sdist with a
-    pinned SHA256 and verify Linux, macOS, and Windows behavior.
+- [x] Complete the conda-forge support gate for maintained install-channel readiness.
+  - Tagged PyPI sdist validation passed with a pinned SHA256 across Linux, macOS, and Windows.
+  - Feedstock submission/publication remains the handoff point before user-facing install commands
+    should claim conda-forge availability.
   - Optional extras should stay mapped as separate follow-up outputs or variants rather than being
     folded into the first base recipe.
 
@@ -355,8 +353,8 @@ hotfix, and post-release sync flows.
 - Treat the run/job history query surface as stable and keep the completed scheduler,
   backing-service, and connector/secrets contracts covered as the implementation evolves.
 - Review dependency-group ergonomics and installation footprint with actual user feedback.
-- Decide whether to promote the completed conda-forge feedstock-preparation result into a
-  maintained supported install channel.
+- If the conda-forge feedstock is accepted and published, update user-facing installation docs with
+  the conda install command and keep feedstock maintenance expectations explicit.
 - Expand confidence coverage where the stable line has shown friction on platforms, large-file
   workflows, or optional backends.
 
@@ -371,6 +369,6 @@ The current stable-line posture is:
 - Treat scheduler hardening and backing-service/connector clarity as completed stable-line runtime
   hygiene, with future work limited to regression coverage and usage-driven refinements.
 - Leave any smaller default dependency split as a future major-version packaging decision, and treat
-  conda-forge as a feedstock-prepared but not-yet-supported packaging channel pending tagged-sdist,
-  cross-platform, and maintainer-support decisions.
+  conda-forge as support-gate validated from a tagged PyPI sdist across Linux, macOS, and Windows,
+  with user-facing install support pending feedstock acceptance/publication.
 - Treat the archived pre-1.0 sections above as audit history, not as the active roadmap.

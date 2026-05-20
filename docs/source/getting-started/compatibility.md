@@ -65,8 +65,9 @@ documented base install.
   active environment.
 - Use `pipx install etlplus` for the preferred isolated CLI installation path.
 - Use `uv tool install etlplus` when uv is the local tool installer.
-- Conda/conda-forge is not yet a supported ETLPlus install channel; it is tracked as follow-up
-  packaging work.
+- Conda-forge status: tagged PyPI sdist validation has passed on Linux, macOS, and Windows. Until
+  the feedstock is accepted and published, use the PyPI-based installers above for supported
+  installs.
 
 ## Release interpretation
 
