@@ -1,77 +1,131 @@
 # Conda-Forge Staged-Recipes Submission
 
-Use this note when preparing the first ETLPlus submission to `conda-forge/staged-recipes`. The
-submitted recipe must stay limited to the broad base PyPI runtime contract for the first pass.
+Use this runbook to submit the first ETLPlus recipe to `conda-forge/staged-recipes`. The submitted
+recipe must stay limited to the broad base PyPI runtime contract for the first pass.
 
 - [Conda-Forge Staged-Recipes Submission](#conda-forge-staged-recipes-submission)
   - [Submission Scope](#submission-scope)
+  - [Prerequisites](#prerequisites)
   - [Prepare The Recipe](#prepare-the-recipe)
-  - [Pre-Submission Checks](#pre-submission-checks)
-  - [Pull Request Notes](#pull-request-notes)
+  - [Validate With The Conda CLI](#validate-with-the-conda-cli)
+  - [Open The Pull Request](#open-the-pull-request)
+  - [After Acceptance](#after-acceptance)
 
 ## Submission Scope
 
 - Submit one recipe under `recipes/etlplus/meta.yaml`.
 - Render the recipe from `packaging/conda/meta.yaml.j2`; do not hand-maintain a divergent copy.
-- Keep the run requirements aligned with `pyproject.toml` base dependencies.
-- Do not add optional extras to the first recipe. Optional dependency groups can be evaluated later
-  as separate outputs or variants after the base package is accepted and maintainers decide to own
-  that extra feedstock complexity.
-- Preserve the documented conda-forge package-name mappings:
+- Keep run requirements aligned with `pyproject.toml` base dependencies.
+- Do not add optional extras to the first recipe.
+- Preserve the dependency mappings documented in `FEEDSTOCK-PREP.md`.
 
-| PyPI name | Conda-forge name |
-| --- | --- |
-| `msgpack` | `msgpack-python` |
-| `PyYAML` | `pyyaml` |
-| `SQLAlchemy` | `sqlalchemy` |
+The first submission should prove that the base ETLPlus CLI/package artifact is installable from
+conda-forge. Optional extras can be evaluated later as separate outputs or variants.
+
+## Prerequisites
+
+You need:
+
+- A released ETLPlus version on PyPI.
+- The PyPI sdist SHA256 for that exact release.
+- A fork of `conda-forge/staged-recipes`.
+- A GitHub account that should be listed as a feedstock maintainer.
+- A local conda environment with `conda-build` installed.
+
+If `conda build` is not available, install the build tool:
+
+```bash
+conda install --channel conda-forge conda-build
+```
+
+The version passed to the renderer must be the PyPI version string, such as `1.26.4`, not the Git
+tag string `v1.26.4`.
 
 ## Prepare The Recipe
 
-Fork `conda-forge/staged-recipes`, create a branch from its `main`, then render the ETLPlus recipe
-into the staged-recipes checkout:
+Clone your staged-recipes fork and create a branch from its `main` branch:
+
+```bash
+git clone https://github.com/<your-github-handle>/staged-recipes.git /tmp/staged-recipes
+cd /tmp/staged-recipes
+git checkout main
+git pull
+git checkout -b add-etlplus
+mkdir -p recipes/etlplus
+```
+
+From the ETLPlus repository root, render the recipe into the staged-recipes checkout:
 
 ```bash
 python tools/render_conda_recipe.py \
   --template packaging/conda/meta.yaml.j2 \
-  --output /path/to/staged-recipes/recipes/etlplus/meta.yaml \
+  --output /tmp/staged-recipes/recipes/etlplus/meta.yaml \
   --version <released-version-without-leading-v> \
   --sha256 <pypi-sdist-sha256> \
   --maintainer <maintainer-github-handle>
 ```
 
-Use the package version string from PyPI, such as `1.26.4`, not the Git tag string `v1.26.4`.
+Inspect the rendered source section. It should use the PyPI sdist URL and real SHA256:
 
-The rendered source URL should have this shape:
-
-```text
-https://pypi.org/packages/source/e/etlplus/etlplus-<version>.tar.gz
+```yaml
+source:
+  url: https://pypi.org/packages/source/e/etlplus/etlplus-<version>.tar.gz
+  sha256: <pypi-sdist-sha256>
 ```
 
-## Pre-Submission Checks
+Do not submit a recipe that uses `source: path`; that form is only for local checkout validation.
 
-Before opening the staged-recipes pull request:
+## Validate With The Conda CLI
 
-- Confirm the completed ETLPlus `Conda Recipe Validation` workflow run used
-  `source_mode: tagged-sdist`.
-- Confirm the run used the released version and PyPI sdist SHA256.
-- Confirm `platform_scope: all` passed before treating the base recipe as ready for submission.
-- Confirm the rendered staged-recipes file still contains only base run requirements and the
-  documented conda-forge name mappings.
-- Confirm the recipe smoke commands remain:
-  - `etlplus --version`
-  - `etlplus --help`
-  - `etlplus check --help`
+Run the conda build from any directory, pointing at the staged-recipes recipe directory:
 
-## Pull Request Notes
+```bash
+conda build /tmp/staged-recipes/recipes/etlplus --channel conda-forge
+```
 
-Open the staged-recipes pull request with a short summary that states:
+This command creates isolated environments, installs dependencies from conda-forge, builds ETLPlus
+from the PyPI sdist, and runs the recipe test commands. Before opening the pull request, confirm the
+test output includes:
+
+- `etlplus --version`
+- `etlplus --help`
+- `etlplus check --help`
+
+Also confirm the ETLPlus manual `Conda Recipe Validation` workflow has passed with:
+
+- `source_mode: tagged-sdist`
+- the released version
+- the PyPI sdist SHA256
+- `platform_scope: all`
+
+## Open The Pull Request
+
+Commit only the staged-recipes recipe:
+
+```bash
+cd /tmp/staged-recipes
+git add recipes/etlplus/meta.yaml
+git commit -m "Add etlplus"
+git push --set-upstream origin add-etlplus
+```
+
+Open a pull request against `conda-forge/staged-recipes`. In the PR description, state:
 
 - ETLPlus is a pure-Python `noarch: python` package.
 - The first recipe intentionally packages only the broad base PyPI runtime contract.
 - Optional extras are intentionally excluded from the first submission.
-- The known PyPI-to-conda name mappings are `msgpack` to `msgpack-python`, `PyYAML` to `pyyaml`,
-  and `SQLAlchemy` to `sqlalchemy`.
+- The recipe was rendered from `packaging/conda/meta.yaml.j2`.
+- The known PyPI-to-conda name mappings are documented in the ETLPlus conda preparation notes.
 
-After the staged-recipes pull request is accepted, conda-forge automation creates the package
-feedstock. Future recipe updates should happen in the generated feedstock repository rather than in
-`staged-recipes`.
+During review, prefer updating `packaging/conda/meta.yaml.j2` in ETLPlus and re-rendering the staged
+recipe over hand-editing `recipes/etlplus/meta.yaml`. That keeps the repository template and the
+submitted recipe aligned.
+
+## After Acceptance
+
+After the staged-recipes pull request is accepted, conda-forge automation creates the ETLPlus
+feedstock repository. Future recipe updates should happen in the generated feedstock repository, not
+in `staged-recipes`.
+
+Only after the feedstock publishes an installable package should ETLPlus user-facing installation
+docs claim conda-forge support.
