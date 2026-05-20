@@ -1,7 +1,7 @@
 """
 :mod:`tests.meta.test_m_conda_feedstock` module.
 
-Guardrails for the candidate conda-forge feedstock preparation recipe.
+Guardrails for the support-gate-validated conda-forge feedstock recipe.
 """
 
 from __future__ import annotations
@@ -330,6 +330,19 @@ def test_conda_status_docs_do_not_regress_to_pending_support_gate() -> None:
         )
 
     assert stale_hits == []
+
+
+def test_conda_status_docs_record_validated_but_unpublished_state() -> None:
+    """Test conda docs record the completed gate and publication handoff."""
+    readme_text = CONDA_README_PATH.read_text(encoding='utf-8').lower()
+    prep_text = CONDA_PREP_PATH.read_text(encoding='utf-8').lower()
+
+    for text in (readme_text, prep_text):
+        assert 'tagged pypi sdist' in text
+        assert 'linux, macos, and windows' in text
+        assert 'feedstock' in text
+        assert 'accept' in text
+        assert 'publication' in text or 'published' in text
 
 
 def test_conda_submission_docs_preserve_base_recipe_scope() -> None:
