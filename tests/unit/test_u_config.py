@@ -21,6 +21,7 @@ from typing import Any
 import pytest
 
 import etlplus._config as config_mod
+import etlplus.runtime.readiness._providers as readiness_providers_mod
 from etlplus import Config
 from etlplus._config import _collect_parsed
 from etlplus._config import _parse_connector_entry
@@ -432,6 +433,114 @@ jobs: []
         assert (
             getattr(target, 'headers', {}).get('Authorization') == 'Bearer file-secret'
         )
+
+    def test_from_yaml_resolves_env_first_secrets_before_provider_readiness(
+        self,
+        pipeline_builder: Callable[..., Config],
+    ) -> None:
+        """Test secret-resolved backing-service paths feed readiness checks."""
+        yml = (
+            """
+name: Env First Runtime Test
+vars:
+  SCHEDULE_NAME: nightly_all
+sources:
+  - name: raw_s3
+    type: file
+    format: csv
+    path: "${secret:env:RAW_S3_PATH}"
+targets:
+  - name: warehouse_snowflake
+    type: database
+    provider: snowflake
+    account: acme.us-east-1
+    database: ANALYTICS
+    schema: "${secret:SNOWFLAKE_SCHEMA}"
+jobs: []
+schedules:
+  - name: "${SCHEDULE_NAME}"
+    cron: "0 2 * * *"
+    target:
+      run_all: true
+"""
+        ).strip()
+
+        cfg = pipeline_builder(
+            yml,
+            env={
+                'RAW_S3_PATH': 's3://etlplus-test/raw/customers.csv',
+                'SNOWFLAKE_SCHEMA': 'PUBLIC',
+            },
+        )
+
+        source = next(item for item in cfg.sources if item.name == 'raw_s3')
+        target = next(
+            item for item in cfg.targets if item.name ==
+            'warehouse_snowflake'
+        )
+        assert getattr(source, 'path', None) == 's3://etlplus-test/raw/customers.csv'
+        assert getattr(target, 'schema', None) == 'PUBLIC'
+        assert cfg.schedules[0].name == 'nightly_all'
+
+        rows = readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows(
+            cfg=cfg,
+            env={},
+        )
+
+        assert rows == [
+            {
+                'connector': 'raw_s3',
+                'guidance': (
+                    'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/'
+                    'AWS_SECRET_ACCESS_KEY, or rely on shared config files, '
+                    'container credentials, or instance metadata.'
+                ),
+                'missing_env': [
+                    'AWS_ACCESS_KEY_ID',
+                    'AWS_SECRET_ACCESS_KEY',
+                    'AWS_SESSION_TOKEN',
+                    'AWS_PROFILE',
+                    'AWS_DEFAULT_PROFILE',
+                    'AWS_ROLE_ARN',
+                    'AWS_WEB_IDENTITY_TOKEN_FILE',
+                    'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI',
+                    'AWS_CONTAINER_CREDENTIALS_FULL_URI',
+                    'AWS_SHARED_CREDENTIALS_FILE',
+                    'AWS_CONFIG_FILE',
+                ],
+                'provider': 'aws-s3',
+                'reason': (
+                    'No common AWS credential-chain environment hints were detected '
+                    'for this S3 path.'
+                ),
+                'role': 'source',
+                'scheme': 's3',
+                'severity': 'warn',
+            },
+            {
+                'connector': 'warehouse_snowflake',
+                'guidance': (
+                    'Set SNOWFLAKE_USER plus SNOWFLAKE_PASSWORD or '
+                    'SNOWFLAKE_PRIVATE_KEY_PATH, or rely on external SSO or '
+                    'secret injection used by your runtime.'
+                ),
+                'missing_env': [
+                    'SNOWFLAKE_USER',
+                    'SNOWFLAKE_PASSWORD',
+                    'SNOWFLAKE_AUTHENTICATOR',
+                    'SNOWFLAKE_PRIVATE_KEY_PATH',
+                    'SNOWFLAKE_PRIVATE_KEY',
+                ],
+                'provider': 'snowflake',
+                'reason': (
+                    'No common Snowflake credential environment hints were '
+                    'detected for this connector.'
+                ),
+                'role': 'target',
+                'scheme': 'snowflake',
+                'severity': 'warn',
+            },
+        ]
 
     def test_from_yaml_without_substitution_skips_token_resolution(
         self,
