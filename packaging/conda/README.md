@@ -5,7 +5,7 @@ published on conda-forge yet; use the supported PyPI installation paths until a 
 feedstock has been accepted and published.
 
 - [Conda Packaging Notes](#conda-packaging-notes)
-  - [File Map](#file-map)
+  - [Files](#files)
   - [Current Status](#current-status)
   - [Beginner Workflow](#beginner-workflow)
   - [Recipe Scope](#recipe-scope)
@@ -39,19 +39,19 @@ Use this path if you have not packaged a Python project for conda-forge before:
 1. Read `FEEDSTOCK-PREP.md` to understand what is already validated and why the recipe is base-only.
 2. Install or activate a conda environment that has `conda-build` available.
 3. Render a release-specific `meta.yaml` from `meta.yaml.j2`; do not edit a copied recipe by hand.
-4. Run `conda build` against the rendered recipe and confirm the recipe tests pass.
+4. Run `conda build` against the directory that contains the rendered `meta.yaml`.
 5. Follow `STAGED-RECIPES-SUBMISSION.md` to submit the rendered recipe to
    `conda-forge/staged-recipes`.
 
-The local validation command shape is:
+For example, if the renderer writes `/tmp/etlplus-conda-recipe/meta.yaml`, build that directory:
 
 ```bash
 conda build /tmp/etlplus-conda-recipe --channel conda-forge
 ```
 
-`conda build` reads `/tmp/etlplus-conda-recipe/meta.yaml`, creates a clean build/test environment,
-installs the conda-resolved dependencies, builds the package, and runs the commands listed in the
-recipe `test:` section.
+`conda build` reads the `meta.yaml` inside the directory you pass to it, creates a clean build/test
+environment, installs the conda-resolved dependencies, builds the package, and runs the commands
+listed in the recipe `test:` section.
 
 ## Recipe Scope
 

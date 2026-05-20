@@ -89,10 +89,17 @@ recognize `conda build`, install it from conda-forge:
 conda install --channel conda-forge conda-build
 ```
 
-Then build and test the rendered recipe:
+Then build and test the release-sdist recipe by passing the directory that contains the rendered
+`meta.yaml`:
 
 ```bash
 conda build /tmp/etlplus-conda-recipe --channel conda-forge
+```
+
+If you rendered the local-source recipe shown above, build that matching output directory instead:
+
+```bash
+conda build /tmp/etlplus-conda-local --channel conda-forge
 ```
 
 The directory passed to `conda build` must contain `meta.yaml`. During the build, conda will:

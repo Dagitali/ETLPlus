@@ -1,7 +1,9 @@
 # Conda-Forge Staged-Recipes Submission
 
-Use this runbook to submit the first ETLPlus recipe to `conda-forge/staged-recipes`. The submitted
-recipe must stay limited to the broad base PyPI runtime contract for the first pass.
+Use this runbook to submit the first ETLPlus recipe to the
+[`conda-forge/staged-recipes`](https://github.com/conda-forge/staged-recipes) GitHub repository,
+where conda-forge reviews new package recipes. The submitted recipe must stay limited to the broad
+base PyPI runtime contract for the first pass.
 
 - [Conda-Forge Staged-Recipes Submission](#conda-forge-staged-recipes-submission)
   - [Submission Scope](#submission-scope)
@@ -13,7 +15,9 @@ recipe must stay limited to the broad base PyPI runtime contract for the first p
 
 ## Submission Scope
 
-- Submit one recipe under `recipes/etlplus/meta.yaml`.
+- Submit one recipe under `recipes/etlplus/meta.yaml` in your local checkout of a
+  `conda-forge/staged-recipes` fork. This path is relative to the staged-recipes repository root,
+  not the ETLPlus repository root.
 - Render the recipe from `packaging/conda/meta.yaml.j2`; do not hand-maintain a divergent copy.
 - Keep run requirements aligned with `pyproject.toml` base dependencies.
 - Do not add optional extras to the first recipe.
@@ -21,6 +25,10 @@ recipe must stay limited to the broad base PyPI runtime contract for the first p
 
 The first submission should prove that the base ETLPlus CLI/package artifact is installable from
 conda-forge. Optional extras can be evaluated later as separate outputs or variants.
+
+For ETLPlus, you will fork `conda-forge/staged-recipes`, clone your fork locally, and render
+ETLPlus's recipe into the cloned fork at `recipes/etlplus/meta.yaml`. That file is created during
+the submission workflow; it is not expected to exist in this ETLPlus repository.
 
 ## Prerequisites
 
@@ -43,7 +51,8 @@ tag string `v1.26.4`.
 
 ## Prepare The Recipe
 
-Clone your staged-recipes fork and create a branch from its `main` branch:
+Clone your staged-recipes fork and create a branch from its `main` branch. The example below uses
+`/tmp/staged-recipes` as the local checkout of your fork:
 
 ```bash
 git clone https://github.com/<your-github-handle>/staged-recipes.git /tmp/staged-recipes
@@ -65,6 +74,11 @@ python tools/render_conda_recipe.py \
   --maintainer <maintainer-github-handle>
 ```
 
+This command creates `/tmp/staged-recipes/recipes/etlplus/meta.yaml`. In the staged-recipes
+repository, that same file is `recipes/etlplus/meta.yaml`. The `--output` path points outside the
+ETLPlus repository because the pull request must be opened from your staged-recipes fork, not from
+the ETLPlus project.
+
 Inspect the rendered source section. It should use the PyPI sdist URL and real SHA256:
 
 ```yaml
@@ -83,9 +97,9 @@ Run the conda build from any directory, pointing at the staged-recipes recipe di
 conda build /tmp/staged-recipes/recipes/etlplus --channel conda-forge
 ```
 
-This command creates isolated environments, installs dependencies from conda-forge, builds ETLPlus
-from the PyPI sdist, and runs the recipe test commands. Before opening the pull request, confirm the
-test output includes:
+This command reads `/tmp/staged-recipes/recipes/etlplus/meta.yaml`, creates isolated environments,
+installs dependencies from conda-forge, builds ETLPlus from the PyPI sdist, and runs the recipe test
+commands. Before opening the pull request, confirm the test output includes:
 
 - `etlplus --version`
 - `etlplus --help`
