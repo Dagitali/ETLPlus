@@ -83,6 +83,43 @@ def readme_text_fixture() -> str:
 
 
 @pytest.mark.parametrize(
+    'path',
+    (README_PATH, COMPATIBILITY_PATH, RELEASE_CHECKLIST_PATH),
+    ids=lambda path: path.name,
+)
+def test_conda_status_is_documented_as_validated_but_unpublished(path: Path) -> None:
+    """
+    Test that conda packaging is documented as support-gate validated without
+    claiming user-facing install availability before feedstock publication.
+    """
+    text = path.read_text(encoding='utf-8')
+
+    assert 'conda-forge' in text
+    assert 'tagged' in text
+    assert 'published' in text
+
+
+def test_cross_platform_smoke_checks_cli_help_surfaces() -> None:
+    """Test macOS/Windows smoke coverage checks stable CLI help surfaces."""
+    workflow_text = CI_WORKFLOW_PATH.read_text(encoding='utf-8')
+
+    assert 'os: [macos-latest, windows-latest]' in workflow_text
+    assert 'etlplus --version' in workflow_text
+    assert 'etlplus --help' in workflow_text
+    assert 'etlplus check --help' in workflow_text
+
+
+def test_installer_smoke_resolves_tool_installer_entrypoint_from_path(
+    installer_smoke_action_text: str,
+) -> None:
+    """
+    Test that tool-installer smoke checks do not assume a fixed app-bin path.
+    """
+    assert '$HOME/.local/bin/etlplus' not in installer_smoke_action_text
+    assert 'etlplus_bin="$(command -v etlplus)"' in installer_smoke_action_text
+
+
+@pytest.mark.parametrize(
     'contract',
     INSTALLER_CONTRACTS,
     ids=lambda contract: contract.name,
@@ -100,39 +137,3 @@ def test_supported_installer_commands_are_documented_and_smoke_tested(
     assert contract.docs_command in readme_text
     assert contract.docs_command in compatibility_text
     assert contract.smoke_pattern.search(installer_smoke_action_text) is not None
-
-
-@pytest.mark.parametrize(
-    'path',
-    (README_PATH, COMPATIBILITY_PATH, RELEASE_CHECKLIST_PATH),
-    ids=lambda path: path.name,
-)
-def test_conda_status_is_documented_as_follow_up(path: Path) -> None:
-    """
-    Test that conda packaging is documented as follow-up rather than a supported
-    install channel.
-    """
-    text = path.read_text(encoding='utf-8')
-
-    assert 'conda-forge' in text
-    assert 'follow-up' in text
-
-
-def test_installer_smoke_resolves_tool_installer_entrypoint_from_path(
-    installer_smoke_action_text: str,
-) -> None:
-    """
-    Test that tool-installer smoke checks do not assume a fixed app-bin path.
-    """
-    assert '$HOME/.local/bin/etlplus' not in installer_smoke_action_text
-    assert 'etlplus_bin="$(command -v etlplus)"' in installer_smoke_action_text
-
-
-def test_cross_platform_smoke_checks_cli_help_surfaces() -> None:
-    """Test macOS/Windows smoke coverage checks stable CLI help surfaces."""
-    workflow_text = CI_WORKFLOW_PATH.read_text(encoding='utf-8')
-
-    assert 'os: [macos-latest, windows-latest]' in workflow_text
-    assert 'etlplus --version' in workflow_text
-    assert 'etlplus --help' in workflow_text
-    assert 'etlplus check --help' in workflow_text
