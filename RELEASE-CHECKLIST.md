@@ -210,8 +210,7 @@ stable package metadata contract.
   - Meta tests keep the base conda run requirements aligned with `pyproject.toml`, allowing only the
     documented conda-forge package-name mappings and keeping optional extras out of the first base
     recipe.
-- [x] Complete the conda-forge support gate before declaring it a maintained supported install
-  channel.
+- [x] Complete the conda-forge support gate for maintained install-channel readiness.
   - Tagged PyPI sdist validation passed with a pinned SHA256 across Linux, macOS, and Windows.
   - Feedstock submission/publication remains the handoff point before user-facing install commands
     should claim conda-forge availability.
