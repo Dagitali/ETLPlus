@@ -318,6 +318,43 @@ class TestReadinessReportBuilderStrict:
         assert names == expected_names
         assert cast(list[dict[str, object]], issues) == expected_issues
 
+    def test_strict_connector_names_share_storage_scheme_type_guidance(
+        self,
+    ) -> None:
+        """Strict connector diagnostics should reuse backing-service wording."""
+        issues: list[dict[str, Any]] = []
+
+        names = readiness_strict_mod.StrictConfigValidator.connector_names(
+            raw={
+                'sources': [
+                    {
+                        'name': 'remote-source',
+                        'type': 's3',
+                    },
+                ],
+            },
+            section='sources',
+            issues=issues,
+        )
+
+        assert names == set()
+        assert issues == [
+            _issue(
+                guidance=(
+                    '"s3" is a storage scheme, not a connector type. '
+                    'Use connector type "file" and keep the provider in '
+                    'the path or URI scheme.'
+                ),
+                index=0,
+                issue='invalid connector entry',
+                message=(
+                    "Unsupported connector type: 's3'. Expected one of "
+                    'api, database, file, queue.'
+                ),
+                section='sources',
+            ),
+        ]
+
     @pytest.mark.parametrize(
         (
             'parse_connector',
