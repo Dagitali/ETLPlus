@@ -63,7 +63,7 @@ snapshot. The rendered recipe built a `.conda` artifact and passed the recipe sm
 Release-gating validation from a tagged PyPI sdist with a pinned `sha256` has also passed across
 Linux, macOS, and Windows.
 
-Completed validation before declaring conda-forge support ready for feedstock publication:
+Completed validation for conda-forge feedstock publication readiness:
 
 - Build a `.conda` artifact from the tagged PyPI sdist.
 - Install the built artifact in a clean conda environment.
