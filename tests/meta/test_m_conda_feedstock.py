@@ -26,6 +26,23 @@ CONDA_RECIPE_PATH = REPO_ROOT / 'packaging/conda/meta.yaml.j2'
 CONDA_README_PATH = REPO_ROOT / 'packaging/conda/README.md'
 CONDA_PREP_PATH = REPO_ROOT / 'packaging/conda/FEEDSTOCK-PREP.md'
 CONDA_SUBMISSION_PATH = REPO_ROOT / 'packaging/conda/STAGED-RECIPES-SUBMISSION.md'
+CONDA_WORKFLOW_PATH = REPO_ROOT / '.github/workflows/conda-recipe.yml'
+
+CONDA_STATUS_TEXT_PATHS = (
+    CONDA_README_PATH,
+    CONDA_PREP_PATH,
+    CONDA_SUBMISSION_PATH,
+    CONDA_WORKFLOW_PATH,
+)
+
+STALE_PENDING_SUPPORT_PHRASES = (
+    'before declaring conda-forge supported',
+    'before support',
+    'conda-forge remains a prepared but unsupported install channel',
+    'cross-platform builds are still undecided',
+    'not yet a supported',
+    'repeat the recipe build/test',
+)
 
 
 def _canonical_requirement_name(requirement: str) -> str:
@@ -136,17 +153,6 @@ def test_conda_docs_reference_template_recipe_source() -> None:
     assert 'tools/render_conda_recipe.py' in readme_text
     assert 'tools/render_conda_recipe.py' in prep_text
     assert 'tools/render_conda_recipe.py' in submission_text
-
-
-def test_conda_submission_docs_preserve_base_recipe_scope() -> None:
-    """Test staged-recipes docs preserve the base-only feedstock scope."""
-    submission_text = CONDA_SUBMISSION_PATH.read_text(encoding='utf-8')
-
-    assert 'broad base PyPI runtime contract' in submission_text
-    assert 'Do not add optional extras to the first recipe' in submission_text
-    assert '`msgpack` | `msgpack-python`' in submission_text
-    assert '`PyYAML` | `pyyaml`' in submission_text
-    assert '`SQLAlchemy` | `sqlalchemy`' in submission_text
 
 
 def test_conda_recipe_documents_expected_name_mappings() -> None:
@@ -309,3 +315,29 @@ def test_conda_recipe_validation_workflow_is_manual_linux_first() -> None:
     assert 'conda info' in workflow_text
     assert 'tools/render_conda_recipe.py' in workflow_text
     assert 'conda-build "${RUNNER_TEMP}/etlplus-conda-recipe"' in workflow_text
+
+
+def test_conda_status_docs_do_not_regress_to_pending_support_gate() -> None:
+    """Test conda docs no longer describe completed validation as pending."""
+    stale_hits: list[str] = []
+
+    for path in CONDA_STATUS_TEXT_PATHS:
+        text = path.read_text(encoding='utf-8').lower()
+        stale_hits.extend(
+            f'{path.relative_to(REPO_ROOT)}: {phrase}'
+            for phrase in STALE_PENDING_SUPPORT_PHRASES
+            if phrase in text
+        )
+
+    assert stale_hits == []
+
+
+def test_conda_submission_docs_preserve_base_recipe_scope() -> None:
+    """Test staged-recipes docs preserve the base-only feedstock scope."""
+    submission_text = CONDA_SUBMISSION_PATH.read_text(encoding='utf-8')
+
+    assert 'broad base PyPI runtime contract' in submission_text
+    assert 'Do not add optional extras to the first recipe' in submission_text
+    assert '`msgpack` | `msgpack-python`' in submission_text
+    assert '`PyYAML` | `pyyaml`' in submission_text
+    assert '`SQLAlchemy` | `sqlalchemy`' in submission_text
