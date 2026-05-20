@@ -118,11 +118,10 @@ def _conda_runtime_requirement(requirement: str) -> str:
 
 def test_conda_docs_reference_platform_isolation_options() -> None:
     """Test conda docs explain platform-specific validation dispatch options."""
-    readme_text = CONDA_README_PATH.read_text(encoding='utf-8')
     prep_text = CONDA_PREP_PATH.read_text(encoding='utf-8')
 
-    assert 'isolate macOS or Windows runs' in readme_text
-    assert 'pins `micromamba` and `conda-build=25`' in readme_text
+    assert 'isolate macOS or Windows runs' in prep_text
+    assert 'pins `micromamba` and `conda-build=25`' in prep_text
     assert '`platform_scope: macos`' in prep_text
     assert '`platform_scope: windows`' in prep_text
     assert '`platform_scope: all`' in prep_text
@@ -158,12 +157,12 @@ def test_conda_docs_reference_template_recipe_source() -> None:
 def test_conda_recipe_documents_expected_name_mappings() -> None:
     """Test the known PyPI-to-conda package name differences are explicit."""
     recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
-    readme_text = CONDA_README_PATH.read_text(encoding='utf-8')
+    prep_text = CONDA_PREP_PATH.read_text(encoding='utf-8')
 
     assert 'msgpack-python >=1.0.8' in recipe_text
-    assert '`msgpack` | `msgpack-python`' in readme_text
-    assert '`PyYAML` | `pyyaml`' in readme_text
-    assert '`SQLAlchemy` | `sqlalchemy`' in readme_text
+    assert '`msgpack>=1.0.8` | `msgpack-python >=1.0.8`' in prep_text
+    assert '`PyYAML>=6.0.3` | `pyyaml >=6.0.3`' in prep_text
+    assert '`SQLAlchemy>=2.0.45` | `sqlalchemy >=2.0.45`' in prep_text
 
 
 def test_conda_recipe_keeps_feedstock_placeholders_explicit() -> None:
@@ -351,6 +350,6 @@ def test_conda_submission_docs_preserve_base_recipe_scope() -> None:
 
     assert 'broad base PyPI runtime contract' in submission_text
     assert 'Do not add optional extras to the first recipe' in submission_text
-    assert '`msgpack` | `msgpack-python`' in submission_text
-    assert '`PyYAML` | `pyyaml`' in submission_text
-    assert '`SQLAlchemy` | `sqlalchemy`' in submission_text
+    assert 'Preserve the dependency mappings documented in `FEEDSTOCK-PREP.md`' in (
+        submission_text
+    )
