@@ -9,12 +9,12 @@
 # - Render the Jinja recipe template into a concrete local-source or tagged
 #   PyPI sdist recipe.
 # - Build and test the recipe with conda-build against conda-forge packages.
-# - Validate Linux first by default; optionally run macOS and Windows before
-#   maintainers consider conda-forge a supported install channel.
+# - Validate Linux first by default; optionally run macOS and Windows for
+#   support-gate refreshes or feedstock submission checks.
 #
 # Maintainer Notes
-# - This workflow is intentionally manual while conda-forge remains a prepared
-#   but unsupported install channel.
+# - This workflow is intentionally manual while conda-forge feedstock work is
+#   maintained as an explicit release-packaging gate.
 # - Global permissions are intentionally omitted; each job declares the minimum
 #   permissions it needs.
 # - External GitHub Actions are pinned to full commit SHAs to reduce supply-
@@ -40,8 +40,8 @@ on:
     inputs:
       platform_scope:
         description: >-
-          Platforms to validate. Run Linux first; use all before declaring
-          conda-forge supported.
+          Platforms to validate. Run Linux first; use all for support-gate
+          refreshes or feedstock submission checks.
         required: true
         default: linux
         type: choice
