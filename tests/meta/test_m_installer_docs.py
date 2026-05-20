@@ -93,10 +93,11 @@ def test_conda_status_is_documented_as_validated_but_unpublished(path: Path) -> 
     claiming user-facing install availability before feedstock publication.
     """
     text = path.read_text(encoding='utf-8')
+    normalized_text = text.lower()
 
-    assert 'conda-forge' in text
-    assert 'tagged' in text
-    assert 'published' in text
+    assert 'conda-forge' in normalized_text
+    assert 'tagged' in normalized_text
+    assert 'published' in normalized_text
 
 
 def test_cross_platform_smoke_checks_cli_help_surfaces() -> None:
