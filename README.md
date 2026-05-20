@@ -231,8 +231,11 @@ environment. Choose `pipx install etlplus` for the preferred isolated CLI instal
 install etlplus` when you manage command-line tools through uv.
 
 These installer paths are first-class for the base CLI artifact. They install the same PyPI package
-as `pip install etlplus`, including the stable-line default dependency set. Conda/conda-forge is not
-yet a supported ETLPlus install channel; it is tracked as follow-up packaging work.
+as `pip install etlplus`, including the stable-line default dependency set.
+
+Conda-forge status: the tagged PyPI sdist support gate has passed cross-platform recipe validation
+on Linux, macOS, and Windows. Until the conda-forge feedstock is accepted and published, use the
+PyPI-based installers above for supported installs.
 
 For development:
 

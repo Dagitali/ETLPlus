@@ -1,8 +1,9 @@
 # Conda Feedstock Preparation
 
-This directory contains candidate conda-forge feedstock materials for maintainer review. ETLPlus is
-not published on conda-forge yet; use the supported PyPI installation paths until a conda-forge
-feedstock is accepted and maintained.
+This directory contains candidate conda-forge feedstock materials for maintainer review. Tagged PyPI
+sdist validation has passed across Linux, macOS, and Windows. ETLPlus user-facing conda-forge
+install support is pending feedstock acceptance/publication; use the supported PyPI installation
+paths until then.
 
 - [Conda Feedstock Preparation](#conda-feedstock-preparation)
   - [Current Scope](#current-scope)
@@ -58,10 +59,11 @@ python tools/render_conda_recipe.py \
 ```
 
 The local validation path was exercised on `osx-arm64` with `conda-build` from a clean source
-snapshot. The rendered recipe built a `.conda` artifact and passed the recipe smoke commands. That
-does not replace the release-gating build from a tagged PyPI sdist with a pinned `sha256`.
+snapshot. The rendered recipe built a `.conda` artifact and passed the recipe smoke commands.
+Release-gating validation from a tagged PyPI sdist with a pinned `sha256` has also passed across
+Linux, macOS, and Windows.
 
-Minimum validation before declaring conda-forge supported:
+Completed validation for conda-forge feedstock publication readiness:
 
 - Build a `.conda` artifact from the tagged PyPI sdist.
 - Install the built artifact in a clean conda environment.
@@ -78,9 +80,9 @@ it can also isolate macOS or Windows runs when platform-specific failures need i
 initial workflow pins `micromamba` and `conda-build=25` because local and GitHub-hosted validation
 exposed toolchain failures unrelated to the ETLPlus recipe.
 
-Before declaring conda-forge supported, run the workflow with `source_mode: tagged-sdist`,
-`release_version`, and `sdist_sha256` set from the released PyPI sdist. Use `platform_scope: all`
-for that support-gate run so Linux, macOS, and Windows all pass from the same released artifact.
+The support-gate workflow has passed with `source_mode: tagged-sdist`, `release_version`, and
+`sdist_sha256` set from the released PyPI sdist, using `platform_scope: all` so Linux, macOS, and
+Windows all validate from the same released artifact.
 
 The candidate base recipe is expected to match the broad base dependency set in `pyproject.toml`.
 Only documented conda-forge package-name mappings should differ from the PyPI requirement names; do
@@ -89,7 +91,7 @@ variants.
 
 ## Staged-Recipes Submission
 
-When the tagged-sdist validation gate passes and maintainers accept feedstock ownership, use
+The tagged-sdist validation gate has passed. When maintainers accept feedstock ownership, use
 `packaging/conda/STAGED-RECIPES-SUBMISSION.md` to render the base-only recipe into a
 `conda-forge/staged-recipes` checkout under `recipes/etlplus/meta.yaml`.
 

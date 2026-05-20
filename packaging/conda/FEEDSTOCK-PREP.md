@@ -1,8 +1,9 @@
 # Conda-Forge Feedstock Preparation
 
-ETLPlus is preparing candidate conda-forge feedstock materials for maintainer review. These files
-are not published on conda-forge yet; use the supported PyPI installation paths until a conda-forge
-feedstock is accepted and maintained.
+ETLPlus has prepared candidate conda-forge feedstock materials for maintainer review. Tagged PyPI
+sdist validation has passed across Linux, macOS, and Windows. These files are not published on
+conda-forge yet; use the supported PyPI installation paths until a conda-forge feedstock is accepted
+and maintained.
 
 This note documents the recipe source, validation path, and remaining publication requirements for
 contributors who want to review or improve the candidate feedstock.
@@ -17,16 +18,17 @@ contributors who want to review or improve the candidate feedstock.
 
 ## Current Result
 
-The current base dependency set is viable for a candidate conda-forge recipe on the locally
-validated platform. The preparation work has validated:
+The current base dependency set is viable for a candidate conda-forge recipe. The preparation work
+has validated:
 
 - A conda-forge solve for the base runtime dependency set with Python 3.13.
 - A local source install using conda-resolved dependencies and pip build isolation disabled.
 - A rendered local-source recipe build with `conda-build`.
+- A tagged PyPI sdist recipe build/test run with a pinned SHA256 across Linux, macOS, and Windows.
 - CLI smoke checks for `etlplus --version`, `etlplus --help`, and `etlplus check --help`.
 
-These checks show that the packaging path is viable. Publication still requires maintainer
-ownership, release-artifact validation, and cross-platform conda-forge build coverage.
+These checks show that the packaging path is viable. Publication still requires maintainer ownership
+and feedstock acceptance/publication.
 
 ## Recipe Source
 
@@ -69,14 +71,15 @@ decide otherwise.
 The manual `Conda Recipe Validation` GitHub Actions workflow provides non-release and release-sdist
 validation for the candidate recipe. It runs Linux by default and can be dispatched with
 `platform_scope: macos` or `platform_scope: windows` to isolate platform-specific failures. Use
-`platform_scope: all` to include Linux, macOS, and Windows in the support-gate run.
+`platform_scope: all` to rerun Linux, macOS, and Windows together before staged-recipes submission
+or future support-gate refreshes.
 
-Use `source_mode: local-source` for pre-release checks from the current checkout. Before submitting
-to conda-forge, use `source_mode: tagged-sdist` with the released version and PyPI sdist SHA256, and
-run with `platform_scope: all`.
+Use `source_mode: local-source` for pre-release checks from the current checkout. The completed
+support-gate run used `source_mode: tagged-sdist` with the released version and PyPI sdist SHA256,
+and `platform_scope: all`.
 
-Before submitting to conda-forge, maintainers should also build and test a recipe rendered from the
-tagged PyPI sdist with a pinned SHA256:
+For local confirmation before submitting to conda-forge, maintainers can also build and test a
+recipe rendered from the tagged PyPI sdist with a pinned SHA256:
 
 ```bash
 conda-build /tmp/etlplus-conda-recipe --channel conda-forge
@@ -91,9 +94,10 @@ The recipe test phase should verify:
 
 ## Staged-Recipes Submission
 
-After the tagged-sdist support gate passes, prepare the upstream conda-forge submission through
-`conda-forge/staged-recipes`. Render the base-only recipe into `recipes/etlplus/meta.yaml` by
-following `packaging/conda/STAGED-RECIPES-SUBMISSION.md`.
+The tagged-sdist support gate has passed. Prepare the upstream conda-forge submission through
+`conda-forge/staged-recipes` when maintainers accept feedstock ownership. Render the base-only
+recipe into `recipes/etlplus/meta.yaml` by following
+`packaging/conda/STAGED-RECIPES-SUBMISSION.md`.
 
 The first staged-recipes pull request should keep optional extras out of the recipe and preserve the
 documented package-name mappings above.
@@ -103,8 +107,9 @@ documented package-name mappings above.
 Before documenting conda-forge as a supported ETLPlus install channel:
 
 - Maintainers accept feedstock ownership.
-- The recipe builds from a tagged PyPI sdist with a pinned SHA256.
-- Linux, macOS, and Windows recipe build/test runs pass.
+- The recipe has passed tagged PyPI sdist validation with a pinned SHA256 across Linux, macOS, and
+  Windows.
+- The feedstock is accepted and published.
 - The published feedstock exposes the same base CLI/runtime contract as the PyPI artifact.
 - The base recipe run requirements match `pyproject.toml` base dependencies except for documented
   conda-forge package-name mappings; optional extras remain separate follow-up outputs or variants.
