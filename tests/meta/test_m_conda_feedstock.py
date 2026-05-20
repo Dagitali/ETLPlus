@@ -277,7 +277,7 @@ def test_conda_recipe_render_helper_supports_local_source_path(tmp_path) -> None
 
 
 def test_conda_recipe_validation_workflow_is_manual_linux_first() -> None:
-    """Test conda recipe CI remains manual and Linux-first before support."""
+    """Test conda recipe CI remains manual and Linux-first by default."""
     workflow_text = (REPO_ROOT / '.github/workflows/conda-recipe.yml').read_text(
         encoding='utf-8',
     )
