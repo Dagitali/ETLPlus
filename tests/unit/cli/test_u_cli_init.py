@@ -18,7 +18,7 @@ from etlplus.cli import main as cli_main
 # SECTION: HELPERS ========================================================== #
 
 
-CLI_EXPORTS = [('main', cli_main)]
+CLI_EXPORTS: tuple[tuple[str, object], ...] = (('main', cli_main),)
 
 
 # SECTION: TESTS ============================================================ #
@@ -32,7 +32,7 @@ class TestCliPackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert cli_pkg.__all__ == [name for name, _value in CLI_EXPORTS]
+        assert tuple(cli_pkg.__all__) == tuple(name for name, _value in CLI_EXPORTS)
 
     @pytest.mark.parametrize(('name', 'expected'), CLI_EXPORTS)
     def test_expected_symbol_bindings(
