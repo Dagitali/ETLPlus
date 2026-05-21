@@ -69,10 +69,10 @@ class QueueConnectorProviderCase:
 
 
 CONNECTOR_CLASS_PARAMS = (
-    pytest.param(ConnectorApi, 'api', id='api'),
-    pytest.param(ConnectorDb, 'database', id='database'),
-    pytest.param(ConnectorFile, 'file', id='file'),
-    pytest.param(ConnectorQueue, 'queue', id='queue'),
+    pytest.param(ConnectorApi, id='api'),
+    pytest.param(ConnectorDb, id='database'),
+    pytest.param(ConnectorFile, id='file'),
+    pytest.param(ConnectorQueue, id='queue'),
 )
 
 QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
