@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+import pytest
+
 from etlplus.queue import AmqpQueue
 from etlplus.queue import AwsSqsQueue
 from etlplus.queue import AzureServiceBusQueue
@@ -54,10 +56,10 @@ class QueueConnectorProviderCase:
         return expected
 
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
+# SECTION: CONSTANTS ======================================================== #
 
 
-_QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
+QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
     'aws-sqs': QueueConnectorProviderCase(
         input_service='aws-sqs',
         connector_name='events',
@@ -131,6 +133,20 @@ _QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
     ),
 }
 
+QUEUE_CONNECTOR_PROVIDER_PARAMS = (
+    pytest.param(QUEUE_CONNECTOR_PROVIDER_CASES['aws-sqs'], id='aws-sqs'),
+    pytest.param(
+        QUEUE_CONNECTOR_PROVIDER_CASES['azure-service-bus'],
+        id='azure-service-bus',
+    ),
+    pytest.param(QUEUE_CONNECTOR_PROVIDER_CASES['gcp-pubsub'], id='gcp-pubsub'),
+    pytest.param(QUEUE_CONNECTOR_PROVIDER_CASES['rabbitmq'], id='rabbitmq-alias'),
+    pytest.param(
+        QUEUE_CONNECTOR_PROVIDER_CASES['redis-streams'],
+        id='redis-streams-alias',
+    ),
+)
+
 
 # SECTION: FUNCTIONS ======================================================== #
 
@@ -142,10 +158,3 @@ def assert_connector_fields(
     """Assert that *actual* exposes the expected field values."""
     for field, value in expected.items():
         assert getattr(actual, field) == value
-
-
-def get_queue_connector_provider_case(
-    service: str,
-) -> QueueConnectorProviderCase:
-    """Return one canonical connector-test case for *service*."""
-    return _QUEUE_CONNECTOR_PROVIDER_CASES[service]
