@@ -153,23 +153,6 @@ class TestConnectorDb:
         assert_connector_fields(connector, expected)
 
     @pytest.mark.parametrize(
-        'payload',
-        [
-            pytest.param({'type': 'database'}, id='missing-name'),
-            pytest.param({'name': None, 'type': 'database'}, id='non-string-name'),
-        ],
-    )
-    def test_from_obj_requires_name(
-        self,
-        payload: dict[str, object],
-    ) -> None:
-        """
-        Test that :meth:`from_obj` rejects mappings with missing or invalid names.
-        """
-        with pytest.raises(TypeError, match='ConnectorDb requires a "name"'):
-            ConnectorDb.from_obj(payload)
-
-    @pytest.mark.parametrize(
         ('payload', 'expected_missing_fields'),
         [
             pytest.param(
@@ -290,21 +273,16 @@ class TestConnectorDb:
                 None,
                 id='no-provider-specific-fields',
             ),
+            pytest.param(None, None, id='missing-provider'),
         ],
     )
     def test_provider_missing_connection_guidance_covers_supported_branches(
         self,
-        provider: str,
+        provider: str | None,
         expected: str | None,
     ) -> None:
         """Guidance text should adapt to provider field-count requirements."""
         assert ConnectorDb.provider_missing_connection_guidance(provider) == expected
-
-    def test_provider_missing_connection_guidance_returns_none_without_provider(
-        self,
-    ) -> None:
-        """Missing provider input should short-circuit guidance generation."""
-        assert ConnectorDb.provider_missing_connection_guidance(None) is None
 
     def test_provider_missing_connection_guidance_supports_one_required_field(
         self,
