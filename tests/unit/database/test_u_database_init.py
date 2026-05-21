@@ -40,7 +40,7 @@ from etlplus.database._schema import load_table_specs
 # SECTION: HELPERS ========================================================== #
 
 
-DATABASE_EXPORTS = [
+DATABASE_EXPORTS: tuple[tuple[str, object], ...] = (
     ('Base', Base),
     ('ColumnSpec', ColumnSpec),
     ('DatabaseDialect', DatabaseDialect),
@@ -64,7 +64,7 @@ DATABASE_EXPORTS = [
     ('resolve_type', resolve_type),
     ('engine', engine),
     ('session', session),
-]
+)
 
 
 # SECTION: TESTS ============================================================ #
@@ -78,7 +78,9 @@ class TestDatabasePackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert database_pkg.__all__ == [name for name, _value in DATABASE_EXPORTS]
+        assert tuple(database_pkg.__all__) == tuple(
+            name for name, _value in DATABASE_EXPORTS
+        )
 
     @pytest.mark.parametrize(('name', 'expected'), DATABASE_EXPORTS)
     def test_expected_symbol_bindings(
