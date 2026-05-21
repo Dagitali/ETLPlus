@@ -886,81 +886,95 @@ class TestReadinessReportBuilderConnectors:
             'role': 'target',
         }
 
+    @pytest.mark.parametrize(
+        (
+            'connector',
+            'provider',
+            'requirement',
+            'reason',
+            'expected',
+        ),
+        [
+            pytest.param(
+                'warehouse',
+                'bigquery',
+                RequirementSpec(
+                    ('google.cloud.bigquery', 'sqlalchemy_bigquery'),
+                    'google-cloud-bigquery/sqlalchemy-bigquery',
+                    'database-bigquery',
+                ),
+                (
+                    'bigquery database connector requires '
+                    'google-cloud-bigquery/sqlalchemy-bigquery'
+                ),
+                {
+                    'connector': 'warehouse',
+                    'detected_database_provider': 'bigquery',
+                    'extra': 'database-bigquery',
+                    'guidance': (
+                        'Install google-cloud-bigquery/sqlalchemy-bigquery '
+                        'directly or install the ETLPlus "database-bigquery" '
+                        'extra. Required for "bigquery" database connectors.'
+                    ),
+                    'missing_package': 'google-cloud-bigquery/sqlalchemy-bigquery',
+                    'reason': (
+                        'bigquery database connector requires '
+                        'google-cloud-bigquery/sqlalchemy-bigquery'
+                    ),
+                    'role': 'source',
+                },
+                id='bigquery',
+            ),
+            pytest.param(
+                'snowflake_wh',
+                'snowflake',
+                RequirementSpec(
+                    ('snowflake.connector', 'snowflake.sqlalchemy'),
+                    'snowflake-connector-python/snowflake-sqlalchemy',
+                    'database-snowflake',
+                ),
+                (
+                    'snowflake database connector requires '
+                    'snowflake-connector-python/snowflake-sqlalchemy'
+                ),
+                {
+                    'connector': 'snowflake_wh',
+                    'detected_database_provider': 'snowflake',
+                    'extra': 'database-snowflake',
+                    'guidance': (
+                        'Install snowflake-connector-python/snowflake-sqlalchemy '
+                        'directly or install the ETLPlus "database-snowflake" '
+                        'extra. Required for "snowflake" database connectors.'
+                    ),
+                    'missing_package': (
+                        'snowflake-connector-python/snowflake-sqlalchemy'
+                    ),
+                    'reason': (
+                        'snowflake database connector requires '
+                        'snowflake-connector-python/snowflake-sqlalchemy'
+                    ),
+                    'role': 'source',
+                },
+                id='snowflake',
+            ),
+        ],
+    )
     def test_requirement_row_keeps_database_provider_context(
         self,
+        connector: str,
+        provider: str,
+        requirement: RequirementSpec,
+        reason: str,
+        expected: dict[str, object],
     ) -> None:
         """Requirement rows should preserve provider-specific DB context."""
-        requirement = RequirementSpec(
-            ('google.cloud.bigquery', 'sqlalchemy_bigquery'),
-            'google-cloud-bigquery/sqlalchemy-bigquery',
-            'database-bigquery',
-        )
-
-        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
-            connector='warehouse',
-            detected_database_provider='bigquery',
-            reason=(
-                'bigquery database connector requires '
-                'google-cloud-bigquery/sqlalchemy-bigquery'
-            ),
+        assert readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
+            connector=connector,
+            detected_database_provider=provider,
+            reason=reason,
             requirement=requirement,
             role='source',
-        )
-
-        assert row == {
-            'connector': 'warehouse',
-            'detected_database_provider': 'bigquery',
-            'extra': 'database-bigquery',
-            'guidance': (
-                'Install google-cloud-bigquery/sqlalchemy-bigquery directly or '
-                'install the ETLPlus "database-bigquery" extra. Required for '
-                '"bigquery" database connectors.'
-            ),
-            'missing_package': 'google-cloud-bigquery/sqlalchemy-bigquery',
-            'reason': (
-                'bigquery database connector requires '
-                'google-cloud-bigquery/sqlalchemy-bigquery'
-            ),
-            'role': 'source',
-        }
-
-    def test_requirement_row_keeps_snowflake_provider_context(
-        self,
-    ) -> None:
-        """Requirement rows should preserve Snowflake provider context."""
-        requirement = RequirementSpec(
-            ('snowflake.connector', 'snowflake.sqlalchemy'),
-            'snowflake-connector-python/snowflake-sqlalchemy',
-            'database-snowflake',
-        )
-
-        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
-            connector='snowflake_wh',
-            detected_database_provider='snowflake',
-            reason=(
-                'snowflake database connector requires '
-                'snowflake-connector-python/snowflake-sqlalchemy'
-            ),
-            requirement=requirement,
-            role='source',
-        )
-
-        assert row == {
-            'connector': 'snowflake_wh',
-            'detected_database_provider': 'snowflake',
-            'extra': 'database-snowflake',
-            'guidance': (
-                'Install snowflake-connector-python/snowflake-sqlalchemy '
-                'directly or install the ETLPlus "database-snowflake" extra. '
-                'Required for "snowflake" database connectors.'
-            ),
-            'missing_package': 'snowflake-connector-python/snowflake-sqlalchemy',
-            'reason': (
-                'snowflake database connector requires '
-                'snowflake-connector-python/snowflake-sqlalchemy'
-            ),
-            'role': 'source',
-        }
+        ) == expected
 
     def test_requirement_row_keeps_format_without_scheme(
         self,
