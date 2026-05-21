@@ -497,39 +497,35 @@ class TestReadinessReportBuilderStrict:
         assert any(issue['issue'] == 'duplicate job name: dup' for issue in issues)
         assert any(issue['issue'] == 'missing job name' for issue in issues)
 
-    def test_strict_job_issue_rows_reject_non_list_jobs_section(
-        self,
-    ) -> None:
-        """Strict job validation should reject non-list jobs sections."""
-        issues: list[ReadinessRow] = []
-
-        readiness_strict_mod.StrictConfigValidator.job_issue_rows(
-            raw={'jobs': {'name': 'publish'}},
-            issues=issues,
-            source_names=set(),
-            target_names=set(),
-            transform_names=set(),
-            validation_names=set(),
-        )
-
-        assert issues == [
-            _issue(
-                expected='list',
-                guidance='Define jobs as a YAML list of job mappings.',
-                issue='invalid section type',
-                observed_type='dict',
-                section='jobs',
+    @pytest.mark.parametrize(
+        ('raw', 'expected'),
+        [
+            pytest.param(
+                {'jobs': {'name': 'publish'}},
+                [
+                    _issue(
+                        expected='list',
+                        guidance='Define jobs as a YAML list of job mappings.',
+                        issue='invalid section type',
+                        observed_type='dict',
+                        section='jobs',
+                    ),
+                ],
+                id='non-list-jobs-section',
             ),
-        ]
-
-    def test_strict_job_issue_rows_return_when_jobs_section_is_missing(
+            pytest.param({}, [], id='missing-jobs-section'),
+        ],
+    )
+    def test_strict_job_issue_rows_handles_jobs_section_guard_paths(
         self,
+        raw: dict[str, object],
+        expected: list[dict[str, object]],
     ) -> None:
-        """Strict job validation should do nothing when jobs are absent."""
+        """Strict job validation should cover missing and malformed sections."""
         issues: list[ReadinessRow] = []
 
         readiness_strict_mod.StrictConfigValidator.job_issue_rows(
-            raw={},
+            raw=raw,
             issues=issues,
             source_names=set(),
             target_names=set(),
@@ -537,7 +533,7 @@ class TestReadinessReportBuilderStrict:
             validation_names=set(),
         )
 
-        assert not issues
+        assert issues == expected
 
     def test_strict_job_names_skip_non_list_and_blank_entries(self) -> None:
         """Strict job-name collection should ignore non-list and blank entries."""
