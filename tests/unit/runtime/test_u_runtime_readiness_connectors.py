@@ -866,29 +866,34 @@ class TestReadinessReportBuilderConnectors:
 
         assert rows == []
 
-    def test_requirement_row_adds_optional_format_and_scheme_context(
+    @pytest.mark.parametrize(
+        ('detected_scheme', 'expected_extra_fields'),
+        [
+            pytest.param(
+                {'detected_scheme': 's3'},
+                {'detected_scheme': 's3'},
+                id='scheme',
+            ),
+            pytest.param({}, {}, id='format-only'),
+        ],
+    )
+    def test_requirement_row_keeps_format_context(
         self,
+        detected_scheme: dict[str, str],
+        expected_extra_fields: dict[str, str],
     ) -> None:
-        """Requirement rows should keep both detected format and scheme fields."""
-        requirement = RequirementSpec(
-            ('pyarrow',),
-            'pyarrow',
-            'file',
-        )
-
-        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
+        """Requirement rows should keep format context and optional scheme context."""
+        assert readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
             connector='out',
             detected_format='csv',
-            detected_scheme='s3',
             reason='csv format requires pyarrow',
-            requirement=requirement,
+            requirement=RequirementSpec(('pyarrow',), 'pyarrow', 'file'),
             role='target',
-        )
-
-        assert row == {
+            **detected_scheme,
+        ) == {
             'connector': 'out',
             'detected_format': 'csv',
-            'detected_scheme': 's3',
+            **expected_extra_fields,
             'extra': 'file',
             'guidance': (
                 'Install pyarrow directly or install the ETLPlus "file" extra. '
@@ -988,37 +993,6 @@ class TestReadinessReportBuilderConnectors:
             requirement=requirement,
             role='source',
         ) == expected
-
-    def test_requirement_row_keeps_format_without_scheme(
-        self,
-    ) -> None:
-        """Requirement rows should omit scheme when only format context exists."""
-        requirement = RequirementSpec(
-            ('pyarrow',),
-            'pyarrow',
-            'file',
-        )
-
-        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
-            connector='out',
-            detected_format='csv',
-            reason='csv format requires pyarrow',
-            requirement=requirement,
-            role='target',
-        )
-
-        assert row == {
-            'connector': 'out',
-            'detected_format': 'csv',
-            'extra': 'file',
-            'guidance': (
-                'Install pyarrow directly or install the ETLPlus "file" extra. '
-                'Required for "csv" file format.'
-            ),
-            'missing_package': 'pyarrow',
-            'reason': 'csv format requires pyarrow',
-            'role': 'target',
-        }
 
     @pytest.mark.parametrize(
         ('available_modules', 'expected'),
