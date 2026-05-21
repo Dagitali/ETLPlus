@@ -35,9 +35,9 @@ class QueueConnectorProviderCase:
 
     input_service: str
     connector_name: str
-    top_level_fields: dict[str, object]
-    options: dict[str, object]
-    expected_queue_options: dict[str, object]
+    top_level_fields: Mapping[str, object]
+    options: Mapping[str, object]
+    expected_queue_options: Mapping[str, object]
     expected_config_cls: type[object]
 
     def connector_payload(self, **extra_fields: object) -> dict[str, object]:
