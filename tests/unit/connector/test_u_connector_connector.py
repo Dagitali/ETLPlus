@@ -43,4 +43,4 @@ class TestConnectorAlias:
         """
         Test that the module only exports the :class:`Connector` alias.
         """
-        assert connector_mod.__all__ == ['Connector']
+        assert tuple(connector_mod.__all__) == ('Connector',)
