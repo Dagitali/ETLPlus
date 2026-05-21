@@ -77,7 +77,7 @@ class TestRuntimeEvents:
         assert event['run_all'] is True
 
     @pytest.mark.parametrize(
-        ('kwargs', 'expected_timestamp'),
+        'kwargs',
         [
             pytest.param(
                 {
@@ -87,7 +87,6 @@ class TestRuntimeEvents:
                     'timestamp': '2025-01-01T00:00:00+00:00',
                     'job': 'daily',
                 },
-                '2025-01-01T00:00:00+00:00',
                 id='explicit-timestamp',
             ),
             pytest.param(
@@ -96,7 +95,6 @@ class TestRuntimeEvents:
                     'lifecycle': 'completed',
                     'run_id': 'run-123',
                 },
-                '2025-01-01T00:00:00+00:00',
                 id='implicit-utc-timestamp',
             ),
             pytest.param(
@@ -108,7 +106,6 @@ class TestRuntimeEvents:
                     'error_message': 'boom',
                     'status': 'error',
                 },
-                '2025-01-01T00:00:00+00:00',
                 id='failed-with-shared-fields',
             ),
         ],
@@ -117,7 +114,6 @@ class TestRuntimeEvents:
         self,
         kwargs: dict[str, Any],
         frozen_timestamp: str,
-        expected_timestamp: str,
     ) -> None:
         """
         Test that build emits the stable event envelope and resolves
@@ -133,9 +129,7 @@ class TestRuntimeEvents:
             'run_id': 'run-123',
             'schema': events_mod.EVENT_SCHEMA,
             'schema_version': events_mod.EVENT_SCHEMA_VERSION,
-            'timestamp': (
-                frozen_timestamp if 'timestamp' not in kwargs else expected_timestamp
-            ),
+            'timestamp': kwargs.get('timestamp', frozen_timestamp),
             **({'job': 'daily'} if 'job' in kwargs else {}),
             **(
                 {
