@@ -33,7 +33,7 @@ from etlplus.ops.validate import validate_schema
 # SECTION: HELPERS ========================================================== #
 
 
-OPS_EXPORTS = [
+OPS_EXPORTS: tuple[tuple[str, object], ...] = (
     # Data Classes
     ('ValidationSettings', ValidationSettings),
     # Enums
@@ -54,7 +54,7 @@ OPS_EXPORTS = [
     ('FieldValidationDict', FieldValidationDict),
     ('ValidationDict', ValidationDict),
     ('ValidationResultDict', ValidationResultDict),
-]
+)
 
 
 # SECTION: TESTS ============================================================ #
@@ -68,7 +68,7 @@ class TestOpsPackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert ops_pkg.__all__ == [name for name, _value in OPS_EXPORTS]
+        assert tuple(ops_pkg.__all__) == tuple(name for name, _value in OPS_EXPORTS)
 
     @pytest.mark.parametrize(('name', 'expected'), OPS_EXPORTS)
     def test_expected_symbol_bindings(
