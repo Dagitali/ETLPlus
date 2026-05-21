@@ -22,7 +22,6 @@ from .pytest_runtime_readiness import build_runtime_cfg as _cfg
 from .pytest_runtime_readiness import (
     patch_config_resolution as _patch_config_resolution,
 )
-from .pytest_runtime_readiness import patch_file_read as _patch_file_read
 from .pytest_runtime_readiness import write_pipeline_config
 
 # SECTION: PRAGMAS ========================================================== #
@@ -225,20 +224,17 @@ class TestReadinessReportBuilderCore:
     ) -> None:
         """Config checks should return early when runtime checks are disabled."""
         config_path = write_pipeline_config(tmp_path)
-        runtime_called = {'value': False}
         _patch_config_resolution(
             monkeypatch,
             raw={'name': 'pipeline'},
         )
 
-        def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
-            runtime_called['value'] = True
-            return [{'name': 'connector-readiness', 'status': 'ok'}]
-
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
+            lambda *_args, **_kwargs: pytest.fail(
+                'runtime checks should be skipped',
+            ),
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -247,7 +243,6 @@ class TestReadinessReportBuilderCore:
             include_runtime_checks=False,
         )
 
-        assert runtime_called['value'] is False
         assert [check['name'] for check in checks] == [
             'config-file',
             'config-parse',
@@ -300,16 +295,13 @@ class TestReadinessReportBuilderCore:
             raw={'name': 'pipeline'},
             resolved_cfg=resolved_cfg,
         )
-        runtime_called = {'value': False}
-
-        def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
-            runtime_called['value'] = True
-            return [{'name': 'connector-readiness', 'status': 'ok'}]
 
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
+            lambda *_args, **_kwargs: pytest.fail(
+                'runtime checks should be skipped',
+            ),
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -317,7 +309,6 @@ class TestReadinessReportBuilderCore:
             env={},
         )
 
-        assert runtime_called['value'] is False
         schedule_check = next(
             check for check in checks if check['name'] == 'schedule-config'
         )
@@ -398,16 +389,13 @@ class TestReadinessReportBuilderCore:
             raw=resolved_raw,
             resolved_raw=resolved_raw,
         )
-        runtime_called = {'value': False}
-
-        def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
-            runtime_called['value'] = True
-            return [{'name': 'connector-readiness', 'status': 'ok'}]
 
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
+            lambda *_args, **_kwargs: pytest.fail(
+                'runtime checks should be skipped',
+            ),
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -416,7 +404,6 @@ class TestReadinessReportBuilderCore:
             strict=True,
         )
 
-        assert runtime_called['value'] is False
         structure_check = next(
             check for check in checks if check['name'] == 'config-structure'
         )
@@ -561,16 +548,12 @@ class TestReadinessReportBuilderCore:
             lambda _resolver, raw: {'token': '${MISSING_TOKEN}'},
         )
 
-        connector_checks_called = {'value': False}
-
-        def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
-            connector_checks_called['value'] = True
-            return [{'name': 'connector-readiness', 'status': 'ok'}]
-
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
+            lambda *_args, **_kwargs: pytest.fail(
+                'connector checks should be skipped',
+            ),
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -578,7 +561,6 @@ class TestReadinessReportBuilderCore:
             env={},
         )
 
-        assert connector_checks_called['value'] is False
         assert checks == [
             {
                 'message': f'Configuration file exists: {config_path}',
@@ -645,7 +627,15 @@ class TestReadinessReportBuilderCore:
         match: str | None,
     ) -> None:
         """Raw config loading should enforce a mapping/object root."""
-        _patch_file_read(monkeypatch, payload)
+
+        class _FakeFile:
+            def __init__(self, *_args: object, **_kwargs: object) -> None:
+                pass
+
+            def read(self) -> object:
+                return payload
+
+        monkeypatch.setattr(readiness_base_mod, 'File', _FakeFile)
 
         if match is not None:
             with pytest.raises(TypeError, match=match):
