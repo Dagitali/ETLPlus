@@ -529,15 +529,30 @@ class TestReadinessReportBuilderConnectors:
 
         assert checks == expected
 
+    @pytest.mark.parametrize(
+        ('connector_type', 'expected'),
+        [
+            pytest.param(
+                '',
+                'Set type to one of: api, database, file, queue.',
+                id='blank',
+            ),
+            pytest.param(
+                'weird',
+                'Use one of the supported connector types: api, database, file, queue.',
+                id='generic-invalid',
+            ),
+        ],
+    )
     def test_connector_type_guidance_covers_blank_and_generic_invalid_values(
         self,
+        connector_type: str,
+        expected: str,
     ) -> None:
         """Test actionable guidance for blank and non-storage invalid types."""
-        assert readiness_connectors_mod.connector_type_guidance('') == (
-            'Set type to one of: api, database, file, queue.'
-        )
-        assert readiness_connectors_mod.connector_type_guidance('weird') == (
-            'Use one of the supported connector types: api, database, file, queue.'
+        assert (
+            readiness_connectors_mod.connector_type_guidance(connector_type)
+            == expected
         )
 
     def test_dedupe_rows_preserves_first_occurrence(self) -> None:
@@ -569,7 +584,6 @@ class TestReadinessReportBuilderConnectors:
 
     def test_missing_requirement_rows_cover_netcdf_and_format_specific_branches(
         self,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test requirement rows for netCDF and format-specific extras."""
         cfg = _cfg(
@@ -790,7 +804,6 @@ class TestReadinessReportBuilderConnectors:
 
     def test_missing_requirement_rows_return_empty_when_requirements_are_satisfied(
         self,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test requirement rows when connectors either omit paths or have deps."""
         cfg = _cfg(
@@ -1017,7 +1030,6 @@ class TestReadinessReportBuilderConnectors:
     )
     def test_netcdf_available_requires_xarray_and_one_backend(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         available_modules: set[str],
         expected: bool,
     ) -> None:
