@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
-from typing import cast
 from uuid import UUID
 
 import pytest
@@ -116,7 +115,7 @@ class TestRuntimeEvents:
     )
     def test_build_returns_expected_event_envelope(
         self,
-        kwargs: dict[str, object],
+        kwargs: dict[str, Any],
         frozen_timestamp: str,
         expected_timestamp: str,
     ) -> None:
@@ -124,7 +123,7 @@ class TestRuntimeEvents:
         Test that build emits the stable event envelope and resolves
         timestamps.
         """
-        event = events_mod.RuntimeEvents.build(**cast(dict[str, Any], kwargs))
+        event = events_mod.RuntimeEvents.build(**kwargs)
 
         assert EXPECTED_BASE_EVENT_FIELDS.issubset(event)
         assert event == {
