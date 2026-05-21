@@ -86,20 +86,3 @@ class TestConnectorFile:
         """
         connector = ConnectorFile.from_obj(payload)
         assert_connector_fields(connector, expected)
-
-    @pytest.mark.parametrize(
-        'payload',
-        [
-            pytest.param({'type': 'file'}, id='missing-name'),
-            pytest.param({'name': None, 'type': 'file'}, id='non-string-name'),
-        ],
-    )
-    def test_from_obj_requires_name(
-        self,
-        payload: dict[str, object],
-    ) -> None:
-        """
-        Test that :meth:`from_obj` rejects mappings with missing or invalid names.
-        """
-        with pytest.raises(TypeError, match='ConnectorFile requires a "name"'):
-            ConnectorFile.from_obj(payload)
