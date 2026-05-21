@@ -14,7 +14,6 @@ from typing import cast
 
 import pytest
 
-import etlplus.runtime.readiness._base as readiness_base_mod
 import etlplus.runtime.readiness._builder as readiness_builder_mod
 from etlplus.runtime.readiness._support import ResolvedConfigContext
 
@@ -210,22 +209,6 @@ def patch_config_resolution(
             resolved_cfg=resolved_cfg,
         ),
     )
-
-
-def patch_file_read(
-    monkeypatch: pytest.MonkeyPatch,
-    payload: object,
-) -> None:
-    """Patch :class:`File` to return one fixed payload from :meth:`File.read`."""
-
-    class _FakeFile:
-        def __init__(self, *_args: object, **_kwargs: object) -> None:
-            pass
-
-        def read(self) -> object:
-            return payload
-
-    monkeypatch.setattr(readiness_base_mod, 'File', _FakeFile)
 
 
 def write_pipeline_config(
