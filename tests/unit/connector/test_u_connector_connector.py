@@ -25,18 +25,17 @@ class TestConnectorAlias:
     """Unit tests for connector union alias exports."""
 
     @pytest.mark.parametrize(
-        ('connector_cls', 'connector_type'),
+        'connector_cls',
         CONNECTOR_CLASS_PARAMS,
     )
     def test_connector_alias_supports_all_variants(
         self,
         connector_cls: ConnectorClass,
-        connector_type: str,
     ) -> None:
         """
         Test that the :class:`Connector` alias accepts all supported variants.
         """
-        connector: Connector = connector_cls(name=connector_type)
+        connector: Connector = connector_cls(name='connector')
 
         assert isinstance(connector, connector_cls)
 
