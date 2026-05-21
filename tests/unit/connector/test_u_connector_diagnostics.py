@@ -80,6 +80,21 @@ class TestConnectorDiagnosticPolicy:
                 id='static-file-guidance',
             ),
             pytest.param(
+                'missing url or api reference',
+                None,
+                (
+                    'Set "url" to a reachable endpoint or "api" to a configured '
+                    'top-level API name.'
+                ),
+                id='static-api-guidance',
+            ),
+            pytest.param(
+                'missing connection_string',
+                None,
+                'Set "connection_string" to a database DSN or SQLAlchemy-style URL.',
+                id='static-database-guidance',
+            ),
+            pytest.param(
                 'missing connection_string or bigquery project/dataset',
                 None,
                 ConnectorDb.provider_missing_connection_guidance('bigquery'),
