@@ -40,4 +40,4 @@ class TestConnectorTypes:
 
     def test_exports_include_connector_type(self) -> None:
         """Test that the module exports the :class:`ConnectorType` alias."""
-        assert connector_types.__all__ == ['ConnectorType']
+        assert tuple(connector_types.__all__) == ('ConnectorType',)
