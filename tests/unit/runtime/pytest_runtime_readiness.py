@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 from typing import cast
 
 import pytest
@@ -47,7 +46,7 @@ def build_runtime_cfg(
     apis: dict[str, object] | None = None,
     profile_env: dict[str, str] | None = None,
     variables: dict[str, object] | None = None,
-) -> Any:
+) -> SimpleNamespace:
     """Build one light-weight config-like object for readiness tests."""
     return SimpleNamespace(
         apis={} if apis is None else dict(apis),
@@ -155,10 +154,7 @@ def build_resolved_config_context(
         effective_env={} if env is None else dict(env),
         unresolved_tokens=[] if unresolved_tokens is None else list(unresolved_tokens),
         resolved_raw=raw if resolved_raw is None else dict(resolved_raw),
-        resolved_cfg=cast(
-            Any,
-            build_runtime_cfg() if resolved_cfg is None else resolved_cfg,
-        ),
+        resolved_cfg=build_runtime_cfg() if resolved_cfg is None else resolved_cfg,
     )
 
 
