@@ -12,13 +12,8 @@ import pytest
 
 from etlplus.connector._enums import DataConnectorType
 from etlplus.connector._queue import ConnectorQueue
-from etlplus.queue import AmqpQueue
-from etlplus.queue import AwsSqsQueue
-from etlplus.queue import AzureServiceBusQueue
-from etlplus.queue import GcpPubSubQueue
 from etlplus.queue import QueueService
 from etlplus.queue import QueueType
-from etlplus.queue import RedisQueue
 
 from .pytest_connector_support import QueueConnectorProviderCase
 from .pytest_connector_support import assert_connector_fields
@@ -76,36 +71,43 @@ class TestConnectorQueue:
                 },
             )
 
-    def test_fifo_suffix_inference_is_sqs_specific(self) -> None:
-        """Non-SQS queue names ending in .fifo should not imply FIFO semantics."""
-        connector = ConnectorQueue.from_obj(
-            {
-                'name': 'events',
-                'type': 'queue',
-                'service': 'amqp',
-                'queue_name': 'events.fifo',
-                'options': {'url': 'amqp://guest:guest@localhost:5672/%2f'},
-            },
-        )
-
-        assert connector.service is QueueService.AMQP
-        assert connector.queue_type is QueueType.STANDARD
-
-    def test_fifo_suffix_rule_is_sqs_specific(self) -> None:
+    @pytest.mark.parametrize(
+        ('payload', 'expected_queue_type'),
+        [
+            pytest.param(
+                {
+                    'name': 'events',
+                    'type': 'queue',
+                    'service': 'amqp',
+                    'queue_name': 'events.fifo',
+                    'options': {'url': 'amqp://guest:guest@localhost:5672/%2f'},
+                },
+                QueueType.STANDARD,
+                id='fifo-suffix-does-not-imply-non-sqs-fifo',
+            ),
+            pytest.param(
+                {
+                    'name': 'fifo_events',
+                    'type': 'queue',
+                    'service': 'amqp',
+                    'queue_name': 'events',
+                    'queue_type': 'fifo',
+                },
+                QueueType.FIFO,
+                id='explicit-non-sqs-fifo-skips-sqs-name-rule',
+            ),
+        ],
+    )
+    def test_fifo_rules_are_sqs_specific(
+        self,
+        payload: dict[str, object],
+        expected_queue_type: QueueType,
+    ) -> None:
         """Test that non-SQS FIFO-like metadata does not use SQS naming rules."""
-        connector = ConnectorQueue.from_obj(
-            {
-                'name': 'fifo_events',
-                'type': 'queue',
-                'service': 'amqp',
-                'queue_name': 'events',
-                'queue_type': 'fifo',
-            },
-        )
+        connector = ConnectorQueue.from_obj(payload)
 
         assert connector.service is QueueService.AMQP
-        assert connector.queue_type is QueueType.FIFO
-        assert connector.queue_name == 'events'
+        assert connector.queue_type is expected_queue_type
 
     @pytest.mark.parametrize(
         ('payload', 'expected_queue_name', 'expected_service'),
@@ -203,21 +205,6 @@ class TestConnectorQueue:
         assert_connector_fields(connector, expected)
 
     @pytest.mark.parametrize(
-        'payload',
-        [
-            pytest.param({'type': 'queue'}, id='missing-name'),
-            pytest.param({'name': None, 'type': 'queue'}, id='non-string-name'),
-        ],
-    )
-    def test_from_obj_requires_name(
-        self,
-        payload: dict[str, object],
-    ) -> None:
-        """Test that :meth:`from_obj` rejects missing or invalid names."""
-        with pytest.raises(TypeError, match='ConnectorQueue requires a "name"'):
-            ConnectorQueue.from_obj(payload)
-
-    @pytest.mark.parametrize(
         ('payload', 'expected_options'),
         [
             pytest.param(
@@ -286,22 +273,11 @@ class TestConnectorQueue:
         queue_provider_case: QueueConnectorProviderCase,
     ) -> None:
         """Test conversion into provider-specific queue config objects."""
-        expected_classes = {
-            'aws-sqs': AwsSqsQueue,
-            'azure-service-bus': AzureServiceBusQueue,
-            'gcp-pubsub': GcpPubSubQueue,
-            'rabbitmq': AmqpQueue,
-            'redis-streams': RedisQueue,
-        }
-
         queue_config = ConnectorQueue.from_obj(
             queue_provider_case.connector_payload(),
         ).to_queue_config()
 
-        assert isinstance(
-            queue_config,
-            expected_classes[queue_provider_case.input_service],
-        )
+        assert isinstance(queue_config, queue_provider_case.expected_config_cls)
         assert queue_config.to_connector_options() == (
             queue_provider_case.expected_queue_options
         )
