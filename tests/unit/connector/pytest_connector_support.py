@@ -9,6 +9,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from etlplus.queue import AmqpQueue
+from etlplus.queue import AwsSqsQueue
+from etlplus.queue import AzureServiceBusQueue
+from etlplus.queue import GcpPubSubQueue
+from etlplus.queue import RedisQueue
+
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -21,6 +27,7 @@ class QueueConnectorProviderCase:
     top_level_fields: dict[str, object]
     options: dict[str, object]
     expected_queue_options: dict[str, object]
+    expected_config_cls: type[object]
 
     def connector_payload(self, **extra_fields: object) -> dict[str, object]:
         """Return one canonical queue connector payload for this provider."""
@@ -66,6 +73,7 @@ _QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
             'region': 'us-east-1',
             'visibility_timeout': 30,
         },
+        expected_config_cls=AwsSqsQueue,
     ),
     'azure-service-bus': QueueConnectorProviderCase(
         input_service='azure-service-bus',
@@ -77,6 +85,7 @@ _QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
             'namespace': 'example-bus',
             'queue_name': 'orders',
         },
+        expected_config_cls=AzureServiceBusQueue,
     ),
     'gcp-pubsub': QueueConnectorProviderCase(
         input_service='gcp-pubsub',
@@ -91,6 +100,7 @@ _QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
             'project': 'example-project',
             'subscription': 'etlplus',
         },
+        expected_config_cls=GcpPubSubQueue,
     ),
     'rabbitmq': QueueConnectorProviderCase(
         input_service='rabbitmq',
@@ -105,6 +115,7 @@ _QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
             'url': 'amqp://guest:guest@localhost:5672/%2f',
             'routing_key': 'orders.created',
         },
+        expected_config_cls=AmqpQueue,
     ),
     'redis-streams': QueueConnectorProviderCase(
         input_service='redis-streams',
@@ -116,6 +127,7 @@ _QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
             'key': 'orders',
             'database': 2,
         },
+        expected_config_cls=RedisQueue,
     ),
 }
 
