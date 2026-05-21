@@ -34,7 +34,7 @@ from etlplus.queue import RedisQueueConfigDict
 # SECTION: HELPERS ========================================================== #
 
 
-QUEUE_EXPORTS = [
+QUEUE_EXPORTS: tuple[tuple[str, object], ...] = (
     ('AmqpQueue', AmqpQueue),
     ('AwsSqsQueue', AwsSqsQueue),
     ('AzureServiceBusQueue', AzureServiceBusQueue),
@@ -50,7 +50,7 @@ QUEUE_EXPORTS = [
     ('AzureServiceBusQueueConfigDict', AzureServiceBusQueueConfigDict),
     ('GcpPubSubQueueConfigDict', GcpPubSubQueueConfigDict),
     ('RedisQueueConfigDict', RedisQueueConfigDict),
-]
+)
 
 
 # SECTION: TESTS ============================================================ #
@@ -70,7 +70,9 @@ class TestQueuePackageExports:
 
     def test_expected_symbols(self) -> None:
         """Test that package facade preserves the documented export order."""
-        assert queue_pkg.__all__ == [name for name, _value in QUEUE_EXPORTS]
+        assert tuple(queue_pkg.__all__) == tuple(
+            name for name, _value in QUEUE_EXPORTS
+        )
 
     def test_protocol_placeholder_to_connector_options_raises_not_implemented(
         self,
