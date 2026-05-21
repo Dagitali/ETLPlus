@@ -8,30 +8,14 @@ from __future__ import annotations
 
 import pytest
 
-from etlplus.connector import ConnectorApi
-from etlplus.connector import ConnectorDb
-from etlplus.connector import ConnectorFile
-from etlplus.connector import ConnectorQueue
 from etlplus.connector._core import ConnectorProtocol
+
+from .pytest_connector_support import CONNECTOR_CLASS_PARAMS
+from .pytest_connector_support import ConnectorClass
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-type ConnectorClass = (
-    type[ConnectorApi] | type[ConnectorDb] | type[ConnectorFile] | type[ConnectorQueue]
-)
-
-CONNECTOR_CASES = (
-    pytest.param(ConnectorApi, 'api', id='api'),
-    pytest.param(ConnectorDb, 'database', id='database'),
-    pytest.param(ConnectorFile, 'file', id='file'),
-    pytest.param(ConnectorQueue, 'queue', id='queue'),
-)
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -39,7 +23,10 @@ CONNECTOR_CASES = (
 class TestConnectorProtocol:
     """Unit tests for connector protocol behavior."""
 
-    @pytest.mark.parametrize(('connector_cls', 'connector_type'), CONNECTOR_CASES)
+    @pytest.mark.parametrize(
+        ('connector_cls', 'connector_type'),
+        CONNECTOR_CLASS_PARAMS,
+    )
     def test_concrete_connector_satisfies_runtime_protocol(
         self,
         connector_cls: ConnectorClass,
@@ -65,7 +52,10 @@ class TestConnectorProtocol:
 class TestConnectorBaseContracts:
     """Shared contract tests for concrete connector base subclasses."""
 
-    @pytest.mark.parametrize(('connector_cls', 'connector_type'), CONNECTOR_CASES)
+    @pytest.mark.parametrize(
+        ('connector_cls', 'connector_type'),
+        CONNECTOR_CLASS_PARAMS,
+    )
     @pytest.mark.parametrize(
         'name_fields',
         [
