@@ -15,42 +15,13 @@ from etlplus.connector._queue import ConnectorQueue
 from etlplus.queue import QueueService
 from etlplus.queue import QueueType
 
+from .pytest_connector_support import QUEUE_CONNECTOR_PROVIDER_PARAMS
 from .pytest_connector_support import QueueConnectorProviderCase
 from .pytest_connector_support import assert_connector_fields
-from .pytest_connector_support import get_queue_connector_provider_case
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-AWS_SQS_CASE = get_queue_connector_provider_case('aws-sqs')
-AZURE_SERVICE_BUS_CASE = get_queue_connector_provider_case('azure-service-bus')
-GCP_PUBSUB_CASE = get_queue_connector_provider_case('gcp-pubsub')
-RABBITMQ_CASE = get_queue_connector_provider_case('rabbitmq')
-REDIS_STREAMS_CASE = get_queue_connector_provider_case('redis-streams')
-
-
-# SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture(
-    name='queue_provider_case',
-    params=[
-        pytest.param(AWS_SQS_CASE, id='aws-sqs'),
-        pytest.param(AZURE_SERVICE_BUS_CASE, id='azure-service-bus'),
-        pytest.param(GCP_PUBSUB_CASE, id='gcp-pubsub'),
-        pytest.param(RABBITMQ_CASE, id='rabbitmq-alias'),
-        pytest.param(REDIS_STREAMS_CASE, id='redis-streams-alias'),
-    ],
-)
-def queue_provider_case_fixture(
-    request: pytest.FixtureRequest,
-) -> QueueConnectorProviderCase:
-    """Return one canonical queue provider case."""
-    return request.param
 
 
 # SECTION: TESTS ============================================================ #
@@ -268,6 +239,7 @@ class TestConnectorQueue:
         with pytest.raises(ValueError, match='Unsupported queue service'):
             connector.to_queue_config()
 
+    @pytest.mark.parametrize('queue_provider_case', QUEUE_CONNECTOR_PROVIDER_PARAMS)
     def test_to_queue_config_returns_provider_specific_config(
         self,
         queue_provider_case: QueueConnectorProviderCase,
