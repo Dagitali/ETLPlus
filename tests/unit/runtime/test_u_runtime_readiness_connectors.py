@@ -6,6 +6,7 @@ Connector readiness unit tests for :mod:`etlplus.runtime.readiness._builder`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from types import SimpleNamespace
 
 import pytest
@@ -275,62 +276,62 @@ class TestReadinessReportBuilderConnectors:
             ),
         ]
 
+    @pytest.mark.parametrize(
+        'cfg',
+        [
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            name='file-source',
+                            path='input.csv',
+                            type='file',
+                        ),
+                        SimpleNamespace(
+                            name='api-url-source',
+                            api=None,
+                            type='api',
+                            url='https://example.test/data',
+                        ),
+                        SimpleNamespace(
+                            name='api-ref-source',
+                            api='known-api',
+                            type='api',
+                            url=None,
+                        ),
+                    ],
+                    targets=[
+                        SimpleNamespace(
+                            connection_string='sqlite:///:memory:',
+                            name='db-target',
+                            type='database',
+                        ),
+                        SimpleNamespace(
+                            connection_string='sqlite:///other.db',
+                            name='db-target-2',
+                            type='database',
+                        ),
+                    ],
+                    apis={'known-api': object()},
+                ),
+                id='complete-connectors',
+            ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        BIGQUERY_CASE.runtime_connector(connection_string=None),
+                        SNOWFLAKE_CASE.runtime_connector(connection_string=None),
+                    ],
+                ),
+                id='complete-cloud-database-metadata',
+            ),
+        ],
+    )
     def test_connector_gap_rows_return_empty_for_complete_connectors(
         self,
+        cfg: SimpleNamespace,
     ) -> None:
         """Test that complete connector definitions produce no gap rows."""
-        cfg = _cfg(
-            sources=[
-                SimpleNamespace(
-                    name='file-source',
-                    path='input.csv',
-                    type='file',
-                ),
-                SimpleNamespace(
-                    name='api-url-source',
-                    api=None,
-                    type='api',
-                    url='https://example.test/data',
-                ),
-                SimpleNamespace(
-                    name='api-ref-source',
-                    api='known-api',
-                    type='api',
-                    url=None,
-                ),
-            ],
-            targets=[
-                SimpleNamespace(
-                    connection_string='sqlite:///:memory:',
-                    name='db-target',
-                    type='database',
-                ),
-                SimpleNamespace(
-                    connection_string='sqlite:///other.db',
-                    name='db-target-2',
-                    type='database',
-                ),
-            ],
-            apis={'known-api': object()},
-        )
-
-        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cfg,
-        )
-
-        assert not rows
-
-    def test_connector_gap_rows_return_empty_for_complete_cloud_database_metadata(
-        self,
-    ) -> None:
-        """Complete cloud-database metadata should suppress generic DSN gaps."""
-        cfg = _cfg(
-            targets=[
-                BIGQUERY_CASE.runtime_connector(connection_string=None),
-                SNOWFLAKE_CASE.runtime_connector(connection_string=None),
-            ],
-        )
-
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
             cfg,
         )
@@ -643,24 +644,78 @@ class TestReadinessReportBuilderConnectors:
             ),
         ]
 
-    def test_missing_requirement_rows_ignore_storage_schemes_without_extras(
-        self,
-    ) -> None:
-        """Unknown storage schemes should not emit optional dependency rows."""
-        cfg = _cfg(
-            sources=[
-                SimpleNamespace(
-                    name='custom-source',
-                    path='custom://bucket/input.csv',
-                    type='file',
+    @pytest.mark.parametrize(
+        ('cfg', 'package_available'),
+        [
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            name='custom-source',
+                            path='custom://bucket/input.csv',
+                            type='file',
+                        ),
+                    ],
                 ),
-            ],
-        )
-
+                lambda _name: False,
+                id='storage-scheme-without-extra',
+            ),
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            format='csv',
+                            name='pathless-source',
+                            path=None,
+                            type='file',
+                        ),
+                        SimpleNamespace(
+                            format='nc',
+                            name='nc-source',
+                            path='input.nc',
+                            type='file',
+                        ),
+                        SimpleNamespace(
+                            format='sav',
+                            name='sav-source',
+                            path='input.sav',
+                            type='file',
+                        ),
+                        SimpleNamespace(
+                            name='queue-source',
+                            queue_name='events',
+                            service='redis',
+                            type='queue',
+                        ),
+                    ],
+                ),
+                lambda _module_name: True,
+                id='satisfied-requirements',
+            ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        BIGQUERY_CASE.runtime_connector(
+                            connection_string=None,
+                            name='warehouse_bigquery',
+                        ),
+                    ],
+                ),
+                lambda _name: True,
+                id='database-provider-extra-available',
+            ),
+        ],
+    )
+    def test_missing_requirement_rows_return_empty_when_no_requirements_are_missing(
+        self,
+        cfg: SimpleNamespace,
+        package_available: Callable[[str], bool],
+    ) -> None:
+        """Requirement rows should stay empty when no optional dependency is missing."""
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
                 cfg=cfg,
-                package_available=lambda _name: False,
+                package_available=package_available,
             )
         )
 
@@ -801,70 +856,6 @@ class TestReadinessReportBuilderConnectors:
                 role='source',
             ),
         ]
-
-    def test_missing_requirement_rows_return_empty_when_requirements_are_satisfied(
-        self,
-    ) -> None:
-        """Test requirement rows when connectors either omit paths or have deps."""
-        cfg = _cfg(
-            sources=[
-                SimpleNamespace(
-                    format='csv',
-                    name='pathless-source',
-                    path=None,
-                    type='file',
-                ),
-                SimpleNamespace(
-                    format='nc',
-                    name='nc-source',
-                    path='input.nc',
-                    type='file',
-                ),
-                SimpleNamespace(
-                    format='sav',
-                    name='sav-source',
-                    path='input.sav',
-                    type='file',
-                ),
-                SimpleNamespace(
-                    name='queue-source',
-                    queue_name='events',
-                    service='redis',
-                    type='queue',
-                ),
-            ],
-        )
-
-        rows = (
-            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cfg,
-                package_available=lambda _module_name: True,
-            )
-        )
-
-        assert not rows
-
-    def test_missing_requirement_rows_skip_database_provider_when_available(
-        self,
-    ) -> None:
-        """Installed database-provider extras should not emit dependency rows."""
-        cfg = _cfg(
-            targets=[
-                BIGQUERY_CASE.runtime_connector(
-                    connection_string=None,
-                    name='warehouse_bigquery',
-                ),
-            ],
-        )
-
-        rows = (
-            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cfg,
-                package_available=lambda _name: True,
-            )
-        )
-
-        assert rows == []
 
     @pytest.mark.parametrize(
         ('detected_scheme', 'expected_extra_fields'),
