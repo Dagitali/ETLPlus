@@ -8,12 +8,18 @@ from __future__ import annotations
 
 import pytest
 
+from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorDiagnosticPolicy
 from etlplus.connector import DataConnectorType
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+SUPPORTED_CONNECTOR_TYPES = ', '.join(DataConnectorType.choices())
 
 # SECTION: TESTS ============================================================ #
 
@@ -32,12 +38,15 @@ class TestConnectorDiagnosticPolicy:
         [
             pytest.param(
                 '',
-                'Set type to one of: api, database, file, queue.',
+                f'Set type to one of: {SUPPORTED_CONNECTOR_TYPES}.',
                 id='blank-type',
             ),
             pytest.param(
                 'stream',
-                'Use one of the supported connector types: api, database, file, queue.',
+                (
+                    'Use one of the supported connector types: '
+                    f'{SUPPORTED_CONNECTOR_TYPES}.'
+                ),
                 id='unsupported-type',
             ),
             pytest.param(
@@ -73,12 +82,14 @@ class TestConnectorDiagnosticPolicy:
             pytest.param(
                 'missing connection_string or bigquery project/dataset',
                 None,
-                (
-                    'Set "connection_string" to a database DSN or SQLAlchemy-style '
-                    'URL, or define both "project" and "dataset" for this '
-                    'BigQuery connector.'
-                ),
-                id='provider-specific-database-guidance',
+                ConnectorDb.provider_missing_connection_guidance('bigquery'),
+                id='bigquery-provider-guidance',
+            ),
+            pytest.param(
+                'missing connection_string or snowflake account/database/schema',
+                None,
+                ConnectorDb.provider_missing_connection_guidance('snowflake'),
+                id='snowflake-provider-guidance',
             ),
             pytest.param(
                 'unknown api reference: people',
