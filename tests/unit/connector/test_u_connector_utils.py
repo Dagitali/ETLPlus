@@ -11,7 +11,6 @@ Notes
 from __future__ import annotations
 
 from typing import Any
-from typing import cast
 
 import pytest
 
@@ -74,14 +73,12 @@ class TestParseConnector:
     )
     def test_invalid_payloads_raise_type_error(
         self,
-        payload: object,
+        payload: Any,
         match: str,
     ) -> None:
         """Invalid connector payloads should raise :class:`TypeError`."""
         with pytest.raises(TypeError, match=match):
-            connector_utils.parse_connector(
-                cast(dict[str, Any], payload),
-            )
+            connector_utils.parse_connector(payload)
 
     @pytest.mark.parametrize(
         ('payload', 'expected_cls', 'expected_attrs'),
