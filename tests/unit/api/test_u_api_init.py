@@ -58,7 +58,7 @@ from etlplus.api.rate_limiting import RateLimitOverrides
 # SECTION: HELPERS ========================================================== #
 
 
-API_EXPORTS = [
+API_EXPORTS: tuple[tuple[str, object], ...] = (
     ('EndpointClient', EndpointClient),
     ('EndpointCredentialsBearer', EndpointCredentialsBearer),
     ('Paginator', Paginator),
@@ -100,7 +100,8 @@ API_EXPORTS = [
     ('RateLimitOverrides', RateLimitOverrides),
     ('RetryPolicyDict', RetryPolicyDict),
     ('Url', Url),
-]
+)
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -113,7 +114,7 @@ class TestApiPackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert api_pkg.__all__ == [name for name, _value in API_EXPORTS]
+        assert tuple(api_pkg.__all__) == tuple(name for name, _value in API_EXPORTS)
 
     @pytest.mark.parametrize(('name', 'expected'), API_EXPORTS)
     def test_expected_symbol_bindings(
