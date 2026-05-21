@@ -31,7 +31,8 @@ from etlplus.connector._utils import parse_connector
 
 # SECTION: HELPERS ========================================================== #
 
-CONNECTOR_EXPORTS = [
+
+CONNECTOR_EXPORTS: tuple[tuple[str, object], ...] = (
     ('ConnectorApi', ConnectorApi),
     ('ConnectorDb', ConnectorDb),
     ('ConnectorDiagnosticPolicy', ConnectorDiagnosticPolicy),
@@ -47,7 +48,8 @@ CONNECTOR_EXPORTS = [
     ('ConnectorDbConfigDict', ConnectorDbConfigDict),
     ('ConnectorFileConfigDict', ConnectorFileConfigDict),
     ('ConnectorQueueConfigDict', ConnectorQueueConfigDict),
-]
+)
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -60,7 +62,9 @@ class TestConnectorPackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert connector_pkg.__all__ == [name for name, _value in CONNECTOR_EXPORTS]
+        assert tuple(connector_pkg.__all__) == tuple(
+            name for name, _value in CONNECTOR_EXPORTS
+        )
 
     @pytest.mark.parametrize(('name', 'expected'), CONNECTOR_EXPORTS)
     def test_expected_symbol_bindings(
