@@ -24,20 +24,17 @@ class TestConnectorProtocol:
     """Unit tests for connector protocol behavior."""
 
     @pytest.mark.parametrize(
-        ('connector_cls', 'connector_type'),
+        'connector_cls',
         CONNECTOR_CLASS_PARAMS,
     )
     def test_concrete_connector_satisfies_runtime_protocol(
         self,
         connector_cls: ConnectorClass,
-        connector_type: str,
     ) -> None:
         """
         Test that concrete connector dataclasses satisfy the runtime protocol.
         """
-        connector = connector_cls.from_obj(
-            {'name': f'{connector_type}_connector', 'type': connector_type},
-        )
+        connector = connector_cls.from_obj({'name': 'connector'})
 
         assert isinstance(connector, ConnectorProtocol)
 
@@ -53,7 +50,7 @@ class TestConnectorBaseContracts:
     """Shared contract tests for concrete connector base subclasses."""
 
     @pytest.mark.parametrize(
-        ('connector_cls', 'connector_type'),
+        'connector_cls',
         CONNECTOR_CLASS_PARAMS,
     )
     @pytest.mark.parametrize(
@@ -66,7 +63,6 @@ class TestConnectorBaseContracts:
     def test_requires_name(
         self,
         connector_cls: ConnectorClass,
-        connector_type: str,
         name_fields: dict[str, object],
     ) -> None:
         """Connector constructors should reject missing or invalid names."""
@@ -74,4 +70,4 @@ class TestConnectorBaseContracts:
             TypeError,
             match=f'{connector_cls.__name__} requires a "name"',
         ):
-            connector_cls.from_obj({'type': connector_type} | name_fields)
+            connector_cls.from_obj(name_fields)
