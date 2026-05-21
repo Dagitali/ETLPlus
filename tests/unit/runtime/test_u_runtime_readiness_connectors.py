@@ -29,23 +29,6 @@ from .pytest_runtime_readiness import build_runtime_cfg as _cfg
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
-
-
-def _connector_checks(cfg: object) -> list[dict[str, object]]:
-    """Return connector checks using the production policy seams."""
-    return readiness_connectors_mod.ConnectorReadinessPolicy.readiness_checks(
-        cast(Any, cfg),
-        connector_gap_rows_fn=(
-            readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows
-        ),
-        make_check=(readiness_builder_mod.ReadinessReportBuilder.make_check),
-        package_available=(
-            readiness_builder_mod.ReadinessReportBuilder.package_available
-        ),
-    )
-
-
 BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
 SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
 
@@ -535,7 +518,16 @@ class TestReadinessReportBuilderConnectors:
             lambda *, cfg, package_available: missing_rows,
         )
 
-        checks = _connector_checks(cfg)
+        checks = readiness_connectors_mod.ConnectorReadinessPolicy.readiness_checks(
+            cast(Any, cfg),
+            connector_gap_rows_fn=(
+                readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows
+            ),
+            make_check=readiness_builder_mod.ReadinessReportBuilder.make_check,
+            package_available=(
+                readiness_builder_mod.ReadinessReportBuilder.package_available
+            ),
+        )
 
         assert checks == expected
 
