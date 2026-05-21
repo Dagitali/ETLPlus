@@ -11,6 +11,10 @@ from dataclasses import dataclass
 
 import pytest
 
+from etlplus.connector import ConnectorApi
+from etlplus.connector import ConnectorDb
+from etlplus.connector import ConnectorFile
+from etlplus.connector import ConnectorQueue
 from etlplus.queue import AmqpQueue
 from etlplus.queue import AwsSqsQueue
 from etlplus.queue import AzureServiceBusQueue
@@ -18,6 +22,11 @@ from etlplus.queue import GcpPubSubQueue
 from etlplus.queue import RedisQueue
 
 # SECTION: DATA CLASSES ===================================================== #
+
+
+type ConnectorClass = (
+    type[ConnectorApi] | type[ConnectorDb] | type[ConnectorFile] | type[ConnectorQueue]
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +67,13 @@ class QueueConnectorProviderCase:
 
 # SECTION: CONSTANTS ======================================================== #
 
+
+CONNECTOR_CLASS_PARAMS = (
+    pytest.param(ConnectorApi, 'api', id='api'),
+    pytest.param(ConnectorDb, 'database', id='database'),
+    pytest.param(ConnectorFile, 'file', id='file'),
+    pytest.param(ConnectorQueue, 'queue', id='queue'),
+)
 
 QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
     'aws-sqs': QueueConnectorProviderCase(
