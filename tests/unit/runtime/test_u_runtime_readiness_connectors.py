@@ -7,8 +7,6 @@ Connector readiness unit tests for :mod:`etlplus.runtime.readiness._builder`.
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import Any
-from typing import cast
 
 import pytest
 
@@ -59,7 +57,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert rows == [
@@ -97,7 +95,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert rows == [
@@ -168,7 +166,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert rows == [expected]
@@ -199,7 +197,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert rows == [
@@ -259,7 +257,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert rows == [
@@ -317,7 +315,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert not rows
@@ -334,7 +332,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert not rows
@@ -359,7 +357,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert [row['guidance'] for row in rows] == [
@@ -435,7 +433,7 @@ class TestReadinessReportBuilderConnectors:
 
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
+                cfg=cfg,
                 package_available=lambda _module: False,
             )
         )
@@ -519,7 +517,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         checks = readiness_connectors_mod.ConnectorReadinessPolicy.readiness_checks(
-            cast(Any, cfg),
+            cfg,
             connector_gap_rows_fn=(
                 readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows
             ),
@@ -599,7 +597,7 @@ class TestReadinessReportBuilderConnectors:
 
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
+                cfg=cfg,
                 package_available=lambda module_name: module_name == 'boto3',
             )
         )
@@ -647,7 +645,7 @@ class TestReadinessReportBuilderConnectors:
 
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
+                cfg=cfg,
                 package_available=lambda _name: False,
             )
         )
@@ -722,7 +720,7 @@ class TestReadinessReportBuilderConnectors:
 
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
+                cfg=cfg,
                 package_available=lambda module_name: module_name != missing_module,
             )
         )
@@ -768,7 +766,7 @@ class TestReadinessReportBuilderConnectors:
 
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
+                cfg=cfg,
                 package_available=(
                     readiness_builder_mod.ReadinessReportBuilder.package_available
                 ),
@@ -826,7 +824,7 @@ class TestReadinessReportBuilderConnectors:
 
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
+                cfg=cfg,
                 package_available=lambda _module_name: True,
             )
         )
@@ -848,7 +846,7 @@ class TestReadinessReportBuilderConnectors:
 
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
+                cfg=cfg,
                 package_available=lambda _name: True,
             )
         )
