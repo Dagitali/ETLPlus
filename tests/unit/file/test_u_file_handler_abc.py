@@ -60,10 +60,19 @@ class TestHandlerAbcHelpers:
         assert result == [{'id': 1}]
         assert path.parent.exists()
 
-    def test_use_connection_closes_on_success(self) -> None:
+    @pytest.mark.parametrize(
+        'raises',
+        [
+            pytest.param(False, id='success'),
+            pytest.param(True, id='failure'),
+        ],
+    )
+    def test_use_connection_always_closes(
+        self,
+        raises: bool,
+    ) -> None:
         """
-        Test that connection helper closing resources after successful
-        operation.
+        Test that connection helper closes resources after success or failure.
         """
         calls: list[str] = []
         connection = object()
@@ -79,45 +88,25 @@ class TestHandlerAbcHelpers:
         def _operation(conn: object) -> str:
             assert conn is connection
             calls.append('op')
+            if raises:
+                raise ValueError('boom')
             return 'ok'
 
-        result = mod._use_connection(
-            Path('data.db'),
-            connect=_connect,
-            close=_close,
-            operation=_operation,
-        )
-
-        assert result == 'ok'
-        assert calls == ['connect:data.db', 'op', 'close']
-
-    def test_use_connection_closes_on_failure(self) -> None:
-        """
-        Test that connection helper closes resources, even when operation
-        fails.
-        """
-        calls: list[str] = []
-        connection = object()
-
-        def _connect(path: Path) -> object:
-            calls.append(f'connect:{path.name}')
-            return connection
-
-        def _close(conn: object) -> None:
-            assert conn is connection
-            calls.append('close')
-
-        def _operation(conn: object) -> str:
-            assert conn is connection
-            calls.append('op')
-            raise ValueError('boom')
-
-        with pytest.raises(ValueError, match='boom'):
-            mod._use_connection(
+        if raises:
+            with pytest.raises(ValueError, match='boom'):
+                mod._use_connection(
+                    Path('data.db'),
+                    connect=_connect,
+                    close=_close,
+                    operation=_operation,
+                )
+        else:
+            result = mod._use_connection(
                 Path('data.db'),
                 connect=_connect,
                 close=_close,
                 operation=_operation,
             )
+            assert result == 'ok'
 
         assert calls == ['connect:data.db', 'op', 'close']
