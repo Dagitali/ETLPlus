@@ -53,26 +53,31 @@ def _collect_imported_wrapper_aliases(
     aliases: dict[str, str] = {}
     violations: list[str] = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name in _MODULE_NAMES:
-                    local_name = alias.asname or alias.name.rsplit('.', maxsplit=1)[-1]
-                    aliases[local_name] = alias.name
-            continue
-
-        if not isinstance(node, ast.ImportFrom):
-            continue
-        if node.module in _MODULE_NAMES:
-            for alias in node.names:
-                if alias.name in _WRAPPER_API_NAMES:
-                    violations.append(
-                        f'{path}:{node.lineno} imports {node.module}.{alias.name}',
-                    )
-        if node.module == 'etlplus.file':
-            for alias in node.names:
-                if alias.name in _MODULE_SHORT_NAMES:
-                    local_name = alias.asname or alias.name
-                    aliases[local_name] = f'etlplus.file.{alias.name}'
+        match node:
+            case ast.Import(names=names):
+                for alias in names:
+                    if alias.name in _MODULE_NAMES:
+                        local_name = alias.asname or alias.name.rsplit(
+                            '.',
+                            maxsplit=1,
+                        )[-1]
+                        aliases[local_name] = alias.name
+            case ast.ImportFrom(module=module_name, names=names):
+                if module_name in _MODULE_NAMES:
+                    for alias in names:
+                        if alias.name in _WRAPPER_API_NAMES:
+                            violations.append(
+                                f'{path}:{node.lineno} imports '
+                                f'{module_name}.{alias.name}',
+                            )
+                if module_name != 'etlplus.file':
+                    continue
+                for alias in names:
+                    if alias.name in _MODULE_SHORT_NAMES:
+                        local_name = alias.asname or alias.name
+                        aliases[local_name] = f'etlplus.file.{alias.name}'
+            case _:
+                continue
     return aliases, violations
 
 
