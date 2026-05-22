@@ -22,39 +22,45 @@ from etlplus.file import _module_callables as mod
 class TestModuleCallables:
     """Unit tests for optional module callable helpers."""
 
-    def test_call_module_method_missing_method_uses_custom_module_name(
-        self,
-    ) -> None:
-        """Test that missing-method errors include provided module metadata."""
-        with pytest.raises(
-            ImportError,
-            match=('XPT read support requires "pyreadstat" with read_xpt\\(\\)\\.'),
-        ):
-            mod.call_module_method(
+    @pytest.mark.parametrize(
+        ('module', 'kwargs', 'error_type', 'match'),
+        [
+            pytest.param(
                 object(),
-                format_name='XPT',
-                method_name='read_xpt',
-                operation='read',
-                module_name='pyreadstat',
-            )
-
-    def test_call_module_method_raises_when_dependency_is_missing(
-        self,
-    ) -> None:
-        """
-        Test that required module calls raise runtime errors for ``None``.
-        """
-        with pytest.raises(
-            RuntimeError,
-            match='pyreadstat dependency is required for SAV write',
-        ):
-            mod.call_module_method(
+                {
+                    'format_name': 'XPT',
+                    'method_name': 'read_xpt',
+                    'operation': 'read',
+                    'module_name': 'pyreadstat',
+                },
+                ImportError,
+                'XPT read support requires "pyreadstat" with read_xpt\\(\\)\\.',
+                id='missing-method',
+            ),
+            pytest.param(
                 None,
-                format_name='SAV',
-                method_name='write_sav',
-                operation='write',
-                module_name='pyreadstat',
-            )
+                {
+                    'format_name': 'SAV',
+                    'method_name': 'write_sav',
+                    'operation': 'write',
+                    'module_name': 'pyreadstat',
+                },
+                RuntimeError,
+                'pyreadstat dependency is required for SAV write',
+                id='missing-module',
+            ),
+        ],
+    )
+    def test_call_module_method_error_cases(
+        self,
+        module: object | None,
+        kwargs: dict[str, str],
+        error_type: type[Exception],
+        match: str,
+    ) -> None:
+        """Test required module call errors for missing modules or methods."""
+        with pytest.raises(error_type, match=match):
+            mod.call_module_method(module, **kwargs)
 
     def test_call_module_method_success_path(self) -> None:
         """Test that required module method invocation with args and kwargs."""
