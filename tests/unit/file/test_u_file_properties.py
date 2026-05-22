@@ -7,7 +7,6 @@ Unit tests for :mod:`etlplus.file.properties`.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -67,7 +66,6 @@ class TestProperties(
         tmp_path: Path,
     ) -> None:
         path = self.format_path(tmp_path, stem='config')
-        invalid_payload: Any = ['nope']
 
         with pytest.raises(TypeError, match='PROPERTIES'):
-            mod.PropertiesFile().write(path, invalid_payload)
+            mod.PropertiesFile().write(path, ['nope'])
