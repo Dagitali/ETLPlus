@@ -145,37 +145,55 @@ class TestImportsHelpers:
         )
         assert calls == [('yaml', 'YAML', 'PyYAML', False)]
 
-    def test_get_dependency_raises_optional_standard_message(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that optional dependency failures using normalized format
-        messages.
-        """
-        monkeypatch.setattr(mod._DEPENDENCY_IMPORTER, 'cache', {})
-        monkeypatch.setattr(
-            mod._DEPENDENCY_IMPORTER,
-            'importer',
-            lambda _name: (_ for _ in ()).throw(ImportError('missing')),
-        )
-        expected = (
-            'NC support requires optional dependency "xarray".\n'
-            'Install with: pip install xarray'
-        )
-        with pytest.raises(ImportError, match=re.escape(expected)):
-            mod.get_dependency(
+    @pytest.mark.parametrize(
+        ('module_name', 'format_name', 'pip_name', 'required', 'expected'),
+        [
+            pytest.param(
                 'xarray',
-                format_name='NC',
-            )
-
-    def test_get_dependency_raises_required_standard_message(
+                'NC',
+                None,
+                False,
+                (
+                    'NC support requires optional dependency "xarray".\n'
+                    'Install with: pip install xarray'
+                ),
+                id='optional-default-pip-name',
+            ),
+            pytest.param(
+                'bson',
+                'BSON',
+                'pymongo',
+                True,
+                (
+                    'BSON support requires dependency "pymongo".\n'
+                    'Install with: pip install pymongo'
+                ),
+                id='required-explicit-pip-name',
+            ),
+            pytest.param(
+                'missing_dep',
+                'CUSTOM',
+                None,
+                False,
+                (
+                    'CUSTOM support requires optional dependency "missing_dep".\n'
+                    'Install with: pip install missing_dep'
+                ),
+                id='optional-custom-format',
+            ),
+        ],
+    )
+    def test_get_dependency_raises_standard_message(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        module_name: str,
+        format_name: str,
+        pip_name: str | None,
+        required: bool,
+        expected: str,
     ) -> None:
         """
-        Test that required dependency failures using normalized format
-        messages.
+        Test that dependency failures use normalized format messages.
         """
         monkeypatch.setattr(mod._DEPENDENCY_IMPORTER, 'cache', {})
         monkeypatch.setattr(
@@ -183,16 +201,12 @@ class TestImportsHelpers:
             'importer',
             lambda _name: (_ for _ in ()).throw(ImportError('missing')),
         )
-        expected = (
-            'BSON support requires dependency "pymongo".\n'
-            'Install with: pip install pymongo'
-        )
         with pytest.raises(ImportError, match=re.escape(expected)):
             mod.get_dependency(
-                'bson',
-                format_name='BSON',
-                pip_name='pymongo',
-                required=True,
+                module_name,
+                format_name=format_name,
+                pip_name=pip_name,
+                required=required,
             )
 
     def test_get_dependency_imports_and_caches(
@@ -215,27 +229,6 @@ class TestImportsHelpers:
         )
         assert result is sentinel
         assert cache['example_dep'] is sentinel
-
-    def test_get_dependency_raises_formatted_error_message(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that missing dependency errors use formatted messages."""
-        monkeypatch.setattr(mod._DEPENDENCY_IMPORTER, 'cache', {})
-        monkeypatch.setattr(
-            mod._DEPENDENCY_IMPORTER,
-            'importer',
-            lambda _name: (_ for _ in ()).throw(ImportError('missing')),
-        )
-        expected = (
-            'CUSTOM support requires optional dependency "missing_dep".\n'
-            'Install with: pip install missing_dep'
-        )
-        with pytest.raises(ImportError, match=re.escape(expected)):
-            mod.get_dependency(
-                'missing_dep',
-                format_name='CUSTOM',
-            )
 
     def test_get_dependency_uses_cache_when_available(
         self,
