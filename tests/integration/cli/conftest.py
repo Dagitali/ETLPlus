@@ -10,7 +10,6 @@ from __future__ import annotations
 import importlib
 import itertools
 import json
-import os
 from collections.abc import Iterator
 from dataclasses import dataclass
 from io import BytesIO
@@ -19,13 +18,14 @@ from textwrap import dedent
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Protocol
-from typing import cast
 from uuid import uuid4
 
 import pytest
 
 from etlplus.storage import StorageLocation
 from etlplus.storage import get_backend
+from tests.integration.conftest import _child_uri
+from tests.integration.conftest import _require_env
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFactory
@@ -41,7 +41,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 
-# SECTION: TYPES ============================================================ #
+# SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(slots=True)
@@ -114,6 +114,9 @@ class TableSpec:
     table_name: str
 
 
+# SECTION: PROTOCOLS ======================================================== #
+
+
 class PipelineConfigFactory(Protocol):
     """Protocol for pipeline config factory fixtures."""
 
@@ -146,29 +149,6 @@ class RealRemoteTargetFactory(Protocol):
         suffix: str,
         extension: str = 'json',
     ) -> RealRemoteTarget: ...
-
-
-def _child_uri(base_uri: str, filename: str) -> str:
-    """Append one test filename to a remote base URI."""
-    return f'{base_uri.rstrip("/")}/{filename}'
-
-
-def _require_env(name: str) -> str:
-    """
-    Return one required env var or skip the integration test.
-
-    Example safe placeholder values:
-    - ``ETLPLUS_TEST_S3_URI=s3://my-etlplus-integration-bucket/cli``
-    - ``ETLPLUS_TEST_AZURE_BLOB_URI=azure-blob://etlplus-integration/cli``
-
-    Real values should be supplied from developer shell config, ``.envrc``,
-    VS Code test environment settings, or CI secret stores rather than being
-    committed to the repository.
-    """
-    value = os.getenv(name)
-    if not value:
-        pytest.skip(f'{name} is not configured for cloud integration tests')
-    return cast(str, value)
 
 
 # SECTION: FIXTURES ========================================================= #

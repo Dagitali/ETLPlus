@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 import pathlib
 from collections.abc import Callable
 from typing import Any
 from typing import Protocol
+from typing import cast
 
 import pytest
 
@@ -60,6 +62,32 @@ class FakeEndpointClientProtocol(Protocol):
     """
 
     seen: dict[str, Any]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _child_uri(base_uri: str, filename: str) -> str:
+    """Append one test filename to a remote base URI."""
+    return f'{base_uri.rstrip("/")}/{filename}'
+
+
+def _require_env(name: str) -> str:
+    """
+    Return one required env var or skip the integration test.
+
+    Example safe placeholder values:
+    - ``ETLPLUS_TEST_S3_URI=s3://my-etlplus-integration-bucket/cli``
+    - ``ETLPLUS_TEST_AZURE_BLOB_URI=azure-blob://etlplus-integration/cli``
+
+    Real values should be supplied from developer shell config, ``.envrc``,
+    VS Code test environment settings, or CI secret stores rather than being
+    committed to the repository.
+    """
+    value = os.getenv(name)
+    if not value:
+        pytest.skip(f'{name} is not configured for cloud integration tests')
+    return cast(str, value)
 
 
 # SECTION: FIXTURES ========================================================= #
