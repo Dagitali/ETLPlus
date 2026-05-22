@@ -119,12 +119,11 @@ def _expected_matrix_row(file_format: FileFormat) -> MatrixRow:
 
 def _expected_supported_formats() -> set[FileFormat]:
     """Return non-stub formats from explicit registry mappings."""
-    expected: set[FileFormat] = set()
-    for file_format in mod._HANDLER_CLASS_SPECS:
-        handler_class = mod.get_handler_class(file_format)
-        if not issubclass(handler_class, StubFileHandlerABC):
-            expected.add(file_format)
-    return expected
+    return {
+        file_format
+        for file_format in mod._HANDLER_CLASS_SPECS
+        if not issubclass(mod.get_handler_class(file_format), StubFileHandlerABC)
+    }
 
 
 def _parse_file_package_supported_formats(
