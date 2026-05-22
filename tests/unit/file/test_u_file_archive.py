@@ -22,30 +22,29 @@ from etlplus.file._enums import FileFormat
 class TestArchiveHelpers:
     """Unit tests for archive payload format inference helpers."""
 
-    def test_infer_archive_payload_format_allows_missing_payload_format(
+    @pytest.mark.parametrize(
+        ('path', 'require_format', 'expected'),
+        [
+            pytest.param('data.unknown.gz', False, None, id='optional-unknown'),
+            pytest.param('data.csv.gz', True, FileFormat.CSV, id='known-required'),
+        ],
+    )
+    def test_infer_archive_payload_format_success_cases(
         self,
+        path: str,
+        require_format: bool,
+        expected: FileFormat | None,
     ) -> None:
-        """
-        Test that an optional payload format returns ``None`` when unresolved.
-        """
+        """Test successful archive payload format inference variants."""
         assert (
             mod.infer_archive_payload_format(
-                'data.unknown.gz',
+                path,
                 allowed_compressions=(CompressionFormat.GZ,),
                 compression_error='bad compression',
-                require_format=False,
+                require_format=require_format,
             )
-            is None
+            is expected
         )
-
-    def test_infer_archive_payload_format_happy_path(self) -> None:
-        """Test that inferring payload format when compression is allowed."""
-        result = mod.infer_archive_payload_format(
-            'data.csv.gz',
-            allowed_compressions=(CompressionFormat.GZ,),
-            compression_error='bad compression',
-        )
-        assert result is FileFormat.CSV
 
     def test_infer_archive_payload_format_rejects_disallowed_compression(
         self,
