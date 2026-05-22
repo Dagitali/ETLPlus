@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from types import SimpleNamespace
 from typing import Any
-from typing import cast
 
 import pytest
 
@@ -32,7 +31,7 @@ class TestMappingHelpers:
             pytest.param({}, {}, id='empty-dict'),
             pytest.param({'a': 1}, {'a': '1'}, id='coerce-values-to-str'),
             pytest.param(
-                cast(Any, {1: 2}),
+                {1: 2},
                 {'1': '2'},
                 id='coerce-keys-and-values',
             ),
@@ -40,7 +39,7 @@ class TestMappingHelpers:
     )
     def test_cast_str_dict(
         self,
-        mapping: Mapping[str, Any] | None,
+        mapping: Mapping[object, object] | None,
         expected: dict[str, str],
     ) -> None:
         """
