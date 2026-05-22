@@ -10,6 +10,7 @@ from etlplus.file import hbs as mod
 
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_contract_mixins import TemplateFileContractMixin
+from .pytest_file_contract_mixins import TemplateRenderContractMixin
 from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
 # SECTION: PRAGMAS ========================================================== #
@@ -19,22 +20,18 @@ from .pytest_file_roundtrip_cases import build_roundtrip_spec
 # SECTION: TESTS ============================================================ #
 
 
-class TestHbs(TemplateFileContractMixin, RoundtripUnitModuleContract):
+class TestHbs(
+    TemplateRenderContractMixin,
+    TemplateFileContractMixin,
+    RoundtripUnitModuleContract,
+):
     """Unit tests for :mod:`etlplus.file.hbs`."""
 
     module = mod
     format_name = 'hbs'
     sample_template_text = 'Hello {{name}}'
+    render_template = 'Hello {{name}} from {{city}}.'
     roundtrip_spec = build_roundtrip_spec(
         {'template': 'Hi {{name}}'},
         [{'template': 'Hi {{name}}'}],
     )
-
-    def test_render_substitutes_handlebars_tokens(self) -> None:
-        """Test that :meth:`render` replaces simple Handlebars variables."""
-        result = self.module_handler.render(
-            'Hello {{name}} from {{city}}.',
-            {'name': 'Ada', 'city': 'Paris'},
-        )
-
-        assert result == 'Hello Ada from Paris.'
