@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from typing import cast
 
 import pytest
 
@@ -47,12 +46,12 @@ class TestCbor(BinaryCodecModuleContract):
         Test that :func:`read` raises when the CBOR payload is not an array of
         objects.
         """
-        codec = self._make_codec_stub(loaded_result={'loaded': True})
+        codec: Any = self._make_codec_stub(loaded_result={'loaded': True})
 
         def _loads(_: bytes) -> object:  # noqa: ARG001
             return [1, 2]
 
-        cast(Any, codec).loads = _loads
+        codec.loads = _loads
         optional_module_stub({'cbor2': codec})
         path = self.format_path(tmp_path)
         path.write_bytes(b'payload')

@@ -634,11 +634,12 @@ class TestFile:
     ) -> None:
         """Test that explicit string file-format coercion and validation."""
         path = tmp_path / 'data.json'
+        file_format: Any = raw_format
         if expected is None:
             with pytest.raises(ValueError, match='Invalid FileFormat value'):
-                File(path, cast(Any, raw_format))
+                File(path, file_format)
             return
-        file = File(path, cast(Any, raw_format))
+        file = File(path, file_format)
         assert file.file_format is expected
 
     def test_gz_roundtrip_json(
