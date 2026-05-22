@@ -552,8 +552,7 @@ class TestReadinessReportBuilderConnectors:
     ) -> None:
         """Test actionable guidance for blank and non-storage invalid types."""
         assert (
-            readiness_connectors_mod.connector_type_guidance(connector_type)
-            == expected
+            readiness_connectors_mod.connector_type_guidance(connector_type) == expected
         )
 
     def test_dedupe_rows_preserves_first_occurrence(self) -> None:
@@ -977,13 +976,16 @@ class TestReadinessReportBuilderConnectors:
         expected: dict[str, object],
     ) -> None:
         """Requirement rows should preserve provider-specific DB context."""
-        assert readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
-            connector=connector,
-            detected_database_provider=provider,
-            reason=reason,
-            requirement=requirement,
-            role='source',
-        ) == expected
+        assert (
+            readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
+                connector=connector,
+                detected_database_provider=provider,
+                reason=reason,
+                requirement=requirement,
+                role='source',
+            )
+            == expected
+        )
 
     @pytest.mark.parametrize(
         ('available_modules', 'expected'),
