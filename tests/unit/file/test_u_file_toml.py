@@ -31,7 +31,7 @@ type DumpCall = dict[str, object]
 
 
 @dataclass
-class _TomlDumperStub:
+class _TomliWModuleStub:
     """Stub for TOML dumper modules exposing ``dumps``."""
 
     output: str
@@ -58,7 +58,7 @@ class TestToml(
 ):
     """Unit tests for :mod:`etlplus.file.toml`."""
 
-    _tomli_w_stub: _TomlDumperStub
+    _tomli_w_stub: _TomliWModuleStub
 
     module = mod
     format_name = 'toml'
@@ -80,17 +80,17 @@ class TestToml(
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install ``tomli_w`` stub for roundtrip contract tests."""
-        optional_module_stub({'tomli_w': _TomlDumperStub('name = "etl"\n')})
+        optional_module_stub({'tomli_w': _TomliWModuleStub('name = "etl"\n')})
 
     def setup_write_dependencies(
         self,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
         """Install ``tomli_w`` stub for write contract tests."""
-        self._tomli_w_stub = _TomlDumperStub('tomli_w_output')
+        self._tomli_w_stub = _TomliWModuleStub('tomli_w_output')
         optional_module_stub({'tomli_w': self._tomli_w_stub})
 
-    def test_read_non_table_raises(
+    def test_read_rejects_non_table_root(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
