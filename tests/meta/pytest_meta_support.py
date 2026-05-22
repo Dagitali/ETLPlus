@@ -94,11 +94,11 @@ def regex_matches(
     list[re.Match[str]]
         List of regex match objects for each line that matches the pattern.
     """
-    matches: list[re.Match[str]] = []
-    for line in read_lines(path):
-        if (match := pattern.match(line)) is not None:
-            matches.append(match)
-    return matches
+    return [
+        match
+        for line in read_lines(path)
+        if (match := pattern.match(line)) is not None
+    ]
 
 
 def scope_conftests(
