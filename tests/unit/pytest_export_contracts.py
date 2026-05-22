@@ -78,6 +78,4 @@ def assert_package_exports(
     expected_exports : tuple[ExportCase, ...]
         Export-name and canonical-object pairs used by binding tests.
     """
-    assert package_module.__all__ == [
-        name for name, _value in expected_exports
-    ]
+    assert package_module.__all__ == [name for name, _value in expected_exports]
