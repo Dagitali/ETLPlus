@@ -27,6 +27,8 @@ from etlplus.queue import QueueType
 from etlplus.queue import RedisQueue
 from etlplus.queue import RedisQueueConfigDict
 
+from ..pytest_export_contracts import assert_package_exports
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -70,9 +72,7 @@ class TestQueuePackageExports:
 
     def test_expected_symbols(self) -> None:
         """Test that package facade preserves the documented export order."""
-        assert tuple(queue_pkg.__all__) == tuple(
-            name for name, _value in QUEUE_EXPORTS
-        )
+        assert_package_exports(package_module=queue_pkg, expected_exports=QUEUE_EXPORTS)
 
     def test_protocol_placeholder_to_connector_options_raises_not_implemented(
         self,
