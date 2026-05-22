@@ -9,6 +9,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
+
 from tests.integration.file.pytest_smoke_file_contracts import (
     SMOKE_ROUNDTRIP_EXCEPTION_MODULES,
 )
@@ -29,6 +31,8 @@ from tests.meta.pytest_meta_support import REPO_ROOT
 
 _INTEGRATION_FILE_ROOT = REPO_ROOT / 'tests' / 'integration' / 'file'
 _INTEGRATION_FILE_PATTERN = 'test_i_file_*.py'
+
+type ContractClassesByPath = dict[Path, list[ast.ClassDef]]
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -81,19 +85,16 @@ def _contract_classes(path: Path) -> list[ast.ClassDef]:
     ]
 
 
-def _module_override_attrs(path: Path) -> set[str]:
-    """Return roundtrip override attrs used by one module contract class."""
-    attrs: set[str] = set()
-    for class_node in _contract_classes(path):
-        attrs.update(
-            _class_assigned_names(class_node) & SMOKE_ROUNDTRIP_OVERRIDE_ATTRS,
-        )
-    return attrs
+# SECTION: FIXTURES ========================================================= #
 
 
-def _integration_file_test_modules() -> list[Path]:
-    """Return sorted integration file smoke test module paths."""
-    return sorted(_INTEGRATION_FILE_ROOT.glob(_INTEGRATION_FILE_PATTERN))
+@pytest.fixture(name='contract_classes_by_path', scope='module')
+def contract_classes_by_path_fixture() -> ContractClassesByPath:
+    """Return parsed contract classes for integration file smoke tests."""
+    return {
+        path: _contract_classes(path)
+        for path in sorted(_INTEGRATION_FILE_ROOT.glob(_INTEGRATION_FILE_PATTERN))
+    }
 
 
 # SECTION: TESTS ============================================================ #
@@ -102,35 +103,50 @@ def _integration_file_test_modules() -> list[Path]:
 class TestIntegrationFileSmokeConventions:
     """Guardrails for integration file-smoke contract symmetry."""
 
-    def test_all_modules_use_smoke_roundtrip_contract(self) -> None:
+    def test_all_modules_use_smoke_roundtrip_contract(
+        self,
+        contract_classes_by_path: ContractClassesByPath,
+    ) -> None:
         """Test each integration file module uses one contract test class."""
         missing_contract = sorted(
             path.name
-            for path in _integration_file_test_modules()
-            if not _contract_classes(path)
+            for path, contract_classes in contract_classes_by_path.items()
+            if not contract_classes
         )
         assert not missing_contract, (
             'Integration file tests without SmokeRoundtripModuleContract:\n- '
             + '\n- '.join(missing_contract)
         )
 
-    def test_each_module_has_exactly_one_contract_test_class(self) -> None:
+    def test_each_module_has_exactly_one_contract_test_class(
+        self,
+        contract_classes_by_path: ContractClassesByPath,
+    ) -> None:
         """Test each integration file module defining one contract class."""
         offenders = sorted(
             f'{path.name}: {len(contract_classes)}'
-            for path in _integration_file_test_modules()
-            if len(contract_classes := _contract_classes(path)) != 1
+            for path, contract_classes in contract_classes_by_path.items()
+            if len(contract_classes) != 1
         )
         assert not offenders, (
             'Integration file modules must define exactly one contract '
             'test class:\n- ' + '\n- '.join(offenders)
         )
 
-    def test_only_documented_modules_use_override_attributes(self) -> None:
+    def test_only_documented_modules_use_override_attributes(
+        self,
+        contract_classes_by_path: ContractClassesByPath,
+    ) -> None:
         """Test only documented exception modules using override attrs."""
         overrides_by_module = {
-            path.name: _module_override_attrs(path)
-            for path in _integration_file_test_modules()
+            path.name: set().union(
+                *(
+                    _class_assigned_names(class_node)
+                    & SMOKE_ROUNDTRIP_OVERRIDE_ATTRS
+                    for class_node in contract_classes
+                ),
+            )
+            for path, contract_classes in contract_classes_by_path.items()
         }
         observed_exception_modules = {
             module_name for module_name, attrs in overrides_by_module.items() if attrs
