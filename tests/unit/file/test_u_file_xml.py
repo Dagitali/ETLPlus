@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from etlplus.file import xml as mod
 from etlplus.file.base import WriteOptions
 
@@ -58,51 +60,55 @@ class TestXml(RoundtripUnitModuleContract):
         assert text.startswith('<rows>')
         assert 'ignored' not in text
 
-    def test_loads_parses_attributes_and_repeated_tags(self) -> None:
-        """
-        Test that :meth:`loads` converts attributes and repeated tags
-        predictably.
-        """
-        payload = (
-            '<root id="7">'
-            '<item code="A"><text>first</text></item>'
-            '<item code="B"><text>second</text></item>'
-            '</root>'
-        )
-
-        result = mod.XmlFile().loads(payload)
-
-        assert result == {
-            'root': {
-                '@id': '7',
-                'item': [
-                    {'@code': 'A', 'text': {'text': 'first'}},
-                    {'@code': 'B', 'text': {'text': 'second'}},
-                ],
-            },
-        }
-
-    def test_loads_three_repeated_tags_appends_to_existing_list(self) -> None:
-        """Test that repeated XML tags append when a list already exists."""
-        payload = (
-            '<root>'
-            '<item><text>first</text></item>'
-            '<item><text>second</text></item>'
-            '<item><text>third</text></item>'
-            '</root>'
-        )
-
-        result = mod.XmlFile().loads(payload)
-
-        assert result == {
-            'root': {
-                'item': [
-                    {'text': {'text': 'first'}},
-                    {'text': {'text': 'second'}},
-                    {'text': {'text': 'third'}},
-                ],
-            },
-        }
+    @pytest.mark.parametrize(
+        ('payload', 'expected'),
+        [
+            pytest.param(
+                (
+                    '<root id="7">'
+                    '<item code="A"><text>first</text></item>'
+                    '<item code="B"><text>second</text></item>'
+                    '</root>'
+                ),
+                {
+                    'root': {
+                        '@id': '7',
+                        'item': [
+                            {'@code': 'A', 'text': {'text': 'first'}},
+                            {'@code': 'B', 'text': {'text': 'second'}},
+                        ],
+                    },
+                },
+                id='attributes-and-repeated-tags',
+            ),
+            pytest.param(
+                (
+                    '<root>'
+                    '<item><text>first</text></item>'
+                    '<item><text>second</text></item>'
+                    '<item><text>third</text></item>'
+                    '</root>'
+                ),
+                {
+                    'root': {
+                        'item': [
+                            {'text': {'text': 'first'}},
+                            {'text': {'text': 'second'}},
+                            {'text': {'text': 'third'}},
+                        ],
+                    },
+                },
+                id='append-to-existing-list',
+            ),
+        ],
+    )
+    def test_loads_normalizes_repeated_tags(
+        self,
+        payload: str,
+        expected: dict[str, object],
+    ) -> None:
+        """Test repeated XML tag normalization variants."""
+        assert mod.XmlFile().loads(payload) == expected
 
     def test_write_uses_root_tag_and_read_roundtrip(
         self,
