@@ -46,13 +46,12 @@ _ETLPLUS_ROOT = REPO_ROOT / 'etlplus'
 def _collect_imported_wrapper_aliases(
     path: Path,
     tree: ast.AST,
-    *,
-    violations: list[str],
-) -> dict[str, str]:
+) -> tuple[dict[str, str], list[str]]:
     """
     Collect imported file-module aliases and report disallowed imports.
     """
     aliases: dict[str, str] = {}
+    violations: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -74,7 +73,7 @@ def _collect_imported_wrapper_aliases(
                 if alias.name in _MODULE_SHORT_NAMES:
                     local_name = alias.asname or alias.name
                     aliases[local_name] = f'etlplus.file.{alias.name}'
-    return aliases
+    return aliases, violations
 
 
 def _collect_wrapper_call_violations(
@@ -184,11 +183,10 @@ class TestInternalRuntimeCode:
         violations: list[str] = []
 
         for path, tree in internal_runtime_trees:
-            imported_wrapper_aliases = _collect_imported_wrapper_aliases(
-                path,
-                tree,
-                violations=violations,
+            imported_wrapper_aliases, import_violations = (
+                _collect_imported_wrapper_aliases(path, tree)
             )
+            violations.extend(import_violations)
             violations.extend(
                 _collect_wrapper_call_violations(
                     path,
