@@ -45,12 +45,26 @@ class _BadRootOverrideHandler(_BadRootDefaultHandler):
 class TestDictPayloadTextCodecHandlerMixin:
     """Unit tests for dict-root payload coercion branches."""
 
-    def test_loads_raises_default_type_error_for_non_dict_root(self) -> None:
-        """Test default dict-root error message branch."""
-        with pytest.raises(TypeError, match='INI root must be a dict'):
-            _BadRootDefaultHandler().loads('payload')
-
-    def test_loads_raises_override_error_for_non_dict_root(self) -> None:
-        """Test override dict-root error message branch."""
-        with pytest.raises(TypeError, match='override root error'):
-            _BadRootOverrideHandler().loads('payload')
+    @pytest.mark.parametrize(
+        ('handler_cls', 'match'),
+        [
+            pytest.param(
+                _BadRootDefaultHandler,
+                'INI root must be a dict',
+                id='default-message',
+            ),
+            pytest.param(
+                _BadRootOverrideHandler,
+                'override root error',
+                id='override-message',
+            ),
+        ],
+    )
+    def test_loads_raises_type_error_for_non_dict_root(
+        self,
+        handler_cls: type[_BadRootDefaultHandler],
+        match: str,
+    ) -> None:
+        """Test dict-root error message variants."""
+        with pytest.raises(TypeError, match=match):
+            handler_cls().loads('payload')
