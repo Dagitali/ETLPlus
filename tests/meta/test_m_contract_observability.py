@@ -7,7 +7,6 @@ Contract tests for the stable observability surface.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -17,6 +16,7 @@ from etlplus.history import HistoryStore
 from etlplus.history import RunCompletion
 from etlplus.history import RunRecord
 from etlplus.history._store import JobRunRecord
+from tests.meta.pytest_meta_support import REPO_ROOT
 
 # SECTION: MARKERS ========================================================== #
 
@@ -137,9 +137,8 @@ class TestStructuredEventContract:
         Test that the published docs keep the dedicated structured-events guide
         wired in.
         """
-        repo_root = Path(__file__).resolve().parents[2]
-        guide_path = repo_root / 'docs/source/guides/structured-events.md'
-        guides_index_path = repo_root / 'docs/source/guides/index.md'
+        guide_path = REPO_ROOT / 'docs/source/guides/structured-events.md'
+        guides_index_path = REPO_ROOT / 'docs/source/guides/index.md'
 
         assert guide_path.exists()
         assert 'etlplus.event.v1' in guide_path.read_text(encoding='utf-8')
