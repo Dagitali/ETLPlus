@@ -6,6 +6,7 @@ Unit tests for :mod:`etlplus.utils._mapping`.
 
 from __future__ import annotations
 
+import operator
 from collections.abc import Mapping
 from types import SimpleNamespace
 from typing import Any
@@ -139,7 +140,7 @@ class TestMappingHelpers:
 
         assert dict(frozen) == {'1': 'a'}
         with pytest.raises(TypeError):
-            frozen['2'] = 'b'  # type: ignore[index]
+            operator.setitem(frozen, '2', 'b')
 
     def test_index_named_items_normalizes_names(self) -> None:
         """Test that usable names are stripped before indexing."""
