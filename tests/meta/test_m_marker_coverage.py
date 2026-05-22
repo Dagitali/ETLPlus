@@ -10,7 +10,6 @@ import pytest
 
 from tests.meta.pytest_meta_support import REPO_ROOT
 from tests.meta.pytest_meta_support import TESTS_ROOT
-from tests.meta.pytest_meta_support import scope_conftests
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -48,7 +47,7 @@ def test_scope_conftests_declare_expected_scope_markers(
     """
     Test that each scope ``conftest.py`` includes the expected scope marker.
     """
-    conftests = scope_conftests(scope_name)
+    conftests = sorted((TESTS_ROOT / scope_name).rglob('conftest.py'))
     assert conftests, f'No conftest.py files found under tests/{scope_name}'
     missing = sorted(
         path.relative_to(REPO_ROOT).as_posix()
