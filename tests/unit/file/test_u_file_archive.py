@@ -46,28 +46,46 @@ class TestArchiveHelpers:
             is expected
         )
 
-    def test_infer_archive_payload_format_rejects_disallowed_compression(
-        self,
-    ) -> None:
-        """Test that disallowed compression raises the provided error."""
-        with pytest.raises(ValueError, match='compression not allowed'):
-            mod.infer_archive_payload_format(
+    @pytest.mark.parametrize(
+        (
+            'path',
+            'allowed_compressions',
+            'compression_error',
+            'require_format',
+            'match',
+        ),
+        [
+            pytest.param(
                 'data.csv.gz',
-                allowed_compressions=(CompressionFormat.ZIP,),
-                compression_error='compression not allowed',
-            )
-
-    def test_infer_archive_payload_format_requires_payload_format(
-        self,
-    ) -> None:
-        """
-        Test that unknown compressed files fail when payload format is
-        required.
-        """
-        with pytest.raises(ValueError, match='Cannot infer file format'):
-            mod.infer_archive_payload_format(
+                (CompressionFormat.ZIP,),
+                'compression not allowed',
+                False,
+                'compression not allowed',
+                id='disallowed-compression',
+            ),
+            pytest.param(
                 'data.unknown.gz',
-                allowed_compressions=(CompressionFormat.GZ,),
-                compression_error='bad compression',
-                require_format=True,
+                (CompressionFormat.GZ,),
+                'bad compression',
+                True,
+                'Cannot infer file format',
+                id='required-payload-format',
+            ),
+        ],
+    )
+    def test_infer_archive_payload_format_error_cases(
+        self,
+        path: str,
+        allowed_compressions: tuple[CompressionFormat, ...],
+        compression_error: str,
+        require_format: bool,
+        match: str,
+    ) -> None:
+        """Test archive payload format inference error variants."""
+        with pytest.raises(ValueError, match=match):
+            mod.infer_archive_payload_format(
+                path,
+                allowed_compressions=allowed_compressions,
+                compression_error=compression_error,
+                require_format=require_format,
             )
