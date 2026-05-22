@@ -27,11 +27,14 @@ from etlplus.file.stub import StubFileHandlerABC
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_SCIENTIFIC_STUB_MODULES: list[tuple[type[ScientificDatasetFileHandlerABC], str]] = [
+_SCIENTIFIC_STUB_MODULES: tuple[
+    tuple[type[ScientificDatasetFileHandlerABC], str],
+    ...,
+] = (
     (mat_mod.MatFile, 'mat'),
     (sylk_mod.SylkFile, 'sylk'),
     (zsav_mod.ZsavFile, 'zsav'),
-]
+)
 
 
 type DatasetSelectorMode = Literal['dataset_kwarg', 'options']
@@ -70,26 +73,6 @@ class TestScientificStubDatasetKeys:
     """
     Unit tests for dataset-key validation in stub-backed scientific files.
     """
-
-    def _assert_stub_not_called(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        *,
-        operation: Operation | None = None,
-    ) -> None:
-        """Patch stub base operations to fail if they are called."""
-        if operation in (None, 'read'):
-            monkeypatch.setattr(
-                StubFileHandlerABC,
-                'read',
-                self._raise_stub_called,
-            )
-        if operation in (None, 'write'):
-            monkeypatch.setattr(
-                StubFileHandlerABC,
-                'write',
-                self._raise_stub_called,
-            )
 
     def test_list_datasets_returns_single_default_key(
         self,
@@ -134,10 +117,11 @@ class TestScientificStubDatasetKeys:
         """
         handler_cls, _ = scientific_module_case
         handler = handler_cls()
-        self._assert_stub_not_called(
-            monkeypatch,
-            operation=operation,
-        )
+
+        def _raise_stub_called(*_args: object, **_kwargs: object) -> object:
+            raise AssertionError('stub operation should not be called')
+
+        monkeypatch.setattr(StubFileHandlerABC, operation, _raise_stub_called)
         method = getattr(handler, method_name)
         args: tuple[object, ...] = (Path('ignored.file'),)
         if operation == 'write':
@@ -154,16 +138,6 @@ class TestScientificStubDatasetKeys:
         with pytest.raises(ValueError, match='supports only dataset key'):
             method(*args, **kwargs)
 
-    @staticmethod
-    def _raise_stub_called(
-        *_args: object,
-        **_kwargs: object,
-    ) -> object:
-        """
-        Raise when a stubbed scientific I/O function is unexpectedly used.
-        """
-        raise AssertionError('stub operation should not be called')
-
 
 class TestScientificDatasetHelpers:
     """Unit tests for low-level scientific dataset-key helper functions."""
@@ -175,81 +149,65 @@ class TestScientificDatasetHelpers:
         )
         assert keys == ['data', 'features', 'labels']
 
-    def test_resolve_store_dataset_key_prefers_default_key(self) -> None:
-        """Test that default-key selection when explicit dataset is omitted."""
-        assert (
-            scientific_dataset_mod.resolve_store_dataset_key(
+    @pytest.mark.parametrize(
+        ('keys', 'dataset', 'expected'),
+        [
+            pytest.param(['data', 'features'], None, 'data', id='default-key'),
+            pytest.param(
                 ['data', 'features'],
-                dataset=None,
-                default_key='data',
-                format_name='HDF5',
-            )
-            == 'data'
-        )
-
-    def test_resolve_store_dataset_key_prefers_explicit_dataset(self) -> None:
-        """
-        Test that explicit dataset selection when present in available keys.
-        """
-        assert (
-            scientific_dataset_mod.resolve_store_dataset_key(
-                ['data', 'features'],
-                dataset='features',
-                default_key='data',
-                format_name='HDF5',
-            )
-            == 'features'
-        )
-
-    def test_resolve_store_dataset_key_raises_for_missing_explicit_dataset(
+                'features',
+                'features',
+                id='explicit-key',
+            ),
+            pytest.param([], None, None, id='empty-key-set'),
+            pytest.param(['features'], None, 'features', id='single-key-fallback'),
+        ],
+    )
+    def test_resolve_store_dataset_key_success_cases(
         self,
+        keys: list[str],
+        dataset: str | None,
+        expected: str | None,
     ) -> None:
-        """
-        Test that explicit dataset validation for unavailable dataset keys.
-        """
-        with pytest.raises(
-            ValueError,
-            match="HDF5 dataset 'missing' not found",
-        ):
+        """Test store dataset key resolution success cases."""
+        assert (
             scientific_dataset_mod.resolve_store_dataset_key(
-                ['data', 'features'],
-                dataset='missing',
+                keys,
+                dataset=dataset,
                 default_key='data',
                 format_name='HDF5',
             )
+            == expected
+        )
 
-    def test_resolve_store_dataset_key_rejects_ambiguous_key_set(self) -> None:
-        """Test that ambiguous key sets require explicit selection."""
-        with pytest.raises(ValueError, match='Multiple datasets found'):
-            scientific_dataset_mod.resolve_store_dataset_key(
+    @pytest.mark.parametrize(
+        ('keys', 'dataset', 'match'),
+        [
+            pytest.param(
+                ['data', 'features'],
+                'missing',
+                "HDF5 dataset 'missing' not found",
+                id='missing-explicit-key',
+            ),
+            pytest.param(
                 ['features', 'labels'],
-                dataset=None,
-                default_key='data',
-                format_name='HDF5',
-            )
-
-    def test_resolve_store_dataset_key_returns_none_for_empty_key_set(
+                None,
+                'Multiple datasets found',
+                id='ambiguous-key-set',
+            ),
+        ],
+    )
+    def test_resolve_store_dataset_key_error_cases(
         self,
+        keys: list[str],
+        dataset: str | None,
+        match: str,
     ) -> None:
-        """Test that empty key sets returning ``None``."""
-        assert (
+        """Test store dataset key resolution error cases."""
+        with pytest.raises(ValueError, match=match):
             scientific_dataset_mod.resolve_store_dataset_key(
-                [],
-                dataset=None,
+                keys,
+                dataset=dataset,
                 default_key='data',
                 format_name='HDF5',
             )
-            is None
-        )
-
-    def test_resolve_store_dataset_key_uses_single_key_fallback(self) -> None:
-        """Test that one-key fallback when default key is absent."""
-        assert (
-            scientific_dataset_mod.resolve_store_dataset_key(
-                ['features'],
-                dataset=None,
-                default_key='data',
-                format_name='HDF5',
-            )
-            == 'features'
-        )
