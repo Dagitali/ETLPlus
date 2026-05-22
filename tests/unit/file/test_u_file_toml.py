@@ -75,21 +75,6 @@ class TestToml(
         assert path.read_text(encoding='utf-8') == 'tomli_w_output'
         assert self._tomli_w_stub.calls == [self.dict_payload]
 
-    def test_read_non_table_raises(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """
-        Test that reading a non-table TOML root raises :class:`TypeError`.
-        """
-        path = self.format_path(tmp_path, stem='config')
-        path.write_text('name = "etl"', encoding='utf-8')
-        monkeypatch.setattr(mod.tomllib, 'loads', lambda *_: ['bad'])
-
-        with pytest.raises(TypeError, match='TOML root must be a table'):
-            mod.TomlFile().read(path)
-
     def setup_roundtrip_dependencies(
         self,
         optional_module_stub: OptionalModuleInstaller,
@@ -104,3 +89,18 @@ class TestToml(
         """Install ``tomli_w`` stub for write contract tests."""
         self._tomli_w_stub = _TomlDumperStub('tomli_w_output')
         optional_module_stub({'tomli_w': self._tomli_w_stub})
+
+    def test_read_non_table_raises(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that reading a non-table TOML root raises :class:`TypeError`.
+        """
+        path = self.format_path(tmp_path, stem='config')
+        path.write_text('name = "etl"', encoding='utf-8')
+        monkeypatch.setattr(mod.tomllib, 'loads', lambda *_: ['bad'])
+
+        with pytest.raises(TypeError, match='TOML root must be a table'):
+            mod.TomlFile().read(path)
