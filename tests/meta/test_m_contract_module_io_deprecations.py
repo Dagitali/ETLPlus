@@ -106,15 +106,12 @@ def _collect_wrapper_call_violations(
 
 def _iter_internal_python_files() -> list[Path]:
     """Return non-file-subpackage runtime Python modules under ``etlplus``."""
-    files: list[Path] = []
-    for path in sorted(_ETLPLUS_ROOT.rglob('*.py')):
-        if not path.is_file():
-            continue
-        relative_path = path.relative_to(_ETLPLUS_ROOT)
-        if relative_path.parts and relative_path.parts[0] == 'file':
-            continue
-        files.append(path)
-    return files
+    return [
+        path
+        for path in sorted(_ETLPLUS_ROOT.rglob('*.py'))
+        if path.is_file()
+        if path.relative_to(_ETLPLUS_ROOT).parts[:1] != ('file',)
+    ]
 
 
 # SECTION: FIXTURES ========================================================= #
