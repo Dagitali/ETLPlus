@@ -45,14 +45,12 @@ def markdown_table_rows(
     list[tuple[str, ...]]
         List of tuples representing the rows of the markdown table.
     """
-    rows: list[tuple[str, ...]] = []
-    for line in read_lines(path):
-        if not line.startswith('|'):
-            continue
-        row = tuple(part.strip() for part in line.split('|')[1:-1])
-        if row:
-            rows.append(row)
-    return rows
+    return [
+        row
+        for line in read_lines(path)
+        if line.startswith('|')
+        if (row := tuple(part.strip() for part in line.split('|')[1:-1]))
+    ]
 
 
 def read_lines(
@@ -99,26 +97,6 @@ def regex_matches(
         for line in read_lines(path)
         if (match := pattern.match(line)) is not None
     ]
-
-
-def scope_conftests(
-    scope_name: str,
-) -> list[Path]:
-    """
-    Return sorted ``conftest.py`` paths for one test scope.
-
-    Parameters
-    ----------
-    scope_name : str
-        Name of the test scope (e.g., 'unit', 'integration').
-
-    Returns
-    -------
-    list[Path]
-        Sorted list of paths to ``conftest.py`` files within the specified test
-        scope.
-    """
-    return sorted((TESTS_ROOT / scope_name).rglob('conftest.py'))
 
 
 def text_snippet_case_id(
