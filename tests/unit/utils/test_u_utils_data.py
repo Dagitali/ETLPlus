@@ -105,6 +105,28 @@ class TestDataHelpers:
         assert count_records(payload) == expected
 
     @pytest.mark.parametrize(
+        ('instance', 'attribute', 'value'),
+        [
+            pytest.param(JsonCodec(), 'pretty', True, id='json-codec'),
+            pytest.param(
+                RecordPayloadParser('JSON'),
+                'format_name',
+                'CSV',
+                id='record-payload-parser',
+            ),
+        ],
+    )
+    def test_data_policies_are_frozen(
+        self,
+        instance: object,
+        attribute: str,
+        value: object,
+    ) -> None:
+        """Test that immutable data helper policy cannot be reassigned."""
+        with pytest.raises(FrozenInstanceError):
+            setattr(instance, attribute, value)
+
+    @pytest.mark.parametrize(
         ('value', 'expected'),
         [
             pytest.param(date(2026, 1, 2), '"2026-01-02"', id='date'),
@@ -238,28 +260,6 @@ class TestDataHelpers:
         JsonCodec(pretty=True).print(payload, stream=stream)
 
         assert_json_output(stream.getvalue(), payload)
-
-    @pytest.mark.parametrize(
-        ('instance', 'attribute', 'value'),
-        [
-            pytest.param(JsonCodec(), 'pretty', True, id='json-codec'),
-            pytest.param(
-                RecordPayloadParser('JSON'),
-                'format_name',
-                'CSV',
-                id='record-payload-parser',
-            ),
-        ],
-    )
-    def test_data_policies_are_frozen(
-        self,
-        instance: object,
-        attribute: str,
-        value: object,
-    ) -> None:
-        """Test that immutable data helper policy cannot be reassigned."""
-        with pytest.raises(FrozenInstanceError):
-            setattr(instance, attribute, value)
 
     def test_require_dict_payload_and_require_str_key(
         self,
