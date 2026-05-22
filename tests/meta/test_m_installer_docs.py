@@ -75,6 +75,7 @@ INSTALLER_CONTRACTS = (
         ),
     ),
 )
+INSTALLER_CONTRACT_IDS = [contract.name for contract in INSTALLER_CONTRACTS]
 
 CONDA_STATUS_CASES: tuple[TextSnippetCase, ...] = tuple(
     (path, snippet)
@@ -146,7 +147,7 @@ def test_installer_smoke_resolves_tool_installer_entrypoint_from_path(
 @pytest.mark.parametrize(
     'contract',
     INSTALLER_CONTRACTS,
-    ids=lambda contract: contract.name,
+    ids=INSTALLER_CONTRACT_IDS,
 )
 def test_supported_installer_commands_are_documented_and_smoke_tested(
     contract: InstallerContract,
