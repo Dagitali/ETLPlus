@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 from etlplus.file import ndjson as mod
 
+from .pytest_file_contract_mixins import JsonLinesWriteContractMixin
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_contracts import SemiStructuredReadModuleContract
 from .pytest_file_contracts import SemiStructuredWriteDictModuleContract
@@ -27,6 +27,7 @@ from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
 
 class TestNdjson(
+    JsonLinesWriteContractMixin,
     RoundtripUnitModuleContract,
     SemiStructuredReadModuleContract,
     SemiStructuredWriteDictModuleContract,
@@ -38,6 +39,7 @@ class TestNdjson(
     sample_read_text = '{"id": 1}\n\n   \n{"id": 2}\n'
     expected_read_payload = [{'id': 1}, {'id': 2}]
     dict_payload = {'id': 1}
+    json_lines_error_pattern = 'NDJSON payloads must contain'
     roundtrip_spec = build_roundtrip_spec(record_count=2)
 
     def assert_write_contract_result(
@@ -85,45 +87,6 @@ class TestNdjson(
 
         with pytest.raises(TypeError, match='line 2'):
             mod.NdjsonFile().read(path)
-
-    def test_write_empty_returns_zero(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that writing an empty payload returns zero and creates no file.
-        """
-        path = self.format_path(tmp_path)
-
-        assert mod.NdjsonFile().write(path, []) == 0
-        assert not path.exists()
-
-    def test_write_rejects_non_dict_records(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing rejects records that are not dictionaries."""
-        path = self.format_path(tmp_path)
-        invalid_payload: Any = [1]
-
-        with pytest.raises(TypeError, match='NDJSON payloads must contain'):
-            mod.NdjsonFile().write(path, invalid_payload)
-
-    def test_write_writes_each_record_on_its_own_line(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that writing writes each record on its own line.
-        """
-        path = self.format_path(tmp_path)
-        payload = [{'id': 1}, {'id': 2}]
-
-        written = mod.NdjsonFile().write(path, payload)
-
-        assert written == 2
-        lines = path.read_text(encoding='utf-8').splitlines()
-        assert [json.loads(line) for line in lines] == payload
 
     def test_dump_line_serializes_one_record_with_newline(self) -> None:
         """Test that :func:`dump_line` emits one NDJSON line."""
