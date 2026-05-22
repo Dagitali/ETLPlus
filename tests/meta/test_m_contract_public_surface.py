@@ -131,6 +131,18 @@ FILE_EXPORTS: tuple[ExportCase, ...] = (
     (file_pkg, 'ReadOptions', ReadOptions),
     (file_pkg, 'WriteOptions', WriteOptions),
 )
+OPS_EXPORTS: tuple[ExportCase, ...] = (
+    (ops_pkg, 'extract', extract),
+    (ops_pkg, 'load', load),
+    (ops_pkg, 'run', run),
+    (ops_pkg, 'run_pipeline', run_pipeline),
+    (ops_pkg, 'transform', transform),
+    (ops_pkg, 'validate', validate),
+    (ops_pkg, 'validate_schema', validate_schema),
+    (ops_pkg, 'FieldRulesDict', FieldRulesDict),
+    (ops_pkg, 'FieldValidationDict', FieldValidationDict),
+    (ops_pkg, 'ValidationDict', ValidationDict),
+)
 OPS_TRANSFORMATION_EXPORTS: tuple[ExportCase, ...] = (
     (aggregate_tx_mod, 'apply_aggregate', apply_aggregate),
     (aggregate_tx_mod, 'apply_aggregate_step', apply_aggregate_step),
@@ -145,6 +157,14 @@ OPS_TRANSFORMATION_EXPORTS: tuple[ExportCase, ...] = (
     (sort_tx_mod, 'apply_sort', apply_sort),
     (sort_tx_mod, 'apply_sort_step', apply_sort_step),
 )
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _export_case_id(value: object) -> str:
+    """Return stable pytest IDs for export contract cases."""
+    return getattr(value, '__name__', str(value))
 
 
 # SECTION: TESTS ============================================================ #
@@ -174,7 +194,7 @@ class TestStableImportSurface:
     @pytest.mark.parametrize(
         ('module', 'name', 'expected'),
         API_EXPORTS,
-        ids=lambda value: getattr(value, '__name__', str(value)),
+        ids=_export_case_id,
     )
     def test_api_package_keeps_documented_core_exports(
         self,
@@ -189,7 +209,7 @@ class TestStableImportSurface:
     @pytest.mark.parametrize(
         ('module', 'name', 'expected'),
         FILE_EXPORTS,
-        ids=lambda value: getattr(value, '__name__', str(value)),
+        ids=_export_case_id,
     )
     def test_file_package_keeps_handler_authoring_facade(
         self,
@@ -206,27 +226,29 @@ class TestStableImportSurface:
         assert 'HISTORY_SCHEMA_VERSION' in history_pkg.__all__
         assert history_pkg.HISTORY_SCHEMA_VERSION == HISTORY_SCHEMA_VERSION
 
-    def test_ops_package_keeps_documented_entrypoints(self) -> None:
-        """Test that :mod:`etlplus.ops` keeps the documented helpers."""
+    def test_ops_package_keeps_documented_export_order(self) -> None:
+        """Test that :mod:`etlplus.ops` keeps documented export ordering."""
         assert ops_pkg.__all__ == EXPECTED_OPS_EXPORTS
-        assert ops_pkg.extract is extract
-        assert ops_pkg.load is load
-        assert ops_pkg.run is run
-        assert ops_pkg.run_pipeline is run_pipeline
-        assert ops_pkg.transform is transform
-        assert ops_pkg.validate is validate
-        assert ops_pkg.validate_schema is validate_schema
 
-    def test_ops_package_keeps_documented_validation_shapes(self) -> None:
-        """Test that :mod:`etlplus.ops` re-exports validation typed dicts."""
-        assert ops_pkg.FieldRulesDict is FieldRulesDict
-        assert ops_pkg.FieldValidationDict is FieldValidationDict
-        assert ops_pkg.ValidationDict is ValidationDict
+    @pytest.mark.parametrize(
+        ('module', 'name', 'expected'),
+        OPS_EXPORTS,
+        ids=_export_case_id,
+    )
+    def test_ops_package_keeps_documented_exports(
+        self,
+        module: ModuleType,
+        name: str,
+        expected: object,
+    ) -> None:
+        """Test that :mod:`etlplus.ops` keeps documented re-exports."""
+        assert name in module.__all__
+        assert getattr(module, name) is expected
 
     @pytest.mark.parametrize(
         ('module', 'name', 'expected'),
         OPS_TRANSFORMATION_EXPORTS,
-        ids=lambda value: getattr(value, '__name__', str(value)),
+        ids=_export_case_id,
     )
     def test_ops_transformations_modules_keep_documented_helpers(
         self,
