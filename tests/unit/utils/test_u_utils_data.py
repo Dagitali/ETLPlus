@@ -265,17 +265,37 @@ class TestDataHelpers:
         with pytest.raises(TypeError, match='must include a "key" string'):
             json_record_parser.require_str_key({'key': 1}, 'key')
 
-    def test_serialize_json_can_use_standard_spacing(self) -> None:
-        """Test that compact output can be disabled for standard JSON spacing."""
-        assert JsonCodec(compact=False).serialize({'a': 1}) == '{"a": 1}'
-
-    def test_serialize_json_compacts_by_default(self) -> None:
-        """Test that :meth:`JsonCodec.serialize` emits compact JSON by default."""
-        assert JsonCodec(sort_keys=True).serialize({'b': 1, 'a': 2}) == '{"a":2,"b":1}'
-
-    def test_serialize_json_pretty_prints_when_requested(self) -> None:
-        """Test that :meth:`JsonCodec.serialize` supports stable pretty output."""
-        assert JsonCodec(pretty=True).serialize({'a': 1}) == '{\n  "a": 1\n}'
+    @pytest.mark.parametrize(
+        ('codec', 'payload', 'expected'),
+        [
+            pytest.param(
+                JsonCodec(compact=False),
+                {'a': 1},
+                '{"a": 1}',
+                id='standard-spacing',
+            ),
+            pytest.param(
+                JsonCodec(sort_keys=True),
+                {'b': 1, 'a': 2},
+                '{"a":2,"b":1}',
+                id='compact-sorted',
+            ),
+            pytest.param(
+                JsonCodec(pretty=True),
+                {'a': 1},
+                '{\n  "a": 1\n}',
+                id='pretty',
+            ),
+        ],
+    )
+    def test_serialize_json_formatting_options(
+        self,
+        codec: JsonCodec,
+        payload: JSONData,
+        expected: str,
+    ) -> None:
+        """Test compact, standard, and pretty JSON serialization modes."""
+        assert codec.serialize(payload) == expected
 
     @pytest.mark.parametrize(
         ('value', 'expected'),
