@@ -125,7 +125,7 @@ class TestYaml(
         self._write_yaml_stub = _StubYaml()
         optional_module_stub({'yaml': self._write_yaml_stub})
 
-    def test_loads_rejects_scalar_yaml_root(
+    def test_loads_rejects_scalar_root(
         self,
         optional_module_stub: OptionalModuleInstaller,
     ) -> None:
