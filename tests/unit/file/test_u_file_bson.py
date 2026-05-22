@@ -6,6 +6,7 @@ Unit tests for :mod:`etlplus.file.bson`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -59,13 +60,32 @@ class _BsonModuleWithClass:
 class TestBsonHelpers:
     """Unit tests for BSON encode/decode helpers."""
 
-    def test_decode_all_raises_without_support(self) -> None:
-        """
-        Test that :func:`_decode_all` raises when no suitable decode method is
-        found.
-        """
-        with pytest.raises(AttributeError, match='decode_all'):
-            mod._decode_all(object(), b'payload')
+    @pytest.mark.parametrize(
+        ('func', 'args', 'match'),
+        [
+            pytest.param(
+                mod._decode_all,
+                (object(), b'payload'),
+                'decode_all',
+                id='decode',
+            ),
+            pytest.param(
+                mod._encode_doc,
+                (object(), {'id': 1}),
+                'encode',
+                id='encode',
+            ),
+        ],
+    )
+    def test_codec_helpers_raise_without_support(
+        self,
+        func: Callable[..., object],
+        args: tuple[object, ...],
+        match: str,
+    ) -> None:
+        """Test codec helpers raise when no suitable codec method is found."""
+        with pytest.raises(AttributeError, match=match):
+            func(*args)
 
     def test_decode_all_uses_bson_class(self) -> None:
         """
@@ -107,14 +127,6 @@ class TestBsonHelpers:
 
         assert mod._encode_doc(stub, {'id': 1}) == b'doc'
         assert stub.BSON.encoded == [{'id': 1}]
-
-    def test_encode_doc_raises_without_support(self) -> None:
-        """
-        Test that :func:`_encode_doc` raises when no suitable encode method is
-        found.
-        """
-        with pytest.raises(AttributeError, match='encode'):
-            mod._encode_doc(object(), {'id': 1})
 
 
 class TestBsonIo(BinaryDependencyModuleContract):
