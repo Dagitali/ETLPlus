@@ -55,6 +55,7 @@ _MATRIX_PATHS = (
     _README_MATRIX_PATH,
     _DOCS_MATRIX_PATH,
 )
+_MATRIX_PATH_IDS = tuple(path.name for path in _MATRIX_PATHS)
 _SUPPORTED_FORMATS_SECTION = '## Supported File Formats'
 _SUPPORTED_FORMAT_ROW_PATTERN = re.compile(r'^\| (?P<format>[a-z0-9]+)\s+\|')
 _MATRIX_ROW_PATTERN = re.compile(
@@ -194,7 +195,7 @@ def _override_attrs_from_text(override_text: str) -> frozenset[str]:
 class TestRegistryDocsMatrixGuardrail:
     """Contract tests for registry/documentation matrix consistency."""
 
-    @pytest.mark.parametrize('path', _MATRIX_PATHS, ids=lambda path: path.name)
+    @pytest.mark.parametrize('path', _MATRIX_PATHS, ids=_MATRIX_PATH_IDS)
     def test_matrix_rows_match_explicit_registry_mappings(
         self,
         path: Path,
