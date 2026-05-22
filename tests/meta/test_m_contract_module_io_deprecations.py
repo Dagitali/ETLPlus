@@ -66,10 +66,13 @@ def _collect_imported_wrapper_aliases(
             case ast.Import(names=names):
                 for alias in names:
                     if alias.name in _MODULE_NAMES:
-                        local_name = alias.asname or alias.name.rsplit(
-                            '.',
-                            maxsplit=1,
-                        )[-1]
+                        local_name = (
+                            alias.asname
+                            or alias.name.rsplit(
+                                '.',
+                                maxsplit=1,
+                            )[-1]
+                        )
                         aliases[local_name] = alias.name
             case ast.ImportFrom(module=module_name, names=names) if (
                 module_name in _MODULE_NAMES
@@ -77,8 +80,7 @@ def _collect_imported_wrapper_aliases(
                 for alias in names:
                     if alias.name in _WRAPPER_API_NAMES:
                         violations.append(
-                            f'{path}:{node.lineno} imports '
-                            f'{module_name}.{alias.name}',
+                            f'{path}:{node.lineno} imports {module_name}.{alias.name}',
                         )
             case ast.ImportFrom(module='etlplus.file', names=names):
                 for alias in names:
