@@ -7,7 +7,9 @@ Guardrails for test-module filename conventions.
 from __future__ import annotations
 
 import re
-from pathlib import Path
+
+from tests.meta.pytest_meta_support import REPO_ROOT
+from tests.meta.pytest_meta_support import TESTS_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -16,8 +18,6 @@ from pathlib import Path
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-_TESTS_ROOT = _REPO_ROOT / 'tests'
 _DUPLICATE_SUFFIX_PATTERN = re.compile(r'\s+\d+\.py$')
 
 
@@ -30,8 +30,8 @@ def test_python_test_filenames_have_no_spaces_or_numbered_duplicates() -> None:
     duplicate suffixes.
     """
     offenders = sorted(
-        path.relative_to(_REPO_ROOT).as_posix()
-        for path in _TESTS_ROOT.rglob('*.py')
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in TESTS_ROOT.rglob('*.py')
         if (
             '__pycache__' not in path.parts
             and (

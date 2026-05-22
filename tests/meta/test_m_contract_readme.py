@@ -51,6 +51,11 @@ _INTEGRATION_FILE_README_PATH = (
     REPO_ROOT / 'tests' / 'integration' / 'file' / 'README.md'
 )
 _README_MATRIX_PATH = REPO_ROOT / 'README.md'
+_MATRIX_PATHS = (
+    _README_MATRIX_PATH,
+    _DOCS_MATRIX_PATH,
+)
+_MATRIX_PATH_IDS = tuple(path.name for path in _MATRIX_PATHS)
 _SUPPORTED_FORMATS_SECTION = '## Supported File Formats'
 _SUPPORTED_FORMAT_ROW_PATTERN = re.compile(r'^\| (?P<format>[a-z0-9]+)\s+\|')
 _MATRIX_ROW_PATTERN = re.compile(
@@ -115,12 +120,11 @@ def _expected_matrix_row(file_format: FileFormat) -> MatrixRow:
 
 def _expected_supported_formats() -> set[FileFormat]:
     """Return non-stub formats from explicit registry mappings."""
-    expected: set[FileFormat] = set()
-    for file_format in mod._HANDLER_CLASS_SPECS:
-        handler_class = mod.get_handler_class(file_format)
-        if not issubclass(handler_class, StubFileHandlerABC):
-            expected.add(file_format)
-    return expected
+    return {
+        file_format
+        for file_format in mod._HANDLER_CLASS_SPECS
+        if not issubclass(mod.get_handler_class(file_format), StubFileHandlerABC)
+    }
 
 
 def _parse_file_package_supported_formats(
@@ -191,21 +195,19 @@ def _override_attrs_from_text(override_text: str) -> frozenset[str]:
 class TestRegistryDocsMatrixGuardrail:
     """Contract tests for registry/documentation matrix consistency."""
 
-    def test_matrix_rows_cover_explicit_registry_mappings(self) -> None:
-        """Test that both matrix docs cover every explicitly mapped format."""
+    @pytest.mark.parametrize('path', _MATRIX_PATHS, ids=_MATRIX_PATH_IDS)
+    def test_matrix_rows_match_explicit_registry_mappings(
+        self,
+        path: Path,
+    ) -> None:
+        """Test that matrix docs cover and match explicit registry mappings."""
         expected_formats = set(mod._HANDLER_CLASS_SPECS)
-        assert set(_parse_matrix_rows(_README_MATRIX_PATH)) == expected_formats
-        assert set(_parse_matrix_rows(_DOCS_MATRIX_PATH)) == expected_formats
+        rows = _parse_matrix_rows(path)
 
-    def test_matrix_rows_match_registry_metadata(self) -> None:
-        """Test that matrix rows match registry-resolved handler metadata."""
-        readme_rows = _parse_matrix_rows(_README_MATRIX_PATH)
-        docs_rows = _parse_matrix_rows(_DOCS_MATRIX_PATH)
+        assert set(rows) == expected_formats
         for file_format in mod._HANDLER_CLASS_SPECS:
             expected = _expected_matrix_row(file_format)
-            assert readme_rows[file_format] == expected
-            assert docs_rows[file_format] == expected
-            assert readme_rows[file_format] == docs_rows[file_format]
+            assert rows[file_format] == expected
 
 
 class TestReadmeFileFormatTableGuardrail:
@@ -215,7 +217,7 @@ class TestReadmeFileFormatTableGuardrail:
         self,
     ) -> None:
         """
-        Test that supported-format table matchwes explicit non-stub handlers.
+        Test that supported-format table matches explicit non-stub handlers.
         """
         documented_formats = _parse_file_package_supported_formats(
             _FILE_PACKAGE_README_PATH,

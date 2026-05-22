@@ -14,6 +14,7 @@ from types import ModuleType
 import pytest
 
 from etlplus.file import _registry as file_registry
+from tests.meta.pytest_meta_support import REPO_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -36,8 +37,16 @@ _MODULE_SHORT_NAMES: frozenset[str] = frozenset(
 )
 _WRAPPER_API_NAMES: tuple[str, ...] = ('read', 'write')
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-_ETLPLUS_ROOT = _REPO_ROOT / 'etlplus'
+_ETLPLUS_ROOT = REPO_ROOT / 'etlplus'
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type FileFormatModule = tuple[str, ModuleType]
+type FileFormatModules = tuple[FileFormatModule, ...]
+type RuntimeTree = tuple[Path, ast.AST]
+type RuntimeTrees = tuple[RuntimeTree, ...]
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -46,35 +55,41 @@ _ETLPLUS_ROOT = _REPO_ROOT / 'etlplus'
 def _collect_imported_wrapper_aliases(
     path: Path,
     tree: ast.AST,
-    *,
-    violations: list[str],
-) -> dict[str, str]:
+) -> tuple[dict[str, str], list[str]]:
     """
     Collect imported file-module aliases and report disallowed imports.
     """
     aliases: dict[str, str] = {}
+    violations: list[str] = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name in _MODULE_NAMES:
-                    local_name = alias.asname or alias.name.rsplit('.', maxsplit=1)[-1]
-                    aliases[local_name] = alias.name
-            continue
-
-        if not isinstance(node, ast.ImportFrom):
-            continue
-        if node.module in _MODULE_NAMES:
-            for alias in node.names:
-                if alias.name in _WRAPPER_API_NAMES:
-                    violations.append(
-                        f'{path}:{node.lineno} imports {node.module}.{alias.name}',
-                    )
-        if node.module == 'etlplus.file':
-            for alias in node.names:
-                if alias.name in _MODULE_SHORT_NAMES:
-                    local_name = alias.asname or alias.name
-                    aliases[local_name] = f'etlplus.file.{alias.name}'
-    return aliases
+        match node:
+            case ast.Import(names=names):
+                for alias in names:
+                    if alias.name in _MODULE_NAMES:
+                        local_name = (
+                            alias.asname
+                            or alias.name.rsplit(
+                                '.',
+                                maxsplit=1,
+                            )[-1]
+                        )
+                        aliases[local_name] = alias.name
+            case ast.ImportFrom(module=module_name, names=names) if (
+                module_name in _MODULE_NAMES
+            ):
+                for alias in names:
+                    if alias.name in _WRAPPER_API_NAMES:
+                        violations.append(
+                            f'{path}:{node.lineno} imports {module_name}.{alias.name}',
+                        )
+            case ast.ImportFrom(module='etlplus.file', names=names):
+                for alias in names:
+                    if alias.name in _MODULE_SHORT_NAMES:
+                        local_name = alias.asname or alias.name
+                        aliases[local_name] = f'etlplus.file.{alias.name}'
+            case _:
+                continue
+    return aliases, violations
 
 
 def _collect_wrapper_call_violations(
@@ -87,55 +102,51 @@ def _collect_wrapper_call_violations(
     """
     violations: list[str] = []
     for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        if not isinstance(node.func, ast.Attribute):
-            continue
-        if node.func.attr not in _WRAPPER_API_NAMES:
-            continue
-        if not isinstance(node.func.value, ast.Name):
-            continue
-        module_name = imported_wrapper_aliases.get(node.func.value.id)
-        if module_name is None:
-            continue
-        violations.append(
-            f'{path}:{node.lineno} calls {module_name}.{node.func.attr}()',
-        )
+        match node:
+            case ast.Call(
+                func=ast.Attribute(
+                    attr=api_name,
+                    value=ast.Name(id=alias_name),
+                ),
+            ) if api_name in _WRAPPER_API_NAMES:
+                if module_name := imported_wrapper_aliases.get(alias_name):
+                    violations.append(
+                        f'{path}:{node.lineno} calls {module_name}.{api_name}()',
+                    )
+            case _:
+                continue
     return violations
 
 
 def _iter_internal_python_files() -> list[Path]:
     """Return non-file-subpackage runtime Python modules under ``etlplus``."""
-    files: list[Path] = []
-    for path in sorted(_ETLPLUS_ROOT.rglob('*.py')):
-        if not path.is_file():
-            continue
-        relative_path = path.relative_to(_ETLPLUS_ROOT)
-        if relative_path.parts and relative_path.parts[0] == 'file':
-            continue
-        files.append(path)
-    return files
+    return [
+        path
+        for path in sorted(_ETLPLUS_ROOT.rglob('*.py'))
+        if path.is_file()
+        if path.relative_to(_ETLPLUS_ROOT).parts[:1] != ('file',)
+    ]
 
 
 # SECTION: FIXTURES ========================================================= #
 
 
 @pytest.fixture(name='file_format_modules', scope='module')
-def file_format_modules_fixture() -> list[tuple[str, ModuleType]]:
+def file_format_modules_fixture() -> FileFormatModules:
     """Return mapped file-format modules imported once per test module."""
-    return [
+    return tuple(
         (module_name, importlib.import_module(module_name))
         for module_name in _MODULE_NAMES
-    ]
+    )
 
 
 @pytest.fixture(name='internal_runtime_trees', scope='module')
-def internal_runtime_trees_fixture() -> list[tuple[Path, ast.AST]]:
+def internal_runtime_trees_fixture() -> RuntimeTrees:
     """Return parsed AST trees for non-file runtime modules."""
-    return [
+    return tuple(
         (path, ast.parse(path.read_text(encoding='utf-8')))
         for path in _iter_internal_python_files()
-    ]
+    )
 
 
 # SECTION: TESTS ============================================================ #
@@ -148,7 +159,7 @@ class TestFileFormatModules:
     def test_no_io_exports(
         self,
         api_name: str,
-        file_format_modules: list[tuple[str, ModuleType]],
+        file_format_modules: FileFormatModules,
     ) -> None:
         """Test that mapped modules do not expose wrapper API attributes."""
         violations = [
@@ -160,7 +171,7 @@ class TestFileFormatModules:
 
     def test_no_handler_singletons(
         self,
-        file_format_modules: list[tuple[str, ModuleType]],
+        file_format_modules: FileFormatModules,
     ) -> None:
         """Test that mapped modules do not expose ``_*_HANDLER`` constants."""
         violations = [
@@ -177,7 +188,7 @@ class TestInternalRuntimeCode:
 
     def test_no_removed_io_wrapper_usage(
         self,
-        internal_runtime_trees: list[tuple[Path, ast.AST]],
+        internal_runtime_trees: RuntimeTrees,
     ) -> None:
         """
         Test that runtime modules not importing/calling removed wrapper APIs.
@@ -185,11 +196,10 @@ class TestInternalRuntimeCode:
         violations: list[str] = []
 
         for path, tree in internal_runtime_trees:
-            imported_wrapper_aliases = _collect_imported_wrapper_aliases(
-                path,
-                tree,
-                violations=violations,
+            imported_wrapper_aliases, import_violations = (
+                _collect_imported_wrapper_aliases(path, tree)
             )
+            violations.extend(import_violations)
             violations.extend(
                 _collect_wrapper_call_violations(
                     path,
