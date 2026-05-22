@@ -125,5 +125,4 @@ class TestXml(RoundtripUnitModuleContract):
 
         assert written == 1
         assert f'<{self.root_tag}>' in path.read_text(encoding='utf-8')
-        result = self.module_handler.read(path)
-        assert self.root_tag in result
+        assert self.root_tag in self.module_handler.read(path)
