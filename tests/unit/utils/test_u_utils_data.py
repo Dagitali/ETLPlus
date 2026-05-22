@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.utils._data`.
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import FrozenInstanceError
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -141,13 +142,6 @@ class TestDataHelpers:
         """Test that date-like values render with stable ISO precision."""
         assert JsonCodec.isoformat(value) == expected
 
-    def test_json_codec_is_frozen(self) -> None:
-        """Test that render policy cannot be mutated after construction."""
-        codec = JsonCodec()
-
-        with pytest.raises(AttributeError):
-            codec.pretty = True  # type: ignore[misc]
-
     @pytest.mark.parametrize(
         ('payload', 'expected'),
         [
@@ -245,12 +239,27 @@ class TestDataHelpers:
 
         assert_json_output(stream.getvalue(), payload)
 
-    def test_record_payload_parser_is_frozen(self) -> None:
-        """Test that parser context cannot be mutated after construction."""
-        parser = RecordPayloadParser('JSON')
-
-        with pytest.raises(AttributeError):
-            parser.format_name = 'CSV'  # type: ignore[misc]
+    @pytest.mark.parametrize(
+        ('instance', 'attribute', 'value'),
+        [
+            pytest.param(JsonCodec(), 'pretty', True, id='json-codec'),
+            pytest.param(
+                RecordPayloadParser('JSON'),
+                'format_name',
+                'CSV',
+                id='record-payload-parser',
+            ),
+        ],
+    )
+    def test_data_policies_are_frozen(
+        self,
+        instance: object,
+        attribute: str,
+        value: object,
+    ) -> None:
+        """Test that immutable data helper policy cannot be reassigned."""
+        with pytest.raises(FrozenInstanceError):
+            setattr(instance, attribute, value)
 
     def test_require_dict_payload_and_require_str_key(
         self,
