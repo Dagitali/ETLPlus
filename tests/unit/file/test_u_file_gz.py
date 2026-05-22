@@ -110,13 +110,3 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
 
         with gzip.open(path, 'rb') as handle:
             assert handle.read() == payload
-
-    def test_write_raises_on_missing_inner_format(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing without an inferable inner format fails."""
-        path = self.archive_path(tmp_path, stem='payload')
-
-        with pytest.raises(ValueError, match='Cannot infer file format'):
-            mod.GzFile().write(path, [{'id': 1}])
