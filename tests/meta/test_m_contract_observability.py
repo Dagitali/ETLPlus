@@ -110,6 +110,10 @@ NORMALIZED_HISTORY_SHAPE_CASES: tuple[HistoryShapeCase, ...] = (
         EXPECTED_NORMALIZED_RUN_FIELDS,
     ),
 )
+NORMALIZED_HISTORY_SHAPE_IDS = tuple(
+    iterator_name
+    for _, iterator_name, _ in NORMALIZED_HISTORY_SHAPE_CASES
+)
 
 
 # SECTION: HELPERS ========================================================== #
@@ -188,7 +192,7 @@ class TestNormalizedHistoryContract:
     @pytest.mark.parametrize(
         ('source_record', 'iterator_name', 'expected_fields'),
         NORMALIZED_HISTORY_SHAPE_CASES,
-        ids=lambda value: value if isinstance(value, str) else None,
+        ids=NORMALIZED_HISTORY_SHAPE_IDS,
     )
     def test_iter_records_keep_stable_normalized_field_sets(
         self,
