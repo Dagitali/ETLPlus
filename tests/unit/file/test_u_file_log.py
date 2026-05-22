@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import cast
+from typing import Any
 
 import pytest
 
 from etlplus.file import log as mod
-from etlplus.utils._types import JSONData
 
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_roundtrip_cases import build_roundtrip_spec
@@ -32,26 +31,26 @@ class TestLog(RoundtripUnitModuleContract):
     format_name = 'log'
     roundtrip_spec = build_roundtrip_spec(record_count=2)
 
-    def test_parse_line_falls_back_for_non_object_json(self) -> None:
-        """Test that the line parser falls back for non-object JSON values."""
-        assert self.module_handler.parse_line('["a", "b"]') == {
-            'message': '["a", "b"]',
-        }
-
-    def test_parse_line_falls_back_to_message_for_plain_text(self) -> None:
-        """Test that the line parser falls back for non-JSON log lines."""
-        assert self.module_handler.parse_line('plain message') == {
-            'message': 'plain message',
-        }
-
-    def test_parse_line_falls_back_when_json_codec_returns_non_mapping(
+    @pytest.mark.parametrize(
+        ('line', 'parsed_payload', 'expected_message'),
+        [
+            pytest.param('["a", "b"]', None, '["a", "b"]', id='non-object-json'),
+            pytest.param('plain message', None, 'plain message', id='plain-text'),
+            pytest.param('ignored', ['a', 'b'], 'ignored', id='non-mapping-parse'),
+        ],
+    )
+    def test_parse_line_falls_back_to_message(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        line: str,
+        parsed_payload: object | None,
+        expected_message: str,
     ) -> None:
-        """Test fallback behavior for parsed non-object values."""
-        monkeypatch.setattr(mod.JsonCodec, 'parse', lambda _: ['a', 'b'])
+        """Test fallback behavior for plain or parsed non-object log lines."""
+        if parsed_payload is not None:
+            monkeypatch.setattr(mod.JsonCodec, 'parse', lambda _: parsed_payload)
 
-        assert self.module_handler.parse_line('ignored') == {'message': 'ignored'}
+        assert self.module_handler.parse_line(line) == {'message': expected_message}
 
     def test_parse_line_parses_json_object(self) -> None:
         """Test that the line parser returns JSON objects as events."""
@@ -80,9 +79,10 @@ class TestLog(RoundtripUnitModuleContract):
     ) -> None:
         """Test that :meth:`write` rejects non-object array payloads."""
         path = self.format_path(tmp_path)
+        invalid_payload: Any = [1]
 
         with pytest.raises(TypeError, match='LOG payloads must contain'):
-            self.module_handler.write(path, cast(JSONData, [1]))
+            self.module_handler.write(path, invalid_payload)
 
     def test_write_returns_zero_for_empty_payload(
         self,
