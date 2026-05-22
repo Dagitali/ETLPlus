@@ -196,21 +196,15 @@ class TestRegistryDocsMatrixGuardrail:
     """Contract tests for registry/documentation matrix consistency."""
 
     @pytest.mark.parametrize('path', _MATRIX_PATHS, ids=lambda path: path.name)
-    def test_matrix_rows_cover_explicit_registry_mappings(
+    def test_matrix_rows_match_explicit_registry_mappings(
         self,
         path: Path,
     ) -> None:
-        """Test that both matrix docs cover every explicitly mapped format."""
+        """Test that matrix docs cover and match explicit registry mappings."""
         expected_formats = set(mod._HANDLER_CLASS_SPECS)
-        assert set(_parse_matrix_rows(path)) == expected_formats
-
-    @pytest.mark.parametrize('path', _MATRIX_PATHS, ids=lambda path: path.name)
-    def test_matrix_rows_match_registry_metadata(
-        self,
-        path: Path,
-    ) -> None:
-        """Test that matrix rows match registry-resolved handler metadata."""
         rows = _parse_matrix_rows(path)
+
+        assert set(rows) == expected_formats
         for file_format in mod._HANDLER_CLASS_SPECS:
             expected = _expected_matrix_row(file_format)
             assert rows[file_format] == expected
