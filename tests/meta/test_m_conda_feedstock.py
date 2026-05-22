@@ -90,6 +90,9 @@ CONDA_VALIDATED_STATUS_PATHS = (
     CONDA_README_PATH,
     CONDA_PREP_PATH,
 )
+CONDA_VALIDATED_STATUS_PATH_IDS = tuple(
+    path.name for path in CONDA_VALIDATED_STATUS_PATHS
+)
 CONDA_VALIDATED_STATUS_SNIPPETS = (
     'tagged pypi sdist',
     'linux, macos, and windows',
@@ -393,7 +396,7 @@ def test_conda_status_docs_do_not_regress_to_pending_support_gate() -> None:
 @pytest.mark.parametrize(
     'path',
     CONDA_VALIDATED_STATUS_PATHS,
-    ids=lambda path: path.name,
+    ids=CONDA_VALIDATED_STATUS_PATH_IDS,
 )
 def test_conda_status_docs_record_validated_but_unpublished_state(
     path: Path,
