@@ -6,40 +6,20 @@ Env-gated integration tests for remote storage-backed file IO.
 
 from __future__ import annotations
 
-import os
 from typing import Any
 from typing import cast
 from uuid import uuid4
-
-import pytest
 
 from etlplus.file import File
 from etlplus.file import FileFormat
 from etlplus.storage import StorageLocation
 from etlplus.storage import get_backend
+from tests.integration.conftest import _child_uri
+from tests.integration.conftest import _require_env
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-def _child_uri(
-    base_uri: str,
-    filename: str,
-) -> str:
-    """Append one test filename to a remote base URI."""
-    return f'{base_uri.rstrip("/")}/{filename}'
-
-
-def _require_env(name: str) -> str:
-    """Return one required env var or skip the integration test."""
-    value = os.getenv(name)
-    if not value:
-        pytest.skip(f'{name} is not configured for cloud integration tests')
-    return cast(str, value)
-
 
 # SECTION: TESTS ============================================================ #
 
