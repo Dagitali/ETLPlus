@@ -31,14 +31,13 @@ _SCOPE_MARKERS = (
 def test_integration_file_conftest_includes_smoke_marker() -> None:
     """Test that file-integration scope preserves the smoke intent marker."""
     conftest_path = TESTS_ROOT / 'integration' / 'file' / 'conftest.py'
-    text = conftest_path.read_text(encoding='utf-8')
-    assert 'pytest.mark.smoke' in text
+    assert 'pytest.mark.smoke' in conftest_path.read_text(encoding='utf-8')
 
 
 @pytest.mark.parametrize(
     ('scope_name', 'marker_name'),
     _SCOPE_MARKERS,
-    ids=lambda value: value,
+    ids=[scope_name for scope_name, _ in _SCOPE_MARKERS],
 )
 def test_scope_conftests_declare_expected_scope_markers(
     scope_name: str,
