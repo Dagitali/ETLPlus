@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import re
 import tomllib
+from pathlib import Path
+
+import pytest
 
 from tests.meta.pytest_meta_support import REPO_ROOT
 from tools.render_conda_recipe import render_recipe
@@ -185,7 +188,7 @@ def test_conda_recipe_preserves_cli_entrypoint_and_smoke_commands() -> None:
 
 
 def test_conda_recipe_render_helper_replaces_release_placeholders(
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     """Test the render helper produces a concrete recipe for build tools."""
     output_path = tmp_path / 'meta.yaml'
@@ -243,12 +246,12 @@ def test_conda_recipe_tracks_base_pyproject_dependencies() -> None:
 
 
 def test_conda_recipe_render_helper_rejects_invalid_release_sha256(
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     """Test tagged-sdist recipes require a real SHA256-looking value."""
     output_path = tmp_path / 'meta.yaml'
 
-    try:
+    with pytest.raises(ValueError, match='64-character hexadecimal SHA256'):
         render_recipe(
             template_path=CONDA_RECIPE_PATH,
             output_path=output_path,
@@ -256,13 +259,11 @@ def test_conda_recipe_render_helper_rejects_invalid_release_sha256(
             sha256='not-a-sha',
             maintainer='dagitali-maintainer',
         )
-    except ValueError as exc:
-        assert '64-character hexadecimal SHA256' in str(exc)
-    else:
-        raise AssertionError('Expected invalid release SHA256 to be rejected.')
 
 
-def test_conda_recipe_render_helper_supports_local_source_path(tmp_path) -> None:
+def test_conda_recipe_render_helper_supports_local_source_path(
+    tmp_path: Path,
+) -> None:
     """Test local validation builds can render a path-based source recipe."""
     output_path = tmp_path / 'meta.yaml'
 
@@ -283,9 +284,7 @@ def test_conda_recipe_render_helper_supports_local_source_path(tmp_path) -> None
 
 def test_conda_recipe_validation_workflow_is_manual_linux_first() -> None:
     """Test conda recipe CI remains manual and Linux-first by default."""
-    workflow_text = (REPO_ROOT / '.github/workflows/conda-recipe.yml').read_text(
-        encoding='utf-8',
-    )
+    workflow_text = CONDA_WORKFLOW_PATH.read_text(encoding='utf-8')
 
     assert 'workflow_dispatch:' in workflow_text
     assert 'default: linux' in workflow_text
