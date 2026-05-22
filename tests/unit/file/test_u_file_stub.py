@@ -27,29 +27,29 @@ class TestStubReadWrite:
         assert not hasattr(mod, 'read')
         assert not hasattr(mod, 'write')
 
-    def test_raise_not_implemented_supports_custom_format_name(self) -> None:
-        """Test custom format names in placeholder error messages."""
-        with pytest.raises(NotImplementedError, match='MAT read'):
-            mod._raise_not_implemented('read', format_name='MAT')
-        with pytest.raises(NotImplementedError, match='MAT write'):
-            mod._raise_not_implemented('write', format_name='MAT')
-
-    def test_read_raises_not_implemented(
+    @pytest.mark.parametrize(
+        ('operation', 'args'),
+        [
+            pytest.param('read', (), id='read'),
+            pytest.param('write', ([{'id': 1}],), id='write'),
+        ],
+    )
+    def test_operations_raise_not_implemented(
         self,
         tmp_path: Path,
+        operation: str,
+        args: tuple[object, ...],
     ) -> None:
-        """Test that :func:`read` always raises for stubbed formats."""
-        with pytest.raises(NotImplementedError, match='STUB read'):
-            mod.StubFile().read(tmp_path / 'data.stub')
+        """Test that read/write operations always raise for stubbed formats."""
+        with pytest.raises(NotImplementedError, match=f'STUB {operation}'):
+            getattr(mod.StubFile(), operation)(tmp_path / 'data.stub', *args)
+
+    def test_raise_not_implemented_supports_custom_format_name(self) -> None:
+        """Test custom format names in placeholder error messages."""
+        for operation in ('read', 'write'):
+            with pytest.raises(NotImplementedError, match=f'MAT {operation}'):
+                mod._raise_not_implemented(operation, format_name='MAT')
 
     def test_stub_path_uses_format_suffix(self) -> None:
         """Test helper path construction for stub handlers."""
         assert mod.StubFile()._stub_path() == Path('ignored.stub')
-
-    def test_write_raises_not_implemented(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that :func:`write` always raises for stubbed formats."""
-        with pytest.raises(NotImplementedError, match='STUB write'):
-            mod.StubFile().write(tmp_path / 'data.stub', [{'id': 1}])
