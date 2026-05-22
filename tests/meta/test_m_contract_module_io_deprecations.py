@@ -69,16 +69,16 @@ def _collect_imported_wrapper_aliases(
                             maxsplit=1,
                         )[-1]
                         aliases[local_name] = alias.name
-            case ast.ImportFrom(module=module_name, names=names):
-                if module_name in _MODULE_NAMES:
-                    for alias in names:
-                        if alias.name in _WRAPPER_API_NAMES:
-                            violations.append(
-                                f'{path}:{node.lineno} imports '
-                                f'{module_name}.{alias.name}',
-                            )
-                if module_name != 'etlplus.file':
-                    continue
+            case ast.ImportFrom(module=module_name, names=names) if (
+                module_name in _MODULE_NAMES
+            ):
+                for alias in names:
+                    if alias.name in _WRAPPER_API_NAMES:
+                        violations.append(
+                            f'{path}:{node.lineno} imports '
+                            f'{module_name}.{alias.name}',
+                        )
+            case ast.ImportFrom(module='etlplus.file', names=names):
                 for alias in names:
                     if alias.name in _MODULE_SHORT_NAMES:
                         local_name = alias.asname or alias.name
@@ -105,15 +105,12 @@ def _collect_wrapper_call_violations(
                     value=ast.Name(id=alias_name),
                 ),
             ) if api_name in _WRAPPER_API_NAMES:
-                pass
+                if module_name := imported_wrapper_aliases.get(alias_name):
+                    violations.append(
+                        f'{path}:{node.lineno} calls {module_name}.{api_name}()',
+                    )
             case _:
                 continue
-        module_name = imported_wrapper_aliases.get(alias_name)
-        if module_name is None:
-            continue
-        violations.append(
-            f'{path}:{node.lineno} calls {module_name}.{api_name}()',
-        )
     return violations
 
 
