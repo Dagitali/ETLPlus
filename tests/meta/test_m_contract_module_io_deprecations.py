@@ -14,6 +14,7 @@ from types import ModuleType
 import pytest
 
 from etlplus.file import _registry as file_registry
+from tests.meta.pytest_meta_support import REPO_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -36,8 +37,7 @@ _MODULE_SHORT_NAMES: frozenset[str] = frozenset(
 )
 _WRAPPER_API_NAMES: tuple[str, ...] = ('read', 'write')
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-_ETLPLUS_ROOT = _REPO_ROOT / 'etlplus'
+_ETLPLUS_ROOT = REPO_ROOT / 'etlplus'
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
