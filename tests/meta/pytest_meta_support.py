@@ -93,9 +93,7 @@ def regex_matches(
         List of regex match objects for each line that matches the pattern.
     """
     return [
-        match
-        for line in read_lines(path)
-        if (match := pattern.match(line)) is not None
+        match for line in read_lines(path) if (match := pattern.match(line)) is not None
     ]
 
 
