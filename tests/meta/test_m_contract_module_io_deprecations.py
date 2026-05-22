@@ -87,19 +87,21 @@ def _collect_wrapper_call_violations(
     """
     violations: list[str] = []
     for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        if not isinstance(node.func, ast.Attribute):
-            continue
-        if node.func.attr not in _WRAPPER_API_NAMES:
-            continue
-        if not isinstance(node.func.value, ast.Name):
-            continue
-        module_name = imported_wrapper_aliases.get(node.func.value.id)
+        match node:
+            case ast.Call(
+                func=ast.Attribute(
+                    attr=api_name,
+                    value=ast.Name(id=alias_name),
+                ),
+            ) if api_name in _WRAPPER_API_NAMES:
+                pass
+            case _:
+                continue
+        module_name = imported_wrapper_aliases.get(alias_name)
         if module_name is None:
             continue
         violations.append(
-            f'{path}:{node.lineno} calls {module_name}.{node.func.attr}()',
+            f'{path}:{node.lineno} calls {module_name}.{api_name}()',
         )
     return violations
 
