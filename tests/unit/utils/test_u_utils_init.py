@@ -40,6 +40,8 @@ from etlplus.utils._text import TextNormalizer
 from etlplus.utils._types import NonEmptyStr
 from etlplus.utils._types import NonEmptyStrList
 
+from ..pytest_export_contracts import assert_package_exports
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -100,7 +102,7 @@ class TestUtilsPackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert utils_pkg.__all__ == [name for name, _value in UTILS_EXPORTS]
+        assert_package_exports(package_module=utils_pkg, expected_exports=UTILS_EXPORTS)
 
     def test_stable_symbols_lead_public_export_order(self) -> None:
         """Test stable exports stay grouped first in the package facade."""
