@@ -110,7 +110,7 @@ class TestXml(RoundtripUnitModuleContract):
         """Test repeated XML tag normalization variants."""
         assert mod.XmlFile().loads(payload) == expected
 
-    def test_write_uses_root_tag_and_read_roundtrip(
+    def test_write_uses_root_tag_and_reads_back(
         self,
         tmp_path: Path,
     ) -> None:
