@@ -323,25 +323,21 @@ class TestSpreadsheetReadWriteFallbacks:
     """Unit tests for spreadsheet read/write fallback helper branches."""
 
     @pytest.mark.parametrize(
-        ('engine', 'expected_calls'),
+        ('engine', 'expected_kwargs'),
         [
             pytest.param(
                 'openpyxl',
                 [
-                    {
-                        'path': Path('sample.xlsx'),
-                        'sheet_name': 'Sheet1',
-                        'engine': 'openpyxl',
-                    },
-                    {'path': Path('sample.xlsx'), 'engine': 'openpyxl'},
+                    {'sheet_name': 'Sheet1', 'engine': 'openpyxl'},
+                    {'engine': 'openpyxl'},
                 ],
                 id='engine',
             ),
             pytest.param(
                 None,
                 [
-                    {'path': Path('sample.xlsx'), 'sheet_name': 'Sheet1'},
-                    {'path': Path('sample.xlsx')},
+                    {'sheet_name': 'Sheet1'},
+                    {},
                 ],
                 id='no-engine',
             ),
@@ -350,7 +346,7 @@ class TestSpreadsheetReadWriteFallbacks:
     def test_read_excel_frame_falls_back_without_sheet_name(
         self,
         engine: str | None,
-        expected_calls: list[dict[str, object]],
+        expected_kwargs: list[dict[str, object]],
     ) -> None:
         """Test read helper retry behavior with optional engine kwargs."""
         pandas = _ReadExcelFallbackPandasStub()
@@ -364,22 +360,22 @@ class TestSpreadsheetReadWriteFallbacks:
         )
 
         assert result == 'frame'
-        assert pandas.calls == expected_calls
+        assert pandas.calls == [
+            {'path': path, **kwargs} for kwargs in expected_kwargs
+        ]
 
     @pytest.mark.parametrize(
-        ('engine', 'expected_calls'),
+        ('engine', 'expected_kwargs'),
         [
             pytest.param(
                 'openpyxl',
                 [
                     {
-                        'path': Path('sample.xlsx'),
                         'index': False,
                         'engine': 'openpyxl',
                         'sheet_name': 'Sheet1',
                     },
                     {
-                        'path': Path('sample.xlsx'),
                         'index': False,
                         'engine': 'openpyxl',
                     },
@@ -390,11 +386,10 @@ class TestSpreadsheetReadWriteFallbacks:
                 None,
                 [
                     {
-                        'path': Path('sample.xlsx'),
                         'index': False,
                         'sheet_name': 'Sheet1',
                     },
-                    {'path': Path('sample.xlsx'), 'index': False},
+                    {'index': False},
                 ],
                 id='no-engine',
             ),
@@ -403,7 +398,7 @@ class TestSpreadsheetReadWriteFallbacks:
     def test_write_excel_frame_falls_back_without_sheet_name(
         self,
         engine: str | None,
-        expected_calls: list[dict[str, object]],
+        expected_kwargs: list[dict[str, object]],
     ) -> None:
         """Test write helper retry behavior with optional engine kwargs."""
         frame = _WriteExcelFallbackFrameStub()
@@ -416,7 +411,9 @@ class TestSpreadsheetReadWriteFallbacks:
             engine=engine,
         )
 
-        assert frame.calls == expected_calls
+        assert frame.calls == [
+            {'path': path, **kwargs} for kwargs in expected_kwargs
+        ]
 
 
 class TestColumnarRuntimeDependencyValidation:
