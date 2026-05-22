@@ -149,22 +149,32 @@ class TestMappingHelpers:
             'valid': item,
         }
 
-    def test_index_named_items_rejects_duplicates(self) -> None:
+    @pytest.mark.parametrize(
+        ('items', 'item_label', 'match'),
+        [
+            pytest.param(
+                [SimpleNamespace(name='dup'), SimpleNamespace(name='dup')],
+                'source connector',
+                'Duplicate source connector name',
+                id='exact-duplicate',
+            ),
+            pytest.param(
+                [SimpleNamespace(name='dup'), SimpleNamespace(name=' dup ')],
+                'job',
+                'Duplicate job name: dup',
+                id='duplicate-after-stripping',
+            ),
+        ],
+    )
+    def test_index_named_items_rejects_duplicates(
+        self,
+        items: list[object],
+        item_label: str,
+        match: str,
+    ) -> None:
         """Test that duplicate named items raise a descriptive error."""
-        items = [SimpleNamespace(name='dup'), SimpleNamespace(name='dup')]
-
-        with pytest.raises(ValueError, match='Duplicate source connector name'):
-            MappingParser.index_named_items(items, item_label='source connector')
-
-    def test_index_named_items_rejects_duplicates_after_stripping(self) -> None:
-        """Test duplicate detection after name normalization."""
-        items = [
-            SimpleNamespace(name='dup'),
-            SimpleNamespace(name=' dup '),
-        ]
-
-        with pytest.raises(ValueError, match='Duplicate job name: dup'):
-            MappingParser.index_named_items(items, item_label='job')
+        with pytest.raises(ValueError, match=match):
+            MappingParser.index_named_items(items, item_label=item_label)
 
     @pytest.mark.parametrize(
         'item',
