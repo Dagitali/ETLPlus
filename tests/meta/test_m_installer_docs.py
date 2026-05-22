@@ -24,6 +24,26 @@ COMPATIBILITY_PATH = REPO_ROOT / 'docs/source/getting-started/compatibility.md'
 CI_WORKFLOW_PATH = REPO_ROOT / '.github/workflows/ci.yml'
 INSTALLER_SMOKE_ACTION_PATH = REPO_ROOT / '.github/actions/installer-smoke/action.yml'
 
+CONDA_STATUS_DOC_PATHS = (
+    README_PATH,
+    COMPATIBILITY_PATH,
+    RELEASE_CHECKLIST_PATH,
+)
+
+CROSS_PLATFORM_SMOKE_SNIPPETS = (
+    'os: [macos-latest, windows-latest]',
+    'etlplus --version',
+    'etlplus --help',
+    'etlplus check --help',
+)
+CONDA_STATUS_SNIPPETS = (
+    'conda-forge',
+    'tagged',
+    'published',
+)
+
+type PathSnippetCase = tuple[Path, str]
+
 
 # SECTION: SUPPORT ========================================================== #
 
@@ -57,6 +77,12 @@ INSTALLER_CONTRACTS = (
     ),
 )
 
+CONDA_STATUS_CASES: tuple[PathSnippetCase, ...] = tuple(
+    (path, snippet)
+    for path in CONDA_STATUS_DOC_PATHS
+    for snippet in CONDA_STATUS_SNIPPETS
+)
+
 
 # SECTION: FIXTURES ========================================================= #
 
@@ -79,35 +105,39 @@ def readme_text_fixture() -> str:
     return README_PATH.read_text(encoding='utf-8')
 
 
+def _path_snippet_case_id(case: PathSnippetCase) -> str:
+    """Return stable pytest IDs for path/snippet guardrail cases."""
+    path, snippet = case
+    return f'{path.name}:{snippet}'
+
+
 # SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.parametrize(
-    'path',
-    (README_PATH, COMPATIBILITY_PATH, RELEASE_CHECKLIST_PATH),
-    ids=lambda path: path.name,
+    ('path', 'snippet'),
+    CONDA_STATUS_CASES,
+    ids=[_path_snippet_case_id(case) for case in CONDA_STATUS_CASES],
 )
-def test_conda_status_is_documented_as_validated_but_unpublished(path: Path) -> None:
+def test_conda_status_is_documented_as_validated_but_unpublished(
+    path: Path,
+    snippet: str,
+) -> None:
     """
     Test that conda packaging is documented as support-gate validated without
     claiming user-facing install availability before feedstock publication.
     """
-    text = path.read_text(encoding='utf-8')
-    normalized_text = text.lower()
+    normalized_text = path.read_text(encoding='utf-8').lower()
 
-    assert 'conda-forge' in normalized_text
-    assert 'tagged' in normalized_text
-    assert 'published' in normalized_text
+    assert snippet in normalized_text
 
 
-def test_cross_platform_smoke_checks_cli_help_surfaces() -> None:
+@pytest.mark.parametrize('snippet', CROSS_PLATFORM_SMOKE_SNIPPETS)
+def test_cross_platform_smoke_checks_cli_help_surfaces(snippet: str) -> None:
     """Test macOS/Windows smoke coverage checks stable CLI help surfaces."""
     workflow_text = CI_WORKFLOW_PATH.read_text(encoding='utf-8')
 
-    assert 'os: [macos-latest, windows-latest]' in workflow_text
-    assert 'etlplus --version' in workflow_text
-    assert 'etlplus --help' in workflow_text
-    assert 'etlplus check --help' in workflow_text
+    assert snippet in workflow_text
 
 
 def test_installer_smoke_resolves_tool_installer_entrypoint_from_path(
