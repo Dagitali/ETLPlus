@@ -74,11 +74,24 @@ class TestSqlHelpers:
         assert mod.quote_identifier('table') == '"table"'
         assert mod.quote_identifier('a"b') == '"a""b"'
 
-    def test_resolve_table(self) -> None:
+    @pytest.mark.parametrize(
+        ('tables', 'expected'),
+        [
+            pytest.param([], None, id='no-tables'),
+            pytest.param(['data', 'other'], 'data', id='default-table'),
+            pytest.param(['single'], 'single', id='single-table'),
+        ],
+    )
+    def test_resolve_table_success_cases(
+        self,
+        tables: list[str],
+        expected: str | None,
+    ) -> None:
         """Test table resolution behavior for supported branches."""
-        assert mod.resolve_table([], engine_name='sqlite') is None
-        assert mod.resolve_table(['data', 'other'], engine_name='sqlite') == 'data'
-        assert mod.resolve_table(['single'], engine_name='sqlite') == 'single'
+        assert mod.resolve_table(tables, engine_name='sqlite') == expected
+
+    def test_resolve_table_rejects_ambiguous_tables(self) -> None:
+        """Test that ambiguous table sets raise when no default is present."""
         with pytest.raises(
             ValueError,
             match='Multiple tables found in sqlite file',

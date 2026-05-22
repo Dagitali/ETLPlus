@@ -10,6 +10,12 @@ import ast
 from pathlib import Path
 from types import ModuleType
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type ExportCase = tuple[str, object]
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -55,3 +61,21 @@ def assert_helper_module_exports_match_facade_usage(
         alias=alias,
     )
     assert helper_module.__all__ == referenced_names
+
+
+def assert_package_exports(
+    *,
+    package_module: ModuleType,
+    expected_exports: tuple[ExportCase, ...],
+) -> None:
+    """
+    Assert that a package facade exports exactly the expected names in order.
+
+    Parameters
+    ----------
+    package_module : ModuleType
+        The package facade module whose ``__all__`` contract is under test.
+    expected_exports : tuple[ExportCase, ...]
+        Export-name and canonical-object pairs used by binding tests.
+    """
+    assert package_module.__all__ == [name for name, _value in expected_exports]

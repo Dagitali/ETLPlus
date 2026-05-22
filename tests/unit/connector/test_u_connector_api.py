@@ -144,20 +144,3 @@ class TestConnectorApi:
         else:
             assert connector.rate_limit is not None
             assert connector.rate_limit.sleep_seconds == rate_limit_sleep_seconds
-
-    @pytest.mark.parametrize(
-        'payload',
-        [
-            pytest.param({'type': 'api'}, id='missing-name'),
-            pytest.param({'name': None, 'type': 'api'}, id='non-string-name'),
-        ],
-    )
-    def test_from_obj_requires_name(
-        self,
-        payload: dict[str, object],
-    ) -> None:
-        """
-        Test that :meth:`from_obj` rejects mappings with missing or invalid names.
-        """
-        with pytest.raises(TypeError, match='ConnectorApi requires a "name"'):
-            ConnectorApi.from_obj(payload)

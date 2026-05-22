@@ -16,6 +16,7 @@ from etlplus.file import jinja2 as mod
 from etlplus.file.base import ReadOptions
 
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
+from .pytest_file_contract_mixins import TemplateFileContractMixin
 from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
 # SECTION: PRAGMAS ========================================================== #
@@ -95,11 +96,12 @@ class _Jinja2Stub:
 # SECTION: TESTS ============================================================ #
 
 
-class TestJinja2(RoundtripUnitModuleContract):
+class TestJinja2(TemplateFileContractMixin, RoundtripUnitModuleContract):
     """Unit tests for :mod:`etlplus.file.jinja2`."""
 
     module = mod
     format_name = 'jinja2'
+    sample_template_text = 'Hello {{ name }}'
     roundtrip_spec = build_roundtrip_spec(
         {'template': 'Hello {{ name }}'},
         [{'template': 'Hello {{ name }}'}],
@@ -119,20 +121,6 @@ class TestJinja2(RoundtripUnitModuleContract):
         )
 
         assert result == [{'template': 'Olá {{ name }}'}]
-
-    def test_read_returns_template_payload(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that :meth:`read` returns one-row payload with template text.
-        """
-        path = self.format_path(tmp_path)
-        path.write_text('Hello {{ name }}', encoding='utf-8')
-
-        assert self.module_handler.read(path) == [
-            {'template': 'Hello {{ name }}'},
-        ]
 
     def test_render_strict_undefined_uses_environment_from_string(
         self,
@@ -211,35 +199,3 @@ class TestJinja2(RoundtripUnitModuleContract):
         assert jinja2_stub.template_instances[0].render_calls == [
             {'name': 'Ada'},
         ]
-
-    def test_write_requires_single_template_object(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that :meth:`write` requires exactly one object with a template
-        string.
-        """
-        path = self.format_path(tmp_path)
-
-        with pytest.raises(TypeError, match='exactly one object'):
-            self.module_handler.write(
-                path,
-                [{'template': 'a'}, {'template': 'b'}],
-            )
-
-        with pytest.raises(TypeError, match='"template" string'):
-            self.module_handler.write(path, [{'name': 'missing'}])
-
-    def test_write_returns_zero_for_empty_payload(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that :meth:`write` returns 0 for empty payload without creating
-        file.
-        """
-        path = self.format_path(tmp_path)
-
-        assert self.module_handler.write(path, []) == 0
-        assert not path.exists()

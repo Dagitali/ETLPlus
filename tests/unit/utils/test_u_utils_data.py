@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.utils._data`.
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import FrozenInstanceError
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -104,6 +105,28 @@ class TestDataHelpers:
         assert count_records(payload) == expected
 
     @pytest.mark.parametrize(
+        ('instance', 'attribute', 'value'),
+        [
+            pytest.param(JsonCodec(), 'pretty', True, id='json-codec'),
+            pytest.param(
+                RecordPayloadParser('JSON'),
+                'format_name',
+                'CSV',
+                id='record-payload-parser',
+            ),
+        ],
+    )
+    def test_data_policies_are_frozen(
+        self,
+        instance: object,
+        attribute: str,
+        value: object,
+    ) -> None:
+        """Test that immutable data helper policy cannot be reassigned."""
+        with pytest.raises(FrozenInstanceError):
+            setattr(instance, attribute, value)
+
+    @pytest.mark.parametrize(
         ('value', 'expected'),
         [
             pytest.param(date(2026, 1, 2), '"2026-01-02"', id='date'),
@@ -140,13 +163,6 @@ class TestDataHelpers:
     ) -> None:
         """Test that date-like values render with stable ISO precision."""
         assert JsonCodec.isoformat(value) == expected
-
-    def test_json_codec_is_frozen(self) -> None:
-        """Test that render policy cannot be mutated after construction."""
-        codec = JsonCodec()
-
-        with pytest.raises(AttributeError):
-            codec.pretty = True  # type: ignore[misc]
 
     @pytest.mark.parametrize(
         ('payload', 'expected'),
@@ -245,13 +261,6 @@ class TestDataHelpers:
 
         assert_json_output(stream.getvalue(), payload)
 
-    def test_record_payload_parser_is_frozen(self) -> None:
-        """Test that parser context cannot be mutated after construction."""
-        parser = RecordPayloadParser('JSON')
-
-        with pytest.raises(AttributeError):
-            parser.format_name = 'CSV'  # type: ignore[misc]
-
     def test_require_dict_payload_and_require_str_key(
         self,
         json_record_parser: RecordPayloadParser,
@@ -265,17 +274,37 @@ class TestDataHelpers:
         with pytest.raises(TypeError, match='must include a "key" string'):
             json_record_parser.require_str_key({'key': 1}, 'key')
 
-    def test_serialize_json_can_use_standard_spacing(self) -> None:
-        """Test that compact output can be disabled for standard JSON spacing."""
-        assert JsonCodec(compact=False).serialize({'a': 1}) == '{"a": 1}'
-
-    def test_serialize_json_compacts_by_default(self) -> None:
-        """Test that :meth:`JsonCodec.serialize` emits compact JSON by default."""
-        assert JsonCodec(sort_keys=True).serialize({'b': 1, 'a': 2}) == '{"a":2,"b":1}'
-
-    def test_serialize_json_pretty_prints_when_requested(self) -> None:
-        """Test that :meth:`JsonCodec.serialize` supports stable pretty output."""
-        assert JsonCodec(pretty=True).serialize({'a': 1}) == '{\n  "a": 1\n}'
+    @pytest.mark.parametrize(
+        ('codec', 'payload', 'expected'),
+        [
+            pytest.param(
+                JsonCodec(compact=False),
+                {'a': 1},
+                '{"a": 1}',
+                id='standard-spacing',
+            ),
+            pytest.param(
+                JsonCodec(sort_keys=True),
+                {'b': 1, 'a': 2},
+                '{"a":2,"b":1}',
+                id='compact-sorted',
+            ),
+            pytest.param(
+                JsonCodec(pretty=True),
+                {'a': 1},
+                '{\n  "a": 1\n}',
+                id='pretty',
+            ),
+        ],
+    )
+    def test_serialize_json_formatting_options(
+        self,
+        codec: JsonCodec,
+        payload: JSONData,
+        expected: str,
+    ) -> None:
+        """Test compact, standard, and pretty JSON serialization modes."""
+        assert codec.serialize(payload) == expected
 
     @pytest.mark.parametrize(
         ('value', 'expected'),

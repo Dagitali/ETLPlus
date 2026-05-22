@@ -6,6 +6,7 @@ Reusable contract mixins for unit tests of :mod:`etlplus.file`.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
@@ -48,6 +49,7 @@ __all__ = [
     'DelimitedReadWriteMixin',
     'DelimitedTextRowsMixin',
     'EmptyWriteReturnsZeroMixin',
+    'JsonLinesWriteContractMixin',
     'PathMixin',
     'ReadOnlyWriteGuardMixin',
     'RoundtripUnitModuleContract',
@@ -57,6 +59,8 @@ __all__ = [
     'SemiStructuredWriteDictMixin',
     'SpreadsheetSheetNameRoutingMixin',
     'SpreadsheetWritableMixin',
+    'TemplateFileContractMixin',
+    'TemplateRenderContractMixin',
 ]
 
 
@@ -714,3 +718,100 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
         assert pandas.last_frame.to_excel_calls == [
             self._write_sheet_kwargs(path),
         ]
+
+
+class TemplateFileContractMixin(EmptyWriteReturnsZeroMixin):
+    """
+    Shared contract for single-template text file handlers.
+    """
+
+    assert_file_not_created_on_empty_write = True
+    sample_template_text: str
+
+    def test_read_returns_template_payload(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test reading template text as a one-row template payload."""
+        path = self.format_path(tmp_path)
+        path.write_text(self.sample_template_text, encoding='utf-8')
+
+        assert self.module_handler.read(path) == [
+            {'template': self.sample_template_text},
+        ]
+
+    @pytest.mark.parametrize(
+        ('payload', 'match'),
+        [
+            pytest.param(
+                [{'template': 'a'}, {'template': 'b'}],
+                'exactly one object',
+                id='multiple-template-objects',
+            ),
+            pytest.param(
+                [{'name': 'missing'}],
+                '"template" string',
+                id='missing-template',
+            ),
+        ],
+    )
+    def test_write_requires_single_template_object(
+        self,
+        tmp_path: Path,
+        payload: object,
+        match: str,
+    ) -> None:
+        """Test writing requires exactly one object with template text."""
+        with pytest.raises(TypeError, match=match):
+            self.module_handler.write(self.format_path(tmp_path), payload)
+
+
+class TemplateRenderContractMixin(PathMixin):
+    """
+    Shared contract for template handlers with built-in rendering.
+    """
+
+    render_context: dict[str, object] = {'name': 'Ada', 'city': 'Paris'}
+    render_expected = 'Hello Ada from Paris.'
+    render_template: str
+
+    def test_render_substitutes_template_tokens(self) -> None:
+        """Test rendering replaces template variables from context."""
+        assert (
+            self.module_handler.render(self.render_template, self.render_context)
+            == self.render_expected
+        )
+
+
+class JsonLinesWriteContractMixin(EmptyWriteReturnsZeroMixin):
+    """
+    Shared write contract for JSON-lines record handlers.
+    """
+
+    assert_file_not_created_on_empty_write = True
+    json_lines_error_pattern: str
+
+    def test_write_rejects_non_object_payloads(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing rejects records that are not mappings."""
+        path = self.format_path(tmp_path)
+
+        with pytest.raises(TypeError, match=self.json_lines_error_pattern):
+            self.module_handler.write(path, [1])
+
+    def test_write_serializes_json_lines_and_newline(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing emits one JSON object per line."""
+        path = self.format_path(tmp_path)
+        payload = [{'id': 1}, {'id': 2}]
+
+        written = self.module_handler.write(path, payload)
+
+        assert written == 2
+        text = path.read_text(encoding='utf-8')
+        assert text.endswith('\n')
+        assert [json.loads(line) for line in text.splitlines()] == payload

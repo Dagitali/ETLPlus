@@ -17,6 +17,8 @@ from etlplus.file.base import BoundFileHandler
 from etlplus.file.base import ReadOptions
 from etlplus.file.base import WriteOptions
 
+from ..pytest_export_contracts import assert_package_exports
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -24,7 +26,7 @@ from etlplus.file.base import WriteOptions
 # SECTION: HELPERS ========================================================== #
 
 
-FILE_EXPORTS = [
+FILE_EXPORTS: tuple[tuple[str, object], ...] = (
     ('BoundFileHandler', BoundFileHandler),
     ('File', File),
     ('ReadOptions', ReadOptions),
@@ -32,7 +34,7 @@ FILE_EXPORTS = [
     ('CompressionFormat', CompressionFormat),
     ('FileFormat', FileFormat),
     ('infer_file_format_and_compression', infer_file_format_and_compression),
-]
+)
 
 # SECTION: TESTS ============================================================ #
 
@@ -45,7 +47,7 @@ class TestFilePackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert file_pkg.__all__ == [name for name, _value in FILE_EXPORTS]
+        assert_package_exports(package_module=file_pkg, expected_exports=FILE_EXPORTS)
 
     @pytest.mark.parametrize(('name', 'expected'), FILE_EXPORTS)
     def test_expected_symbol_bindings(

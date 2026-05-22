@@ -31,8 +31,8 @@ type DumpCall = dict[str, object]
 
 
 @dataclass
-class _TomlDumperStub:
-    """Stub for TOML dumper modules exposing ``dumps``."""
+class _TomliWModuleStub:
+    """Minimal tomli_w module substitute."""
 
     output: str
     calls: list[DumpCall] = field(default_factory=list)
@@ -58,7 +58,7 @@ class TestToml(
 ):
     """Unit tests for :mod:`etlplus.file.toml`."""
 
-    _tomli_w_stub: _TomlDumperStub
+    _tomli_w_stub: _TomliWModuleStub
 
     module = mod
     format_name = 'toml'
@@ -75,7 +75,22 @@ class TestToml(
         assert path.read_text(encoding='utf-8') == 'tomli_w_output'
         assert self._tomli_w_stub.calls == [self.dict_payload]
 
-    def test_read_non_table_raises(
+    def setup_roundtrip_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install ``tomli_w`` stub for roundtrip contract tests."""
+        optional_module_stub({'tomli_w': _TomliWModuleStub('name = "etl"\n')})
+
+    def setup_write_dependencies(
+        self,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """Install ``tomli_w`` stub for write contract tests."""
+        self._tomli_w_stub = _TomliWModuleStub('tomli_w_output')
+        optional_module_stub({'tomli_w': self._tomli_w_stub})
+
+    def test_read_rejects_non_table_root(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
@@ -89,18 +104,3 @@ class TestToml(
 
         with pytest.raises(TypeError, match='TOML root must be a table'):
             mod.TomlFile().read(path)
-
-    def setup_roundtrip_dependencies(
-        self,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Install ``tomli_w`` stub for roundtrip contract tests."""
-        optional_module_stub({'tomli_w': _TomlDumperStub('name = "etl"\n')})
-
-    def setup_write_dependencies(
-        self,
-        optional_module_stub: OptionalModuleInstaller,
-    ) -> None:
-        """Install ``tomli_w`` stub for write contract tests."""
-        self._tomli_w_stub = _TomlDumperStub('tomli_w_output')
-        optional_module_stub({'tomli_w': self._tomli_w_stub})

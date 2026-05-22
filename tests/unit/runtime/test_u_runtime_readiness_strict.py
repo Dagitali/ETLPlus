@@ -8,12 +8,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from types import SimpleNamespace
-from typing import Any
-from typing import cast
 
 import pytest
 
 import etlplus.runtime.readiness._strict as readiness_strict_mod
+from etlplus.runtime.readiness._support import ReadinessRow
 from tests.pytest_shared_support import get_cloud_database_provider_case
 
 from .pytest_runtime_readiness import build_issue_row as _issue
@@ -39,7 +38,7 @@ class TestReadinessReportBuilderStrict:
         self,
     ) -> None:
         """Strict schedule validation should reject non-list schedule sections."""
-        issues: list[dict[str, Any]] = []
+        issues: list[ReadinessRow] = []
 
         readiness_strict_mod.StrictConfigValidator.schedule_issue_rows(
             raw={'schedules': {'name': 'nightly_all'}},
@@ -158,7 +157,7 @@ class TestReadinessReportBuilderStrict:
         self,
     ) -> None:
         """Strict schedule validation should surface malformed schedule entries."""
-        issues: list[dict[str, Any]] = []
+        issues: list[ReadinessRow] = []
 
         readiness_strict_mod.StrictConfigValidator.schedule_issue_rows(
             raw={
@@ -195,7 +194,7 @@ class TestReadinessReportBuilderStrict:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Strict connector validation should surface parse errors and blanks."""
-        issues: list[dict[str, Any]] = []
+        issues: list[ReadinessRow] = []
 
         def _parse_connector(entry: Mapping[str, object]) -> object:
             if entry.get('type') == 'weird':
@@ -307,7 +306,7 @@ class TestReadinessReportBuilderStrict:
         expected_issues: list[dict[str, object]],
     ) -> None:
         """Strict connector validation should surface provider metadata gaps."""
-        issues: list[dict[str, Any]] = []
+        issues: list[ReadinessRow] = []
 
         names = readiness_strict_mod.StrictConfigValidator.connector_names(
             raw=raw,
@@ -316,13 +315,13 @@ class TestReadinessReportBuilderStrict:
         )
 
         assert names == expected_names
-        assert cast(list[dict[str, object]], issues) == expected_issues
+        assert issues == expected_issues
 
     def test_strict_connector_names_share_storage_scheme_type_guidance(
         self,
     ) -> None:
         """Strict connector diagnostics should reuse backing-service wording."""
-        issues: list[dict[str, Any]] = []
+        issues: list[ReadinessRow] = []
 
         names = readiness_strict_mod.StrictConfigValidator.connector_names(
             raw={
@@ -446,7 +445,7 @@ class TestReadinessReportBuilderStrict:
         expected_issues: list[dict[str, object]],
     ) -> None:
         """Strict connector validation should emit the expected single-issue rows."""
-        issues: list[dict[str, Any]] = []
+        issues: list[ReadinessRow] = []
 
         if parse_connector is not None:
             monkeypatch.setattr(
@@ -462,13 +461,13 @@ class TestReadinessReportBuilderStrict:
         )
 
         assert names == expected_names
-        assert cast(list[dict[str, object]], issues) == expected_issues
+        assert issues == expected_issues
 
     def test_strict_job_issue_rows_cover_non_list_invalid_entries_and_duplicates(
         self,
     ) -> None:
         """Strict job validation should cover malformed top-level and entry cases."""
-        issues: list[dict[str, Any]] = []
+        issues: list[ReadinessRow] = []
 
         readiness_strict_mod.StrictConfigValidator.job_issue_rows(
             raw={
@@ -498,39 +497,35 @@ class TestReadinessReportBuilderStrict:
         assert any(issue['issue'] == 'duplicate job name: dup' for issue in issues)
         assert any(issue['issue'] == 'missing job name' for issue in issues)
 
-    def test_strict_job_issue_rows_reject_non_list_jobs_section(
-        self,
-    ) -> None:
-        """Strict job validation should reject non-list jobs sections."""
-        issues: list[dict[str, Any]] = []
-
-        readiness_strict_mod.StrictConfigValidator.job_issue_rows(
-            raw={'jobs': {'name': 'publish'}},
-            issues=issues,
-            source_names=set(),
-            target_names=set(),
-            transform_names=set(),
-            validation_names=set(),
-        )
-
-        assert issues == [
-            _issue(
-                expected='list',
-                guidance='Define jobs as a YAML list of job mappings.',
-                issue='invalid section type',
-                observed_type='dict',
-                section='jobs',
+    @pytest.mark.parametrize(
+        ('raw', 'expected'),
+        [
+            pytest.param(
+                {'jobs': {'name': 'publish'}},
+                [
+                    _issue(
+                        expected='list',
+                        guidance='Define jobs as a YAML list of job mappings.',
+                        issue='invalid section type',
+                        observed_type='dict',
+                        section='jobs',
+                    ),
+                ],
+                id='non-list-jobs-section',
             ),
-        ]
-
-    def test_strict_job_issue_rows_return_when_jobs_section_is_missing(
+            pytest.param({}, [], id='missing-jobs-section'),
+        ],
+    )
+    def test_strict_job_issue_rows_handles_jobs_section_guard_paths(
         self,
+        raw: dict[str, object],
+        expected: list[dict[str, object]],
     ) -> None:
-        """Strict job validation should do nothing when jobs are absent."""
-        issues: list[dict[str, Any]] = []
+        """Strict job validation should cover missing and malformed sections."""
+        issues: list[ReadinessRow] = []
 
         readiness_strict_mod.StrictConfigValidator.job_issue_rows(
-            raw={},
+            raw=raw,
             issues=issues,
             source_names=set(),
             target_names=set(),
@@ -538,7 +533,7 @@ class TestReadinessReportBuilderStrict:
             validation_names=set(),
         )
 
-        assert not issues
+        assert issues == expected
 
     def test_strict_job_names_skip_non_list_and_blank_entries(self) -> None:
         """Strict job-name collection should ignore non-list and blank entries."""
@@ -652,7 +647,7 @@ class TestReadinessReportBuilderStrict:
         expected: list[dict[str, object]],
     ) -> None:
         """Strict job refs should emit the expected issue row for each case."""
-        issues: list[dict[str, Any]] = []
+        issues: list[ReadinessRow] = []
 
         readiness_strict_mod.StrictConfigValidator.job_ref_issue(
             entry=entry,
@@ -666,13 +661,13 @@ class TestReadinessReportBuilderStrict:
             section_label=section_label,
         )
 
-        assert cast(list[dict[str, object]], issues) == expected
+        assert issues == expected
 
     def test_strict_named_section_names_reject_non_mapping_sections(
         self,
     ) -> None:
         """Strict named section validation should reject non-mapping values."""
-        issues: list[dict[str, Any]] = []
+        issues: list[ReadinessRow] = []
 
         names = readiness_strict_mod.StrictConfigValidator.named_section_names(
             raw={'transforms': ['trim']},

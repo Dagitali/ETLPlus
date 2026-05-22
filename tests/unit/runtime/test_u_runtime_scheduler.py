@@ -22,6 +22,26 @@ from etlplus.runtime import _scheduler as scheduler_mod
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: HELPERS ========================================================== #
+
+
+def _scheduler_config(
+    *,
+    jobs: list[dict[str, object]] | None = None,
+    schedules: list[dict[str, object]] | None = None,
+) -> Config:
+    """Build a minimal scheduler-ready pipeline config."""
+    return Config.from_dict(
+        {
+            'name': 'Scheduler Pipeline',
+            'sources': [],
+            'targets': [],
+            'jobs': [] if jobs is None else list(jobs),
+            'schedules': [] if schedules is None else list(schedules),
+        },
+    )
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -37,21 +57,15 @@ class TestDueRequests:
         tmp_path: Path,
     ) -> None:
         """Cron schedules due at the current minute should yield one request."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Scheduler Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-                'schedules': [
-                    {
-                        'name': 'nightly-all',
-                        'cron': '0 2 11 5 1',
-                        'timezone': 'UTC',
-                        'target': {'run_all': True},
-                    },
-                ],
-            },
+        cfg = _scheduler_config(
+            schedules=[
+                {
+                    'name': 'nightly-all',
+                    'cron': '0 2 11 5 1',
+                    'timezone': 'UTC',
+                    'target': {'run_all': True},
+                },
+            ],
         )
 
         requests, skipped = scheduler_mod.LocalScheduler.due_requests(
@@ -217,30 +231,25 @@ class TestSchedulerLock:
         expected_skipped: list[dict[str, object]],
     ) -> None:
         """Valid schedules should share one normalized request-building path."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Scheduler Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [{'name': 'seed'}],
-                'schedules': [
-                    {
-                        'name': 'seed-every-15m',
-                        'interval': {'minutes': 15},
-                        'target': {'job': 'seed'},
-                    },
-                    {
-                        'name': 'paused-seed',
-                        'interval': {'minutes': 15},
-                        'paused': True,
-                        'target': {'job': 'seed'},
-                    },
-                    {
-                        'name': 'ignored-missing-target',
-                        'interval': {'minutes': 15},
-                    },
-                ],
-            },
+        cfg = _scheduler_config(
+            jobs=[{'name': 'seed'}],
+            schedules=[
+                {
+                    'name': 'seed-every-15m',
+                    'interval': {'minutes': 15},
+                    'target': {'job': 'seed'},
+                },
+                {
+                    'name': 'paused-seed',
+                    'interval': {'minutes': 15},
+                    'paused': True,
+                    'target': {'job': 'seed'},
+                },
+                {
+                    'name': 'ignored-missing-target',
+                    'interval': {'minutes': 15},
+                },
+            ],
         )
         state_store = scheduler_mod._SchedulerStateStore(tmp_path)
         state_store.record_completion(
@@ -318,25 +327,20 @@ class TestRunPending:
         tmp_path: Path,
     ) -> None:
         """Nonzero callback exits should still consume the dispatched trigger."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Scheduler Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [{'name': 'seed'}],
-                'schedules': [
-                    {
-                        'name': 'seed-every-15m',
-                        'interval': {'minutes': 15},
-                        'target': {'job': 'seed'},
-                        'backfill': {
-                            'enabled': True,
-                            'max_catchup_runs': 1,
-                            'start_at': '2026-05-12T00:00:00+00:00',
-                        },
+        cfg = _scheduler_config(
+            jobs=[{'name': 'seed'}],
+            schedules=[
+                {
+                    'name': 'seed-every-15m',
+                    'interval': {'minutes': 15},
+                    'target': {'job': 'seed'},
+                    'backfill': {
+                        'enabled': True,
+                        'max_catchup_runs': 1,
+                        'start_at': '2026-05-12T00:00:00+00:00',
                     },
-                ],
-            },
+                },
+            ],
         )
 
         monkeypatch.setattr(
@@ -389,25 +393,20 @@ class TestRunPending:
         tmp_path: Path,
     ) -> None:
         """Due interval schedules should dispatch bounded catch-up runs once."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Scheduler Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [{'name': 'seed'}],
-                'schedules': [
-                    {
-                        'name': 'seed-every-15m',
-                        'interval': {'minutes': 15},
-                        'target': {'job': 'seed'},
-                        'backfill': {
-                            'enabled': True,
-                            'max_catchup_runs': 2,
-                            'start_at': '2026-05-12T00:00:00+00:00',
-                        },
+        cfg = _scheduler_config(
+            jobs=[{'name': 'seed'}],
+            schedules=[
+                {
+                    'name': 'seed-every-15m',
+                    'interval': {'minutes': 15},
+                    'target': {'job': 'seed'},
+                    'backfill': {
+                        'enabled': True,
+                        'max_catchup_runs': 2,
+                        'start_at': '2026-05-12T00:00:00+00:00',
                     },
-                ],
-            },
+                },
+            ],
         )
         dispatch_calls: list[dict[str, object]] = []
 
@@ -460,25 +459,20 @@ class TestRunPending:
         tmp_path: Path,
     ) -> None:
         """Callback exceptions should leave the due trigger eligible for replay."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Scheduler Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [{'name': 'seed'}],
-                'schedules': [
-                    {
-                        'name': 'seed-every-15m',
-                        'interval': {'minutes': 15},
-                        'target': {'job': 'seed'},
-                        'backfill': {
-                            'enabled': True,
-                            'max_catchup_runs': 1,
-                            'start_at': '2026-05-12T00:00:00+00:00',
-                        },
+        cfg = _scheduler_config(
+            jobs=[{'name': 'seed'}],
+            schedules=[
+                {
+                    'name': 'seed-every-15m',
+                    'interval': {'minutes': 15},
+                    'target': {'job': 'seed'},
+                    'backfill': {
+                        'enabled': True,
+                        'max_catchup_runs': 1,
+                        'start_at': '2026-05-12T00:00:00+00:00',
                     },
-                ],
-            },
+                },
+            ],
         )
 
         monkeypatch.setattr(
@@ -537,35 +531,30 @@ class TestRunPending:
         Pending overlap rows should survive partial summaries from later
         dispatch exceptions.
         """
-        cfg = Config.from_dict(
-            {
-                'name': 'Scheduler Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [{'name': 'seed'}, {'name': 'sync'}],
-                'schedules': [
-                    {
-                        'name': 'locked-seed',
-                        'interval': {'minutes': 15},
-                        'target': {'job': 'seed'},
-                        'backfill': {
-                            'enabled': True,
-                            'max_catchup_runs': 1,
-                            'start_at': '2026-05-12T00:00:00+00:00',
-                        },
+        cfg = _scheduler_config(
+            jobs=[{'name': 'seed'}, {'name': 'sync'}],
+            schedules=[
+                {
+                    'name': 'locked-seed',
+                    'interval': {'minutes': 15},
+                    'target': {'job': 'seed'},
+                    'backfill': {
+                        'enabled': True,
+                        'max_catchup_runs': 1,
+                        'start_at': '2026-05-12T00:00:00+00:00',
                     },
-                    {
-                        'name': 'sync-every-15m',
-                        'interval': {'minutes': 15},
-                        'target': {'job': 'sync'},
-                        'backfill': {
-                            'enabled': True,
-                            'max_catchup_runs': 1,
-                            'start_at': '2026-05-12T00:00:00+00:00',
-                        },
+                },
+                {
+                    'name': 'sync-every-15m',
+                    'interval': {'minutes': 15},
+                    'target': {'job': 'sync'},
+                    'backfill': {
+                        'enabled': True,
+                        'max_catchup_runs': 1,
+                        'start_at': '2026-05-12T00:00:00+00:00',
                     },
-                ],
-            },
+                },
+            ],
         )
         lock_dir = tmp_path / 'scheduler-locks'
         lock_dir.mkdir(parents=True)
@@ -630,25 +619,20 @@ class TestRunPending:
         tmp_path: Path,
     ) -> None:
         """Catch-up exceptions should return a partial summary via the raised error."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Scheduler Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [{'name': 'seed'}],
-                'schedules': [
-                    {
-                        'name': 'seed-every-15m',
-                        'interval': {'minutes': 15},
-                        'target': {'job': 'seed'},
-                        'backfill': {
-                            'enabled': True,
-                            'max_catchup_runs': 3,
-                            'start_at': '2026-05-12T00:00:00+00:00',
-                        },
+        cfg = _scheduler_config(
+            jobs=[{'name': 'seed'}],
+            schedules=[
+                {
+                    'name': 'seed-every-15m',
+                    'interval': {'minutes': 15},
+                    'target': {'job': 'seed'},
+                    'backfill': {
+                        'enabled': True,
+                        'max_catchup_runs': 3,
+                        'start_at': '2026-05-12T00:00:00+00:00',
                     },
-                ],
-            },
+                },
+            ],
         )
         calls = 0
 
@@ -735,21 +719,15 @@ class TestRunPending:
         tmp_path: Path,
     ) -> None:
         """Scheduled dispatch should pass only additive scheduler metadata."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Scheduler Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-                'schedules': [
-                    {
-                        'name': 'nightly-all',
-                        'cron': '0 2 11 5 1',
-                        'timezone': 'UTC',
-                        'target': {'run_all': True},
-                    },
-                ],
-            },
+        cfg = _scheduler_config(
+            schedules=[
+                {
+                    'name': 'nightly-all',
+                    'cron': '0 2 11 5 1',
+                    'timezone': 'UTC',
+                    'target': {'run_all': True},
+                },
+            ],
         )
         dispatch_calls: list[dict[str, object]] = []
 
@@ -806,25 +784,20 @@ class TestRunPending:
         tmp_path: Path,
     ) -> None:
         """A successful retry should clear the stale exception diagnostics."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Scheduler Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [{'name': 'seed'}],
-                'schedules': [
-                    {
-                        'name': 'seed-every-15m',
-                        'interval': {'minutes': 15},
-                        'target': {'job': 'seed'},
-                        'backfill': {
-                            'enabled': True,
-                            'max_catchup_runs': 1,
-                            'start_at': '2026-05-12T00:00:00+00:00',
-                        },
+        cfg = _scheduler_config(
+            jobs=[{'name': 'seed'}],
+            schedules=[
+                {
+                    'name': 'seed-every-15m',
+                    'interval': {'minutes': 15},
+                    'target': {'job': 'seed'},
+                    'backfill': {
+                        'enabled': True,
+                        'max_catchup_runs': 1,
+                        'start_at': '2026-05-12T00:00:00+00:00',
                     },
-                ],
-            },
+                },
+            ],
         )
 
         monkeypatch.setattr(
@@ -875,21 +848,15 @@ class TestRunPending:
         tmp_path: Path,
     ) -> None:
         """Pre-existing schedule locks should prevent overlapping dispatch."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Scheduler Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-                'schedules': [
-                    {
-                        'name': 'nightly-all',
-                        'cron': '0 2 11 5 1',
-                        'timezone': 'UTC',
-                        'target': {'run_all': True},
-                    },
-                ],
-            },
+        cfg = _scheduler_config(
+            schedules=[
+                {
+                    'name': 'nightly-all',
+                    'cron': '0 2 11 5 1',
+                    'timezone': 'UTC',
+                    'target': {'run_all': True},
+                },
+            ],
         )
         lock_dir = tmp_path / 'scheduler-locks'
         lock_dir.mkdir(parents=True)

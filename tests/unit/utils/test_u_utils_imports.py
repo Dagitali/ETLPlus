@@ -430,20 +430,13 @@ class TestModuleAvailable:
         )
         assert calls == [module_name.strip()]
 
-    @pytest.mark.parametrize(
-        'module_name',
-        [
-            pytest.param(' ', id='blank'),
-        ],
-    )
     def test_module_available_returns_false_for_invalid_module_names(
         self,
-        module_name: str,
     ) -> None:
         """Test invalid module names return false without spec lookup."""
         calls: list[str] = []
 
-        assert module_available(module_name, spec_finder=calls.append) is False
+        assert module_available(' ', spec_finder=calls.append) is False
         assert not calls
 
     @pytest.mark.parametrize(
@@ -466,16 +459,15 @@ class TestModuleAvailable:
         assert module_available('broken', spec_finder=_raise) is False
 
     @pytest.mark.parametrize(
-        ('available', 'expected'),
+        'available',
         [
-            pytest.param(True, True, id='available'),
-            pytest.param(False, False, id='unavailable'),
+            pytest.param(True, id='available'),
+            pytest.param(False, id='unavailable'),
         ],
     )
     def test_safe_module_available_delegates_to_checker(
         self,
         available: bool,
-        expected: bool,
     ) -> None:
         """Test safe availability checks preserve successful checker results."""
         assert (
@@ -483,7 +475,7 @@ class TestModuleAvailable:
                 'json',
                 availability_checker=lambda _module_name: available,
             )
-            is expected
+            is available
         )
 
     @pytest.mark.parametrize(

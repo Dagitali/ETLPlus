@@ -11,7 +11,6 @@ import sys
 from collections.abc import Mapping
 from io import StringIO
 from typing import TypedDict
-from typing import cast
 
 import pytest
 
@@ -34,30 +33,26 @@ class _ResolveLogLevelKwargs(TypedDict, total=False):
     verbose: bool
 
 
-class _LoggingSetupCapture:
-    """Capture calls made through the process-wide logging setup seam."""
+# SECTION: FIXTURES ========================================================= #
 
-    def __init__(self) -> None:
-        self.calls: dict[str, object] = {}
 
-    @classmethod
-    def install(
-        cls,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> _LoggingSetupCapture:
-        """Patch logging setup hooks and return one mutable capture object."""
-        capture = cls()
-        monkeypatch.setattr(
-            logging_mod.logging,
-            'basicConfig',
-            lambda **kwargs: capture.calls.setdefault('basicConfig', kwargs),
-        )
-        monkeypatch.setattr(
-            logging_mod.logging,
-            'captureWarnings',
-            lambda enabled: capture.calls.setdefault('captureWarnings', enabled),
-        )
-        return capture
+@pytest.fixture(name='logging_setup_calls')
+def logging_setup_calls_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> dict[str, object]:
+    """Patch process-wide logging setup hooks and capture their calls."""
+    calls: dict[str, object] = {}
+    monkeypatch.setattr(
+        logging_mod.logging,
+        'basicConfig',
+        lambda **kwargs: calls.setdefault('basicConfig', kwargs),
+    )
+    monkeypatch.setattr(
+        logging_mod.logging,
+        'captureWarnings',
+        lambda enabled: calls.setdefault('captureWarnings', enabled),
+    )
+    return calls
 
 
 # SECTION: TESTS ============================================================ #
@@ -68,22 +63,20 @@ class TestConfigureLogging:
 
     def test_configure_logging_defaults_stream_to_stderr(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        logging_setup_calls: dict[str, object],
     ) -> None:
         """Test that STDERR is used when no explicit stream is supplied."""
-        capture = _LoggingSetupCapture.install(monkeypatch)
-
         logging_mod.RuntimeLoggingPolicy.configure(env={})
 
-        basic_config = cast(dict[str, object], capture.calls['basicConfig'])
+        basic_config = logging_setup_calls['basicConfig']
+        assert isinstance(basic_config, dict)
         assert basic_config['stream'] is sys.stderr
 
     def test_configure_logging_passes_expected_arguments(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        logging_setup_calls: dict[str, object],
     ) -> None:
         """Test that configuration forwards the resolved level and options."""
-        capture = _LoggingSetupCapture.install(monkeypatch)
         stream = StringIO()
 
         level = logging_mod.RuntimeLoggingPolicy.configure(
@@ -93,7 +86,7 @@ class TestConfigureLogging:
         )
 
         assert level == logging.ERROR
-        assert capture.calls == {
+        assert logging_setup_calls == {
             'basicConfig': {
                 'force': True,
                 'format': '%(levelname)s %(name)s: %(message)s',

@@ -7,6 +7,8 @@ Unit tests for :mod:`etlplus.utils._substitution`.
 from __future__ import annotations
 
 import json
+from dataclasses import FrozenInstanceError
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -138,9 +140,10 @@ class TestDeepSubstitute:
     def test_resolver_is_frozen(self) -> None:
         """Test that substitution maps cannot be reassigned after construction."""
         resolver = SubstitutionResolver({'FOO': 'foo'})
+        attribute = 'vars_map'
 
-        with pytest.raises(AttributeError):
-            resolver.vars_map = {}  # type: ignore[misc]
+        with pytest.raises(FrozenInstanceError):
+            setattr(resolver, attribute, {})
 
     def test_secret_env_tokens_are_resolved_from_env_map(self) -> None:
         """Test ``${secret:...}`` tokens default to environment lookup."""
@@ -150,7 +153,7 @@ class TestDeepSubstitute:
 
     def test_secret_file_tokens_are_resolved_from_local_mapping_file(
         self,
-        tmp_path,
+        tmp_path: Path,
     ) -> None:
         """Test ``${secret:file:...}`` tokens resolve from a local JSON file."""
         secrets_path = tmp_path / 'secrets.json'

@@ -12,6 +12,7 @@ import pytest
 
 from etlplus.file import _binary_codec_handlers as mod
 from etlplus.file._enums import FileFormat
+from etlplus.utils._types import JSONData
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -86,7 +87,7 @@ class TestBinaryCodecHandlers:
     )
     def test_dumps_bytes_encodes_expected_payload_shape(
         self,
-        data: object,
+        data: JSONData,
         expected_payload: object,
     ) -> None:
         """
@@ -95,7 +96,7 @@ class TestBinaryCodecHandlers:
         codec = _CodecModuleStub()
         handler = _CodecHandler(codec)
 
-        payload = handler.dumps_bytes(data)  # type: ignore[arg-type]
+        payload = handler.dumps_bytes(data)
 
         assert payload == b'encoded'
         assert codec.encode_calls == [(expected_payload, {'encode_opt': 1})]

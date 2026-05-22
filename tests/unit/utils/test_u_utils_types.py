@@ -19,6 +19,16 @@ from etlplus.utils import _types as core_types
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: HELPERS ========================================================== #
+
+
+class _NonEmptyModel(BaseModel):
+    """Pydantic model using the shared non-empty aliases."""
+
+    name: core_types.NonEmptyStr
+    columns: core_types.NonEmptyStrList
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -73,12 +83,7 @@ class TestTypesModule:
 
     def test_non_empty_validation_aliases_work_with_pydantic(self) -> None:
         """Test shared non-empty aliases enforce Pydantic constraints."""
-
-        class Model(BaseModel):
-            name: core_types.NonEmptyStr
-            columns: core_types.NonEmptyStrList
-
-        model = Model.model_validate({'name': 'users', 'columns': ['id']})
+        model = _NonEmptyModel.model_validate({'name': 'users', 'columns': ['id']})
 
         assert model.name == 'users'
         assert model.columns == ['id']
@@ -96,10 +101,5 @@ class TestTypesModule:
         payload: dict[str, object],
     ) -> None:
         """Test shared non-empty aliases reject blank or empty values."""
-
-        class Model(BaseModel):
-            name: core_types.NonEmptyStr
-            columns: core_types.NonEmptyStrList
-
         with pytest.raises(ValidationError):
-            Model.model_validate(payload)
+            _NonEmptyModel.model_validate(payload)
