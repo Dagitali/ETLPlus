@@ -68,10 +68,21 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
     @pytest.mark.parametrize(
         ('stem', 'suffix', 'text_content', 'error_pattern'),
         [
-            ('payload', None, None, 'Cannot infer file format'),
-            ('payload', 'json', 'irrelevant', 'Not a gzip file'),
+            pytest.param(
+                'payload',
+                None,
+                None,
+                'Cannot infer file format',
+                id='missing-inner-format',
+            ),
+            pytest.param(
+                'payload',
+                'json',
+                'irrelevant',
+                'Not a gzip file',
+                id='non-gzip-payload',
+            ),
         ],
-        ids=['missing_inner_format', 'non_gzip_payload'],
     )
     def test_read_invalid_inputs_raise(
         self,
@@ -82,10 +93,7 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
         error_pattern: str,
     ) -> None:
         """Test that invalid gzip read inputs raise clear errors."""
-        if suffix is None:
-            path = self.archive_path(tmp_path, stem=stem)
-        else:
-            path = self.archive_path(tmp_path, stem=stem, suffix=suffix)
+        path = self.archive_path(tmp_path, stem=stem, suffix=suffix)
         if text_content is not None:
             path.write_text(text_content, encoding='utf-8')
 
@@ -110,13 +118,3 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
 
         with gzip.open(path, 'rb') as handle:
             assert handle.read() == payload
-
-    def test_write_raises_on_missing_inner_format(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that writing without an inferable inner format fails."""
-        path = self.archive_path(tmp_path, stem='payload')
-
-        with pytest.raises(ValueError, match='Cannot infer file format'):
-            mod.GzFile().write(path, [{'id': 1}])

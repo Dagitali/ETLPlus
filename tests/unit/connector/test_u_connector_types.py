@@ -36,12 +36,8 @@ class TestConnectorTypes:
         expected: str,
     ) -> None:
         """Test that :class:`ConnectorType` accepts enum members and literals."""
-
-        def identity(value: connector_types.ConnectorType) -> str:
-            return str(value)
-
-        assert identity(value) == expected
+        assert str(value) == expected
 
     def test_exports_include_connector_type(self) -> None:
         """Test that the module exports the :class:`ConnectorType` alias."""
-        assert connector_types.__all__ == ['ConnectorType']
+        assert tuple(connector_types.__all__) == ('ConnectorType',)

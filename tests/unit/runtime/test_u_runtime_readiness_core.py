@@ -22,7 +22,6 @@ from .pytest_runtime_readiness import build_runtime_cfg as _cfg
 from .pytest_runtime_readiness import (
     patch_config_resolution as _patch_config_resolution,
 )
-from .pytest_runtime_readiness import patch_file_read as _patch_file_read
 from .pytest_runtime_readiness import write_pipeline_config
 
 # SECTION: PRAGMAS ========================================================== #
@@ -143,56 +142,47 @@ class TestReadinessReportBuilderCore:
             'status': 'error',
         }
 
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param('', None, id='blank'),
+            pytest.param('s3', 's3', id='known-storage-scheme'),
+            pytest.param('not-a-real-scheme', None, id='unknown-storage-scheme'),
+        ],
+    )
     def test_coerce_connector_storage_scheme_handles_blank_and_invalid_values(
         self,
+        value: str,
+        expected: str | None,
     ) -> None:
         """Test connector-storage coercion for blank, valid, and invalid text."""
         assert (
             readiness_base_mod.ReadinessSupportPolicy.coerce_connector_storage_scheme(
-                '',
+                value,
             )
-            is None
-        )
-        assert (
-            readiness_base_mod.ReadinessSupportPolicy.coerce_connector_storage_scheme(
-                's3',
-            )
-            == 's3'
-        )
-        assert (
-            readiness_base_mod.ReadinessSupportPolicy.coerce_connector_storage_scheme(
-                'not-a-real-scheme',
-            )
-            is None
+            == expected
         )
 
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param('local/path.csv', None, id='local-path'),
+            pytest.param('://missing', None, id='missing-scheme'),
+            pytest.param('s3://bucket/input.csv', 's3', id='known-storage-uri'),
+            pytest.param('custom://bucket/input.csv', 'custom', id='custom-uri'),
+        ],
+    )
     def test_coerce_storage_scheme_handles_missing_and_unknown_schemes(
         self,
+        value: str,
+        expected: str | None,
     ) -> None:
         """Test storage-scheme coercion for local, blank, known, and unknown."""
         assert (
             readiness_base_mod.ReadinessSupportPolicy.coerce_storage_scheme(
-                'local/path.csv',
+                value,
             )
-            is None
-        )
-        assert (
-            readiness_base_mod.ReadinessSupportPolicy.coerce_storage_scheme(
-                '://missing',
-            )
-            is None
-        )
-        assert (
-            readiness_base_mod.ReadinessSupportPolicy.coerce_storage_scheme(
-                's3://bucket/input.csv',
-            )
-            == 's3'
-        )
-        assert (
-            readiness_base_mod.ReadinessSupportPolicy.coerce_storage_scheme(
-                'custom://bucket/input.csv',
-            )
-            == 'custom'
+            == expected
         )
 
     def test_collect_substitution_tokens_walks_nested_container_types(
@@ -225,20 +215,17 @@ class TestReadinessReportBuilderCore:
     ) -> None:
         """Config checks should return early when runtime checks are disabled."""
         config_path = write_pipeline_config(tmp_path)
-        runtime_called = {'value': False}
         _patch_config_resolution(
             monkeypatch,
             raw={'name': 'pipeline'},
         )
 
-        def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
-            runtime_called['value'] = True
-            return [{'name': 'connector-readiness', 'status': 'ok'}]
-
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
+            lambda *_args, **_kwargs: pytest.fail(
+                'runtime checks should be skipped',
+            ),
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -247,7 +234,6 @@ class TestReadinessReportBuilderCore:
             include_runtime_checks=False,
         )
 
-        assert runtime_called['value'] is False
         assert [check['name'] for check in checks] == [
             'config-file',
             'config-parse',
@@ -300,16 +286,13 @@ class TestReadinessReportBuilderCore:
             raw={'name': 'pipeline'},
             resolved_cfg=resolved_cfg,
         )
-        runtime_called = {'value': False}
-
-        def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
-            runtime_called['value'] = True
-            return [{'name': 'connector-readiness', 'status': 'ok'}]
 
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
+            lambda *_args, **_kwargs: pytest.fail(
+                'runtime checks should be skipped',
+            ),
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -317,7 +300,6 @@ class TestReadinessReportBuilderCore:
             env={},
         )
 
-        assert runtime_called['value'] is False
         schedule_check = next(
             check for check in checks if check['name'] == 'schedule-config'
         )
@@ -398,16 +380,13 @@ class TestReadinessReportBuilderCore:
             raw=resolved_raw,
             resolved_raw=resolved_raw,
         )
-        runtime_called = {'value': False}
-
-        def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
-            runtime_called['value'] = True
-            return [{'name': 'connector-readiness', 'status': 'ok'}]
 
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
+            lambda *_args, **_kwargs: pytest.fail(
+                'runtime checks should be skipped',
+            ),
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -416,7 +395,6 @@ class TestReadinessReportBuilderCore:
             strict=True,
         )
 
-        assert runtime_called['value'] is False
         structure_check = next(
             check for check in checks if check['name'] == 'config-structure'
         )
@@ -561,16 +539,12 @@ class TestReadinessReportBuilderCore:
             lambda _resolver, raw: {'token': '${MISSING_TOKEN}'},
         )
 
-        connector_checks_called = {'value': False}
-
-        def _connector_readiness_checks(_cfg: object) -> list[dict[str, object]]:
-            connector_checks_called['value'] = True
-            return [{'name': 'connector-readiness', 'status': 'ok'}]
-
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: _connector_readiness_checks(_args[0]),
+            lambda *_args, **_kwargs: pytest.fail(
+                'connector checks should be skipped',
+            ),
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -578,7 +552,6 @@ class TestReadinessReportBuilderCore:
             env={},
         )
 
-        assert connector_checks_called['value'] is False
         assert checks == [
             {
                 'message': f'Configuration file exists: {config_path}',
@@ -645,7 +618,15 @@ class TestReadinessReportBuilderCore:
         match: str | None,
     ) -> None:
         """Raw config loading should enforce a mapping/object root."""
-        _patch_file_read(monkeypatch, payload)
+
+        class _FakeFile:
+            def __init__(self, *_args: object, **_kwargs: object) -> None:
+                pass
+
+            def read(self) -> object:
+                return payload
+
+        monkeypatch.setattr(readiness_base_mod, 'File', _FakeFile)
 
         if match is not None:
             with pytest.raises(TypeError, match=match):
@@ -697,16 +678,27 @@ class TestReadinessReportBuilderCore:
             == expected
         )
 
-    def test_overall_status_warn_when_no_errors_exist(self) -> None:
-        """Test aggregate status when warnings exist without errors."""
-        checks = [
-            {'status': 'ok'},
-            {'status': 'warn'},
-        ]
-
+    @pytest.mark.parametrize(
+        ('checks', 'expected'),
+        [
+            pytest.param(
+                [{'status': 'error'}, {'status': 'warn'}],
+                'error',
+                id='error',
+            ),
+            pytest.param([{'status': 'ok'}, {'status': 'warn'}], 'warn', id='warn'),
+            pytest.param([{'status': 'ok'}], 'ok', id='ok'),
+        ],
+    )
+    def test_overall_status_prioritizes_errors_then_warnings(
+        self,
+        checks: list[dict[str, str]],
+        expected: str,
+    ) -> None:
+        """Aggregate status should prioritize errors, then warnings, then ok."""
         assert (
             readiness_builder_mod.ReadinessReportBuilder.overall_status(checks)
-            == 'warn'
+            == expected
         )
 
     def test_package_available_handles_availability_helper_errors(

@@ -42,56 +42,74 @@ class _DataFrameStub:
 class TestRHelpers:
     """Unit tests for R result coercion helpers."""
 
-    def test_coerce_r_object_for_dataframe_dict_list_and_scalar(self) -> None:
-        """Test R object coercion for supported object categories."""
-        pandas = SimpleNamespace(DataFrame=_DataFrameStub)
-        frame = _DataFrameStub([{'id': 1}])
-        assert mod.coerce_r_object(frame, pandas) == [{'id': 1}]
-        assert mod.coerce_r_object({'a': 1}, pandas) == {'a': 1}
-        assert mod.coerce_r_object([{'a': 1}], pandas) == [{'a': 1}]
-        assert mod.coerce_r_object([1, 2], pandas) == {'value': [1, 2]}
-        assert mod.coerce_r_object('x', pandas) == {'value': 'x'}
+    @pytest.fixture(name='pandas_stub')
+    def pandas_stub_fixture(self) -> SimpleNamespace:
+        """Return one pandas-like namespace exposing the frame stub."""
+        return SimpleNamespace(DataFrame=_DataFrameStub)
 
-    def test_coerce_r_result_dataset_selection_and_alias(self) -> None:
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(_DataFrameStub([{'id': 1}]), [{'id': 1}], id='dataframe'),
+            pytest.param({'a': 1}, {'a': 1}, id='dict'),
+            pytest.param([{'a': 1}], [{'a': 1}], id='record-list'),
+            pytest.param([1, 2], {'value': [1, 2]}, id='scalar-list'),
+            pytest.param('x', {'value': 'x'}, id='scalar'),
+        ],
+    )
+    def test_coerce_r_object(
+        self,
+        pandas_stub: SimpleNamespace,
+        value: object,
+        expected: object,
+    ) -> None:
+        """Test R object coercion for supported object categories."""
+        assert mod.coerce_r_object(value, pandas_stub) == expected
+
+    @pytest.mark.parametrize(
+        'dataset',
+        [
+            pytest.param('only', id='explicit'),
+            pytest.param('data', id='default-alias'),
+        ],
+    )
+    def test_coerce_r_result_dataset_selection_and_alias(
+        self,
+        pandas_stub: SimpleNamespace,
+        dataset: str,
+    ) -> None:
         """Test explicit and alias dataset key resolution."""
-        pandas = SimpleNamespace(DataFrame=_DataFrameStub)
         result: dict[str, object] = {'only': _DataFrameStub([{'id': 1}])}
 
-        selected = mod.coerce_r_result(
+        assert mod.coerce_r_result(
             result,
-            dataset='only',
+            dataset=dataset,
             dataset_key='data',
             format_name='RDS',
-            pandas=pandas,
-        )
-        assert selected == [{'id': 1}]
+            pandas=pandas_stub,
+        ) == [{'id': 1}]
 
-        aliased = mod.coerce_r_result(
-            result,
-            dataset='data',
-            dataset_key='data',
-            format_name='RDS',
-            pandas=pandas,
-        )
-        assert aliased == [{'id': 1}]
-
-    def test_coerce_r_result_empty_returns_empty_list(self) -> None:
+    def test_coerce_r_result_empty_returns_empty_list(
+        self,
+        pandas_stub: SimpleNamespace,
+    ) -> None:
         """Test empty R result normalization."""
-        pandas = SimpleNamespace(DataFrame=_DataFrameStub)
         assert (
             mod.coerce_r_result(
                 {},
                 dataset=None,
                 dataset_key='data',
                 format_name='RDS',
-                pandas=pandas,
+                pandas=pandas_stub,
             )
             == []
         )
 
-    def test_coerce_r_result_rejects_unknown_dataset(self) -> None:
+    def test_coerce_r_result_rejects_unknown_dataset(
+        self,
+        pandas_stub: SimpleNamespace,
+    ) -> None:
         """Test missing explicit dataset selection."""
-        pandas = SimpleNamespace(DataFrame=_DataFrameStub)
         with pytest.raises(
             ValueError,
             match="RDA dataset 'missing' not found",
@@ -101,21 +119,20 @@ class TestRHelpers:
                 dataset='missing',
                 dataset_key='data',
                 format_name='RDA',
-                pandas=pandas,
+                pandas=pandas_stub,
             )
 
     def test_coerce_r_result_without_dataset(
         self,
+        pandas_stub: SimpleNamespace,
     ) -> None:
         """Test implicit dataset behavior for one vs many R objects."""
-        pandas = SimpleNamespace(DataFrame=_DataFrameStub)
-
         single = mod.coerce_r_result(
             {'only': {'a': 1}},
             dataset=None,
             dataset_key='data',
             format_name='RDS',
-            pandas=pandas,
+            pandas=pandas_stub,
         )
         assert single == {'a': 1}
 
@@ -124,7 +141,7 @@ class TestRHelpers:
             dataset=None,
             dataset_key='data',
             format_name='RDA',
-            pandas=pandas,
+            pandas=pandas_stub,
         )
         assert many == {'a': {'x': 1}, 'b': {'value': [1, 2, 3]}}
 

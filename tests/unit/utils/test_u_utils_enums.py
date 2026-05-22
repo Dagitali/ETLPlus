@@ -55,17 +55,17 @@ class _Plain(CoercibleStrEnum):
 class TestCoercibleStrEnum:
     """Unit tests for coercion helpers on :class:`CoercibleStrEnum`."""
 
-    def test_alias_resolving_by_member_name(self) -> None:
-        """Test that aliases resolve by member names as a fallback."""
-        assert _Palette.coerce('leaf') is _Palette.GREEN
-
-    def test_alias_resolving_by_member_value(self) -> None:
-        """Test that aliases resolve by value strings."""
-        assert _Palette.coerce('verdant') is _Palette.GREEN
-
-    def test_alias_resolving_direct_member(self) -> None:
-        """Test that aliases resolve directly to enum members."""
-        assert _Palette.coerce('r') is _Palette.RED
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param('leaf', _Palette.GREEN, id='member-name'),
+            pytest.param('verdant', _Palette.GREEN, id='member-value'),
+            pytest.param('r', _Palette.RED, id='direct-member'),
+        ],
+    )
+    def test_alias_resolving(self, value: str, expected: _Palette) -> None:
+        """Test that aliases resolve through every supported alias target."""
+        assert _Palette.coerce(value) is expected
 
     def test_alias_resolving_uses_casefolding(self) -> None:
         """Test that alias matching follows shared text normalization."""

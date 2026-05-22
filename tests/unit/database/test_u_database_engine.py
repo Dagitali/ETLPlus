@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Callable
+from dataclasses import dataclass
+from dataclasses import field
 from typing import Any
 from typing import cast
 
@@ -24,6 +26,18 @@ from etlplus.database._engine import load_database_url_from_config
 
 # Directory-level marker for unit tests.
 engine_mod = importlib.import_module('etlplus.database._engine')
+
+
+@dataclass(slots=True)
+class _CreateEngineSpy:
+    """Callable create-engine spy that records invocation arguments."""
+
+    captured: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+
+    def __call__(self, url: str, **kwargs: Any) -> dict[str, Any]:
+        """Record one create-engine call and return a lightweight engine stub."""
+        self.captured.append((url, kwargs))
+        return {'url': url, 'kwargs': kwargs}
 
 
 # SECTION: TESTS ============================================================ #
@@ -115,27 +129,17 @@ class TestMakeEngine:
     def capture_create_engine(
         self,
         monkeypatch: pytest.MonkeyPatch,
-    ) -> Callable[..., dict[str, Any]]:
+    ) -> _CreateEngineSpy:
         """
         Patch ``create_engine`` to capture calls.
         """
-        captured: list[tuple[str, dict[str, Any]]] = []
-
-        def _fake_create_engine(url: str, **kwargs: Any) -> dict[str, Any]:
-            captured.append((url, kwargs))
-            return {'url': url, 'kwargs': kwargs}
-
-        monkeypatch.setattr(engine_mod, 'create_engine', _fake_create_engine)
-
-        def _factory(url: str, **kwargs: Any) -> dict[str, Any]:
-            return _fake_create_engine(url, **kwargs)
-
-        _factory.captured = captured  # type: ignore[attr-defined]
-        return _factory
+        spy = _CreateEngineSpy()
+        monkeypatch.setattr(engine_mod, 'create_engine', spy)
+        return spy
 
     def test_make_engine_uses_explicit_url(
         self,
-        capture_create_engine: Callable[[str, Any], dict[str, Any]],
+        capture_create_engine: _CreateEngineSpy,
     ) -> None:
         """
         Test that explicit URL is forwarded to create_engine with pre-ping
@@ -145,9 +149,8 @@ class TestMakeEngine:
         eng_dict = cast(dict[str, Any], eng)
 
         assert eng_dict['url'] == 'sqlite:///explicit.db'
-        captured = capture_create_engine.captured  # type: ignore[attr-defined]
-        assert captured[0][1]['pool_pre_ping'] is True
-        assert captured[0][1]['echo'] is True
+        assert capture_create_engine.captured[0][1]['pool_pre_ping'] is True
+        assert capture_create_engine.captured[0][1]['echo'] is True
 
     def test_default_url_reload_respects_env(
         self,

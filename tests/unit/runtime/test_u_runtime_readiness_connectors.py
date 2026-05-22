@@ -6,9 +6,8 @@ Connector readiness unit tests for :mod:`etlplus.runtime.readiness._builder`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from types import SimpleNamespace
-from typing import Any
-from typing import cast
 
 import pytest
 
@@ -28,23 +27,6 @@ from .pytest_runtime_readiness import build_runtime_cfg as _cfg
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-def _connector_checks(cfg: object) -> list[dict[str, object]]:
-    """Return connector checks using the production policy seams."""
-    return readiness_connectors_mod.ConnectorReadinessPolicy.readiness_checks(
-        cast(Any, cfg),
-        connector_gap_rows_fn=(
-            readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows
-        ),
-        make_check=(readiness_builder_mod.ReadinessReportBuilder.make_check),
-        package_available=(
-            readiness_builder_mod.ReadinessReportBuilder.package_available
-        ),
-    )
-
 
 BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
 SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
@@ -76,7 +58,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert rows == [
@@ -114,7 +96,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert rows == [
@@ -185,7 +167,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert rows == [expected]
@@ -216,7 +198,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert rows == [
@@ -276,7 +258,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert rows == [
@@ -294,64 +276,64 @@ class TestReadinessReportBuilderConnectors:
             ),
         ]
 
+    @pytest.mark.parametrize(
+        'cfg',
+        [
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            name='file-source',
+                            path='input.csv',
+                            type='file',
+                        ),
+                        SimpleNamespace(
+                            name='api-url-source',
+                            api=None,
+                            type='api',
+                            url='https://example.test/data',
+                        ),
+                        SimpleNamespace(
+                            name='api-ref-source',
+                            api='known-api',
+                            type='api',
+                            url=None,
+                        ),
+                    ],
+                    targets=[
+                        SimpleNamespace(
+                            connection_string='sqlite:///:memory:',
+                            name='db-target',
+                            type='database',
+                        ),
+                        SimpleNamespace(
+                            connection_string='sqlite:///other.db',
+                            name='db-target-2',
+                            type='database',
+                        ),
+                    ],
+                    apis={'known-api': object()},
+                ),
+                id='complete-connectors',
+            ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        BIGQUERY_CASE.runtime_connector(connection_string=None),
+                        SNOWFLAKE_CASE.runtime_connector(connection_string=None),
+                    ],
+                ),
+                id='complete-cloud-database-metadata',
+            ),
+        ],
+    )
     def test_connector_gap_rows_return_empty_for_complete_connectors(
         self,
+        cfg: SimpleNamespace,
     ) -> None:
         """Test that complete connector definitions produce no gap rows."""
-        cfg = _cfg(
-            sources=[
-                SimpleNamespace(
-                    name='file-source',
-                    path='input.csv',
-                    type='file',
-                ),
-                SimpleNamespace(
-                    name='api-url-source',
-                    api=None,
-                    type='api',
-                    url='https://example.test/data',
-                ),
-                SimpleNamespace(
-                    name='api-ref-source',
-                    api='known-api',
-                    type='api',
-                    url=None,
-                ),
-            ],
-            targets=[
-                SimpleNamespace(
-                    connection_string='sqlite:///:memory:',
-                    name='db-target',
-                    type='database',
-                ),
-                SimpleNamespace(
-                    connection_string='sqlite:///other.db',
-                    name='db-target-2',
-                    type='database',
-                ),
-            ],
-            apis={'known-api': object()},
-        )
-
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
-        )
-
-        assert not rows
-
-    def test_connector_gap_rows_return_empty_for_complete_cloud_database_metadata(
-        self,
-    ) -> None:
-        """Complete cloud-database metadata should suppress generic DSN gaps."""
-        cfg = _cfg(
-            targets=[
-                BIGQUERY_CASE.runtime_connector(connection_string=None),
-                SNOWFLAKE_CASE.runtime_connector(connection_string=None),
-            ],
-        )
-
-        rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert not rows
@@ -376,7 +358,7 @@ class TestReadinessReportBuilderConnectors:
         )
 
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
-            cast(Any, cfg),
+            cfg,
         )
 
         assert [row['guidance'] for row in rows] == [
@@ -452,7 +434,7 @@ class TestReadinessReportBuilderConnectors:
 
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
+                cfg=cfg,
                 package_available=lambda _module: False,
             )
         )
@@ -535,19 +517,42 @@ class TestReadinessReportBuilderConnectors:
             lambda *, cfg, package_available: missing_rows,
         )
 
-        checks = _connector_checks(cfg)
+        checks = readiness_connectors_mod.ConnectorReadinessPolicy.readiness_checks(
+            cfg,
+            connector_gap_rows_fn=(
+                readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows
+            ),
+            make_check=readiness_builder_mod.ReadinessReportBuilder.make_check,
+            package_available=(
+                readiness_builder_mod.ReadinessReportBuilder.package_available
+            ),
+        )
 
         assert checks == expected
 
+    @pytest.mark.parametrize(
+        ('connector_type', 'expected'),
+        [
+            pytest.param(
+                '',
+                'Set type to one of: api, database, file, queue.',
+                id='blank',
+            ),
+            pytest.param(
+                'weird',
+                'Use one of the supported connector types: api, database, file, queue.',
+                id='generic-invalid',
+            ),
+        ],
+    )
     def test_connector_type_guidance_covers_blank_and_generic_invalid_values(
         self,
+        connector_type: str,
+        expected: str,
     ) -> None:
         """Test actionable guidance for blank and non-storage invalid types."""
-        assert readiness_connectors_mod.connector_type_guidance('') == (
-            'Set type to one of: api, database, file, queue.'
-        )
-        assert readiness_connectors_mod.connector_type_guidance('weird') == (
-            'Use one of the supported connector types: api, database, file, queue.'
+        assert (
+            readiness_connectors_mod.connector_type_guidance(connector_type) == expected
         )
 
     def test_dedupe_rows_preserves_first_occurrence(self) -> None:
@@ -579,7 +584,6 @@ class TestReadinessReportBuilderConnectors:
 
     def test_missing_requirement_rows_cover_netcdf_and_format_specific_branches(
         self,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test requirement rows for netCDF and format-specific extras."""
         cfg = _cfg(
@@ -607,7 +611,7 @@ class TestReadinessReportBuilderConnectors:
 
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
+                cfg=cfg,
                 package_available=lambda module_name: module_name == 'boto3',
             )
         )
@@ -639,24 +643,78 @@ class TestReadinessReportBuilderConnectors:
             ),
         ]
 
-    def test_missing_requirement_rows_ignore_storage_schemes_without_extras(
-        self,
-    ) -> None:
-        """Unknown storage schemes should not emit optional dependency rows."""
-        cfg = _cfg(
-            sources=[
-                SimpleNamespace(
-                    name='custom-source',
-                    path='custom://bucket/input.csv',
-                    type='file',
+    @pytest.mark.parametrize(
+        ('cfg', 'package_available'),
+        [
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            name='custom-source',
+                            path='custom://bucket/input.csv',
+                            type='file',
+                        ),
+                    ],
                 ),
-            ],
-        )
-
+                lambda _name: False,
+                id='storage-scheme-without-extra',
+            ),
+            pytest.param(
+                _cfg(
+                    sources=[
+                        SimpleNamespace(
+                            format='csv',
+                            name='pathless-source',
+                            path=None,
+                            type='file',
+                        ),
+                        SimpleNamespace(
+                            format='nc',
+                            name='nc-source',
+                            path='input.nc',
+                            type='file',
+                        ),
+                        SimpleNamespace(
+                            format='sav',
+                            name='sav-source',
+                            path='input.sav',
+                            type='file',
+                        ),
+                        SimpleNamespace(
+                            name='queue-source',
+                            queue_name='events',
+                            service='redis',
+                            type='queue',
+                        ),
+                    ],
+                ),
+                lambda _module_name: True,
+                id='satisfied-requirements',
+            ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        BIGQUERY_CASE.runtime_connector(
+                            connection_string=None,
+                            name='warehouse_bigquery',
+                        ),
+                    ],
+                ),
+                lambda _name: True,
+                id='database-provider-extra-available',
+            ),
+        ],
+    )
+    def test_missing_requirement_rows_return_empty_when_no_requirements_are_missing(
+        self,
+        cfg: SimpleNamespace,
+        package_available: Callable[[str], bool],
+    ) -> None:
+        """Requirement rows should stay empty when no optional dependency is missing."""
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
-                package_available=lambda _name: False,
+                cfg=cfg,
+                package_available=package_available,
             )
         )
 
@@ -730,7 +788,7 @@ class TestReadinessReportBuilderConnectors:
 
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
+                cfg=cfg,
                 package_available=lambda module_name: module_name != missing_module,
             )
         )
@@ -776,7 +834,7 @@ class TestReadinessReportBuilderConnectors:
 
         rows = (
             readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
+                cfg=cfg,
                 package_available=(
                     readiness_builder_mod.ReadinessReportBuilder.package_available
                 ),
@@ -798,201 +856,34 @@ class TestReadinessReportBuilderConnectors:
             ),
         ]
 
-    def test_missing_requirement_rows_return_empty_when_requirements_are_satisfied(
+    @pytest.mark.parametrize(
+        ('detected_scheme', 'expected_extra_fields'),
+        [
+            pytest.param(
+                {'detected_scheme': 's3'},
+                {'detected_scheme': 's3'},
+                id='scheme',
+            ),
+            pytest.param({}, {}, id='format-only'),
+        ],
+    )
+    def test_requirement_row_keeps_format_context(
         self,
-        monkeypatch: pytest.MonkeyPatch,
+        detected_scheme: dict[str, str],
+        expected_extra_fields: dict[str, str],
     ) -> None:
-        """Test requirement rows when connectors either omit paths or have deps."""
-        cfg = _cfg(
-            sources=[
-                SimpleNamespace(
-                    format='csv',
-                    name='pathless-source',
-                    path=None,
-                    type='file',
-                ),
-                SimpleNamespace(
-                    format='nc',
-                    name='nc-source',
-                    path='input.nc',
-                    type='file',
-                ),
-                SimpleNamespace(
-                    format='sav',
-                    name='sav-source',
-                    path='input.sav',
-                    type='file',
-                ),
-                SimpleNamespace(
-                    name='queue-source',
-                    queue_name='events',
-                    service='redis',
-                    type='queue',
-                ),
-            ],
-        )
-
-        rows = (
-            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
-                package_available=lambda _module_name: True,
-            )
-        )
-
-        assert not rows
-
-    def test_missing_requirement_rows_skip_database_provider_when_available(
-        self,
-    ) -> None:
-        """Installed database-provider extras should not emit dependency rows."""
-        cfg = _cfg(
-            targets=[
-                BIGQUERY_CASE.runtime_connector(
-                    connection_string=None,
-                    name='warehouse_bigquery',
-                ),
-            ],
-        )
-
-        rows = (
-            readiness_connectors_mod.ConnectorReadinessPolicy.missing_requirement_rows(
-                cfg=cast(Any, cfg),
-                package_available=lambda _name: True,
-            )
-        )
-
-        assert rows == []
-
-    def test_requirement_row_adds_optional_format_and_scheme_context(
-        self,
-    ) -> None:
-        """Requirement rows should keep both detected format and scheme fields."""
-        requirement = RequirementSpec(
-            ('pyarrow',),
-            'pyarrow',
-            'file',
-        )
-
-        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
-            connector='out',
-            detected_format='csv',
-            detected_scheme='s3',
-            reason='csv format requires pyarrow',
-            requirement=requirement,
-            role='target',
-        )
-
-        assert row == {
-            'connector': 'out',
-            'detected_format': 'csv',
-            'detected_scheme': 's3',
-            'extra': 'file',
-            'guidance': (
-                'Install pyarrow directly or install the ETLPlus "file" extra. '
-                'Required for "csv" file format.'
-            ),
-            'missing_package': 'pyarrow',
-            'reason': 'csv format requires pyarrow',
-            'role': 'target',
-        }
-
-    def test_requirement_row_keeps_database_provider_context(
-        self,
-    ) -> None:
-        """Requirement rows should preserve provider-specific DB context."""
-        requirement = RequirementSpec(
-            ('google.cloud.bigquery', 'sqlalchemy_bigquery'),
-            'google-cloud-bigquery/sqlalchemy-bigquery',
-            'database-bigquery',
-        )
-
-        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
-            connector='warehouse',
-            detected_database_provider='bigquery',
-            reason=(
-                'bigquery database connector requires '
-                'google-cloud-bigquery/sqlalchemy-bigquery'
-            ),
-            requirement=requirement,
-            role='source',
-        )
-
-        assert row == {
-            'connector': 'warehouse',
-            'detected_database_provider': 'bigquery',
-            'extra': 'database-bigquery',
-            'guidance': (
-                'Install google-cloud-bigquery/sqlalchemy-bigquery directly or '
-                'install the ETLPlus "database-bigquery" extra. Required for '
-                '"bigquery" database connectors.'
-            ),
-            'missing_package': 'google-cloud-bigquery/sqlalchemy-bigquery',
-            'reason': (
-                'bigquery database connector requires '
-                'google-cloud-bigquery/sqlalchemy-bigquery'
-            ),
-            'role': 'source',
-        }
-
-    def test_requirement_row_keeps_snowflake_provider_context(
-        self,
-    ) -> None:
-        """Requirement rows should preserve Snowflake provider context."""
-        requirement = RequirementSpec(
-            ('snowflake.connector', 'snowflake.sqlalchemy'),
-            'snowflake-connector-python/snowflake-sqlalchemy',
-            'database-snowflake',
-        )
-
-        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
-            connector='snowflake_wh',
-            detected_database_provider='snowflake',
-            reason=(
-                'snowflake database connector requires '
-                'snowflake-connector-python/snowflake-sqlalchemy'
-            ),
-            requirement=requirement,
-            role='source',
-        )
-
-        assert row == {
-            'connector': 'snowflake_wh',
-            'detected_database_provider': 'snowflake',
-            'extra': 'database-snowflake',
-            'guidance': (
-                'Install snowflake-connector-python/snowflake-sqlalchemy '
-                'directly or install the ETLPlus "database-snowflake" extra. '
-                'Required for "snowflake" database connectors.'
-            ),
-            'missing_package': 'snowflake-connector-python/snowflake-sqlalchemy',
-            'reason': (
-                'snowflake database connector requires '
-                'snowflake-connector-python/snowflake-sqlalchemy'
-            ),
-            'role': 'source',
-        }
-
-    def test_requirement_row_keeps_format_without_scheme(
-        self,
-    ) -> None:
-        """Requirement rows should omit scheme when only format context exists."""
-        requirement = RequirementSpec(
-            ('pyarrow',),
-            'pyarrow',
-            'file',
-        )
-
-        row = readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
+        """Requirement rows should keep format context and optional scheme context."""
+        assert readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
             connector='out',
             detected_format='csv',
             reason='csv format requires pyarrow',
-            requirement=requirement,
+            requirement=RequirementSpec(('pyarrow',), 'pyarrow', 'file'),
             role='target',
-        )
-
-        assert row == {
+            **detected_scheme,
+        ) == {
             'connector': 'out',
             'detected_format': 'csv',
+            **expected_extra_fields,
             'extra': 'file',
             'guidance': (
                 'Install pyarrow directly or install the ETLPlus "file" extra. '
@@ -1004,6 +895,99 @@ class TestReadinessReportBuilderConnectors:
         }
 
     @pytest.mark.parametrize(
+        (
+            'connector',
+            'provider',
+            'requirement',
+            'reason',
+            'expected',
+        ),
+        [
+            pytest.param(
+                'warehouse',
+                'bigquery',
+                RequirementSpec(
+                    ('google.cloud.bigquery', 'sqlalchemy_bigquery'),
+                    'google-cloud-bigquery/sqlalchemy-bigquery',
+                    'database-bigquery',
+                ),
+                (
+                    'bigquery database connector requires '
+                    'google-cloud-bigquery/sqlalchemy-bigquery'
+                ),
+                {
+                    'connector': 'warehouse',
+                    'detected_database_provider': 'bigquery',
+                    'extra': 'database-bigquery',
+                    'guidance': (
+                        'Install google-cloud-bigquery/sqlalchemy-bigquery '
+                        'directly or install the ETLPlus "database-bigquery" '
+                        'extra. Required for "bigquery" database connectors.'
+                    ),
+                    'missing_package': 'google-cloud-bigquery/sqlalchemy-bigquery',
+                    'reason': (
+                        'bigquery database connector requires '
+                        'google-cloud-bigquery/sqlalchemy-bigquery'
+                    ),
+                    'role': 'source',
+                },
+                id='bigquery',
+            ),
+            pytest.param(
+                'snowflake_wh',
+                'snowflake',
+                RequirementSpec(
+                    ('snowflake.connector', 'snowflake.sqlalchemy'),
+                    'snowflake-connector-python/snowflake-sqlalchemy',
+                    'database-snowflake',
+                ),
+                (
+                    'snowflake database connector requires '
+                    'snowflake-connector-python/snowflake-sqlalchemy'
+                ),
+                {
+                    'connector': 'snowflake_wh',
+                    'detected_database_provider': 'snowflake',
+                    'extra': 'database-snowflake',
+                    'guidance': (
+                        'Install snowflake-connector-python/snowflake-sqlalchemy '
+                        'directly or install the ETLPlus "database-snowflake" '
+                        'extra. Required for "snowflake" database connectors.'
+                    ),
+                    'missing_package': (
+                        'snowflake-connector-python/snowflake-sqlalchemy'
+                    ),
+                    'reason': (
+                        'snowflake database connector requires '
+                        'snowflake-connector-python/snowflake-sqlalchemy'
+                    ),
+                    'role': 'source',
+                },
+                id='snowflake',
+            ),
+        ],
+    )
+    def test_requirement_row_keeps_database_provider_context(
+        self,
+        connector: str,
+        provider: str,
+        requirement: RequirementSpec,
+        reason: str,
+        expected: dict[str, object],
+    ) -> None:
+        """Requirement rows should preserve provider-specific DB context."""
+        assert (
+            readiness_connectors_mod.ConnectorReadinessPolicy.requirement_row(
+                connector=connector,
+                detected_database_provider=provider,
+                reason=reason,
+                requirement=requirement,
+                role='source',
+            )
+            == expected
+        )
+
+    @pytest.mark.parametrize(
         ('available_modules', 'expected'),
         [
             ({'xarray', 'netCDF4'}, True),
@@ -1013,7 +997,6 @@ class TestReadinessReportBuilderConnectors:
     )
     def test_netcdf_available_requires_xarray_and_one_backend(
         self,
-        monkeypatch: pytest.MonkeyPatch,
         available_modules: set[str],
         expected: bool,
     ) -> None:

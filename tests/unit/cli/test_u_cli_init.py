@@ -11,6 +11,8 @@ import pytest
 import etlplus.cli as cli_pkg
 from etlplus.cli import main as cli_main
 
+from ..pytest_export_contracts import assert_package_exports
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -18,7 +20,7 @@ from etlplus.cli import main as cli_main
 # SECTION: HELPERS ========================================================== #
 
 
-CLI_EXPORTS = [('main', cli_main)]
+CLI_EXPORTS: tuple[tuple[str, object], ...] = (('main', cli_main),)
 
 
 # SECTION: TESTS ============================================================ #
@@ -32,7 +34,7 @@ class TestCliPackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert cli_pkg.__all__ == [name for name, _value in CLI_EXPORTS]
+        assert_package_exports(package_module=cli_pkg, expected_exports=CLI_EXPORTS)
 
     @pytest.mark.parametrize(('name', 'expected'), CLI_EXPORTS)
     def test_expected_symbol_bindings(

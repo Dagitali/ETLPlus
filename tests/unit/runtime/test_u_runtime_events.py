@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
-from typing import cast
 from uuid import UUID
 
 import pytest
@@ -23,15 +22,33 @@ import etlplus.telemetry as telemetry_mod
 # SECTION: HELPERS ========================================================== #
 
 
-EXPECTED_BASE_EVENT_FIELDS = {
-    'command',
-    'event',
-    'lifecycle',
-    'run_id',
-    'schema',
-    'schema_version',
-    'timestamp',
-}
+EXPECTED_BASE_EVENT_FIELDS = frozenset(
+    {
+        'command',
+        'event',
+        'lifecycle',
+        'run_id',
+        'schema',
+        'schema_version',
+        'timestamp',
+    },
+)
+
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='frozen_timestamp')
+def frozen_timestamp_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> str:
+    """Freeze runtime-event timestamps at one stable ISO-8601 value."""
+    timestamp = '2025-01-01T00:00:00+00:00'
+    monkeypatch.setattr(
+        events_mod.RuntimeEvents,
+        'utc_now_iso',
+        staticmethod(lambda: timestamp),
+    )
+    return timestamp
 
 
 # SECTION: TESTS ============================================================ #
@@ -39,20 +56,6 @@ EXPECTED_BASE_EVENT_FIELDS = {
 
 class TestRuntimeEvents:
     """Unit tests for structured runtime event helpers."""
-
-    @pytest.fixture(name='frozen_timestamp')
-    def fixture_frozen_runtime_timestamp(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> str:
-        """Freeze runtime-event timestamps at one stable ISO-8601 value."""
-        timestamp = '2025-01-01T00:00:00+00:00'
-        monkeypatch.setattr(
-            events_mod.RuntimeEvents,
-            'utc_now_iso',
-            staticmethod(lambda: timestamp),
-        )
-        return timestamp
 
     def test_build_preserves_additive_command_specific_fields(self) -> None:
         """
@@ -78,7 +81,7 @@ class TestRuntimeEvents:
         assert event['run_all'] is True
 
     @pytest.mark.parametrize(
-        ('kwargs', 'expected_timestamp'),
+        'kwargs',
         [
             pytest.param(
                 {
@@ -88,7 +91,6 @@ class TestRuntimeEvents:
                     'timestamp': '2025-01-01T00:00:00+00:00',
                     'job': 'daily',
                 },
-                '2025-01-01T00:00:00+00:00',
                 id='explicit-timestamp',
             ),
             pytest.param(
@@ -97,7 +99,6 @@ class TestRuntimeEvents:
                     'lifecycle': 'completed',
                     'run_id': 'run-123',
                 },
-                '2025-01-01T00:00:00+00:00',
                 id='implicit-utc-timestamp',
             ),
             pytest.param(
@@ -109,22 +110,20 @@ class TestRuntimeEvents:
                     'error_message': 'boom',
                     'status': 'error',
                 },
-                '2025-01-01T00:00:00+00:00',
                 id='failed-with-shared-fields',
             ),
         ],
     )
     def test_build_returns_expected_event_envelope(
         self,
-        kwargs: dict[str, object],
+        kwargs: dict[str, Any],
         frozen_timestamp: str,
-        expected_timestamp: str,
     ) -> None:
         """
         Test that build emits the stable event envelope and resolves
         timestamps.
         """
-        event = events_mod.RuntimeEvents.build(**cast(dict[str, Any], kwargs))
+        event = events_mod.RuntimeEvents.build(**kwargs)
 
         assert EXPECTED_BASE_EVENT_FIELDS.issubset(event)
         assert event == {
@@ -134,9 +133,7 @@ class TestRuntimeEvents:
             'run_id': 'run-123',
             'schema': events_mod.EVENT_SCHEMA,
             'schema_version': events_mod.EVENT_SCHEMA_VERSION,
-            'timestamp': (
-                frozen_timestamp if 'timestamp' not in kwargs else expected_timestamp
-            ),
+            'timestamp': kwargs.get('timestamp', frozen_timestamp),
             **({'job': 'daily'} if 'job' in kwargs else {}),
             **(
                 {

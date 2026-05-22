@@ -22,6 +22,7 @@ from etlplus.runtime._logging import RuntimeLoggingPolicy
 from etlplus.runtime.readiness import ReadinessReportBuilder
 
 from ..pytest_export_contracts import assert_helper_module_exports_match_facade_usage
+from ..pytest_export_contracts import assert_package_exports
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -30,18 +31,18 @@ from ..pytest_export_contracts import assert_helper_module_exports_match_facade_
 # SECTION: HELPERS ========================================================== #
 
 
-EXPECTED_EXPORTS = [
+EXPECTED_EXPORTS: tuple[tuple[str, object], ...] = (
     ('ReadinessReportBuilder', ReadinessReportBuilder),
     ('RuntimeEvents', RuntimeEvents),
     ('RuntimeLoggingPolicy', RuntimeLoggingPolicy),
     ('EVENT_SCHEMA', EVENT_SCHEMA),
     ('EVENT_SCHEMA_VERSION', EVENT_SCHEMA_VERSION),
-]
-HELPER_EXPORT_CASES = [
+)
+HELPER_EXPORT_CASES: tuple[tuple[str, ModuleType], ...] = (
     ('_connectors', readiness_connectors_mod),
     ('_providers', readiness_providers_mod),
     ('_strict', readiness_strict_mod),
-]
+)
 
 # SECTION: TESTS ============================================================ #
 
@@ -54,7 +55,10 @@ class TestRuntimePackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert runtime_pkg.__all__ == [name for name, _value in EXPECTED_EXPORTS]
+        assert_package_exports(
+            package_module=runtime_pkg,
+            expected_exports=EXPECTED_EXPORTS,
+        )
 
     @pytest.mark.parametrize(('name', 'expected'), EXPECTED_EXPORTS)
     def test_expected_symbol_bindings(

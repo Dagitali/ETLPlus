@@ -11,7 +11,6 @@ from types import SimpleNamespace
 import pytest
 
 import etlplus.connector._database as database_mod
-from etlplus.connector import ConnectorDiagnosticPolicy
 from etlplus.connector._database import ConnectorDb
 from etlplus.connector._enums import DataConnectorType
 from tests.pytest_shared_support import get_cloud_database_provider_case
@@ -153,23 +152,6 @@ class TestConnectorDb:
         assert_connector_fields(connector, expected)
 
     @pytest.mark.parametrize(
-        'payload',
-        [
-            pytest.param({'type': 'database'}, id='missing-name'),
-            pytest.param({'name': None, 'type': 'database'}, id='non-string-name'),
-        ],
-    )
-    def test_from_obj_requires_name(
-        self,
-        payload: dict[str, object],
-    ) -> None:
-        """
-        Test that :meth:`from_obj` rejects mappings with missing or invalid names.
-        """
-        with pytest.raises(TypeError, match='ConnectorDb requires a "name"'):
-            ConnectorDb.from_obj(payload)
-
-    @pytest.mark.parametrize(
         ('payload', 'expected_missing_fields'),
         [
             pytest.param(
@@ -290,21 +272,16 @@ class TestConnectorDb:
                 None,
                 id='no-provider-specific-fields',
             ),
+            pytest.param(None, None, id='missing-provider'),
         ],
     )
     def test_provider_missing_connection_guidance_covers_supported_branches(
         self,
-        provider: str,
+        provider: str | None,
         expected: str | None,
     ) -> None:
         """Guidance text should adapt to provider field-count requirements."""
         assert ConnectorDb.provider_missing_connection_guidance(provider) == expected
-
-    def test_provider_missing_connection_guidance_returns_none_without_provider(
-        self,
-    ) -> None:
-        """Missing provider input should short-circuit guidance generation."""
-        assert ConnectorDb.provider_missing_connection_guidance(None) is None
 
     def test_provider_missing_connection_guidance_supports_one_required_field(
         self,
@@ -320,27 +297,4 @@ class TestConnectorDb:
         assert ConnectorDb.provider_missing_connection_guidance('sqlite-local') == (
             'Set "connection_string" to a database DSN or SQLAlchemy-style URL, '
             'or define "file" for this Sqlite-Local connector.'
-        )
-
-
-class TestConnectorDiagnosticPolicy:
-    """Unit tests for shared connector diagnostic wording."""
-
-    def test_connector_type_guidance_treats_storage_scheme_as_file_path_hint(
-        self,
-    ) -> None:
-        """Storage schemes used as connector types should get file guidance."""
-        assert ConnectorDiagnosticPolicy.connector_type_guidance('s3') == (
-            '"s3" is a storage scheme, not a connector type. '
-            'Use connector type "file" and keep the provider in the path '
-            'or URI scheme.'
-        )
-
-    def test_gap_guidance_reuses_provider_specific_database_wording(self) -> None:
-        """Provider-specific DB issues should resolve through one policy seam."""
-        assert ConnectorDiagnosticPolicy.gap_guidance(
-            issue='missing connection_string or bigquery project/dataset',
-        ) == (
-            'Set "connection_string" to a database DSN or SQLAlchemy-style URL, '
-            'or define both "project" and "dataset" for this BigQuery connector.'
         )

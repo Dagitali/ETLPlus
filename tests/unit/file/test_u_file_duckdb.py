@@ -7,8 +7,7 @@ Unit tests for :mod:`etlplus.file.duckdb`.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
-from typing import cast
+from typing import Any
 
 import pytest
 
@@ -22,9 +21,6 @@ from .pytest_file_types import OptionalModuleInstaller
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-if TYPE_CHECKING:
-    import duckdb
 
 # SECTION: HELPERS ========================================================== #
 
@@ -270,11 +266,11 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         Test that :meth:`write_table` short-circuits rows that provide no
         columns.
         """
-        conn = _Connection()
+        conn: Any = _Connection()
         handler = mod.DuckdbFile()
 
         written = handler.write_table(
-            cast('duckdb.DuckDBPyConnection', conn),
+            conn,
             'data',
             [{}],
         )

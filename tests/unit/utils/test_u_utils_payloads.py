@@ -6,6 +6,7 @@ Unit tests for generic payload helpers in :mod:`etlplus.utils._payloads`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -33,21 +34,21 @@ class TestInferPayloadFormat:
 
 
 class TestMaterializeFilePayload:
-    def test_missing_file_sources_raise_file_not_found(self, tmp_path: Path) -> None:
-        with pytest.raises(FileNotFoundError, match='File not found: '):
-            payload_mod.materialize_file_payload(
-                str(tmp_path / 'missing.json'),
-                format_hint=None,
-                format_explicit=False,
-            )
-
-    def test_missing_pathlike_source_raises_file_not_found(
+    @pytest.mark.parametrize(
+        'source_factory',
+        [
+            pytest.param(str, id='string-path'),
+            pytest.param(lambda path: path, id='pathlike'),
+        ],
+    )
+    def test_missing_file_sources_raise_file_not_found(
         self,
         tmp_path: Path,
+        source_factory: Callable[[Path], object],
     ) -> None:
         with pytest.raises(FileNotFoundError, match='File not found: '):
             payload_mod.materialize_file_payload(
-                tmp_path / 'missing.json',
+                source_factory(tmp_path / 'missing.json'),
                 format_hint=None,
                 format_explicit=False,
             )
@@ -133,9 +134,20 @@ class TestParseTextPayload:
     @pytest.mark.parametrize(
         ('payload', 'fmt_hint', 'expected'),
         [
-            ('{"a": 1}', None, {'a': 1}),
-            ('a,b\n1,2\n', 'csv', [{'a': '1', 'b': '2'}]),
-            ('payload', 'yaml', 'payload'),
+            pytest.param('{"a": 1}', None, {'a': 1}, id='json-inferred'),
+            pytest.param(
+                'a,b\n1,2\n',
+                'csv',
+                [{'a': '1', 'b': '2'}],
+                id='csv-single-row',
+            ),
+            pytest.param(
+                'a,b\n1,2\n3,4\n',
+                'csv',
+                [{'a': '1', 'b': '2'}, {'a': '3', 'b': '4'}],
+                id='csv-multiple-rows',
+            ),
+            pytest.param('payload', 'yaml', 'payload', id='unknown-format'),
         ],
     )
     def test_parsing_text_payload_variants(
@@ -145,9 +157,3 @@ class TestParseTextPayload:
         expected: object,
     ) -> None:
         assert payload_mod.parse_text_payload(payload, fmt_hint=fmt_hint) == expected
-
-    def test_parses_csv_text_payload(self) -> None:
-        assert payload_mod.parse_text_payload('a,b\n1,2\n3,4\n', fmt_hint='csv') == [
-            {'a': '1', 'b': '2'},
-            {'a': '3', 'b': '4'},
-        ]

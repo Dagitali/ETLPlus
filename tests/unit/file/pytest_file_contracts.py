@@ -20,6 +20,7 @@ from .pytest_file_contracts_dataset import SingleDatasetHandlerContract
 from .pytest_file_contracts_dataset import SingleDatasetPlaceholderContract
 from .pytest_file_contracts_dataset import SingleDatasetWritableContract
 from .pytest_file_contracts_tabular import DelimitedModuleContract
+from .pytest_file_contracts_tabular import DelimitedRoundtripModuleContract
 from .pytest_file_contracts_tabular import EmbeddedDatabaseModuleContract
 from .pytest_file_contracts_tabular import PandasColumnarModuleContract
 from .pytest_file_contracts_tabular import PyarrowGatedPandasColumnarModuleContract
@@ -40,6 +41,7 @@ __all__ = [
     'BinaryDependencyModuleContract',
     'BinaryKeyedPayloadModuleContract',
     'DelimitedModuleContract',
+    'DelimitedRoundtripModuleContract',
     'EmbeddedDatabaseModuleContract',
     'PandasColumnarModuleContract',
     'PyarrowGatedPandasColumnarModuleContract',

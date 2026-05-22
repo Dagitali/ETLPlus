@@ -9,7 +9,24 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+import pytest
+
+from etlplus.connector import ConnectorApi
+from etlplus.connector import ConnectorDb
+from etlplus.connector import ConnectorFile
+from etlplus.connector import ConnectorQueue
+from etlplus.queue import AmqpQueue
+from etlplus.queue import AwsSqsQueue
+from etlplus.queue import AzureServiceBusQueue
+from etlplus.queue import GcpPubSubQueue
+from etlplus.queue import RedisQueue
+
 # SECTION: DATA CLASSES ===================================================== #
+
+
+type ConnectorClass = (
+    type[ConnectorApi] | type[ConnectorDb] | type[ConnectorFile] | type[ConnectorQueue]
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,9 +35,10 @@ class QueueConnectorProviderCase:
 
     input_service: str
     connector_name: str
-    top_level_fields: dict[str, object]
-    options: dict[str, object]
-    expected_queue_options: dict[str, object]
+    top_level_fields: Mapping[str, object]
+    options: Mapping[str, object]
+    expected_queue_options: Mapping[str, object]
+    expected_config_cls: type[object]
 
     def connector_payload(self, **extra_fields: object) -> dict[str, object]:
         """Return one canonical queue connector payload for this provider."""
@@ -47,10 +65,17 @@ class QueueConnectorProviderCase:
         return expected
 
 
-# SECTION: INTERNAL CONSTANTS =============================================== #
+# SECTION: CONSTANTS ======================================================== #
 
 
-_QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
+CONNECTOR_CLASS_PARAMS = (
+    pytest.param(ConnectorApi, id='api'),
+    pytest.param(ConnectorDb, id='database'),
+    pytest.param(ConnectorFile, id='file'),
+    pytest.param(ConnectorQueue, id='queue'),
+)
+
+QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
     'aws-sqs': QueueConnectorProviderCase(
         input_service='aws-sqs',
         connector_name='events',
@@ -66,6 +91,7 @@ _QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
             'region': 'us-east-1',
             'visibility_timeout': 30,
         },
+        expected_config_cls=AwsSqsQueue,
     ),
     'azure-service-bus': QueueConnectorProviderCase(
         input_service='azure-service-bus',
@@ -77,6 +103,7 @@ _QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
             'namespace': 'example-bus',
             'queue_name': 'orders',
         },
+        expected_config_cls=AzureServiceBusQueue,
     ),
     'gcp-pubsub': QueueConnectorProviderCase(
         input_service='gcp-pubsub',
@@ -91,6 +118,7 @@ _QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
             'project': 'example-project',
             'subscription': 'etlplus',
         },
+        expected_config_cls=GcpPubSubQueue,
     ),
     'rabbitmq': QueueConnectorProviderCase(
         input_service='rabbitmq',
@@ -105,6 +133,7 @@ _QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
             'url': 'amqp://guest:guest@localhost:5672/%2f',
             'routing_key': 'orders.created',
         },
+        expected_config_cls=AmqpQueue,
     ),
     'redis-streams': QueueConnectorProviderCase(
         input_service='redis-streams',
@@ -116,8 +145,23 @@ _QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
             'key': 'orders',
             'database': 2,
         },
+        expected_config_cls=RedisQueue,
     ),
 }
+
+QUEUE_CONNECTOR_PROVIDER_PARAMS = (
+    pytest.param(QUEUE_CONNECTOR_PROVIDER_CASES['aws-sqs'], id='aws-sqs'),
+    pytest.param(
+        QUEUE_CONNECTOR_PROVIDER_CASES['azure-service-bus'],
+        id='azure-service-bus',
+    ),
+    pytest.param(QUEUE_CONNECTOR_PROVIDER_CASES['gcp-pubsub'], id='gcp-pubsub'),
+    pytest.param(QUEUE_CONNECTOR_PROVIDER_CASES['rabbitmq'], id='rabbitmq-alias'),
+    pytest.param(
+        QUEUE_CONNECTOR_PROVIDER_CASES['redis-streams'],
+        id='redis-streams-alias',
+    ),
+)
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -130,10 +174,3 @@ def assert_connector_fields(
     """Assert that *actual* exposes the expected field values."""
     for field, value in expected.items():
         assert getattr(actual, field) == value
-
-
-def get_queue_connector_provider_case(
-    service: str,
-) -> QueueConnectorProviderCase:
-    """Return one canonical connector-test case for *service*."""
-    return _QUEUE_CONNECTOR_PROVIDER_CASES[service]

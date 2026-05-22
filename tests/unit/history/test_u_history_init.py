@@ -17,6 +17,8 @@ from etlplus.history._store import RunRecord
 from etlplus.history._store import RunState
 from etlplus.history._store import SQLiteHistoryStore
 
+from ..pytest_export_contracts import assert_package_exports
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -24,7 +26,7 @@ from etlplus.history._store import SQLiteHistoryStore
 
 # SECTION: HELPERS ========================================================== #
 
-HISTORY_EXPORTS = [
+HISTORY_EXPORTS: tuple[tuple[str, object], ...] = (
     ('HistoryStore', HistoryStore),
     ('JsonlHistoryStore', JsonlHistoryStore),
     ('RunCompletion', RunCompletion),
@@ -32,7 +34,7 @@ HISTORY_EXPORTS = [
     ('RunState', RunState),
     ('SQLiteHistoryStore', SQLiteHistoryStore),
     ('HISTORY_SCHEMA_VERSION', HISTORY_SCHEMA_VERSION),
-]
+)
 
 # SECTION: TESTS ============================================================ #
 
@@ -45,7 +47,10 @@ class TestHistoryPackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert history_pkg.__all__ == [name for name, _value in HISTORY_EXPORTS]
+        assert_package_exports(
+            package_module=history_pkg,
+            expected_exports=HISTORY_EXPORTS,
+        )
 
     @pytest.mark.parametrize(('name', 'expected'), HISTORY_EXPORTS)
     def test_expected_symbol_bindings(

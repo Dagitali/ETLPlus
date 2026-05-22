@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.utils._mixins` helpers.
 
 from __future__ import annotations
 
+import pytest
+
 from etlplus.utils._mixins import BoundsWarningsMixin
 
 # SECTION: PRAGMAS ========================================================== #
@@ -18,24 +20,26 @@ from etlplus.utils._mixins import BoundsWarningsMixin
 class TestBoundsWarningsMixin:
     """Unit tests for :class:`BoundsWarningsMixin`."""
 
-    def test_warn_if_appends_message(self) -> None:
-        """Test that warnings are appended when the condition is ``True``."""
-
+    @pytest.mark.parametrize(
+        ('calls', 'expected'),
+        [
+            pytest.param([(True, 'limit reached')], ['limit reached'], id='append'),
+            pytest.param(
+                [(True, 'first'), (True, 'second')],
+                ['first', 'second'],
+                id='reuse-bucket',
+            ),
+            pytest.param([(False, 'ignored')], [], id='skip'),
+        ],
+    )
+    def test_warn_if(
+        self,
+        calls: list[tuple[bool, str]],
+        expected: list[str],
+    ) -> None:
+        """Test that conditional warnings update the caller-provided bucket."""
         warnings: list[str] = []
-        BoundsWarningsMixin._warn_if(True, 'limit reached', warnings)
-        assert warnings == ['limit reached']
+        for condition, message in calls:
+            BoundsWarningsMixin._warn_if(condition, message, warnings)
 
-    def test_warn_if_reuses_bucket(self) -> None:
-        """Test that multiple warnings reuse the same list."""
-
-        warnings: list[str] = []
-        BoundsWarningsMixin._warn_if(True, 'first', warnings)
-        BoundsWarningsMixin._warn_if(True, 'second', warnings)
-        assert warnings == ['first', 'second']
-
-    def test_warn_if_skips_when_condition_false(self) -> None:
-        """Test that no warnings are added when the condition is ``False``."""
-
-        warnings: list[str] = []
-        BoundsWarningsMixin._warn_if(False, 'ignored', warnings)
-        assert not warnings
+        assert warnings == expected

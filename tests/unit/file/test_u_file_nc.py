@@ -60,14 +60,22 @@ class _Dataset(ContextManagerSelfMixin):
 class _XarrayStub:
     """Stub for xarray module."""
 
-    def __init__(self, dataset: _Dataset) -> None:
+    def __init__(
+        self,
+        dataset: _Dataset,
+        *,
+        open_error: Exception | None = None,
+    ) -> None:
         self._dataset = dataset
+        self._open_error = open_error
 
     def open_dataset(
         self,
         path: Path,
     ) -> _Dataset:  # noqa: ARG002
         """Simulate opening a dataset by returning the stored dataset."""
+        if self._open_error is not None:
+            raise self._open_error
         return self._dataset
 
     class Dataset:  # noqa: D106
@@ -150,12 +158,10 @@ class TestNc(SingleDatasetWritableContract):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that reading raises an engine error."""
-
-        def _open_dataset(_: Path) -> _Dataset:
-            raise ImportError('engine missing')
-
-        xarray = _XarrayStub(_Dataset(DictRecordsFrameStub([])))
-        xarray.open_dataset = _open_dataset  # type: ignore[assignment]
+        xarray = _XarrayStub(
+            _Dataset(DictRecordsFrameStub([])),
+            open_error=ImportError('engine missing'),
+        )
         patch_dependency_resolver_value(
             monkeypatch,
             mod,

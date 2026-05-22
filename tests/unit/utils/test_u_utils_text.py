@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.utils._text`.
 
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
+
 import pytest
 
 from etlplus.utils import TextChoiceResolver
@@ -29,9 +31,10 @@ class TestNormalizeText:
     def test_choice_resolver_is_frozen(self) -> None:
         """Test that choice policy cannot be reassigned after construction."""
         resolver = TextChoiceResolver({'file': 'file'}, 'file')
+        attribute = 'default'
 
-        with pytest.raises(AttributeError):
-            resolver.default = 'api'  # type: ignore[misc]
+        with pytest.raises(FrozenInstanceError):
+            setattr(resolver, attribute, 'api')
 
     @pytest.mark.parametrize(
         ('value', 'expected'),

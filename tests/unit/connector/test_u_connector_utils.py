@@ -11,7 +11,6 @@ Notes
 from __future__ import annotations
 
 from typing import Any
-from typing import cast
 
 import pytest
 
@@ -22,8 +21,8 @@ from etlplus.connector import ConnectorFile
 from etlplus.connector import ConnectorQueue
 from tests.pytest_shared_support import get_cloud_database_provider_case
 
+from .pytest_connector_support import QUEUE_CONNECTOR_PROVIDER_CASES
 from .pytest_connector_support import assert_connector_fields
-from .pytest_connector_support import get_queue_connector_provider_case
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -32,7 +31,7 @@ from .pytest_connector_support import get_queue_connector_provider_case
 # SECTION: HELPERS ========================================================== #
 
 
-AWS_SQS_CASE = get_queue_connector_provider_case('aws-sqs')
+AWS_SQS_CASE = QUEUE_CONNECTOR_PROVIDER_CASES['aws-sqs']
 BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
 SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
 
@@ -74,14 +73,12 @@ class TestParseConnector:
     )
     def test_invalid_payloads_raise_type_error(
         self,
-        payload: object,
+        payload: Any,
         match: str,
     ) -> None:
         """Invalid connector payloads should raise :class:`TypeError`."""
         with pytest.raises(TypeError, match=match):
-            connector_utils.parse_connector(
-                cast(dict[str, Any], payload),
-            )
+            connector_utils.parse_connector(payload)
 
     @pytest.mark.parametrize(
         ('payload', 'expected_cls', 'expected_attrs'),

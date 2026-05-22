@@ -7,7 +7,6 @@ Unit tests for :mod:`etlplus.file.txt`.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import cast
 
 import pytest
 
@@ -86,20 +85,7 @@ class TestTxt(RoundtripUnitModuleContract):
         path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match='TXT row payloads must contain'):
-            mod.TxtFile().write_rows(path, cast(list[str], ['alpha', 1]))
-
-    def test_write_rejects_legacy_text_records(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that legacy ``{"text": ...}`` payloads are rejected."""
-        path = self.format_path(tmp_path)
-
-        with pytest.raises(TypeError, match='TXT payload lists must contain'):
-            mod.TxtFile().write(
-                path,
-                [{'text': 'alpha'}, {'text': 'beta'}],
-            )
+            mod.TxtFile().write_rows(path, ['alpha', 1])
 
     @pytest.mark.parametrize(
         'payload',
@@ -121,29 +107,40 @@ class TestTxt(RoundtripUnitModuleContract):
         assert path.read_text(encoding='utf-8') == ''
 
     @pytest.mark.parametrize(
-        'payload',
+        ('payload', 'match'),
         [
-            {'nope': 'value'},
-            {'text': 'alpha'},
-            [{'text': 1}],
-            [1],
-            123,
-        ],
-        ids=[
-            'mapping_without_text',
-            'legacy_mapping',
-            'legacy_record_without_string_text',
-            'non_string_list_item',
-            'scalar',
+            pytest.param(
+                {'nope': 'value'},
+                'TXT payload',
+                id='mapping_without_text',
+            ),
+            pytest.param(
+                {'text': 'alpha'},
+                'TXT payload',
+                id='legacy_mapping',
+            ),
+            pytest.param(
+                [{'text': 1}],
+                'TXT payload',
+                id='legacy_record_without_string_text',
+            ),
+            pytest.param(
+                [{'text': 'alpha'}, {'text': 'beta'}],
+                'TXT payload lists must contain',
+                id='legacy_record_list',
+            ),
+            pytest.param([1], 'TXT payload', id='non_string_list_item'),
+            pytest.param(123, 'TXT payload', id='scalar'),
         ],
     )
     def test_write_rejects_non_text_payloads(
         self,
         tmp_path: Path,
         payload: object,
+        match: str,
     ) -> None:
         """Test that :func:`write` rejects non-text payloads."""
         path = self.format_path(tmp_path)
 
-        with pytest.raises(TypeError, match='TXT payload'):
+        with pytest.raises(TypeError, match=match):
             mod.TxtFile().write(path, payload)

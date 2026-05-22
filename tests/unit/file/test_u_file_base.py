@@ -736,9 +736,10 @@ class TestOptionsContracts:
     def test_write_options_are_frozen(self) -> None:
         """Test :class:`WriteOptions` immutability contract."""
         options = WriteOptions()
+        attribute = 'encoding'
 
         with pytest.raises(FrozenInstanceError):
-            options.encoding = 'latin-1'  # type: ignore[misc]
+            setattr(options, attribute, 'latin-1')
 
 
 class TestScientificDatasetContracts:

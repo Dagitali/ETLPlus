@@ -9,12 +9,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
 from typing import cast
 
 import pytest
 
-import etlplus.runtime.readiness._base as readiness_base_mod
 import etlplus.runtime.readiness._builder as readiness_builder_mod
 from etlplus.runtime.readiness._support import ResolvedConfigContext
 
@@ -48,7 +46,7 @@ def build_runtime_cfg(
     apis: dict[str, object] | None = None,
     profile_env: dict[str, str] | None = None,
     variables: dict[str, object] | None = None,
-) -> Any:
+) -> SimpleNamespace:
     """Build one light-weight config-like object for readiness tests."""
     return SimpleNamespace(
         apis={} if apis is None else dict(apis),
@@ -156,10 +154,7 @@ def build_resolved_config_context(
         effective_env={} if env is None else dict(env),
         unresolved_tokens=[] if unresolved_tokens is None else list(unresolved_tokens),
         resolved_raw=raw if resolved_raw is None else dict(resolved_raw),
-        resolved_cfg=cast(
-            Any,
-            build_runtime_cfg() if resolved_cfg is None else resolved_cfg,
-        ),
+        resolved_cfg=build_runtime_cfg() if resolved_cfg is None else resolved_cfg,
     )
 
 
@@ -210,22 +205,6 @@ def patch_config_resolution(
             resolved_cfg=resolved_cfg,
         ),
     )
-
-
-def patch_file_read(
-    monkeypatch: pytest.MonkeyPatch,
-    payload: object,
-) -> None:
-    """Patch :class:`File` to return one fixed payload from :meth:`File.read`."""
-
-    class _FakeFile:
-        def __init__(self, *_args: object, **_kwargs: object) -> None:
-            pass
-
-        def read(self) -> object:
-            return payload
-
-    monkeypatch.setattr(readiness_base_mod, 'File', _FakeFile)
 
 
 def write_pipeline_config(

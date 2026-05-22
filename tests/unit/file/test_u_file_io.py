@@ -10,7 +10,6 @@ from io import BytesIO
 from io import StringIO
 from pathlib import Path
 from typing import Any
-from typing import cast
 
 import pytest
 
@@ -117,13 +116,11 @@ class TestIoHelpers:
                 mod.coerce_record_payload(valid_payload, format_name='JSON') == expected
             )
 
-        for invalid_payload, pattern in cast(
-            tuple[tuple[Any, str], ...],
-            (
-                ([{'a': 1}, 2], 'array must contain only objects'),
-                ('bad', 'root must be an object'),
-            ),
-        ):
+        invalid_payload_cases: tuple[tuple[Any, str], ...] = (
+            ([{'a': 1}, 2], 'array must contain only objects'),
+            ('bad', 'root must be an object'),
+        )
+        for invalid_payload, pattern in invalid_payload_cases:
             with pytest.raises(TypeError, match=pattern):
                 mod.coerce_record_payload(
                     invalid_payload,
@@ -138,13 +135,11 @@ class TestIoHelpers:
         ):
             assert mod.normalize_records(valid_payload, 'CSV') == expected
 
-        for invalid_payload, pattern in cast(
-            tuple[tuple[Any, str], ...],
-            (
-                (1, 'must be an object or an array'),
-                ([{'id': 1}, 'x'], 'contain only objects'),
-            ),
-        ):
+        invalid_payload_cases: tuple[tuple[Any, str], ...] = (
+            (1, 'must be an object or an array'),
+            ([{'id': 1}, 'x'], 'contain only objects'),
+        )
+        for invalid_payload, pattern in invalid_payload_cases:
             with pytest.raises(TypeError, match=pattern):
                 mod.normalize_records(invalid_payload, 'CSV')
 
@@ -351,7 +346,8 @@ class TestIoHelpers:
 
         assert result == {'ok': True}
         assert len(pandas.calls) == 1
-        staged_path = cast(Path, pandas.calls[0]['path'])
+        staged_path = pandas.calls[0]['path']
+        assert isinstance(staged_path, Path)
         assert staged_path.name == 'sample.sas7bdat'
         assert pandas.calls[0]['payload'] == payload
         assert pandas.calls[0]['format'] == 'sas7bdat'
