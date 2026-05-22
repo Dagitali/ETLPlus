@@ -7,6 +7,7 @@ Contract tests for the stable observability surface.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -17,6 +18,8 @@ from etlplus.history import RunCompletion
 from etlplus.history import RunRecord
 from etlplus.history._store import JobRunRecord
 from tests.meta.pytest_meta_support import REPO_ROOT
+from tests.meta.pytest_meta_support import TextSnippetCase
+from tests.meta.pytest_meta_support import text_snippet_case_id
 
 # SECTION: MARKERS ========================================================== #
 
@@ -87,6 +90,16 @@ EXPECTED_NORMALIZED_JOB_FIELDS = {
     'status',
 }
 
+STRUCTURED_EVENT_DOC_CASES: tuple[TextSnippetCase, ...] = (
+    (
+        REPO_ROOT / 'docs/source/guides/structured-events.md',
+        'etlplus.event.v1',
+    ),
+    (
+        REPO_ROOT / 'docs/source/guides/index.md',
+        'structured-events',
+    ),
+)
 
 NORMALIZED_HISTORY_SHAPE_CASES: tuple[HistoryShapeCase, ...] = (
     (
@@ -166,17 +179,22 @@ class TestStructuredEventContract:
         assert event['schema_version'] == EXPECTED_EVENT_SCHEMA_VERSION
         assert event['event'] == f'run.{lifecycle}'
 
-    def test_published_guides_keep_structured_event_contract_entrypoints(self) -> None:
+    @pytest.mark.parametrize(
+        ('path', 'snippet'),
+        STRUCTURED_EVENT_DOC_CASES,
+        ids=[text_snippet_case_id(case) for case in STRUCTURED_EVENT_DOC_CASES],
+    )
+    def test_published_guides_keep_structured_event_contract_entrypoints(
+        self,
+        path: Path,
+        snippet: str,
+    ) -> None:
         """
         Test that the published docs keep the dedicated structured-events guide
         wired in.
         """
-        guide_path = REPO_ROOT / 'docs/source/guides/structured-events.md'
-        guides_index_path = REPO_ROOT / 'docs/source/guides/index.md'
-
-        assert guide_path.exists()
-        assert 'etlplus.event.v1' in guide_path.read_text(encoding='utf-8')
-        assert 'structured-events' in guides_index_path.read_text(encoding='utf-8')
+        assert path.exists()
+        assert snippet in path.read_text(encoding='utf-8')
 
     def test_runtime_package_keeps_stable_event_schema_identifiers(self) -> None:
         """
