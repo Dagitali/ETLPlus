@@ -17,11 +17,20 @@ from etlplus.history import HistoryStore
 from etlplus.history import RunCompletion
 from etlplus.history import RunRecord
 from etlplus.history._store import JobRunRecord
+from tests.meta.pytest_meta_support import REPO_ROOT
+from tests.meta.pytest_meta_support import TextSnippetCase
+from tests.meta.pytest_meta_support import text_snippet_case_id
 
 # SECTION: MARKERS ========================================================== #
 
 
 pytestmark = [pytest.mark.meta, pytest.mark.contract]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type HistoryShapeCase = tuple[dict[str, object], str, set[str]]
 
 
 # SECTION: CONSTANTS ======================================================== #
@@ -81,6 +90,43 @@ EXPECTED_NORMALIZED_JOB_FIELDS = {
     'status',
 }
 
+STRUCTURED_EVENT_DOC_CASES: tuple[TextSnippetCase, ...] = (
+    (
+        REPO_ROOT / 'docs/source/guides/structured-events.md',
+        'etlplus.event.v1',
+    ),
+    (
+        REPO_ROOT / 'docs/source/guides/index.md',
+        'structured-events',
+    ),
+)
+
+NORMALIZED_HISTORY_SHAPE_CASES: tuple[HistoryShapeCase, ...] = (
+    (
+        {
+            'record_level': 'job',
+            'run_id': 'run-123',
+            'job_name': 'seed',
+            'sequence_index': 0,
+            'status': 'succeeded',
+        },
+        'iter_job_runs',
+        EXPECTED_NORMALIZED_JOB_FIELDS,
+    ),
+    (
+        {
+            'record_level': 'run',
+            'run_id': 'run-123',
+            'status': 'running',
+        },
+        'iter_runs',
+        EXPECTED_NORMALIZED_RUN_FIELDS,
+    ),
+)
+NORMALIZED_HISTORY_SHAPE_IDS = tuple(
+    iterator_name for _, iterator_name, _ in NORMALIZED_HISTORY_SHAPE_CASES
+)
+
 
 # SECTION: HELPERS ========================================================== #
 
@@ -132,18 +178,22 @@ class TestStructuredEventContract:
         assert event['schema_version'] == EXPECTED_EVENT_SCHEMA_VERSION
         assert event['event'] == f'run.{lifecycle}'
 
-    def test_published_guides_keep_structured_event_contract_entrypoints(self) -> None:
+    @pytest.mark.parametrize(
+        ('path', 'snippet'),
+        STRUCTURED_EVENT_DOC_CASES,
+        ids=[text_snippet_case_id(case) for case in STRUCTURED_EVENT_DOC_CASES],
+    )
+    def test_published_guides_keep_structured_event_contract_entrypoints(
+        self,
+        path: Path,
+        snippet: str,
+    ) -> None:
         """
         Test that the published docs keep the dedicated structured-events guide
         wired in.
         """
-        repo_root = Path(__file__).resolve().parents[2]
-        guide_path = repo_root / 'docs/source/guides/structured-events.md'
-        guides_index_path = repo_root / 'docs/source/guides/index.md'
-
-        assert guide_path.exists()
-        assert 'etlplus.event.v1' in guide_path.read_text(encoding='utf-8')
-        assert 'structured-events' in guides_index_path.read_text(encoding='utf-8')
+        assert path.exists()
+        assert snippet in path.read_text(encoding='utf-8')
 
     def test_runtime_package_keeps_stable_event_schema_identifiers(self) -> None:
         """
@@ -156,41 +206,21 @@ class TestStructuredEventContract:
 class TestNormalizedHistoryContract:
     """Meta-level contract tests for normalized persisted history shapes."""
 
-    def test_iter_job_runs_keeps_stable_normalized_job_field_set(self) -> None:
+    @pytest.mark.parametrize(
+        ('source_record', 'iterator_name', 'expected_fields'),
+        NORMALIZED_HISTORY_SHAPE_CASES,
+        ids=NORMALIZED_HISTORY_SHAPE_IDS,
+    )
+    def test_iter_records_keep_stable_normalized_field_sets(
+        self,
+        source_record: dict[str, object],
+        iterator_name: str,
+        expected_fields: set[str],
+    ) -> None:
         """
-        Test that normalized DAG job records keep the documented stable field
-        set.
+        Test that normalized history records keep documented stable field sets.
         """
-        record = next(
-            _ContractHistoryStore(
-                [
-                    {
-                        'record_level': 'job',
-                        'run_id': 'run-123',
-                        'job_name': 'seed',
-                        'sequence_index': 0,
-                        'status': 'succeeded',
-                    },
-                ],
-            ).iter_job_runs(),
-        )
+        iterator = getattr(_ContractHistoryStore([source_record]), iterator_name)
+        record = next(iterator())
 
-        assert EXPECTED_NORMALIZED_JOB_FIELDS == set(record)
-
-    def test_iter_runs_keeps_stable_normalized_run_field_set(self) -> None:
-        """
-        Test that normalized run records keep the documented stable field set.
-        """
-        record = next(
-            _ContractHistoryStore(
-                [
-                    {
-                        'record_level': 'run',
-                        'run_id': 'run-123',
-                        'status': 'running',
-                    },
-                ],
-            ).iter_runs(),
-        )
-
-        assert EXPECTED_NORMALIZED_RUN_FIELDS == set(record)
+        assert expected_fields == set(record)

@@ -20,6 +20,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 TESTS_ROOT = REPO_ROOT / 'tests'
 
 
+# SECTION: TYPES ============================================================ #
+
+
+type TextSnippetCase = tuple[Path, str]
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -39,14 +45,12 @@ def markdown_table_rows(
     list[tuple[str, ...]]
         List of tuples representing the rows of the markdown table.
     """
-    rows: list[tuple[str, ...]] = []
-    for line in read_lines(path):
-        if not line.startswith('|'):
-            continue
-        row = tuple(part.strip() for part in line.split('|')[1:-1])
-        if row:
-            rows.append(row)
-    return rows
+    return [
+        row
+        for line in read_lines(path)
+        if line.startswith('|')
+        if (row := tuple(part.strip() for part in line.split('|')[1:-1]))
+    ]
 
 
 def read_lines(
@@ -88,72 +92,26 @@ def regex_matches(
     list[re.Match[str]]
         List of regex match objects for each line that matches the pattern.
     """
-    matches: list[re.Match[str]] = []
-    for line in read_lines(path):
-        if (match := pattern.match(line)) is not None:
-            matches.append(match)
-    return matches
+    return [
+        match for line in read_lines(path) if (match := pattern.match(line)) is not None
+    ]
 
 
-def sorted_glob(
-    root: Path,
-    pattern: str,
-) -> list[Path]:
+def text_snippet_case_id(
+    case: TextSnippetCase,
+) -> str:
     """
-    Return deterministic ``glob`` matches.
+    Return a stable pytest ID for a path/snippet guardrail case.
 
     Parameters
     ----------
-    root : Path
-        Root directory to start the glob search.
-    pattern : str
-        Glob pattern to match files.
+    case : TextSnippetCase
+        Pair containing the path under test and the expected snippet.
 
     Returns
     -------
-    list[Path]
-        Sorted list of paths matching the glob pattern.
+    str
+        Stable test-case ID containing the file name and expected snippet.
     """
-    return sorted(root.glob(pattern))
-
-
-def sorted_rglob(
-    root: Path,
-    pattern: str,
-) -> list[Path]:
-    """
-    Return deterministic ``rglob`` matches.
-
-    Parameters
-    ----------
-    root : Path
-        Root directory to start the recursive glob search.
-    pattern : str
-        Glob pattern to match files.
-
-    Returns
-    -------
-    list[Path]
-        Sorted list of paths matching the recursive glob pattern.
-    """
-    return sorted(root.rglob(pattern))
-
-
-def scope_conftests(
-    scope_name: str,
-) -> list[Path]:
-    """
-    Return sorted ``conftest.py`` paths for one test scope.
-
-    Parameters
-    ----------
-    scope_name : str
-        Name of the test scope (e.g., 'unit', 'integration').
-
-    Returns
-    -------
-    list[Path]
-        Sorted list of paths to ``conftest.py`` files within the specified test
-        scope.
-    """
-    return sorted_rglob(TESTS_ROOT / scope_name, 'conftest.py')
+    path, snippet = case
+    return f'{path.name}:{snippet}'
