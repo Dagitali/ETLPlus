@@ -322,10 +322,37 @@ class TestSpreadsheetEngineResolverMixin:
 class TestSpreadsheetReadWriteFallbacks:
     """Unit tests for spreadsheet read/write fallback helper branches."""
 
-    def test_read_excel_frame_falls_back_without_sheet_name(self) -> None:
-        """
-        Test that read helper retries when ``sheet_name`` is unsupported.
-        """
+    @pytest.mark.parametrize(
+        ('engine', 'expected_calls'),
+        [
+            pytest.param(
+                'openpyxl',
+                [
+                    {
+                        'path': Path('sample.xlsx'),
+                        'sheet_name': 'Sheet1',
+                        'engine': 'openpyxl',
+                    },
+                    {'path': Path('sample.xlsx'), 'engine': 'openpyxl'},
+                ],
+                id='engine',
+            ),
+            pytest.param(
+                None,
+                [
+                    {'path': Path('sample.xlsx'), 'sheet_name': 'Sheet1'},
+                    {'path': Path('sample.xlsx')},
+                ],
+                id='no-engine',
+            ),
+        ],
+    )
+    def test_read_excel_frame_falls_back_without_sheet_name(
+        self,
+        engine: str | None,
+        expected_calls: list[dict[str, object]],
+    ) -> None:
+        """Test read helper retry behavior with optional engine kwargs."""
         pandas = _ReadExcelFallbackPandasStub()
         path = Path('sample.xlsx')
 
@@ -333,43 +360,52 @@ class TestSpreadsheetReadWriteFallbacks:
             pandas,
             path,
             sheet='Sheet1',
-            engine='openpyxl',
+            engine=engine,
         )
 
         assert result == 'frame'
-        assert pandas.calls == [
-            {
-                'path': path,
-                'sheet_name': 'Sheet1',
-                'engine': 'openpyxl',
-            },
-            {'path': path, 'engine': 'openpyxl'},
-        ]
+        assert pandas.calls == expected_calls
 
-    def test_read_excel_frame_without_engine_omits_engine_kwarg(self) -> None:
-        """
-        Test that read helper not injecting engine when ``engine`` is ``None``.
-        """
-        pandas = _ReadExcelFallbackPandasStub()
-        path = Path('sample.xlsx')
-
-        result = mod._read_excel_frame(
-            pandas,
-            path,
-            sheet='Sheet1',
-            engine=None,
-        )
-
-        assert result == 'frame'
-        assert pandas.calls == [
-            {'path': path, 'sheet_name': 'Sheet1'},
-            {'path': path},
-        ]
-
-    def test_write_excel_frame_falls_back_without_sheet_name(self) -> None:
-        """
-        Test that write helper retries when ``sheet_name`` is unsupported.
-        """
+    @pytest.mark.parametrize(
+        ('engine', 'expected_calls'),
+        [
+            pytest.param(
+                'openpyxl',
+                [
+                    {
+                        'path': Path('sample.xlsx'),
+                        'index': False,
+                        'engine': 'openpyxl',
+                        'sheet_name': 'Sheet1',
+                    },
+                    {
+                        'path': Path('sample.xlsx'),
+                        'index': False,
+                        'engine': 'openpyxl',
+                    },
+                ],
+                id='engine',
+            ),
+            pytest.param(
+                None,
+                [
+                    {
+                        'path': Path('sample.xlsx'),
+                        'index': False,
+                        'sheet_name': 'Sheet1',
+                    },
+                    {'path': Path('sample.xlsx'), 'index': False},
+                ],
+                id='no-engine',
+            ),
+        ],
+    )
+    def test_write_excel_frame_falls_back_without_sheet_name(
+        self,
+        engine: str | None,
+        expected_calls: list[dict[str, object]],
+    ) -> None:
+        """Test write helper retry behavior with optional engine kwargs."""
         frame = _WriteExcelFallbackFrameStub()
         path = Path('sample.xlsx')
 
@@ -377,37 +413,10 @@ class TestSpreadsheetReadWriteFallbacks:
             frame,
             path,
             sheet='Sheet1',
-            engine='openpyxl',
+            engine=engine,
         )
 
-        assert frame.calls == [
-            {
-                'path': path,
-                'index': False,
-                'engine': 'openpyxl',
-                'sheet_name': 'Sheet1',
-            },
-            {'path': path, 'index': False, 'engine': 'openpyxl'},
-        ]
-
-    def test_write_excel_frame_without_engine_omits_engine_kwarg(self) -> None:
-        """
-        Test that write helper not injecting engine when *engine* is ``None``.
-        """
-        frame = _WriteExcelFallbackFrameStub()
-        path = Path('sample.xlsx')
-
-        mod._write_excel_frame(
-            frame,
-            path,
-            sheet='Sheet1',
-            engine=None,
-        )
-
-        assert frame.calls == [
-            {'path': path, 'index': False, 'sheet_name': 'Sheet1'},
-            {'path': path, 'index': False},
-        ]
+        assert frame.calls == expected_calls
 
 
 class TestColumnarRuntimeDependencyValidation:
