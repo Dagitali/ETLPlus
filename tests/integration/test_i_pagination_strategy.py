@@ -190,6 +190,24 @@ CURSOR_SCENARIOS: tuple[CursorScenario, ...] = (
         ),
     ),
 )
+CURSOR_SCENARIO_IDS = tuple(scenario.name for scenario in CURSOR_SCENARIOS)
+
+PAGE_SCENARIOS: tuple[PageScenario, ...] = (
+    PageScenario(
+        name='page_offset_basic',
+        page_size=2,
+        pages=[[{'id': 1}, {'id': 2}], [{'id': 3}]],
+        expected_ids=[1, 2, 3],
+    ),
+    PageScenario(
+        name='page_offset_trim',
+        page_size=3,
+        pages=[[{'id': 1}, {'id': 2}, {'id': 3}], [{'id': 4}]],
+        expected_ids=[1, 2],
+        max_records=2,
+    ),
+)
+PAGE_SCENARIO_IDS = tuple(scenario.name for scenario in PAGE_SCENARIOS)
 
 
 @dataclass(slots=True)
@@ -199,6 +217,56 @@ class PaginationEdgeCase:
     name: str
     pagination: dict[str, Any]
     expect: dict[str, Any]
+
+
+PAGINATION_EDGE_CASES: tuple[PaginationEdgeCase, ...] = (
+    PaginationEdgeCase(
+        name='page_zero_start_coerces_to_one',
+        pagination={
+            'type': 'page',
+            'page_param': 'page',
+            'size_param': 'per_page',
+            'start_page': 0,
+            'page_size': 10,
+        },
+        expect={'type': 'page', 'start_page': 1, 'page_size': 10},
+    ),
+    PaginationEdgeCase(
+        name='page_zero_size_coerces_default',
+        pagination={
+            'type': 'page',
+            'page_param': 'page',
+            'size_param': 'per_page',
+            'start_page': 1,
+            'page_size': 0,
+        },
+        expect={'type': 'page', 'start_page': 1, 'page_size': 100},
+    ),
+    PaginationEdgeCase(
+        name='cursor_zero_size_coerces_default',
+        pagination={
+            'type': 'cursor',
+            'cursor_param': 'cursor',
+            'cursor_path': 'next',
+            'page_size': 0,
+        },
+        expect={'type': 'cursor', 'page_size': 100},
+    ),
+    PaginationEdgeCase(
+        name='limits_pass_through',
+        pagination={
+            'type': 'page',
+            'page_param': 'page',
+            'size_param': 'per_page',
+            'start_page': 1,
+            'page_size': 5,
+            'max_pages': 2,
+            'max_records': 3,
+        },
+        expect={'type': 'page', 'max_pages': 2, 'max_records': 3},
+    ),
+)
+PAGINATION_EDGE_CASE_IDS = tuple(case.name for case in PAGINATION_EDGE_CASES)
 
 
 def _run_pipeline_and_collect(
@@ -250,30 +318,6 @@ def _run_pipeline_and_collect(
     return parse_json_file(out_path)
 
 
-def _write_pipeline(
-    tmp_path: Path,
-    yaml_text: str,
-) -> str:
-    """
-    Write a temporary pipeline.yml file and return its path.
-
-    Parameters
-    ----------
-    tmp_path : Path
-        Temporary directory provided by pytest.
-    yaml_text : str
-        YAML configuration content to write.
-
-    Returns
-    -------
-    str
-        String path to the written pipeline.yml file.
-    """
-    p = tmp_path / 'pipeline.yml'
-    p.write_text(yaml_text, encoding='utf-8')
-    return str(p)
-
-
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -307,7 +351,9 @@ def pipeline_cli_runner_fixture(
         request_func: Callable[..., Any] | None = None,
     ) -> str:
         """Run the CLI with the given pipeline YAML and patched extractors."""
-        cfg_path = _write_pipeline(tmp_path, yaml_text)
+        pipeline_path = tmp_path / 'pipeline.yml'
+        pipeline_path.write_text(yaml_text, encoding='utf-8')
+        cfg_path = str(pipeline_path)
         monkeypatch.setattr(dataops_mod, 'extract', extract_func)
         monkeypatch.setattr(extract_mod, 'extract', extract_func)
 
@@ -355,7 +401,7 @@ class TestPaginationStrategies:
     @pytest.mark.parametrize(
         'scenario',
         CURSOR_SCENARIOS,
-        ids=lambda s: s.name,
+        ids=CURSOR_SCENARIO_IDS,
     )
     def test_cursor_modes(
         self,
@@ -429,22 +475,8 @@ class TestPaginationStrategies:
 
     @pytest.mark.parametrize(
         'scenario',
-        (
-            PageScenario(
-                name='page_offset_basic',
-                page_size=2,
-                pages=[[{'id': 1}, {'id': 2}], [{'id': 3}]],
-                expected_ids=[1, 2, 3],
-            ),
-            PageScenario(
-                name='page_offset_trim',
-                page_size=3,
-                pages=[[{'id': 1}, {'id': 2}, {'id': 3}], [{'id': 4}]],
-                expected_ids=[1, 2],
-                max_records=2,
-            ),
-        ),
-        ids=lambda s: s.name,
+        PAGE_SCENARIOS,
+        ids=PAGE_SCENARIO_IDS,
     )
     def test_page_offset_modes(
         self,
@@ -500,55 +532,11 @@ class TestPaginationStrategies:
         )
         assert [r['id'] for r in data] == scenario.expected_ids
 
-    EDGE_CASES = (
-        PaginationEdgeCase(
-            name='page_zero_start_coerces_to_one',
-            pagination={
-                'type': 'page',
-                'page_param': 'page',
-                'size_param': 'per_page',
-                'start_page': 0,
-                'page_size': 10,
-            },
-            expect={'type': 'page', 'start_page': 1, 'page_size': 10},
-        ),
-        PaginationEdgeCase(
-            name='page_zero_size_coerces_default',
-            pagination={
-                'type': 'page',
-                'page_param': 'page',
-                'size_param': 'per_page',
-                'start_page': 1,
-                'page_size': 0,
-            },
-            expect={'type': 'page', 'start_page': 1, 'page_size': 100},
-        ),
-        PaginationEdgeCase(
-            name='cursor_zero_size_coerces_default',
-            pagination={
-                'type': 'cursor',
-                'cursor_param': 'cursor',
-                'cursor_path': 'next',
-                'page_size': 0,
-            },
-            expect={'type': 'cursor', 'page_size': 100},
-        ),
-        PaginationEdgeCase(
-            name='limits_pass_through',
-            pagination={
-                'type': 'page',
-                'page_param': 'page',
-                'size_param': 'per_page',
-                'start_page': 1,
-                'page_size': 5,
-                'max_pages': 2,
-                'max_records': 3,
-            },
-            expect={'type': 'page', 'max_pages': 2, 'max_records': 3},
-        ),
+    @pytest.mark.parametrize(
+        'scenario',
+        PAGINATION_EDGE_CASES,
+        ids=PAGINATION_EDGE_CASE_IDS,
     )
-
-    @pytest.mark.parametrize('scenario', EDGE_CASES, ids=lambda s: s.name)
     def test_pagination_edge_cases(
         self,
         scenario: PaginationEdgeCase,
