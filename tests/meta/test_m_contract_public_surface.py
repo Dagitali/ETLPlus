@@ -6,7 +6,7 @@ Contract tests for ETLPlus stable CLI and import surfaces.
 
 from __future__ import annotations
 
-from typing import Any
+from types import ModuleType
 
 import pytest
 
@@ -190,7 +190,7 @@ class TestStableImportSurface:
 
     def test_ops_transformations_modules_keep_documented_helpers(self) -> None:
         """Test that step-level transform modules keep documented helpers."""
-        expected_members: dict[Any, dict[str, object]] = {
+        expected_members: dict[ModuleType, dict[str, object]] = {
             aggregate_tx_mod: {
                 'apply_aggregate': apply_aggregate,
                 'apply_aggregate_step': apply_aggregate_step,
