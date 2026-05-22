@@ -6,6 +6,7 @@ Reusable contract mixins for unit tests of :mod:`etlplus.file`.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType
@@ -48,6 +49,7 @@ __all__ = [
     'DelimitedReadWriteMixin',
     'DelimitedTextRowsMixin',
     'EmptyWriteReturnsZeroMixin',
+    'JsonLinesWriteContractMixin',
     'PathMixin',
     'ReadOnlyWriteGuardMixin',
     'RoundtripUnitModuleContract',
@@ -779,3 +781,37 @@ class TemplateRenderContractMixin(PathMixin):
             self.module_handler.render(self.render_template, self.render_context)
             == self.render_expected
         )
+
+
+class JsonLinesWriteContractMixin(EmptyWriteReturnsZeroMixin):
+    """
+    Shared write contract for JSON-lines record handlers.
+    """
+
+    assert_file_not_created_on_empty_write = True
+    json_lines_error_pattern: str
+
+    def test_write_rejects_non_object_payloads(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing rejects records that are not mappings."""
+        path = self.format_path(tmp_path)
+
+        with pytest.raises(TypeError, match=self.json_lines_error_pattern):
+            self.module_handler.write(path, [1])
+
+    def test_write_serializes_json_lines_and_newline(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test writing emits one JSON object per line."""
+        path = self.format_path(tmp_path)
+        payload = [{'id': 1}, {'id': 2}]
+
+        written = self.module_handler.write(path, payload)
+
+        assert written == 2
+        text = path.read_text(encoding='utf-8')
+        assert text.endswith('\n')
+        assert [json.loads(line) for line in text.splitlines()] == payload
