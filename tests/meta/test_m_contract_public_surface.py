@@ -111,6 +111,41 @@ EXPECTED_OPS_EXPORTS = [
     'ValidationResultDict',
 ]
 
+type ExportCase = tuple[ModuleType, str, object]
+
+API_EXPORTS: tuple[ExportCase, ...] = (
+    (api_pkg, 'EndpointClient', EndpointClient),
+    (api_pkg, 'PaginationConfig', PaginationConfig),
+    (api_pkg, 'PaginationInput', PaginationInput),
+    (api_pkg, 'PaginationType', PaginationType),
+    (api_pkg, 'Paginator', Paginator),
+    (api_pkg, 'RateLimitConfig', RateLimitConfig),
+    (api_pkg, 'RateLimitOverrides', RateLimitOverrides),
+    (api_pkg, 'RateLimiter', RateLimiter),
+    (api_pkg, 'RetryManager', RetryManager),
+)
+FILE_EXPORTS: tuple[ExportCase, ...] = (
+    (file_pkg, 'BoundFileHandler', BoundFileHandler),
+    (file_pkg, 'File', File),
+    (file_pkg, 'FileFormat', FileFormat),
+    (file_pkg, 'ReadOptions', ReadOptions),
+    (file_pkg, 'WriteOptions', WriteOptions),
+)
+OPS_TRANSFORMATION_EXPORTS: tuple[ExportCase, ...] = (
+    (aggregate_tx_mod, 'apply_aggregate', apply_aggregate),
+    (aggregate_tx_mod, 'apply_aggregate_step', apply_aggregate_step),
+    (filter_tx_mod, 'apply_filter', apply_filter),
+    (filter_tx_mod, 'apply_filter_step', apply_filter_step),
+    (map_tx_mod, 'apply_map', apply_map),
+    (map_tx_mod, 'apply_map_step', apply_map_step),
+    (select_tx_mod, 'apply_select', apply_select),
+    (select_tx_mod, 'apply_select_step', apply_select_step),
+    (select_tx_mod, 'is_plain_fields_list', is_plain_fields_list),
+    (select_tx_mod, 'is_sequence_not_text', is_sequence_not_text),
+    (sort_tx_mod, 'apply_sort', apply_sort),
+    (sort_tx_mod, 'apply_sort_step', apply_sort_step),
+)
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -136,35 +171,35 @@ class TestStableCliSurface:
 class TestStableImportSurface:
     """Contract tests for the documented stable Python import surface."""
 
-    def test_api_package_keeps_documented_core_exports(self) -> None:
+    @pytest.mark.parametrize(
+        ('module', 'name', 'expected'),
+        API_EXPORTS,
+        ids=lambda value: getattr(value, '__name__', str(value)),
+    )
+    def test_api_package_keeps_documented_core_exports(
+        self,
+        module: ModuleType,
+        name: str,
+        expected: object,
+    ) -> None:
         """Test that :mod:`etlplus.api` keeps core documented imports."""
-        expected_members = {
-            'EndpointClient': EndpointClient,
-            'PaginationConfig': PaginationConfig,
-            'PaginationInput': PaginationInput,
-            'PaginationType': PaginationType,
-            'Paginator': Paginator,
-            'RateLimitConfig': RateLimitConfig,
-            'RateLimitOverrides': RateLimitOverrides,
-            'RateLimiter': RateLimiter,
-            'RetryManager': RetryManager,
-        }
-        for name, expected in expected_members.items():
-            assert name in api_pkg.__all__
-            assert getattr(api_pkg, name) is expected
+        assert name in module.__all__
+        assert getattr(module, name) is expected
 
-    def test_file_package_keeps_handler_authoring_facade(self) -> None:
+    @pytest.mark.parametrize(
+        ('module', 'name', 'expected'),
+        FILE_EXPORTS,
+        ids=lambda value: getattr(value, '__name__', str(value)),
+    )
+    def test_file_package_keeps_handler_authoring_facade(
+        self,
+        module: ModuleType,
+        name: str,
+        expected: object,
+    ) -> None:
         """Test that :mod:`etlplus.file` exposes the handler authoring layer."""
-        expected_members = {
-            'BoundFileHandler': BoundFileHandler,
-            'File': File,
-            'FileFormat': FileFormat,
-            'ReadOptions': ReadOptions,
-            'WriteOptions': WriteOptions,
-        }
-        for name, expected in expected_members.items():
-            assert name in file_pkg.__all__
-            assert getattr(file_pkg, name) is expected
+        assert name in module.__all__
+        assert getattr(module, name) is expected
 
     def test_history_package_keeps_documented_runtime_metadata(self) -> None:
         """Test that :mod:`etlplus.history` keeps schema metadata exports."""
@@ -188,36 +223,20 @@ class TestStableImportSurface:
         assert ops_pkg.FieldValidationDict is FieldValidationDict
         assert ops_pkg.ValidationDict is ValidationDict
 
-    def test_ops_transformations_modules_keep_documented_helpers(self) -> None:
+    @pytest.mark.parametrize(
+        ('module', 'name', 'expected'),
+        OPS_TRANSFORMATION_EXPORTS,
+        ids=lambda value: getattr(value, '__name__', str(value)),
+    )
+    def test_ops_transformations_modules_keep_documented_helpers(
+        self,
+        module: ModuleType,
+        name: str,
+        expected: object,
+    ) -> None:
         """Test that step-level transform modules keep documented helpers."""
-        expected_members: dict[ModuleType, dict[str, object]] = {
-            aggregate_tx_mod: {
-                'apply_aggregate': apply_aggregate,
-                'apply_aggregate_step': apply_aggregate_step,
-            },
-            filter_tx_mod: {
-                'apply_filter': apply_filter,
-                'apply_filter_step': apply_filter_step,
-            },
-            map_tx_mod: {
-                'apply_map': apply_map,
-                'apply_map_step': apply_map_step,
-            },
-            select_tx_mod: {
-                'apply_select': apply_select,
-                'apply_select_step': apply_select_step,
-                'is_plain_fields_list': is_plain_fields_list,
-                'is_sequence_not_text': is_sequence_not_text,
-            },
-            sort_tx_mod: {
-                'apply_sort': apply_sort,
-                'apply_sort_step': apply_sort_step,
-            },
-        }
-        for module, members in expected_members.items():
-            for name, expected in members.items():
-                assert name in module.__all__
-                assert getattr(module, name) is expected
+        assert name in module.__all__
+        assert getattr(module, name) is expected
 
     def test_top_level_package_keeps_documented_exports(self) -> None:
         """Test that the top-level package keeps stable facade symbols."""
