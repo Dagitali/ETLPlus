@@ -13,6 +13,8 @@ from pathlib import Path
 import pytest
 
 from tests.meta.pytest_meta_support import REPO_ROOT
+from tests.meta.pytest_meta_support import TextSnippetCase
+from tests.meta.pytest_meta_support import text_snippet_case_id
 
 # SECTION: CONSTANTS ======================================================== #
 
@@ -41,9 +43,6 @@ CONDA_STATUS_SNIPPETS = (
     'tagged',
     'published',
 )
-
-type PathSnippetCase = tuple[Path, str]
-
 
 # SECTION: SUPPORT ========================================================== #
 
@@ -77,7 +76,7 @@ INSTALLER_CONTRACTS = (
     ),
 )
 
-CONDA_STATUS_CASES: tuple[PathSnippetCase, ...] = tuple(
+CONDA_STATUS_CASES: tuple[TextSnippetCase, ...] = tuple(
     (path, snippet)
     for path in CONDA_STATUS_DOC_PATHS
     for snippet in CONDA_STATUS_SNIPPETS
@@ -105,19 +104,13 @@ def readme_text_fixture() -> str:
     return README_PATH.read_text(encoding='utf-8')
 
 
-def _path_snippet_case_id(case: PathSnippetCase) -> str:
-    """Return stable pytest IDs for path/snippet guardrail cases."""
-    path, snippet = case
-    return f'{path.name}:{snippet}'
-
-
 # SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.parametrize(
     ('path', 'snippet'),
     CONDA_STATUS_CASES,
-    ids=[_path_snippet_case_id(case) for case in CONDA_STATUS_CASES],
+    ids=[text_snippet_case_id(case) for case in CONDA_STATUS_CASES],
 )
 def test_conda_status_is_documented_as_validated_but_unpublished(
     path: Path,
