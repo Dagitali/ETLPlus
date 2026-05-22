@@ -24,6 +24,8 @@ from etlplus.workflow._schedule import ScheduleIntervalConfig
 from etlplus.workflow._schedule import ScheduleTargetConfig
 from etlplus.workflow._schedule import schedule_validation_issues
 
+from ..pytest_export_contracts import assert_package_exports
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -31,7 +33,7 @@ from etlplus.workflow._schedule import schedule_validation_issues
 # SECTION: HELPERS ========================================================== #
 
 
-WORKFLOW_EXPORTS = [
+WORKFLOW_EXPORTS: tuple[tuple[str, object], ...] = (
     ('ExtractRef', ExtractRef),
     ('JobConfig', JobConfig),
     ('JobRetryConfig', JobRetryConfig),
@@ -46,7 +48,7 @@ WORKFLOW_EXPORTS = [
     ('DagError', DagError),
     ('schedule_validation_issues', schedule_validation_issues),
     ('topological_sort_jobs', topological_sort_jobs),
-]
+)
 
 # SECTION: TESTS ============================================================ #
 
@@ -59,7 +61,10 @@ class TestWorkflowPackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert workflow_pkg.__all__ == [name for name, _value in WORKFLOW_EXPORTS]
+        assert_package_exports(
+            package_module=workflow_pkg,
+            expected_exports=WORKFLOW_EXPORTS,
+        )
 
     @pytest.mark.parametrize(('name', 'expected'), WORKFLOW_EXPORTS)
     def test_expected_symbol_bindings(

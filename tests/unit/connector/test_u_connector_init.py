@@ -25,6 +25,8 @@ from etlplus.connector._queue import ConnectorQueueConfigDict
 from etlplus.connector._types import ConnectorType
 from etlplus.connector._utils import parse_connector
 
+from ..pytest_export_contracts import assert_package_exports
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -62,8 +64,9 @@ class TestConnectorPackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert tuple(connector_pkg.__all__) == tuple(
-            name for name, _value in CONNECTOR_EXPORTS
+        assert_package_exports(
+            package_module=connector_pkg,
+            expected_exports=CONNECTOR_EXPORTS,
         )
 
     @pytest.mark.parametrize(('name', 'expected'), CONNECTOR_EXPORTS)

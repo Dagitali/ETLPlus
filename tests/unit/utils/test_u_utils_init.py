@@ -47,7 +47,7 @@ from etlplus.utils._types import NonEmptyStrList
 # SECTION: HELPERS ========================================================== #
 
 
-STABLE_UTILS_EXPORTS = [
+STABLE_UTILS_EXPORTS: tuple[tuple[str, object], ...] = (
     ('FloatParser', FloatParser),
     ('IntParser', IntParser),
     ('MappingFieldParser', MappingFieldParser),
@@ -70,9 +70,9 @@ STABLE_UTILS_EXPORTS = [
     ('stringify_value', stringify_value),
     ('topological_sort_named_items', topological_sort_named_items),
     ('topological_sort_names', topological_sort_names),
-]
+)
 
-TRANSITIONAL_UTILS_EXPORTS = [
+TRANSITIONAL_UTILS_EXPORTS: tuple[tuple[str, object], ...] = (
     ('JsonCodec', JsonCodec),
     ('PathHasher', PathHasher),
     ('RecordPayloadParser', RecordPayloadParser),
@@ -81,9 +81,12 @@ TRANSITIONAL_UTILS_EXPORTS = [
     ('NonEmptyStr', NonEmptyStr),
     ('NonEmptyStrList', NonEmptyStrList),
     ('SecretProvider', SecretProvider),
-]
+)
 
-UTILS_EXPORTS = [*STABLE_UTILS_EXPORTS, *TRANSITIONAL_UTILS_EXPORTS]
+UTILS_EXPORTS: tuple[tuple[str, object], ...] = (
+    *STABLE_UTILS_EXPORTS,
+    *TRANSITIONAL_UTILS_EXPORTS,
+)
 
 
 # SECTION: TESTS ============================================================ #
