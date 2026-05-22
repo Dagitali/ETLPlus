@@ -124,8 +124,7 @@ NORMALIZED_HISTORY_SHAPE_CASES: tuple[HistoryShapeCase, ...] = (
     ),
 )
 NORMALIZED_HISTORY_SHAPE_IDS = tuple(
-    iterator_name
-    for _, iterator_name, _ in NORMALIZED_HISTORY_SHAPE_CASES
+    iterator_name for _, iterator_name, _ in NORMALIZED_HISTORY_SHAPE_CASES
 )
 
 
