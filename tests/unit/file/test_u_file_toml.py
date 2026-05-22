@@ -32,7 +32,7 @@ type DumpCall = dict[str, object]
 
 @dataclass
 class _TomliWModuleStub:
-    """Stub for TOML dumper modules exposing ``dumps``."""
+    """Minimal tomli_w module substitute."""
 
     output: str
     calls: list[DumpCall] = field(default_factory=list)
