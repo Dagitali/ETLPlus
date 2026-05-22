@@ -24,6 +24,12 @@ from tests.meta.pytest_meta_support import REPO_ROOT
 pytestmark = [pytest.mark.meta, pytest.mark.contract]
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type HistoryShapeCase = tuple[dict[str, object], str, set[str]]
+
+
 # SECTION: CONSTANTS ======================================================== #
 
 
@@ -80,6 +86,30 @@ EXPECTED_NORMALIZED_JOB_FIELDS = {
     'started_at',
     'status',
 }
+
+
+NORMALIZED_HISTORY_SHAPE_CASES: tuple[HistoryShapeCase, ...] = (
+    (
+        {
+            'record_level': 'job',
+            'run_id': 'run-123',
+            'job_name': 'seed',
+            'sequence_index': 0,
+            'status': 'succeeded',
+        },
+        'iter_job_runs',
+        EXPECTED_NORMALIZED_JOB_FIELDS,
+    ),
+    (
+        {
+            'record_level': 'run',
+            'run_id': 'run-123',
+            'status': 'running',
+        },
+        'iter_runs',
+        EXPECTED_NORMALIZED_RUN_FIELDS,
+    ),
+)
 
 
 # SECTION: HELPERS ========================================================== #
@@ -155,41 +185,21 @@ class TestStructuredEventContract:
 class TestNormalizedHistoryContract:
     """Meta-level contract tests for normalized persisted history shapes."""
 
-    def test_iter_job_runs_keeps_stable_normalized_job_field_set(self) -> None:
+    @pytest.mark.parametrize(
+        ('source_record', 'iterator_name', 'expected_fields'),
+        NORMALIZED_HISTORY_SHAPE_CASES,
+        ids=lambda value: value if isinstance(value, str) else None,
+    )
+    def test_iter_records_keep_stable_normalized_field_sets(
+        self,
+        source_record: dict[str, object],
+        iterator_name: str,
+        expected_fields: set[str],
+    ) -> None:
         """
-        Test that normalized DAG job records keep the documented stable field
-        set.
+        Test that normalized history records keep documented stable field sets.
         """
-        record = next(
-            _ContractHistoryStore(
-                [
-                    {
-                        'record_level': 'job',
-                        'run_id': 'run-123',
-                        'job_name': 'seed',
-                        'sequence_index': 0,
-                        'status': 'succeeded',
-                    },
-                ],
-            ).iter_job_runs(),
-        )
+        iterator = getattr(_ContractHistoryStore([source_record]), iterator_name)
+        record = next(iterator())
 
-        assert EXPECTED_NORMALIZED_JOB_FIELDS == set(record)
-
-    def test_iter_runs_keeps_stable_normalized_run_field_set(self) -> None:
-        """
-        Test that normalized run records keep the documented stable field set.
-        """
-        record = next(
-            _ContractHistoryStore(
-                [
-                    {
-                        'record_level': 'run',
-                        'run_id': 'run-123',
-                        'status': 'running',
-                    },
-                ],
-            ).iter_runs(),
-        )
-
-        assert EXPECTED_NORMALIZED_RUN_FIELDS == set(record)
+        assert expected_fields == set(record)
