@@ -131,13 +131,12 @@ class TestYaml(
     ) -> None:
         """Test that YAML loads reject scalar roots."""
         optional_module_stub({'yaml': _StubYaml(loaded='scalar')})
-        handler = mod.YamlFile()
 
         with pytest.raises(
             TypeError,
             match='YAML root must be an object or an array of objects',
         ):
-            handler.loads('scalar')
+            mod.YamlFile().loads('scalar')
 
     def test_read_honors_encoding_option(
         self,
@@ -148,9 +147,8 @@ class TestYaml(
         optional_module_stub({'yaml': _StubYaml(loaded={'name': 'José'})})
         path = self.format_path(tmp_path, stem='latin1')
         path.write_bytes('name: José\n'.encode('latin-1'))
-        handler = mod.YamlFile()
 
-        result = handler.read(path, options=ReadOptions(encoding='latin-1'))
+        result = mod.YamlFile().read(path, options=ReadOptions(encoding='latin-1'))
 
         assert result == {'name': 'José'}
 
@@ -163,9 +161,8 @@ class TestYaml(
         stub = _StubYaml()
         optional_module_stub({'yaml': stub})
         path = self.format_path(tmp_path, stem='list')
-        handler = mod.YamlFile()
 
-        written = handler.write(
+        written = mod.YamlFile().write(
             path,
             [{'id': 1}, {'id': 2}],
             options=WriteOptions(),
