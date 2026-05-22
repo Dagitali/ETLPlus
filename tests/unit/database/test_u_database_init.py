@@ -33,6 +33,8 @@ from etlplus.database._schema import TableSpec
 from etlplus.database._schema import UniqueConstraintSpec
 from etlplus.database._schema import load_table_specs
 
+from ..pytest_export_contracts import assert_package_exports
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -78,8 +80,9 @@ class TestDatabasePackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert tuple(database_pkg.__all__) == tuple(
-            name for name, _value in DATABASE_EXPORTS
+        assert_package_exports(
+            package_module=database_pkg,
+            expected_exports=DATABASE_EXPORTS,
         )
 
     @pytest.mark.parametrize(('name', 'expected'), DATABASE_EXPORTS)

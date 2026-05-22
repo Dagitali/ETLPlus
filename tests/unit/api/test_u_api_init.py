@@ -51,6 +51,8 @@ from etlplus.api.rate_limiting import RateLimitConfigDict
 from etlplus.api.rate_limiting import RateLimiter
 from etlplus.api.rate_limiting import RateLimitOverrides
 
+from ..pytest_export_contracts import assert_package_exports
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -114,7 +116,7 @@ class TestApiPackageExports:
         Test that package facade preserves the documented export order of the
         public API surface (i.e., ``__all__`` contract).
         """
-        assert tuple(api_pkg.__all__) == tuple(name for name, _value in API_EXPORTS)
+        assert_package_exports(package_module=api_pkg, expected_exports=API_EXPORTS)
 
     @pytest.mark.parametrize(('name', 'expected'), API_EXPORTS)
     def test_expected_symbol_bindings(
