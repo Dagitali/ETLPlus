@@ -40,6 +40,13 @@ _WRAPPER_API_NAMES: tuple[str, ...] = ('read', 'write')
 _ETLPLUS_ROOT = REPO_ROOT / 'etlplus'
 
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type FileFormatModule = tuple[str, ModuleType]
+type RuntimeTree = tuple[Path, ast.AST]
+
+
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
@@ -124,7 +131,7 @@ def _iter_internal_python_files() -> list[Path]:
 
 
 @pytest.fixture(name='file_format_modules', scope='module')
-def file_format_modules_fixture() -> list[tuple[str, ModuleType]]:
+def file_format_modules_fixture() -> list[FileFormatModule]:
     """Return mapped file-format modules imported once per test module."""
     return [
         (module_name, importlib.import_module(module_name))
@@ -133,7 +140,7 @@ def file_format_modules_fixture() -> list[tuple[str, ModuleType]]:
 
 
 @pytest.fixture(name='internal_runtime_trees', scope='module')
-def internal_runtime_trees_fixture() -> list[tuple[Path, ast.AST]]:
+def internal_runtime_trees_fixture() -> list[RuntimeTree]:
     """Return parsed AST trees for non-file runtime modules."""
     return [
         (path, ast.parse(path.read_text(encoding='utf-8')))
@@ -151,7 +158,7 @@ class TestFileFormatModules:
     def test_no_io_exports(
         self,
         api_name: str,
-        file_format_modules: list[tuple[str, ModuleType]],
+        file_format_modules: list[FileFormatModule],
     ) -> None:
         """Test that mapped modules do not expose wrapper API attributes."""
         violations = [
@@ -163,7 +170,7 @@ class TestFileFormatModules:
 
     def test_no_handler_singletons(
         self,
-        file_format_modules: list[tuple[str, ModuleType]],
+        file_format_modules: list[FileFormatModule],
     ) -> None:
         """Test that mapped modules do not expose ``_*_HANDLER`` constants."""
         violations = [
@@ -180,7 +187,7 @@ class TestInternalRuntimeCode:
 
     def test_no_removed_io_wrapper_usage(
         self,
-        internal_runtime_trees: list[tuple[Path, ast.AST]],
+        internal_runtime_trees: list[RuntimeTree],
     ) -> None:
         """
         Test that runtime modules not importing/calling removed wrapper APIs.
