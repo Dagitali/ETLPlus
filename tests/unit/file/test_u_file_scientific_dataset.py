@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Literal
-from typing import cast
 
 import pytest
 
@@ -55,7 +54,13 @@ def scientific_module_case_fixture(
     request: pytest.FixtureRequest,
 ) -> ScientificModuleCase:
     """Parametrize scientific-stub dataset-key tests by file format."""
-    return cast(ScientificModuleCase, request.param)
+    case = request.param
+    assert isinstance(case, tuple)
+    assert len(case) == 2
+    handler_cls, format_name = case
+    assert isinstance(format_name, str)
+    assert issubclass(handler_cls, ScientificDatasetFileHandlerABC)
+    return handler_cls, format_name
 
 
 # SECTION: TESTS ============================================================ #
