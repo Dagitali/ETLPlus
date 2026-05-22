@@ -142,8 +142,7 @@ class TestConnectorDiagnosticPolicy:
     def test_static_entry_shape_guidance_helpers(self) -> None:
         """Static entry-shape helpers should keep concise remediation wording."""
         assert ConnectorDiagnosticPolicy.invalid_entry_guidance() == (
-            'Define each connector as a mapping with at least "name" and "type" '
-            'fields.'
+            'Define each connector as a mapping with at least "name" and "type" fields.'
         )
         assert (
             ConnectorDiagnosticPolicy.missing_name_guidance()
