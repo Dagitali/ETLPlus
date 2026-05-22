@@ -61,29 +61,28 @@ class TestJson(
 
         assert mod.JsonFile().read(path) == [{'id': 1}]
 
-    def test_read_rejects_non_object_root(
+    @pytest.mark.parametrize(
+        ('content', 'match'),
+        [
+            pytest.param(
+                json.dumps([1, 2]),
+                'JSON array must contain',
+                id='non-object-array',
+            ),
+            pytest.param('42', 'JSON root must be', id='scalar-root'),
+        ],
+    )
+    def test_read_rejects_invalid_root(
         self,
         tmp_path: Path,
+        content: str,
+        match: str,
     ) -> None:
-        """
-        Test that :func:`read` rejects a JSON array as root since it cannot be
-        treated as records.
-        """
+        """Test that :func:`read` rejects unsupported JSON root values."""
         path = self.format_path(tmp_path)
-        path.write_text(json.dumps([1, 2]), encoding='utf-8')
+        path.write_text(content, encoding='utf-8')
 
-        with pytest.raises(TypeError, match='JSON array must contain'):
-            mod.JsonFile().read(path)
-
-    def test_read_rejects_scalar_root(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that :func:`read` rejects a scalar JSON value as root."""
-        path = self.format_path(tmp_path)
-        path.write_text('42', encoding='utf-8')
-
-        with pytest.raises(TypeError, match='JSON root must be'):
+        with pytest.raises(TypeError, match=match):
             mod.JsonFile().read(path)
 
     def test_write_adds_newline_and_counts_records(
