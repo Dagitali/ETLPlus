@@ -67,14 +67,38 @@ class FakeEndpointClientProtocol(Protocol):
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _child_uri(base_uri: str, filename: str) -> str:
-    """Append one test filename to a remote base URI."""
+def child_uri(base_uri: str, filename: str) -> str:
+    """
+    Append one test filename to a remote base URI.
+
+    Parameters
+    ----------
+    base_uri : str
+        Remote base URI supplied by the integration-test environment.
+    filename : str
+        Test object filename to append.
+
+    Returns
+    -------
+    str
+        Remote child URI.
+    """
     return f'{base_uri.rstrip("/")}/{filename}'
 
 
-def _require_env(name: str) -> str:
+def require_env(name: str) -> str:
     """
     Return one required env var or skip the integration test.
+
+    Parameters
+    ----------
+    name : str
+        Environment variable name to read.
+
+    Returns
+    -------
+    str
+        Configured environment variable value.
 
     Example safe placeholder values:
     - ``ETLPLUS_TEST_S3_URI=s3://my-etlplus-integration-bucket/cli``
