@@ -360,9 +360,7 @@ class TestSpreadsheetReadWriteFallbacks:
         )
 
         assert result == 'frame'
-        assert pandas.calls == [
-            {'path': path, **kwargs} for kwargs in expected_kwargs
-        ]
+        assert pandas.calls == [{'path': path, **kwargs} for kwargs in expected_kwargs]
 
     @pytest.mark.parametrize(
         ('engine', 'expected_kwargs'),
@@ -411,9 +409,7 @@ class TestSpreadsheetReadWriteFallbacks:
             engine=engine,
         )
 
-        assert frame.calls == [
-            {'path': path, **kwargs} for kwargs in expected_kwargs
-        ]
+        assert frame.calls == [{'path': path, **kwargs} for kwargs in expected_kwargs]
 
 
 class TestColumnarRuntimeDependencyValidation:
