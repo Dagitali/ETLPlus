@@ -20,6 +20,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 TESTS_ROOT = REPO_ROOT / 'tests'
 
 
+# SECTION: TYPES ============================================================ #
+
+
+type TextSnippetCase = tuple[Path, str]
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -113,3 +119,23 @@ def scope_conftests(
         scope.
     """
     return sorted((TESTS_ROOT / scope_name).rglob('conftest.py'))
+
+
+def text_snippet_case_id(
+    case: TextSnippetCase,
+) -> str:
+    """
+    Return a stable pytest ID for a path/snippet guardrail case.
+
+    Parameters
+    ----------
+    case : TextSnippetCase
+        Pair containing the path under test and the expected snippet.
+
+    Returns
+    -------
+    str
+        Stable test-case ID containing the file name and expected snippet.
+    """
+    path, snippet = case
+    return f'{path.name}:{snippet}'
