@@ -1016,7 +1016,7 @@ class TestFile:
         CSV rows.
         """
         path = tmp_path / 'data.csv'
-        invalid_entry = cast(dict[str, object], 'invalid')
+        invalid_entry: Any = 'invalid'
         with pytest.raises(TypeError, match='CSV payloads'):
             File(path, FileFormat.CSV).write(
                 [{'name': 'John'}, invalid_entry],

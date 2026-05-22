@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from typing import cast
 
 import pytest
 
@@ -68,6 +67,7 @@ class TestProperties(
         tmp_path: Path,
     ) -> None:
         path = self.format_path(tmp_path, stem='config')
+        invalid_payload: Any = ['nope']
 
         with pytest.raises(TypeError, match='PROPERTIES'):
-            mod.PropertiesFile().write(path, cast(dict[str, Any], ['nope']))
+            mod.PropertiesFile().write(path, invalid_payload)

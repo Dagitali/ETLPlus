@@ -76,23 +76,28 @@ class TestIni(
         payload = mod.IniFile().loads('[alpha]\nvalue=1\n')
         assert payload == {'alpha': {'value': '1'}}
 
-    def test_write_rejects_non_dict_default(
+    @pytest.mark.parametrize(
+        ('payload', 'match'),
+        [
+            pytest.param(
+                {'DEFAULT': 'nope'},
+                'INI DEFAULT section must be a dict',
+                id='default-section',
+            ),
+            pytest.param(
+                {'alpha': 'nope'},
+                'INI sections must map to dicts',
+                id='named-section',
+            ),
+        ],
+    )
+    def test_write_rejects_non_dict_sections(
         self,
         tmp_path: Path,
+        payload: dict[str, object],
+        match: str,
     ) -> None:
         path = self.format_path(tmp_path, stem='config')
 
-        with pytest.raises(
-            TypeError,
-            match='INI DEFAULT section must be a dict',
-        ):
-            mod.IniFile().write(path, {'DEFAULT': 'nope'})
-
-    def test_write_rejects_non_dict_section(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        path = self.format_path(tmp_path, stem='config')
-
-        with pytest.raises(TypeError, match='INI sections must map to dicts'):
-            mod.IniFile().write(path, {'alpha': 'nope'})
+        with pytest.raises(TypeError, match=match):
+            mod.IniFile().write(path, payload)
