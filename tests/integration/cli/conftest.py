@@ -24,8 +24,8 @@ import pytest
 
 from etlplus.storage import StorageLocation
 from etlplus.storage import get_backend
-from tests.integration.conftest import _child_uri
-from tests.integration.conftest import _require_env
+from tests.integration.conftest import child_uri
+from tests.integration.conftest import require_env
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFactory
@@ -313,8 +313,8 @@ def real_remote_target_factory_fixture() -> Iterator[RealRemoteTargetFactory]:
         suffix: str,
         extension: str = 'json',
     ) -> RealRemoteTarget:
-        base_uri = _require_env(env_name)
-        uri = _child_uri(
+        base_uri = require_env(env_name)
+        uri = child_uri(
             base_uri,
             f'etlplus-cli-{suffix}-{uuid4().hex}.{extension}',
         )
