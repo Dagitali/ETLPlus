@@ -10,6 +10,7 @@ from etlplus.file import vm as mod
 
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_contract_mixins import TemplateFileContractMixin
+from .pytest_file_contract_mixins import TemplateRenderContractMixin
 from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
 # SECTION: PRAGMAS ========================================================== #
@@ -19,24 +20,18 @@ from .pytest_file_roundtrip_cases import build_roundtrip_spec
 # SECTION: TESTS ============================================================ #
 
 
-class TestVm(TemplateFileContractMixin, RoundtripUnitModuleContract):
+class TestVm(
+    TemplateRenderContractMixin,
+    TemplateFileContractMixin,
+    RoundtripUnitModuleContract,
+):
     """Unit tests for :mod:`etlplus.file.vm`."""
 
     module = mod
     format_name = 'vm'
     sample_template_text = 'Hello $name'
+    render_template = 'Hello $name from ${city}.'
     roundtrip_spec = build_roundtrip_spec(
         {'template': 'Hi $name'},
         [{'template': 'Hi $name'}],
     )
-
-    def test_render_substitutes_velocity_tokens(self) -> None:
-        """
-        Test that :meth:`render` replaces plain and braced Velocity variables.
-        """
-        result = self.module_handler.render(
-            'Hello $name from ${city}.',
-            {'name': 'Ada', 'city': 'Paris'},
-        )
-
-        assert result == 'Hello Ada from Paris.'
