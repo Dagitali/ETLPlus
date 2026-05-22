@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
-from typing import cast
 
 import pytest
 
@@ -105,9 +104,10 @@ class TestNdjson(
     ) -> None:
         """Test that writing rejects records that are not dictionaries."""
         path = self.format_path(tmp_path)
+        invalid_payload: Any = [1]
 
         with pytest.raises(TypeError, match='NDJSON payloads must contain'):
-            mod.NdjsonFile().write(path, cast(list[dict[str, Any]], [1]))
+            mod.NdjsonFile().write(path, invalid_payload)
 
     def test_write_writes_each_record_on_its_own_line(
         self,
