@@ -58,34 +58,35 @@ class TestNdjson(
         with pytest.raises(ValueError, match='cannot be blank'):
             mod.NdjsonFile().load_line('   ')
 
-    def test_read_raises_for_invalid_json(
+    @pytest.mark.parametrize(
+        ('content', 'error_type', 'match'),
+        [
+            pytest.param(
+                '{"id": 1}\n{broken\n',
+                json.JSONDecodeError,
+                None,
+                id='invalid-json',
+            ),
+            pytest.param(
+                '{"id": 1}\n42\n',
+                TypeError,
+                'line 2',
+                id='non-object-line',
+            ),
+        ],
+    )
+    def test_read_rejects_invalid_lines(
         self,
         tmp_path: Path,
+        content: str,
+        error_type: type[Exception],
+        match: str | None,
     ) -> None:
-        """
-        Test that :func:`read` raises a :class:`json.JSONDecodeError` for lines
-        that do not contain valid JSON.
-        """
+        """Test that reads reject invalid JSON or non-object lines."""
         path = self.format_path(tmp_path)
-        path.write_text('{"id": 1}\n{broken\n', encoding='utf-8')
+        path.write_text(content, encoding='utf-8')
 
-        with pytest.raises(json.JSONDecodeError):
-            mod.NdjsonFile().read(path)
-
-    def test_read_rejects_non_dict_line(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that :func:`read` rejects lines that do not contain JSON objects.
-        """
-        path = self.format_path(tmp_path)
-        path.write_text(
-            '{"id": 1}\n42\n',
-            encoding='utf-8',
-        )
-
-        with pytest.raises(TypeError, match='line 2'):
+        with pytest.raises(error_type, match=match):
             mod.NdjsonFile().read(path)
 
     def test_dump_line_serializes_one_record_with_newline(self) -> None:
