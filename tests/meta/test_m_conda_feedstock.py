@@ -194,6 +194,7 @@ def _conda_runtime_requirement(requirement: str) -> str:
         ),
     )
 
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -209,8 +210,7 @@ def test_conda_docs_reference_platform_isolation_options(snippet: str) -> None:
     ('path', 'snippet'),
     CONDA_STAGED_RECIPE_SUBMISSION_SNIPPETS,
     ids=[
-        text_snippet_case_id(case)
-        for case in CONDA_STAGED_RECIPE_SUBMISSION_SNIPPETS
+        text_snippet_case_id(case) for case in CONDA_STAGED_RECIPE_SUBMISSION_SNIPPETS
     ],
 )
 def test_conda_docs_reference_staged_recipes_submission_path(
