@@ -58,6 +58,7 @@ __all__ = [
     'SpreadsheetSheetNameRoutingMixin',
     'SpreadsheetWritableMixin',
     'TemplateFileContractMixin',
+    'TemplateRenderContractMixin',
 ]
 
 
@@ -761,3 +762,20 @@ class TemplateFileContractMixin(EmptyWriteReturnsZeroMixin):
         """Test writing requires exactly one object with template text."""
         with pytest.raises(TypeError, match=match):
             self.module_handler.write(self.format_path(tmp_path), payload)
+
+
+class TemplateRenderContractMixin(PathMixin):
+    """
+    Shared contract for template handlers with built-in rendering.
+    """
+
+    render_context: dict[str, object] = {'name': 'Ada', 'city': 'Paris'}
+    render_expected = 'Hello Ada from Paris.'
+    render_template: str
+
+    def test_render_substitutes_template_tokens(self) -> None:
+        """Test rendering replaces template variables from context."""
+        assert (
+            self.module_handler.render(self.render_template, self.render_context)
+            == self.render_expected
+        )
