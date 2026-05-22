@@ -95,50 +95,6 @@ def regex_matches(
     return matches
 
 
-def sorted_glob(
-    root: Path,
-    pattern: str,
-) -> list[Path]:
-    """
-    Return deterministic ``glob`` matches.
-
-    Parameters
-    ----------
-    root : Path
-        Root directory to start the glob search.
-    pattern : str
-        Glob pattern to match files.
-
-    Returns
-    -------
-    list[Path]
-        Sorted list of paths matching the glob pattern.
-    """
-    return sorted(root.glob(pattern))
-
-
-def sorted_rglob(
-    root: Path,
-    pattern: str,
-) -> list[Path]:
-    """
-    Return deterministic ``rglob`` matches.
-
-    Parameters
-    ----------
-    root : Path
-        Root directory to start the recursive glob search.
-    pattern : str
-        Glob pattern to match files.
-
-    Returns
-    -------
-    list[Path]
-        Sorted list of paths matching the recursive glob pattern.
-    """
-    return sorted(root.rglob(pattern))
-
-
 def scope_conftests(
     scope_name: str,
 ) -> list[Path]:
@@ -156,4 +112,4 @@ def scope_conftests(
         Sorted list of paths to ``conftest.py`` files within the specified test
         scope.
     """
-    return sorted_rglob(TESTS_ROOT / scope_name, 'conftest.py')
+    return sorted((TESTS_ROOT / scope_name).rglob('conftest.py'))
