@@ -46,6 +46,42 @@ STALE_PENDING_SUPPORT_PHRASES = (
     'not yet a supported',
     'repeat the recipe build/test',
 )
+CONDA_VALIDATED_STATUS_PATHS = (
+    CONDA_README_PATH,
+    CONDA_PREP_PATH,
+)
+CONDA_VALIDATED_STATUS_SNIPPETS = (
+    'tagged pypi sdist',
+    'linux, macos, and windows',
+    'feedstock',
+    'accept',
+)
+CONDA_WORKFLOW_REQUIRED_SNIPPETS = (
+    'workflow_dispatch:',
+    'default: linux',
+    'source_mode:',
+    'tagged-sdist',
+    'release_version',
+    'sdist_sha256',
+    'tagged-sdist validation requires release_version and sdist_sha256',
+    'ubuntu-latest',
+    'macos-latest',
+    'windows-latest',
+    '- macos',
+    '- windows',
+    "inputs.platform_scope == 'all'",
+    "inputs.platform_scope == 'macos'",
+    "inputs.platform_scope == 'windows'",
+    "MICROMAMBA_VERSION: '2.0.5-0'",
+    'micromamba-version: ${{ env.MICROMAMBA_VERSION }}',
+    'conda-build=25',
+    'Diagnose conda tooling',
+    'micromamba --version',
+    'conda-build --version',
+    'conda info',
+    'tools/render_conda_recipe.py',
+    'conda-build "${RUNNER_TEMP}/etlplus-conda-recipe"',
+)
 
 
 def _canonical_requirement_name(requirement: str) -> str:
@@ -282,37 +318,14 @@ def test_conda_recipe_render_helper_supports_local_source_path(
     assert '  sha256: ' not in rendered
 
 
-def test_conda_recipe_validation_workflow_is_manual_linux_first() -> None:
+@pytest.mark.parametrize('snippet', CONDA_WORKFLOW_REQUIRED_SNIPPETS)
+def test_conda_recipe_validation_workflow_is_manual_linux_first(
+    snippet: str,
+) -> None:
     """Test conda recipe CI remains manual and Linux-first by default."""
     workflow_text = CONDA_WORKFLOW_PATH.read_text(encoding='utf-8')
 
-    assert 'workflow_dispatch:' in workflow_text
-    assert 'default: linux' in workflow_text
-    assert 'source_mode:' in workflow_text
-    assert 'tagged-sdist' in workflow_text
-    assert 'release_version' in workflow_text
-    assert 'sdist_sha256' in workflow_text
-    assert (
-        'tagged-sdist validation requires release_version and sdist_sha256'
-        in workflow_text
-    )
-    assert 'ubuntu-latest' in workflow_text
-    assert 'macos-latest' in workflow_text
-    assert 'windows-latest' in workflow_text
-    assert '- macos' in workflow_text
-    assert '- windows' in workflow_text
-    assert "inputs.platform_scope == 'all'" in workflow_text
-    assert "inputs.platform_scope == 'macos'" in workflow_text
-    assert "inputs.platform_scope == 'windows'" in workflow_text
-    assert "MICROMAMBA_VERSION: '2.0.5-0'" in workflow_text
-    assert 'micromamba-version: ${{ env.MICROMAMBA_VERSION }}' in workflow_text
-    assert 'conda-build=25' in workflow_text
-    assert 'Diagnose conda tooling' in workflow_text
-    assert 'micromamba --version' in workflow_text
-    assert 'conda-build --version' in workflow_text
-    assert 'conda info' in workflow_text
-    assert 'tools/render_conda_recipe.py' in workflow_text
-    assert 'conda-build "${RUNNER_TEMP}/etlplus-conda-recipe"' in workflow_text
+    assert snippet in workflow_text
 
 
 def test_conda_status_docs_do_not_regress_to_pending_support_gate() -> None:
@@ -330,17 +343,20 @@ def test_conda_status_docs_do_not_regress_to_pending_support_gate() -> None:
     assert stale_hits == []
 
 
-def test_conda_status_docs_record_validated_but_unpublished_state() -> None:
+@pytest.mark.parametrize(
+    'path',
+    CONDA_VALIDATED_STATUS_PATHS,
+    ids=lambda path: path.name,
+)
+def test_conda_status_docs_record_validated_but_unpublished_state(
+    path: Path,
+) -> None:
     """Test conda docs record the completed gate and publication handoff."""
-    readme_text = CONDA_README_PATH.read_text(encoding='utf-8').lower()
-    prep_text = CONDA_PREP_PATH.read_text(encoding='utf-8').lower()
+    text = path.read_text(encoding='utf-8').lower()
 
-    for text in (readme_text, prep_text):
-        assert 'tagged pypi sdist' in text
-        assert 'linux, macos, and windows' in text
-        assert 'feedstock' in text
-        assert 'accept' in text
-        assert 'publication' in text or 'published' in text
+    for snippet in CONDA_VALIDATED_STATUS_SNIPPETS:
+        assert snippet in text
+    assert 'publication' in text or 'published' in text
 
 
 def test_conda_submission_docs_preserve_base_recipe_scope() -> None:
