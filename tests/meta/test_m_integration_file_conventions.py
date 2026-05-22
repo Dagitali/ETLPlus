@@ -141,8 +141,7 @@ class TestIntegrationFileSmokeConventions:
         overrides_by_module = {
             path.name: set().union(
                 *(
-                    _class_assigned_names(class_node)
-                    & SMOKE_ROUNDTRIP_OVERRIDE_ATTRS
+                    _class_assigned_names(class_node) & SMOKE_ROUNDTRIP_OVERRIDE_ATTRS
                     for class_node in contract_classes
                 ),
             )
