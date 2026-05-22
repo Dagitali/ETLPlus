@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from tests.meta.pytest_meta_support import REPO_ROOT
+from tests.meta.pytest_meta_support import text_snippet_case_id
 from tools.render_conda_recipe import render_recipe
 
 # SECTION: HELPERS ========================================================== #
@@ -123,9 +124,6 @@ CONDA_WORKFLOW_REQUIRED_SNIPPETS = (
 )
 
 
-type TextSnippetCase = tuple[Path, str]
-
-
 def _canonical_requirement_name(requirement: str) -> str:
     """Return the normalized package name from one requirement string."""
     match = re.match(r'\s*([A-Za-z0-9_.-]+)', requirement)
@@ -193,13 +191,6 @@ def _conda_runtime_requirement(requirement: str) -> str:
         ),
     )
 
-
-def _text_snippet_case_id(case: TextSnippetCase) -> str:
-    """Return stable pytest IDs for text-snippet guardrail cases."""
-    path, snippet = case
-    return f'{path.name}:{snippet}'
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -215,7 +206,7 @@ def test_conda_docs_reference_platform_isolation_options(snippet: str) -> None:
     ('path', 'snippet'),
     CONDA_STAGED_RECIPE_SUBMISSION_SNIPPETS,
     ids=[
-        _text_snippet_case_id(case)
+        text_snippet_case_id(case)
         for case in CONDA_STAGED_RECIPE_SUBMISSION_SNIPPETS
     ],
 )
@@ -232,7 +223,7 @@ def test_conda_docs_reference_staged_recipes_submission_path(
 @pytest.mark.parametrize(
     ('path', 'snippet'),
     CONDA_TEMPLATE_SOURCE_SNIPPETS,
-    ids=[_text_snippet_case_id(case) for case in CONDA_TEMPLATE_SOURCE_SNIPPETS],
+    ids=[text_snippet_case_id(case) for case in CONDA_TEMPLATE_SOURCE_SNIPPETS],
 )
 def test_conda_docs_reference_template_recipe_source(
     path: Path,
@@ -247,7 +238,7 @@ def test_conda_docs_reference_template_recipe_source(
 @pytest.mark.parametrize(
     ('path', 'snippet'),
     CONDA_NAME_MAPPING_SNIPPETS,
-    ids=[_text_snippet_case_id(case) for case in CONDA_NAME_MAPPING_SNIPPETS],
+    ids=[text_snippet_case_id(case) for case in CONDA_NAME_MAPPING_SNIPPETS],
 )
 def test_conda_recipe_documents_expected_name_mappings(
     path: Path,
