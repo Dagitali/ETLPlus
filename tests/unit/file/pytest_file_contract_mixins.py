@@ -57,6 +57,7 @@ __all__ = [
     'SemiStructuredWriteDictMixin',
     'SpreadsheetSheetNameRoutingMixin',
     'SpreadsheetWritableMixin',
+    'TemplateFileContractMixin',
 ]
 
 
@@ -714,3 +715,49 @@ class SpreadsheetSheetNameRoutingMixin(PathMixin):
         assert pandas.last_frame.to_excel_calls == [
             self._write_sheet_kwargs(path),
         ]
+
+
+class TemplateFileContractMixin(EmptyWriteReturnsZeroMixin):
+    """
+    Shared contract for single-template text file handlers.
+    """
+
+    assert_file_not_created_on_empty_write = True
+    sample_template_text: str
+
+    def test_read_returns_template_payload(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test reading template text as a one-row template payload."""
+        path = self.format_path(tmp_path)
+        path.write_text(self.sample_template_text, encoding='utf-8')
+
+        assert self.module_handler.read(path) == [
+            {'template': self.sample_template_text},
+        ]
+
+    @pytest.mark.parametrize(
+        ('payload', 'match'),
+        [
+            pytest.param(
+                [{'template': 'a'}, {'template': 'b'}],
+                'exactly one object',
+                id='multiple-template-objects',
+            ),
+            pytest.param(
+                [{'name': 'missing'}],
+                '"template" string',
+                id='missing-template',
+            ),
+        ],
+    )
+    def test_write_requires_single_template_object(
+        self,
+        tmp_path: Path,
+        payload: object,
+        match: str,
+    ) -> None:
+        """Test writing requires exactly one object with template text."""
+        with pytest.raises(TypeError, match=match):
+            self.module_handler.write(self.format_path(tmp_path), payload)
