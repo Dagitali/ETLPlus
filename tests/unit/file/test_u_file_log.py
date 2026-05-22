@@ -6,14 +6,13 @@ Unit tests for :mod:`etlplus.file.log`.
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 from etlplus.file import log as mod
 
+from .pytest_file_contract_mixins import JsonLinesWriteContractMixin
 from .pytest_file_contract_mixins import RoundtripUnitModuleContract
 from .pytest_file_roundtrip_cases import build_roundtrip_spec
 
@@ -24,11 +23,12 @@ from .pytest_file_roundtrip_cases import build_roundtrip_spec
 # SECTION: TESTS ============================================================ #
 
 
-class TestLog(RoundtripUnitModuleContract):
+class TestLog(JsonLinesWriteContractMixin, RoundtripUnitModuleContract):
     """Unit tests for :mod:`etlplus.file.log`."""
 
     module = mod
     format_name = 'log'
+    json_lines_error_pattern = 'LOG payloads must contain'
     roundtrip_spec = build_roundtrip_spec(record_count=2)
 
     @pytest.mark.parametrize(
@@ -72,43 +72,3 @@ class TestLog(RoundtripUnitModuleContract):
             {'message': 'plain text'},
             {'id': 2},
         ]
-
-    def test_write_rejects_non_object_payload_list(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that :meth:`write` rejects non-object array payloads."""
-        path = self.format_path(tmp_path)
-        invalid_payload: Any = [1]
-
-        with pytest.raises(TypeError, match='LOG payloads must contain'):
-            self.module_handler.write(path, invalid_payload)
-
-    def test_write_returns_zero_for_empty_payload(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that :meth:`write` returns zero for empty payload without creating
-        a file.
-        """
-        path = self.format_path(tmp_path)
-
-        assert self.module_handler.write(path, []) == 0
-        assert not path.exists()
-
-    def test_write_serializes_json_lines_and_newline(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that :meth:`write` produces one JSON event per line."""
-        path = self.format_path(tmp_path)
-        payload = [{'id': 1}, {'id': 2}]
-
-        written = self.module_handler.write(path, payload)
-
-        assert written == 2
-        text = path.read_text(encoding='utf-8')
-        assert text.endswith('\n')
-        lines = text.splitlines()
-        assert [json.loads(line) for line in lines] == payload
