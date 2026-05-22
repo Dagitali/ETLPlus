@@ -29,15 +29,19 @@ class _PayloadMixin(mod.SemiStructuredPayloadMixin):
 class TestSemiStructuredPayloadMixin:
     """Unit tests for dict-root coercion behavior."""
 
-    def test_coerce_dict_root_payload_custom_error_message(self) -> None:
-        """Test custom dict-root error message override."""
-        with pytest.raises(TypeError, match='custom message'):
-            _PayloadMixin().coerce_dict_root_payload(
-                ['not', 'dict'],
-                error_message='custom message',
-            )
-
-    def test_coerce_dict_root_payload_default_error_message(self) -> None:
-        """Test default dict-root error message path."""
-        with pytest.raises(TypeError, match='INI root must be a dict'):
-            _PayloadMixin().coerce_dict_root_payload(['not', 'dict'])
+    @pytest.mark.parametrize(
+        ('error_message', 'match'),
+        [
+            pytest.param(None, 'INI root must be a dict', id='default-message'),
+            pytest.param('custom message', 'custom message', id='custom-message'),
+        ],
+    )
+    def test_coerce_dict_root_payload_error_messages(
+        self,
+        error_message: str | None,
+        match: str,
+    ) -> None:
+        """Test dict-root error message variants."""
+        kwargs = {} if error_message is None else {'error_message': error_message}
+        with pytest.raises(TypeError, match=match):
+            _PayloadMixin().coerce_dict_root_payload(['not', 'dict'], **kwargs)
