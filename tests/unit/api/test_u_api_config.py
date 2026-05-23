@@ -46,10 +46,9 @@ class TestApiConfig:
     @pytest.mark.parametrize(
         ('sleep', 'max_per'),
         [
-            (0.5, 2),
-            (0.1, 10),
+            pytest.param(0.5, 2, id='basic'),
+            pytest.param(0.1, 10, id='higher'),
         ],
-        ids=['basic', 'higher'],
     )
     def test_api_profile_defaults_rate_limit_mapped(
         self,
