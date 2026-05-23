@@ -16,15 +16,13 @@ Notes
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 import pytest
 
-from etlplus import Config
 from etlplus.api import RateLimitConfig
 
-from .conftest import FakeEndpointClientProtocol
+from .conftest import FakeEndpointClients
+from .conftest import PipelineCfgFactory
+from .conftest import RunPatched
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -67,12 +65,9 @@ class TestRunProfileRateLimitDefaults:
     )
     def test_profile_rate_limit_sleep_propagation(
         self,
-        pipeline_cfg_factory: Callable[..., Config],
-        fake_endpoint_client: tuple[
-            type[FakeEndpointClientProtocol],
-            list[FakeEndpointClientProtocol],
-        ],
-        run_patched: Callable[..., dict[str, Any]],
+        pipeline_cfg_factory: PipelineCfgFactory,
+        fake_endpoint_client: FakeEndpointClients,
+        run_patched: RunPatched,
         rate_cfg: RateLimitConfig | None,
         forced_sleep: float | None,
         expected_sleep: float,
