@@ -12,9 +12,11 @@ Notes
 from __future__ import annotations
 
 import importlib
+import io
 import json
 import os
 import pathlib
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from io import BytesIO
@@ -64,6 +66,11 @@ class FakeEndpointClientProtocol(Protocol):
     """
 
     seen: dict[str, Any]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+type StdinText = Callable[[str], None]
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -551,3 +558,27 @@ def run_patched_fixture(
         return run_mod.run('job')
 
     return _run
+
+
+@pytest.fixture(name='stdin_text')
+def stdin_text_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> StdinText:
+    """
+    Return a helper for replacing process STDIN with text.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
+    Returns
+    -------
+    StdinText
+        Callable that installs one text payload as ``sys.stdin``.
+    """
+
+    def _set(text: str) -> None:
+        monkeypatch.setattr(sys, 'stdin', io.StringIO(text))
+
+    return _set
