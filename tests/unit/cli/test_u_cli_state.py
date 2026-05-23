@@ -247,35 +247,26 @@ class TestCliHelp:
     """Unit test suite of command-line state tests for help text."""
 
     @pytest.mark.parametrize(
-        ('argv', 'expected'),
+        ('argv', 'expected_text'),
         [
-            pytest.param(('--help',), 'init', id='root-help'),
-            pytest.param((), 'ETLPlus', id='no-args'),
-            pytest.param(('--version',), etlplus.__version__, id='version'),
+            pytest.param(('--help',), ('init',), id='root-help'),
+            pytest.param((), ('ETLPlus',), id='no-args'),
+            pytest.param(('--version',), (etlplus.__version__,), id='version'),
+            pytest.param(('init', '--help'), ('PATH', '--force'), id='init-help'),
         ],
     )
     def test_global_output_contains_expected_text(
         self,
         invoke_cli: InvokeCli,
         argv: tuple[str, ...],
-        expected: str,
+        expected_text: tuple[str, ...],
     ) -> None:
         """Global help-like entrypoints should emit stable plain-text content."""
         result = invoke_cli(*argv)
-
-        assert result.exit_code == 0
-        assert expected in strip_ansi(result.stdout)
-
-    def test_init_help_prints_path_argument_and_force_option(
-        self,
-        invoke_cli: InvokeCli,
-    ) -> None:
-        """Test that ``init --help`` preserves the documented CLI surface."""
-        result = invoke_cli('init', '--help')
         stdout = strip_ansi(result.stdout)
+
         assert result.exit_code == 0
-        assert 'PATH' in stdout
-        assert '--force' in stdout
+        assert all(text in stdout for text in expected_text)
 
 
 class TestInferResourceType:
