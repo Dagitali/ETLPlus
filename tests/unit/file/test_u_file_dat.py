@@ -127,7 +127,7 @@ class TestDatSniff:
             'expected_header',
         ),
         [
-            (
+            pytest.param(
                 lambda: _StubSniffer(
                     dialect=_make_dialect('\t'),
                     has_header=False,
@@ -135,8 +135,9 @@ class TestDatSniff:
                 '1\t2\n3\t4\n',
                 '\t',
                 False,
+                id='no_header_preserved',
             ),
-            (
+            pytest.param(
                 lambda: _StubSniffer(
                     dialect=_make_dialect('|'),
                     has_header_error=csv.Error('boom'),
@@ -144,18 +145,15 @@ class TestDatSniff:
                 'a|b\n1|2\n',
                 '|',
                 True,
+                id='header_error_defaults_true',
             ),
-            (
+            pytest.param(
                 lambda: _StubSniffer(sniff_error=csv.Error('boom')),
                 'a,b\n1,2\n',
                 ',',
                 True,
+                id='sniff_error_falls_back_to_excel',
             ),
-        ],
-        ids=[
-            'no_header_preserved',
-            'header_error_defaults_true',
-            'sniff_error_falls_back_to_excel',
         ],
     )
     def test_sniff_behaviors(
@@ -221,7 +219,7 @@ class TestDat(RoundtripUnitModuleContract):
     @pytest.mark.parametrize(
         ('filename', 'content', 'has_header', 'expected'),
         [
-            (
+            pytest.param(
                 'no_header.dat',
                 '1,alice\n2,bob\n',
                 False,
@@ -229,15 +227,16 @@ class TestDat(RoundtripUnitModuleContract):
                     {'col_1': '1', 'col_2': 'alice'},
                     {'col_1': '2', 'col_2': 'bob'},
                 ],
+                id='no_header_generates_col_names',
             ),
-            (
+            pytest.param(
                 'data.dat',
                 'a,b\n\n , \n1,2\n',
                 True,
                 [{'a': '1', 'b': '2'}],
+                id='blank_rows_skipped',
             ),
         ],
-        ids=['no_header_generates_col_names', 'blank_rows_skipped'],
     )
     def test_read_header_and_blank_row_behavior(
         self,
@@ -312,11 +311,10 @@ class TestDat(RoundtripUnitModuleContract):
     @pytest.mark.parametrize(
         ('filename', 'content', 'delimiter'),
         [
-            ('tab.dat', 'a\tb\n1\t2\n', '\t'),
-            ('pipe.dat', 'a|b\n1|2\n', '|'),
-            ('semi.dat', 'a;b\n1;2\n', ';'),
+            pytest.param('tab.dat', 'a\tb\n1\t2\n', '\t', id='tab'),
+            pytest.param('pipe.dat', 'a|b\n1|2\n', '|', id='pipe'),
+            pytest.param('semi.dat', 'a;b\n1;2\n', ';', id='semicolon'),
         ],
-        ids=['tab', 'pipe', 'semicolon'],
     )
     def test_read_sniffs_common_delimiters(
         self,

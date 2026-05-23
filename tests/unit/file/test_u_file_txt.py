@@ -89,8 +89,10 @@ class TestTxt(RoundtripUnitModuleContract):
 
     @pytest.mark.parametrize(
         'payload',
-        ['', []],
-        ids=['empty_text', 'empty_lines'],
+        [
+            pytest.param('', id='empty_text'),
+            pytest.param([], id='empty_lines'),
+        ],
     )
     def test_write_empty_payload_creates_empty_file(
         self,
