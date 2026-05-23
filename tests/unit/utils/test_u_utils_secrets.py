@@ -14,6 +14,7 @@ import pytest
 from etlplus.utils._secrets import DEFAULT_SECRETS_FILE_ENV_VAR
 from etlplus.utils._secrets import EnvironmentSecretProvider
 from etlplus.utils._secrets import LocalFileSecretProvider
+from etlplus.utils._secrets import SecretProvider
 from etlplus.utils._secrets import SecretResolver
 
 # SECTION: PRAGMAS ========================================================== #
@@ -75,6 +76,44 @@ class TestSecretProviders:
 
         assert provider.name == 'file'
         assert provider.resolve('service.password') == 'json-secret'
+
+    def test_provider_protocol_default_members_raise(self) -> None:
+        """Protocol default members should fail loudly when called directly."""
+        with pytest.raises(NotImplementedError):
+            SecretProvider.name.fget(None)  # type: ignore[arg-type]
+
+        with pytest.raises(NotImplementedError):
+            SecretProvider.resolve(None, 'API_TOKEN')  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize(
+        ('provider', 'key'),
+        [
+            pytest.param(
+                EnvironmentSecretProvider({'API_TOKEN': 'env-secret'}),
+                '',
+                id='env-empty-key',
+            ),
+            pytest.param(
+                EnvironmentSecretProvider(None),
+                'API_TOKEN',
+                id='env-missing-map',
+            ),
+            pytest.param(
+                LocalFileSecretProvider(
+                    {DEFAULT_SECRETS_FILE_ENV_VAR: 'secrets.json'},
+                ),
+                '',
+                id='file-empty-key',
+            ),
+        ],
+    )
+    def test_provider_resolve_returns_none_for_unusable_inputs(
+        self,
+        provider: SecretProvider,
+        key: str,
+    ) -> None:
+        """Providers should fail closed for empty keys or missing maps."""
+        assert provider.resolve(key) is None
 
     def test_resolver_keeps_environment_as_unqualified_secret_provider(self) -> None:
         """Unqualified secret tokens should keep resolving through env first."""
