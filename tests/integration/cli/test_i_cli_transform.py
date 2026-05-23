@@ -6,8 +6,6 @@ Integration-scope smoke tests for the ``etlplus transform`` CLI command.
 
 from __future__ import annotations
 
-import io
-import sys
 from typing import TYPE_CHECKING
 from typing import Any
 
@@ -27,6 +25,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonOutputParser
     from tests.integration.cli.conftest import RealRemoteTargetFactory
     from tests.integration.conftest import RemoteStorageHarness
+    from tests.integration.conftest import StdinText
 
 # SECTION: MARKS ============================================================ #
 
@@ -55,10 +54,10 @@ class TestCliTransform:
         operations_json: str,
         sample_records_json: str,
         sample_records: list[dict[str, Any]],
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
     ) -> None:
         """Test transforming a STDIN payload and projecting selected fields."""
-        monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
+        stdin_text(sample_records_json)
         code, out, err = cli_invoke(
             ('transform', '--operations', operations_json, '-', '-'),
         )
@@ -79,12 +78,12 @@ class TestCliTransform:
         sample_records_json: str,
         sample_records: list[dict[str, Any]],
         real_remote_target_factory: RealRemoteTargetFactory,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
         env_name: str,
     ) -> None:
         """Test transforming STDIN data into a real cloud-backed target."""
         target = real_remote_target_factory(env_name, suffix='transform-real')
-        monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
+        stdin_text(sample_records_json)
 
         code, out, err = cli_invoke(
             ('transform', '--operations', operations_json, '-', target.uri),
@@ -104,11 +103,11 @@ class TestCliTransform:
         sample_records_json: str,
         sample_records: list[dict[str, Any]],
         remote_storage_harness: RemoteStorageHarness,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
     ) -> None:
         """Test transforming STDIN data and writing the result to a remote URI."""
         target_uri = 's3://bucket/transform-output.json'
-        monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
+        stdin_text(sample_records_json)
 
         code, out, err = cli_invoke(
             (
