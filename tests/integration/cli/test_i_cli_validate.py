@@ -6,8 +6,6 @@ Integration-scope smoke tests for the ``etlplus validate`` CLI command.
 
 from __future__ import annotations
 
-import io
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
@@ -28,6 +26,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonOutputParser
     from tests.integration.cli.conftest import RealRemoteTargetFactory
     from tests.integration.conftest import RemoteStorageHarness
+    from tests.integration.conftest import StdinText
 
 # SECTION: MARKS ============================================================ #
 
@@ -150,14 +149,14 @@ class TestCliValidate:
         self,
         cli_invoke: CliInvoke,
         parse_json_output: JsonOutputParser,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
         tmp_path: Path,
     ) -> None:
         """Schema mode should honor the source format hint for CSV STDIN."""
         pytest.importorskip('frictionless')
         schema_path = tmp_path / 'schema.json'
         schema_path.write_text(FRICTIONLESS_SCHEMA_PERSON, encoding='utf-8')
-        monkeypatch.setattr(sys, 'stdin', io.StringIO('name,age\nAda,37\n'))
+        stdin_text('name,age\nAda,37\n')
 
         code, out, err = cli_invoke(
             (
@@ -255,14 +254,14 @@ class TestCliValidate:
         self,
         cli_invoke: CliInvoke,
         parse_json_output: JsonOutputParser,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
         tmp_path: Path,
     ) -> None:
         """Schema mode should honor the source format hint for YAML STDIN."""
         pytest.importorskip('jsonschema')
         schema_path = tmp_path / 'schema.json'
         schema_path.write_text(JSON_SCHEMA_PERSON_WITH_AGE, encoding='utf-8')
-        monkeypatch.setattr(sys, 'stdin', io.StringIO('name: Ada\nage: 37\n'))
+        stdin_text('name: Ada\nage: 37\n')
 
         code, out, err = cli_invoke(
             (
@@ -317,13 +316,13 @@ class TestCliValidate:
         self,
         cli_invoke: CliInvoke,
         parse_json_output: JsonOutputParser,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
         tmp_path: Path,
     ) -> None:
         """Schema mode should report when schema-format inference is ambiguous."""
         schema_path = tmp_path / 'schema.json'
         schema_path.write_text('{"type": "object"}', encoding='utf-8')
-        monkeypatch.setattr(sys, 'stdin', io.StringIO('{"name": "Ada"}'))
+        stdin_text('{"name": "Ada"}')
 
         code, out, err = cli_invoke(
             (
@@ -425,10 +424,10 @@ class TestCliValidate:
         parse_json_output: JsonOutputParser,
         rules_json: str,
         sample_records_json: str,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
     ) -> None:
         """Test validating a STDIN payload with basic rules."""
-        monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
+        stdin_text(sample_records_json)
         code, out, err = cli_invoke(('validate', '--rules', rules_json, '-'))
         assert code == 0
         assert err.strip() == ''
@@ -447,12 +446,12 @@ class TestCliValidate:
         sample_records_json: str,
         sample_records: list[dict[str, Any]],
         real_remote_target_factory: RealRemoteTargetFactory,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
         env_name: str,
     ) -> None:
         """Test validating STDIN data into a real cloud-backed target."""
         target = real_remote_target_factory(env_name, suffix='validate-real')
-        monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
+        stdin_text(sample_records_json)
 
         code, out, err = cli_invoke(
             ('validate', '--rules', rules_json, '--output', target.uri, '-'),
@@ -470,11 +469,11 @@ class TestCliValidate:
         sample_records_json: str,
         sample_records: list[dict[str, object]],
         remote_storage_harness: RemoteStorageHarness,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
     ) -> None:
         """Test validating STDIN data and writing validated output to a remote URI."""
         target_uri = 's3://bucket/validate-output.json'
-        monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
+        stdin_text(sample_records_json)
 
         code, out, err = cli_invoke(
             (
