@@ -18,7 +18,9 @@ from tests.integration.pytest_integration_support import REMOTE_STORAGE_ENV_CASE
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonOutputParser
-    from tests.integration.cli.conftest import RealRemoteTargetFactory
+    from tests.integration.cli.pytest_cli_integration_support import (
+        RealRemoteTargetFactory,
+    )
     from tests.integration.pytest_integration_support import RemoteStorageHarness
     from tests.integration.pytest_integration_support import StdinText
 

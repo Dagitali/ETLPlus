@@ -16,8 +16,8 @@ import pytest
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
-    from tests.integration.cli.conftest import PipelineSchema
-    from tests.integration.cli.conftest import TableSpec
+    from tests.integration.cli.pytest_cli_integration_support import PipelineSchema
+    from tests.integration.cli.pytest_cli_integration_support import TableSpec
 
 # SECTION: MARKS ============================================================ #
 
