@@ -14,25 +14,11 @@ import pytest
 
 import etlplus.runtime._events as events_mod
 import etlplus.telemetry as telemetry_mod
+from tests.pytest_shared_support import STRUCTURED_EVENT_BASE_FIELDS
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-EXPECTED_BASE_EVENT_FIELDS = frozenset(
-    {
-        'command',
-        'event',
-        'lifecycle',
-        'run_id',
-        'schema',
-        'schema_version',
-        'timestamp',
-    },
-)
 
 # SECTION: FIXTURES ========================================================= #
 
@@ -73,7 +59,7 @@ class TestRuntimeEvents:
             run_all=True,
         )
 
-        assert EXPECTED_BASE_EVENT_FIELDS.issubset(event)
+        assert STRUCTURED_EVENT_BASE_FIELDS.issubset(event)
         assert event['config_path'] == 'pipeline.yml'
         assert event['continue_on_fail'] is False
         assert event['pipeline_name'] == 'customer-sync'
@@ -125,7 +111,7 @@ class TestRuntimeEvents:
         """
         event = events_mod.RuntimeEvents.build(**kwargs)
 
-        assert EXPECTED_BASE_EVENT_FIELDS.issubset(event)
+        assert STRUCTURED_EVENT_BASE_FIELDS.issubset(event)
         assert event == {
             'command': 'run',
             'event': f'run.{kwargs["lifecycle"]}',
