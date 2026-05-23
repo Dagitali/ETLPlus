@@ -15,7 +15,6 @@ from etlplus.file import FileFormat
 from etlplus.storage import StorageLocation
 from etlplus.storage import get_backend
 from tests.integration.conftest import REMOTE_STORAGE_ENV_CASES
-from tests.integration.conftest import REMOTE_STORAGE_ENV_IDS
 from tests.integration.conftest import child_uri
 from tests.integration.conftest import require_env
 
@@ -29,7 +28,6 @@ from tests.integration.conftest import require_env
 @pytest.mark.parametrize(
     'env_name',
     REMOTE_STORAGE_ENV_CASES,
-    ids=REMOTE_STORAGE_ENV_IDS,
 )
 def test_remote_json_roundtrip_via_file_api_integration(env_name: str) -> None:
     """Round-trip JSON through a real remote object when credentials are set."""
