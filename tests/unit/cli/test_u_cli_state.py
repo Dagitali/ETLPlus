@@ -46,60 +46,145 @@ class _ResolveResourceTypeKwargs(TypedDict, total=False):
     legacy_file_error: str | None
 
 
+# SECTION: CONSTANTS ======================================================== #
+
+
+COMMAND_STATE_CASES = (
+    pytest.param(
+        extract_mod,
+        'extract_handler',
+        ('extract', '/path/to/file.csv', '--source-format', 'csv'),
+        {
+            'source': '/path/to/file.csv',
+            'source_format': 'csv',
+            'format_explicit': True,
+        },
+        id='extract-file-format',
+    ),
+    pytest.param(
+        extract_mod,
+        'extract_handler',
+        (
+            '--no-pretty',
+            '--quiet',
+            'extract',
+            '--source-type',
+            'api',
+            'https://example.com/data.json',
+        ),
+        {
+            'source_type': 'api',
+            'source': 'https://example.com/data.json',
+            'pretty': False,
+        },
+        id='extract-api-quiet',
+    ),
+    pytest.param(
+        load_mod,
+        'load_handler',
+        ('load', '--target-type', 'file', '/path/to/out.json'),
+        {
+            'target': '/path/to/out.json',
+            'target_format': None,
+            'format_explicit': False,
+        },
+        id='load-file-target',
+    ),
+    pytest.param(
+        load_mod,
+        'load_handler',
+        ('load', '--target-format', 'csv', '/path/to/out.csv'),
+        {'target_format': 'csv', 'format_explicit': True},
+        id='load-explicit-target-format',
+    ),
+    pytest.param(
+        load_mod,
+        'load_handler',
+        ('load', '--target-type', 'database', 'postgres://db.example.org/app'),
+        {'source': '-', 'target': 'postgres://db.example.org/app'},
+        id='load-default-source',
+    ),
+    pytest.param(
+        render_mod,
+        'render_handler',
+        (
+            'render',
+            '--config',
+            'pipeline.yml',
+            '--table',
+            'Customers',
+            '--template',
+            'ddl',
+            '--output',
+            'out.sql',
+        ),
+        {
+            'config': 'pipeline.yml',
+            'table': 'Customers',
+            'template': 'ddl',
+            'output': 'out.sql',
+        },
+        id='render-table-ddl',
+    ),
+    pytest.param(
+        run_mod,
+        'run_handler',
+        ('run', '--config', 'p.yml', '--job', 'j1'),
+        {'config': 'p.yml', 'job': 'j1'},
+        id='run-config-job',
+    ),
+    pytest.param(
+        transform_mod,
+        'transform_handler',
+        (
+            'transform',
+            '/path/to/file.json',
+            '--operations',
+            '{"select": ["id"]}',
+        ),
+        {
+            'source': '/path/to/file.json',
+            'operations': {'select': ['id']},
+        },
+        id='transform-inline-ops',
+    ),
+    pytest.param(
+        transform_mod,
+        'transform_handler',
+        ('transform', '--source-format', 'csv'),
+        {'source_format': 'csv'},
+        id='transform-source-format',
+    ),
+    pytest.param(
+        validate_mod,
+        'validate_handler',
+        (
+            'validate',
+            '/path/to/file.json',
+            '--rules',
+            '{"required": ["id"]}',
+        ),
+        {
+            'source': '/path/to/file.json',
+            'rules': {'required': ['id']},
+        },
+        id='validate-inline-rules',
+    ),
+    pytest.param(
+        validate_mod,
+        'validate_handler',
+        ('validate', '--source-format', 'csv'),
+        {'source_format': 'csv'},
+        id='validate-source-format',
+    ),
+)
+
+
 # SECTION: TESTS ============================================================ #
 
 
-class TestCliExtractState:
-    """Unit test suite of command-line state tests for ``extract``."""
-
-    @pytest.mark.parametrize(
-        ('argv', 'expected'),
-        [
-            pytest.param(
-                ('extract', '/path/to/file.csv', '--source-format', 'csv'),
-                {
-                    'source': '/path/to/file.csv',
-                    'source_format': 'csv',
-                    'format_explicit': True,
-                },
-                id='extract-file-format',
-            ),
-            pytest.param(
-                (
-                    '--no-pretty',
-                    '--quiet',
-                    'extract',
-                    '--source-type',
-                    'api',
-                    'https://example.com/data.json',
-                ),
-                {
-                    'source_type': 'api',
-                    'source': 'https://example.com/data.json',
-                    'pretty': False,
-                },
-                id='extract-api-quiet',
-            ),
-        ],
-    )
-    def test_maps_namespace(
-        self,
-        invoke_cli: InvokeCli,
-        capture_handler: CaptureHandler,
-        argv: tuple[str, ...],
-        expected: dict[str, object],
-    ) -> None:
-        """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(extract_mod, 'extract_handler')
-
-        result = invoke_cli(*argv)
-
-        assert result.exit_code == 0
-        assert_mapping_contains(calls, expected)
-
-
-class TestCliLoadState:
-    """Unit test suite of command-line state tests for ``load``."""
+class TestCliCommandState:
+    """Unit test suite for command-line argument state mapping."""
 
     @pytest.mark.parametrize(
         ('argv', 'expected'),
@@ -136,175 +221,20 @@ class TestCliLoadState:
         assert expected in strip_ansi(result.output)
 
     @pytest.mark.parametrize(
-        ('argv', 'expected'),
-        [
-            pytest.param(
-                ('load', '--target-type', 'file', '/path/to/out.json'),
-                {
-                    'target': '/path/to/out.json',
-                    'target_format': None,
-                    'format_explicit': False,
-                },
-                id='load-file-target',
-            ),
-            pytest.param(
-                ('load', '--target-format', 'csv', '/path/to/out.csv'),
-                {'target_format': 'csv', 'format_explicit': True},
-                id='load-explicit-target-format',
-            ),
-            pytest.param(
-                (
-                    'load',
-                    '--target-type',
-                    'database',
-                    'postgres://db.example.org/app',
-                ),
-                {'source': '-', 'target': 'postgres://db.example.org/app'},
-                id='load-default-source',
-            ),
-        ],
+        ('handler_module', 'handler_name', 'argv', 'expected'),
+        COMMAND_STATE_CASES,
     )
     def test_maps_namespace(
         self,
         invoke_cli: InvokeCli,
         capture_handler: CaptureHandler,
+        handler_module: object,
+        handler_name: str,
         argv: tuple[str, ...],
         expected: dict[str, object],
     ) -> None:
         """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(load_mod, 'load_handler')
-
-        result = invoke_cli(*argv)
-
-        assert result.exit_code == 0
-        assert_mapping_contains(calls, expected)
-
-
-class TestCliRenderState:
-    """Unit test suite of command-line state tests for ``render``."""
-
-    def test_maps_namespace(
-        self,
-        invoke_cli: InvokeCli,
-        capture_handler: CaptureHandler,
-    ) -> None:
-        """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(render_mod, 'render_handler')
-
-        result = invoke_cli(
-            'render',
-            '--config',
-            'pipeline.yml',
-            '--table',
-            'Customers',
-            '--template',
-            'ddl',
-            '--output',
-            'out.sql',
-        )
-
-        assert result.exit_code == 0
-        assert calls['config'] == 'pipeline.yml'
-        assert calls['table'] == 'Customers'
-        assert calls['template'] == 'ddl'
-        assert calls['output'] == 'out.sql'
-
-
-class TestCliRunState:
-    """Unit test suite of command-line state tests for ``run``."""
-
-    def test_maps_flags(
-        self,
-        invoke_cli: InvokeCli,
-        capture_handler: CaptureHandler,
-    ) -> None:
-        """Test that CLI flags map to handler parameters correctly."""
-        calls = capture_handler(run_mod, 'run_handler')
-
-        result = invoke_cli('run', '--config', 'p.yml', '--job', 'j1')
-
-        assert result.exit_code == 0
-        assert calls['config'] == 'p.yml'
-        assert calls['job'] == 'j1'
-
-
-class TestCliTransformState:
-    """Unit test suite of command-line state tests for ``transform``."""
-
-    @pytest.mark.parametrize(
-        ('argv', 'expected'),
-        [
-            pytest.param(
-                (
-                    'transform',
-                    '/path/to/file.json',
-                    '--operations',
-                    '{"select": ["id"]}',
-                ),
-                {
-                    'source': '/path/to/file.json',
-                    'operations': {'select': ['id']},
-                },
-                id='transform-inline-ops',
-            ),
-            pytest.param(
-                ('transform', '--source-format', 'csv'),
-                {'source_format': 'csv'},
-                id='transform-source-format',
-            ),
-        ],
-    )
-    def test_maps_namespace(
-        self,
-        invoke_cli: InvokeCli,
-        capture_handler: CaptureHandler,
-        argv: tuple[str, ...],
-        expected: dict[str, object],
-    ) -> None:
-        """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(transform_mod, 'transform_handler')
-
-        result = invoke_cli(*argv)
-
-        assert result.exit_code == 0
-        assert_mapping_contains(calls, expected)
-
-
-class TestCliValidateState:
-    """Unit test suite of command-line state tests for ``validate``."""
-
-    @pytest.mark.parametrize(
-        ('argv', 'expected'),
-        [
-            pytest.param(
-                (
-                    'validate',
-                    '/path/to/file.json',
-                    '--rules',
-                    '{"required": ["id"]}',
-                ),
-                {
-                    'source': '/path/to/file.json',
-                    'rules': {'required': ['id']},
-                },
-                id='validate-inline-rules',
-            ),
-            pytest.param(
-                ('validate', '--source-format', 'csv'),
-                {'source_format': 'csv'},
-                id='validate-source-format',
-            ),
-        ],
-    )
-    def test_maps_namespace(
-        self,
-        invoke_cli: InvokeCli,
-        capture_handler: CaptureHandler,
-        argv: tuple[str, ...],
-        expected: dict[str, object],
-    ) -> None:
-        """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(validate_mod, 'validate_handler')
+        calls = capture_handler(handler_module, handler_name)
 
         result = invoke_cli(*argv)
 
