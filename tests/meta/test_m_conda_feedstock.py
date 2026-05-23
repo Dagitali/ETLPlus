@@ -174,150 +174,153 @@ def _conda_runtime_requirement(requirement: str) -> str:
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.parametrize(
-    ('path', 'snippet'),
-    CONDA_TEXT_SNIPPET_CASES,
-)
-def test_conda_packaging_files_preserve_required_snippets(
-    path: Path,
-    snippet: str,
-) -> None:
-    """Test conda packaging docs, recipe, and workflow keep required snippets."""
-    text = path.read_text(encoding='utf-8')
+class TestCondaFeedstockGuardrails:
+    """Meta guardrails for the support-gate-validated conda feedstock recipe."""
 
-    assert snippet in text
-
-
-def test_conda_recipe_render_helper_replaces_release_placeholders(
-    tmp_path: Path,
-) -> None:
-    """Test the render helper produces a concrete recipe for build tools."""
-    output_path = tmp_path / 'meta.yaml'
-
-    render_recipe(
-        template_path=CONDA_RECIPE_PATH,
-        output_path=output_path,
-        version='1.2.3',
-        sha256='a' * 64,
-        maintainer='dagitali-maintainer',
+    @pytest.mark.parametrize(
+        ('path', 'snippet'),
+        CONDA_TEXT_SNIPPET_CASES,
     )
+    def test_packaging_files_preserve_required_snippets(
+        self,
+        path: Path,
+        snippet: str,
+    ) -> None:
+        """Test conda packaging docs, recipe, and workflow keep required snippets."""
+        text = path.read_text(encoding='utf-8')
 
-    rendered = output_path.read_text(encoding='utf-8')
-    assert '<release-version>' not in rendered
-    assert '<sdist-sha256>' not in rendered
-    assert '<maintainer-github-handle>' not in rendered
-    assert '{% set version = "1.2.3" %}' in rendered
-    assert 'sha256: ' + ('a' * 64) in rendered
-    assert '    - dagitali-maintainer' in rendered
+        assert snippet in text
 
+    def test_recipe_render_helper_replaces_release_placeholders(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test the render helper produces a concrete recipe for build tools."""
+        output_path = tmp_path / 'meta.yaml'
 
-def test_conda_recipe_run_requirements_match_base_pyproject_dependencies() -> None:
-    """
-    Test that conda run requirements stay aligned with the broad PyPI base.
-    """
-    pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
-    recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
-
-    python_requirement = f'python {pyproject["project"]["requires-python"]}'
-    expected = {
-        _normalized_requirement_line(python_requirement),
-        *{
-            _conda_runtime_requirement(requirement)
-            for requirement in pyproject['project']['dependencies']
-        },
-    }
-
-    observed = {
-        _normalized_requirement_line(requirement)
-        for requirement in _conda_run_requirement_specs(recipe_text)
-    }
-
-    assert observed == expected
-
-
-def test_conda_recipe_tracks_base_pyproject_dependencies() -> None:
-    """
-    Test that the candidate conda recipe includes the base runtime dependency set.
-    """
-    pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
-    recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
-
-    pyproject_names = {
-        _CONDA_NAME_MAP.get(name, name)
-        for requirement in pyproject['project']['dependencies']
-        for name in [_canonical_requirement_name(requirement)]
-    }
-
-    recipe_names = {
-        _canonical_requirement_name(requirement)
-        for requirement in _conda_run_requirement_specs(recipe_text)
-    }
-
-    assert pyproject_names <= recipe_names
-
-
-def test_conda_recipe_render_helper_rejects_invalid_release_sha256(
-    tmp_path: Path,
-) -> None:
-    """Test tagged-sdist recipes require a real SHA256-looking value."""
-    output_path = tmp_path / 'meta.yaml'
-
-    with pytest.raises(ValueError, match='64-character hexadecimal SHA256'):
         render_recipe(
             template_path=CONDA_RECIPE_PATH,
             output_path=output_path,
             version='1.2.3',
-            sha256='not-a-sha',
+            sha256='a' * 64,
             maintainer='dagitali-maintainer',
         )
 
+        rendered = output_path.read_text(encoding='utf-8')
+        assert '<release-version>' not in rendered
+        assert '<sdist-sha256>' not in rendered
+        assert '<maintainer-github-handle>' not in rendered
+        assert '{% set version = "1.2.3" %}' in rendered
+        assert 'sha256: ' + ('a' * 64) in rendered
+        assert '    - dagitali-maintainer' in rendered
 
-def test_conda_recipe_render_helper_supports_local_source_path(
-    tmp_path: Path,
-) -> None:
-    """Test local validation builds can render a path-based source recipe."""
-    output_path = tmp_path / 'meta.yaml'
+    def test_recipe_run_requirements_match_base_pyproject_dependencies(
+        self,
+    ) -> None:
+        """
+        Test that conda run requirements stay aligned with the broad PyPI base.
+        """
+        pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
+        recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
 
-    render_recipe(
-        template_path=CONDA_RECIPE_PATH,
-        output_path=output_path,
-        version='0.0.0',
-        sha256='0' * 64,
-        maintainer='dagitali-maintainer',
-        source_path=REPO_ROOT,
-    )
+        python_requirement = f'python {pyproject["project"]["requires-python"]}'
+        expected = {
+            _normalized_requirement_line(python_requirement),
+            *{
+                _conda_runtime_requirement(requirement)
+                for requirement in pyproject['project']['dependencies']
+            },
+        }
 
-    rendered = output_path.read_text(encoding='utf-8')
-    assert f'  path: "{REPO_ROOT.resolve()}"' in rendered
-    assert '  url: https://pypi.org/' not in rendered
-    assert '  sha256: ' not in rendered
+        observed = {
+            _normalized_requirement_line(requirement)
+            for requirement in _conda_run_requirement_specs(recipe_text)
+        }
 
+        assert observed == expected
 
-def test_conda_status_docs_do_not_regress_to_pending_support_gate() -> None:
-    """Test conda docs no longer describe completed validation as pending."""
-    stale_hits: list[str] = []
+    def test_recipe_render_helper_rejects_invalid_release_sha256(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test tagged-sdist recipes require a real SHA256-looking value."""
+        output_path = tmp_path / 'meta.yaml'
 
-    for path in CONDA_STATUS_TEXT_PATHS:
-        text = path.read_text(encoding='utf-8').lower()
-        stale_hits.extend(
-            f'{path.relative_to(REPO_ROOT)}: {phrase}'
-            for phrase in STALE_PENDING_SUPPORT_PHRASES
-            if phrase in text
+        with pytest.raises(ValueError, match='64-character hexadecimal SHA256'):
+            render_recipe(
+                template_path=CONDA_RECIPE_PATH,
+                output_path=output_path,
+                version='1.2.3',
+                sha256='not-a-sha',
+                maintainer='dagitali-maintainer',
+            )
+
+    def test_recipe_render_helper_supports_local_source_path(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test local validation builds can render a path-based source recipe."""
+        output_path = tmp_path / 'meta.yaml'
+
+        render_recipe(
+            template_path=CONDA_RECIPE_PATH,
+            output_path=output_path,
+            version='0.0.0',
+            sha256='0' * 64,
+            maintainer='dagitali-maintainer',
+            source_path=REPO_ROOT,
         )
 
-    assert stale_hits == []
+        rendered = output_path.read_text(encoding='utf-8')
+        assert f'  path: "{REPO_ROOT.resolve()}"' in rendered
+        assert '  url: https://pypi.org/' not in rendered
+        assert '  sha256: ' not in rendered
 
+    def test_recipe_tracks_base_pyproject_dependencies(self) -> None:
+        """
+        Test that the candidate conda recipe includes the base runtime dependency set.
+        """
+        pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
+        recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
 
-@pytest.mark.parametrize(
-    'path',
-    CONDA_VALIDATED_STATUS_PATHS,
-)
-def test_conda_status_docs_record_validated_but_unpublished_state(
-    path: Path,
-) -> None:
-    """Test conda docs record the completed gate and publication handoff."""
-    text = path.read_text(encoding='utf-8').lower()
+        pyproject_names = {
+            _CONDA_NAME_MAP.get(name, name)
+            for requirement in pyproject['project']['dependencies']
+            for name in [_canonical_requirement_name(requirement)]
+        }
 
-    for snippet in CONDA_VALIDATED_STATUS_SNIPPETS:
-        assert snippet in text
-    assert 'publication' in text or 'published' in text
+        recipe_names = {
+            _canonical_requirement_name(requirement)
+            for requirement in _conda_run_requirement_specs(recipe_text)
+        }
+
+        assert pyproject_names <= recipe_names
+
+    def test_status_docs_do_not_regress_to_pending_support_gate(self) -> None:
+        """Test conda docs no longer describe completed validation as pending."""
+        stale_hits: list[str] = []
+
+        for path in CONDA_STATUS_TEXT_PATHS:
+            text = path.read_text(encoding='utf-8').lower()
+            stale_hits.extend(
+                f'{path.relative_to(REPO_ROOT)}: {phrase}'
+                for phrase in STALE_PENDING_SUPPORT_PHRASES
+                if phrase in text
+            )
+
+        assert stale_hits == []
+
+    @pytest.mark.parametrize(
+        'path',
+        CONDA_VALIDATED_STATUS_PATHS,
+    )
+    def test_status_docs_record_validated_but_unpublished_state(
+        self,
+        path: Path,
+    ) -> None:
+        """Test conda docs record the completed gate and publication handoff."""
+        text = path.read_text(encoding='utf-8').lower()
+
+        for snippet in CONDA_VALIDATED_STATUS_SNIPPETS:
+            assert snippet in text
+        assert 'publication' in text or 'published' in text
