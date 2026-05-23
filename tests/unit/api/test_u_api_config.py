@@ -310,16 +310,13 @@ class TestApiProfileConfig:
     @pytest.mark.parametrize(
         'defaults',
         [
-            {'pagination': 'not-a-dict'},
-            {'pagination': {'type': 123}},
-            {'rate_limit': 'oops'},
-            {'rate_limit': {'sleep_seconds': 'x', 'max_per_sec': []}},
-        ],
-        ids=[
-            'pagination-str',
-            'pagination-type-bad',
-            'rate-limit-str',
-            'rate-limit-bad-values',
+            pytest.param({'pagination': 'not-a-dict'}, id='pagination-str'),
+            pytest.param({'pagination': {'type': 123}}, id='pagination-type-bad'),
+            pytest.param({'rate_limit': 'oops'}, id='rate-limit-str'),
+            pytest.param(
+                {'rate_limit': {'sleep_seconds': 'x', 'max_per_sec': []}},
+                id='rate-limit-bad-values',
+            ),
         ],
     )
     def test_invalid_defaults_blocks(
@@ -483,22 +480,18 @@ class TestEndpointConfig:
     @pytest.mark.parametrize(
         ('payload', 'expected_exception'),
         [
-            ({'method': 'GET'}, TypeError),  # missing path
-            ({'path': 123}, TypeError),  # path wrong type
-            (
+            pytest.param({'method': 'GET'}, TypeError, id='missing-path'),
+            pytest.param({'path': 123}, TypeError, id='path-not-str'),
+            pytest.param(
                 {'path': '/x', 'path_params': 'id'},
                 ValueError,
-            ),  # string -> dict() raises ValueError
-            (
+                id='path_params-not-mapping',
+            ),
+            pytest.param(
                 {'path': '/x', 'query_params': 1},
                 TypeError,
-            ),  # int -> dict() raises TypeError
-        ],
-        ids=[
-            'missing-path',
-            'path-not-str',
-            'path_params-not-mapping',
-            'query_params-not-mapping',
+                id='query_params-not-mapping',
+            ),
         ],
     )
     def test_invalid_payloads_raise(
