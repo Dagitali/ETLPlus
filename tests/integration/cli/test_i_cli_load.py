@@ -16,6 +16,8 @@ import pytest
 
 from etlplus.file import File
 from etlplus.file import FileFormat
+from tests.integration.conftest import REMOTE_STORAGE_ENV_CASES
+from tests.integration.conftest import REMOTE_STORAGE_ENV_IDS
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -63,12 +65,9 @@ class TestCliLoad:
         assert parse_json_file(out_path) == sample_records
 
     @pytest.mark.parametrize(
-        ('env_name', 'backend_label'),
-        [
-            ('ETLPLUS_TEST_S3_URI', 's3'),
-            ('ETLPLUS_TEST_AZURE_BLOB_URI', 'azure-blob'),
-        ],
-        ids=['s3', 'azure-blob'],
+        'env_name',
+        REMOTE_STORAGE_ENV_CASES,
+        ids=REMOTE_STORAGE_ENV_IDS,
     )
     def test_load_stdin_to_real_remote_file(
         self,
@@ -79,10 +78,8 @@ class TestCliLoad:
         real_remote_target_factory: RealRemoteTargetFactory,
         monkeypatch: pytest.MonkeyPatch,
         env_name: str,
-        backend_label: str,
     ) -> None:
         """Test loading STDIN into a real cloud-backed JSON target."""
-        del backend_label
         target = real_remote_target_factory(env_name, suffix='load-real')
         monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
 
