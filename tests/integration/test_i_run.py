@@ -48,95 +48,99 @@ TARGET_SERVICE_ENDPOINT_CASES = (
 # SECTION: TESTS ============================================================ #
 
 
-def test_remote_file_pipeline_reads_and_writes_via_storage_backend(
-    monkeypatch: MonkeyPatch,
-    remote_storage_harness: RemoteStorageHarness,
-) -> None:
-    """Test a full remote file pipeline run with option forwarding."""
-    remote_storage_harness.set_text(
-        's3://bucket/input.csv',
-        'name|age\nAda|36\nGrace|47\n',
-    )
+class TestRunOrchestration:
+    """Integration tests for run orchestration behavior."""
 
-    cfg = Config(
-        sources=[
-            ConnectorFile(
-                name='remote_src',
-                type=DataConnectorType.FILE,
-                format='csv',
-                path='s3://bucket/input.csv',
-                options={'delimiter': ',', 'encoding': 'utf-8'},
-            ),
-        ],
-        targets=[
-            ConnectorFile(
-                name='remote_tgt',
-                type=DataConnectorType.FILE,
-                format='csv',
-                path='s3://bucket/output.csv',
-                options={'delimiter': ',', 'encoding': 'utf-8'},
-            ),
-        ],
-        jobs=[
-            JobConfig(
-                name='ship_remote',
-                extract=ExtractRef(
-                    source='remote_src',
-                    options={'delimiter': '|'},
+    def test_remote_file_pipeline_reads_and_writes_via_storage_backend(
+        self,
+        monkeypatch: MonkeyPatch,
+        remote_storage_harness: RemoteStorageHarness,
+    ) -> None:
+        """Test a full remote file pipeline run with option forwarding."""
+        remote_storage_harness.set_text(
+            's3://bucket/input.csv',
+            'name|age\nAda|36\nGrace|47\n',
+        )
+
+        cfg = Config(
+            sources=[
+                ConnectorFile(
+                    name='remote_src',
+                    type=DataConnectorType.FILE,
+                    format='csv',
+                    path='s3://bucket/input.csv',
+                    options={'delimiter': ',', 'encoding': 'utf-8'},
                 ),
-                load=LoadRef(
-                    target='remote_tgt',
-                    overrides={'delimiter': ';'},
+            ],
+            targets=[
+                ConnectorFile(
+                    name='remote_tgt',
+                    type=DataConnectorType.FILE,
+                    format='csv',
+                    path='s3://bucket/output.csv',
+                    options={'delimiter': ',', 'encoding': 'utf-8'},
                 ),
-            ),
-        ],
+            ],
+            jobs=[
+                JobConfig(
+                    name='ship_remote',
+                    extract=ExtractRef(
+                        source='remote_src',
+                        options={'delimiter': '|'},
+                    ),
+                    load=LoadRef(
+                        target='remote_tgt',
+                        overrides={'delimiter': ';'},
+                    ),
+                ),
+            ],
+        )
+
+        monkeypatch.setattr(run_mod.Config, 'from_yaml', lambda *_a, **_k: cfg)
+
+        result = run_mod.run('ship_remote')
+
+        assert result == {
+            'status': 'success',
+            'message': 'Data loaded to s3://bucket/output.csv',
+            'records': 2,
+        }
+        assert len(remote_storage_harness.writes) == 1
+        assert remote_storage_harness.writes[0][0] == 's3://bucket/output.csv'
+        decoded = remote_storage_harness.read_text('s3://bucket/output.csv')
+        rows = list(csv.DictReader(StringIO(decoded), delimiter=';'))
+        assert rows == [
+            {'age': '36', 'name': 'Ada'},
+            {'age': '47', 'name': 'Grace'},
+        ]
+
+    @pytest.mark.parametrize(
+        ('base_path', 'endpoint_path', 'expected_suffix'),
+        TARGET_SERVICE_ENDPOINT_CASES,
     )
+    def test_target_service_endpoint_uses_base_path(
+        self,
+        monkeypatch: MonkeyPatch,
+        capture_load_to_api: dict[str, Any],
+        file_to_api_pipeline_factory: Callable[..., Config],
+        base_url: str,
+        base_path: str | None,
+        endpoint_path: str,
+        expected_suffix: str,
+    ) -> None:
+        """Test composed API URLs across optional *base_path* values."""
 
-    monkeypatch.setattr(run_mod.Config, 'from_yaml', lambda *_a, **_k: cfg)
+        cfg = file_to_api_pipeline_factory(
+            base_path=base_path,
+            endpoint_path=endpoint_path,
+            headers={'Content-Type': 'application/json'},
+        )
+        monkeypatch.setattr(run_mod.Config, 'from_yaml', lambda *_a, **_k: cfg)
 
-    result = run_mod.run('ship_remote')
+        result = run_mod.run('send')
 
-    assert result == {
-        'status': 'success',
-        'message': 'Data loaded to s3://bucket/output.csv',
-        'records': 2,
-    }
-    assert len(remote_storage_harness.writes) == 1
-    assert remote_storage_harness.writes[0][0] == 's3://bucket/output.csv'
-    decoded = remote_storage_harness.read_text('s3://bucket/output.csv')
-    rows = list(csv.DictReader(StringIO(decoded), delimiter=';'))
-    assert rows == [
-        {'age': '36', 'name': 'Ada'},
-        {'age': '47', 'name': 'Grace'},
-    ]
+        assert result.get('status') in {'ok', 'success'}
+        assert capture_load_to_api['url'] == f'{base_url}{expected_suffix}'
 
-
-@pytest.mark.parametrize(
-    ('base_path', 'endpoint_path', 'expected_suffix'),
-    TARGET_SERVICE_ENDPOINT_CASES,
-)
-def test_target_service_endpoint_uses_base_path(
-    monkeypatch: MonkeyPatch,
-    capture_load_to_api: dict[str, Any],
-    file_to_api_pipeline_factory: Callable[..., Config],
-    base_url: str,
-    base_path: str | None,
-    endpoint_path: str,
-    expected_suffix: str,
-) -> None:
-    """Test composed API URLs across optional *base_path* values."""
-
-    cfg = file_to_api_pipeline_factory(
-        base_path=base_path,
-        endpoint_path=endpoint_path,
-        headers={'Content-Type': 'application/json'},
-    )
-    monkeypatch.setattr(run_mod.Config, 'from_yaml', lambda *_a, **_k: cfg)
-
-    result = run_mod.run('send')
-
-    assert result.get('status') in {'ok', 'success'}
-    assert capture_load_to_api['url'] == f'{base_url}{expected_suffix}'
-
-    headers = capture_load_to_api.get('headers') or {}
-    assert headers.get('Content-Type') == 'application/json'
+        headers = capture_load_to_api.get('headers') or {}
+        assert headers.get('Content-Type') == 'application/json'
