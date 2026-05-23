@@ -29,6 +29,17 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type CliArgs = tuple[str, ...]
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+STDIN_PERSON_LIST = '[{"name": "John"}]'
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -38,8 +49,7 @@ class TestCliEndToEnd:
     @pytest.mark.parametrize(
         'args,should_pass',
         [
-            # extract: valid/invalid option placements
-            (
+            pytest.param(
                 (
                     'extract',
                     'examples/data/sample.csv',
@@ -47,8 +57,9 @@ class TestCliEndToEnd:
                     'csv',
                 ),
                 True,
+                id='extract-source-format-after-source',
             ),
-            (
+            pytest.param(
                 (
                     'extract',
                     '--source-format',
@@ -56,9 +67,10 @@ class TestCliEndToEnd:
                     'examples/data/sample.csv',
                 ),
                 True,
+                id='extract-source-format-before-source',
             ),
-            (('extract',), False),
-            (
+            pytest.param(('extract',), False, id='extract-missing-source'),
+            pytest.param(
                 (
                     'extract',
                     'examples/data/sample.csv',
@@ -66,8 +78,9 @@ class TestCliEndToEnd:
                     'file',
                 ),
                 True,
+                id='extract-source-type-file',
             ),
-            (
+            pytest.param(
                 (
                     'extract',
                     'examples/data/sample.csv',
@@ -75,15 +88,30 @@ class TestCliEndToEnd:
                     'badformat',
                 ),
                 False,
+                id='extract-invalid-source-format',
             ),
-            # load: valid/invalid option placements
-            (('load', 'output.csv', '--target-format', 'csv'), True),
-            (('load', '--target-format', 'csv', 'output.csv'), False),
-            (('load',), False),
-            (('load', 'output.csv', '--target-type', 'file'), True),
-            (('load', 'output.csv', '--target-format', 'badformat'), False),
-            # transform: valid/invalid placements for source/target options
-            (
+            pytest.param(
+                ('load', 'output.csv', '--target-format', 'csv'),
+                True,
+                id='load-target-format-after-target',
+            ),
+            pytest.param(
+                ('load', '--target-format', 'csv', 'output.csv'),
+                False,
+                id='load-target-format-before-target',
+            ),
+            pytest.param(('load',), False, id='load-missing-target'),
+            pytest.param(
+                ('load', 'output.csv', '--target-type', 'file'),
+                True,
+                id='load-target-type-file',
+            ),
+            pytest.param(
+                ('load', 'output.csv', '--target-format', 'badformat'),
+                False,
+                id='load-invalid-target-format',
+            ),
+            pytest.param(
                 (
                     'transform',
                     '[{}]',
@@ -96,8 +124,9 @@ class TestCliEndToEnd:
                     '{}',
                 ),
                 True,
+                id='transform-source-format-before-target-format',
             ),
-            (
+            pytest.param(
                 (
                     'transform',
                     '[{}]',
@@ -110,8 +139,9 @@ class TestCliEndToEnd:
                     '{}',
                 ),
                 True,
+                id='transform-source-format-before-target',
             ),
-            (
+            pytest.param(
                 (
                     'transform',
                     '[{}]',
@@ -124,9 +154,14 @@ class TestCliEndToEnd:
                     '{}',
                 ),
                 True,
+                id='transform-target-format-before-source-format',
             ),
-            (('transform',), False),
-            (
+            pytest.param(
+                ('transform',),
+                False,
+                id='transform-missing-args',
+            ),
+            pytest.param(
                 (
                     'transform',
                     '[{}]',
@@ -137,19 +172,20 @@ class TestCliEndToEnd:
                     '{}',
                 ),
                 False,
+                id='transform-invalid-source-format',
             ),
         ],
     )
     def test_cli_option_order_and_required_args(
         self,
-        cli_invoke,
-        args,
-        should_pass,
+        cli_invoke: CliInvoke,
+        args: CliArgs,
+        should_pass: bool,
         stdin_text: StdinText,
-    ):
+    ) -> None:
         """Test CLI required-argument and option-order edge cases."""
-        if should_pass and args and args[0] == 'load':
-            stdin_text('[{"name": "John"}]')
+        if should_pass and args[0] == 'load':
+            stdin_text(STDIN_PERSON_LIST)
         code, _out, err = cli_invoke(args)
         if should_pass:
             assert code == 0, f'Expected success for args: {args}, got error: {err}'
@@ -185,7 +221,7 @@ class TestCliEndToEnd:
         Test that ``--target-format`` controls how file targets are written.
         """
         output_path = tmp_path / 'output.bin'
-        stdin_text('[{"name": "John"}]')
+        stdin_text(STDIN_PERSON_LIST)
         code, _out, err = cli_invoke(
             ('load', str(output_path), '--target-format', 'csv'),
         )
