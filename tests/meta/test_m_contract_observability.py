@@ -17,7 +17,7 @@ from etlplus.history import HistoryStore
 from etlplus.history import RunCompletion
 from etlplus.history import RunRecord
 from etlplus.history._store import JobRunRecord
-from tests.meta.pytest_meta_support import REPO_ROOT
+from tests.pytest_shared_support import REPO_ROOT
 from tests.pytest_shared_support import STRUCTURED_EVENT_BASE_FIELDS
 from tests.pytest_shared_support import STRUCTURED_EVENT_LIFECYCLES
 

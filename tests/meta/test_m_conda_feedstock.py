@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.meta.pytest_meta_support import REPO_ROOT
+from tests.pytest_shared_support import REPO_ROOT
 from tools.render_conda_recipe import render_recipe
 
 # SECTION: HELPERS ========================================================== #

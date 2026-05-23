@@ -6,7 +6,7 @@ Guardrails for repository test-layout conventions.
 
 from __future__ import annotations
 
-from tests.meta.pytest_meta_support import REPO_ROOT
+from tests.pytest_shared_support import REPO_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
 

@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from tests.meta.pytest_meta_support import REPO_ROOT
-from tests.meta.pytest_meta_support import TESTS_ROOT
+from tests.pytest_shared_support import REPO_ROOT
+from tests.pytest_shared_support import TESTS_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
 
