@@ -20,6 +20,8 @@ from etlplus.history._store import JobRunRecord
 from tests.meta.pytest_meta_support import REPO_ROOT
 from tests.meta.pytest_meta_support import TextSnippetCase
 from tests.meta.pytest_meta_support import text_snippet_case_id
+from tests.pytest_shared_support import STRUCTURED_EVENT_BASE_FIELDS
+from tests.pytest_shared_support import STRUCTURED_EVENT_LIFECYCLES
 
 # SECTION: MARKERS ========================================================== #
 
@@ -38,20 +40,6 @@ type HistoryShapeCase = tuple[dict[str, object], str, set[str]]
 
 EXPECTED_EVENT_SCHEMA = 'etlplus.event.v1'
 EXPECTED_EVENT_SCHEMA_VERSION = 1
-EXPECTED_EVENT_LIFECYCLES = {
-    'started',
-    'completed',
-    'failed',
-}
-EXPECTED_BASE_EVENT_FIELDS = {
-    'command',
-    'event',
-    'lifecycle',
-    'run_id',
-    'schema',
-    'schema_version',
-    'timestamp',
-}
 EXPECTED_NORMALIZED_RUN_FIELDS = {
     'config_path',
     'config_sha256',
@@ -157,7 +145,7 @@ class _ContractHistoryStore(HistoryStore):
 class TestStructuredEventContract:
     """Meta-level contract tests for the stable event envelope."""
 
-    @pytest.mark.parametrize('lifecycle', sorted(EXPECTED_EVENT_LIFECYCLES))
+    @pytest.mark.parametrize('lifecycle', sorted(STRUCTURED_EVENT_LIFECYCLES))
     def test_build_keeps_required_base_fields_for_documented_lifecycles(
         self,
         lifecycle: str,
@@ -173,7 +161,7 @@ class TestStructuredEventContract:
             timestamp='2026-04-06T00:00:00+00:00',
         )
 
-        assert EXPECTED_BASE_EVENT_FIELDS == set(event)
+        assert STRUCTURED_EVENT_BASE_FIELDS == set(event)
         assert event['schema'] == EXPECTED_EVENT_SCHEMA
         assert event['schema_version'] == EXPECTED_EVENT_SCHEMA_VERSION
         assert event['event'] == f'run.{lifecycle}'
