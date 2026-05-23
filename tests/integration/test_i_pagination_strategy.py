@@ -147,68 +147,78 @@ class CursorScenario:
         return dedent(self.options_block)
 
 
-CURSOR_SCENARIOS: tuple[CursorScenario, ...] = (
-    CursorScenario(
-        name='cursor_records_path_explicit',
-        page_size=2,
-        records_key='data',
-        expected_ids=['a', 'b', 'c'],
-        options_block="""
-        pagination:
-            type: cursor
-            cursor_param: cursor
-            cursor_path: next
-            page_size: 2
-            records_path: data
-        """,
-        batches=(
-            CursorBatch(
-                records=[{'id': 'a'}, {'id': 'b'}],
-                next_cursor='tok1',
+CURSOR_SCENARIOS = (
+    pytest.param(
+        CursorScenario(
+            name='cursor_records_path_explicit',
+            page_size=2,
+            records_key='data',
+            expected_ids=['a', 'b', 'c'],
+            options_block="""
+            pagination:
+                type: cursor
+                cursor_param: cursor
+                cursor_path: next
+                page_size: 2
+                records_path: data
+            """,
+            batches=(
+                CursorBatch(
+                    records=[{'id': 'a'}, {'id': 'b'}],
+                    next_cursor='tok1',
+                ),
+                CursorBatch(records=[{'id': 'c'}], next_cursor=None),
             ),
-            CursorBatch(records=[{'id': 'c'}], next_cursor=None),
         ),
+        id='cursor_records_path_explicit',
     ),
-    CursorScenario(
-        name='cursor_records_path_inferred',
-        page_size=2,
-        records_key='items',
-        expected_ids=['x', 'y', 'z'],
-        options_block="""
-        pagination:
-          type: cursor
-          cursor_param: cursor
-          cursor_path: next
-          page_size: 2
-          # records_path intentionally omitted
-        """,
-        batches=(
-            CursorBatch(
-                records=[{'id': 'x'}, {'id': 'y'}],
-                next_cursor='tok1',
+    pytest.param(
+        CursorScenario(
+            name='cursor_records_path_inferred',
+            page_size=2,
+            records_key='items',
+            expected_ids=['x', 'y', 'z'],
+            options_block="""
+            pagination:
+              type: cursor
+              cursor_param: cursor
+              cursor_path: next
+              page_size: 2
+              # records_path intentionally omitted
+            """,
+            batches=(
+                CursorBatch(
+                    records=[{'id': 'x'}, {'id': 'y'}],
+                    next_cursor='tok1',
+                ),
+                CursorBatch(records=[{'id': 'z'}], next_cursor=None),
             ),
-            CursorBatch(records=[{'id': 'z'}], next_cursor=None),
         ),
+        id='cursor_records_path_inferred',
     ),
 )
-CURSOR_SCENARIO_IDS = tuple(scenario.name for scenario in CURSOR_SCENARIOS)
 
-PAGE_SCENARIOS: tuple[PageScenario, ...] = (
-    PageScenario(
-        name='page_offset_basic',
-        page_size=2,
-        pages=[[{'id': 1}, {'id': 2}], [{'id': 3}]],
-        expected_ids=[1, 2, 3],
+PAGE_SCENARIOS = (
+    pytest.param(
+        PageScenario(
+            name='page_offset_basic',
+            page_size=2,
+            pages=[[{'id': 1}, {'id': 2}], [{'id': 3}]],
+            expected_ids=[1, 2, 3],
+        ),
+        id='page_offset_basic',
     ),
-    PageScenario(
-        name='page_offset_trim',
-        page_size=3,
-        pages=[[{'id': 1}, {'id': 2}, {'id': 3}], [{'id': 4}]],
-        expected_ids=[1, 2],
-        max_records=2,
+    pytest.param(
+        PageScenario(
+            name='page_offset_trim',
+            page_size=3,
+            pages=[[{'id': 1}, {'id': 2}, {'id': 3}], [{'id': 4}]],
+            expected_ids=[1, 2],
+            max_records=2,
+        ),
+        id='page_offset_trim',
     ),
 )
-PAGE_SCENARIO_IDS = tuple(scenario.name for scenario in PAGE_SCENARIOS)
 
 
 @dataclass(slots=True)
@@ -220,54 +230,65 @@ class PaginationEdgeCase:
     expect: dict[str, Any]
 
 
-PAGINATION_EDGE_CASES: tuple[PaginationEdgeCase, ...] = (
-    PaginationEdgeCase(
-        name='page_zero_start_coerces_to_one',
-        pagination={
-            'type': 'page',
-            'page_param': 'page',
-            'size_param': 'per_page',
-            'start_page': 0,
-            'page_size': 10,
-        },
-        expect={'type': 'page', 'start_page': 1, 'page_size': 10},
+PAGINATION_EDGE_CASES = (
+    pytest.param(
+        PaginationEdgeCase(
+            name='page_zero_start_coerces_to_one',
+            pagination={
+                'type': 'page',
+                'page_param': 'page',
+                'size_param': 'per_page',
+                'start_page': 0,
+                'page_size': 10,
+            },
+            expect={'type': 'page', 'start_page': 1, 'page_size': 10},
+        ),
+        id='page_zero_start_coerces_to_one',
     ),
-    PaginationEdgeCase(
-        name='page_zero_size_coerces_default',
-        pagination={
-            'type': 'page',
-            'page_param': 'page',
-            'size_param': 'per_page',
-            'start_page': 1,
-            'page_size': 0,
-        },
-        expect={'type': 'page', 'start_page': 1, 'page_size': 100},
+    pytest.param(
+        PaginationEdgeCase(
+            name='page_zero_size_coerces_default',
+            pagination={
+                'type': 'page',
+                'page_param': 'page',
+                'size_param': 'per_page',
+                'start_page': 1,
+                'page_size': 0,
+            },
+            expect={'type': 'page', 'start_page': 1, 'page_size': 100},
+        ),
+        id='page_zero_size_coerces_default',
     ),
-    PaginationEdgeCase(
-        name='cursor_zero_size_coerces_default',
-        pagination={
-            'type': 'cursor',
-            'cursor_param': 'cursor',
-            'cursor_path': 'next',
-            'page_size': 0,
-        },
-        expect={'type': 'cursor', 'page_size': 100},
+    pytest.param(
+        PaginationEdgeCase(
+            name='cursor_zero_size_coerces_default',
+            pagination={
+                'type': 'cursor',
+                'cursor_param': 'cursor',
+                'cursor_path': 'next',
+                'page_size': 0,
+            },
+            expect={'type': 'cursor', 'page_size': 100},
+        ),
+        id='cursor_zero_size_coerces_default',
     ),
-    PaginationEdgeCase(
-        name='limits_pass_through',
-        pagination={
-            'type': 'page',
-            'page_param': 'page',
-            'size_param': 'per_page',
-            'start_page': 1,
-            'page_size': 5,
-            'max_pages': 2,
-            'max_records': 3,
-        },
-        expect={'type': 'page', 'max_pages': 2, 'max_records': 3},
+    pytest.param(
+        PaginationEdgeCase(
+            name='limits_pass_through',
+            pagination={
+                'type': 'page',
+                'page_param': 'page',
+                'size_param': 'per_page',
+                'start_page': 1,
+                'page_size': 5,
+                'max_pages': 2,
+                'max_records': 3,
+            },
+            expect={'type': 'page', 'max_pages': 2, 'max_records': 3},
+        ),
+        id='limits_pass_through',
     ),
 )
-PAGINATION_EDGE_CASE_IDS = tuple(case.name for case in PAGINATION_EDGE_CASES)
 
 
 def _run_pipeline_and_collect(
@@ -402,7 +423,6 @@ class TestPaginationStrategies:
     @pytest.mark.parametrize(
         'scenario',
         CURSOR_SCENARIOS,
-        ids=CURSOR_SCENARIO_IDS,
     )
     def test_cursor_modes(
         self,
@@ -477,7 +497,6 @@ class TestPaginationStrategies:
     @pytest.mark.parametrize(
         'scenario',
         PAGE_SCENARIOS,
-        ids=PAGE_SCENARIO_IDS,
     )
     def test_page_offset_modes(
         self,
@@ -536,7 +555,6 @@ class TestPaginationStrategies:
     @pytest.mark.parametrize(
         'scenario',
         PAGINATION_EDGE_CASES,
-        ids=PAGINATION_EDGE_CASE_IDS,
     )
     def test_pagination_edge_cases(
         self,
