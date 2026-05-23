@@ -13,7 +13,6 @@ from pathlib import Path
 import pytest
 
 from tests.meta.pytest_meta_support import REPO_ROOT
-from tests.meta.pytest_meta_support import text_snippet_case_id
 from tools.render_conda_recipe import render_recipe
 
 # SECTION: HELPERS ========================================================== #
@@ -54,26 +53,35 @@ CONDA_PLATFORM_ISOLATION_SNIPPETS = (
     '`platform_scope: windows`',
     '`platform_scope: all`',
 )
-CONDA_STAGED_RECIPE_SUBMISSION_SNIPPETS = (
-    (CONDA_README_PATH, 'STAGED-RECIPES-SUBMISSION.md'),
-    (CONDA_PREP_PATH, 'STAGED-RECIPES-SUBMISSION.md'),
-    (CONDA_SUBMISSION_PATH, '`conda-forge/staged-recipes`'),
-    (CONDA_SUBMISSION_PATH, 'recipes/etlplus/meta.yaml'),
-    (CONDA_SUBMISSION_PATH, 'released-version-without-leading-v'),
+CONDA_STAGED_RECIPE_SUBMISSION_SNIPPETS = tuple(
+    pytest.param(path, snippet, id=f'{path.name}:{snippet}')
+    for path, snippet in (
+        (CONDA_README_PATH, 'STAGED-RECIPES-SUBMISSION.md'),
+        (CONDA_PREP_PATH, 'STAGED-RECIPES-SUBMISSION.md'),
+        (CONDA_SUBMISSION_PATH, '`conda-forge/staged-recipes`'),
+        (CONDA_SUBMISSION_PATH, 'recipes/etlplus/meta.yaml'),
+        (CONDA_SUBMISSION_PATH, 'released-version-without-leading-v'),
+    )
 )
-CONDA_TEMPLATE_SOURCE_SNIPPETS = (
-    (CONDA_README_PATH, 'meta.yaml.j2'),
-    (CONDA_PREP_PATH, 'meta.yaml.j2'),
-    (CONDA_SUBMISSION_PATH, 'meta.yaml.j2'),
-    (CONDA_README_PATH, 'tools/render_conda_recipe.py'),
-    (CONDA_PREP_PATH, 'tools/render_conda_recipe.py'),
-    (CONDA_SUBMISSION_PATH, 'tools/render_conda_recipe.py'),
+CONDA_TEMPLATE_SOURCE_SNIPPETS = tuple(
+    pytest.param(path, snippet, id=f'{path.name}:{snippet}')
+    for path, snippet in (
+        (CONDA_README_PATH, 'meta.yaml.j2'),
+        (CONDA_PREP_PATH, 'meta.yaml.j2'),
+        (CONDA_SUBMISSION_PATH, 'meta.yaml.j2'),
+        (CONDA_README_PATH, 'tools/render_conda_recipe.py'),
+        (CONDA_PREP_PATH, 'tools/render_conda_recipe.py'),
+        (CONDA_SUBMISSION_PATH, 'tools/render_conda_recipe.py'),
+    )
 )
-CONDA_NAME_MAPPING_SNIPPETS = (
-    (CONDA_RECIPE_PATH, 'msgpack-python >=1.0.8'),
-    (CONDA_PREP_PATH, '`msgpack>=1.0.8` | `msgpack-python >=1.0.8`'),
-    (CONDA_PREP_PATH, '`PyYAML>=6.0.3` | `pyyaml >=6.0.3`'),
-    (CONDA_PREP_PATH, '`SQLAlchemy>=2.0.45` | `sqlalchemy >=2.0.45`'),
+CONDA_NAME_MAPPING_SNIPPETS = tuple(
+    pytest.param(path, snippet, id=f'{path.name}:{snippet}')
+    for path, snippet in (
+        (CONDA_RECIPE_PATH, 'msgpack-python >=1.0.8'),
+        (CONDA_PREP_PATH, '`msgpack>=1.0.8` | `msgpack-python >=1.0.8`'),
+        (CONDA_PREP_PATH, '`PyYAML>=6.0.3` | `pyyaml >=6.0.3`'),
+        (CONDA_PREP_PATH, '`SQLAlchemy>=2.0.45` | `sqlalchemy >=2.0.45`'),
+    )
 )
 CONDA_RECIPE_PLACEHOLDERS = (
     '<release-version>',
@@ -86,12 +94,8 @@ CONDA_RECIPE_CLI_SNIPPETS = (
     'etlplus --help',
     'etlplus check --help',
 )
-CONDA_VALIDATED_STATUS_PATHS = (
-    CONDA_README_PATH,
-    CONDA_PREP_PATH,
-)
-CONDA_VALIDATED_STATUS_PATH_IDS = tuple(
-    path.name for path in CONDA_VALIDATED_STATUS_PATHS
+CONDA_VALIDATED_STATUS_PATHS = tuple(
+    pytest.param(path, id=path.name) for path in (CONDA_README_PATH, CONDA_PREP_PATH)
 )
 CONDA_VALIDATED_STATUS_SNIPPETS = (
     'tagged pypi sdist',
@@ -209,9 +213,6 @@ def test_conda_docs_reference_platform_isolation_options(snippet: str) -> None:
 @pytest.mark.parametrize(
     ('path', 'snippet'),
     CONDA_STAGED_RECIPE_SUBMISSION_SNIPPETS,
-    ids=[
-        text_snippet_case_id(case) for case in CONDA_STAGED_RECIPE_SUBMISSION_SNIPPETS
-    ],
 )
 def test_conda_docs_reference_staged_recipes_submission_path(
     path: Path,
@@ -226,7 +227,6 @@ def test_conda_docs_reference_staged_recipes_submission_path(
 @pytest.mark.parametrize(
     ('path', 'snippet'),
     CONDA_TEMPLATE_SOURCE_SNIPPETS,
-    ids=[text_snippet_case_id(case) for case in CONDA_TEMPLATE_SOURCE_SNIPPETS],
 )
 def test_conda_docs_reference_template_recipe_source(
     path: Path,
@@ -241,7 +241,6 @@ def test_conda_docs_reference_template_recipe_source(
 @pytest.mark.parametrize(
     ('path', 'snippet'),
     CONDA_NAME_MAPPING_SNIPPETS,
-    ids=[text_snippet_case_id(case) for case in CONDA_NAME_MAPPING_SNIPPETS],
 )
 def test_conda_recipe_documents_expected_name_mappings(
     path: Path,
@@ -396,7 +395,6 @@ def test_conda_status_docs_do_not_regress_to_pending_support_gate() -> None:
 @pytest.mark.parametrize(
     'path',
     CONDA_VALIDATED_STATUS_PATHS,
-    ids=CONDA_VALIDATED_STATUS_PATH_IDS,
 )
 def test_conda_status_docs_record_validated_but_unpublished_state(
     path: Path,
