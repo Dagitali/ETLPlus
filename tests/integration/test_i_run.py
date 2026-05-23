@@ -16,7 +16,6 @@ from __future__ import annotations
 import csv
 import importlib
 from collections.abc import Callable
-from io import BytesIO
 from io import StringIO
 from typing import Any
 
@@ -29,6 +28,7 @@ from etlplus.connector import DataConnectorType
 from etlplus.workflow import ExtractRef
 from etlplus.workflow import JobConfig
 from etlplus.workflow import LoadRef
+from tests.integration.conftest import RemoteStorageHarness
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -50,48 +50,13 @@ TARGET_SERVICE_ENDPOINT_CASES = (
 
 def test_remote_file_pipeline_reads_and_writes_via_storage_backend(
     monkeypatch: MonkeyPatch,
+    remote_storage_harness: RemoteStorageHarness,
 ) -> None:
     """Test a full remote file pipeline run with option forwarding."""
-    core_mod = importlib.import_module('etlplus.file._core')
-
-    remote_objects: dict[str, bytes] = {
-        's3://bucket/input.csv': b'name|age\nAda|36\nGrace|47\n',
-    }
-    writes: list[tuple[str, bytes]] = []
-
-    class CaptureUpload(BytesIO):
-        """Capture uploaded remote content on close."""
-
-        def __init__(self, uri: str) -> None:
-            super().__init__()
-            self._uri = uri
-
-        def close(self) -> None:
-            remote_objects[self._uri] = self.getvalue()
-            writes.append((self._uri, self.getvalue()))
-            super().close()
-
-    class FakeBackend:
-        """Minimal remote backend for end-to-end file pipeline tests."""
-
-        def exists(self, location: object) -> bool:
-            uri = getattr(location, 'raw', str(location))
-            return uri in remote_objects
-
-        def ensure_parent_dir(self, location: object) -> None:
-            del location
-
-        def open(
-            self,
-            location: object,
-            mode: str = 'r',
-            **kwargs: object,
-        ) -> BytesIO:
-            del kwargs
-            uri = getattr(location, 'raw', str(location))
-            if 'r' in mode:
-                return BytesIO(remote_objects[uri])
-            return CaptureUpload(uri)
+    remote_storage_harness.set_text(
+        's3://bucket/input.csv',
+        'name|age\nAda|36\nGrace|47\n',
+    )
 
     cfg = Config(
         sources=[
@@ -128,7 +93,6 @@ def test_remote_file_pipeline_reads_and_writes_via_storage_backend(
     )
 
     monkeypatch.setattr(run_mod.Config, 'from_yaml', lambda *_a, **_k: cfg)
-    monkeypatch.setattr(core_mod, 'get_backend', lambda _value: FakeBackend())
 
     result = run_mod.run('ship_remote')
 
@@ -137,9 +101,9 @@ def test_remote_file_pipeline_reads_and_writes_via_storage_backend(
         'message': 'Data loaded to s3://bucket/output.csv',
         'records': 2,
     }
-    assert len(writes) == 1
-    assert writes[0][0] == 's3://bucket/output.csv'
-    decoded = writes[0][1].decode('utf-8')
+    assert len(remote_storage_harness.writes) == 1
+    assert remote_storage_harness.writes[0][0] == 's3://bucket/output.csv'
+    decoded = remote_storage_harness.read_text('s3://bucket/output.csv')
     rows = list(csv.DictReader(StringIO(decoded), delimiter=';'))
     assert rows == [
         {'age': '36', 'name': 'Ada'},
