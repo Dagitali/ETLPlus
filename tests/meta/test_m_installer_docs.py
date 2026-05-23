@@ -7,12 +7,17 @@ Guardrails for supported installer documentation and release smoke coverage.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
 from tests.meta.pytest_meta_support import REPO_ROOT
+
+# SECTION: TYPES ============================================================ #
+
+
+type InstallerContract = tuple[str, re.Pattern[str]]
+
 
 # SECTION: CONSTANTS ======================================================== #
 
@@ -42,42 +47,26 @@ CONDA_STATUS_SNIPPETS = (
     'published',
 )
 
-# SECTION: SUPPORT ========================================================== #
-
-
-@dataclass(frozen=True, slots=True)
-class InstallerContract:
-    """Documented installer command and matching smoke-action pattern."""
-
-    docs_command: str
-    smoke_pattern: re.Pattern[str]
-
 
 INSTALLER_CONTRACTS = (
     pytest.param(
-        InstallerContract(
-            docs_command='pip install etlplus',
-            smoke_pattern=re.compile(
-                r'-m pip install \$\{\{ inputs\.artifact-wheel \}\}',
-            ),
+        (
+            'pip install etlplus',
+            re.compile(r'-m pip install \$\{\{ inputs\.artifact-wheel \}\}'),
         ),
         id='pip',
     ),
     pytest.param(
-        InstallerContract(
-            docs_command='pipx install etlplus',
-            smoke_pattern=re.compile(
-                r'-m pipx install \$\{\{ inputs\.artifact-wheel \}\}',
-            ),
+        (
+            'pipx install etlplus',
+            re.compile(r'-m pipx install \$\{\{ inputs\.artifact-wheel \}\}'),
         ),
         id='pipx',
     ),
     pytest.param(
-        InstallerContract(
-            docs_command='uv tool install etlplus',
-            smoke_pattern=re.compile(
-                r'uv tool install --force \$\{\{ inputs\.artifact-wheel \}\}',
-            ),
+        (
+            'uv tool install etlplus',
+            re.compile(r'uv tool install --force \$\{\{ inputs\.artifact-wheel \}\}'),
         ),
         id='uv',
     ),
@@ -151,7 +140,8 @@ def test_supported_installer_commands_are_documented_and_smoke_tested(
     """
     readme_text = README_PATH.read_text(encoding='utf-8')
     compatibility_text = COMPATIBILITY_PATH.read_text(encoding='utf-8')
+    docs_command, smoke_pattern = contract
 
-    assert contract.docs_command in readme_text
-    assert contract.docs_command in compatibility_text
-    assert contract.smoke_pattern.search(installer_smoke_action_text) is not None
+    assert docs_command in readme_text
+    assert docs_command in compatibility_text
+    assert smoke_pattern.search(installer_smoke_action_text) is not None
