@@ -33,6 +33,15 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
+# SECTION: HELPERS ========================================================== #
+
+
+def _project_ids(
+    records: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return the transform result expected from the shared select operation."""
+    return [{'id': record['id']} for record in records]
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -56,8 +65,7 @@ class TestCliTransform:
         assert code == 0
         assert err.strip() == ''
         payload = parse_json_output(out)
-        expected = [{'id': rec['id']} for rec in sample_records]
-        assert payload == expected
+        assert payload == _project_ids(sample_records)
 
     @pytest.mark.parametrize(
         'env_name',
@@ -85,9 +93,9 @@ class TestCliTransform:
         assert code == 0
         assert err.strip() == ''
         assert out.strip() == f'Data transformed and saved to {target.uri}'
-        assert File(target.uri, FileFormat.JSON).read() == [
-            {'id': rec['id']} for rec in sample_records
-        ]
+        assert File(target.uri, FileFormat.JSON).read() == _project_ids(
+            sample_records,
+        )
 
     def test_stdin_to_remote_file_target(
         self,
@@ -115,6 +123,6 @@ class TestCliTransform:
         assert code == 0
         assert err.strip() == ''
         assert out.strip() == f'Data transformed and saved to {target_uri}'
-        assert remote_storage_harness.read_json(target_uri) == [
-            {'id': rec['id']} for rec in sample_records
-        ]
+        assert remote_storage_harness.read_json(target_uri) == _project_ids(
+            sample_records,
+        )
