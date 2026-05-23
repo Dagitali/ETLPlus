@@ -6,6 +6,8 @@ Top-level pytest configuration and compatibility exports for shared test types.
 
 from __future__ import annotations
 
+from .pytest_shared_support import STRUCTURED_EVENT_BASE_FIELDS
+from .pytest_shared_support import STRUCTURED_EVENT_LIFECYCLES
 from .pytest_shared_support import CaptureHandler
 from .pytest_shared_support import CliInvoke
 from .pytest_shared_support import CliRunner
@@ -35,6 +37,8 @@ __all__ = [
     'JsonFileParser',
     'JsonOutputParser',
     'RequestFactory',
+    'STRUCTURED_EVENT_BASE_FIELDS',
+    'STRUCTURED_EVENT_LIFECYCLES',
     'coerce_cli_args',
     'parse_json',
 ]
