@@ -25,20 +25,32 @@ pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 # SECTION: TESTS ============================================================ #
 
 
-def test_in_memory_sqlite_engine_connection_sanity() -> None:
-    """Test that in-memory sqlite engine executes a trivial query."""
-    engine = make_engine('sqlite+pysqlite:///:memory:')
-    with engine.connect() as conn:
-        assert conn.execute(text('SELECT 1')).scalar_one() == 1
+class TestDatabaseEngine:
+    """Integration tests for in-memory database engine usage."""
 
-
-def test_in_memory_sqlite_session_sanity() -> None:
-    """Test that session bound to in-memory sqlite engine executes SQL."""
-    engine = make_engine('sqlite+pysqlite:///:memory:')
-    session_factory = sessionmaker(
-        bind=engine,
-        autoflush=False,
-        autocommit=False,
+    @pytest.mark.parametrize(
+        'via_session',
+        (
+            pytest.param(False, id='connection'),
+            pytest.param(True, id='session'),
+        ),
     )
-    with session_factory() as db_session:
-        assert db_session.execute(text('SELECT 1')).scalar_one() == 1
+    def test_in_memory_sqlite_executes_trivial_query(
+        self,
+        via_session: bool,
+    ) -> None:
+        """Test that in-memory sqlite executes SQL via connection and session."""
+        engine = make_engine('sqlite+pysqlite:///:memory:')
+
+        if via_session:
+            session_factory = sessionmaker(
+                bind=engine,
+                autoflush=False,
+                autocommit=False,
+            )
+            with session_factory() as db_session:
+                assert db_session.execute(text('SELECT 1')).scalar_one() == 1
+            return
+
+        with engine.connect() as conn:
+            assert conn.execute(text('SELECT 1')).scalar_one() == 1
