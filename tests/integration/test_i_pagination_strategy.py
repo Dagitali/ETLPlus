@@ -43,8 +43,8 @@ from .conftest import RunPatched
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
-    from tests.conftest import JsonFileParser
-    from tests.conftest import JsonOutputParser
+    from tests.pytest_shared_support import JsonFileParser
+    from tests.pytest_shared_support import JsonOutputParser
 
 # SECTION: HELPERS ========================================================== #
 
