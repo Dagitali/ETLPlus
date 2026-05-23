@@ -106,6 +106,5 @@ class TestRunProfilePaginationDefaults:
         seen_pag = created[0].seen.get('pagination')
         assert isinstance(seen_pag, dict)
         assert {
-            key: seen_pag.get(key)
-            for key in expected_pagination
+            key: seen_pag.get(key) for key in expected_pagination
         } == expected_pagination
