@@ -27,6 +27,8 @@ from etlplus.file import File
 from etlplus.file import FileFormat
 from etlplus.runtime import EVENT_SCHEMA
 from etlplus.runtime import EVENT_SCHEMA_VERSION
+from tests.integration.conftest import REMOTE_STORAGE_ENV_CASES
+from tests.integration.conftest import REMOTE_STORAGE_ENV_IDS
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -216,12 +218,9 @@ class TestRun:
         ]
 
     @pytest.mark.parametrize(
-        ('env_name', 'backend_label'),
-        [
-            ('ETLPLUS_TEST_S3_URI', 's3'),
-            ('ETLPLUS_TEST_AZURE_BLOB_URI', 'azure-blob'),
-        ],
-        ids=['s3', 'azure-blob'],
+        'env_name',
+        REMOTE_STORAGE_ENV_CASES,
+        ids=REMOTE_STORAGE_ENV_IDS,
     )
     def test_file_to_real_remote_target(
         self,
@@ -232,12 +231,10 @@ class TestRun:
         real_remote_target_factory: RealRemoteTargetFactory,
         tmp_path: Path,
         env_name: str,
-        backend_label: str,
     ) -> None:
         """
         Test that CLI run can write a local file source to a real cloud target.
         """
-        del backend_label
         source_path = json_file_factory(
             sample_records,
             filename='real-run-input.json',
