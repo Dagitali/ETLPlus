@@ -64,6 +64,18 @@ def _make_job(
     )
 
 
+def _patch_config(
+    monkeypatch: pytest.MonkeyPatch,
+    cfg: SimpleNamespace,
+) -> None:
+    """Patch config loading to return one in-memory config object."""
+    monkeypatch.setattr(
+        run_mod.Config,
+        'from_yaml',
+        lambda _path, substitute=True: cfg,
+    )
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -83,11 +95,7 @@ class TestRun:
             SimpleNamespace(name='api_tgt', type='api'),
         )
 
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
 
         req_env = {
             'use_endpoints': True,
@@ -210,11 +218,7 @@ class TestRun:
             format='json',
         )
         cfg = _base_config(job, src, tgt)
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
 
         extract_calls: list[tuple[str, str]] = []
 
@@ -266,11 +270,7 @@ class TestRun:
             connection_string='sqlite:///target.db',
         )
         cfg = _base_config(job, src, tgt)
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
 
         monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: [{'id': 1}])
         monkeypatch.setattr(
@@ -334,11 +334,7 @@ class TestRun:
             ),
         )
 
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
 
         extract_calls: list[tuple[Any, Any, dict[str, Any]]] = []
 
@@ -413,11 +409,7 @@ class TestRun:
             format='json',
         )
         cfg = _base_config(job, src, tgt)
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         with pytest.raises(ValueError, match='File source missing "path"'):
             run_mod.run('job')
 
@@ -442,11 +434,7 @@ class TestRun:
             format='json',
         )
         cfg = _base_config(job, src, tgt)
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         with pytest.raises(
             ValueError,
             match=r'(?i)(file target).*path|missing\s+"?path"?',
@@ -475,11 +463,7 @@ class TestRun:
             ),
         )
 
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
 
         extract_calls: list[tuple] = []
 
@@ -599,11 +583,7 @@ class TestRun:
             transforms={'noop': {}},
             validations={},
         )
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         monkeypatch.setattr(
             run_mod,
             'extract',
@@ -701,11 +681,7 @@ class TestRun:
             transforms={'noop': {}},
             validations={},
         )
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
 
         def _extract(
             _stype: str,
@@ -940,11 +916,7 @@ class TestRun:
         )
         attempts = {'seed': 0, 'publish': 0}
 
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
 
         def _run_job_config(_context: Any, job_obj: Any) -> dict[str, Any]:
             job_name = cast(str, job_obj.name)
@@ -1025,11 +997,7 @@ class TestRun:
             transforms={'noop': {}},
             validations={},
         )
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         monkeypatch.setattr(
             run_mod,
             'extract',
@@ -1122,11 +1090,7 @@ class TestRun:
             transforms={'noop': {}},
             validations={},
         )
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         monkeypatch.setattr(
             run_mod,
             'extract',
@@ -1169,11 +1133,7 @@ class TestRun:
                 format='json',
             ),
         )
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: {'id': 1})
         monkeypatch.setattr(
             run_mod,
@@ -1228,11 +1188,7 @@ class TestRun:
         expected_message: str,
     ) -> None:
         """Test that requesting a missing job raises :class:`ValueError`."""
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
 
         with pytest.raises(ValueError, match=expected_message):
             run_mod.run('missing')
@@ -1263,11 +1219,7 @@ class TestRun:
             format='json',
         )
         cfg = _base_config(job, src, tgt)
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         with pytest.raises(ValueError, match=r'(?i)load'):
             run_mod.run('job')
 
@@ -1290,11 +1242,7 @@ class TestRun:
             transforms={},
             validations={},
         )
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         with pytest.raises(ValueError, match='extract'):
             run_mod.run('job')
 
@@ -1309,11 +1257,7 @@ class TestRun:
         src = SimpleNamespace(name='src', type='file', path='/tmp/in.json')
         tgt = SimpleNamespace(name='tgt', type='file', path='/tmp/out.json')
         cfg = _base_config(job, src, tgt)
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         monkeypatch.setattr(
             run_mod.DataConnectorType,
             'coerce',
@@ -1334,11 +1278,7 @@ class TestRun:
         src = SimpleNamespace(name='src', type='file', path='/tmp/in.json')
         tgt = SimpleNamespace(name='tgt', type='file', path='/tmp/out.json')
         cfg = _base_config(job, src, tgt)
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: [{'id': 1}])
         monkeypatch.setattr(
             run_mod,
@@ -1385,11 +1325,7 @@ class TestRun:
             format='json',
         )
         cfg = _base_config(job, src, tgt)
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: [{'id': 1}])
 
         stages: list[str] = []
@@ -1448,11 +1384,7 @@ class TestRun:
         cfg = _base_config(job, src, tgt)
         cfg.validations = {'rules': {}}
 
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
 
         monkeypatch.setattr(run_mod, 'extract', lambda *a, **k: [{'id': 1}])
 
@@ -1501,11 +1433,7 @@ class TestRun:
             transforms={},
             validations={},
         )
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         with pytest.raises(ValueError, match='Unknown source'):
             run_mod.run('job')
 
@@ -1531,11 +1459,7 @@ class TestRun:
             transforms={},
             validations={},
         )
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         with pytest.raises(ValueError, match=r'(?i)target'):
             run_mod.run('job')
 
@@ -1556,11 +1480,7 @@ class TestRun:
             format='json',
         )
         cfg = _base_config(job, src, tgt)
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         with pytest.raises(ValueError, match=r'(?i)unsupported'):
             run_mod.run('job')
 
@@ -1588,11 +1508,7 @@ class TestRun:
             format='json',
         )
         cfg = _base_config(job, src, tgt)
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         with pytest.raises(ValueError, match=r'(?i)unsupported'):
             run_mod.run('job')
 
@@ -2434,11 +2350,7 @@ class TestRunInternals:
             transforms=None,
             validations={},
         )
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: {'id': 1})
         monkeypatch.setattr(
             run_mod,
@@ -2486,11 +2398,7 @@ class TestRunInternals:
             ),
         )
         cfg.validations = ['invalid']
-        monkeypatch.setattr(
-            run_mod.Config,
-            'from_yaml',
-            lambda path, substitute=True: cfg,
-        )
+        _patch_config(monkeypatch, cfg)
         monkeypatch.setattr(run_mod, 'extract', lambda *_a, **_k: {'id': 1})
         validation_calls: list[tuple[str, dict[str, Any]]] = []
 
