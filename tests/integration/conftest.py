@@ -70,6 +70,12 @@ class FakeEndpointClientProtocol(Protocol):
 
 # SECTION: TYPE ALIASES ===================================================== #
 
+type FakeEndpointClients = tuple[
+    type[FakeEndpointClientProtocol],
+    list[FakeEndpointClientProtocol],
+]
+type PipelineCfgFactory = Callable[..., Config]
+type RunPatched = Callable[..., dict[str, Any]]
 type StdinText = Callable[[str], None]
 
 
@@ -211,10 +217,7 @@ def capture_load_to_api_fixture(
 
 
 @pytest.fixture(name='fake_endpoint_client')
-def fake_endpoint_client_fixture() -> tuple[
-    type[FakeEndpointClientProtocol],
-    list[FakeEndpointClientProtocol],
-]:  # noqa: ANN201
+def fake_endpoint_client_fixture() -> FakeEndpointClients:
     """
     Provide a Fake EndpointClient class and capture list.
 
@@ -224,7 +227,7 @@ def fake_endpoint_client_fixture() -> tuple[
 
     Returns
     -------
-    tuple[type[FakeEndpointClientProtocol], list[FakeEndpointClientProtocol]]
+    FakeEndpointClients
         A tuple where the first element is the FakeClient class and the
         second element is the list of created instances.
     """
@@ -359,7 +362,7 @@ def isolated_state_dir_fixture(
 def pipeline_cfg_factory_fixture(
     tmp_path: pathlib.Path,
     base_url: str,
-) -> Callable[..., Config]:
+) -> PipelineCfgFactory:
     """
     Factory to build a minimal Config for runner tests.
 
@@ -376,7 +379,7 @@ def pipeline_cfg_factory_fixture(
 
     Returns
     -------
-    Callable[..., Config]
+    PipelineCfgFactory
         Factory function to create :class:`Config` instances.
     """
 
@@ -485,7 +488,7 @@ def remote_storage_harness_fixture(
 @pytest.fixture(name='run_patched')
 def run_patched_fixture(
     monkeypatch: pytest.MonkeyPatch,
-) -> Callable[..., dict[str, Any]]:
+) -> RunPatched:
     """
     Return a helper to run the pipeline with patched runner dependencies.
 
@@ -496,7 +499,7 @@ def run_patched_fixture(
 
     Returns
     -------
-    Callable[..., dict[str, Any]]
+    RunPatched
         Factory function to run the pipeline with patched dependencies.
 
     Example
