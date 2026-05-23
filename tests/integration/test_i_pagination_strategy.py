@@ -563,5 +563,4 @@ class TestPaginationStrategies:
 
         seen_pag = created[0].seen.get('pagination')
         assert isinstance(seen_pag, dict)
-        for k, v in scenario.expect.items():
-            assert seen_pag.get(k) == v
+        assert scenario.expect.items() <= seen_pag.items()
