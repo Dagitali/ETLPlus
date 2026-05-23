@@ -92,6 +92,29 @@ _CLOUD_DATABASE_PROVIDER_FIELDS: tuple[str, ...] = (
 )
 
 
+# SECTION: CONSTANTS ======================================================== #
+
+
+STRUCTURED_EVENT_BASE_FIELDS = frozenset(
+    {
+        'command',
+        'event',
+        'lifecycle',
+        'run_id',
+        'schema',
+        'schema_version',
+        'timestamp',
+    },
+)
+STRUCTURED_EVENT_LIFECYCLES = frozenset(
+    {
+        'started',
+        'completed',
+        'failed',
+    },
+)
+
+
 # SECTION: DATA CLASSES ===================================================== #
 
 
