@@ -22,8 +22,8 @@ import pytest
 
 from etlplus.storage import StorageLocation
 from etlplus.storage import get_backend
-from tests.integration.conftest import child_uri
-from tests.integration.conftest import require_env
+from tests.integration.pytest_integration_support import child_uri
+from tests.integration.pytest_integration_support import require_env
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFactory
