@@ -6,10 +6,8 @@ Integration coverage for structured execution events across CLI commands.
 
 from __future__ import annotations
 
-import io
 import json
 import sqlite3
-import sys
 from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
@@ -29,6 +27,7 @@ from etlplus.runtime import EVENT_SCHEMA_VERSION
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonOutputParser
+    from tests.integration.conftest import StdinText
 
 # SECTION: MARKS ============================================================ #
 
@@ -252,11 +251,11 @@ class TestCliExecutionEvents:
         cli_invoke: CliInvoke,
         parse_json_output: JsonOutputParser,
         sample_records_json: str,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
         tmp_path: Path,
     ) -> None:
         """Test that ``load --event-format jsonl`` emits stable events."""
-        monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
+        stdin_text(sample_records_json)
         out_path = tmp_path / 'load-events.json'
 
         code, out, err = cli_invoke(
@@ -288,10 +287,10 @@ class TestCliExecutionEvents:
         parse_json_output: JsonOutputParser,
         operations_json: str,
         sample_records_json: str,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
     ) -> None:
         """Test that ``transform --event-format jsonl`` emits stable events."""
-        monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
+        stdin_text(sample_records_json)
 
         code, out, err = cli_invoke(
             (
@@ -323,10 +322,10 @@ class TestCliExecutionEvents:
         parse_json_output: JsonOutputParser,
         rules_json: str,
         sample_records_json: str,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
     ) -> None:
         """Test that ``validate --event-format jsonl`` emits stable events."""
-        monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
+        stdin_text(sample_records_json)
 
         code, out, err = cli_invoke(
             (
