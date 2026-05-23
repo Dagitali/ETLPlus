@@ -14,8 +14,6 @@ Notes
 
 from __future__ import annotations
 
-import io
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -24,11 +22,24 @@ import pytest
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonFactory
+    from tests.conftest import JsonFileParser
     from tests.conftest import JsonOutputParser
+    from tests.integration.conftest import StdinText
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type CliArgs = tuple[str, ...]
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+STDIN_PERSON_LIST = '[{"name": "John"}]'
 
 # SECTION: TESTS ============================================================ #
 
@@ -39,8 +50,7 @@ class TestCliEndToEnd:
     @pytest.mark.parametrize(
         'args,should_pass',
         [
-            # extract: valid/invalid option placements
-            (
+            pytest.param(
                 (
                     'extract',
                     'examples/data/sample.csv',
@@ -48,8 +58,9 @@ class TestCliEndToEnd:
                     'csv',
                 ),
                 True,
+                id='extract-source-format-after-source',
             ),
-            (
+            pytest.param(
                 (
                     'extract',
                     '--source-format',
@@ -57,9 +68,10 @@ class TestCliEndToEnd:
                     'examples/data/sample.csv',
                 ),
                 True,
+                id='extract-source-format-before-source',
             ),
-            (('extract',), False),
-            (
+            pytest.param(('extract',), False, id='extract-missing-source'),
+            pytest.param(
                 (
                     'extract',
                     'examples/data/sample.csv',
@@ -67,8 +79,9 @@ class TestCliEndToEnd:
                     'file',
                 ),
                 True,
+                id='extract-source-type-file',
             ),
-            (
+            pytest.param(
                 (
                     'extract',
                     'examples/data/sample.csv',
@@ -76,15 +89,30 @@ class TestCliEndToEnd:
                     'badformat',
                 ),
                 False,
+                id='extract-invalid-source-format',
             ),
-            # load: valid/invalid option placements
-            (('load', 'output.csv', '--target-format', 'csv'), True),
-            (('load', '--target-format', 'csv', 'output.csv'), False),
-            (('load',), False),
-            (('load', 'output.csv', '--target-type', 'file'), True),
-            (('load', 'output.csv', '--target-format', 'badformat'), False),
-            # transform: valid/invalid placements for source/target options
-            (
+            pytest.param(
+                ('load', 'output.csv', '--target-format', 'csv'),
+                True,
+                id='load-target-format-after-target',
+            ),
+            pytest.param(
+                ('load', '--target-format', 'csv', 'output.csv'),
+                False,
+                id='load-target-format-before-target',
+            ),
+            pytest.param(('load',), False, id='load-missing-target'),
+            pytest.param(
+                ('load', 'output.csv', '--target-type', 'file'),
+                True,
+                id='load-target-type-file',
+            ),
+            pytest.param(
+                ('load', 'output.csv', '--target-format', 'badformat'),
+                False,
+                id='load-invalid-target-format',
+            ),
+            pytest.param(
                 (
                     'transform',
                     '[{}]',
@@ -97,8 +125,9 @@ class TestCliEndToEnd:
                     '{}',
                 ),
                 True,
+                id='transform-source-format-before-target-format',
             ),
-            (
+            pytest.param(
                 (
                     'transform',
                     '[{}]',
@@ -111,8 +140,9 @@ class TestCliEndToEnd:
                     '{}',
                 ),
                 True,
+                id='transform-source-format-before-target',
             ),
-            (
+            pytest.param(
                 (
                     'transform',
                     '[{}]',
@@ -125,9 +155,14 @@ class TestCliEndToEnd:
                     '{}',
                 ),
                 True,
+                id='transform-target-format-before-source-format',
             ),
-            (('transform',), False),
-            (
+            pytest.param(
+                ('transform',),
+                False,
+                id='transform-missing-args',
+            ),
+            pytest.param(
                 (
                     'transform',
                     '[{}]',
@@ -138,23 +173,20 @@ class TestCliEndToEnd:
                     '{}',
                 ),
                 False,
+                id='transform-invalid-source-format',
             ),
         ],
     )
     def test_cli_option_order_and_required_args(
         self,
-        cli_invoke,
-        args,
-        should_pass,
-        monkeypatch: pytest.MonkeyPatch,
-    ):
+        cli_invoke: CliInvoke,
+        args: CliArgs,
+        should_pass: bool,
+        stdin_text: StdinText,
+    ) -> None:
         """Test CLI required-argument and option-order edge cases."""
-        if should_pass and args and args[0] == 'load':
-            monkeypatch.setattr(
-                sys,
-                'stdin',
-                io.StringIO('[{"name": "John"}]'),
-            )
+        if should_pass and args[0] == 'load':
+            stdin_text(STDIN_PERSON_LIST)
         code, _out, err = cli_invoke(args)
         if should_pass:
             assert code == 0, f'Expected success for args: {args}, got error: {err}'
@@ -184,17 +216,13 @@ class TestCliEndToEnd:
         self,
         tmp_path: Path,
         cli_invoke: CliInvoke,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
     ) -> None:
         """
         Test that ``--target-format`` controls how file targets are written.
         """
         output_path = tmp_path / 'output.bin'
-        monkeypatch.setattr(
-            sys,
-            'stdin',
-            io.StringIO('[{"name": "John"}]'),
-        )
+        stdin_text(STDIN_PERSON_LIST)
         code, _out, err = cli_invoke(
             ('load', str(output_path), '--target-format', 'csv'),
         )
@@ -251,22 +279,19 @@ class TestCliEndToEnd:
         self,
         tmp_path: Path,
         cli_invoke: CliInvoke,
-        monkeypatch: pytest.MonkeyPatch,
+        parse_json_file: JsonFileParser,
+        stdin_text: StdinText,
     ) -> None:
         """
         Test that running :func:`main` with the ``load`` file command works.
         """
         output_path = tmp_path / 'output.json'
-        monkeypatch.setattr(
-            sys,
-            'stdin',
-            io.StringIO('{"name": "John", "age": 30}'),
-        )
+        stdin_text('{"name": "John", "age": 30}')
         code, _out, _err = cli_invoke(
             ('load', str(output_path)),
         )
         assert code == 0
-        assert output_path.exists()
+        assert parse_json_file(output_path) == {'name': 'John', 'age': 30}
 
     def test_main_no_command(self, cli_invoke: CliInvoke) -> None:
         """Test that running :func:`main` with no command shows usage."""
@@ -289,7 +314,7 @@ class TestCliEndToEnd:
         )
         assert code == 0
         output = parse_json_output(out)
-        assert len(output) == 1 and 'age' not in output[0]
+        assert output == [{'name': 'John'}]
 
     def test_main_validate_data(
         self,
@@ -302,4 +327,9 @@ class TestCliEndToEnd:
         json_data = '{"name": "John", "age": 30}'
         code, out, _err = cli_invoke(('validate', json_data))
         assert code == 0
-        assert parse_json_output(out)['valid'] is True
+        assert parse_json_output(out) == {
+            'valid': True,
+            'errors': [],
+            'field_errors': {},
+            'data': {'name': 'John', 'age': 30},
+        }

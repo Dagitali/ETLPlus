@@ -71,13 +71,6 @@ class SmokeRoundtripModuleContract:
     expect_write_error: type[Exception] | None = None
     error_match: str | None = None
 
-    def smoke_file_name(self) -> str:
-        """Return the integration smoke-file name for this module."""
-        if self.file_name is not None:
-            return self.file_name
-        suffix = resolve_module_handler(self.module).format.value
-        return f'data.{suffix}'
-
     def test_roundtrip_smoke(
         self,
         tmp_path: Path,
@@ -85,7 +78,11 @@ class SmokeRoundtripModuleContract:
         sample_records: JSONList,
     ) -> None:
         """Test that read/write can be invoked with minimal payloads."""
-        path = tmp_path / self.smoke_file_name()
+        file_name = self.file_name
+        if file_name is None:
+            suffix = resolve_module_handler(self.module).format.value
+            file_name = f'data.{suffix}'
+        path = tmp_path / file_name
         payload: object
         if self.payload is not None:
             payload = self.payload

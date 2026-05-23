@@ -16,19 +16,42 @@ Notes
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 import pytest
 
-from etlplus import Config
 from etlplus.api import RateLimitConfig
 
-from .conftest import FakeEndpointClientProtocol
+from .conftest import FakeEndpointClients
+from .conftest import PipelineCfgFactory
+from .conftest import RunPatched
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+RATE_LIMIT_SLEEP_CASES = (
+    pytest.param(
+        RateLimitConfig(sleep_seconds=0.5, max_per_sec=None),
+        None,
+        0.5,
+        id='sleep-seconds-direct',
+    ),
+    pytest.param(
+        RateLimitConfig(sleep_seconds=None, max_per_sec=4),
+        1.23,
+        1.23,
+        id='max-per-sec-computed',
+    ),
+    pytest.param(
+        RateLimitConfig(sleep_seconds=0.2, max_per_sec=10),
+        None,
+        0.2,
+        id='sleep-seconds-wins',
+    ),
+    pytest.param(None, None, 0.0, id='no-defaults-fallback-zero'),
+)
 
 # SECTION: TESTS ============================================================ #
 
@@ -37,32 +60,14 @@ class TestRunProfileRateLimitDefaults:
     """Integration tests for profile-level rate limit defaults."""
 
     @pytest.mark.parametrize(
-        'rate_cfg,forced_sleep,expected_sleep',
-        [
-            # Explicit sleep_seconds should propagate directly
-            (RateLimitConfig(sleep_seconds=0.5, max_per_sec=None), None, 0.5),
-            # max_per_sec path: runner computes (we force via run_patched)
-            (RateLimitConfig(sleep_seconds=None, max_per_sec=4), 1.23, 1.23),
-            # Both provided: explicit sleep_seconds wins
-            (RateLimitConfig(sleep_seconds=0.2, max_per_sec=10), None, 0.2),
-            # No defaults: expect fallback to 0.0
-            (None, None, 0.0),
-        ],
-        ids=[
-            'sleep_seconds_direct',
-            'max_per_sec_compute',
-            'both_values_sleep_wins',
-            'no_defaults_fallback_zero',
-        ],
+        ('rate_cfg', 'forced_sleep', 'expected_sleep'),
+        RATE_LIMIT_SLEEP_CASES,
     )
     def test_profile_rate_limit_sleep_propagation(
         self,
-        pipeline_cfg_factory: Callable[..., Config],
-        fake_endpoint_client: tuple[
-            type[FakeEndpointClientProtocol],
-            list[FakeEndpointClientProtocol],
-        ],
-        run_patched: Callable[..., dict[str, Any]],
+        pipeline_cfg_factory: PipelineCfgFactory,
+        fake_endpoint_client: FakeEndpointClients,
+        run_patched: RunPatched,
         rate_cfg: RateLimitConfig | None,
         forced_sleep: float | None,
         expected_sleep: float,
@@ -72,11 +77,7 @@ class TestRunProfileRateLimitDefaults:
 
         fake_client, created = fake_endpoint_client
         result = run_patched(cfg, fake_client, sleep_seconds=forced_sleep)
-        # Sanity.
+
         assert result.get('status') == 'ok'
         assert created, 'Expected client to be constructed'
-
-        # With only profile rate_limit defaults (sleep_seconds=0.5), the
-        # computed sleep_seconds should reach the client.
-        seen_sleep = created[0].seen.get('sleep_seconds')
-        assert seen_sleep == expected_sleep
+        assert created[0].seen.get('sleep_seconds') == expected_sleep
