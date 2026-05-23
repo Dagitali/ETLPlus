@@ -16,6 +16,8 @@ import pytest
 
 from etlplus.file import File
 from etlplus.file import FileFormat
+from tests.integration.conftest import REMOTE_STORAGE_ENV_CASES
+from tests.integration.conftest import REMOTE_STORAGE_ENV_IDS
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -474,12 +476,9 @@ class TestCliValidate:
         assert payload['valid'] is True
 
     @pytest.mark.parametrize(
-        ('env_name', 'backend_label'),
-        [
-            ('ETLPLUS_TEST_S3_URI', 's3'),
-            ('ETLPLUS_TEST_AZURE_BLOB_URI', 'azure-blob'),
-        ],
-        ids=['s3', 'azure-blob'],
+        'env_name',
+        REMOTE_STORAGE_ENV_CASES,
+        ids=REMOTE_STORAGE_ENV_IDS,
     )
     def test_stdin_payload_to_real_remote_output(
         self,
@@ -490,10 +489,8 @@ class TestCliValidate:
         real_remote_target_factory: RealRemoteTargetFactory,
         monkeypatch: pytest.MonkeyPatch,
         env_name: str,
-        backend_label: str,
     ) -> None:
         """Test validating STDIN data into a real cloud-backed target."""
-        del backend_label
         target = real_remote_target_factory(env_name, suffix='validate-real')
         monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
 
