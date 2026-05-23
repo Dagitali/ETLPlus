@@ -41,6 +41,7 @@ def _project_ids(
     """Return the transform result expected from the shared select operation."""
     return [{'id': record['id']} for record in records]
 
+
 # SECTION: TESTS ============================================================ #
 
 
