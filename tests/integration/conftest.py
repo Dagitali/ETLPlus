@@ -110,10 +110,9 @@ class RemoteStorageHarness:
 
 
 REMOTE_STORAGE_ENV_CASES = (
-    'ETLPLUS_TEST_S3_URI',
-    'ETLPLUS_TEST_AZURE_BLOB_URI',
+    pytest.param('ETLPLUS_TEST_S3_URI', id='s3'),
+    pytest.param('ETLPLUS_TEST_AZURE_BLOB_URI', id='azure-blob'),
 )
-REMOTE_STORAGE_ENV_IDS = ('s3', 'azure-blob')
 
 
 def child_uri(base_uri: str, filename: str) -> str:
