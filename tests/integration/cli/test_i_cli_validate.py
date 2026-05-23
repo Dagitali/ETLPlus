@@ -34,6 +34,67 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 
 pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
+# SECTION: CONSTANTS ======================================================== #
+
+
+FRICTIONLESS_SCHEMA_PERSON = '\n'.join(
+    [
+        '{',
+        '  "fields": [',
+        '    {"name": "name", "type": "string"},',
+        '    {"name": "age", "type": "integer"}',
+        '  ]',
+        '}',
+    ],
+)
+JSON_SCHEMA_PERSON = '\n'.join(
+    [
+        '{',
+        '  "type": "object",',
+        '  "properties": {"name": {"type": "string"}},',
+        '  "required": ["name"]',
+        '}',
+    ],
+)
+JSON_SCHEMA_PERSON_WITH_AGE = '\n'.join(
+    [
+        '{',
+        '  "type": "object",',
+        '  "properties": {',
+        '    "name": {"type": "string"},',
+        '    "age": {"type": "integer", "minimum": 0}',
+        '  },',
+        '  "required": ["name", "age"]',
+        '}',
+    ],
+)
+XML_NOTE_PAYLOAD = '<note><title>Hello</title></note>'
+XSD_NOTE_SCHEMA = '\n'.join(
+    [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">',
+        '  <xs:element name="note">',
+        '    <xs:complexType>',
+        '      <xs:sequence>',
+        '        <xs:element name="title" type="xs:string" />',
+        '      </xs:sequence>',
+        '    </xs:complexType>',
+        '  </xs:element>',
+        '</xs:schema>',
+    ],
+)
+
+# SECTION: HELPERS ========================================================== #
+
+
+def _assert_valid_schema_result(payload: dict[str, object]) -> None:
+    """Assert the standard successful schema-validation result payload."""
+    assert payload['valid'] is True
+    assert payload['errors'] == []
+    assert payload['field_errors'] == {}
+    assert payload['data'] is None
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -51,19 +112,7 @@ class TestCliValidate:
         source_path = tmp_path / 'sample.csv'
         schema_path = tmp_path / 'schema.json'
         source_path.write_text('name,age\nAda,37\n', encoding='utf-8')
-        schema_path.write_text(
-            '\n'.join(
-                [
-                    '{',
-                    '  "fields": [',
-                    '    {"name": "name", "type": "string"},',
-                    '    {"name": "age", "type": "integer"}',
-                    '  ]',
-                    '}',
-                ],
-            ),
-            encoding='utf-8',
-        )
+        schema_path.write_text(FRICTIONLESS_SCHEMA_PERSON, encoding='utf-8')
 
         code, out, err = cli_invoke(
             (
@@ -79,10 +128,7 @@ class TestCliValidate:
         assert code == 0
         assert err.strip() == ''
         payload = parse_json_output(out)
-        assert payload['valid'] is True
-        assert payload['errors'] == []
-        assert payload['field_errors'] == {}
-        assert payload['data'] is None
+        _assert_valid_schema_result(payload)
 
     def test_frictionless_validation_for_csv_stdin(
         self,
@@ -94,19 +140,7 @@ class TestCliValidate:
         """Schema mode should honor the source format hint for CSV STDIN."""
         pytest.importorskip('frictionless')
         schema_path = tmp_path / 'schema.json'
-        schema_path.write_text(
-            '\n'.join(
-                [
-                    '{',
-                    '  "fields": [',
-                    '    {"name": "name", "type": "string"},',
-                    '    {"name": "age", "type": "integer"}',
-                    '  ]',
-                    '}',
-                ],
-            ),
-            encoding='utf-8',
-        )
+        schema_path.write_text(FRICTIONLESS_SCHEMA_PERSON, encoding='utf-8')
         monkeypatch.setattr(sys, 'stdin', io.StringIO('name,age\nAda,37\n'))
 
         code, out, err = cli_invoke(
@@ -125,10 +159,7 @@ class TestCliValidate:
         assert code == 0
         assert err.strip() == ''
         payload = parse_json_output(out)
-        assert payload['valid'] is True
-        assert payload['errors'] == []
-        assert payload['field_errors'] == {}
-        assert payload['data'] is None
+        _assert_valid_schema_result(payload)
 
     def test_frictionless_validation_for_csv_constraint_failures(
         self,
@@ -201,18 +232,7 @@ class TestCliValidate:
         source_path = tmp_path / 'sample.json'
         schema_path = tmp_path / 'schema.json'
         source_path.write_text('{"name": "Ada"}', encoding='utf-8')
-        schema_path.write_text(
-            '\n'.join(
-                [
-                    '{',
-                    '  "type": "object",',
-                    '  "properties": {"name": {"type": "string"}},',
-                    '  "required": ["name"]',
-                    '}',
-                ],
-            ),
-            encoding='utf-8',
-        )
+        schema_path.write_text(JSON_SCHEMA_PERSON, encoding='utf-8')
 
         code, out, err = cli_invoke(
             (
@@ -228,10 +248,7 @@ class TestCliValidate:
         assert code == 0
         assert err.strip() == ''
         payload = parse_json_output(out)
-        assert payload['valid'] is True
-        assert payload['errors'] == []
-        assert payload['field_errors'] == {}
-        assert payload['data'] is None
+        _assert_valid_schema_result(payload)
 
     def test_jsonschema_validation_for_yaml_stdin(
         self,
@@ -243,21 +260,7 @@ class TestCliValidate:
         """Schema mode should honor the source format hint for YAML STDIN."""
         pytest.importorskip('jsonschema')
         schema_path = tmp_path / 'schema.json'
-        schema_path.write_text(
-            '\n'.join(
-                [
-                    '{',
-                    '  "type": "object",',
-                    '  "properties": {',
-                    '    "name": {"type": "string"},',
-                    '    "age": {"type": "integer", "minimum": 0}',
-                    '  },',
-                    '  "required": ["name", "age"]',
-                    '}',
-                ],
-            ),
-            encoding='utf-8',
-        )
+        schema_path.write_text(JSON_SCHEMA_PERSON_WITH_AGE, encoding='utf-8')
         monkeypatch.setattr(sys, 'stdin', io.StringIO('name: Ada\nage: 37\n'))
 
         code, out, err = cli_invoke(
@@ -276,10 +279,7 @@ class TestCliValidate:
         assert code == 0
         assert err.strip() == ''
         payload = parse_json_output(out)
-        assert payload['valid'] is True
-        assert payload['errors'] == []
-        assert payload['field_errors'] == {}
-        assert payload['data'] is None
+        _assert_valid_schema_result(payload)
 
     def test_jsonschema_validation_infers_format_for_json_file(
         self,
@@ -372,27 +372,8 @@ class TestCliValidate:
         pytest.importorskip('lxml.etree')
         xml_path = tmp_path / 'sample.xml'
         xsd_path = tmp_path / 'sample.xsd'
-        xml_path.write_text(
-            '<note><title>Hello</title></note>',
-            encoding='utf-8',
-        )
-        xsd_path.write_text(
-            '\n'.join(
-                [
-                    '<?xml version="1.0" encoding="UTF-8"?>',
-                    '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">',
-                    '  <xs:element name="note">',
-                    '    <xs:complexType>',
-                    '      <xs:sequence>',
-                    '        <xs:element name="title" type="xs:string" />',
-                    '      </xs:sequence>',
-                    '    </xs:complexType>',
-                    '  </xs:element>',
-                    '</xs:schema>',
-                ],
-            ),
-            encoding='utf-8',
-        )
+        xml_path.write_text(XML_NOTE_PAYLOAD, encoding='utf-8')
+        xsd_path.write_text(XSD_NOTE_SCHEMA, encoding='utf-8')
 
         code, out, err = cli_invoke(
             ('validate', '--schema', str(xsd_path), str(xml_path)),
@@ -401,10 +382,7 @@ class TestCliValidate:
         assert code == 0
         assert err.strip() == ''
         payload = parse_json_output(out)
-        assert payload['valid'] is True
-        assert payload['errors'] == []
-        assert payload['field_errors'] == {}
-        assert payload['data'] is None
+        _assert_valid_schema_result(payload)
 
     def test_schema_validation_output_file(
         self,
@@ -416,27 +394,8 @@ class TestCliValidate:
         xml_path = tmp_path / 'sample.xml'
         xsd_path = tmp_path / 'sample.xsd'
         output_path = tmp_path / 'validation.json'
-        xml_path.write_text(
-            '<note><title>Hello</title></note>',
-            encoding='utf-8',
-        )
-        xsd_path.write_text(
-            '\n'.join(
-                [
-                    '<?xml version="1.0" encoding="UTF-8"?>',
-                    '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">',
-                    '  <xs:element name="note">',
-                    '    <xs:complexType>',
-                    '      <xs:sequence>',
-                    '        <xs:element name="title" type="xs:string" />',
-                    '      </xs:sequence>',
-                    '    </xs:complexType>',
-                    '  </xs:element>',
-                    '</xs:schema>',
-                ],
-            ),
-            encoding='utf-8',
-        )
+        xml_path.write_text(XML_NOTE_PAYLOAD, encoding='utf-8')
+        xsd_path.write_text(XSD_NOTE_SCHEMA, encoding='utf-8')
 
         code, out, err = cli_invoke(
             (
