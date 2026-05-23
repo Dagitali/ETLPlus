@@ -28,7 +28,7 @@ import requests  # type: ignore[import]
 from etlplus.api._auth import CLOCK_SKEW_SEC
 from etlplus.api._auth import EndpointCredentialsBearer
 
-from ...conftest import RequestFactory
+from ...pytest_shared_support import RequestFactory
 
 # SECTION: PRAGMAS ========================================================== #
 
