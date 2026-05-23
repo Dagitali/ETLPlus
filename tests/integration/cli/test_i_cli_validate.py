@@ -47,6 +47,22 @@ FRICTIONLESS_SCHEMA_PERSON = '\n'.join(
         '}',
     ],
 )
+FRICTIONLESS_SCHEMA_CONTACT_CONSTRAINTS = '\n'.join(
+    [
+        '{',
+        '  "fields": [',
+        (
+            '    {"name": "email", "type": "string", "constraints": '
+            '{"required": true, "unique": true}},'
+        ),
+        (
+            '    {"name": "status", "type": "string", "constraints": '
+            '{"required": true, "enum": ["active", "inactive"]}}'
+        ),
+        '  ]',
+        '}',
+    ],
+)
 JSON_SCHEMA_PERSON = '\n'.join(
     [
         '{',
@@ -176,22 +192,7 @@ class TestCliValidate:
             encoding='utf-8',
         )
         schema_path.write_text(
-            '\n'.join(
-                [
-                    '{',
-                    '  "fields": [',
-                    (
-                        '    {"name": "email", "type": "string", "constraints": '
-                        '{"required": true, "unique": true}},'
-                    ),
-                    (
-                        '    {"name": "status", "type": "string", "constraints": '
-                        '{"required": true, "enum": ["active", "inactive"]}}'
-                    ),
-                    '  ]',
-                    '}',
-                ],
-            ),
+            FRICTIONLESS_SCHEMA_CONTACT_CONSTRAINTS,
             encoding='utf-8',
         )
 
