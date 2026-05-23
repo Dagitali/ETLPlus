@@ -46,53 +46,70 @@ STALE_PENDING_SUPPORT_PHRASES = (
     'not yet a supported',
     'repeat the recipe build/test',
 )
-CONDA_PLATFORM_ISOLATION_SNIPPETS = (
-    'isolate macOS or Windows runs',
-    'pins `micromamba` and `conda-build=25`',
-    '`platform_scope: macos`',
-    '`platform_scope: windows`',
-    '`platform_scope: all`',
-)
-CONDA_STAGED_RECIPE_SUBMISSION_SNIPPETS = tuple(
+CONDA_TEXT_SNIPPET_CASES = tuple(
     pytest.param(path, snippet, id=f'{path.name}:{snippet}')
     for path, snippet in (
+        (CONDA_PREP_PATH, 'isolate macOS or Windows runs'),
+        (CONDA_PREP_PATH, 'pins `micromamba` and `conda-build=25`'),
+        (CONDA_PREP_PATH, '`platform_scope: macos`'),
+        (CONDA_PREP_PATH, '`platform_scope: windows`'),
+        (CONDA_PREP_PATH, '`platform_scope: all`'),
         (CONDA_README_PATH, 'STAGED-RECIPES-SUBMISSION.md'),
         (CONDA_PREP_PATH, 'STAGED-RECIPES-SUBMISSION.md'),
         (CONDA_SUBMISSION_PATH, '`conda-forge/staged-recipes`'),
         (CONDA_SUBMISSION_PATH, 'recipes/etlplus/meta.yaml'),
         (CONDA_SUBMISSION_PATH, 'released-version-without-leading-v'),
-    )
-)
-CONDA_TEMPLATE_SOURCE_SNIPPETS = tuple(
-    pytest.param(path, snippet, id=f'{path.name}:{snippet}')
-    for path, snippet in (
         (CONDA_README_PATH, 'meta.yaml.j2'),
         (CONDA_PREP_PATH, 'meta.yaml.j2'),
         (CONDA_SUBMISSION_PATH, 'meta.yaml.j2'),
         (CONDA_README_PATH, 'tools/render_conda_recipe.py'),
         (CONDA_PREP_PATH, 'tools/render_conda_recipe.py'),
         (CONDA_SUBMISSION_PATH, 'tools/render_conda_recipe.py'),
-    )
-)
-CONDA_NAME_MAPPING_SNIPPETS = tuple(
-    pytest.param(path, snippet, id=f'{path.name}:{snippet}')
-    for path, snippet in (
         (CONDA_RECIPE_PATH, 'msgpack-python >=1.0.8'),
         (CONDA_PREP_PATH, '`msgpack>=1.0.8` | `msgpack-python >=1.0.8`'),
         (CONDA_PREP_PATH, '`PyYAML>=6.0.3` | `pyyaml >=6.0.3`'),
         (CONDA_PREP_PATH, '`SQLAlchemy>=2.0.45` | `sqlalchemy >=2.0.45`'),
+        (CONDA_RECIPE_PATH, '<release-version>'),
+        (CONDA_RECIPE_PATH, '<sdist-sha256>'),
+        (CONDA_RECIPE_PATH, '<maintainer-github-handle>'),
+        (CONDA_RECIPE_PATH, 'etlplus = etlplus.cli:main'),
+        (CONDA_RECIPE_PATH, 'etlplus --version'),
+        (CONDA_RECIPE_PATH, 'etlplus --help'),
+        (CONDA_RECIPE_PATH, 'etlplus check --help'),
+        (CONDA_WORKFLOW_PATH, 'workflow_dispatch:'),
+        (CONDA_WORKFLOW_PATH, 'default: linux'),
+        (CONDA_WORKFLOW_PATH, 'source_mode:'),
+        (CONDA_WORKFLOW_PATH, 'tagged-sdist'),
+        (CONDA_WORKFLOW_PATH, 'release_version'),
+        (CONDA_WORKFLOW_PATH, 'sdist_sha256'),
+        (
+            CONDA_WORKFLOW_PATH,
+            'tagged-sdist validation requires release_version and sdist_sha256',
+        ),
+        (CONDA_WORKFLOW_PATH, 'ubuntu-latest'),
+        (CONDA_WORKFLOW_PATH, 'macos-latest'),
+        (CONDA_WORKFLOW_PATH, 'windows-latest'),
+        (CONDA_WORKFLOW_PATH, '- macos'),
+        (CONDA_WORKFLOW_PATH, '- windows'),
+        (CONDA_WORKFLOW_PATH, "inputs.platform_scope == 'all'"),
+        (CONDA_WORKFLOW_PATH, "inputs.platform_scope == 'macos'"),
+        (CONDA_WORKFLOW_PATH, "inputs.platform_scope == 'windows'"),
+        (CONDA_WORKFLOW_PATH, "MICROMAMBA_VERSION: '2.0.5-0'"),
+        (CONDA_WORKFLOW_PATH, 'micromamba-version: ${{ env.MICROMAMBA_VERSION }}'),
+        (CONDA_WORKFLOW_PATH, 'conda-build=25'),
+        (CONDA_WORKFLOW_PATH, 'Diagnose conda tooling'),
+        (CONDA_WORKFLOW_PATH, 'micromamba --version'),
+        (CONDA_WORKFLOW_PATH, 'conda-build --version'),
+        (CONDA_WORKFLOW_PATH, 'conda info'),
+        (CONDA_WORKFLOW_PATH, 'tools/render_conda_recipe.py'),
+        (CONDA_WORKFLOW_PATH, 'conda-build "${RUNNER_TEMP}/etlplus-conda-recipe"'),
+        (CONDA_SUBMISSION_PATH, 'broad base PyPI runtime contract'),
+        (CONDA_SUBMISSION_PATH, 'Do not add optional extras to the first recipe'),
+        (
+            CONDA_SUBMISSION_PATH,
+            'Preserve the dependency mappings documented in `FEEDSTOCK-PREP.md`',
+        ),
     )
-)
-CONDA_RECIPE_PLACEHOLDERS = (
-    '<release-version>',
-    '<sdist-sha256>',
-    '<maintainer-github-handle>',
-)
-CONDA_RECIPE_CLI_SNIPPETS = (
-    'etlplus = etlplus.cli:main',
-    'etlplus --version',
-    'etlplus --help',
-    'etlplus check --help',
 )
 CONDA_VALIDATED_STATUS_PATHS = tuple(
     pytest.param(path, id=path.name) for path in (CONDA_README_PATH, CONDA_PREP_PATH)
@@ -102,32 +119,6 @@ CONDA_VALIDATED_STATUS_SNIPPETS = (
     'linux, macos, and windows',
     'feedstock',
     'accept',
-)
-CONDA_WORKFLOW_REQUIRED_SNIPPETS = (
-    'workflow_dispatch:',
-    'default: linux',
-    'source_mode:',
-    'tagged-sdist',
-    'release_version',
-    'sdist_sha256',
-    'tagged-sdist validation requires release_version and sdist_sha256',
-    'ubuntu-latest',
-    'macos-latest',
-    'windows-latest',
-    '- macos',
-    '- windows',
-    "inputs.platform_scope == 'all'",
-    "inputs.platform_scope == 'macos'",
-    "inputs.platform_scope == 'windows'",
-    "MICROMAMBA_VERSION: '2.0.5-0'",
-    'micromamba-version: ${{ env.MICROMAMBA_VERSION }}',
-    'conda-build=25',
-    'Diagnose conda tooling',
-    'micromamba --version',
-    'conda-build --version',
-    'conda info',
-    'tools/render_conda_recipe.py',
-    'conda-build "${RUNNER_TEMP}/etlplus-conda-recipe"',
 )
 
 
@@ -183,74 +174,18 @@ def _conda_runtime_requirement(requirement: str) -> str:
 # SECTION: TESTS ============================================================ #
 
 
-@pytest.mark.parametrize('snippet', CONDA_PLATFORM_ISOLATION_SNIPPETS)
-def test_conda_docs_reference_platform_isolation_options(snippet: str) -> None:
-    """Test conda docs explain platform-specific validation dispatch options."""
-    prep_text = CONDA_PREP_PATH.read_text(encoding='utf-8')
-
-    assert snippet in prep_text
-
-
 @pytest.mark.parametrize(
     ('path', 'snippet'),
-    CONDA_STAGED_RECIPE_SUBMISSION_SNIPPETS,
+    CONDA_TEXT_SNIPPET_CASES,
 )
-def test_conda_docs_reference_staged_recipes_submission_path(
+def test_conda_packaging_files_preserve_required_snippets(
     path: Path,
     snippet: str,
 ) -> None:
-    """Test conda docs point maintainers at the staged-recipes submission path."""
+    """Test conda packaging docs, recipe, and workflow keep required snippets."""
     text = path.read_text(encoding='utf-8')
 
     assert snippet in text
-
-
-@pytest.mark.parametrize(
-    ('path', 'snippet'),
-    CONDA_TEMPLATE_SOURCE_SNIPPETS,
-)
-def test_conda_docs_reference_template_recipe_source(
-    path: Path,
-    snippet: str,
-) -> None:
-    """Test conda docs point maintainers at the Jinja recipe source."""
-    text = path.read_text(encoding='utf-8')
-
-    assert snippet in text
-
-
-@pytest.mark.parametrize(
-    ('path', 'snippet'),
-    CONDA_NAME_MAPPING_SNIPPETS,
-)
-def test_conda_recipe_documents_expected_name_mappings(
-    path: Path,
-    snippet: str,
-) -> None:
-    """Test the known PyPI-to-conda package name differences are explicit."""
-    text = path.read_text(encoding='utf-8')
-
-    assert snippet in text
-
-
-@pytest.mark.parametrize('placeholder', CONDA_RECIPE_PLACEHOLDERS)
-def test_conda_recipe_keeps_feedstock_placeholders_explicit(
-    placeholder: str,
-) -> None:
-    """Test release-specific feedstock values remain obvious placeholders."""
-    recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
-
-    assert placeholder in recipe_text
-
-
-@pytest.mark.parametrize('snippet', CONDA_RECIPE_CLI_SNIPPETS)
-def test_conda_recipe_preserves_cli_entrypoint_and_smoke_commands(
-    snippet: str,
-) -> None:
-    """Test the candidate feedstock recipe exposes and verifies the ETLPlus CLI."""
-    recipe_text = CONDA_RECIPE_PATH.read_text(encoding='utf-8')
-
-    assert snippet in recipe_text
 
 
 def test_conda_recipe_render_helper_replaces_release_placeholders(
@@ -358,16 +293,6 @@ def test_conda_recipe_render_helper_supports_local_source_path(
     assert '  sha256: ' not in rendered
 
 
-@pytest.mark.parametrize('snippet', CONDA_WORKFLOW_REQUIRED_SNIPPETS)
-def test_conda_recipe_validation_workflow_is_manual_linux_first(
-    snippet: str,
-) -> None:
-    """Test conda recipe CI remains manual and Linux-first by default."""
-    workflow_text = CONDA_WORKFLOW_PATH.read_text(encoding='utf-8')
-
-    assert snippet in workflow_text
-
-
 def test_conda_status_docs_do_not_regress_to_pending_support_gate() -> None:
     """Test conda docs no longer describe completed validation as pending."""
     stale_hits: list[str] = []
@@ -396,14 +321,3 @@ def test_conda_status_docs_record_validated_but_unpublished_state(
     for snippet in CONDA_VALIDATED_STATUS_SNIPPETS:
         assert snippet in text
     assert 'publication' in text or 'published' in text
-
-
-def test_conda_submission_docs_preserve_base_recipe_scope() -> None:
-    """Test staged-recipes docs preserve the base-only feedstock scope."""
-    submission_text = CONDA_SUBMISSION_PATH.read_text(encoding='utf-8')
-
-    assert 'broad base PyPI runtime contract' in submission_text
-    assert 'Do not add optional extras to the first recipe' in submission_text
-    assert 'Preserve the dependency mappings documented in `FEEDSTOCK-PREP.md`' in (
-        submission_text
-    )
