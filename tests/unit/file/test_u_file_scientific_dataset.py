@@ -27,13 +27,10 @@ from etlplus.file.stub import StubFileHandlerABC
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_SCIENTIFIC_STUB_MODULES: tuple[
-    tuple[type[ScientificDatasetFileHandlerABC], str],
-    ...,
-] = (
-    (mat_mod.MatFile, 'mat'),
-    (sylk_mod.SylkFile, 'sylk'),
-    (zsav_mod.ZsavFile, 'zsav'),
+_SCIENTIFIC_STUB_MODULES: tuple[object, ...] = (
+    pytest.param((mat_mod.MatFile, 'mat'), id='mat'),
+    pytest.param((sylk_mod.SylkFile, 'sylk'), id='sylk'),
+    pytest.param((zsav_mod.ZsavFile, 'zsav'), id='zsav'),
 )
 
 
@@ -51,7 +48,6 @@ type ScientificModuleCase = tuple[
 @pytest.fixture(
     name='scientific_module_case',
     params=_SCIENTIFIC_STUB_MODULES,
-    ids=[case[1] for case in _SCIENTIFIC_STUB_MODULES],
 )
 def scientific_module_case_fixture(
     request: pytest.FixtureRequest,
@@ -88,20 +84,32 @@ class TestScientificStubDatasetKeys:
     @pytest.mark.parametrize(
         ('operation', 'method_name', 'selector_mode'),
         [
-            ('read', 'read_dataset', 'dataset_kwarg'),
-            ('write', 'write_dataset', 'dataset_kwarg'),
-            ('read', 'read_dataset', 'options'),
-            ('write', 'write_dataset', 'options'),
-            ('read', 'read', 'options'),
-            ('write', 'write', 'options'),
-        ],
-        ids=[
-            'read_dataset+dataset',
-            'write_dataset+dataset',
-            'read_dataset+options',
-            'write_dataset+options',
-            'read+options',
-            'write+options',
+            pytest.param(
+                'read',
+                'read_dataset',
+                'dataset_kwarg',
+                id='read_dataset+dataset',
+            ),
+            pytest.param(
+                'write',
+                'write_dataset',
+                'dataset_kwarg',
+                id='write_dataset+dataset',
+            ),
+            pytest.param(
+                'read',
+                'read_dataset',
+                'options',
+                id='read_dataset+options',
+            ),
+            pytest.param(
+                'write',
+                'write_dataset',
+                'options',
+                id='write_dataset+options',
+            ),
+            pytest.param('read', 'read', 'options', id='read+options'),
+            pytest.param('write', 'write', 'options', id='write+options'),
         ],
     )
     def test_methods_reject_unknown_dataset_key_before_stub_io(

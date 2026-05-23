@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.cli._commands._state`.
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import nullcontext
 from pathlib import Path
 from typing import TypedDict
 
@@ -22,7 +23,7 @@ import etlplus.cli._commands.run as run_mod
 import etlplus.cli._commands.transform as transform_mod
 import etlplus.cli._commands.validate as validate_mod
 
-from ...conftest import CaptureHandler
+from ...pytest_shared_support import CaptureHandler
 from .conftest import InvokeCli
 from .conftest import TyperContextFactory
 from .conftest import assert_mapping_contains
@@ -46,60 +47,145 @@ class _ResolveResourceTypeKwargs(TypedDict, total=False):
     legacy_file_error: str | None
 
 
+# SECTION: CONSTANTS ======================================================== #
+
+
+COMMAND_STATE_CASES = (
+    pytest.param(
+        extract_mod,
+        'extract_handler',
+        ('extract', '/path/to/file.csv', '--source-format', 'csv'),
+        {
+            'source': '/path/to/file.csv',
+            'source_format': 'csv',
+            'format_explicit': True,
+        },
+        id='extract-file-format',
+    ),
+    pytest.param(
+        extract_mod,
+        'extract_handler',
+        (
+            '--no-pretty',
+            '--quiet',
+            'extract',
+            '--source-type',
+            'api',
+            'https://example.com/data.json',
+        ),
+        {
+            'source_type': 'api',
+            'source': 'https://example.com/data.json',
+            'pretty': False,
+        },
+        id='extract-api-quiet',
+    ),
+    pytest.param(
+        load_mod,
+        'load_handler',
+        ('load', '--target-type', 'file', '/path/to/out.json'),
+        {
+            'target': '/path/to/out.json',
+            'target_format': None,
+            'format_explicit': False,
+        },
+        id='load-file-target',
+    ),
+    pytest.param(
+        load_mod,
+        'load_handler',
+        ('load', '--target-format', 'csv', '/path/to/out.csv'),
+        {'target_format': 'csv', 'format_explicit': True},
+        id='load-explicit-target-format',
+    ),
+    pytest.param(
+        load_mod,
+        'load_handler',
+        ('load', '--target-type', 'database', 'postgres://db.example.org/app'),
+        {'source': '-', 'target': 'postgres://db.example.org/app'},
+        id='load-default-source',
+    ),
+    pytest.param(
+        render_mod,
+        'render_handler',
+        (
+            'render',
+            '--config',
+            'pipeline.yml',
+            '--table',
+            'Customers',
+            '--template',
+            'ddl',
+            '--output',
+            'out.sql',
+        ),
+        {
+            'config': 'pipeline.yml',
+            'table': 'Customers',
+            'template': 'ddl',
+            'output': 'out.sql',
+        },
+        id='render-table-ddl',
+    ),
+    pytest.param(
+        run_mod,
+        'run_handler',
+        ('run', '--config', 'p.yml', '--job', 'j1'),
+        {'config': 'p.yml', 'job': 'j1'},
+        id='run-config-job',
+    ),
+    pytest.param(
+        transform_mod,
+        'transform_handler',
+        (
+            'transform',
+            '/path/to/file.json',
+            '--operations',
+            '{"select": ["id"]}',
+        ),
+        {
+            'source': '/path/to/file.json',
+            'operations': {'select': ['id']},
+        },
+        id='transform-inline-ops',
+    ),
+    pytest.param(
+        transform_mod,
+        'transform_handler',
+        ('transform', '--source-format', 'csv'),
+        {'source_format': 'csv'},
+        id='transform-source-format',
+    ),
+    pytest.param(
+        validate_mod,
+        'validate_handler',
+        (
+            'validate',
+            '/path/to/file.json',
+            '--rules',
+            '{"required": ["id"]}',
+        ),
+        {
+            'source': '/path/to/file.json',
+            'rules': {'required': ['id']},
+        },
+        id='validate-inline-rules',
+    ),
+    pytest.param(
+        validate_mod,
+        'validate_handler',
+        ('validate', '--source-format', 'csv'),
+        {'source_format': 'csv'},
+        id='validate-source-format',
+    ),
+)
+
+
 # SECTION: TESTS ============================================================ #
 
 
-class TestCliExtractState:
-    """Unit test suite of command-line state tests for ``extract``."""
-
-    @pytest.mark.parametrize(
-        ('argv', 'expected'),
-        [
-            pytest.param(
-                ('extract', '/path/to/file.csv', '--source-format', 'csv'),
-                {
-                    'source': '/path/to/file.csv',
-                    'source_format': 'csv',
-                    'format_explicit': True,
-                },
-                id='extract-file-format',
-            ),
-            pytest.param(
-                (
-                    '--no-pretty',
-                    '--quiet',
-                    'extract',
-                    '--source-type',
-                    'api',
-                    'https://example.com/data.json',
-                ),
-                {
-                    'source_type': 'api',
-                    'source': 'https://example.com/data.json',
-                    'pretty': False,
-                },
-                id='extract-api-quiet',
-            ),
-        ],
-    )
-    def test_maps_namespace(
-        self,
-        invoke_cli: InvokeCli,
-        capture_handler: CaptureHandler,
-        argv: tuple[str, ...],
-        expected: dict[str, object],
-    ) -> None:
-        """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(extract_mod, 'extract_handler')
-
-        result = invoke_cli(*argv)
-
-        assert result.exit_code == 0
-        assert_mapping_contains(calls, expected)
-
-
-class TestCliLoadState:
-    """Unit test suite of command-line state tests for ``load``."""
+class TestCliCommandState:
+    """Unit test suite for command-line argument state mapping."""
 
     @pytest.mark.parametrize(
         ('argv', 'expected'),
@@ -136,175 +222,20 @@ class TestCliLoadState:
         assert expected in strip_ansi(result.output)
 
     @pytest.mark.parametrize(
-        ('argv', 'expected'),
-        [
-            pytest.param(
-                ('load', '--target-type', 'file', '/path/to/out.json'),
-                {
-                    'target': '/path/to/out.json',
-                    'target_format': None,
-                    'format_explicit': False,
-                },
-                id='load-file-target',
-            ),
-            pytest.param(
-                ('load', '--target-format', 'csv', '/path/to/out.csv'),
-                {'target_format': 'csv', 'format_explicit': True},
-                id='load-explicit-target-format',
-            ),
-            pytest.param(
-                (
-                    'load',
-                    '--target-type',
-                    'database',
-                    'postgres://db.example.org/app',
-                ),
-                {'source': '-', 'target': 'postgres://db.example.org/app'},
-                id='load-default-source',
-            ),
-        ],
+        ('handler_module', 'handler_name', 'argv', 'expected'),
+        COMMAND_STATE_CASES,
     )
     def test_maps_namespace(
         self,
         invoke_cli: InvokeCli,
         capture_handler: CaptureHandler,
+        handler_module: object,
+        handler_name: str,
         argv: tuple[str, ...],
         expected: dict[str, object],
     ) -> None:
         """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(load_mod, 'load_handler')
-
-        result = invoke_cli(*argv)
-
-        assert result.exit_code == 0
-        assert_mapping_contains(calls, expected)
-
-
-class TestCliRenderState:
-    """Unit test suite of command-line state tests for ``render``."""
-
-    def test_maps_namespace(
-        self,
-        invoke_cli: InvokeCli,
-        capture_handler: CaptureHandler,
-    ) -> None:
-        """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(render_mod, 'render_handler')
-
-        result = invoke_cli(
-            'render',
-            '--config',
-            'pipeline.yml',
-            '--table',
-            'Customers',
-            '--template',
-            'ddl',
-            '--output',
-            'out.sql',
-        )
-
-        assert result.exit_code == 0
-        assert calls['config'] == 'pipeline.yml'
-        assert calls['table'] == 'Customers'
-        assert calls['template'] == 'ddl'
-        assert calls['output'] == 'out.sql'
-
-
-class TestCliRunState:
-    """Unit test suite of command-line state tests for ``run``."""
-
-    def test_maps_flags(
-        self,
-        invoke_cli: InvokeCli,
-        capture_handler: CaptureHandler,
-    ) -> None:
-        """Test that CLI flags map to handler parameters correctly."""
-        calls = capture_handler(run_mod, 'run_handler')
-
-        result = invoke_cli('run', '--config', 'p.yml', '--job', 'j1')
-
-        assert result.exit_code == 0
-        assert calls['config'] == 'p.yml'
-        assert calls['job'] == 'j1'
-
-
-class TestCliTransformState:
-    """Unit test suite of command-line state tests for ``transform``."""
-
-    @pytest.mark.parametrize(
-        ('argv', 'expected'),
-        [
-            pytest.param(
-                (
-                    'transform',
-                    '/path/to/file.json',
-                    '--operations',
-                    '{"select": ["id"]}',
-                ),
-                {
-                    'source': '/path/to/file.json',
-                    'operations': {'select': ['id']},
-                },
-                id='transform-inline-ops',
-            ),
-            pytest.param(
-                ('transform', '--source-format', 'csv'),
-                {'source_format': 'csv'},
-                id='transform-source-format',
-            ),
-        ],
-    )
-    def test_maps_namespace(
-        self,
-        invoke_cli: InvokeCli,
-        capture_handler: CaptureHandler,
-        argv: tuple[str, ...],
-        expected: dict[str, object],
-    ) -> None:
-        """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(transform_mod, 'transform_handler')
-
-        result = invoke_cli(*argv)
-
-        assert result.exit_code == 0
-        assert_mapping_contains(calls, expected)
-
-
-class TestCliValidateState:
-    """Unit test suite of command-line state tests for ``validate``."""
-
-    @pytest.mark.parametrize(
-        ('argv', 'expected'),
-        [
-            pytest.param(
-                (
-                    'validate',
-                    '/path/to/file.json',
-                    '--rules',
-                    '{"required": ["id"]}',
-                ),
-                {
-                    'source': '/path/to/file.json',
-                    'rules': {'required': ['id']},
-                },
-                id='validate-inline-rules',
-            ),
-            pytest.param(
-                ('validate', '--source-format', 'csv'),
-                {'source_format': 'csv'},
-                id='validate-source-format',
-            ),
-        ],
-    )
-    def test_maps_namespace(
-        self,
-        invoke_cli: InvokeCli,
-        capture_handler: CaptureHandler,
-        argv: tuple[str, ...],
-        expected: dict[str, object],
-    ) -> None:
-        """Test that CLI args map to handler parameters correctly."""
-        calls = capture_handler(validate_mod, 'validate_handler')
+        calls = capture_handler(handler_module, handler_name)
 
         result = invoke_cli(*argv)
 
@@ -316,48 +247,30 @@ class TestCliHelp:
     """Unit test suite of command-line state tests for help text."""
 
     @pytest.mark.parametrize(
-        ('argv', 'expected'),
+        ('argv', 'expected_text'),
         [
-            pytest.param(('--help',), 'init', id='root-help'),
-            pytest.param((), 'ETLPlus', id='no-args'),
-            pytest.param(('--version',), etlplus.__version__, id='version'),
+            pytest.param(('--help',), ('init',), id='root-help'),
+            pytest.param((), ('ETLPlus',), id='no-args'),
+            pytest.param(('--version',), (etlplus.__version__,), id='version'),
+            pytest.param(('init', '--help'), ('PATH', '--force'), id='init-help'),
         ],
     )
     def test_global_output_contains_expected_text(
         self,
         invoke_cli: InvokeCli,
         argv: tuple[str, ...],
-        expected: str,
+        expected_text: tuple[str, ...],
     ) -> None:
         """Global help-like entrypoints should emit stable plain-text content."""
         result = invoke_cli(*argv)
-
-        assert result.exit_code == 0
-        assert expected in strip_ansi(result.stdout)
-
-    def test_init_help_prints_path_argument_and_force_option(
-        self,
-        invoke_cli: InvokeCli,
-    ) -> None:
-        """Test that ``init --help`` preserves the documented CLI surface."""
-        result = invoke_cli('init', '--help')
         stdout = strip_ansi(result.stdout)
+
         assert result.exit_code == 0
-        assert 'PATH' in stdout
-        assert '--force' in stdout
+        assert all(text in stdout for text in expected_text)
 
 
 class TestInferResourceType:
     """Unit tests for :meth:`ResourceTypeResolver.infer`."""
-
-    def test_file_path(self, tmp_path: Path) -> None:
-        """
-        Test that :meth:`ResourceTypeResolver.infer` detects local files via
-        extension parsing.
-        """
-        path = tmp_path / 'payload.csv'
-        path.write_text('a,b\n1,2\n', encoding='utf-8')
-        assert cli_state_mod.ResourceTypeResolver.infer(str(path)) == 'file'
 
     def test_invalid_raises(self) -> None:
         """
@@ -368,23 +281,37 @@ class TestInferResourceType:
             cli_state_mod.ResourceTypeResolver.infer('unknown-resource')
 
     @pytest.mark.parametrize(
-        ('raw', 'expected'),
+        ('raw', 'expected', 'touch_file'),
         [
-            ('-', 'file'),
-            ('https://example.com/data.json', 'api'),
-            ('postgres://user@host/db', 'database'),
+            pytest.param('-', 'file', False, id='stdin'),
+            pytest.param('payload.csv', 'file', True, id='local-file'),
+            pytest.param('https://example.com/data.json', 'api', False, id='api-url'),
+            pytest.param(
+                'postgres://user@host/db',
+                'database',
+                False,
+                id='database-url',
+            ),
         ],
     )
     def test_variants(
         self,
+        tmp_path: Path,
         raw: str,
         expected: str,
+        touch_file: bool,
     ) -> None:
         """
         Test that :meth:`ResourceTypeResolver.infer` classifies common resource
         inputs.
         """
-        assert cli_state_mod.ResourceTypeResolver.infer(raw) == expected
+        value = raw
+        if touch_file:
+            path = tmp_path / raw
+            path.write_text('a,b\n1,2\n', encoding='utf-8')
+            value = str(path)
+
+        assert cli_state_mod.ResourceTypeResolver.infer(value) == expected
 
 
 class TestCliStateHelpers:
@@ -646,60 +573,38 @@ class TestOptionalChoice:
     """Unit tests for :meth:`ResourceTypeResolver.optional_choice`."""
 
     @pytest.mark.parametrize(
-        ('choice', 'expected'),
+        ('choice', 'choices', 'expected'),
         [
-            pytest.param(
-                None,
-                None,
-                id='none',
-            ),
-            pytest.param(
-                'json',
-                'json',
-                id='valid',
-            ),
+            pytest.param(None, {'json', 'csv'}, None, id='none'),
+            pytest.param('json', {'json', 'csv'}, 'json', id='valid'),
+            pytest.param('yaml', {'json'}, typer.BadParameter, id='yaml'),
+            pytest.param('parquet', {'json'}, typer.BadParameter, id='parquet'),
         ],
     )
-    def test_passthrough_and_validation(
+    def test_optional_choice(
         self,
         choice: str | None,
-        expected: str | None,
+        choices: set[str],
+        expected: str | type[Exception] | None,
     ) -> None:
         """
-        Optional choice helpers should preserve ``None`` and normalize values.
+        Optional choice helpers should preserve ``None``, normalize valid
+        values, and reject invalid choices.
         """
-        assert (
-            cli_state_mod.ResourceTypeResolver.optional_choice(
-                choice,
-                {'json', 'csv'},
-                label='format',
-            )
-            == expected
+        expectation = (
+            pytest.raises(expected)
+            if isinstance(expected, type) and issubclass(expected, Exception)
+            else nullcontext(expected)
         )
 
-    @pytest.mark.parametrize(
-        ('invalid',),
-        [
-            pytest.param(
-                'yaml',
-                id='yaml',
-            ),
-            pytest.param(
-                'parquet',
-                id='parquet',
-            ),
-        ],
-    )
-    def test_rejects_invalid(
-        self,
-        invalid: str,
-    ) -> None:
-        """Invalid choices should raise :class:`typer.BadParameter`."""
-        with pytest.raises(typer.BadParameter):
-            cli_state_mod.ResourceTypeResolver.optional_choice(
-                invalid,
-                {'json'},
-                label='format',
+        with expectation as expected_value:
+            assert (
+                cli_state_mod.ResourceTypeResolver.optional_choice(
+                    choice,
+                    choices,
+                    label='format',
+                )
+                == expected_value
             )
 
     @pytest.mark.parametrize(

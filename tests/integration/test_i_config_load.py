@@ -1,5 +1,5 @@
 """
-:mod:`tests.integration.test_i_pipeline_yaml_load` module.
+:mod:`tests.integration.test_i_config_load` module.
 
 Pipeline YAML load integration test suite. Parametrized checks to ensure the
 repository pipeline YAML parses correctly with and without environment-
@@ -31,8 +31,10 @@ class TestConfigLoad:
 
     @pytest.mark.parametrize(
         'substitute',
-        (False, True),
-        ids=('raw-env-placeholders', 'resolved-env-placeholders'),
+        (
+            pytest.param(False, id='raw-env-placeholders'),
+            pytest.param(True, id='resolved-env-placeholders'),
+        ),
     )
     def test_load_repo_pipeline_yaml(
         self,

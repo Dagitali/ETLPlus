@@ -17,9 +17,9 @@ from etlplus.history import HistoryStore
 from etlplus.history import RunCompletion
 from etlplus.history import RunRecord
 from etlplus.history._store import JobRunRecord
-from tests.meta.pytest_meta_support import REPO_ROOT
-from tests.meta.pytest_meta_support import TextSnippetCase
-from tests.meta.pytest_meta_support import text_snippet_case_id
+from tests.pytest_shared_support import REPO_ROOT
+from tests.pytest_shared_support import STRUCTURED_EVENT_BASE_FIELDS
+from tests.pytest_shared_support import STRUCTURED_EVENT_LIFECYCLES
 
 # SECTION: MARKERS ========================================================== #
 
@@ -27,31 +27,11 @@ from tests.meta.pytest_meta_support import text_snippet_case_id
 pytestmark = [pytest.mark.meta, pytest.mark.contract]
 
 
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type HistoryShapeCase = tuple[dict[str, object], str, set[str]]
-
-
 # SECTION: CONSTANTS ======================================================== #
 
 
 EXPECTED_EVENT_SCHEMA = 'etlplus.event.v1'
 EXPECTED_EVENT_SCHEMA_VERSION = 1
-EXPECTED_EVENT_LIFECYCLES = {
-    'started',
-    'completed',
-    'failed',
-}
-EXPECTED_BASE_EVENT_FIELDS = {
-    'command',
-    'event',
-    'lifecycle',
-    'run_id',
-    'schema',
-    'schema_version',
-    'timestamp',
-}
 EXPECTED_NORMALIZED_RUN_FIELDS = {
     'config_path',
     'config_sha256',
@@ -90,19 +70,21 @@ EXPECTED_NORMALIZED_JOB_FIELDS = {
     'status',
 }
 
-STRUCTURED_EVENT_DOC_CASES: tuple[TextSnippetCase, ...] = (
-    (
+STRUCTURED_EVENT_DOC_CASES = (
+    pytest.param(
         REPO_ROOT / 'docs/source/guides/structured-events.md',
         'etlplus.event.v1',
+        id='structured-events-guide',
     ),
-    (
+    pytest.param(
         REPO_ROOT / 'docs/source/guides/index.md',
         'structured-events',
+        id='guides-index',
     ),
 )
 
-NORMALIZED_HISTORY_SHAPE_CASES: tuple[HistoryShapeCase, ...] = (
-    (
+NORMALIZED_HISTORY_SHAPE_CASES = (
+    pytest.param(
         {
             'record_level': 'job',
             'run_id': 'run-123',
@@ -112,8 +94,9 @@ NORMALIZED_HISTORY_SHAPE_CASES: tuple[HistoryShapeCase, ...] = (
         },
         'iter_job_runs',
         EXPECTED_NORMALIZED_JOB_FIELDS,
+        id='iter-job-runs',
     ),
-    (
+    pytest.param(
         {
             'record_level': 'run',
             'run_id': 'run-123',
@@ -121,10 +104,8 @@ NORMALIZED_HISTORY_SHAPE_CASES: tuple[HistoryShapeCase, ...] = (
         },
         'iter_runs',
         EXPECTED_NORMALIZED_RUN_FIELDS,
+        id='iter-runs',
     ),
-)
-NORMALIZED_HISTORY_SHAPE_IDS = tuple(
-    iterator_name for _, iterator_name, _ in NORMALIZED_HISTORY_SHAPE_CASES
 )
 
 
@@ -157,7 +138,7 @@ class _ContractHistoryStore(HistoryStore):
 class TestStructuredEventContract:
     """Meta-level contract tests for the stable event envelope."""
 
-    @pytest.mark.parametrize('lifecycle', sorted(EXPECTED_EVENT_LIFECYCLES))
+    @pytest.mark.parametrize('lifecycle', sorted(STRUCTURED_EVENT_LIFECYCLES))
     def test_build_keeps_required_base_fields_for_documented_lifecycles(
         self,
         lifecycle: str,
@@ -173,7 +154,7 @@ class TestStructuredEventContract:
             timestamp='2026-04-06T00:00:00+00:00',
         )
 
-        assert EXPECTED_BASE_EVENT_FIELDS == set(event)
+        assert STRUCTURED_EVENT_BASE_FIELDS == set(event)
         assert event['schema'] == EXPECTED_EVENT_SCHEMA
         assert event['schema_version'] == EXPECTED_EVENT_SCHEMA_VERSION
         assert event['event'] == f'run.{lifecycle}'
@@ -181,7 +162,6 @@ class TestStructuredEventContract:
     @pytest.mark.parametrize(
         ('path', 'snippet'),
         STRUCTURED_EVENT_DOC_CASES,
-        ids=[text_snippet_case_id(case) for case in STRUCTURED_EVENT_DOC_CASES],
     )
     def test_published_guides_keep_structured_event_contract_entrypoints(
         self,
@@ -209,7 +189,6 @@ class TestNormalizedHistoryContract:
     @pytest.mark.parametrize(
         ('source_record', 'iterator_name', 'expected_fields'),
         NORMALIZED_HISTORY_SHAPE_CASES,
-        ids=NORMALIZED_HISTORY_SHAPE_IDS,
     )
     def test_iter_records_keep_stable_normalized_field_sets(
         self,

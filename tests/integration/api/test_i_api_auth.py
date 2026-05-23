@@ -41,100 +41,104 @@ def _json_response(
 # SECTION: TESTS ============================================================ #
 
 
-def test_token_success_handshake_through_auth_and_request_path(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Test that token acquisition authenticates the API request path."""
-    token_url = 'https://auth.example.test/oauth/token'
-    api_url = 'https://api.example.test/v1/items'
-    seen: dict[str, Any] = {
-        'token_calls': 0,
-        'api_calls': 0,
-        'auth_headers': [],
-    }
+class TestApiAuthHandshake:
+    """Integration tests for API auth request handshake wiring."""
 
-    session = requests.Session()
+    def test_token_success_handshake_through_auth_and_request_path(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that token acquisition authenticates the API request path."""
+        token_url = 'https://auth.example.test/oauth/token'
+        api_url = 'https://api.example.test/v1/items'
+        seen: dict[str, Any] = {
+            'token_calls': 0,
+            'api_calls': 0,
+            'auth_headers': [],
+        }
 
-    def _fake_send(
-        request: requests.PreparedRequest,
-        **kwargs: Any,  # noqa: ARG001
-    ) -> requests.Response:
-        if request.url == token_url:
-            seen['token_calls'] += 1
-            return _json_response(
-                url=token_url,
-                payload={'access_token': 'token-1', 'expires_in': 120},
-            )
-        seen['api_calls'] += 1
-        seen['auth_headers'].append(request.headers.get('Authorization'))
-        return _json_response(url=api_url, payload={'items': [{'id': 1}]})
+        session = requests.Session()
 
-    monkeypatch.setattr(session, 'send', _fake_send)
+        def _fake_send(
+            request: requests.PreparedRequest,
+            **kwargs: Any,  # noqa: ARG001
+        ) -> requests.Response:
+            if request.url == token_url:
+                seen['token_calls'] += 1
+                return _json_response(
+                    url=token_url,
+                    payload={'access_token': 'token-1', 'expires_in': 120},
+                )
+            seen['api_calls'] += 1
+            seen['auth_headers'].append(request.headers.get('Authorization'))
+            return _json_response(url=api_url, payload={'items': [{'id': 1}]})
 
-    session.auth = EndpointCredentialsBearer(
-        token_url=token_url,
-        client_id='client-id',
-        client_secret='client-secret',
-        scope='read',
-        session=session,
-    )
+        monkeypatch.setattr(session, 'send', _fake_send)
 
-    client = EndpointClient(
-        base_url='https://api.example.test',
-        endpoints={'items': '/v1/items'},
-        session=session,
-    )
-
-    result = client.paginate('items', pagination=None)
-
-    assert result == {'items': [{'id': 1}]}
-    assert seen['token_calls'] == 1
-    assert seen['api_calls'] == 1
-    assert seen['auth_headers'] == ['Bearer token-1']
-
-
-def test_token_failure_handshake_raises_api_auth_error(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """
-    Test that token endpoint failures surface as :class:`ApiAuthError` on
-    request.
-    """
-    token_url = 'https://auth.example.test/oauth/token'
-
-    session = requests.Session()
-
-    def _fake_send(
-        request: requests.PreparedRequest,
-        **kwargs: Any,  # noqa: ARG001
-    ) -> requests.Response:
-        if request.url == token_url:
-            return _json_response(
-                url=token_url,
-                payload={'error': 'unauthorized'},
-                status=401,
-            )
-        return _json_response(
-            url='https://api.example.test/v1/items',
-            payload={'items': []},
+        session.auth = EndpointCredentialsBearer(
+            token_url=token_url,
+            client_id='client-id',
+            client_secret='client-secret',
+            scope='read',
+            session=session,
         )
 
-    monkeypatch.setattr(session, 'send', _fake_send)
+        client = EndpointClient(
+            base_url='https://api.example.test',
+            endpoints={'items': '/v1/items'},
+            session=session,
+        )
 
-    session.auth = EndpointCredentialsBearer(
-        token_url=token_url,
-        client_id='client-id',
-        client_secret='client-secret',
-        session=session,
-    )
+        result = client.paginate('items', pagination=None)
 
-    client = EndpointClient(
-        base_url='https://api.example.test',
-        endpoints={'items': '/v1/items'},
-        session=session,
-    )
+        assert result == {'items': [{'id': 1}]}
+        assert seen['token_calls'] == 1
+        assert seen['api_calls'] == 1
+        assert seen['auth_headers'] == ['Bearer token-1']
 
-    with pytest.raises(ApiAuthError) as exc_info:
-        client.paginate('items', pagination=None)
+    def test_token_failure_handshake_raises_api_auth_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that token endpoint failures surface as :class:`ApiAuthError` on
+        request.
+        """
+        token_url = 'https://auth.example.test/oauth/token'
 
-    assert exc_info.value.status == 401
+        session = requests.Session()
+
+        def _fake_send(
+            request: requests.PreparedRequest,
+            **kwargs: Any,  # noqa: ARG001
+        ) -> requests.Response:
+            if request.url == token_url:
+                return _json_response(
+                    url=token_url,
+                    payload={'error': 'unauthorized'},
+                    status=401,
+                )
+            return _json_response(
+                url='https://api.example.test/v1/items',
+                payload={'items': []},
+            )
+
+        monkeypatch.setattr(session, 'send', _fake_send)
+
+        session.auth = EndpointCredentialsBearer(
+            token_url=token_url,
+            client_id='client-id',
+            client_secret='client-secret',
+            session=session,
+        )
+
+        client = EndpointClient(
+            base_url='https://api.example.test',
+            endpoints={'items': '/v1/items'},
+            session=session,
+        )
+
+        with pytest.raises(ApiAuthError) as exc_info:
+            client.paginate('items', pagination=None)
+
+        assert exc_info.value.status == 401

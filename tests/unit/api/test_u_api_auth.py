@@ -28,7 +28,7 @@ import requests  # type: ignore[import]
 from etlplus.api._auth import CLOCK_SKEW_SEC
 from etlplus.api._auth import EndpointCredentialsBearer
 
-from ...conftest import RequestFactory
+from ...pytest_shared_support import RequestFactory
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -145,31 +145,47 @@ class TestEndpointCredentialsBearer:
         assert r2.headers.get('Authorization') == 'Bearer t1'
         assert token_sequence['n'] == 1
 
-    def test_parse_token_response_requires_mapping_payload(
+    @pytest.mark.parametrize(
+        ('text', 'json_payload', 'expected_token', 'expected_error'),
+        [
+            pytest.param(
+                '[]',
+                ['not', 'a', 'mapping'],
+                None,
+                ValueError,
+                id='non-mapping-payload',
+            ),
+            pytest.param(
+                '{"access_token":"abc","expires_in":"bad"}',
+                {'access_token': 'abc', 'expires_in': 'bad'},
+                'abc',
+                None,
+                id='invalid-ttl',
+            ),
+        ],
+    )
+    def test_parse_token_response(
         self,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
+        text: str,
+        json_payload: object,
+        expected_token: str | None,
+        expected_error: type[Exception] | None,
     ) -> None:
-        """Test that non-mapping token payloads raise :class:`ValueError`."""
+        """Test token response parsing validation and TTL normalization."""
         auth = bearer_factory()
         resp = types.SimpleNamespace(
-            text='[]',
-            json=lambda: ['not', 'a', 'mapping'],
+            text=text,
+            json=lambda: json_payload,
         )
-        with pytest.raises(ValueError, match='JSON object'):
-            auth._parse_token_response(cast(Any, resp))
 
-    def test_parse_token_response_falls_back_default_ttl(
-        self,
-        bearer_factory: Callable[..., EndpointCredentialsBearer],
-    ) -> None:
-        """Test that invalid expires_in values coerce to default TTL."""
-        auth = bearer_factory()
-        resp = types.SimpleNamespace(
-            text='{"access_token":"abc","expires_in":"bad"}',
-            json=lambda: {'access_token': 'abc', 'expires_in': 'bad'},
-        )
+        if expected_error is not None:
+            with pytest.raises(expected_error, match='JSON object'):
+                auth._parse_token_response(cast(Any, resp))
+            return
+
         parsed = auth._parse_token_response(cast(Any, resp))
-        assert parsed['access_token'] == 'abc'
+        assert parsed['access_token'] == expected_token
         assert parsed['expires_in'] > 0
 
     def test_post_error_paths_raise(
@@ -264,10 +280,24 @@ class TestEndpointCredentialsBearer:
         with pytest.raises(expected):
             auth._request_token()
 
-    def test_token_payload_omits_blank_scope(
+    @pytest.mark.parametrize(
+        ('scope', 'expected'),
+        [
+            pytest.param('   ', {'grant_type': 'client_credentials'}, id='blank'),
+            pytest.param(None, {'grant_type': 'client_credentials'}, id='missing'),
+            pytest.param(
+                'read',
+                {'grant_type': 'client_credentials', 'scope': 'read'},
+                id='configured',
+            ),
+        ],
+    )
+    def test_token_payload_scope_variants(
         self,
         bearer_factory: Callable[..., EndpointCredentialsBearer],
+        scope: str | None,
+        expected: dict[str, str],
     ) -> None:
-        """Test that whitespace-only scope is not included in token payload."""
-        auth = bearer_factory(scope='   ')
-        assert auth._token_payload() == {'grant_type': 'client_credentials'}
+        """Test scope inclusion rules for token payloads."""
+        auth = bearer_factory(scope=scope)
+        assert auth._token_payload() == expected

@@ -20,7 +20,7 @@ from tests.integration.file.pytest_smoke_file_contracts import (
 from tests.integration.file.pytest_smoke_file_contracts import (
     SMOKE_ROUNDTRIP_OVERRIDE_ATTRS,
 )
-from tests.meta.pytest_meta_support import REPO_ROOT
+from tests.pytest_shared_support import REPO_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
 

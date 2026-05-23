@@ -13,7 +13,7 @@ import pytest
 from etlplus.cli._handlers import dataops as dataops_mod
 from etlplus.cli._handlers import run as run_mod
 
-from ...conftest import CaptureHandler
+from ...pytest_shared_support import CaptureHandler
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -81,5 +81,4 @@ def test_handler_smoke(
     result = getattr(module, attr)(**kwargs)
 
     assert result == 0
-    for key in expected_keys:
-        assert key in calls
+    assert calls == kwargs

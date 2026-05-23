@@ -274,10 +274,9 @@ class BinaryCodecModuleContract(PathMixin):
     @pytest.mark.parametrize(
         ('payload_attr', 'expected_attr'),
         [
-            ('list_payload', 'expected_list_dump'),
-            ('dict_payload', 'expected_dict_dump'),
+            pytest.param('list_payload', 'expected_list_dump', id='list'),
+            pytest.param('dict_payload', 'expected_dict_dump', id='dict'),
         ],
-        ids=['list', 'dict'],
     )
     def test_write_serializes_payload(
         self,

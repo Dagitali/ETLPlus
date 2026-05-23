@@ -14,15 +14,11 @@ from __future__ import annotations
 import importlib
 import io
 import json
-import os
 import pathlib
 import sys
 from collections.abc import Callable
-from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
-from typing import Protocol
-from typing import cast
 
 import pytest
 
@@ -39,6 +35,12 @@ from etlplus.connector import DataConnectorType
 from etlplus.workflow import ExtractRef
 from etlplus.workflow import JobConfig
 from etlplus.workflow import LoadRef
+from tests.integration.pytest_integration_support import FakeEndpointClientProtocol
+from tests.integration.pytest_integration_support import FakeEndpointClients
+from tests.integration.pytest_integration_support import PipelineCfgFactory
+from tests.integration.pytest_integration_support import RemoteStorageHarness
+from tests.integration.pytest_integration_support import RunPatched
+from tests.integration.pytest_integration_support import StdinText
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -49,118 +51,6 @@ from etlplus.workflow import LoadRef
 
 # Directory-level marker for integration tests.
 pytestmark = pytest.mark.integration
-
-
-# SECTION: TYPES ============================================================ #
-
-
-# Protocol describing the fake endpoint client shape for type checking.
-class FakeEndpointClientProtocol(Protocol):
-    """
-    Protocol for fake endpoint clients used in integration tests.
-
-    Attributes
-    ----------
-    seen : dict[str, Any]
-        Dictionary capturing values observed during pagination.
-    """
-
-    seen: dict[str, Any]
-
-
-# SECTION: TYPE ALIASES ===================================================== #
-
-type FakeEndpointClients = tuple[
-    type[FakeEndpointClientProtocol],
-    list[FakeEndpointClientProtocol],
-]
-type PipelineCfgFactory = Callable[..., Config]
-type RunPatched = Callable[..., dict[str, Any]]
-type StdinText = Callable[[str], None]
-
-
-# SECTION: DATA CLASSES ===================================================== #
-
-
-@dataclass(slots=True)
-class RemoteStorageHarness:
-    """In-memory remote object store for integration tests."""
-
-    objects: dict[str, bytes]
-    writes: list[tuple[str, bytes]]
-
-    def set_text(self, uri: str, payload: str) -> None:
-        """Store UTF-8 text content at a remote URI."""
-        self.objects[uri] = payload.encode('utf-8')
-
-    def set_json(self, uri: str, payload: Any) -> None:
-        """Store JSON content at a remote URI."""
-        self.set_text(uri, json.dumps(payload))
-
-    def read_text(self, uri: str) -> str:
-        """Return UTF-8 decoded remote object content."""
-        return self.objects[uri].decode('utf-8')
-
-    def read_json(self, uri: str) -> Any:
-        """Parse remote object content as JSON."""
-        return json.loads(self.read_text(uri))
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-REMOTE_STORAGE_ENV_CASES = (
-    'ETLPLUS_TEST_S3_URI',
-    'ETLPLUS_TEST_AZURE_BLOB_URI',
-)
-REMOTE_STORAGE_ENV_IDS = ('s3', 'azure-blob')
-
-
-def child_uri(base_uri: str, filename: str) -> str:
-    """
-    Append one test filename to a remote base URI.
-
-    Parameters
-    ----------
-    base_uri : str
-        Remote base URI supplied by the integration-test environment.
-    filename : str
-        Test object filename to append.
-
-    Returns
-    -------
-    str
-        Remote child URI.
-    """
-    return f'{base_uri.rstrip("/")}/{filename}'
-
-
-def require_env(name: str) -> str:
-    """
-    Return one required env var or skip the integration test.
-
-    Parameters
-    ----------
-    name : str
-        Environment variable name to read.
-
-    Returns
-    -------
-    str
-        Configured environment variable value.
-
-    Example safe placeholder values:
-    - ``ETLPLUS_TEST_S3_URI=s3://my-etlplus-integration-bucket/cli``
-    - ``ETLPLUS_TEST_AZURE_BLOB_URI=azure-blob://etlplus-integration/cli``
-
-    Real values should be supplied from developer shell config, ``.envrc``,
-    VS Code test environment settings, or CI secret stores rather than being
-    committed to the repository.
-    """
-    value = os.getenv(name)
-    if not value:
-        pytest.skip(f'{name} is not configured for cloud integration tests')
-    return cast(str, value)
 
 
 # SECTION: FIXTURES ========================================================= #
