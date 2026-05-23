@@ -41,7 +41,7 @@ def _norm_record(
 # SECTION: TESTS ============================================================ #
 
 
-def test_examples_sample_csv_json_parity_integration():
+def test_examples_sample_csv_json_parity_integration() -> None:
     """Test that example CSV and JSON sample data contain identical records."""
     repo_root = Path(__file__).resolve().parents[2]
     source_dir = repo_root / 'examples' / 'data'
@@ -65,10 +65,7 @@ def test_examples_sample_csv_json_parity_integration():
     json_norm = [_norm_record(r) for r in json_records]
 
     # Schema checks (CSV header + JSON object keys).
-    for r in csv_norm:
-        assert set(r.keys()) == expected_fields
-    for r in json_norm:
-        assert set(r.keys()) == expected_fields
+    assert all(set(record) == expected_fields for record in [*csv_norm, *json_norm])
 
     sort_key = itemgetter('email', 'name')
 
