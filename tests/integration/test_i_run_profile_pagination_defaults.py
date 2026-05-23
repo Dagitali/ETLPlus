@@ -14,16 +14,14 @@ Notes
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
-
 import pytest
 
-from etlplus import Config
 from etlplus.api import PaginationConfig
 from etlplus.api import PaginationType
 
-from .conftest import FakeEndpointClientProtocol as Client
+from .conftest import FakeEndpointClients
+from .conftest import PipelineCfgFactory
+from .conftest import RunPatched
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -84,9 +82,9 @@ class TestRunProfilePaginationDefaults:
     )
     def test_profile_pagination_resolution(
         self,
-        pipeline_cfg_factory: Callable[..., Config],
-        fake_endpoint_client: tuple[type[Client], list[Client]],
-        run_patched: Callable[..., dict[str, Any]],
+        pipeline_cfg_factory: PipelineCfgFactory,
+        fake_endpoint_client: FakeEndpointClients,
+        run_patched: RunPatched,
         pagination_defaults: PaginationConfig,
         extract_options: dict[str, object] | None,
         expected_pagination: dict[str, object],
