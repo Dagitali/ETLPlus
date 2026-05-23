@@ -14,9 +14,9 @@ from etlplus.file import File
 from etlplus.file import FileFormat
 from etlplus.storage import StorageLocation
 from etlplus.storage import get_backend
-from tests.integration.conftest import REMOTE_STORAGE_ENV_CASES
-from tests.integration.conftest import child_uri
-from tests.integration.conftest import require_env
+from tests.integration.pytest_integration_support import REMOTE_STORAGE_ENV_CASES
+from tests.integration.pytest_integration_support import child_uri
+from tests.integration.pytest_integration_support import require_env
 
 # SECTION: PRAGMAS ========================================================== #
 
