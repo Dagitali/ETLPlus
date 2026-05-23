@@ -6,8 +6,6 @@ Integration-scope smoke tests for the ``etlplus load`` CLI command.
 
 from __future__ import annotations
 
-import io
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
@@ -29,6 +27,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonOutputParser
     from tests.integration.cli.conftest import RealRemoteTargetFactory
     from tests.integration.conftest import RemoteStorageHarness
+    from tests.integration.conftest import StdinText
 
 # SECTION: MARKS ============================================================ #
 
@@ -49,11 +48,11 @@ class TestCliLoad:
         sample_records_json: str,
         sample_records: list[dict[str, Any]],
         tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
     ) -> None:
         """Test loading a STDIN payload into a JSON file target."""
         out_path = tmp_path / 'out.json'
-        monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
+        stdin_text(sample_records_json)
         code, out, err = cli_invoke(
             ('load', str(out_path), '--target-type', 'file'),
         )
@@ -76,12 +75,12 @@ class TestCliLoad:
         sample_records_json: str,
         sample_records: list[dict[str, Any]],
         real_remote_target_factory: RealRemoteTargetFactory,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
         env_name: str,
     ) -> None:
         """Test loading STDIN into a real cloud-backed JSON target."""
         target = real_remote_target_factory(env_name, suffix='load-real')
-        monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
+        stdin_text(sample_records_json)
 
         code, out, err = cli_invoke(
             ('load', target.uri, '--target-type', 'file'),
@@ -101,11 +100,11 @@ class TestCliLoad:
         sample_records_json: str,
         sample_records: list[dict[str, Any]],
         remote_storage_harness: RemoteStorageHarness,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
     ) -> None:
         """Test loading STDIN into a remote JSON file target."""
         target_uri = 's3://bucket/out.json'
-        monkeypatch.setattr(sys, 'stdin', io.StringIO(sample_records_json))
+        stdin_text(sample_records_json)
 
         code, out, err = cli_invoke(
             ('load', target_uri, '--target-type', 'file'),
