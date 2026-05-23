@@ -140,10 +140,10 @@ def _canonical_requirement_name(requirement: str) -> str:
     return match.group(1).lower().replace('_', '-')
 
 
-def _conda_run_requirements(recipe_text: str) -> set[str]:
-    """Return normalized run dependency names from the candidate conda recipe."""
+def _conda_run_requirement_specs(recipe_text: str) -> list[str]:
+    """Return raw run dependency specs from the candidate conda recipe."""
     in_run_section = False
-    names: set[str] = set()
+    requirements: list[str] = []
 
     for line in recipe_text.splitlines():
         if line == '  run:':
@@ -152,26 +152,7 @@ def _conda_run_requirements(recipe_text: str) -> set[str]:
         if in_run_section and line and not line.startswith('    '):
             break
         if in_run_section and line.startswith('    - '):
-            names.add(_canonical_requirement_name(line.removeprefix('    - ')))
-
-    return names
-
-
-def _conda_run_requirement_lines(recipe_text: str) -> set[str]:
-    """Return normalized run dependency lines from the candidate conda recipe."""
-    in_run_section = False
-    requirements: set[str] = set()
-
-    for line in recipe_text.splitlines():
-        if line == '  run:':
-            in_run_section = True
-            continue
-        if in_run_section and line and not line.startswith('    '):
-            break
-        if in_run_section and line.startswith('    - '):
-            requirements.add(
-                _normalized_requirement_line(line.removeprefix('    - ')),
-            )
+            requirements.append(line.removeprefix('    - '))
 
     return requirements
 
@@ -311,7 +292,12 @@ def test_conda_recipe_run_requirements_match_base_pyproject_dependencies() -> No
         },
     }
 
-    assert _conda_run_requirement_lines(recipe_text) == expected
+    observed = {
+        _normalized_requirement_line(requirement)
+        for requirement in _conda_run_requirement_specs(recipe_text)
+    }
+
+    assert observed == expected
 
 
 def test_conda_recipe_tracks_base_pyproject_dependencies() -> None:
@@ -327,7 +313,12 @@ def test_conda_recipe_tracks_base_pyproject_dependencies() -> None:
         for name in [_canonical_requirement_name(requirement)]
     }
 
-    assert pyproject_names <= _conda_run_requirements(recipe_text)
+    recipe_names = {
+        _canonical_requirement_name(requirement)
+        for requirement in _conda_run_requirement_specs(recipe_text)
+    }
+
+    assert pyproject_names <= recipe_names
 
 
 def test_conda_recipe_render_helper_rejects_invalid_release_sha256(
