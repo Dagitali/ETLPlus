@@ -39,6 +39,11 @@ from etlplus.workflow import LoadRef
 
 run_mod = importlib.import_module('etlplus.ops.run')
 
+TARGET_SERVICE_ENDPOINT_CASES = (
+    pytest.param('/v1', '/ingest', '/v1/ingest', id='with-base-path'),
+    pytest.param(None, '/bulk', '/bulk', id='without-base-path'),
+)
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -144,11 +149,7 @@ def test_remote_file_pipeline_reads_and_writes_via_storage_backend(
 
 @pytest.mark.parametrize(
     ('base_path', 'endpoint_path', 'expected_suffix'),
-    [
-        ('/v1', '/ingest', '/v1/ingest'),
-        (None, '/bulk', '/bulk'),
-    ],
-    ids=['with-base-path', 'without-base-path'],
+    TARGET_SERVICE_ENDPOINT_CASES,
 )
 def test_target_service_endpoint_uses_base_path(
     monkeypatch: MonkeyPatch,
@@ -158,7 +159,7 @@ def test_target_service_endpoint_uses_base_path(
     base_path: str | None,
     endpoint_path: str,
     expected_suffix: str,
-):
+) -> None:
     """Test composed API URLs across optional *base_path* values."""
 
     cfg = file_to_api_pipeline_factory(
