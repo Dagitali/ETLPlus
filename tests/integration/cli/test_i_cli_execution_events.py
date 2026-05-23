@@ -28,7 +28,7 @@ from tests.pytest_shared_support import STRUCTURED_EVENT_BASE_FIELDS
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonOutputParser
-    from tests.integration.conftest import StdinText
+    from tests.integration.pytest_integration_support import StdinText
 
 # SECTION: MARKS ============================================================ #
 

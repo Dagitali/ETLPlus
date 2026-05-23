@@ -27,7 +27,7 @@ from etlplus.file import File
 from etlplus.file import FileFormat
 from etlplus.runtime import EVENT_SCHEMA
 from etlplus.runtime import EVENT_SCHEMA_VERSION
-from tests.integration.conftest import REMOTE_STORAGE_ENV_CASES
+from tests.integration.pytest_integration_support import REMOTE_STORAGE_ENV_CASES
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
@@ -35,7 +35,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonOutputParser
     from tests.integration.cli.conftest import PipelineConfigFactory
     from tests.integration.cli.conftest import RealRemoteTargetFactory
-    from tests.integration.conftest import RemoteStorageHarness
+    from tests.integration.pytest_integration_support import RemoteStorageHarness
 
 # SECTION: PRAGMAS ========================================================== #
 
