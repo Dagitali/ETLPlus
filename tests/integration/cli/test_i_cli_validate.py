@@ -128,6 +128,18 @@ class SchemaValidationCase:
     use_stdin: bool = False
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _assert_successful_cli_result(
+    code: int,
+    err: str,
+) -> None:
+    """Assert a CLI invocation completed successfully without STDERR output."""
+    assert code == 0
+    assert err.strip() == ''
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -220,8 +232,7 @@ class TestCliValidate:
 
         code, out, err = cli_invoke(tuple(args))
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         payload = parse_json_output(out)
         assert payload == VALID_SCHEMA_RESULT
 
@@ -255,8 +266,7 @@ class TestCliValidate:
             ),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         payload = parse_json_output(out)
         assert payload['valid'] is False
         assert 'row[3].email' in payload['field_errors']
@@ -295,8 +305,7 @@ class TestCliValidate:
             ),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         payload = parse_json_output(out)
         assert payload['valid'] is True
         assert payload['errors'] == []
@@ -322,8 +331,7 @@ class TestCliValidate:
             ),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         payload = parse_json_output(out)
         assert payload['valid'] is False
         assert any(
@@ -375,8 +383,7 @@ class TestCliValidate:
             ),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         assert out.strip() == f'ValidationDict result saved to {output_path}'
         assert File(output_path, FileFormat.JSON).read() == VALID_SCHEMA_RESULT
 
@@ -391,8 +398,7 @@ class TestCliValidate:
         """Test validating a STDIN payload with basic rules."""
         stdin_text(sample_records_json)
         code, out, err = cli_invoke(('validate', '--rules', rules_json, '-'))
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         payload = parse_json_output(out)
         assert payload['valid'] is True
 
@@ -418,8 +424,7 @@ class TestCliValidate:
             ('validate', '--rules', rules_json, '--output', target.uri, '-'),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         assert out.strip() == f'ValidationDict result saved to {target.uri}'
         assert File(target.uri, FileFormat.JSON).read() == sample_records
 
@@ -447,7 +452,6 @@ class TestCliValidate:
             ),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         assert out.strip() == f'ValidationDict result saved to {target_uri}'
         assert remote_storage_harness.read_json(target_uri) == sample_records
