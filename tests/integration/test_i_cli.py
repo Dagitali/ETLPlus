@@ -14,8 +14,6 @@ Notes
 
 from __future__ import annotations
 
-import io
-import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -25,6 +23,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonFactory
     from tests.conftest import JsonOutputParser
+    from tests.integration.conftest import StdinText
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -146,15 +145,11 @@ class TestCliEndToEnd:
         cli_invoke,
         args,
         should_pass,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
     ):
         """Test CLI required-argument and option-order edge cases."""
         if should_pass and args and args[0] == 'load':
-            monkeypatch.setattr(
-                sys,
-                'stdin',
-                io.StringIO('[{"name": "John"}]'),
-            )
+            stdin_text('[{"name": "John"}]')
         code, _out, err = cli_invoke(args)
         if should_pass:
             assert code == 0, f'Expected success for args: {args}, got error: {err}'
@@ -184,17 +179,13 @@ class TestCliEndToEnd:
         self,
         tmp_path: Path,
         cli_invoke: CliInvoke,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
     ) -> None:
         """
         Test that ``--target-format`` controls how file targets are written.
         """
         output_path = tmp_path / 'output.bin'
-        monkeypatch.setattr(
-            sys,
-            'stdin',
-            io.StringIO('[{"name": "John"}]'),
-        )
+        stdin_text('[{"name": "John"}]')
         code, _out, err = cli_invoke(
             ('load', str(output_path), '--target-format', 'csv'),
         )
@@ -251,17 +242,13 @@ class TestCliEndToEnd:
         self,
         tmp_path: Path,
         cli_invoke: CliInvoke,
-        monkeypatch: pytest.MonkeyPatch,
+        stdin_text: StdinText,
     ) -> None:
         """
         Test that running :func:`main` with the ``load`` file command works.
         """
         output_path = tmp_path / 'output.json'
-        monkeypatch.setattr(
-            sys,
-            'stdin',
-            io.StringIO('{"name": "John", "age": 30}'),
-        )
+        stdin_text('{"name": "John", "age": 30}')
         code, _out, _err = cli_invoke(
             ('load', str(output_path)),
         )
