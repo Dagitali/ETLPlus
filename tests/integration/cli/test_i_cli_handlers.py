@@ -81,5 +81,4 @@ def test_handler_smoke(
     result = getattr(module, attr)(**kwargs)
 
     assert result == 0
-    for key in expected_keys:
-        assert key in calls
+    assert calls == kwargs
