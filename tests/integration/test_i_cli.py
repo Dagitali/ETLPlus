@@ -22,6 +22,7 @@ import pytest
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonFactory
+    from tests.conftest import JsonFileParser
     from tests.conftest import JsonOutputParser
     from tests.integration.conftest import StdinText
 
@@ -278,6 +279,7 @@ class TestCliEndToEnd:
         self,
         tmp_path: Path,
         cli_invoke: CliInvoke,
+        parse_json_file: JsonFileParser,
         stdin_text: StdinText,
     ) -> None:
         """
@@ -289,7 +291,7 @@ class TestCliEndToEnd:
             ('load', str(output_path)),
         )
         assert code == 0
-        assert output_path.exists()
+        assert parse_json_file(output_path) == {'name': 'John', 'age': 30}
 
     def test_main_no_command(self, cli_invoke: CliInvoke) -> None:
         """Test that running :func:`main` with no command shows usage."""
@@ -312,7 +314,7 @@ class TestCliEndToEnd:
         )
         assert code == 0
         output = parse_json_output(out)
-        assert len(output) == 1 and 'age' not in output[0]
+        assert output == [{'name': 'John'}]
 
     def test_main_validate_data(
         self,
@@ -325,4 +327,9 @@ class TestCliEndToEnd:
         json_data = '{"name": "John", "age": 30}'
         code, out, _err = cli_invoke(('validate', json_data))
         assert code == 0
-        assert parse_json_output(out)['valid'] is True
+        assert parse_json_output(out) == {
+            'valid': True,
+            'errors': [],
+            'field_errors': {},
+            'data': {'name': 'John', 'age': 30},
+        }
