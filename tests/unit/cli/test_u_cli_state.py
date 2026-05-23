@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.cli._commands._state`.
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import nullcontext
 from pathlib import Path
 from typing import TypedDict
 
@@ -280,15 +281,6 @@ class TestCliHelp:
 class TestInferResourceType:
     """Unit tests for :meth:`ResourceTypeResolver.infer`."""
 
-    def test_file_path(self, tmp_path: Path) -> None:
-        """
-        Test that :meth:`ResourceTypeResolver.infer` detects local files via
-        extension parsing.
-        """
-        path = tmp_path / 'payload.csv'
-        path.write_text('a,b\n1,2\n', encoding='utf-8')
-        assert cli_state_mod.ResourceTypeResolver.infer(str(path)) == 'file'
-
     def test_invalid_raises(self) -> None:
         """
         Test that unknown resources raise ``ValueError`` to surface helpful
@@ -298,23 +290,37 @@ class TestInferResourceType:
             cli_state_mod.ResourceTypeResolver.infer('unknown-resource')
 
     @pytest.mark.parametrize(
-        ('raw', 'expected'),
+        ('raw', 'expected', 'touch_file'),
         [
-            ('-', 'file'),
-            ('https://example.com/data.json', 'api'),
-            ('postgres://user@host/db', 'database'),
+            pytest.param('-', 'file', False, id='stdin'),
+            pytest.param('payload.csv', 'file', True, id='local-file'),
+            pytest.param('https://example.com/data.json', 'api', False, id='api-url'),
+            pytest.param(
+                'postgres://user@host/db',
+                'database',
+                False,
+                id='database-url',
+            ),
         ],
     )
     def test_variants(
         self,
+        tmp_path: Path,
         raw: str,
         expected: str,
+        touch_file: bool,
     ) -> None:
         """
         Test that :meth:`ResourceTypeResolver.infer` classifies common resource
         inputs.
         """
-        assert cli_state_mod.ResourceTypeResolver.infer(raw) == expected
+        value = raw
+        if touch_file:
+            path = tmp_path / raw
+            path.write_text('a,b\n1,2\n', encoding='utf-8')
+            value = str(path)
+
+        assert cli_state_mod.ResourceTypeResolver.infer(value) == expected
 
 
 class TestCliStateHelpers:
@@ -576,60 +582,38 @@ class TestOptionalChoice:
     """Unit tests for :meth:`ResourceTypeResolver.optional_choice`."""
 
     @pytest.mark.parametrize(
-        ('choice', 'expected'),
+        ('choice', 'choices', 'expected'),
         [
-            pytest.param(
-                None,
-                None,
-                id='none',
-            ),
-            pytest.param(
-                'json',
-                'json',
-                id='valid',
-            ),
+            pytest.param(None, {'json', 'csv'}, None, id='none'),
+            pytest.param('json', {'json', 'csv'}, 'json', id='valid'),
+            pytest.param('yaml', {'json'}, typer.BadParameter, id='yaml'),
+            pytest.param('parquet', {'json'}, typer.BadParameter, id='parquet'),
         ],
     )
-    def test_passthrough_and_validation(
+    def test_optional_choice(
         self,
         choice: str | None,
-        expected: str | None,
+        choices: set[str],
+        expected: str | type[Exception] | None,
     ) -> None:
         """
-        Optional choice helpers should preserve ``None`` and normalize values.
+        Optional choice helpers should preserve ``None``, normalize valid
+        values, and reject invalid choices.
         """
-        assert (
-            cli_state_mod.ResourceTypeResolver.optional_choice(
-                choice,
-                {'json', 'csv'},
-                label='format',
-            )
-            == expected
+        expectation = (
+            pytest.raises(expected)
+            if isinstance(expected, type) and issubclass(expected, Exception)
+            else nullcontext(expected)
         )
 
-    @pytest.mark.parametrize(
-        ('invalid',),
-        [
-            pytest.param(
-                'yaml',
-                id='yaml',
-            ),
-            pytest.param(
-                'parquet',
-                id='parquet',
-            ),
-        ],
-    )
-    def test_rejects_invalid(
-        self,
-        invalid: str,
-    ) -> None:
-        """Invalid choices should raise :class:`typer.BadParameter`."""
-        with pytest.raises(typer.BadParameter):
-            cli_state_mod.ResourceTypeResolver.optional_choice(
-                invalid,
-                {'json'},
-                label='format',
+        with expectation as expected_value:
+            assert (
+                cli_state_mod.ResourceTypeResolver.optional_choice(
+                    choice,
+                    choices,
+                    label='format',
+                )
+                == expected_value
             )
 
     @pytest.mark.parametrize(
