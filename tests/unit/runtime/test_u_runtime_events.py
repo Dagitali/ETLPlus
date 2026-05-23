@@ -50,7 +50,7 @@ class TestRuntimeEvents:
         assert event['run_all'] is True
 
     @pytest.mark.parametrize(
-        'kwargs',
+        ('kwargs', 'expected_extra'),
         [
             pytest.param(
                 {
@@ -60,6 +60,7 @@ class TestRuntimeEvents:
                     'timestamp': '2025-01-01T00:00:00+00:00',
                     'job': 'daily',
                 },
+                {'job': 'daily'},
                 id='explicit-timestamp',
             ),
             pytest.param(
@@ -68,6 +69,7 @@ class TestRuntimeEvents:
                     'lifecycle': 'completed',
                     'run_id': 'run-123',
                 },
+                {},
                 id='implicit-utc-timestamp',
             ),
             pytest.param(
@@ -75,6 +77,11 @@ class TestRuntimeEvents:
                     'command': 'run',
                     'lifecycle': 'failed',
                     'run_id': 'run-123',
+                    'error_type': 'RuntimeError',
+                    'error_message': 'boom',
+                    'status': 'error',
+                },
+                {
                     'error_type': 'RuntimeError',
                     'error_message': 'boom',
                     'status': 'error',
@@ -87,6 +94,7 @@ class TestRuntimeEvents:
         self,
         monkeypatch: pytest.MonkeyPatch,
         kwargs: dict[str, Any],
+        expected_extra: dict[str, object],
     ) -> None:
         """
         Test that build emits the stable event envelope and resolves
@@ -109,16 +117,7 @@ class TestRuntimeEvents:
             'schema': events_mod.EVENT_SCHEMA,
             'schema_version': events_mod.EVENT_SCHEMA_VERSION,
             'timestamp': kwargs.get('timestamp', frozen_timestamp),
-            **({'job': 'daily'} if 'job' in kwargs else {}),
-            **(
-                {
-                    'error_type': 'RuntimeError',
-                    'error_message': 'boom',
-                    'status': 'error',
-                }
-                if kwargs['lifecycle'] == 'failed'
-                else {}
-            ),
+            **expected_extra,
         }
 
     def test_create_run_id_returns_uuid_text(self) -> None:
