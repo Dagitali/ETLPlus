@@ -28,7 +28,7 @@ from etlplus.connector import DataConnectorType
 from etlplus.workflow import ExtractRef
 from etlplus.workflow import JobConfig
 from etlplus.workflow import LoadRef
-from tests.integration.conftest import RemoteStorageHarness
+from tests.integration.pytest_integration_support import RemoteStorageHarness
 
 # SECTION: PRAGMAS ========================================================== #
 
