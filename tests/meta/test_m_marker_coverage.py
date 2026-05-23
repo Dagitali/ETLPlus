@@ -19,9 +19,9 @@ from tests.meta.pytest_meta_support import TESTS_ROOT
 
 
 _SCOPE_MARKERS = (
-    ('meta', 'meta'),
-    ('unit', 'unit'),
-    ('integration', 'integration'),
+    pytest.param('meta', 'meta', id='meta'),
+    pytest.param('unit', 'unit', id='unit'),
+    pytest.param('integration', 'integration', id='integration'),
 )
 
 
@@ -37,7 +37,6 @@ def test_integration_file_conftest_includes_smoke_marker() -> None:
 @pytest.mark.parametrize(
     ('scope_name', 'marker_name'),
     _SCOPE_MARKERS,
-    ids=[scope_name for scope_name, _ in _SCOPE_MARKERS],
 )
 def test_scope_conftests_declare_expected_scope_markers(
     scope_name: str,
