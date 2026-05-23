@@ -16,6 +16,8 @@ import json
 import os
 import pathlib
 from collections.abc import Callable
+from dataclasses import dataclass
+from io import BytesIO
 from typing import Any
 from typing import Protocol
 from typing import cast
@@ -62,6 +64,33 @@ class FakeEndpointClientProtocol(Protocol):
     """
 
     seen: dict[str, Any]
+
+
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(slots=True)
+class RemoteStorageHarness:
+    """In-memory remote object store for integration tests."""
+
+    objects: dict[str, bytes]
+    writes: list[tuple[str, bytes]]
+
+    def set_text(self, uri: str, payload: str) -> None:
+        """Store UTF-8 text content at a remote URI."""
+        self.objects[uri] = payload.encode('utf-8')
+
+    def set_json(self, uri: str, payload: Any) -> None:
+        """Store JSON content at a remote URI."""
+        self.set_text(uri, json.dumps(payload))
+
+    def read_text(self, uri: str) -> str:
+        """Return UTF-8 decoded remote object content."""
+        return self.objects[uri].decode('utf-8')
+
+    def read_json(self, uri: str) -> Any:
+        """Parse remote object content as JSON."""
+        return json.loads(self.read_text(uri))
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -396,6 +425,54 @@ def pipeline_cfg_factory_fixture(
         )
 
     return _make
+
+
+@pytest.fixture(name='remote_storage_harness')
+def remote_storage_harness_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> RemoteStorageHarness:
+    """Patch :mod:`etlplus.file._core` with an in-memory remote backend."""
+    core_mod = importlib.import_module('etlplus.file._core')
+    objects: dict[str, bytes] = {}
+    writes: list[tuple[str, bytes]] = []
+
+    class CaptureUpload(BytesIO):
+        """Capture uploaded remote content when the stream closes."""
+
+        def __init__(self, uri: str) -> None:
+            super().__init__()
+            self._uri = uri
+
+        def close(self) -> None:
+            payload = self.getvalue()
+            objects[self._uri] = payload
+            writes.append((self._uri, payload))
+            super().close()
+
+    class FakeBackend:
+        """Minimal remote backend for integration tests."""
+
+        def exists(self, location: object) -> bool:
+            uri = getattr(location, 'raw', str(location))
+            return uri in objects
+
+        def ensure_parent_dir(self, location: object) -> None:
+            del location
+
+        def open(
+            self,
+            location: object,
+            mode: str = 'r',
+            **kwargs: object,
+        ) -> BytesIO:
+            del kwargs
+            uri = getattr(location, 'raw', str(location))
+            if 'r' in mode:
+                return BytesIO(objects[uri])
+            return CaptureUpload(uri)
+
+    monkeypatch.setattr(core_mod, 'get_backend', lambda _value: FakeBackend())
+    return RemoteStorageHarness(objects=objects, writes=writes)
 
 
 @pytest.fixture(name='run_patched')
