@@ -15,9 +15,9 @@ import pytest
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
-    from tests.conftest import CliInvoke
     from tests.integration.cli.pytest_cli_integration_support import PipelineSchema
     from tests.integration.cli.pytest_cli_integration_support import TableSpec
+    from tests.pytest_shared_support import CliInvoke
 
 # SECTION: MARKS ============================================================ #
 
