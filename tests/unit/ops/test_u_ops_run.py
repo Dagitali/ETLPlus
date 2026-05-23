@@ -1189,7 +1189,7 @@ class TestRun:
     @pytest.mark.parametrize(
         ('cfg', 'expected_message'),
         [
-            (
+            pytest.param(
                 SimpleNamespace(
                     jobs=[],
                     sources=[],
@@ -1198,8 +1198,9 @@ class TestRun:
                     validations={},
                 ),
                 'No jobs configured',
+                id='no-jobs',
             ),
-            (
+            pytest.param(
                 _base_config(
                     _make_job(name='other', source='src', target='tgt'),
                     SimpleNamespace(
@@ -1216,9 +1217,9 @@ class TestRun:
                     ),
                 ),
                 'Job not found',
+                id='different-job',
             ),
         ],
-        ids=['no-jobs', 'different-job'],
     )
     def test_job_not_found_raises(
         self,

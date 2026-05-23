@@ -106,13 +106,12 @@ class TestApplyAggregate:
     @pytest.mark.parametrize(
         ('func', 'expected_key', 'expected_value'),
         [
-            ('avg', 'avg_value', 15),
-            ('count', 'count_value', 3),
-            ('min', 'min_value', 10),
-            ('max', 'max_value', 20),
-            ('sum', 'sum_value', 45),
+            pytest.param('avg', 'avg_value', 15, id='avg'),
+            pytest.param('count', 'count_value', 3, id='count'),
+            pytest.param('min', 'min_value', 10, id='min'),
+            pytest.param('max', 'max_value', 20, id='max'),
+            pytest.param('sum', 'sum_value', 45, id='sum'),
         ],
-        ids=['avg', 'count', 'min', 'max', 'sum'],
     )
     def test_aggregate_builtin(
         self,
@@ -232,13 +231,14 @@ class TestApplyFilter:
     @pytest.mark.parametrize(
         ('data', 'op', 'value', 'expected_count'),
         [
-            (
+            pytest.param(
                 [{'name': 'John', 'age': 30}, {'name': 'Jane', 'age': 25}],
                 'gt',
                 26,
                 1,
+                id='gt-int',
             ),
-            (
+            pytest.param(
                 [
                     {'name': 'John', 'age': 30},
                     {'name': 'Jane', 'age': 25},
@@ -247,8 +247,9 @@ class TestApplyFilter:
                 'eq',
                 30,
                 2,
+                id='eq-int',
             ),
-            (
+            pytest.param(
                 [
                     {'name': 'John', 'age': '30'},
                     {'name': 'Jane', 'age': '25'},
@@ -256,9 +257,9 @@ class TestApplyFilter:
                 'gt',
                 26,
                 1,
+                id='gt-str',
             ),
         ],
-        ids=['gt-int', 'eq-int', 'gt-str'],
     )
     def test_filter_numeric_ops(
         self,
@@ -343,8 +344,10 @@ class TestApplySort:
 
     @pytest.mark.parametrize(
         ('reverse', 'expected_sorted_ages'),
-        [(False, [25, 30, 35]), (True, [35, 30, 25])],
-        ids=['asc', 'desc'],
+        [
+            pytest.param(False, [25, 30, 35], id='asc'),
+            pytest.param(True, [35, 30, 25], id='desc'),
+        ],
     )
     def test_sort_by_field(
         self,
@@ -594,28 +597,16 @@ class TestTransformInternalHelpers:
     @pytest.mark.parametrize(
         ('fn', 'nums', 'present', 'expected'),
         [
-            (_agg_avg, [], 0, 0.0),
-            (_agg_avg, [1, 2, 3], 3, 2.0),
-            (_agg_count, [], 0, 0),
-            (_agg_count, [1, 2, 3], 5, 5),
-            (_agg_max, [], 0, None),
-            (_agg_max, [1, 2, 3], 0, 3),
-            (_agg_min, [], 0, None),
-            (_agg_min, [1, 2, 3], 0, 1),
-            (_agg_sum, [], 0, 0),
-            (_agg_sum, [1, 2, 3], 0, 6),
-        ],
-        ids=[
-            'avg-empty',
-            'avg',
-            'count-empty',
-            'count',
-            'max-empty',
-            'max',
-            'min-empty',
-            'min',
-            'sum-empty',
-            'sum',
+            pytest.param(_agg_avg, [], 0, 0.0, id='avg-empty'),
+            pytest.param(_agg_avg, [1, 2, 3], 3, 2.0, id='avg'),
+            pytest.param(_agg_count, [], 0, 0, id='count-empty'),
+            pytest.param(_agg_count, [1, 2, 3], 5, 5, id='count'),
+            pytest.param(_agg_max, [], 0, None, id='max-empty'),
+            pytest.param(_agg_max, [1, 2, 3], 0, 3, id='max'),
+            pytest.param(_agg_min, [], 0, None, id='min-empty'),
+            pytest.param(_agg_min, [1, 2, 3], 0, 1, id='min'),
+            pytest.param(_agg_sum, [], 0, 0, id='sum-empty'),
+            pytest.param(_agg_sum, [1, 2, 3], 0, 6, id='sum'),
         ],
     )
     def test_agg_helpers(
@@ -752,11 +743,10 @@ class TestTransformInternalHelpers:
     @pytest.mark.parametrize(
         ('spec', 'expected'),
         [
-            ({'fields': ['a']}, [{'a': 1}]),
-            (['a'], [{'a': 1}]),
-            (123, [{'a': 1, 'b': 2}]),
+            pytest.param({'fields': ['a']}, [{'a': 1}], id='mapping'),
+            pytest.param(['a'], [{'a': 1}], id='list'),
+            pytest.param(123, [{'a': 1, 'b': 2}], id='other'),
         ],
-        ids=['mapping', 'list', 'other'],
     )
     def test_apply_select_step(
         self,
@@ -782,11 +772,10 @@ class TestTransformInternalHelpers:
     @pytest.mark.parametrize(
         ('spec', 'expected'),
         [
-            ({'field': 'a'}, [{'a': 1}, {'a': 2}]),
-            (None, [{'a': 2}, {'a': 1}]),
-            ('a', [{'a': 1}, {'a': 2}]),
+            pytest.param({'field': 'a'}, [{'a': 1}, {'a': 2}], id='mapping'),
+            pytest.param(None, [{'a': 2}, {'a': 1}], id='none'),
+            pytest.param('a', [{'a': 1}, {'a': 2}], id='other'),
         ],
-        ids=['mapping', 'none', 'other'],
     )
     def test_apply_sort_step(
         self,
@@ -846,11 +835,10 @@ class TestTransformInternalHelpers:
     @pytest.mark.parametrize(
         ('func', 'field', 'alias', 'expected'),
         [
-            ('sum', 'foo', 'total', 'total'),
-            (AggregateName.SUM, 'foo', None, 'sum_foo'),
-            ('sum', 'foo', None, 'sum_foo'),
+            pytest.param('sum', 'foo', 'total', 'total', id='alias'),
+            pytest.param(AggregateName.SUM, 'foo', None, 'sum_foo', id='enum'),
+            pytest.param('sum', 'foo', None, 'sum_foo', id='string'),
         ],
-        ids=['alias', 'enum', 'string'],
     )
     def test_derive_agg_key_common(
         self,
@@ -888,8 +876,10 @@ class TestTransformInternalHelpers:
 
     @pytest.mark.parametrize(
         ('strict', 'should_raise'),
-        [(True, False), (False, True)],
-        ids=['strict', 'non-strict'],
+        [
+            pytest.param(True, False, id='strict'),
+            pytest.param(False, True, id='non-strict'),
+        ],
     )
     def test_eval_condition_exception_behavior(
         self,
