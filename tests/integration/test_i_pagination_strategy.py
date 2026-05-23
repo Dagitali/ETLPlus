@@ -31,11 +31,12 @@ from typing import Any
 import pytest
 
 import etlplus.api._request_manager as rm_mod
-from etlplus import Config
 from etlplus.cli import main
 from etlplus.cli._handlers import dataops as dataops_mod
 
-from .conftest import FakeEndpointClientProtocol
+from .conftest import FakeEndpointClients
+from .conftest import PipelineCfgFactory
+from .conftest import RunPatched
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -540,12 +541,9 @@ class TestPaginationStrategies:
     def test_pagination_edge_cases(
         self,
         scenario: PaginationEdgeCase,
-        pipeline_cfg_factory: Callable[..., Config],
-        fake_endpoint_client: tuple[
-            type[FakeEndpointClientProtocol],
-            list[FakeEndpointClientProtocol],
-        ],
-        run_patched: Callable[..., dict[str, Any]],
+        pipeline_cfg_factory: PipelineCfgFactory,
+        fake_endpoint_client: FakeEndpointClients,
+        run_patched: RunPatched,
     ) -> None:  # noqa: D401
         """
         Test pagination-coalescing edge cases with shared fixtures.
