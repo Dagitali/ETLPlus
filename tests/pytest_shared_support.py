@@ -95,6 +95,10 @@ _CLOUD_DATABASE_PROVIDER_FIELDS: tuple[str, ...] = (
 # SECTION: CONSTANTS ======================================================== #
 
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+TESTS_ROOT = REPO_ROOT / 'tests'
+
+
 STRUCTURED_EVENT_BASE_FIELDS = frozenset(
     {
         'command',
