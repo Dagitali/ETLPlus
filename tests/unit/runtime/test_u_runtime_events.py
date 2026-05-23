@@ -7,7 +7,6 @@ Unit tests for :mod:`etlplus.runtime._events`.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
 from uuid import UUID
 
 import pytest
@@ -19,6 +18,20 @@ from tests.pytest_shared_support import STRUCTURED_EVENT_BASE_FIELDS
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type EventBuildArgs = dict[str, object]
+type EventExtraFields = dict[str, object]
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+RUN_ID = 'run-123'
+FROZEN_TIMESTAMP = '2025-01-01T00:00:00+00:00'
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -34,7 +47,7 @@ class TestRuntimeEvents:
         event = events_mod.RuntimeEvents.build(
             command='run',
             lifecycle='completed',
-            run_id='run-123',
+            run_id=RUN_ID,
             config_path='pipeline.yml',
             continue_on_fail=False,
             pipeline_name='customer-sync',
@@ -56,8 +69,8 @@ class TestRuntimeEvents:
                 {
                     'command': 'run',
                     'lifecycle': 'started',
-                    'run_id': 'run-123',
-                    'timestamp': '2025-01-01T00:00:00+00:00',
+                    'run_id': RUN_ID,
+                    'timestamp': FROZEN_TIMESTAMP,
                     'job': 'daily',
                 },
                 {'job': 'daily'},
@@ -67,7 +80,7 @@ class TestRuntimeEvents:
                 {
                     'command': 'run',
                     'lifecycle': 'completed',
-                    'run_id': 'run-123',
+                    'run_id': RUN_ID,
                 },
                 {},
                 id='implicit-utc-timestamp',
@@ -76,7 +89,7 @@ class TestRuntimeEvents:
                 {
                     'command': 'run',
                     'lifecycle': 'failed',
-                    'run_id': 'run-123',
+                    'run_id': RUN_ID,
                     'error_type': 'RuntimeError',
                     'error_message': 'boom',
                     'status': 'error',
@@ -93,18 +106,17 @@ class TestRuntimeEvents:
     def test_build_returns_expected_event_envelope(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        kwargs: dict[str, Any],
-        expected_extra: dict[str, object],
+        kwargs: EventBuildArgs,
+        expected_extra: EventExtraFields,
     ) -> None:
         """
         Test that build emits the stable event envelope and resolves
         timestamps.
         """
-        frozen_timestamp = '2025-01-01T00:00:00+00:00'
         monkeypatch.setattr(
             events_mod.RuntimeEvents,
             'utc_now_iso',
-            staticmethod(lambda: frozen_timestamp),
+            staticmethod(lambda: FROZEN_TIMESTAMP),
         )
         event = events_mod.RuntimeEvents.build(**kwargs)
 
@@ -113,10 +125,10 @@ class TestRuntimeEvents:
             'command': 'run',
             'event': f'run.{kwargs["lifecycle"]}',
             'lifecycle': kwargs['lifecycle'],
-            'run_id': 'run-123',
+            'run_id': RUN_ID,
             'schema': events_mod.EVENT_SCHEMA,
             'schema_version': events_mod.EVENT_SCHEMA_VERSION,
-            'timestamp': kwargs.get('timestamp', frozen_timestamp),
+            'timestamp': kwargs.get('timestamp', FROZEN_TIMESTAMP),
             **expected_extra,
         }
 
@@ -140,11 +152,11 @@ class TestRuntimeEvents:
         )
 
         events_mod.RuntimeEvents.emit(
-            {'event': 'run.started', 'run_id': 'run-123'},
+            {'event': 'run.started', 'run_id': RUN_ID},
             event_format=None,
         )
 
-        assert captured == [{'event': 'run.started', 'run_id': 'run-123'}]
+        assert captured == [{'event': 'run.started', 'run_id': RUN_ID}]
 
     @pytest.mark.parametrize(
         ('event_format', 'expected_err'),
