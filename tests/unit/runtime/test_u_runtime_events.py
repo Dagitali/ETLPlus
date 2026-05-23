@@ -20,23 +20,6 @@ from tests.pytest_shared_support import STRUCTURED_EVENT_BASE_FIELDS
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture(name='frozen_timestamp')
-def frozen_timestamp_fixture(
-    monkeypatch: pytest.MonkeyPatch,
-) -> str:
-    """Freeze runtime-event timestamps at one stable ISO-8601 value."""
-    timestamp = '2025-01-01T00:00:00+00:00'
-    monkeypatch.setattr(
-        events_mod.RuntimeEvents,
-        'utc_now_iso',
-        staticmethod(lambda: timestamp),
-    )
-    return timestamp
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -102,13 +85,19 @@ class TestRuntimeEvents:
     )
     def test_build_returns_expected_event_envelope(
         self,
+        monkeypatch: pytest.MonkeyPatch,
         kwargs: dict[str, Any],
-        frozen_timestamp: str,
     ) -> None:
         """
         Test that build emits the stable event envelope and resolves
         timestamps.
         """
+        frozen_timestamp = '2025-01-01T00:00:00+00:00'
+        monkeypatch.setattr(
+            events_mod.RuntimeEvents,
+            'utc_now_iso',
+            staticmethod(lambda: frozen_timestamp),
+        )
         event = events_mod.RuntimeEvents.build(**kwargs)
 
         assert STRUCTURED_EVENT_BASE_FIELDS.issubset(event)
