@@ -67,6 +67,13 @@ class FakeEndpointClientProtocol(Protocol):
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+REMOTE_STORAGE_ENV_CASES = (
+    'ETLPLUS_TEST_S3_URI',
+    'ETLPLUS_TEST_AZURE_BLOB_URI',
+)
+REMOTE_STORAGE_ENV_IDS = ('s3', 'azure-blob')
+
+
 def child_uri(base_uri: str, filename: str) -> str:
     """
     Append one test filename to a remote base URI.
