@@ -49,31 +49,39 @@ CONDA_STATUS_SNIPPETS = (
 class InstallerContract:
     """Documented installer command and matching smoke-action pattern."""
 
-    name: str
     docs_command: str
     smoke_pattern: re.Pattern[str]
 
 
 INSTALLER_CONTRACTS = (
-    InstallerContract(
-        name='pip',
-        docs_command='pip install etlplus',
-        smoke_pattern=re.compile(r'-m pip install \$\{\{ inputs\.artifact-wheel \}\}'),
-    ),
-    InstallerContract(
-        name='pipx',
-        docs_command='pipx install etlplus',
-        smoke_pattern=re.compile(r'-m pipx install \$\{\{ inputs\.artifact-wheel \}\}'),
-    ),
-    InstallerContract(
-        name='uv',
-        docs_command='uv tool install etlplus',
-        smoke_pattern=re.compile(
-            r'uv tool install --force \$\{\{ inputs\.artifact-wheel \}\}',
+    pytest.param(
+        InstallerContract(
+            docs_command='pip install etlplus',
+            smoke_pattern=re.compile(
+                r'-m pip install \$\{\{ inputs\.artifact-wheel \}\}',
+            ),
         ),
+        id='pip',
+    ),
+    pytest.param(
+        InstallerContract(
+            docs_command='pipx install etlplus',
+            smoke_pattern=re.compile(
+                r'-m pipx install \$\{\{ inputs\.artifact-wheel \}\}',
+            ),
+        ),
+        id='pipx',
+    ),
+    pytest.param(
+        InstallerContract(
+            docs_command='uv tool install etlplus',
+            smoke_pattern=re.compile(
+                r'uv tool install --force \$\{\{ inputs\.artifact-wheel \}\}',
+            ),
+        ),
+        id='uv',
     ),
 )
-INSTALLER_CONTRACT_IDS = [contract.name for contract in INSTALLER_CONTRACTS]
 
 CONDA_STATUS_CASES = tuple(
     pytest.param(path, snippet, id=f'{path.name}:{snippet}')
@@ -85,22 +93,10 @@ CONDA_STATUS_CASES = tuple(
 # SECTION: FIXTURES ========================================================= #
 
 
-@pytest.fixture(name='compatibility_text', scope='module')
-def compatibility_text_fixture() -> str:
-    """Return the published compatibility page source."""
-    return COMPATIBILITY_PATH.read_text(encoding='utf-8')
-
-
 @pytest.fixture(name='installer_smoke_action_text', scope='module')
 def installer_smoke_action_text_fixture() -> str:
     """Return the supported installer smoke action source."""
     return INSTALLER_SMOKE_ACTION_PATH.read_text(encoding='utf-8')
-
-
-@pytest.fixture(name='readme_text', scope='module')
-def readme_text_fixture() -> str:
-    """Return the repository README text."""
-    return README_PATH.read_text(encoding='utf-8')
 
 
 # SECTION: TESTS ============================================================ #
@@ -144,18 +140,18 @@ def test_installer_smoke_resolves_tool_installer_entrypoint_from_path(
 @pytest.mark.parametrize(
     'contract',
     INSTALLER_CONTRACTS,
-    ids=INSTALLER_CONTRACT_IDS,
 )
 def test_supported_installer_commands_are_documented_and_smoke_tested(
     contract: InstallerContract,
-    readme_text: str,
-    compatibility_text: str,
     installer_smoke_action_text: str,
 ) -> None:
     """
     Test that supported installer commands stay aligned with release smoke
     coverage.
     """
+    readme_text = README_PATH.read_text(encoding='utf-8')
+    compatibility_text = COMPATIBILITY_PATH.read_text(encoding='utf-8')
+
     assert contract.docs_command in readme_text
     assert contract.docs_command in compatibility_text
     assert contract.smoke_pattern.search(installer_smoke_action_text) is not None
