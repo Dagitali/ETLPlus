@@ -13,17 +13,16 @@ from typing import Any
 import pytest
 
 from tests.integration.conftest import REMOTE_STORAGE_ENV_CASES
-from tests.integration.conftest import REMOTE_STORAGE_ENV_IDS
-
-# SECTION: PRAGMAS ========================================================== #
-
-# pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonOutputParser
     from tests.integration.cli.conftest import RealRemoteSourceFactory
     from tests.integration.conftest import RemoteStorageHarness
+
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 # SECTION: MARKS ============================================================ #
 
@@ -55,7 +54,6 @@ class TestCliExtract:
     @pytest.mark.parametrize(
         'env_name',
         REMOTE_STORAGE_ENV_CASES,
-        ids=REMOTE_STORAGE_ENV_IDS,
     )
     def test_extract_real_remote_json_file(
         self,

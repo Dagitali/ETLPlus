@@ -15,11 +15,6 @@ import pytest
 from etlplus.file import File
 from etlplus.file import FileFormat
 from tests.integration.conftest import REMOTE_STORAGE_ENV_CASES
-from tests.integration.conftest import REMOTE_STORAGE_ENV_IDS
-
-# SECTION: PRAGMAS ========================================================== #
-
-# pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
@@ -28,6 +23,10 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.integration.cli.conftest import RealRemoteTargetFactory
     from tests.integration.conftest import RemoteStorageHarness
     from tests.integration.conftest import StdinText
+
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 # SECTION: MARKS ============================================================ #
 
@@ -66,7 +65,6 @@ class TestCliLoad:
     @pytest.mark.parametrize(
         'env_name',
         REMOTE_STORAGE_ENV_CASES,
-        ids=REMOTE_STORAGE_ENV_IDS,
     )
     def test_load_stdin_to_real_remote_file(
         self,
