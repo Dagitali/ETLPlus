@@ -23,9 +23,6 @@ from etlplus.api import EndpointCredentialsBearer
 # SECTION: HELPERS ========================================================== #
 
 
-# pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-
 def _json_response(
     *,
     url: str,
@@ -33,7 +30,6 @@ def _json_response(
     status: int = 200,
 ) -> requests.Response:
     """Build a minimal JSON Response for local fake HTTP flows."""
-    #
     response = requests.Response()
     response.status_code = status
     response.url = url

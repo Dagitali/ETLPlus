@@ -12,11 +12,17 @@ Notes
 from __future__ import annotations
 
 import importlib
+import io
 import json
+import os
 import pathlib
+import sys
 from collections.abc import Callable
+from dataclasses import dataclass
+from io import BytesIO
 from typing import Any
 from typing import Protocol
+from typing import cast
 
 import pytest
 
@@ -60,6 +66,101 @@ class FakeEndpointClientProtocol(Protocol):
     """
 
     seen: dict[str, Any]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+type FakeEndpointClients = tuple[
+    type[FakeEndpointClientProtocol],
+    list[FakeEndpointClientProtocol],
+]
+type PipelineCfgFactory = Callable[..., Config]
+type RunPatched = Callable[..., dict[str, Any]]
+type StdinText = Callable[[str], None]
+
+
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(slots=True)
+class RemoteStorageHarness:
+    """In-memory remote object store for integration tests."""
+
+    objects: dict[str, bytes]
+    writes: list[tuple[str, bytes]]
+
+    def set_text(self, uri: str, payload: str) -> None:
+        """Store UTF-8 text content at a remote URI."""
+        self.objects[uri] = payload.encode('utf-8')
+
+    def set_json(self, uri: str, payload: Any) -> None:
+        """Store JSON content at a remote URI."""
+        self.set_text(uri, json.dumps(payload))
+
+    def read_text(self, uri: str) -> str:
+        """Return UTF-8 decoded remote object content."""
+        return self.objects[uri].decode('utf-8')
+
+    def read_json(self, uri: str) -> Any:
+        """Parse remote object content as JSON."""
+        return json.loads(self.read_text(uri))
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+REMOTE_STORAGE_ENV_CASES = (
+    'ETLPLUS_TEST_S3_URI',
+    'ETLPLUS_TEST_AZURE_BLOB_URI',
+)
+REMOTE_STORAGE_ENV_IDS = ('s3', 'azure-blob')
+
+
+def child_uri(base_uri: str, filename: str) -> str:
+    """
+    Append one test filename to a remote base URI.
+
+    Parameters
+    ----------
+    base_uri : str
+        Remote base URI supplied by the integration-test environment.
+    filename : str
+        Test object filename to append.
+
+    Returns
+    -------
+    str
+        Remote child URI.
+    """
+    return f'{base_uri.rstrip("/")}/{filename}'
+
+
+def require_env(name: str) -> str:
+    """
+    Return one required env var or skip the integration test.
+
+    Parameters
+    ----------
+    name : str
+        Environment variable name to read.
+
+    Returns
+    -------
+    str
+        Configured environment variable value.
+
+    Example safe placeholder values:
+    - ``ETLPLUS_TEST_S3_URI=s3://my-etlplus-integration-bucket/cli``
+    - ``ETLPLUS_TEST_AZURE_BLOB_URI=azure-blob://etlplus-integration/cli``
+
+    Real values should be supplied from developer shell config, ``.envrc``,
+    VS Code test environment settings, or CI secret stores rather than being
+    committed to the repository.
+    """
+    value = os.getenv(name)
+    if not value:
+        pytest.skip(f'{name} is not configured for cloud integration tests')
+    return cast(str, value)
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -116,10 +217,7 @@ def capture_load_to_api_fixture(
 
 
 @pytest.fixture(name='fake_endpoint_client')
-def fake_endpoint_client_fixture() -> tuple[
-    type[FakeEndpointClientProtocol],
-    list[FakeEndpointClientProtocol],
-]:  # noqa: ANN201
+def fake_endpoint_client_fixture() -> FakeEndpointClients:
     """
     Provide a Fake EndpointClient class and capture list.
 
@@ -129,7 +227,7 @@ def fake_endpoint_client_fixture() -> tuple[
 
     Returns
     -------
-    tuple[type[FakeEndpointClientProtocol], list[FakeEndpointClientProtocol]]
+    FakeEndpointClients
         A tuple where the first element is the FakeClient class and the
         second element is the list of created instances.
     """
@@ -264,7 +362,7 @@ def isolated_state_dir_fixture(
 def pipeline_cfg_factory_fixture(
     tmp_path: pathlib.Path,
     base_url: str,
-) -> Callable[..., Config]:
+) -> PipelineCfgFactory:
     """
     Factory to build a minimal Config for runner tests.
 
@@ -281,7 +379,7 @@ def pipeline_cfg_factory_fixture(
 
     Returns
     -------
-    Callable[..., Config]
+    PipelineCfgFactory
         Factory function to create :class:`Config` instances.
     """
 
@@ -339,10 +437,58 @@ def pipeline_cfg_factory_fixture(
     return _make
 
 
+@pytest.fixture(name='remote_storage_harness')
+def remote_storage_harness_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> RemoteStorageHarness:
+    """Patch :mod:`etlplus.file._core` with an in-memory remote backend."""
+    core_mod = importlib.import_module('etlplus.file._core')
+    objects: dict[str, bytes] = {}
+    writes: list[tuple[str, bytes]] = []
+
+    class CaptureUpload(BytesIO):
+        """Capture uploaded remote content when the stream closes."""
+
+        def __init__(self, uri: str) -> None:
+            super().__init__()
+            self._uri = uri
+
+        def close(self) -> None:
+            payload = self.getvalue()
+            objects[self._uri] = payload
+            writes.append((self._uri, payload))
+            super().close()
+
+    class FakeBackend:
+        """Minimal remote backend for integration tests."""
+
+        def exists(self, location: object) -> bool:
+            uri = getattr(location, 'raw', str(location))
+            return uri in objects
+
+        def ensure_parent_dir(self, location: object) -> None:
+            del location
+
+        def open(
+            self,
+            location: object,
+            mode: str = 'r',
+            **kwargs: object,
+        ) -> BytesIO:
+            del kwargs
+            uri = getattr(location, 'raw', str(location))
+            if 'r' in mode:
+                return BytesIO(objects[uri])
+            return CaptureUpload(uri)
+
+    monkeypatch.setattr(core_mod, 'get_backend', lambda _value: FakeBackend())
+    return RemoteStorageHarness(objects=objects, writes=writes)
+
+
 @pytest.fixture(name='run_patched')
 def run_patched_fixture(
     monkeypatch: pytest.MonkeyPatch,
-) -> Callable[..., dict[str, Any]]:
+) -> RunPatched:
     """
     Return a helper to run the pipeline with patched runner dependencies.
 
@@ -353,7 +499,7 @@ def run_patched_fixture(
 
     Returns
     -------
-    Callable[..., dict[str, Any]]
+    RunPatched
         Factory function to run the pipeline with patched dependencies.
 
     Example
@@ -415,3 +561,27 @@ def run_patched_fixture(
         return run_mod.run('job')
 
     return _run
+
+
+@pytest.fixture(name='stdin_text')
+def stdin_text_fixture(
+    monkeypatch: pytest.MonkeyPatch,
+) -> StdinText:
+    """
+    Return a helper for replacing process STDIN with text.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Pytest monkeypatch fixture.
+
+    Returns
+    -------
+    StdinText
+        Callable that installs one text payload as ``sys.stdin``.
+    """
+
+    def _set(text: str) -> None:
+        monkeypatch.setattr(sys, 'stdin', io.StringIO(text))
+
+    return _set

@@ -6,6 +6,8 @@ Integration-scope smoke tests for CLI handler wiring.
 
 from __future__ import annotations
 
+from types import ModuleType
+
 import pytest
 
 from etlplus.cli._handlers import dataops as dataops_mod
@@ -22,58 +24,62 @@ from ...conftest import CaptureHandler
 
 pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+HANDLER_SMOKE_CASES = (
+    pytest.param(
+        run_mod,
+        'run_handler',
+        {'config': 'pipeline.yml', 'job': 'job1', 'pretty': True},
+        ('config', 'job', 'pretty'),
+        id='run-handler-smoke',
+    ),
+    pytest.param(
+        dataops_mod,
+        'transform_handler',
+        {
+            'source': 'data.json',
+            'operations': '{"select": ["id"]}',
+            'pretty': True,
+        },
+        ('source', 'operations', 'pretty'),
+        id='transform-handler-smoke',
+    ),
+    pytest.param(
+        dataops_mod,
+        'validate_handler',
+        {
+            'source': 'data.json',
+            'rules': '{"required": ["id"]}',
+            'pretty': True,
+        },
+        ('source', 'rules', 'pretty'),
+        id='validate-handler-smoke',
+    ),
+)
+
 # SECTION: TESTS ============================================================ #
 
 
 @pytest.mark.parametrize(
-    ('kwargs', 'expected_keys'),
-    (
-        pytest.param(
-            {'config': 'pipeline.yml', 'job': 'job1', 'pretty': True},
-            ['config', 'job', 'pretty'],
-            id='run-handler-smoke',
-        ),
-        pytest.param(
-            {
-                'source': 'data.json',
-                'operations': '{"select": ["id"]}',
-                'pretty': True,
-            },
-            ['source', 'operations', 'pretty'],
-            id='transform-handler-smoke',
-        ),
-        pytest.param(
-            {
-                'source': 'data.json',
-                'rules': '{"required": ["id"]}',
-                'pretty': True,
-            },
-            ['source', 'rules', 'pretty'],
-            id='validate-handler-smoke',
-        ),
-    ),
+    ('module', 'attr', 'kwargs', 'expected_keys'),
+    HANDLER_SMOKE_CASES,
 )
 def test_handler_smoke(
     capture_handler: CaptureHandler,
+    module: ModuleType,
+    attr: str,
     kwargs: dict[str, str | bool],
-    expected_keys: list[str],
+    expected_keys: tuple[str, ...],
 ) -> None:
     """
     Test that CLI handlers accept kwargs and call underlying logic.
     """
-    module: object
-    attr: str
-    if 'job' in kwargs:
-        module, attr = run_mod, 'run_handler'
-    elif 'operations' in kwargs:
-        module, attr = dataops_mod, 'transform_handler'
-    elif 'rules' in kwargs:
-        module, attr = dataops_mod, 'validate_handler'
-    else:
-        pytest.skip('Unknown handler')
-        return
     calls = capture_handler(module, attr)
     result = getattr(module, attr)(**kwargs)
+
     assert result == 0
     for key in expected_keys:
         assert key in calls

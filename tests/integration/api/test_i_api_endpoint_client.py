@@ -22,12 +22,6 @@ from etlplus.api import PaginationType
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
-
-
-# pylint: disable=unused-argument
-
-
 # SECTION: TESTS ============================================================ #
 
 

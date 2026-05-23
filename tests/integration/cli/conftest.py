@@ -7,25 +7,23 @@ Shared fixtures and helpers for pytest-based integration tests of
 
 from __future__ import annotations
 
-import importlib
 import itertools
 import json
-import os
 from collections.abc import Iterator
 from dataclasses import dataclass
-from io import BytesIO
 from pathlib import Path
 from textwrap import dedent
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Protocol
-from typing import cast
 from uuid import uuid4
 
 import pytest
 
 from etlplus.storage import StorageLocation
 from etlplus.storage import get_backend
+from tests.integration.conftest import child_uri
+from tests.integration.conftest import require_env
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFactory
@@ -41,7 +39,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 
-# SECTION: TYPES ============================================================ #
+# SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(slots=True)
@@ -82,36 +80,15 @@ class RealRemoteTarget:
 
 
 @dataclass(slots=True)
-class RemoteStorageHarness:
-    """In-memory remote object store for CLI integration tests."""
-
-    objects: dict[str, bytes]
-    writes: list[tuple[str, bytes]]
-
-    def set_text(self, uri: str, payload: str) -> None:
-        """Store UTF-8 text content at a remote URI."""
-        self.objects[uri] = payload.encode('utf-8')
-
-    def set_json(self, uri: str, payload: Any) -> None:
-        """Store JSON content at a remote URI."""
-        self.set_text(uri, json.dumps(payload))
-
-    def read_text(self, uri: str) -> str:
-        """Return UTF-8 decoded remote object content."""
-        return self.objects[uri].decode('utf-8')
-
-    def read_json(self, uri: str) -> Any:
-        """Parse remote object content as JSON."""
-        return json.loads(self.read_text(uri))
-
-
-@dataclass(slots=True)
 class TableSpec:
     """Container for generated table spec paths."""
 
     spec_path: Path
     schema_name: str
     table_name: str
+
+
+# SECTION: PROTOCOLS ======================================================== #
 
 
 class PipelineConfigFactory(Protocol):
@@ -146,29 +123,6 @@ class RealRemoteTargetFactory(Protocol):
         suffix: str,
         extension: str = 'json',
     ) -> RealRemoteTarget: ...
-
-
-def _child_uri(base_uri: str, filename: str) -> str:
-    """Append one test filename to a remote base URI."""
-    return f'{base_uri.rstrip("/")}/{filename}'
-
-
-def _require_env(name: str) -> str:
-    """
-    Return one required env var or skip the integration test.
-
-    Example safe placeholder values:
-    - ``ETLPLUS_TEST_S3_URI=s3://my-etlplus-integration-bucket/cli``
-    - ``ETLPLUS_TEST_AZURE_BLOB_URI=azure-blob://etlplus-integration/cli``
-
-    Real values should be supplied from developer shell config, ``.envrc``,
-    VS Code test environment settings, or CI secret stores rather than being
-    committed to the repository.
-    """
-    value = os.getenv(name)
-    if not value:
-        pytest.skip(f'{name} is not configured for cloud integration tests')
-    return cast(str, value)
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -333,8 +287,8 @@ def real_remote_target_factory_fixture() -> Iterator[RealRemoteTargetFactory]:
         suffix: str,
         extension: str = 'json',
     ) -> RealRemoteTarget:
-        base_uri = _require_env(env_name)
-        uri = _child_uri(
+        base_uri = require_env(env_name)
+        uri = child_uri(
             base_uri,
             f'etlplus-cli-{suffix}-{uuid4().hex}.{extension}',
         )
@@ -352,54 +306,6 @@ def real_remote_target_factory_fixture() -> Iterator[RealRemoteTargetFactory]:
     for target in reversed(created):
         if target.backend.exists(target.location):
             target.backend.delete(target.location)
-
-
-@pytest.fixture(name='remote_storage_harness')
-def remote_storage_harness_fixture(
-    monkeypatch: pytest.MonkeyPatch,
-) -> RemoteStorageHarness:
-    """Patch :mod:`etlplus.file._core` with an in-memory remote backend."""
-    core_mod = importlib.import_module('etlplus.file._core')
-    objects: dict[str, bytes] = {}
-    writes: list[tuple[str, bytes]] = []
-
-    class CaptureUpload(BytesIO):
-        """Capture uploaded remote content when the stream closes."""
-
-        def __init__(self, uri: str) -> None:
-            super().__init__()
-            self._uri = uri
-
-        def close(self) -> None:
-            payload = self.getvalue()
-            objects[self._uri] = payload
-            writes.append((self._uri, payload))
-            super().close()
-
-    class FakeBackend:
-        """Minimal remote backend for CLI integration tests."""
-
-        def exists(self, location: object) -> bool:
-            uri = getattr(location, 'raw', str(location))
-            return uri in objects
-
-        def ensure_parent_dir(self, location: object) -> None:
-            del location
-
-        def open(
-            self,
-            location: object,
-            mode: str = 'r',
-            **kwargs: object,
-        ) -> BytesIO:
-            del kwargs
-            uri = getattr(location, 'raw', str(location))
-            if 'r' in mode:
-                return BytesIO(objects[uri])
-            return CaptureUpload(uri)
-
-    monkeypatch.setattr(core_mod, 'get_backend', lambda _value: FakeBackend())
-    return RemoteStorageHarness(objects=objects, writes=writes)
 
 
 @pytest.fixture(name='table_spec')

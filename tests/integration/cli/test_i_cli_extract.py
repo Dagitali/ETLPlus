@@ -12,6 +12,9 @@ from typing import Any
 
 import pytest
 
+from tests.integration.conftest import REMOTE_STORAGE_ENV_CASES
+from tests.integration.conftest import REMOTE_STORAGE_ENV_IDS
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -20,7 +23,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import CliInvoke
     from tests.conftest import JsonOutputParser
     from tests.integration.cli.conftest import RealRemoteSourceFactory
-    from tests.integration.cli.conftest import RemoteStorageHarness
+    from tests.integration.conftest import RemoteStorageHarness
 
 # SECTION: MARKS ============================================================ #
 
@@ -50,12 +53,9 @@ class TestCliExtract:
         assert payload == sample_records
 
     @pytest.mark.parametrize(
-        ('env_name', 'backend_label'),
-        [
-            ('ETLPLUS_TEST_S3_URI', 's3'),
-            ('ETLPLUS_TEST_AZURE_BLOB_URI', 'azure-blob'),
-        ],
-        ids=['s3', 'azure-blob'],
+        'env_name',
+        REMOTE_STORAGE_ENV_CASES,
+        ids=REMOTE_STORAGE_ENV_IDS,
     )
     def test_extract_real_remote_json_file(
         self,
@@ -64,10 +64,8 @@ class TestCliExtract:
         sample_records: list[dict[str, Any]],
         real_remote_source_factory: RealRemoteSourceFactory,
         env_name: str,
-        backend_label: str,
     ) -> None:
         """Test extracting JSON from a real cloud-backed remote URI."""
-        del backend_label
         source = real_remote_source_factory(
             env_name,
             payload=sample_records,
