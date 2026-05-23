@@ -32,7 +32,7 @@ from tests.integration.pytest_integration_support import child_uri
 from tests.integration.pytest_integration_support import require_env
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
-    from tests.conftest import JsonFactory
+    from tests.pytest_shared_support import JsonFactory
 
 # SECTION: PRAGMAS ========================================================== #
 
