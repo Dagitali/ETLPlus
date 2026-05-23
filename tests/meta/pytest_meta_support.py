@@ -13,11 +13,14 @@ from pathlib import Path
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: CONSTANTS ======================================================== #
+# SECTION: EXPORTS ========================================================== #
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-TESTS_ROOT = REPO_ROOT / 'tests'
+__all__ = [
+    'markdown_table_rows',
+    'read_lines',
+    'regex_matches',
+]
 
 
 # SECTION: FUNCTIONS ======================================================== #
