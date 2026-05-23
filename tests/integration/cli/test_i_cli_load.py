@@ -28,7 +28,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.conftest import JsonFileParser
     from tests.conftest import JsonOutputParser
     from tests.integration.cli.conftest import RealRemoteTargetFactory
-    from tests.integration.cli.conftest import RemoteStorageHarness
+    from tests.integration.conftest import RemoteStorageHarness
 
 # SECTION: MARKS ============================================================ #
 
