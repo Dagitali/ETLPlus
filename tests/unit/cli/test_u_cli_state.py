@@ -22,7 +22,7 @@ import etlplus.cli._commands.run as run_mod
 import etlplus.cli._commands.transform as transform_mod
 import etlplus.cli._commands.validate as validate_mod
 
-from ...conftest import CaptureHandler
+from ...pytest_shared_support import CaptureHandler
 from .conftest import InvokeCli
 from .conftest import TyperContextFactory
 from .conftest import assert_mapping_contains
