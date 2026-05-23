@@ -115,8 +115,10 @@ class TestLoadTableSpec:
 
     @pytest.mark.parametrize(
         'extension',
-        ['json', 'yaml'],
-        ids=['json', 'yaml'],
+        [
+            pytest.param('json', id='json'),
+            pytest.param('yaml', id='yaml'),
+        ],
     )
     def test_roundtrip(
         self,

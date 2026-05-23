@@ -237,13 +237,12 @@ class TestSpreadsheetDependencySpec:
     @pytest.mark.parametrize(
         ('engine', 'expected'),
         [
-            (None, None),
-            ('openpyxl', ('openpyxl', None)),
-            ('xlrd', ('xlrd', None)),
-            ('odf', ('odf', 'odfpy')),
-            ('unknown', None),
+            pytest.param(None, None, id='none'),
+            pytest.param('openpyxl', ('openpyxl', None), id='openpyxl'),
+            pytest.param('xlrd', ('xlrd', None), id='xlrd'),
+            pytest.param('odf', ('odf', 'odfpy'), id='odf'),
+            pytest.param('unknown', None, id='unknown'),
         ],
-        ids=['none', 'openpyxl', 'xlrd', 'odf', 'unknown'],
     )
     def test_spreadsheet_dependency_spec(
         self,

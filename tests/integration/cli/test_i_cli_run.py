@@ -27,20 +27,23 @@ from etlplus.file import File
 from etlplus.file import FileFormat
 from etlplus.runtime import EVENT_SCHEMA
 from etlplus.runtime import EVENT_SCHEMA_VERSION
-from tests.integration.conftest import REMOTE_STORAGE_ENV_CASES
-from tests.integration.conftest import REMOTE_STORAGE_ENV_IDS
+from tests.integration.pytest_integration_support import REMOTE_STORAGE_ENV_CASES
+
+if TYPE_CHECKING:  # pragma: no cover - typing helpers only
+    from tests.integration.cli.pytest_cli_integration_support import (
+        PipelineConfigFactory,
+    )
+    from tests.integration.cli.pytest_cli_integration_support import (
+        RealRemoteTargetFactory,
+    )
+    from tests.integration.pytest_integration_support import RemoteStorageHarness
+    from tests.pytest_shared_support import CliInvoke
+    from tests.pytest_shared_support import JsonFileParser
+    from tests.pytest_shared_support import JsonOutputParser
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-if TYPE_CHECKING:  # pragma: no cover - typing helpers only
-    from tests.conftest import CliInvoke
-    from tests.conftest import JsonFileParser
-    from tests.conftest import JsonOutputParser
-    from tests.integration.cli.conftest import PipelineConfigFactory
-    from tests.integration.cli.conftest import RealRemoteTargetFactory
-    from tests.integration.conftest import RemoteStorageHarness
 
 # SECTION: MARKS ============================================================ #
 
@@ -220,7 +223,6 @@ class TestRun:
     @pytest.mark.parametrize(
         'env_name',
         REMOTE_STORAGE_ENV_CASES,
-        ids=REMOTE_STORAGE_ENV_IDS,
     )
     def test_file_to_real_remote_target(
         self,

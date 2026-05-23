@@ -131,8 +131,11 @@ class TestPaginationConfig:
 
     @pytest.mark.parametrize(
         'tval',
-        [None, 'weird', ''],
-        ids=['none', 'weird', 'empty'],
+        [
+            pytest.param(None, id='none'),
+            pytest.param('weird', id='weird'),
+            pytest.param('', id='empty'),
+        ],
     )
     def test_unknown_type_general_warnings_only(
         self,
@@ -173,8 +176,11 @@ class TestPaginationConfig:
 
     @pytest.mark.parametrize(
         'ptype',
-        ['page', 'offset', 'cursor'],
-        ids=['page', 'offset', 'cursor'],
+        [
+            pytest.param('page', id='page'),
+            pytest.param('offset', id='offset'),
+            pytest.param('cursor', id='cursor'),
+        ],
     )
     def test_validate_bounds_parametrized(
         self,

@@ -26,10 +26,10 @@ from tests.integration.file.pytest_smoke_file_contracts import (
 from tests.integration.file.pytest_smoke_file_contracts import (
     SMOKE_ROUNDTRIP_OVERRIDE_ATTRS,
 )
-from tests.meta.pytest_meta_support import REPO_ROOT
 from tests.meta.pytest_meta_support import markdown_table_rows
 from tests.meta.pytest_meta_support import read_lines
 from tests.meta.pytest_meta_support import regex_matches
+from tests.pytest_shared_support import REPO_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -52,10 +52,9 @@ _INTEGRATION_FILE_README_PATH = (
 )
 _README_MATRIX_PATH = REPO_ROOT / 'README.md'
 _MATRIX_PATHS = (
-    _README_MATRIX_PATH,
-    _DOCS_MATRIX_PATH,
+    pytest.param(_README_MATRIX_PATH, id=_README_MATRIX_PATH.name),
+    pytest.param(_DOCS_MATRIX_PATH, id=_DOCS_MATRIX_PATH.name),
 )
-_MATRIX_PATH_IDS = tuple(path.name for path in _MATRIX_PATHS)
 _SUPPORTED_FORMATS_SECTION = '## Supported File Formats'
 _SUPPORTED_FORMAT_ROW_PATTERN = re.compile(r'^\| (?P<format>[a-z0-9]+)\s+\|')
 _MATRIX_ROW_PATTERN = re.compile(
@@ -195,7 +194,7 @@ def _override_attrs_from_text(override_text: str) -> frozenset[str]:
 class TestRegistryDocsMatrixGuardrail:
     """Contract tests for registry/documentation matrix consistency."""
 
-    @pytest.mark.parametrize('path', _MATRIX_PATHS, ids=_MATRIX_PATH_IDS)
+    @pytest.mark.parametrize('path', _MATRIX_PATHS)
     def test_matrix_rows_match_explicit_registry_mappings(
         self,
         path: Path,

@@ -183,32 +183,35 @@ class TestValidate:
     @pytest.mark.parametrize(
         ('helper_name', 'module_name', 'format_name', 'pip_name'),
         [
-            (
+            pytest.param(
                 'get_frictionless',
                 'frictionless',
                 'CSV schema',
                 None,
+                id='frictionless',
             ),
-            (
+            pytest.param(
                 'get_jsonschema',
                 'jsonschema',
                 'JSON Schema',
                 None,
+                id='jsonschema',
             ),
-            (
+            pytest.param(
                 'get_lxml_etree',
                 'lxml.etree',
                 'XML schema',
                 'lxml',
+                id='lxml',
             ),
-            (
+            pytest.param(
                 'get_yaml',
                 'yaml',
                 'YAML schema',
                 'PyYAML',
+                id='yaml',
             ),
         ],
-        ids=['frictionless', 'jsonschema', 'lxml', 'yaml'],
     )
     def test_schema_import_helpers_delegate_to_get_dependency(
         self,

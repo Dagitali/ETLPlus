@@ -17,19 +17,20 @@ import pytest
 
 from etlplus.file import File
 from etlplus.file import FileFormat
-from tests.integration.conftest import REMOTE_STORAGE_ENV_CASES
-from tests.integration.conftest import REMOTE_STORAGE_ENV_IDS
+from tests.integration.pytest_integration_support import REMOTE_STORAGE_ENV_CASES
+
+if TYPE_CHECKING:  # pragma: no cover - typing helpers only
+    from tests.integration.cli.pytest_cli_integration_support import (
+        RealRemoteTargetFactory,
+    )
+    from tests.integration.pytest_integration_support import RemoteStorageHarness
+    from tests.integration.pytest_integration_support import StdinText
+    from tests.pytest_shared_support import CliInvoke
+    from tests.pytest_shared_support import JsonOutputParser
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-if TYPE_CHECKING:  # pragma: no cover - typing helpers only
-    from tests.conftest import CliInvoke
-    from tests.conftest import JsonOutputParser
-    from tests.integration.cli.conftest import RealRemoteTargetFactory
-    from tests.integration.conftest import RemoteStorageHarness
-    from tests.integration.conftest import StdinText
 
 # SECTION: MARKS ============================================================ #
 
@@ -127,6 +128,18 @@ class SchemaValidationCase:
     use_stdin: bool = False
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _assert_successful_cli_result(
+    code: int,
+    err: str,
+) -> None:
+    """Assert a CLI invocation completed successfully without STDERR output."""
+    assert code == 0
+    assert err.strip() == ''
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -219,8 +232,7 @@ class TestCliValidate:
 
         code, out, err = cli_invoke(tuple(args))
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         payload = parse_json_output(out)
         assert payload == VALID_SCHEMA_RESULT
 
@@ -254,8 +266,7 @@ class TestCliValidate:
             ),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         payload = parse_json_output(out)
         assert payload['valid'] is False
         assert 'row[3].email' in payload['field_errors']
@@ -294,8 +305,7 @@ class TestCliValidate:
             ),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         payload = parse_json_output(out)
         assert payload['valid'] is True
         assert payload['errors'] == []
@@ -321,8 +331,7 @@ class TestCliValidate:
             ),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         payload = parse_json_output(out)
         assert payload['valid'] is False
         assert any(
@@ -374,8 +383,7 @@ class TestCliValidate:
             ),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         assert out.strip() == f'ValidationDict result saved to {output_path}'
         assert File(output_path, FileFormat.JSON).read() == VALID_SCHEMA_RESULT
 
@@ -390,15 +398,13 @@ class TestCliValidate:
         """Test validating a STDIN payload with basic rules."""
         stdin_text(sample_records_json)
         code, out, err = cli_invoke(('validate', '--rules', rules_json, '-'))
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         payload = parse_json_output(out)
         assert payload['valid'] is True
 
     @pytest.mark.parametrize(
         'env_name',
         REMOTE_STORAGE_ENV_CASES,
-        ids=REMOTE_STORAGE_ENV_IDS,
     )
     def test_stdin_payload_to_real_remote_output(
         self,
@@ -418,8 +424,7 @@ class TestCliValidate:
             ('validate', '--rules', rules_json, '--output', target.uri, '-'),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         assert out.strip() == f'ValidationDict result saved to {target.uri}'
         assert File(target.uri, FileFormat.JSON).read() == sample_records
 
@@ -447,7 +452,6 @@ class TestCliValidate:
             ),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        _assert_successful_cli_result(code, err)
         assert out.strip() == f'ValidationDict result saved to {target_uri}'
         assert remote_storage_harness.read_json(target_uri) == sample_records

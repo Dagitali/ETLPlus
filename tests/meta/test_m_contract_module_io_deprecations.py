@@ -14,7 +14,7 @@ from types import ModuleType
 import pytest
 
 from etlplus.file import _registry as file_registry
-from tests.meta.pytest_meta_support import REPO_ROOT
+from tests.pytest_shared_support import REPO_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
 

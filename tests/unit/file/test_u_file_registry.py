@@ -234,10 +234,13 @@ class TestRegistryInternalHelpers:
     @pytest.mark.parametrize(
         ('symbol', 'error_pattern'),
         [
-            (object(), 'must be a class'),
-            (type('_NotAHandler', (), {}), 'must inherit FileHandlerABC'),
+            pytest.param(object(), 'must be a class', id='non_class'),
+            pytest.param(
+                type('_NotAHandler', (), {}),
+                'must inherit FileHandlerABC',
+                id='wrong_base_class',
+            ),
         ],
-        ids=('non_class', 'wrong_base_class'),
     )
     def test_coerce_handler_class_rejects_invalid_symbols(
         self,
@@ -348,10 +351,9 @@ class TestRegistryStrictPolicy:
     @pytest.mark.parametrize(
         'resolver',
         [
-            mod.get_handler_class,
-            mod.get_handler,
+            pytest.param(mod.get_handler_class, id='class_lookup'),
+            pytest.param(mod.get_handler, id='instance_lookup'),
         ],
-        ids=('class_lookup', 'instance_lookup'),
     )
     def test_lookups_raise_without_explicit_mapping(
         self,

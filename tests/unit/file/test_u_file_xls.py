@@ -38,21 +38,22 @@ class TestXls(
     @pytest.mark.parametrize(
         ('sheet', 'read_supports_sheet_name', 'expected_read_calls'),
         [
-            (
+            pytest.param(
                 'Sheet2',
                 True,
                 [{'engine': 'xlrd', 'sheet_name': 'Sheet2'}],
+                id='sheet_name_supported',
             ),
-            (
+            pytest.param(
                 'Main',
                 False,
                 [
                     {'engine': 'xlrd', 'sheet_name': 'Main'},
                     {'engine': 'xlrd'},
                 ],
+                id='sheet_name_fallback',
             ),
         ],
-        ids=['sheet_name_supported', 'sheet_name_fallback'],
     )
     def test_read_sheet_option_routing(
         self,
