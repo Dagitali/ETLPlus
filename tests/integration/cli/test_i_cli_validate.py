@@ -6,7 +6,10 @@ Integration-scope smoke tests for the ``etlplus validate`` CLI command.
 
 from __future__ import annotations
 
+import json
+from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
 from typing import TYPE_CHECKING
 from typing import Any
 
@@ -36,78 +39,92 @@ pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 # SECTION: CONSTANTS ======================================================== #
 
 
-FRICTIONLESS_SCHEMA_PERSON = '\n'.join(
-    [
-        '{',
-        '  "fields": [',
-        '    {"name": "name", "type": "string"},',
-        '    {"name": "age", "type": "integer"}',
-        '  ]',
-        '}',
-    ],
+VALID_SCHEMA_RESULT = {
+    'valid': True,
+    'errors': [],
+    'field_errors': {},
+    'data': None,
+}
+FRICTIONLESS_SCHEMA_PERSON = json.dumps(
+    {
+        'fields': [
+            {'name': 'name', 'type': 'string'},
+            {'name': 'age', 'type': 'integer'},
+        ],
+    },
+    indent=2,
 )
-FRICTIONLESS_SCHEMA_CONTACT_CONSTRAINTS = '\n'.join(
-    [
-        '{',
-        '  "fields": [',
-        (
-            '    {"name": "email", "type": "string", "constraints": '
-            '{"required": true, "unique": true}},'
-        ),
-        (
-            '    {"name": "status", "type": "string", "constraints": '
-            '{"required": true, "enum": ["active", "inactive"]}}'
-        ),
-        '  ]',
-        '}',
-    ],
+FRICTIONLESS_SCHEMA_CONTACT_CONSTRAINTS = json.dumps(
+    {
+        'fields': [
+            {
+                'name': 'email',
+                'type': 'string',
+                'constraints': {'required': True, 'unique': True},
+            },
+            {
+                'name': 'status',
+                'type': 'string',
+                'constraints': {
+                    'required': True,
+                    'enum': ['active', 'inactive'],
+                },
+            },
+        ],
+    },
+    indent=2,
 )
-JSON_SCHEMA_PERSON = '\n'.join(
-    [
-        '{',
-        '  "type": "object",',
-        '  "properties": {"name": {"type": "string"}},',
-        '  "required": ["name"]',
-        '}',
-    ],
+JSON_SCHEMA_PERSON = json.dumps(
+    {
+        'type': 'object',
+        'properties': {'name': {'type': 'string'}},
+        'required': ['name'],
+    },
+    indent=2,
 )
-JSON_SCHEMA_PERSON_WITH_AGE = '\n'.join(
-    [
-        '{',
-        '  "type": "object",',
-        '  "properties": {',
-        '    "name": {"type": "string"},',
-        '    "age": {"type": "integer", "minimum": 0}',
-        '  },',
-        '  "required": ["name", "age"]',
-        '}',
-    ],
+JSON_SCHEMA_PERSON_WITH_AGE = json.dumps(
+    {
+        'type': 'object',
+        'properties': {
+            'name': {'type': 'string'},
+            'age': {'type': 'integer', 'minimum': 0},
+        },
+        'required': ['name', 'age'],
+    },
+    indent=2,
 )
 XML_NOTE_PAYLOAD = '<note><title>Hello</title></note>'
-XSD_NOTE_SCHEMA = '\n'.join(
-    [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">',
-        '  <xs:element name="note">',
-        '    <xs:complexType>',
-        '      <xs:sequence>',
-        '        <xs:element name="title" type="xs:string" />',
-        '      </xs:sequence>',
-        '    </xs:complexType>',
-        '  </xs:element>',
-        '</xs:schema>',
-    ],
+XSD_NOTE_SCHEMA = dedent(
+    """\
+    <?xml version="1.0" encoding="UTF-8"?>
+    <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+      <xs:element name="note">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="title" type="xs:string" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:schema>
+    """,
 )
 
-# SECTION: HELPERS ========================================================== #
+
+# SECTION: DATA CLASSES ===================================================== #
 
 
-def _assert_valid_schema_result(payload: dict[str, object]) -> None:
-    """Assert the standard successful schema-validation result payload."""
-    assert payload['valid'] is True
-    assert payload['errors'] == []
-    assert payload['field_errors'] == {}
-    assert payload['data'] is None
+@dataclass(frozen=True, slots=True)
+class SchemaValidationCase:
+    """Input case for successful schema-validation CLI coverage."""
+
+    dependency: str
+    schema: str
+    source: str
+    source_suffix: str
+    schema_suffix: str = '.json'
+    schema_format: str | None = None
+    source_format: str | None = None
+    use_stdin: bool = False
 
 
 # SECTION: TESTS ============================================================ #
@@ -116,65 +133,96 @@ def _assert_valid_schema_result(payload: dict[str, object]) -> None:
 class TestCliValidate:
     """Smoke tests for the ``etlplus validate`` CLI command."""
 
-    def test_frictionless_validation_for_csv_file(
-        self,
-        cli_invoke: CliInvoke,
-        parse_json_output: JsonOutputParser,
-        tmp_path: Path,
-    ) -> None:
-        """Schema mode should validate CSV files with Frictionless Table Schema."""
-        pytest.importorskip('frictionless')
-        source_path = tmp_path / 'sample.csv'
-        schema_path = tmp_path / 'schema.json'
-        source_path.write_text('name,age\nAda,37\n', encoding='utf-8')
-        schema_path.write_text(FRICTIONLESS_SCHEMA_PERSON, encoding='utf-8')
-
-        code, out, err = cli_invoke(
-            (
-                'validate',
-                '--schema',
-                str(schema_path),
-                '--schema-format',
-                'frictionless',
-                str(source_path),
+    @pytest.mark.parametrize(
+        'case',
+        [
+            pytest.param(
+                SchemaValidationCase(
+                    dependency='frictionless',
+                    schema=FRICTIONLESS_SCHEMA_PERSON,
+                    schema_format='frictionless',
+                    source='name,age\nAda,37\n',
+                    source_suffix='.csv',
+                ),
+                id='frictionless-csv-file',
             ),
-        )
-
-        assert code == 0
-        assert err.strip() == ''
-        payload = parse_json_output(out)
-        _assert_valid_schema_result(payload)
-
-    def test_frictionless_validation_for_csv_stdin(
+            pytest.param(
+                SchemaValidationCase(
+                    dependency='frictionless',
+                    schema=FRICTIONLESS_SCHEMA_PERSON,
+                    schema_format='frictionless',
+                    source='name,age\nAda,37\n',
+                    source_format='csv',
+                    source_suffix='.csv',
+                    use_stdin=True,
+                ),
+                id='frictionless-csv-stdin',
+            ),
+            pytest.param(
+                SchemaValidationCase(
+                    dependency='jsonschema',
+                    schema=JSON_SCHEMA_PERSON,
+                    schema_format='jsonschema',
+                    source='{"name": "Ada"}',
+                    source_suffix='.json',
+                ),
+                id='jsonschema-json-file',
+            ),
+            pytest.param(
+                SchemaValidationCase(
+                    dependency='jsonschema',
+                    schema=JSON_SCHEMA_PERSON_WITH_AGE,
+                    schema_format='jsonschema',
+                    source='name: Ada\nage: 37\n',
+                    source_format='yaml',
+                    source_suffix='.yaml',
+                    use_stdin=True,
+                ),
+                id='jsonschema-yaml-stdin',
+            ),
+            pytest.param(
+                SchemaValidationCase(
+                    dependency='lxml.etree',
+                    schema=XSD_NOTE_SCHEMA,
+                    schema_suffix='.xsd',
+                    source=XML_NOTE_PAYLOAD,
+                    source_suffix='.xml',
+                ),
+                id='xsd-xml-file',
+            ),
+        ],
+    )
+    def test_schema_validation_succeeds(
         self,
         cli_invoke: CliInvoke,
         parse_json_output: JsonOutputParser,
         stdin_text: StdinText,
         tmp_path: Path,
+        case: SchemaValidationCase,
     ) -> None:
-        """Schema mode should honor the source format hint for CSV STDIN."""
-        pytest.importorskip('frictionless')
-        schema_path = tmp_path / 'schema.json'
-        schema_path.write_text(FRICTIONLESS_SCHEMA_PERSON, encoding='utf-8')
-        stdin_text('name,age\nAda,37\n')
+        """Schema mode should emit the standard success payload."""
+        pytest.importorskip(case.dependency)
+        schema_path = tmp_path / f'schema{case.schema_suffix}'
+        schema_path.write_text(case.schema, encoding='utf-8')
+        args = ['validate', '--schema', str(schema_path)]
+        if case.schema_format is not None:
+            args.extend(('--schema-format', case.schema_format))
+        if case.source_format is not None:
+            args.extend(('--source-format', case.source_format))
+        if case.use_stdin:
+            stdin_text(case.source)
+            args.append('-')
+        else:
+            source_path = tmp_path / f'sample{case.source_suffix}'
+            source_path.write_text(case.source, encoding='utf-8')
+            args.append(str(source_path))
 
-        code, out, err = cli_invoke(
-            (
-                'validate',
-                '--schema',
-                str(schema_path),
-                '--schema-format',
-                'frictionless',
-                '--source-format',
-                'csv',
-                '-',
-            ),
-        )
+        code, out, err = cli_invoke(tuple(args))
 
         assert code == 0
         assert err.strip() == ''
         payload = parse_json_output(out)
-        _assert_valid_schema_result(payload)
+        assert payload == VALID_SCHEMA_RESULT
 
     def test_frictionless_validation_for_csv_constraint_failures(
         self,
@@ -220,66 +268,6 @@ class TestCliValidate:
             'constraint "required" is "True"' in message
             for message in payload['field_errors']['row[3].status']
         )
-
-    def test_jsonschema_validation_for_json_file(
-        self,
-        cli_invoke: CliInvoke,
-        parse_json_output: JsonOutputParser,
-        tmp_path: Path,
-    ) -> None:
-        """Schema mode should validate JSON files with JSON Schema."""
-        pytest.importorskip('jsonschema')
-        source_path = tmp_path / 'sample.json'
-        schema_path = tmp_path / 'schema.json'
-        source_path.write_text('{"name": "Ada"}', encoding='utf-8')
-        schema_path.write_text(JSON_SCHEMA_PERSON, encoding='utf-8')
-
-        code, out, err = cli_invoke(
-            (
-                'validate',
-                '--schema',
-                str(schema_path),
-                '--schema-format',
-                'jsonschema',
-                str(source_path),
-            ),
-        )
-
-        assert code == 0
-        assert err.strip() == ''
-        payload = parse_json_output(out)
-        _assert_valid_schema_result(payload)
-
-    def test_jsonschema_validation_for_yaml_stdin(
-        self,
-        cli_invoke: CliInvoke,
-        parse_json_output: JsonOutputParser,
-        stdin_text: StdinText,
-        tmp_path: Path,
-    ) -> None:
-        """Schema mode should honor the source format hint for YAML STDIN."""
-        pytest.importorskip('jsonschema')
-        schema_path = tmp_path / 'schema.json'
-        schema_path.write_text(JSON_SCHEMA_PERSON_WITH_AGE, encoding='utf-8')
-        stdin_text('name: Ada\nage: 37\n')
-
-        code, out, err = cli_invoke(
-            (
-                'validate',
-                '--schema',
-                str(schema_path),
-                '--schema-format',
-                'jsonschema',
-                '--source-format',
-                'yaml',
-                '-',
-            ),
-        )
-
-        assert code == 0
-        assert err.strip() == ''
-        payload = parse_json_output(out)
-        _assert_valid_schema_result(payload)
 
     def test_jsonschema_validation_infers_format_for_json_file(
         self,
@@ -362,28 +350,6 @@ class TestCliValidate:
         assert out.strip() == ''
         assert 'Use either --rules or --schema/--schema-format' in err
 
-    def test_schema_validation(
-        self,
-        cli_invoke: CliInvoke,
-        parse_json_output: JsonOutputParser,
-        tmp_path: Path,
-    ) -> None:
-        """Schema mode should emit the structured validation result payload."""
-        pytest.importorskip('lxml.etree')
-        xml_path = tmp_path / 'sample.xml'
-        xsd_path = tmp_path / 'sample.xsd'
-        xml_path.write_text(XML_NOTE_PAYLOAD, encoding='utf-8')
-        xsd_path.write_text(XSD_NOTE_SCHEMA, encoding='utf-8')
-
-        code, out, err = cli_invoke(
-            ('validate', '--schema', str(xsd_path), str(xml_path)),
-        )
-
-        assert code == 0
-        assert err.strip() == ''
-        payload = parse_json_output(out)
-        _assert_valid_schema_result(payload)
-
     def test_schema_validation_output_file(
         self,
         cli_invoke: CliInvoke,
@@ -411,12 +377,7 @@ class TestCliValidate:
         assert code == 0
         assert err.strip() == ''
         assert out.strip() == f'ValidationDict result saved to {output_path}'
-        assert File(output_path, FileFormat.JSON).read() == {
-            'valid': True,
-            'errors': [],
-            'field_errors': {},
-            'data': None,
-        }
+        assert File(output_path, FileFormat.JSON).read() == VALID_SCHEMA_RESULT
 
     def test_stdin_payload(
         self,
