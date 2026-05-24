@@ -72,9 +72,9 @@ Most PyPI dependency names map directly to conda-forge package names. The requir
 
 | PyPI requirement | Conda-forge requirement |
 | --- | --- |
-| `msgpack>=1.0.8` | `msgpack-python >=1.0.8` |
+| `msgpack>=1.1.2` | `msgpack-python >=1.1.2` |
 | `PyYAML>=6.0.3` | `pyyaml >=6.0.3` |
-| `SQLAlchemy>=2.0.45` | `sqlalchemy >=2.0.45` |
+| `SQLAlchemy>=2.0.49` | `sqlalchemy >=2.0.49` |
 
 The first feedstock pass should preserve the same broad base runtime contract as the PyPI artifact.
 Do not add optional extras to the base recipe. Optional extras should remain later follow-up outputs
