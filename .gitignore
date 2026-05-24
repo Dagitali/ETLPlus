@@ -1,15 +1,30 @@
 # .gitignore
 # ETLPlus
 #
-# Copyright © 2025 Dagitali LLC. All rights reserved.
+# Copyright © 2026 Dagitali LLC. All rights reserved.
 #
-# An optional Git configuration file. Specifies intentionally untracked files
-# that Git should ignore, where each line specifies a pattern.
+# Git ignore configuration for intentionally untracked repository files.
 #
-# See:
-# 1. https://fileinfo.com/extension/gitignore
-# 2. https://git-scm.com/docs/gitignore
-# 3. https://gitignore.io
+# Git is a distributed version control system that tracks changes in source
+# code during software development. The `.gitignore` file allows you to
+# define patterns for files and directories that should be ignored by Git.
+
+# Responsibilities
+# - Ignore editor, operating-system, build, cache, coverage, and virtual
+#   environment artifacts that should not be committed.
+# - Keep generated and local-only files out of source control by default.
+# - Reduce accidental commits of transient development artifacts.
+#
+# Maintainer Notes
+# - This file was originally generated from the gitignore.io template set
+#   listed below; keep broad template sections recognizable when refreshing it.
+# - Prefer narrow project-specific ignore rules when adding new local artifacts.
+# - Do not ignore release artifacts that CI needs to build, audit, or publish
+#   from tracked source files.
+#
+# References
+# - Git ignore documentation: https://git-scm.com/docs/gitignore
+# - gitignore.io template generator: https://gitignore.io
 
 # Created by https://www.toptal.com/developers/gitignore/api/dropbox,emacs,linux,macos,pycharm+all,python,vim,visualstudiocode,windows
 # Edit at https://www.toptal.com/developers/gitignore?templates=dropbox,emacs,linux,macos,pycharm+all,python,vim,visualstudiocode,windows
