@@ -1,0 +1,96 @@
+# dependabot.yml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# GitHub Dependabot configuration for automated dependency update pull
+# requests.
+#
+# Responsibilities
+# - Keep GitHub Actions, Python package metadata, and pre-commit hook
+#   dependencies current through reviewable pull requests.
+# - Route dependency maintenance through the GitFlow development branch before
+#   release promotion.
+# - Reduce supply-chain exposure from stale dependencies while preserving the
+#   existing CI, package-build, and release-validation gates.
+#
+# Maintainer Notes
+# - `pyproject.toml` is the canonical Python packaging metadata source.
+# - GitHub Actions updates scan `.github/workflows/` plus local action metadata
+#   files from the repository root.
+# - Dependency update pull requests intentionally target `develop`; release and
+#   hotfix branches should receive dependency changes through normal GitFlow
+#   promotion unless an urgent security fix requires a dedicated hotfix branch.
+# - Keep external GitHub Actions pinned to full commit SHAs after accepting
+#   Dependabot updates.
+#
+# References
+# - GitHub Security Advisory database: https://github.com/advisories
+# - Dependabot GitHub repository: https://github.com/dependabot
+# - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
+# - Dependabot documentation: https://docs.github.com/en/code-security/dependabot
+# - Dependabot quickstart guide: https://docs.github.com/en/code-security/tutorials/secure-your-dependencies/dependabot-quickstart-guide
+# - Python packaging metadata: https://www.python.org/dev/peps/pep-0561/#packaging-type-information
+
+---
+
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:30"
+      timezone: America/New_York
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: deps
+      include: scope
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: pip
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/New_York
+    labels:
+      - dependencies
+      - python
+    commit-message:
+      prefix: deps
+      include: scope
+    groups:
+      python-runtime-dependencies:
+        dependency-type: production
+      python-development-dependencies:
+        dependency-type: development
+
+  - package-ecosystem: pre-commit
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:00"
+      timezone: America/New_York
+    labels:
+      - dependencies
+      - pre-commit
+    commit-message:
+      prefix: deps
+      include: scope
+    groups:
+      pre-commit-hooks:
+        patterns:
+          - "*"
