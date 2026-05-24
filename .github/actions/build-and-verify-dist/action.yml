@@ -13,6 +13,9 @@
 # Maintainer Notes
 # - This action intentionally stops short of wheel smoke testing so workflows
 #   can decide whether and how to run additional packaged-runtime checks.
+#
+# References
+# - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 
 ---
 

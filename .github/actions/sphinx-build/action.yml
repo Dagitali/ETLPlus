@@ -12,6 +12,9 @@
 # Maintainer Notes
 # - Workflow jobs remain responsible for Python setup and docs dependency
 #   installation before invoking this action.
+#
+# References
+# - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 
 ---
 

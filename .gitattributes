@@ -1,13 +1,28 @@
 # .gitattributes
 # ETLPlus
 #
-# Copyright © 2025 Dagitali LLC. All rights reserved.
+# Copyright © 2026 Dagitali LLC. All rights reserved.
 #
-# An optional Git configuration file. Defines attributes per pathname.
+# Git attributes configuration for repository path handling.
 #
-# See:
-# 1. https://fileinfo.com/extension/gitattributes
-# 2. https://git-scm.com/docs/gitattributes
+# Git is a distributed version control system that tracks changes in source
+# code during software development. The `.gitattributes` file allows you to
+# define attributes for paths in your repository, which can affect how Git
+# handles those files in various operations such as merging, diffing, and
+# checking out.
+#
+# Responsibilities
+# - Define Git attributes by path pattern.
+# - Normalize text files consistently across platforms.
+# - Reduce line-ending churn in diffs and generated patches.
+#
+# Maintainer Notes
+# - Keep LF normalization aligned with `.editorconfig`.
+# - Add binary or generated-file attributes here when Git should treat those
+#   paths differently from the repository default.
+#
+# References
+# - Git attributes documentation: https://git-scm.com/docs/gitattributes
 
 # Auto detect text files and perform LF normalization
 * text=auto

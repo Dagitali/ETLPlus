@@ -15,6 +15,9 @@
 #   drift.
 # - Merge queue events intentionally succeed without re-evaluating individual
 #   branch mappings because the queued pull requests have already been checked.
+#
+# References
+# - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 
 ---
 

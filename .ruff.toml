@@ -3,11 +3,14 @@
 #
 # Copyright © 2026 Dagitali LLC. All rights reserved.
 #
-# Ruff configuration.
+# Ruff configuration for Python linting and auto-fix policy.
+#
+# Ruff is a fast Python linter and auto-formatter that can enforce a wide range
+# of style and correctness rules. This configuration file defines the canonical
+# Ruff linting policy for the ETLPlus project.
 #
 # Responsibilities
-# - Define the repository's Ruff linting and formatting policy for Python
-#   sources.
+# - Define the repository's canonical Ruff linting policy for Python sources.
 # - Target the minimum supported syntax level: Python 3.13.
 #
 # Maintainer Notes
