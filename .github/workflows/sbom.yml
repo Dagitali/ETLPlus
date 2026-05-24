@@ -14,6 +14,19 @@
 #   permissions it needs.
 # - External GitHub Actions are pinned to full commit SHAs to reduce
 #   supply-chain risk.
+# - The dynamic run name is part of the workflow contract: it should identify
+#   the event trigger for clarity.
+#
+# References
+# - CycloneDX Python module documentation: https://cyclonedx.org/tool-center/python/
+# - GitHub Actions documentation: https://docs.github.com/en/actions
+# - GitHub Actions for Python: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
+# - GitHub Actions expressions: https://docs.github.com/en/actions/learn-github-actions/expressions
+# - GitHub Actions best practices: https://docs.github.com/en/actions/learn-github-actions/introduction-to-github-actions#best-practices-for-github-actions
+# - GitHub Actions security hardening: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+# - GitHub Actions workflow commands: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
+# - GitHub Actions workflow syntax: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
 
 ---
 

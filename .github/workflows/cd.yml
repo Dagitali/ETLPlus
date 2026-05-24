@@ -24,6 +24,23 @@
 #   permissions it needs.
 # - External GitHub Actions are pinned to full commit SHAs to reduce
 #   supply-chain risk.
+# - The dynamic run name is part of the workflow contract: it should identify
+#   the tagged version for release clarity.
+#
+# References
+# - GitHub Actions documentation: https://docs.github.com/en/actions
+# - GitHub Actions for Python: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# - GitHub Actions for Python packaging: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-python-packages-to-pypi
+# - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
+# - PyPI trusted publishing: https://docs.github.com/en/actions/deployment/publishing-to-pypi#about-pypi-trusted-publishing
+# - GitHub environment configuration: https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment
+# - GitHub Actions expressions: https://docs.github.com/en/actions/learn-github-actions/expressions
+# - GitHub Actions best practices: https://docs.github.com/en/actions/learn-github-actions/introduction-to-github-actions#best-practices-for-github-actions
+# - GitHub Actions security hardening: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+# - GitHub Actions workflow commands: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
+# - GitHub Actions workflow syntax: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+# - GitHub Release documentation: https://docs.github.com/en/repositories/releasing-projects
+# - Python packaging and distribution: https://packaging.python.org/
 
 ---
 

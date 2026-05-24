@@ -18,6 +18,34 @@
 #   chain risk.
 # - Heavier protected-branch validation lives in `ci.yml`; keep this workflow
 #   focused on the faster required baseline used by branch protection.
+# - The dynamic run name is part of the workflow contract: it should identify
+#   the short-lived source branch and the long-running target branch for PR
+#   review clarity.
+#
+# References
+# - Commitizen: https://commitizen-tools.github.io/commitizen/
+# - GitHub Actions documentation: https://docs.github.com/en/actions
+# - GitHub Actions for Python: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# - GitHub Actions for Python packaging: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-python-packages-to-pypi
+# - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
+# - GitHub Actions expressions: https://docs.github.com/en/actions/learn-github-actions/expressions
+# - GitHub Actions best practices: https://docs.github.com/en/actions/learn-github-actions/introduction-to-github-actions#best-practices-for-github-actions
+# - GitHub Actions security hardening: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+# - GitHub Actions workflow commands: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
+# - GitHub Actions workflow syntax: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+# - GitHub pull request documentation: https://docs.github.com/en/pull-requests
+# - GitHub merge queue documentation: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-merge-queues
+# - Pre-commit hooks: https://pre-commit.com/
+# - Python wheel installer documentation: https://pip.pypa.io/en/stable/reference/pip_install/#wheel-installer
+# - Python wheel installation troubleshooting: https://pip.pypa.io/en/stable/topics/wheel/#installing-wheel-files
+# - Python wheel installation troubleshooting for Linux: https://pip.pypa.io/en/stable/topics/wheel/#installing-wheel-files-on-linux
+# - Python wheel installation troubleshooting for macOS: https://pip.pypa.io/en/stable/topics/wheel/#installing-wheel-files-on-macos
+# - Python wheel installation troubleshooting for Windows: https://pip.pypa.io/en/stable/topics/wheel/#installing-wheel-files-on-windows
+# - Python packaging and distribution: https://packaging.python.org/
+# - Python wheel documentation: https://packaging.python.org/en/latest/specifications/binary-distribution-format/#file-contents
+# - Read the Docs documentation: https://docs.readthedocs.io/en/stable/
+# - Sphinx documentation: https://www.sphinx-doc.org/en/master/
+# - Sphinx builders: https://www.sphinx-doc.org/en/master/usage/builders/index.html
 
 ---
 
