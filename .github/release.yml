@@ -13,6 +13,14 @@
 # - The release workflow itself lives in `.github/workflows/cd.yml`.
 # - Combine the generated notes with `.github/RELEASE-NOTES-TEMPLATE.md` when
 #   drafting final release text.
+# - The `exclude` section is applied before categorization; any commit with a
+#   matching label is omitted from the generated notes.
+# - The `categories` section is applied in order; a commit is assigned to the
+#   first matching category based on its labels. Commits that don't match any
+#   category are grouped under "Uncategorized".
+#
+# References
+# - GitHub Release documentation: https://docs.github.com/en/repositories/releasing-projects
 
 ---
 

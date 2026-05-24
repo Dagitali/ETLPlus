@@ -1,13 +1,26 @@
 # .coveragerc
 # ETLPlus
 #
-# Copyright © 2025 Dagitali LLC. All rights reserved.
+# Copyright © 2026 Dagitali LLC. All rights reserved.
 #
-# An optional pytest-cov configuration file. Limits coverage measurement to the
-# ETLPlus package and ignore test modules.
+# Coverage.py configuration for pytest-cov coverage measurement.
 #
-# See:
-# 1. https://pytest-cov.readthedocs.io/en/latest/config.html
+# Responsibilities
+# - Limit measured source coverage to the ETLPlus package.
+# - Exclude test modules from coverage measurement.
+# - Keep branch coverage and missing-line reporting enabled for local and CI
+#   test runs.
+#
+# Maintainer Notes
+# - This file is consumed by Coverage.py directly and by pytest-cov when pytest
+#   runs with coverage options.
+# - Keep `source` aligned with the importable package name.
+# - Keep test-path omissions broad enough to cover nested test packages without
+#   hiding package modules.
+#
+# References
+# - Coverage.py configuration documentation: https://coverage.readthedocs.io/en/latest/config.html
+# - pytest-cov configuration documentation: https://pytest-cov.readthedocs.io/en/latest/config.html
 
 [run]
 source = etlplus

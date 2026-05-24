@@ -3,18 +3,34 @@
 #
 # Copyright © 2026 Dagitali LLC. All rights reserved.
 #
-# The pre-commit (multi-language package manager configuration file for Git
-# pre-commit hook scripts -- i.e., hooks) configuration file. Specifies which
-# pre-commit plugins (each by Git repository and hook set) are installed and
-# set for identifying simple issues (missing semicolons, trailing whitespace,
-# debug statements, etc.) before submission to code review. Allows code
-# reviewers to focus on the architecture of a change while not wasting time
-# with trivial style nitpicks.
+# Pre-commit configuration for local Git hook automation.
 #
-# See:
-# 1. https://pre-commit.com
-# 2. https://pre-commit.com/hooks.html
-# 3. https://pre-commit.com/index.html#plugins
+# Pre-commit is a multi-language package manager and hook orchestrator that
+# runs configured checks before code is committed or pushed. This configuration
+# defines the hooks that are installed and run locally to catch issues. It
+# enables code reviews to focus on design and implementation quality by
+# automating checks for formatting, syntax, metadata, and repository hygiene
+# issues.
+#
+# Responsibilities
+# - Install and run local commit-message, pre-commit, and pre-push hooks.
+# - Catch formatting, syntax, metadata, and repository-hygiene issues before
+#   code review.
+# - Keep local checks aligned with the repository's CI quality gates where
+#   practical.
+#
+# Maintainer Notes
+# - Keep hook revisions compatible with the Python versions supported by
+#   `pyproject.toml`.
+# - Keep branch and commit-message hooks aligned with the GitFlow rules
+#   documented in `.github/BRANCH-PROTECTION.md`.
+# - Prefer targeted hook exclusions over broad disables when generated or
+#   nonstandard files need special handling.
+#
+# References
+# - Pre-commit documentation: https://pre-commit.com
+# - Pre-commit supported hooks documentation: https://pre-commit.com/hooks.html
+# - Pre-commit plugin documentation: https://pre-commit.com/index.html#plugins
 
 ---
 

@@ -15,6 +15,9 @@
 #   action.
 # - This action intentionally composes `python-bootstrap` and `sphinx-build`
 #   so workflow files can focus on orchestration rather than step wiring.
+#
+# References
+# - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 
 ---
 

@@ -1,7 +1,7 @@
 # action.yml
 # ETLPlus
 #
-# Copyright © 2025 Dagitali LLC. All rights reserved.
+# Copyright © 2026 Dagitali LLC. All rights reserved.
 #
 # Composite GitHub Action for Python bootstrap in Python project workflows.
 #
@@ -12,6 +12,9 @@
 # Maintainer Notes
 # - External GitHub Actions are pinned to full commit SHAs to reduce supply-
 #   chain risk.
+#
+# References
+# - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 
 ---
 

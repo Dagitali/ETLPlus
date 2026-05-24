@@ -3,10 +3,28 @@
 #
 # Copyright © 2026 Dagitali LLC. All rights reserved.
 #
-# Contains commands that allow lists of files to be discovered and manipulated.
+# Setuptools source distribution manifest rules.
 #
-# See:
-# 1. https://setuptools.pypa.io/en/latest/userguide/miscellaneous.html
+# Setuptools is the Python packaging build backend this project uses to turn
+# the source tree into installable artifacts, mainly:
+# - Source distributions: sdist, usually .tar.gz
+# - Built wheels: .whl
+#
+# Responsibilities
+# - Include package template files that are required at runtime.
+# - Keep source distributions focused on supported source and packaging inputs.
+# - Exclude local scratch files, generated outputs, and temporary release
+#   artifacts from published source archives.
+#
+# Maintainer Notes
+# - `pyproject.toml` remains the canonical packaging metadata source.
+# - Keep package-data includes aligned with runtime imports and template lookup
+#   paths.
+# - Preserve release-artifact exclusions unless the release packaging policy
+#   intentionally changes.
+#
+# References
+# - Setuptools manifest documentation: https://setuptools.pypa.io/en/latest/userguide/miscellaneous.html
 
 # Include Jinja template files in the etlplus package
 recursive-include etlplus/templates *.j2

@@ -16,6 +16,9 @@
 #   before release.
 # - Keep the command list small and stable; deeper behavior belongs in unit,
 #   integration, or package-behavior smoke tests.
+#
+# References
+# - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 
 ---
 
