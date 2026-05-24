@@ -20,9 +20,6 @@
 #   category are grouped under "Uncategorized".
 #
 # References
-# - Conventional Commits specification: https://www.conventionalcommits.org/en/v1.0.0/
-# - GitHub Actions documentation: https://docs.github.com/en/actions
-# - GitHub Actions workflow syntax: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
 # - GitHub Release documentation: https://docs.github.com/en/repositories/releasing-projects
 
 ---

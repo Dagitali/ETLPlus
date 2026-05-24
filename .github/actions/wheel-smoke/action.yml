@@ -12,6 +12,9 @@
 # Maintainer Notes
 # - This action is intentionally release-oriented: it verifies the packaged
 #   artifact rather than the checked-out editable workspace.
+#
+# References
+# - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 
 ---
 

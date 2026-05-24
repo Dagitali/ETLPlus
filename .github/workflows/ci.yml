@@ -28,7 +28,6 @@
 # - GitHub Actions documentation: https://docs.github.com/en/actions
 # - GitHub Actions for Python: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 # - GitHub Actions for Python packaging: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-python-packages-to-pypi
-# - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 # - GitHub Actions expressions: https://docs.github.com/en/actions/learn-github-actions/expressions
 # - GitHub Actions best practices: https://docs.github.com/en/actions/learn-github-actions/introduction-to-github-actions#best-practices-for-github-actions
 # - GitHub Actions security hardening: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
