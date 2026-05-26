@@ -20,12 +20,9 @@
 # References
 # - CycloneDX Python module documentation: https://cyclonedx.org/tool-center/python/
 # - Software Bill of Materials (SBOM) documentation: https://cyclonedx.org/use-cases/software-bill-of-materials/
-# - GitHub Actions documentation: https://docs.github.com/en/actions
 # - GitHub Actions for Python: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 # - GitHub Actions expressions: https://docs.github.com/en/actions/learn-github-actions/expressions
-# - GitHub Actions best practices: https://docs.github.com/en/actions/learn-github-actions/introduction-to-github-actions#best-practices-for-github-actions
 # - GitHub Actions security hardening: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
-# - GitHub Actions workflow commands: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions
 # - GitHub Actions workflow syntax: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
 # - GitHub Actions for artifact upload: https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts
 
