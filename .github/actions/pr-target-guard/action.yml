@@ -17,6 +17,7 @@
 #   branch mappings because the queued pull requests have already been checked.
 #
 # References
+# - GitHub composite action documentation: https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
 # - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 
 ---
