@@ -29,8 +29,8 @@
 #
 # References
 # - Pre-commit documentation: https://pre-commit.com
-# - Pre-commit supported hooks documentation: https://pre-commit.com/hooks.html
-# - Pre-commit plugin documentation: https://pre-commit.com/index.html#plugins
+# - Pre-commit supported hooks reference: https://pre-commit.com/hooks.html
+# - Pre-commit plugin reference: https://pre-commit.com/index.html#plugins
 
 ---
 
