@@ -45,6 +45,7 @@ permissions: {}
 
 env:
   DEFAULT_PYTHON_VERSION: '3.13'
+  CYCLONEDX_BOM_VERSION: '7.2.2'
 
 jobs:
   generate-sbom:
@@ -57,10 +58,20 @@ jobs:
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
-          python-bootstrap: ".[sbom]"
+          python-bootstrap: "."
+      - name: Install SBOM generator
+        run: |
+          python -m venv "${RUNNER_TEMP}/cyclonedx-bom-venv"
+          "${RUNNER_TEMP}/cyclonedx-bom-venv/bin/python" \
+            -m pip install --upgrade pip
+          "${RUNNER_TEMP}/cyclonedx-bom-venv/bin/python" \
+            -m pip install "cyclonedx-bom==${CYCLONEDX_BOM_VERSION}"
       - name: Generate SBOM
         run: |
-          cyclonedx-py environment --output-format JSON --output-file sbom.json
+          "${RUNNER_TEMP}/cyclonedx-bom-venv/bin/cyclonedx-py" \
+            environment "$(python -c 'import sys; print(sys.executable)')" \
+            --output-format JSON \
+            --output-file sbom.json
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # Pinned v7.0.1
         with:
