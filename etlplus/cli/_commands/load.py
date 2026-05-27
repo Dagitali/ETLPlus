@@ -16,7 +16,6 @@ from ._options.resources import SourceFormatOption
 from ._options.resources import TargetArg
 from ._options.resources import TargetFormatOption
 from ._options.resources import TargetTypeOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -62,26 +61,23 @@ def load_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    state = ensure_state(ctx)
-    resolved_target = CommandHelperPolicy.resolve_resource(
-        state,
+    policy = CommandHelperPolicy.from_context(ctx)
+    resolved_target = policy.resolve_resource(
         role='target',
         value=target,
         connector_type=target_type,
         format_value=target_format,
         positional=True,
     )
-    resolved_source = CommandHelperPolicy.resolve_resource(
-        state,
+    resolved_source = policy.resolve_resource(
         role='source',
         value='-',
         format_value=source_format,
         soft_inference=True,
     )
 
-    return CommandHelperPolicy.call_handler(
+    return policy.call_handler(
         load_handler,
-        state=state,
         source=resolved_source.value,
         source_format=resolved_source.format_hint,
         target=resolved_target.value,
