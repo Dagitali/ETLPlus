@@ -67,12 +67,6 @@ def _pyproject_dependency_names() -> set[str]:
     }
 
 
-def _pyproject_optional_dependencies(extra: str) -> list[str]:
-    """Return optional dependency requirements declared for one extra."""
-    pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
-    return list(pyproject['project']['optional-dependencies'][extra])
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -92,11 +86,18 @@ class TestRuntimeDependencyDeclarations:
 class TestToolDependencyDeclarations:
     """Meta tests for CI tool dependency declarations."""
 
-    def test_sbom_workflow_installs_pinned_pyproject_extra(self) -> None:
-        """Test SBOM generation uses centrally pinned packaging metadata."""
+    def test_sbom_workflow_installs_pinned_isolated_tool(self) -> None:
+        """Test SBOM generation isolates the pinned tool from runtime deps."""
         workflow_text = SBOM_WORKFLOW_PATH.read_text(encoding='utf-8')
-        sbom_requirements = _pyproject_optional_dependencies('sbom')
 
-        assert 'python-bootstrap: ".[sbom]"' in workflow_text
+        assert 'python-bootstrap: "."' in workflow_text
+        assert "CYCLONEDX_BOM_VERSION: '7.2.2'" in workflow_text
+        assert '-m pip install "cyclonedx-bom==${CYCLONEDX_BOM_VERSION}"' in (
+            workflow_text
+        )
+        assert 'cyclonedx-bom-venv/bin/cyclonedx-py' in workflow_text
+        assert "environment \"$(python -c 'import sys; print(sys.executable)')\"" in (
+            workflow_text
+        )
+        assert 'python-bootstrap: ".[sbom]"' not in workflow_text
         assert 'python -m pip install cyclonedx-bom' not in workflow_text
-        assert sbom_requirements == ['cyclonedx-bom==7.2.2']
