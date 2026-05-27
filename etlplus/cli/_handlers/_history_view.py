@@ -308,13 +308,8 @@ class HistoryView:
                 until=until,
                 status=status,
             ):
-                matching.append(
-                    {
-                        key: value
-                        for key, value in payload.items()
-                        if key != 'record_level'
-                    },
-                )
+                payload.pop('record_level', None)
+                matching.append(payload)
         return matching
 
     @staticmethod
