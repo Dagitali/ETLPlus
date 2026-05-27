@@ -92,6 +92,22 @@ class TestMain:
         assert root_help_calls['count'] == 1
         assert 'No such option' in capsys.readouterr().err
 
+    def test_load_typer_click_exceptions_falls_back_to_click(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test that Click exceptions are used when Typer's vendored module is
+        unavailable.
+        """
+        monkeypatch.setattr(
+            main_mod.importlib,
+            'import_module',
+            Mock(side_effect=ModuleNotFoundError),
+        )
+
+        assert main_mod._load_typer_click_exceptions() is click.exceptions
+
     @pytest.mark.parametrize(
         (
             'side_effect',
