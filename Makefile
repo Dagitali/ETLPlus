@@ -189,6 +189,7 @@ clean: ## Remove build artifacts and caches
 	@find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 	@find . -name '.pytest_cache' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 	@rm -rf $(PKG_DIR)/build $(PKG_DIR)/dist $(PKG_DIR)/.mypy_cache 2>/dev/null || true
+	@rm -rf $(PKG_DIR)/*.egg-info 2>/dev/null || true
 	@rm -rf $(PKG_DIR)/src/*.egg-info 2>/dev/null || true
 	@$(call ECHO_OK,Cleaned artifacts)
 
@@ -210,6 +211,7 @@ dev: venv ## Install package + dev tools (pytest, ruff, mypy, etc.)
 .PHONY: dist
 dist: ## Build sdist and wheel into ./dist using pyproject.toml
 	@$(PYTHON) -m pip install --upgrade build twine >/dev/null
+	@rm -rf $(PKG_DIR)/dist
 	@$(PYTHON) -m build
 	@$(PYTHON) -m twine check dist/*
 	@$(call ECHO_OK,Built and validated distribution artifacts in ./dist)
