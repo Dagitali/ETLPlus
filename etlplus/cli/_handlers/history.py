@@ -325,14 +325,11 @@ def status_handler(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    records = _HistoryQuery(
+    if records := _HistoryQuery(
         level=level,
         job=job,
         pipeline=pipeline,
         run_id=run_id,
-    ).load(
-        limit=1,
-    )
-    if not records:
-        return _output.emit_json_payload({}, pretty=pretty, exit_code=1)
-    return _output.emit_json_payload(records[0], pretty=pretty)
+    ).load(limit=1):
+        return _output.emit_json_payload(records[0], pretty=pretty)
+    return _output.emit_json_payload({}, pretty=pretty, exit_code=1)
