@@ -6,8 +6,6 @@ Typer command for inspecting configured schedules.
 
 from __future__ import annotations
 
-from typing import Any
-
 import typer
 
 from .._handlers.schedule import schedule_handler
@@ -74,19 +72,12 @@ def schedule_cmd(
             '--run-pending cannot be combined with --emit.',
         )
 
-    handler_kwargs: Any = {
-        'config': config,
-        'emit': emit,
-        'schedule_name': schedule,
-    }
-    if show_state:
-        handler_kwargs['show_state'] = True
-    if run_pending:
-        handler_kwargs['run_pending'] = True
-    if event_format is not None:
-        handler_kwargs['event_format'] = event_format
-
     return CommandHelperPolicy.from_context(ctx).call_handler(
         schedule_handler,
-        **handler_kwargs,
+        config=config,
+        emit=emit,
+        event_format=event_format,
+        run_pending=run_pending,
+        schedule_name=schedule,
+        show_state=show_state,
     )
