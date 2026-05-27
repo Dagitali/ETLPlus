@@ -169,7 +169,7 @@ class TestDataops:
             )
             return {'payload': payload}
 
-        monkeypatch.setattr(dataops_mod._payload, 'resolve_payload', fake_resolve)
+        monkeypatch.setattr(dataops_mod._input, 'resolve_cli_payload', fake_resolve)
 
         result = POLICY.resolve_source_payload(
             'data.json',
