@@ -30,16 +30,6 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _is_default_parameter_source(
-    source: object,
-) -> bool:
-    """Return whether a Click/Typer parameter source represents a default."""
-    return getattr(source, 'name', None) == 'DEFAULT'
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -98,8 +88,8 @@ def validate_cmd(
     ``--schema-format frictionless`` for CSV source documents, and
     ``--schema-format xsd`` for XML documents.
     """
-    rules_supplied = not _is_default_parameter_source(
-        ctx.get_parameter_source('rules'),
+    rules_supplied = (
+        getattr(ctx.get_parameter_source('rules'), 'name', None) != 'DEFAULT'
     )
     if schema_format is not None and schema is None:
         raise typer.BadParameter('--schema-format requires --schema')
