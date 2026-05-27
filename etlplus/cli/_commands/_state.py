@@ -157,28 +157,6 @@ class ResourceTypeResolver:
             return None
         return cls.validate(value, choices, label=label)
 
-    @classmethod
-    def resolve(
-        cls,
-        *,
-        explicit_type: str | None,
-        override_type: str | None,
-        value: str,
-        label: str,
-        conflict_error: str | None = None,
-        legacy_file_error: str | None = None,
-    ) -> str:
-        """Resolve resource type preference order and validate it."""
-        if explicit_type is not None:
-            if override_type is not None and conflict_error:
-                raise typer.BadParameter(conflict_error)
-            if legacy_file_error and explicit_type.strip().lower() == 'file':
-                raise typer.BadParameter(legacy_file_error)
-            candidate = explicit_type
-        else:
-            candidate = override_type or cls.infer_or_exit(value)
-        return cls.validate(candidate, DATA_CONNECTORS, label=label)
-
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
