@@ -833,19 +833,14 @@ class TestCliInvokeParsing:
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
+        stub_handler: StubHandler,
         argv: tuple[str, ...],
         module: object,
         handler_name: str,
         expected: dict[str, object],
     ) -> None:
         """Typer parsing should pass normalized option values to handlers."""
-        captured: dict[str, object] = {}
-
-        def _stub(**kwargs: object) -> int:
-            captured.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(module, handler_name, _stub)
+        captured = stub_handler(module, handler_name)
 
         result = invoke_cli(*argv)
         assert result.exit_code == 0
