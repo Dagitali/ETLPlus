@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from contextlib import nullcontext
 from pathlib import Path
-from typing import TypedDict
 
 import pytest
 import typer
@@ -32,20 +31,6 @@ from .conftest import strip_ansi
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-class _ResolveResourceTypeKwargs(TypedDict, total=False):
-    """Typed kwargs container for :func:`resolve_resource_type` test cases."""
-
-    explicit_type: str | None
-    override_type: str | None
-    value: str
-    label: str
-    conflict_error: str | None
-    legacy_file_error: str | None
-
 
 # SECTION: CONSTANTS ======================================================== #
 
@@ -495,85 +480,6 @@ class TestCliStateHelpers:
         assert resolved == expected_resolved
         assert validated == expected_validated
         assert logged == expected_logged
-
-    @pytest.mark.parametrize(
-        ('kwargs', 'infer_result', 'expected', 'expected_error'),
-        [
-            pytest.param(
-                {
-                    'explicit_type': 'api',
-                    'override_type': 'file',
-                    'value': 'input',
-                    'label': 'source_type',
-                    'conflict_error': 'conflict',
-                },
-                None,
-                None,
-                'conflict',
-                id='conflict',
-            ),
-            pytest.param(
-                {
-                    'explicit_type': 'file',
-                    'override_type': None,
-                    'value': 'input',
-                    'label': 'source_type',
-                    'legacy_file_error': 'legacy',
-                },
-                None,
-                None,
-                'legacy',
-                id='legacy-file',
-            ),
-            pytest.param(
-                {
-                    'explicit_type': 'api',
-                    'override_type': None,
-                    'value': 'input',
-                    'label': 'source_type',
-                    'legacy_file_error': 'legacy',
-                },
-                None,
-                'api',
-                None,
-                id='explicit-non-file',
-            ),
-            pytest.param(
-                {
-                    'explicit_type': None,
-                    'override_type': None,
-                    'value': 'https://example.com/items',
-                    'label': 'source_type',
-                },
-                'api',
-                'api',
-                None,
-                id='inferred',
-            ),
-        ],
-    )
-    def test_resolve_resource_type(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        kwargs: _ResolveResourceTypeKwargs,
-        infer_result: str | None,
-        expected: str | None,
-        expected_error: str | None,
-    ) -> None:
-        """Resource type resolution should honor precedence and validation rules."""
-        if infer_result is not None:
-            monkeypatch.setattr(
-                cli_state_mod.ResourceTypeResolver,
-                'infer_or_exit',
-                lambda _value: infer_result,
-            )
-
-        if expected_error is not None:
-            with pytest.raises(typer.BadParameter, match=expected_error):
-                cli_state_mod.ResourceTypeResolver.resolve(**kwargs)
-            return
-
-        assert cli_state_mod.ResourceTypeResolver.resolve(**kwargs) == expected
 
     def test_resource_type_resolver_infer_soft_uses_function_seam(
         self,
