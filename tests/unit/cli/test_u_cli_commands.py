@@ -80,12 +80,13 @@ class TestCommandsInternalHelpers:
     def test_from_context_uses_shared_cli_state(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
     ) -> None:
         """Policy factories should bind the shared CLI state from context."""
         state = CliState(pretty=False)
         monkeypatch.setattr(helpers_mod, 'ensure_state', lambda _ctx: state)
 
-        policy = helpers_mod.CommandHelperPolicy.from_context(typer.Context(None))
+        policy = helpers_mod.CommandHelperPolicy.from_context(typer_ctx_factory())
 
         assert policy.state is state
 
