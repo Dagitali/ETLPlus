@@ -531,74 +531,65 @@ class TestDelegatingCommands:
         assert command(typer_ctx_factory(), **kwargs) == result
         assert captured == expected
 
-    def test_rejects_graph_with_inspection_flags(
+    @pytest.mark.parametrize(
+        ('policy', 'command', 'kwargs', 'expected_message'),
+        [
+            pytest.param(
+                check_mod.CommandHelperPolicy,
+                commands_mod.check_cmd,
+                {'config': 'pipeline.yml', 'graph': True, 'jobs': True},
+                '--graph cannot be combined with inspection flags',
+                id='check-graph-with-inspection-flags',
+            ),
+            pytest.param(
+                check_mod.CommandHelperPolicy,
+                commands_mod.check_cmd,
+                {'config': 'pipeline.yml', 'jobs': True, 'readiness': True},
+                '--readiness cannot be combined with inspection flags',
+                id='check-readiness-with-inspection-flags',
+            ),
+            pytest.param(
+                run_mod.CommandHelperPolicy,
+                commands_mod.run_cmd,
+                {'config': 'pipeline.yml', 'job': 'job-a', 'run_all': True},
+                '--all cannot be combined with --job or --pipeline',
+                id='run-all-with-job-selection',
+            ),
+            pytest.param(
+                schedule_mod.CommandHelperPolicy,
+                commands_mod.schedule_cmd,
+                {'config': 'pipeline.yml', 'emit': 'crontab'},
+                "'--emit' requires '--schedule'",
+                id='schedule-emit-without-schedule',
+            ),
+            pytest.param(
+                schedule_mod.CommandHelperPolicy,
+                commands_mod.schedule_cmd,
+                {
+                    'config': 'pipeline.yml',
+                    'schedule': 'nightly_all',
+                    'emit': 'crontab',
+                    'run_pending': True,
+                },
+                '--run-pending cannot be combined with --emit',
+                id='schedule-run-pending-with-emit',
+            ),
+        ],
+    )
+    def test_rejects_invalid_option_combinations(
         self,
         monkeypatch: pytest.MonkeyPatch,
         typer_ctx_factory: TyperContextFactory,
+        policy: type[helpers_mod.CommandHelperPolicy],
+        command: Callable[..., int],
+        kwargs: dict[str, object],
+        expected_message: str,
     ) -> None:
-        """Graph mode should reject section-inspection flag combinations."""
-        monkeypatch.setattr(
-            check_mod.CommandHelperPolicy,
-            'fail_usage',
-            _raise_bad_parameter,
-        )
+        """Invalid command option combinations should fail through usage errors."""
+        monkeypatch.setattr(policy, 'fail_usage', _raise_bad_parameter)
 
-        with pytest.raises(
-            typer.BadParameter,
-            match='--graph cannot be combined with inspection flags',
-        ):
-            commands_mod.check_cmd(
-                typer_ctx_factory(),
-                config='pipeline.yml',
-                graph=True,
-                jobs=True,
-            )
-
-    def test_rejects_readiness_with_inspection_flags(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        typer_ctx_factory: TyperContextFactory,
-    ) -> None:
-        """Readiness mode should reject inspection-flag combinations."""
-        monkeypatch.setattr(
-            check_mod.CommandHelperPolicy,
-            'fail_usage',
-            _raise_bad_parameter,
-        )
-
-        with pytest.raises(
-            typer.BadParameter,
-            match='--readiness cannot be combined with inspection flags',
-        ):
-            commands_mod.check_cmd(
-                typer_ctx_factory(),
-                config='pipeline.yml',
-                jobs=True,
-                readiness=True,
-            )
-
-    def test_rejects_run_all_with_job_selection(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        typer_ctx_factory: TyperContextFactory,
-    ) -> None:
-        """Run mode should reject ``--all`` combined with job selection."""
-        monkeypatch.setattr(
-            run_mod.CommandHelperPolicy,
-            'fail_usage',
-            _raise_bad_parameter,
-        )
-
-        with pytest.raises(
-            typer.BadParameter,
-            match='--all cannot be combined with --job or --pipeline',
-        ):
-            commands_mod.run_cmd(
-                typer_ctx_factory(),
-                config='pipeline.yml',
-                job='job-a',
-                run_all=True,
-            )
+        with pytest.raises(typer.BadParameter, match=expected_message):
+            command(typer_ctx_factory(), **kwargs)
 
     def test_schedule_allows_show_state_without_emit_or_run_pending(
         self,
@@ -627,52 +618,6 @@ class TestDelegatingCommands:
         )
 
         assert payload['show_state'] is True
-
-    def test_schedule_emit_requires_named_schedule(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        typer_ctx_factory: TyperContextFactory,
-    ) -> None:
-        """Schedule helper emission should require one named schedule."""
-        monkeypatch.setattr(
-            schedule_mod.CommandHelperPolicy,
-            'fail_usage',
-            _raise_bad_parameter,
-        )
-
-        with pytest.raises(
-            typer.BadParameter,
-            match="'--emit' requires '--schedule'",
-        ):
-            commands_mod.schedule_cmd(
-                typer_ctx_factory(),
-                config='pipeline.yml',
-                emit='crontab',
-            )
-
-    def test_schedule_rejects_run_pending_with_emit(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        typer_ctx_factory: TyperContextFactory,
-    ) -> None:
-        """Run-pending mode should reject helper emission combinations."""
-        monkeypatch.setattr(
-            schedule_mod.CommandHelperPolicy,
-            'fail_usage',
-            _raise_bad_parameter,
-        )
-
-        with pytest.raises(
-            typer.BadParameter,
-            match='--run-pending cannot be combined with --emit',
-        ):
-            commands_mod.schedule_cmd(
-                typer_ctx_factory(),
-                config='pipeline.yml',
-                schedule='nightly_all',
-                emit='crontab',
-                run_pending=True,
-            )
 
 
 class TestCliInvokeParsing:
