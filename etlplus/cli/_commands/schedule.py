@@ -65,12 +65,13 @@ def schedule_cmd(
     int
         Exit code indicating success or failure of the command.
     """
-    if emit is not None and schedule is None:
-        CommandHelperPolicy.fail_usage("'--emit' requires '--schedule'.")
-    if emit is not None and run_pending:
-        CommandHelperPolicy.fail_usage(
-            '--run-pending cannot be combined with --emit.',
-        )
+    if emit is not None:
+        if schedule is None:
+            CommandHelperPolicy.fail_usage("'--emit' requires '--schedule'.")
+        if run_pending:
+            CommandHelperPolicy.fail_usage(
+                '--run-pending cannot be combined with --emit.',
+            )
 
     return CommandHelperPolicy.from_context(ctx).call_handler(
         schedule_handler,
