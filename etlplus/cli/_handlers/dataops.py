@@ -320,32 +320,6 @@ class DataCommandPolicy:
             ),
         )
 
-    @staticmethod
-    def result_status(
-        result: object,
-        *,
-        default: str = 'ok',
-    ) -> str:
-        """
-        Extract a string status field from one result payload.
-
-        Parameters
-        ----------
-        result : object
-            Result payload, typically a dictionary.
-        default : str, optional
-            Default status to return if extraction fails. Default is ``'ok'``.
-
-        Returns
-        -------
-        str
-            Extracted status or the default value.
-        """
-        if not isinstance(result, dict):
-            return default
-        status = result.get('status')
-        return cast(str, status) if isinstance(status, str) else default
-
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
@@ -554,6 +528,7 @@ def load_handler(
             target,
             file_format=target_format if target_format_explicit else None,
         )
+        result_status = result.get('status') if isinstance(result, dict) else None
 
         return DataCommandPolicy.complete_success(
             context,
@@ -563,7 +538,7 @@ def load_handler(
             pretty=pretty,
             success_message='Load result saved to',
             destination=output or 'stdout',
-            result_status=DataCommandPolicy.result_status(result),
+            result_status=result_status if isinstance(result_status, str) else 'ok',
             **command_fields,
         )
 
