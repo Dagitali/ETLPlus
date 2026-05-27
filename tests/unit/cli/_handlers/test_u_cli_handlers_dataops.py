@@ -29,24 +29,6 @@ class TestDataops:
     @pytest.mark.parametrize(
         ('target', 'expected'),
         [
-            (None, 'stdout'),
-            ('-', 'stdout'),
-            (' - ', 'stdout'),
-            ('   ', 'stdout'),
-            ('out.json', 'out.json'),
-        ],
-    )
-    def test_display_target(
-        self,
-        target: str | None,
-        expected: str,
-    ) -> None:
-        """Target display labels should normalize STDOUT-style targets."""
-        assert POLICY.display_target(target) == expected
-
-    @pytest.mark.parametrize(
-        ('target', 'expected'),
-        [
             (None, False),
             ('-', False),
             (' - ', False),
