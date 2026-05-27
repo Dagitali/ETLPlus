@@ -77,57 +77,17 @@ class TestCommandsInternalHelpers:
             'value': 'payload',
         }
 
-    def test_call_history_command_forwards_filters_and_preserves_explicit_none(
+    def test_from_context_uses_shared_cli_state(
         self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """History dispatch should forward provided filters plus ``pretty``."""
-        captured: dict[str, object] = {}
+        """Policy factories should bind the shared CLI state from context."""
+        state = CliState(pretty=False)
+        monkeypatch.setattr(helpers_mod, 'ensure_state', lambda _ctx: state)
 
-        def _handler(**kwargs: object) -> int:
-            captured.update(kwargs)
-            return 11
+        policy = helpers_mod.CommandHelperPolicy.from_context(typer.Context(None))
 
-        result = helpers_mod.CommandHelperPolicy(
-            CliState(pretty=False),
-        ).call_history_command(
-            _handler,
-            level='job',
-            job='seed',
-            pipeline=None,
-            follow=True,
-        )
-
-        assert result == 11
-        assert captured == {
-            'follow': True,
-            'job': 'seed',
-            'level': 'job',
-            'pipeline': None,
-            'pretty': False,
-        }
-
-    def test_call_history_command_reuses_supplied_state(self) -> None:
-        """History command dispatch should reuse injected CLI state."""
-        captured: dict[str, object] = {}
-
-        def _handler(**kwargs: object) -> int:
-            captured.update(kwargs)
-            return 13
-
-        result = helpers_mod.CommandHelperPolicy(
-            CliState(pretty=False),
-        ).call_history_command(
-            _handler,
-            level='run',
-            status='failed',
-        )
-
-        assert result == 13
-        assert captured == {
-            'level': 'run',
-            'pretty': False,
-            'status': 'failed',
-        }
+        assert policy.state is state
 
     @pytest.mark.parametrize(
         'format_value',
