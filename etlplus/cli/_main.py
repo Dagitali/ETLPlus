@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import contextlib
 import sys
+from typing import cast
 
 import click
 import typer
@@ -150,7 +151,7 @@ def main(
     output and conventional CLI exit codes.
     """
     resolved_argv = sys.argv[1:] if argv is None else list(argv)
-    command = typer.main.get_command(app)
+    command = cast(click.Command, typer.main.get_command(app))
 
     try:
         result = command.main(
