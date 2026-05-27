@@ -161,10 +161,9 @@ class CommandHelperPolicy:
         int
             The exit code returned by *handler*.
         """
-        history_state = ensure_state(ctx) if state is None else state
         return CommandHelperPolicy.call_handler(
             handler,
-            state=history_state,
+            state=ensure_state(ctx) if state is None else state,
             **kwargs,
         )
 
