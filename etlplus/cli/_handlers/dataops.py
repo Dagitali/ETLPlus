@@ -589,10 +589,7 @@ def validate_handler(
                 file_payload=result,
                 pretty=pretty,
                 file_fields={
-                    'source': source,
-                    'target': target,
                     'valid': result.get('valid'),
-                    'schema': schema,
                     'schema_format': schema_format,
                 },
             )
@@ -616,8 +613,6 @@ def validate_handler(
             file_payload=result.get('data'),
             pretty=pretty,
             file_fields={
-                'source': source,
-                'target': target,
                 'valid': result.get('valid'),
             },
         )
