@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Mapping
+from contextlib import AbstractContextManager
+from dataclasses import dataclass
+from dataclasses import field
 from typing import Any
 from typing import TypeGuard
 from typing import cast
@@ -42,14 +45,31 @@ __all__ = [
 # SECTION: CLASSES ========================================================== #
 
 
+@dataclass(slots=True)
 class DataCommandPolicy:
     """Own shared command lifecycle, payload resolution, and completion helpers."""
 
-    # -- Static Methods -- #
+    # -- Instance Attributes -- #
 
-    @staticmethod
+    command: str
+    event_format: str | None
+    fields: dict[str, Any]
+    context: _lifecycle.CommandContext = field(init=False)
+
+    # -- Magic Methods (Object Lifecycle) -- #
+
+    def __post_init__(self) -> None:
+        """Start the command lifecycle after policy initialization."""
+        self.context = _lifecycle.start_command(
+            command=self.command,
+            event_format=self.event_format,
+            **self.fields,
+        )
+
+    # -- Instance Methods -- #
+
     def complete_success(
-        context: _lifecycle.CommandContext,
+        self,
         payload: Any,
         *,
         mode: _completion.CompletionMode,
@@ -58,12 +78,10 @@ class DataCommandPolicy:
         **fields: Any,
     ) -> int:
         """
-        Complete a command using the shared successful-status fields.
+        Complete this command using the shared successful-status fields.
 
         Parameters
         ----------
-        context : _lifecycle.CommandContext
-            Command context for the active command scope.
         payload : Any
             Payload to include in the command output.
         mode : _completion.CompletionMode
@@ -73,7 +91,8 @@ class DataCommandPolicy:
         result_status : str, optional
             Result status for the command.
         **fields : Any
-            Additional fields to include in the command output.
+            Additional fields to include in the command output. Values override
+            this policy's base fields.
 
         Returns
         -------
@@ -81,14 +100,22 @@ class DataCommandPolicy:
             Exit code for the command.
         """
         return _completion.complete_output(
-            context,
+            self.context,
             payload,
             mode=mode,
             pretty=pretty,
             result_status=result_status,
             status='ok',
-            **fields,
+            **(self.fields | fields),
         )
+
+    def failure_boundary(
+        self,
+    ) -> AbstractContextManager[None]:
+        """Return the failure boundary for this command policy."""
+        return _lifecycle.failure_boundary(self.context, **self.fields)
+
+    # -- Static Methods -- #
 
     @staticmethod
     def has_named_target(
@@ -163,7 +190,7 @@ class DataCommandPolicy:
 
 
 def _complete_validation_output(
-    context: _lifecycle.CommandContext,
+    policy: DataCommandPolicy,
     result: Mapping[str, Any],
     *,
     target: str | None,
@@ -175,8 +202,7 @@ def _complete_validation_output(
     """Complete validation output to a file target or JSON stdout."""
     if DataCommandPolicy.has_named_target(target):
         if file_payload is not None:
-            return DataCommandPolicy.complete_success(
-                context,
+            return policy.complete_success(
                 file_payload,
                 mode='json_file',
                 output_path=target,
@@ -190,8 +216,7 @@ def _complete_validation_output(
         )
         return 0
 
-    return DataCommandPolicy.complete_success(
-        context,
+    return policy.complete_success(
         result,
         mode='json',
         pretty=pretty,
@@ -247,28 +272,25 @@ def extract_handler(
         'source_type': source_type,
     }
 
-    context = _lifecycle.start_command(
+    policy = DataCommandPolicy(
         command='extract',
         event_format=event_format,
-        **command_fields,
+        fields=command_fields,
     )
-    with _lifecycle.failure_boundary(context, **command_fields):
+    with policy.failure_boundary():
         if source == '-':
             payload = _input.parse_text_payload(
                 _input.read_stdin_text(),
                 source_format,
             )
-            return DataCommandPolicy.complete_success(
-                context,
+            return policy.complete_success(
                 payload,
                 mode='json',
                 pretty=pretty,
-                **command_fields,
             )
 
         output_path = target or output
-        return DataCommandPolicy.complete_success(
-            context,
+        return policy.complete_success(
             extract(
                 source_type,
                 source,
@@ -279,7 +301,6 @@ def extract_handler(
             pretty=pretty,
             success_message='Data extracted and saved to',
             destination=output_path or 'stdout',
-            **command_fields,
         )
 
 
@@ -333,12 +354,12 @@ def load_handler(
         'target_type': target_type,
     }
 
-    context = _lifecycle.start_command(
+    policy = DataCommandPolicy(
         command='load',
         event_format=event_format,
-        **command_fields,
+        fields=command_fields,
     )
-    with _lifecycle.failure_boundary(context, **command_fields):
+    with policy.failure_boundary():
         source_value = cast(
             JSONData | str,
             _input.resolve_cli_payload(
@@ -350,8 +371,7 @@ def load_handler(
         )
 
         if target_type == 'file' and target == '-':
-            return DataCommandPolicy.complete_success(
-                context,
+            return policy.complete_success(
                 materialize_file_payload(
                     source_value,
                     format_hint=source_format,
@@ -359,7 +379,6 @@ def load_handler(
                 ),
                 mode='json',
                 pretty=pretty,
-                **command_fields,
             )
 
         result = load(
@@ -370,8 +389,7 @@ def load_handler(
         )
         result_status = result.get('status') if isinstance(result, dict) else None
 
-        return DataCommandPolicy.complete_success(
-            context,
+        return policy.complete_success(
             result,
             mode='or_write',
             output_path=output,
@@ -379,7 +397,6 @@ def load_handler(
             success_message='Load result saved to',
             destination=output or 'stdout',
             result_status=result_status if isinstance(result_status, str) else 'ok',
-            **command_fields,
         )
 
 
@@ -432,12 +449,12 @@ def transform_handler(
         'target_type': target_type,
     }
 
-    context = _lifecycle.start_command(
+    policy = DataCommandPolicy(
         command='transform',
         event_format=event_format,
-        **command_fields,
+        fields=command_fields,
     )
-    with _lifecycle.failure_boundary(context, **command_fields):
+    with policy.failure_boundary():
         payload, operations_payload = DataCommandPolicy.resolve_source_mapping_inputs(
             source=source,
             mapping_payload=operations,
@@ -450,8 +467,7 @@ def transform_handler(
         if DataCommandPolicy.has_named_target(target):
             if target_type not in (None, 'file'):
                 resolved_target_type = cast(str, target_type)
-                return DataCommandPolicy.complete_success(
-                    context,
+                return policy.complete_success(
                     load(
                         data,
                         resolved_target_type,
@@ -465,8 +481,7 @@ def transform_handler(
                     target_type=resolved_target_type,
                 )
 
-            return DataCommandPolicy.complete_success(
-                context,
+            return policy.complete_success(
                 cast(JSONData, data),
                 mode='file',
                 output_path=target,
@@ -477,12 +492,10 @@ def transform_handler(
                 target_type=target_type or 'file',
             )
 
-        return DataCommandPolicy.complete_success(
-            context,
+        return policy.complete_success(
             data,
             mode='json',
             pretty=pretty,
-            **command_fields,
         )
 
 
@@ -537,12 +550,12 @@ def validate_handler(
         if schema_format is not None:
             command_fields['schema_format'] = schema_format
 
-    context = _lifecycle.start_command(
+    policy = DataCommandPolicy(
         command='validate',
         event_format=event_format,
-        **command_fields,
+        fields=command_fields,
     )
-    with _lifecycle.failure_boundary(context, **command_fields):
+    with policy.failure_boundary():
         if schema is not None:
             schema_source = (
                 _input.read_stdin_text() if _input.is_stdin_source(source) else source
@@ -555,7 +568,7 @@ def validate_handler(
             )
 
             return _complete_validation_output(
-                context,
+                policy,
                 result,
                 target=target,
                 file_payload=result,
@@ -583,7 +596,7 @@ def validate_handler(
         )
 
         return _complete_validation_output(
-            context,
+            policy,
             result,
             target=target,
             file_payload=result.get('data'),
