@@ -38,7 +38,6 @@ from .conftest import AssertCapturedText
 from .conftest import InvokeCli
 from .conftest import StubHandler
 from .conftest import TyperContextFactory
-from .conftest import assert_mapping_contains
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -789,7 +788,7 @@ class TestCliInvokeParsing:
 
         result = invoke_cli(*argv)
         assert result.exit_code == 0
-        assert_mapping_contains(captured, expected)
+        assert expected.items() <= captured.items()
 
     def test_schedule_run_pending_persists_state_across_cli_invocations(
         self,
