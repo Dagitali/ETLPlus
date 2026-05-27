@@ -13,6 +13,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ZERO_REF = '0' * 40
+LONG_LIVED_BRANCHES = frozenset({'develop', 'main'})
+GITFLOW_BRANCH_SLASH_COUNT = 1
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -54,6 +56,29 @@ def _resolve_rev_range() -> str:
     return f'{_resolve_default_remote_branch()}..HEAD'
 
 
+def _current_branch() -> str:
+    """Return the current local branch name, or an empty string for detached HEAD."""
+    return _git_stdout('branch', '--show-current')
+
+
+def _validate_gitflow_branch_name(
+    branch: str,
+) -> int:
+    """Return zero when a branch name follows the repository GitFlow shape."""
+    if not branch or branch in LONG_LIVED_BRANCHES:
+        return 0
+
+    if branch.count('/') == GITFLOW_BRANCH_SLASH_COUNT:
+        return 0
+
+    print(
+        'GitFlow branch names must contain exactly one "/": '
+        f'{branch!r}',
+        file=sys.stderr,
+    )
+    return 1
+
+
 def _non_merge_commits(
     rev_range: str,
 ) -> list[str]:
@@ -92,6 +117,9 @@ def main() -> int:
     int
         A conventional POSIX exit code: zero on success, non-zero on error.
     """
+    if (status := _validate_gitflow_branch_name(_current_branch())) != 0:
+        return status
+
     rev_range = _resolve_rev_range()
     return next(
         (
