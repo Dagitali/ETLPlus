@@ -24,7 +24,7 @@ from typing import cast
 
 import pytest
 import typer
-from click.testing import Result
+from typer._click.testing import Result
 from typer.testing import CliRunner
 
 from etlplus import Config
