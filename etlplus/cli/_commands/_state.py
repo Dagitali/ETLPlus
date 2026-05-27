@@ -187,22 +187,6 @@ class ResourceTypeResolver:
         )
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _set_state(
-    ctx: typer.Context,
-    *,
-    pretty: bool,
-    quiet: bool,
-    verbose: bool,
-) -> CliState:
-    """Replace the context state with one explicit CLI root configuration."""
-    state = CliState(pretty=pretty, quiet=quiet, verbose=verbose)
-    ctx.obj = state
-    return state
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
