@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
-from typing import Final
 from typing import Literal
 from typing import NoReturn
 
@@ -38,12 +37,6 @@ __all__ = [
 
 
 type _StateField = Literal['pretty', 'quiet', 'verbose']
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_MISSING: Final[object] = object()
 
 
 # SECTION: INTERNAL DATA CLASSES ============================================ #
@@ -161,9 +154,7 @@ class CommandHelperPolicy:
             Existing CLI state to reuse (defaults to ``None``, which means
             :func:`ensure_state` will be called).
         **kwargs : Any
-            Additional keyword arguments to pass to *handler*. Missing history
-            filter values are omitted so the handler's own defaults still
-            apply.
+            Additional keyword arguments to pass to *handler*.
 
         Returns
         -------
@@ -171,13 +162,10 @@ class CommandHelperPolicy:
             The exit code returned by *handler*.
         """
         history_state = ensure_state(ctx) if state is None else state
-        history_kwargs: dict[str, Any] = {
-            key: value for key, value in kwargs.items() if value is not _MISSING
-        }
         return CommandHelperPolicy.call_handler(
             handler,
             state=history_state,
-            **history_kwargs,
+            **kwargs,
         )
 
     @staticmethod
