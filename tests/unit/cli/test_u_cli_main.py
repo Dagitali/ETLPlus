@@ -43,16 +43,14 @@ class TestMain:
         """
         Test that the command return values flow through unchanged.
         """
-
-        def _action(**kwargs: object) -> object:
-            return 5
-
-        captured = stub_command_main(_action)
+        captured = stub_command_main(lambda **_kwargs: 5)
 
         assert cli_main(['extract']) == 5
-        assert captured['args'] == ['extract']
-        assert captured['prog_name'] == PROG_NAME
-        assert captured['standalone_mode'] is False
+        assert captured == {
+            'args': ['extract'],
+            'prog_name': PROG_NAME,
+            'standalone_mode': False,
+        }
 
     def test_emit_context_help_none_returns_false(self) -> None:
         """
