@@ -74,23 +74,17 @@ class _HistoryQuery:
         limit: int | None = None,
     ) -> list[dict[str, Any]]:
         """Load persisted history records for this query."""
-        load_kwargs: dict[str, Any] = {
-            'level': self.level,
-            'raw': raw,
-        }
-        if limit is not None:
-            load_kwargs['limit'] = limit
-        for key, value in {
-            'job': self.job,
-            'pipeline': self.pipeline,
-            'run_id': self.run_id,
-            'since': self.since,
-            'status': self.status,
-            'until': self.until,
-        }.items():
-            if value is not None:
-                load_kwargs[key] = value
-        return HistoryView.load_records(**load_kwargs)
+        return HistoryView.load_records(
+            raw=raw,
+            level=self.level,
+            job=self.job,
+            limit=limit,
+            pipeline=self.pipeline,
+            run_id=self.run_id,
+            since=self.since,
+            status=self.status,
+            until=self.until,
+        )
 
     def table_columns(self) -> tuple[str, ...]:
         """Return the table columns for this query level."""
