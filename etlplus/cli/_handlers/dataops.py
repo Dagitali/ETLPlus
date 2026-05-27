@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Mapping
-from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
@@ -66,6 +65,33 @@ class DataCommandPolicy:
             **self.fields,
         )
 
+    # -- Magic Methods (Context Manager Protocol) -- #
+
+    def __enter__(self) -> DataCommandPolicy:
+        """Return this policy for command-scoped handler execution."""
+        return self
+
+    def __exit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        _traceback: object | None,
+    ) -> None:
+        """
+        Emit the command failure event when handler execution fails.
+
+        Parameters
+        ----------
+        _exc_type : type[BaseException] | None
+            Exception type if an exception was raised, else ``None``.
+        exc : BaseException | None
+            Exception instance if an exception was raised, else ``None``.
+        _traceback : object | None
+            Traceback object if an exception was raised, else ``None``.
+        """
+        if isinstance(exc, Exception):
+            _lifecycle.fail_command(self.context, exc, **self.fields)
+
     # -- Instance Methods -- #
 
     def complete_success(
@@ -108,12 +134,6 @@ class DataCommandPolicy:
             status='ok',
             **(self.fields | fields),
         )
-
-    def failure_boundary(
-        self,
-    ) -> AbstractContextManager[None]:
-        """Return the failure boundary for this command policy."""
-        return _lifecycle.failure_boundary(self.context, **self.fields)
 
     # -- Static Methods -- #
 
@@ -272,12 +292,11 @@ def extract_handler(
         'source_type': source_type,
     }
 
-    policy = DataCommandPolicy(
+    with DataCommandPolicy(
         command='extract',
         event_format=event_format,
         fields=command_fields,
-    )
-    with policy.failure_boundary():
+    ) as policy:
         if source == '-':
             payload = _input.parse_text_payload(
                 _input.read_stdin_text(),
@@ -354,12 +373,11 @@ def load_handler(
         'target_type': target_type,
     }
 
-    policy = DataCommandPolicy(
+    with DataCommandPolicy(
         command='load',
         event_format=event_format,
         fields=command_fields,
-    )
-    with policy.failure_boundary():
+    ) as policy:
         source_value = cast(
             JSONData | str,
             _input.resolve_cli_payload(
@@ -449,12 +467,11 @@ def transform_handler(
         'target_type': target_type,
     }
 
-    policy = DataCommandPolicy(
+    with DataCommandPolicy(
         command='transform',
         event_format=event_format,
         fields=command_fields,
-    )
-    with policy.failure_boundary():
+    ) as policy:
         payload, operations_payload = DataCommandPolicy.resolve_source_mapping_inputs(
             source=source,
             mapping_payload=operations,
@@ -550,12 +567,11 @@ def validate_handler(
         if schema_format is not None:
             command_fields['schema_format'] = schema_format
 
-    policy = DataCommandPolicy(
+    with DataCommandPolicy(
         command='validate',
         event_format=event_format,
         fields=command_fields,
-    )
-    with policy.failure_boundary():
+    ) as policy:
         if schema is not None:
             schema_source = (
                 _input.read_stdin_text() if _input.is_stdin_source(source) else source
