@@ -1,7 +1,7 @@
 # Makefile
 # ETLPlus
 #
-# Copyright © 2025 Dagitali LLC. All rights reserved.
+# Copyright © 2026 Dagitali LLC. All rights reserved.
 #
 # Facilitates automation for setting up Unix-based systems.
 #
@@ -17,20 +17,14 @@
 # - Preserve the reference URLs and common-flow examples below as maintainer
 #   context for future Makefile changes.
 #
-# See:
-# 1. https://earthly.dev/blog/python-makefile/
-# 2. https://www.gnu.org/prep/standards/html_node/Makefile-Conventions.html
-# 3. https://www.gnu.org/software/make
-# 4. https://www.gnu.org/software/make/manual/html_node/Include.html
-# 5. https://www.gnu.org/software/make/manual/make.html
-# 6. https://blog.mathieu-leplatre.info/tips-for-your-makefile-with-python.html
-# 7. https://medium.com/aigent/makefiles-for-python-and-beyond-5cf28349bf05
-# 8. https://web.mit.edu/gnu/doc/html/make_1.html
-# 9. https://ricardoanderegg.com/posts/makefile-python-project-tricks/
-# 10. https://stackoverflow.com/questions/24736146/how-to-use-virtualenv-in-makefile
-# 11. https://venthur.de/2021-03-31-python-makefiles.html
+# References
+# - GNU Make documentation: https://www.gnu.org/software/make/manual/make.html
+# - GNU Make conventions reference: https://www.gnu.org/prep/standards/html_node/Makefile-Conventions.html
+# - GNU Make include directive reference: https://www.gnu.org/software/make/manual/html_node/Include.html
+# - Python Makefile guide: https://earthly.dev/blog/python-makefile/
+# - Python virtualenv Makefile guide: https://stackoverflow.com/questions/24736146/how-to-use-virtualenv-in-makefile
 #
-# Common flows:
+# Common Flows
 #
 # 1) Create venv + install dev tooling and the package (editable).
 # $ make dev
@@ -96,7 +90,9 @@ WEB_PORT_HOST ?= 8080
 
 ### Python ###
 
-# Python to bootstrap the venv (override on the CLI: make venv PY=python3.13)
+# Python to bootstrap the venv. To override the interpreter, set PY on the CLI:
+#   make dev PY=python3.13
+#   make dev PY=python3.14
 PY ?= python3
 
 # Package root (where pyproject.toml lives)
@@ -177,7 +173,7 @@ bootstrap: ## Create .env.postgres and standard dirs (one-time)
 	else \
 		echo ".env.postgres already exists; skipping"; \
 	fi
-	@$(call ECHO_OK,"Bootstrap complete")
+	@$(call ECHO_OK,Bootstrap complete)
 
 .PHONY: check
 check: doclint lint typecheck test ## Run docstring lint, code lint, type-check, and tests
@@ -194,7 +190,7 @@ clean: ## Remove build artifacts and caches
 	@find . -name '.pytest_cache' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 	@rm -rf $(PKG_DIR)/build $(PKG_DIR)/dist $(PKG_DIR)/.mypy_cache 2>/dev/null || true
 	@rm -rf $(PKG_DIR)/src/*.egg-info 2>/dev/null || true
-	@$(call ECHO_OK,"Cleaned artifacts")
+	@$(call ECHO_OK,Cleaned artifacts)
 
 .PHONY: clean-venv
 clean-venv: ## Remove the virtual environment
@@ -204,19 +200,19 @@ clean-venv: ## Remove the virtual environment
 .PHONY: demo-snippets
 demo-snippets: ## Rebuild recorded CLI snippets embedded in DEMO.md
 	@$(PYTHON) tools/update_demo_snippets.py
-	@$(call ECHO_OK,"Refreshed demo snippets")
+	@$(call ECHO_OK,Refreshed demo snippets)
 
 .PHONY: dev
 dev: venv ## Install package + dev tools (pytest, ruff, mypy, etc.)
 	@$(PYTHON) -m pip install -e $(PKG_DIR)[dev]
-	@$(call ECHO_OK,"Installed etlplus + dev extras")
+	@$(call ECHO_OK,Installed etlplus + dev extras)
 
 .PHONY: dist
 dist: ## Build sdist and wheel into ./dist using pyproject.toml
 	@$(PYTHON) -m pip install --upgrade build twine >/dev/null
 	@$(PYTHON) -m build
 	@$(PYTHON) -m twine check dist/*
-	@$(call ECHO_OK,"Built and validated distribution artifacts in ./dist")
+	@$(call ECHO_OK,Built and validated distribution artifacts in ./dist)
 
 .PHONY: docs
 docs: venv ## Build HTML docs with Sphinx (in ./docs/build/html)
@@ -299,7 +295,7 @@ show-venv: ## Print venv and interpreter locations
 	@echo "ETLPLUS    = $(ETLPLUS)"
 
 .PHONY: test
-test: ## Run the default test suite (excluding perf markers)
+test: venv ## Run the default test suite (excluding perf markers)
 	@PYTHONPATH=. $(VENV_BIN)/pytest -m "$(TEST_MARK_EXPRESSION)" || (echo "Hint: run 'make dev' first" && false)
 
 .PHONY: test-full
@@ -331,13 +327,25 @@ up: ## First-time setup: bootstrap, pull images, start DB+UI, wait healthy
 .PHONY: venv
 venv: ## Create the virtual environment (at $(VENV_DIR))
 	@if [ ! -d "$(VENV_DIR)" ]; then \
-		$(call ECHO_INFO, "Creating venv with $(PY) → $(VENV_DIR)"); \
-		$(PY) -m venv .venv; \
+		$(call ECHO_INFO,Creating venv with $(PY) → $(VENV_DIR)); \
+		$(PY) -m venv "$(VENV_DIR)"; \
 	else \
-		$(call ECHO_INFO, "Using existing venv: $(VENV_DIR)"); \
+		current="$$($(PYTHON) -V 2>/dev/null || true)"; \
+		current="$${current#Python }"; \
+		current="$${current%.*}"; \
+		requested="$$($(PY) -V)"; \
+		requested="$${requested#Python }"; \
+		requested="$${requested%.*}"; \
+		if [ "$$current" != "$$requested" ]; then \
+			$(call ECHO_INFO,Recreating $(VENV_DIR) for $(PY); was Python $$current); \
+			rm -rf "$(VENV_DIR)"; \
+			$(PY) -m venv "$(VENV_DIR)"; \
+		else \
+			$(call ECHO_INFO,Using existing venv: $(VENV_DIR)); \
+		fi; \
 	fi
 	@$(PYTHON) -m pip install --upgrade pip setuptools wheel >/dev/null
-	@$(call ECHO_OK,"venv ready")
+	@$(call ECHO_OK,venv ready)
 
 ##@ CI
 
@@ -354,13 +362,13 @@ ci-smoke: ## Boot DB, wait healthy, run 'select 1', then stop (keep volumes)
 .PHONY: af-venv
 af-venv: ## Create Azure Function venv and install local requirements
 	@if [ ! -d "$(AF_VENV)" ]; then \
-		@$(call ECHO_INFO,"Creating Azure Function venv"); \
+		$(call ECHO_INFO,Creating Azure Function venv); \
 		cd "$(AF_DIR)" && $(PY) -m venv .venv; \
 	fi
 	@$(AF_BIN)/python -m pip install --upgrade pip >/dev/null
 	@$(AF_BIN)/pip install -r "$(AF_DIR)/requirements.local.txt"
 	@$(AF_BIN)/pip install -e "$(PKG_DIR)"
-	@$(call ECHO_OK,"Azure Function venv ready")
+	@$(call ECHO_OK,Azure Function venv ready)
 
 .PHONY: af-start
 af-start: af-venv ## Start the Azure Functions host (requires Azure Functions Core Tools)

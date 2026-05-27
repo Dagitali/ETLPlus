@@ -25,7 +25,7 @@
 # - Keep Python indentation aligned with the formatter and lint configuration.
 #
 # References
-# - EditorConfig file format documentation: https://editorconfig.org/#file-format-details
+# - EditorConfig file format reference: https://editorconfig.org/#file-format-details
 # - Standard EditorConfig examples: https://github.com/jokeyrhyme/standard-editorconfig
 
 # Top-most EditorConfig file

@@ -23,8 +23,8 @@
 #   from tracked source files.
 #
 # References
-# - Git ignore documentation: https://git-scm.com/docs/gitignore
-# - gitignore.io template generator: https://gitignore.io
+# - Git ignore reference: https://git-scm.com/docs/gitignore
+# - gitignore.io template generator service: https://gitignore.io
 
 # Created by https://www.toptal.com/developers/gitignore/api/dropbox,emacs,linux,macos,pycharm+all,python,vim,visualstudiocode,windows
 # Edit at https://www.toptal.com/developers/gitignore?templates=dropbox,emacs,linux,macos,pycharm+all,python,vim,visualstudiocode,windows

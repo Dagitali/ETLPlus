@@ -17,7 +17,8 @@
 #   so workflow files can focus on orchestration rather than step wiring.
 #
 # References
-# - GitHub Actions metadata: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
+# - GitHub composite action guide: https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+# - GitHub Actions metadata reference: https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions
 
 ---
 
