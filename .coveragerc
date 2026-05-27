@@ -19,8 +19,8 @@
 #   hiding package modules.
 #
 # References
-# - Coverage.py configuration documentation: https://coverage.readthedocs.io/en/latest/config.html
-# - pytest-cov configuration documentation: https://pytest-cov.readthedocs.io/en/latest/config.html
+# - Coverage.py configuration reference: https://coverage.readthedocs.io/en/latest/config.html
+# - pytest-cov configuration reference: https://pytest-cov.readthedocs.io/en/latest/config.html
 
 [run]
 source = etlplus
