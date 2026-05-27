@@ -88,13 +88,13 @@ def patch_history_store_records(
             return iter(records)
 
         def record_run_started(self, record: object) -> None:
-            _ = record
+            pass
 
         def record_run_finished(self, completion: object) -> None:
-            _ = completion
+            pass
 
         def record_job_run(self, record: object) -> None:
-            _ = record
+            pass
 
     monkeypatch.setattr(
         history_view_mod.HistoryStore,
