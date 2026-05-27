@@ -58,9 +58,8 @@ def status_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    return CommandHelperPolicy.call_history_command(
+    return CommandHelperPolicy.from_context(ctx).call_history_command(
         status_handler,
-        ctx=ctx,
         level=level,
         job=job,
         pipeline=pipeline,
