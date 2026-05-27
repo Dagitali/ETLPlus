@@ -12,7 +12,6 @@ from datetime import UTC
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from typing import cast
 
 import pytest
 import typer
@@ -63,9 +62,10 @@ class TestCommandsInternalHelpers:
             captured.update(kwargs)
             return 7
 
-        result = helpers_mod.CommandHelperPolicy.call_handler(
+        result = helpers_mod.CommandHelperPolicy(
+            CliState(pretty=False, quiet=True, verbose=True),
+        ).call_handler(
             _handler,
-            state=CliState(pretty=False, quiet=True, verbose=True),
             state_fields=('pretty', 'quiet'),
             value='payload',
         )
@@ -77,20 +77,20 @@ class TestCommandsInternalHelpers:
             'value': 'payload',
         }
 
-    def test_call_history_command_omits_unset_filters_and_preserves_explicit_none(
+    def test_call_history_command_forwards_filters_and_preserves_explicit_none(
         self,
     ) -> None:
-        """History dispatch should forward only explicit filters plus ``pretty``."""
+        """History dispatch should forward provided filters plus ``pretty``."""
         captured: dict[str, object] = {}
 
         def _handler(**kwargs: object) -> int:
             captured.update(kwargs)
             return 11
 
-        result = helpers_mod.CommandHelperPolicy.call_history_command(
+        result = helpers_mod.CommandHelperPolicy(
+            CliState(pretty=False),
+        ).call_history_command(
             _handler,
-            ctx=cast(typer.Context, object()),
-            state=CliState(pretty=False),
             level='job',
             job='seed',
             pipeline=None,
@@ -114,10 +114,10 @@ class TestCommandsInternalHelpers:
             captured.update(kwargs)
             return 13
 
-        result = helpers_mod.CommandHelperPolicy.call_history_command(
+        result = helpers_mod.CommandHelperPolicy(
+            CliState(pretty=False),
+        ).call_history_command(
             _handler,
-            ctx=cast(typer.Context, object()),
-            state=CliState(pretty=False),
             level='run',
             status='failed',
         )
@@ -141,8 +141,7 @@ class TestCommandsInternalHelpers:
         format_value: FileFormat | str,
     ) -> None:
         """Shared resource resolution should preserve ``FileFormat`` typing."""
-        resolved = helpers_mod.CommandHelperPolicy.resolve_resource(
-            CliState(),
+        resolved = helpers_mod.CommandHelperPolicy(CliState()).resolve_resource(
             role='source',
             value='payload.json',
             connector_type='file',
@@ -177,8 +176,7 @@ class TestCommandsInternalHelpers:
         """Command resource resolution should reuse the injected CLI state."""
         state = CliState(pretty=False)
 
-        resolved = helpers_mod.CommandHelperPolicy.resolve_resource(
-            state,
+        resolved = helpers_mod.CommandHelperPolicy(state).resolve_resource(
             role='source',
             value='payload.json',
             connector_type='file',
@@ -229,8 +227,7 @@ class TestCommandsInternalHelpers:
 
     def test_resolve_resource_normalizes_type_and_format(self) -> None:
         """Shared resource resolution should normalize type and format hints."""
-        resolved = helpers_mod.CommandHelperPolicy.resolve_resource(
-            CliState(),
+        resolved = helpers_mod.CommandHelperPolicy(CliState()).resolve_resource(
             role='source',
             value='payload.json',
             connector_type='API',
@@ -644,10 +641,10 @@ class TestDelegatingCommands:
         monkeypatch.setattr(
             schedule_mod.CommandHelperPolicy,
             'call_handler',
-            lambda handler, *, state, **kwargs: kwargs,
+            lambda self, handler, **kwargs: kwargs,
         )
         monkeypatch.setattr(
-            schedule_mod,
+            helpers_mod,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
@@ -1077,7 +1074,7 @@ class TestTransformCommand:
         Test that, when source type is ``None``, source validation is skipped.
         """
         monkeypatch.setattr(
-            transform_mod,
+            helpers_mod,
             'ensure_state',
             lambda _ctx: CliState(),
         )
