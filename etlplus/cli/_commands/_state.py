@@ -74,31 +74,6 @@ class ResourceTypeResolver:
     # -- Class Methods -- #
 
     @classmethod
-    def infer_soft(
-        cls,
-        value: str | None,
-    ) -> str | None:
-        """
-        Make a best-effort inference that tolerates inline payloads.
-
-        Parameters
-        ----------
-        value : str | None
-            The resource identifier (path, URL, or DSN) to infer the type of.
-
-        Returns
-        -------
-        str | None
-            The inferred resource type, or ``None`` if inference fails.
-        """
-        if value is None:
-            return None
-        try:
-            return cls.infer(value)
-        except ValueError:
-            return None
-
-    @classmethod
     def optional_choice(
         cls,
         value: str | None,
@@ -315,7 +290,10 @@ def resolve_logged_resource_type(
     resource_type = explicit_type
     if resource_type is None:
         if soft_inference:
-            resource_type = ResourceTypeResolver.infer_soft(value)
+            try:
+                resource_type = ResourceTypeResolver.infer(value)
+            except ValueError:
+                resource_type = None
         else:
             try:
                 resource_type = ResourceTypeResolver.infer(value)
