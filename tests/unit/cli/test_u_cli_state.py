@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.cli._commands._state`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from contextlib import nullcontext
 from pathlib import Path
 
@@ -360,33 +359,6 @@ class TestCliStateHelpers:
         )
         assert ctx.obj is state
 
-    @pytest.mark.parametrize(
-        ('value', 'setup'),
-        [
-            pytest.param(None, None, id='missing-value'),
-            pytest.param(
-                'invalid',
-                lambda monkeypatch: monkeypatch.setattr(
-                    cli_state_mod.ResourceTypeResolver,
-                    'infer',
-                    lambda _value: (_ for _ in ()).throw(ValueError('bad')),
-                ),
-                id='invalid-resource',
-            ),
-        ],
-    )
-    def test_infer_resource_type_soft_returns_none_for_non_fatal_inputs(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        value: str | None,
-        setup: Callable[[pytest.MonkeyPatch], None] | None,
-    ) -> None:
-        """Soft inference should preserve ``None`` and swallow bad inputs."""
-        if setup is not None:
-            setup(monkeypatch)
-
-        assert cli_state_mod.ResourceTypeResolver.infer_soft(value) is None
-
     def test_log_inferred_resource_prints_verbose_messages(
         self,
         capsys: pytest.CaptureFixture[str],
@@ -402,14 +374,14 @@ class TestCliStateHelpers:
 
     @pytest.mark.parametrize(
         (
-            'inferred',
+            'infer_error',
             'expected_resolved',
             'expected_validated',
             'expected_logged',
         ),
         [
             pytest.param(
-                None,
+                True,
                 None,
                 [],
                 {
@@ -420,7 +392,7 @@ class TestCliStateHelpers:
                 id='soft-inference-miss',
             ),
             pytest.param(
-                'file',
+                False,
                 'file',
                 [('file', cli_state_mod.DATA_CONNECTORS, 'source_type')],
                 {
@@ -435,7 +407,7 @@ class TestCliStateHelpers:
     def test_resolve_logged_resource_type_soft_inference(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        inferred: str | None,
+        infer_error: bool,
         expected_resolved: str | None,
         expected_validated: list[tuple[object, object, str]],
         expected_logged: dict[str, object],
@@ -443,11 +415,13 @@ class TestCliStateHelpers:
         """Soft inference should validate only resolved connector types."""
         logged: dict[str, object] = {}
         validated: list[tuple[object, object, str]] = []
-        monkeypatch.setattr(
-            cli_state_mod.ResourceTypeResolver,
-            'infer_soft',
-            lambda _value: inferred,
-        )
+
+        def infer_resource(_value: str) -> str:
+            if infer_error:
+                raise ValueError('bad resource')
+            return 'file'
+
+        monkeypatch.setattr(cli_state_mod.ResourceTypeResolver, 'infer', infer_resource)
 
         def validate_choice(
             value: object,
@@ -480,19 +454,6 @@ class TestCliStateHelpers:
         assert resolved == expected_resolved
         assert validated == expected_validated
         assert logged == expected_logged
-
-    def test_resource_type_resolver_infer_soft_uses_function_seam(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that class-based soft inference still respects wrapper patches."""
-        monkeypatch.setattr(
-            cli_state_mod.ResourceTypeResolver,
-            'infer',
-            lambda _value: (_ for _ in ()).throw(ValueError('bad')),
-        )
-
-        assert cli_state_mod.ResourceTypeResolver.infer_soft('invalid') is None
 
 
 class TestOptionalChoice:
