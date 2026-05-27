@@ -242,6 +242,26 @@ class TestCliCommandState:
         assert result.exit_code == 0
         assert_mapping_contains(calls, expected)
 
+    def test_validate_schema_mode_ignores_default_rules_option(
+        self,
+        invoke_cli: InvokeCli,
+        capture_handler: CaptureHandler,
+    ) -> None:
+        """Schema mode should not treat the default rules value as user input."""
+        calls = capture_handler(validate_mod, 'validate_handler')
+
+        result = invoke_cli('validate', 'data.json', '--schema', 'schema.json')
+
+        assert result.exit_code == 0
+        assert_mapping_contains(
+            calls,
+            {
+                'source': 'data.json',
+                'rules': {},
+                'schema': 'schema.json',
+            },
+        )
+
 
 class TestCliHelp:
     """Unit test suite of command-line state tests for help text."""
