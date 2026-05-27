@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from typing import cast
 
 from ...utils._types import TemplateKey
 from . import _input
@@ -88,7 +87,7 @@ def resolve_render_template(
     if template_path is not None:
         return template_key, template_path
 
-    candidate_path = Path(cast(str, template_key))
+    candidate_path = Path(template_key)
     if candidate_path.exists():
         return None, str(candidate_path)
     return template_key, None
