@@ -239,6 +239,12 @@ def resolve_logged_resource_type(
     -------
     str | None
         The validated resource type, or ``None`` when soft inference fails.
+
+    Raises
+    ------
+    typer.BadParameter
+        If the resource type is invalid or cannot be inferred (when
+        ``soft_inference`` is ``False``).
     """
     resource_type = explicit_type
     if resource_type is None:
