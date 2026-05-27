@@ -323,29 +323,36 @@ class CommandHelperPolicy:
                 message=f"Missing required argument '{role.upper()}'.",
                 positional_name=role.upper(),
             )
+        explicit_type = (
+            None
+            if connector_type is None
+            else ResourceTypeResolver.validate(
+                str(connector_type),
+                DATA_CONNECTORS,
+                label=f'{role}_type',
+            )
+        )
+        normalized_format = (
+            None
+            if format_value is None
+            else ResourceTypeResolver.validate(
+                str(format_value),
+                FILE_FORMATS,
+                label=f'{role}_format',
+            )
+        )
         return _ResolvedResource(
             value=resolved_value,
             resource_type=_resolve_logged_resource_type(
                 state,
                 role=role,
                 value=resolved_value,
-                explicit_type=ResourceTypeResolver.optional_choice(
-                    None if connector_type is None else str(connector_type),
-                    DATA_CONNECTORS,
-                    label=f'{role}_type',
-                ),
+                explicit_type=explicit_type,
                 soft_inference=soft_inference,
             ),
             format_hint=(
                 None
-                if (
-                    normalized_format := ResourceTypeResolver.optional_choice(
-                        None if format_value is None else str(format_value),
-                        FILE_FORMATS,
-                        label=f'{role}_format',
-                    )
-                )
-                is None
+                if normalized_format is None
                 else FileFormat.coerce(normalized_format)
             ),
         )
