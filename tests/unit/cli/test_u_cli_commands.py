@@ -12,6 +12,8 @@ from datetime import UTC
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from typing import Never
+from typing import cast
 
 import pytest
 import typer
@@ -41,6 +43,14 @@ from .conftest import assert_mapping_contains
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+def _raise_bad_parameter(message: str) -> Never:
+    """Raise a Typer bad-parameter error with the supplied message."""
+    raise typer.BadParameter(message)
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -530,7 +540,7 @@ class TestDelegatingCommands:
         monkeypatch.setattr(
             check_mod.CommandHelperPolicy,
             'fail_usage',
-            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
+            _raise_bad_parameter,
         )
 
         with pytest.raises(
@@ -553,7 +563,7 @@ class TestDelegatingCommands:
         monkeypatch.setattr(
             check_mod.CommandHelperPolicy,
             'fail_usage',
-            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
+            _raise_bad_parameter,
         )
 
         with pytest.raises(
@@ -576,7 +586,7 @@ class TestDelegatingCommands:
         monkeypatch.setattr(
             run_mod.CommandHelperPolicy,
             'fail_usage',
-            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
+            _raise_bad_parameter,
         )
 
         with pytest.raises(
@@ -607,10 +617,13 @@ class TestDelegatingCommands:
             lambda _ctx: CliState(pretty=False),
         )
 
-        payload = commands_mod.schedule_cmd(
-            typer_ctx_factory(),
-            config='pipeline.yml',
-            show_state=True,
+        payload = cast(
+            dict[str, object],
+            commands_mod.schedule_cmd(
+                typer_ctx_factory(),
+                config='pipeline.yml',
+                show_state=True,
+            ),
         )
 
         assert payload['show_state'] is True
@@ -624,7 +637,7 @@ class TestDelegatingCommands:
         monkeypatch.setattr(
             schedule_mod.CommandHelperPolicy,
             'fail_usage',
-            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
+            _raise_bad_parameter,
         )
 
         with pytest.raises(
@@ -646,7 +659,7 @@ class TestDelegatingCommands:
         monkeypatch.setattr(
             schedule_mod.CommandHelperPolicy,
             'fail_usage',
-            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
+            _raise_bad_parameter,
         )
 
         with pytest.raises(
