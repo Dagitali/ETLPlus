@@ -19,7 +19,6 @@ from ._options.resources import SourceTypeOption
 from ._options.specs import RulesOption
 from ._options.specs import SchemaFormatOption
 from ._options.specs import SchemaOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -98,9 +97,8 @@ def validate_cmd(
             'Use either --rules or --schema/--schema-format, not both.',
         )
 
-    state = ensure_state(ctx)
-    resolved_source = CommandHelperPolicy.resolve_resource(
-        state,
+    policy = CommandHelperPolicy.from_context(ctx)
+    resolved_source = policy.resolve_resource(
         role='source',
         value=source,
         connector_type=source_type,
@@ -108,9 +106,8 @@ def validate_cmd(
         soft_inference=True,
     )
 
-    return CommandHelperPolicy.call_handler(
+    return policy.call_handler(
         validate_handler,
-        state=state,
         source=resolved_source.value,
         rules=(
             {}
