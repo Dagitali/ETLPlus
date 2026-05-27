@@ -9,7 +9,10 @@ This module exposes :func:`main` for the console script.
 from __future__ import annotations
 
 import contextlib
+import importlib
 import sys
+from types import ModuleType
+from typing import Any
 from typing import cast
 
 import click
@@ -27,6 +30,38 @@ __all__ = [
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _load_typer_click_exceptions() -> ModuleType:
+    """
+    Return Typer's vendored Click exception module when available.
+
+    Returns
+    -------
+    ModuleType
+        Typer's vendored Click exception module on Python/Typer combinations
+        that expose it, otherwise the public Click exception module.
+    """
+    with contextlib.suppress(ModuleNotFoundError):
+        return importlib.import_module('typer._click.exceptions')
+    return click.exceptions
+
+
+_TYPER_CLICK_EXCEPTIONS = _load_typer_click_exceptions()
+
+_USAGE_ERROR_TYPES: tuple[type[BaseException], ...] = (
+    click.exceptions.UsageError,
+    _TYPER_CLICK_EXCEPTIONS.UsageError,
+)
+
+_ILLEGAL_OPTION_ERROR_TYPES: tuple[type[BaseException], ...] = (
+    click.exceptions.BadOptionUsage,
+    click.exceptions.BadParameter,
+    click.exceptions.NoSuchOption,
+    _TYPER_CLICK_EXCEPTIONS.BadOptionUsage,
+    _TYPER_CLICK_EXCEPTIONS.BadParameter,
+    _TYPER_CLICK_EXCEPTIONS.NoSuchOption,
+)
 
 
 def _emit_context_help(
@@ -72,14 +107,14 @@ def _emit_root_help(
 
 
 def _is_illegal_option_error(
-    exc: click.exceptions.UsageError,
+    exc: BaseException,
 ) -> bool:
     """
     Return ``True`` when usage errors stem from invalid options.
 
     Parameters
     ----------
-    exc : click.exceptions.UsageError
+    exc : BaseException
         The usage error to inspect.
 
     Returns
@@ -87,25 +122,18 @@ def _is_illegal_option_error(
     bool
         ``True`` when the error indicates illegal options.
     """
-    return isinstance(
-        exc,
-        (
-            click.exceptions.BadOptionUsage,
-            click.exceptions.BadParameter,
-            click.exceptions.NoSuchOption,
-        ),
-    )
+    return isinstance(exc, _ILLEGAL_OPTION_ERROR_TYPES)
 
 
 def _is_unknown_command_error(
-    exc: click.exceptions.UsageError,
+    exc: BaseException,
 ) -> bool:
     """
     Return ``True`` when a :class:`UsageError` indicates bad subcommand.
 
     Parameters
     ----------
-    exc : click.exceptions.UsageError
+    exc : BaseException
         The usage error to inspect.
 
     Returns
@@ -139,7 +167,7 @@ def main(
 
     Raises
     ------
-    click.exceptions.UsageError
+    _USAGE_ERROR_TYPES
         Re-raises Typer/Click usage errors after printing help for unknown
         commands.
     SystemExit
@@ -161,14 +189,14 @@ def main(
         )
         return int(result or 0)
 
-    except click.exceptions.UsageError as exc:
+    except _USAGE_ERROR_TYPES as exc:
         if _is_unknown_command_error(exc):
             typer.echo(f'Error: {exc}', err=True)
             _emit_root_help(command)
             return int(getattr(exc, 'exit_code', 2))
         if _is_illegal_option_error(exc):
             typer.echo(f'Error: {exc}', err=True)
-            if not _emit_context_help(exc.ctx):
+            if not _emit_context_help(cast(click.Context | None, cast(Any, exc).ctx)):
                 _emit_root_help(command)
             return int(getattr(exc, 'exit_code', 2))
 
