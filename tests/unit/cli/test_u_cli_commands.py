@@ -512,12 +512,6 @@ class TestDelegatingCommands:
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
-        monkeypatch.setattr(
-            module,
-            'ensure_state',
-            lambda _ctx: CliState(pretty=False),
-            raising=False,
-        )
         captured = stub_handler(
             module,
             handler_name,
