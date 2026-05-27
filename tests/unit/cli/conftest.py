@@ -15,7 +15,6 @@ import json
 import re
 import types
 from collections.abc import Callable
-from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
@@ -111,24 +110,6 @@ def assert_emit_or_write(
     assert args[1] == target
     assert kwargs['pretty'] is pretty
     return kwargs
-
-
-def assert_mapping_contains(
-    actual: Mapping[str, object],
-    expected: Mapping[str, object],
-) -> None:
-    """
-    Assert that *actual* contains the *expected* key/value pairs.
-
-    Parameters
-    ----------
-    actual : Mapping[str, object]
-        Mapping returned by the handler capture fixture.
-    expected : Mapping[str, object]
-        Expected key/value pairs that must be present in *actual*.
-    """
-    for key, value in expected.items():
-        assert actual[key] == value
 
 
 def strip_ansi(text: str) -> str:
