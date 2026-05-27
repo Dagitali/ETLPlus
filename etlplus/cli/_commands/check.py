@@ -21,7 +21,6 @@ from ._options.specs import StrictOption
 from ._options.specs import SummaryOption
 from ._options.specs import TargetsOption
 from ._options.specs import TransformsOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -107,9 +106,8 @@ def check_cmd(
             message="Missing required option '--config'.",
         )
 
-    return CommandHelperPolicy.call_handler(
+    return CommandHelperPolicy.from_context(ctx).call_handler(
         check_handler,
-        state=ensure_state(ctx),
         config=config,
         graph=graph,
         jobs=jobs,
