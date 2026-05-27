@@ -36,7 +36,12 @@ class TestCommitizenBranchCheck:
         branch: str,
     ) -> None:
         """Test the local branch-name guard allows supported GitFlow names."""
-        assert commitizen_branch._validate_gitflow_branch_name(branch) == 0
+        assert (
+            commitizen_branch.CommitizenBranchChecker.validate_gitflow_branch_name(
+                branch,
+            )
+            == 0
+        )
 
     @pytest.mark.parametrize(
         'branch',
@@ -51,46 +56,54 @@ class TestCommitizenBranchCheck:
         branch: str,
     ) -> None:
         """Test the local branch-name guard rejects nonstandard branch shapes."""
-        assert commitizen_branch._validate_gitflow_branch_name(branch) == 1
+        assert (
+            commitizen_branch.CommitizenBranchChecker.validate_gitflow_branch_name(
+                branch,
+            )
+            == 1
+        )
         assert 'exactly one "/"' in capsys.readouterr().err
 
-    def test_main_stops_before_commitizen_when_branch_name_is_invalid(
+    def test_run_stops_before_commitizen_when_branch_name_is_invalid(
         self,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
         Test invalid GitFlow branch names fail before commit-message checks.
         """
-        monkeypatch.setattr(
-            commitizen_branch,
-            '_current_branch',
-            lambda: 'feature/api/add-connector-metadata',
-        )
-        monkeypatch.setattr(
-            commitizen_branch,
-            '_resolve_rev_range',
-            lambda: 'origin/main..HEAD',
-        )
-        monkeypatch.setattr(commitizen_branch, '_check_message', self._unexpected_check)
+        class Checker(commitizen_branch.CommitizenBranchChecker):
+            """Checker with invalid branch state."""
 
-        assert commitizen_branch.main() == 1
+            def check_message(self, message: str) -> int:
+                """Raise when Commitizen validation should not run."""
+                return TestCommitizenBranchCheck._unexpected_check(message)
+
+            def current_branch(self) -> str:
+                """Return an invalid GitFlow branch name."""
+                return 'feature/api/add-connector-metadata'
+
+            def resolve_rev_range(self) -> str:
+                """Return a deterministic revision range."""
+                return 'origin/main..HEAD'
+
+        assert Checker().run() == 1
 
     def test_non_merge_commits_excludes_merge_commits(
         self,
-        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """
         Test that non-merge commit discovery delegates merge exclusion to Git.
         """
         calls: list[tuple[str, ...]] = []
 
-        def git_stdout(*args: str) -> str:
-            calls.append(args)
-            return 'abc123\ndef456'
+        class Checker(commitizen_branch.CommitizenBranchChecker):
+            """Checker with deterministic Git output."""
 
-        monkeypatch.setattr(commitizen_branch, '_git_stdout', git_stdout)
+            def git_stdout(self, *args: str) -> str:
+                """Capture Git args and return deterministic commits."""
+                calls.append(args)
+                return 'abc123\ndef456'
 
-        assert commitizen_branch._non_merge_commits('origin/main..HEAD') == [
+        assert Checker().non_merge_commits('origin/main..HEAD') == [
             'abc123',
             'def456',
         ]
@@ -99,36 +112,32 @@ class TestCommitizenBranchCheck:
             ('rev-list', '--reverse', '--no-merges', 'origin/main..HEAD'),
         ]
 
-    def test_main_accepts_ranges_with_only_merge_commits(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
+    def test_run_accepts_ranges_with_only_merge_commits(self) -> None:
         """
         Test that ranges with no non-merge commits pass validation.
         """
-        monkeypatch.setattr(
-            commitizen_branch,
-            '_current_branch',
-            lambda: 'bugfix/valid-branch-name',
-        )
-        monkeypatch.setattr(
-            commitizen_branch,
-            '_resolve_rev_range',
-            lambda: 'origin/main..HEAD',
-        )
-        monkeypatch.setattr(
-            commitizen_branch,
-            '_non_merge_commits',
-            lambda rev_range: [],
-        )
-        monkeypatch.setattr(commitizen_branch, '_check_message', self._unexpected_check)
+        class Checker(commitizen_branch.CommitizenBranchChecker):
+            """Checker with only merge commits in range."""
 
-        assert commitizen_branch.main() == 0
+            def check_message(self, message: str) -> int:
+                """Raise when Commitizen validation should not run."""
+                return TestCommitizenBranchCheck._unexpected_check(message)
 
-    def test_main_validates_non_merge_commit_messages(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
+            def current_branch(self) -> str:
+                """Return a valid GitFlow branch name."""
+                return 'bugfix/valid-branch-name'
+
+            def non_merge_commits(self, rev_range: str) -> list[str]:
+                """Return no non-merge commits."""
+                return []
+
+            def resolve_rev_range(self) -> str:
+                """Return a deterministic revision range."""
+                return 'origin/main..HEAD'
+
+        assert Checker().run() == 0
+
+    def test_run_validates_non_merge_commit_messages(self) -> None:
         """
         Test that Commitizen validates only discovered non-merge commits.
         """
@@ -138,72 +147,84 @@ class TestCommitizenBranchCheck:
             'def456': 'fix(ci): ignore merge commits in commitizen check',
         }
 
-        monkeypatch.setattr(
-            commitizen_branch,
-            '_current_branch',
-            lambda: 'bugfix/valid-branch-name',
-        )
-        monkeypatch.setattr(
-            commitizen_branch,
-            '_resolve_rev_range',
-            lambda: 'origin/main..HEAD',
-        )
-        monkeypatch.setattr(
-            commitizen_branch,
-            '_non_merge_commits',
-            lambda rev_range: ['abc123', 'def456'],
-        )
-        monkeypatch.setattr(commitizen_branch, '_commit_message', messages.__getitem__)
+        class Checker(commitizen_branch.CommitizenBranchChecker):
+            """Checker with deterministic commit messages."""
 
-        def check_message(message: str) -> int:
-            checked_messages.append(message)
-            return 0
+            def check_message(self, message: str) -> int:
+                """Capture messages checked by Commitizen."""
+                checked_messages.append(message)
+                return 0
 
-        monkeypatch.setattr(commitizen_branch, '_check_message', check_message)
+            def commit_message(self, commit: str) -> str:
+                """Return deterministic commit messages."""
+                return messages[commit]
 
-        assert commitizen_branch.main() == 0
+            def current_branch(self) -> str:
+                """Return a valid GitFlow branch name."""
+                return 'bugfix/valid-branch-name'
+
+            def non_merge_commits(self, rev_range: str) -> list[str]:
+                """Return deterministic non-merge commits."""
+                return ['abc123', 'def456']
+
+            def resolve_rev_range(self) -> str:
+                """Return a deterministic revision range."""
+                return 'origin/main..HEAD'
+
+        assert Checker().run() == 0
 
         assert checked_messages == list(messages.values())
 
-    def test_main_returns_first_commitizen_failure(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
+    def test_run_returns_first_commitizen_failure(self) -> None:
         """
         Test that validation exits on the first failing non-merge commit.
         """
         checked_messages: list[str] = []
 
-        monkeypatch.setattr(
-            commitizen_branch,
-            '_current_branch',
-            lambda: 'bugfix/valid-branch-name',
-        )
-        monkeypatch.setattr(
-            commitizen_branch,
-            '_resolve_rev_range',
-            lambda: 'origin/main..HEAD',
-        )
-        monkeypatch.setattr(
-            commitizen_branch,
-            '_non_merge_commits',
-            lambda rev_range: ['abc123', 'def456'],
-        )
-        monkeypatch.setattr(
-            commitizen_branch,
-            '_commit_message',
-            lambda commit: f'{commit} message',
-        )
+        class Checker(commitizen_branch.CommitizenBranchChecker):
+            """Checker with a failing Commitizen result."""
 
-        def check_message(message: str) -> int:
-            checked_messages.append(message)
-            return 17
+            def check_message(self, message: str) -> int:
+                """Capture messages checked by Commitizen and fail."""
+                checked_messages.append(message)
+                return 17
 
-        monkeypatch.setattr(commitizen_branch, '_check_message', check_message)
+            def commit_message(self, commit: str) -> str:
+                """Return deterministic commit messages."""
+                return f'{commit} message'
 
-        assert commitizen_branch.main() == 17
+            def current_branch(self) -> str:
+                """Return a valid GitFlow branch name."""
+                return 'bugfix/valid-branch-name'
+
+            def non_merge_commits(self, rev_range: str) -> list[str]:
+                """Return deterministic non-merge commits."""
+                return ['abc123', 'def456']
+
+            def resolve_rev_range(self) -> str:
+                """Return a deterministic revision range."""
+                return 'origin/main..HEAD'
+
+        assert Checker().run() == 17
 
         assert checked_messages == ['abc123 message']
+
+    def test_main_delegates_to_checker_run(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test the script entrypoint remains a thin compatibility wrapper."""
+
+        class Checker:
+            """Minimal checker stub for entrypoint delegation."""
+
+            def run(self) -> int:
+                """Return a deterministic status."""
+                return 23
+
+        monkeypatch.setattr(commitizen_branch, 'CommitizenBranchChecker', Checker)
+
+        assert commitizen_branch.main() == 23
 
     @staticmethod
     def _unexpected_check(message: str) -> int:
