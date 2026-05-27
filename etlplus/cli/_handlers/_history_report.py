@@ -178,10 +178,10 @@ class HistoryReportBuilder:
 
         for record in records:
             status = cast(str, record.get('status') or '')
-            if status in ('succeeded', 'failed', 'running'):
-                HistoryReportBuilder.increment_metric(summary, status)
-            else:
-                HistoryReportBuilder.increment_metric(summary, 'other')
+            status_key = (
+                status if status in ('succeeded', 'failed', 'running') else 'other'
+            )
+            HistoryReportBuilder.increment_metric(summary, status_key)
 
             key = HistoryReportBuilder.report_group_key(record, group_by=group_by)
             row = cast(
@@ -206,10 +206,7 @@ class HistoryReportBuilder:
                 ),
             )
             HistoryReportBuilder.increment_metric(row, 'runs')
-            if status in ('succeeded', 'failed', 'running'):
-                HistoryReportBuilder.increment_metric(row, status)
-            else:
-                HistoryReportBuilder.increment_metric(row, 'other')
+            HistoryReportBuilder.increment_metric(row, status_key)
 
             duration_ms = record.get('duration_ms')
             if isinstance(duration_ms, int):
