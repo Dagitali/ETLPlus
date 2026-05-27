@@ -19,49 +19,11 @@ from . import _input
 __all__ = [
     # Functions
     'resolve_mapping_payload',
-    'resolve_payload',
     'resolve_render_template',
 ]
 
 
 # SECTION: FUNCTIONS ======================================================== #
-
-
-def resolve_payload(
-    payload: object,
-    *,
-    format_hint: str | None,
-    format_explicit: bool,
-    hydrate_files: bool = True,
-) -> object:
-    """
-    Resolve one CLI payload through the shared CLI payload loader.
-
-    Parameters
-    ----------
-    payload : object
-        The raw payload to resolve, typically from a CLI argument.
-    format_hint : str | None
-        An optional hint for the payload format, such as 'json' or 'yaml'.
-    format_explicit : bool
-        Whether the payload format was explicitly specified by the user.
-    hydrate_files : bool, optional
-        Whether to hydrate file references in the resolved payload. Defaults to
-        ``True``.
-
-    Returns
-    -------
-    object
-        The resolved payload.
-
-    """
-    resolve_kwargs: dict[str, Any] = {
-        'format_hint': format_hint,
-        'format_explicit': format_explicit,
-    }
-    if not hydrate_files:
-        resolve_kwargs['hydrate_files'] = False
-    return _input.resolve_cli_payload(payload, **resolve_kwargs)
 
 
 def resolve_mapping_payload(
@@ -92,7 +54,7 @@ def resolve_mapping_payload(
     ValueError
         If the resolved payload is not a mapping.
     """
-    resolved_payload = resolve_payload(
+    resolved_payload = _input.resolve_cli_payload(
         payload,
         format_hint=None,
         format_explicit=format_explicit,
