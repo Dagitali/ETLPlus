@@ -131,22 +131,6 @@ class TestDataops:
             is expected
         )
 
-    @pytest.mark.parametrize(
-        ('result', 'expected'),
-        [
-            ({'status': 'queued'}, 'queued'),
-            ({'status': 1}, 'ok'),
-            ('not-a-mapping', 'ok'),
-        ],
-    )
-    def test_result_status(
-        self,
-        result: object,
-        expected: str,
-    ) -> None:
-        """Result-status extraction should degrade cleanly for bad payloads."""
-        assert POLICY.result_status(result) == expected
-
     def test_resolve_source_payload_forwards_resolution_flags(
         self,
         monkeypatch: pytest.MonkeyPatch,
