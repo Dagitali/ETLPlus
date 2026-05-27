@@ -126,10 +126,10 @@ class CommandHelperPolicy:
         int
             The exit code returned by *handler*.
         """
-        state_kwargs: dict[str, Any] = {
-            field: getattr(state, field) for field in state_fields
-        }
-        return handler(**kwargs, **state_kwargs)
+        return handler(
+            **kwargs,
+            **{field: getattr(state, field) for field in state_fields},
+        )
 
     @staticmethod
     def call_history_command(
