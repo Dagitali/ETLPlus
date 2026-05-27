@@ -76,9 +76,6 @@ class TestRuntimeDependencyDeclarations:
         direct_imports = _direct_external_imports(CLI_PACKAGE_PATH)
         assert direct_imports <= RUNTIME_IMPORT_DISTRIBUTIONS.keys()
 
-        expected = {
-            RUNTIME_IMPORT_DISTRIBUTIONS[module]
-            for module in direct_imports
-        }
+        expected = {RUNTIME_IMPORT_DISTRIBUTIONS[module] for module in direct_imports}
 
         assert expected <= _pyproject_dependency_names()
