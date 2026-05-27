@@ -101,9 +101,7 @@ def test_repository_maintenance_headers_use_standard_sections(
     text = (REPO_ROOT / relative_path).read_text(encoding='utf-8')
 
     missing = [
-        section
-        for section in _REQUIRED_HEADER_SECTIONS
-        if f'# {section}' not in text
+        section for section in _REQUIRED_HEADER_SECTIONS if f'# {section}' not in text
     ]
 
     assert not missing, f'{relative_path} is missing header sections: {missing}'
