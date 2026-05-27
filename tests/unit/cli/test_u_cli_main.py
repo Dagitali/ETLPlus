@@ -17,7 +17,6 @@ import typer
 import etlplus.cli._commands.extract as extract_mod
 from etlplus.cli import main as cli_main
 
-from .conftest import StubCommand
 from .conftest import StubCommandMain
 
 # SECTION: PRAGMAS ========================================================== #
@@ -44,16 +43,14 @@ class TestMain:
         """
         Test that the command return values flow through unchanged.
         """
-
-        def _action(**kwargs: object) -> object:
-            return 5
-
-        captured = stub_command_main(_action)
+        captured = stub_command_main(lambda **_kwargs: 5)
 
         assert cli_main(['extract']) == 5
-        assert captured['args'] == ['extract']
-        assert captured['prog_name'] == PROG_NAME
-        assert captured['standalone_mode'] is False
+        assert captured == {
+            'args': ['extract'],
+            'prog_name': PROG_NAME,
+            'standalone_mode': False,
+        }
 
     def test_emit_context_help_none_returns_false(self) -> None:
         """
@@ -183,16 +180,12 @@ class TestMain:
 
     def test_maps_direct_typer_exit_from_command_main(
         self,
-        stub_command: StubCommand,
+        stub_command_main: StubCommandMain,
     ) -> None:
         """
         Test that direct :class:`typer.Exit` from command.main are mapped.
         """
-
-        def _action(**kwargs: object) -> object:  # noqa: ARG001
-            raise typer.Exit(9)
-
-        stub_command(_action)
+        stub_command_main(typer.Exit(9))
         assert cli_main(['extract']) == 9
 
     def test_no_args_exits_zero(self) -> None:
@@ -225,14 +218,10 @@ class TestMain:
 
     def test_usage_error_non_option_is_reraised(
         self,
-        stub_command: StubCommand,
+        stub_command_main: StubCommandMain,
     ) -> None:
         """Test that unhandled :class:`UsageError` cases be re-raised."""
-
-        def _action(**kwargs: object) -> object:  # noqa: ARG001
-            raise click.exceptions.UsageError('boom')
-
-        stub_command(_action)
+        stub_command_main(click.exceptions.UsageError('boom'))
         with pytest.raises(click.exceptions.UsageError, match='boom'):
             cli_main(['extract'])
 

@@ -25,10 +25,8 @@ __all__ = [
     'typer_format_option_alias',
     'typer_option_alias',
     'typer_resource_argument_alias',
-    'typer_resource_argument_kwargs',
     'typer_timestamp_option_alias',
     'typer_value_option_alias',
-    'typer_value_option_kwargs',
 ]
 
 
@@ -203,40 +201,6 @@ def typer_format_option_alias(
     )
 
 
-def typer_resource_argument_kwargs(
-    *,
-    context: DataConnectorContext,
-) -> dict[str, object]:
-    """
-    Return common Typer argument kwargs for source/target resources.
-
-    Parameters
-    ----------
-    context : DataConnectorContext
-        Either ``'source'`` or ``'target'`` to tailor help text.
-
-    Returns
-    -------
-    dict[str, object]
-        The common Typer argument kwargs for the given context.
-    """
-    if context == 'source':
-        description = 'JSON payload, file path, URI/URL, or - for STDIN'
-        verb = 'Extract data from'
-    else:
-        description = 'file path, URI/URL, or - for STDOUT'
-        verb = 'Load data into'
-    return {
-        'metavar': context.upper(),
-        'help': (
-            f'{verb} {context.upper()} ({description}). Use '
-            f'--{context}-format to override '
-            'the inferred data format and '
-            f'--{context}-type to override the inferred data connector.'
-        ),
-    }
-
-
 def typer_resource_argument_alias(
     value_type: Any,
     *param_decls: object,
@@ -259,11 +223,23 @@ def typer_resource_argument_alias(
     Any
         The annotated Typer argument alias.
     """
+    if context == 'source':
+        description = 'JSON payload, file path, URI/URL, or - for STDIN'
+        verb = 'Extract data from'
+    else:
+        description = 'file path, URI/URL, or - for STDOUT'
+        verb = 'Load data into'
     return Annotated[
         value_type,
         typer.Argument(  # type: ignore[call-overload]
             *param_decls,
-            **typer_resource_argument_kwargs(context=context),
+            metavar=context.upper(),
+            help=(
+                f'{verb} {context.upper()} ({description}). Use '
+                f'--{context}-format to override '
+                'the inferred data format and '
+                f'--{context}-type to override the inferred data connector.'
+            ),
         ),
     ]
 
@@ -282,37 +258,6 @@ def typer_timestamp_option_alias(
         show_default=False,
         help=f'Emit only records at or {direction} the given ISO-8601 timestamp.',
     )
-
-
-def typer_value_option_kwargs(
-    help_text: str,
-    *,
-    metavar: str | None = None,
-    show_default: bool | None = False,
-) -> dict[str, object]:
-    """
-    Return common Typer option kwargs for scalar string-like inputs.
-
-    Parameters
-    ----------
-    help_text : str
-        The help text for the option.
-    metavar : str | None, optional
-        The metavar for the option. Default is ``None``.
-    show_default : bool | None, optional
-        Whether to show the default value. Default is ``False``.
-
-    Returns
-    -------
-    dict[str, object]
-        The common Typer option kwargs for scalar string-like inputs.
-    """
-    kwargs: dict[str, object] = {'help': help_text}
-    if metavar is not None:
-        kwargs['metavar'] = metavar
-    if show_default is not None:
-        kwargs['show_default'] = show_default
-    return kwargs
 
 
 def typer_value_option_alias(
@@ -346,13 +291,14 @@ def typer_value_option_alias(
     Any
         The annotated Typer option alias.
     """
+    option_kwargs: dict[str, object] = {'help': help_text}
+    if metavar is not None:
+        option_kwargs['metavar'] = metavar
+    if show_default is not None:
+        option_kwargs['show_default'] = show_default
     return typer_option_alias(
         value_type,
         *param_decls,
-        **typer_value_option_kwargs(
-            help_text,
-            metavar=metavar,
-            show_default=show_default,
-        ),
+        **option_kwargs,
         **kwargs,
     )

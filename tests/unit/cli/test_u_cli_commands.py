@@ -12,6 +12,7 @@ from datetime import UTC
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from typing import Never
 from typing import cast
 
 import pytest
@@ -37,11 +38,18 @@ from .conftest import AssertCapturedText
 from .conftest import InvokeCli
 from .conftest import StubHandler
 from .conftest import TyperContextFactory
-from .conftest import assert_mapping_contains
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+def _raise_bad_parameter(message: str) -> Never:
+    """Raise a Typer bad-parameter error with the supplied message."""
+    raise typer.BadParameter(message)
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -63,9 +71,10 @@ class TestCommandsInternalHelpers:
             captured.update(kwargs)
             return 7
 
-        result = helpers_mod.CommandHelperPolicy.call_handler(
+        result = helpers_mod.CommandHelperPolicy(
+            CliState(pretty=False, quiet=True, verbose=True),
+        ).call_handler(
             _handler,
-            state=CliState(pretty=False, quiet=True, verbose=True),
             state_fields=('pretty', 'quiet'),
             value='payload',
         )
@@ -77,57 +86,18 @@ class TestCommandsInternalHelpers:
             'value': 'payload',
         }
 
-    def test_call_history_command_omits_unset_filters_and_preserves_explicit_none(
+    def test_from_context_uses_shared_cli_state(
         self,
+        monkeypatch: pytest.MonkeyPatch,
+        typer_ctx_factory: TyperContextFactory,
     ) -> None:
-        """History dispatch should forward only explicit filters plus ``pretty``."""
-        captured: dict[str, object] = {}
+        """Policy factories should bind the shared CLI state from context."""
+        state = CliState(pretty=False)
+        monkeypatch.setattr(helpers_mod, 'ensure_state', lambda _ctx: state)
 
-        def _handler(**kwargs: object) -> int:
-            captured.update(kwargs)
-            return 11
+        policy = helpers_mod.CommandHelperPolicy.from_context(typer_ctx_factory())
 
-        result = helpers_mod.CommandHelperPolicy.call_history_command(
-            _handler,
-            ctx=cast(typer.Context, object()),
-            state=CliState(pretty=False),
-            level='job',
-            job='seed',
-            pipeline=None,
-            follow=True,
-        )
-
-        assert result == 11
-        assert captured == {
-            'follow': True,
-            'job': 'seed',
-            'level': 'job',
-            'pipeline': None,
-            'pretty': False,
-        }
-
-    def test_call_history_command_reuses_supplied_state(self) -> None:
-        """History command dispatch should reuse injected CLI state."""
-        captured: dict[str, object] = {}
-
-        def _handler(**kwargs: object) -> int:
-            captured.update(kwargs)
-            return 13
-
-        result = helpers_mod.CommandHelperPolicy.call_history_command(
-            _handler,
-            ctx=cast(typer.Context, object()),
-            state=CliState(pretty=False),
-            level='run',
-            status='failed',
-        )
-
-        assert result == 13
-        assert captured == {
-            'level': 'run',
-            'pretty': False,
-            'status': 'failed',
-        }
+        assert policy.state is state
 
     @pytest.mark.parametrize(
         'format_value',
@@ -141,8 +111,7 @@ class TestCommandsInternalHelpers:
         format_value: FileFormat | str,
     ) -> None:
         """Shared resource resolution should preserve ``FileFormat`` typing."""
-        resolved = helpers_mod.CommandHelperPolicy.resolve_resource(
-            CliState(),
+        resolved = helpers_mod.CommandHelperPolicy(CliState()).resolve_resource(
             role='source',
             value='payload.json',
             connector_type='file',
@@ -177,8 +146,7 @@ class TestCommandsInternalHelpers:
         """Command resource resolution should reuse the injected CLI state."""
         state = CliState(pretty=False)
 
-        resolved = helpers_mod.CommandHelperPolicy.resolve_resource(
-            state,
+        resolved = helpers_mod.CommandHelperPolicy(state).resolve_resource(
             role='source',
             value='payload.json',
             connector_type='file',
@@ -229,8 +197,7 @@ class TestCommandsInternalHelpers:
 
     def test_resolve_resource_normalizes_type_and_format(self) -> None:
         """Shared resource resolution should normalize type and format hints."""
-        resolved = helpers_mod.CommandHelperPolicy.resolve_resource(
-            CliState(),
+        resolved = helpers_mod.CommandHelperPolicy(CliState()).resolve_resource(
             role='source',
             value='payload.json',
             connector_type='API',
@@ -456,7 +423,9 @@ class TestDelegatingCommands:
                 {
                     'config': 'pipeline.yml',
                     'emit': 'crontab',
+                    'event_format': None,
                     'pretty': False,
+                    'run_pending': False,
                     'schedule_name': 'nightly_all',
                     'show_state': True,
                 },
@@ -479,6 +448,7 @@ class TestDelegatingCommands:
                     'pretty': False,
                     'run_pending': True,
                     'schedule_name': None,
+                    'show_state': False,
                 },
                 0,
                 id='schedule-run-pending',
@@ -551,12 +521,6 @@ class TestDelegatingCommands:
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
-        monkeypatch.setattr(
-            module,
-            'ensure_state',
-            lambda _ctx: CliState(pretty=False),
-            raising=False,
-        )
         captured = stub_handler(
             module,
             handler_name,
@@ -566,74 +530,65 @@ class TestDelegatingCommands:
         assert command(typer_ctx_factory(), **kwargs) == result
         assert captured == expected
 
-    def test_rejects_graph_with_inspection_flags(
+    @pytest.mark.parametrize(
+        ('policy', 'command', 'kwargs', 'expected_message'),
+        [
+            pytest.param(
+                check_mod.CommandHelperPolicy,
+                commands_mod.check_cmd,
+                {'config': 'pipeline.yml', 'graph': True, 'jobs': True},
+                '--graph cannot be combined with inspection flags',
+                id='check-graph-with-inspection-flags',
+            ),
+            pytest.param(
+                check_mod.CommandHelperPolicy,
+                commands_mod.check_cmd,
+                {'config': 'pipeline.yml', 'jobs': True, 'readiness': True},
+                '--readiness cannot be combined with inspection flags',
+                id='check-readiness-with-inspection-flags',
+            ),
+            pytest.param(
+                run_mod.CommandHelperPolicy,
+                commands_mod.run_cmd,
+                {'config': 'pipeline.yml', 'job': 'job-a', 'run_all': True},
+                '--all cannot be combined with --job or --pipeline',
+                id='run-all-with-job-selection',
+            ),
+            pytest.param(
+                schedule_mod.CommandHelperPolicy,
+                commands_mod.schedule_cmd,
+                {'config': 'pipeline.yml', 'emit': 'crontab'},
+                "'--emit' requires '--schedule'",
+                id='schedule-emit-without-schedule',
+            ),
+            pytest.param(
+                schedule_mod.CommandHelperPolicy,
+                commands_mod.schedule_cmd,
+                {
+                    'config': 'pipeline.yml',
+                    'schedule': 'nightly_all',
+                    'emit': 'crontab',
+                    'run_pending': True,
+                },
+                '--run-pending cannot be combined with --emit',
+                id='schedule-run-pending-with-emit',
+            ),
+        ],
+    )
+    def test_rejects_invalid_option_combinations(
         self,
         monkeypatch: pytest.MonkeyPatch,
         typer_ctx_factory: TyperContextFactory,
+        policy: type[helpers_mod.CommandHelperPolicy],
+        command: Callable[..., int],
+        kwargs: dict[str, object],
+        expected_message: str,
     ) -> None:
-        """Graph mode should reject section-inspection flag combinations."""
-        monkeypatch.setattr(
-            check_mod.CommandHelperPolicy,
-            'fail_usage',
-            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
-        )
+        """Invalid command option combinations should fail through usage errors."""
+        monkeypatch.setattr(policy, 'fail_usage', _raise_bad_parameter)
 
-        with pytest.raises(
-            typer.BadParameter,
-            match='--graph cannot be combined with inspection flags',
-        ):
-            commands_mod.check_cmd(
-                typer_ctx_factory(),
-                config='pipeline.yml',
-                graph=True,
-                jobs=True,
-            )
-
-    def test_rejects_readiness_with_inspection_flags(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        typer_ctx_factory: TyperContextFactory,
-    ) -> None:
-        """Readiness mode should reject inspection-flag combinations."""
-        monkeypatch.setattr(
-            check_mod.CommandHelperPolicy,
-            'fail_usage',
-            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
-        )
-
-        with pytest.raises(
-            typer.BadParameter,
-            match='--readiness cannot be combined with inspection flags',
-        ):
-            commands_mod.check_cmd(
-                typer_ctx_factory(),
-                config='pipeline.yml',
-                jobs=True,
-                readiness=True,
-            )
-
-    def test_rejects_run_all_with_job_selection(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        typer_ctx_factory: TyperContextFactory,
-    ) -> None:
-        """Run mode should reject ``--all`` combined with job selection."""
-        monkeypatch.setattr(
-            run_mod.CommandHelperPolicy,
-            'fail_usage',
-            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
-        )
-
-        with pytest.raises(
-            typer.BadParameter,
-            match='--all cannot be combined with --job or --pipeline',
-        ):
-            commands_mod.run_cmd(
-                typer_ctx_factory(),
-                config='pipeline.yml',
-                job='job-a',
-                run_all=True,
-            )
+        with pytest.raises(typer.BadParameter, match=expected_message):
+            command(typer_ctx_factory(), **kwargs)
 
     def test_schedule_allows_show_state_without_emit_or_run_pending(
         self,
@@ -644,67 +599,24 @@ class TestDelegatingCommands:
         monkeypatch.setattr(
             schedule_mod.CommandHelperPolicy,
             'call_handler',
-            lambda handler, *, state, **kwargs: kwargs,
+            lambda self, handler, **kwargs: kwargs,
         )
         monkeypatch.setattr(
-            schedule_mod,
+            helpers_mod,
             'ensure_state',
             lambda _ctx: CliState(pretty=False),
         )
 
-        payload = commands_mod.schedule_cmd(
-            typer_ctx_factory(),
-            config='pipeline.yml',
-            show_state=True,
+        payload = cast(
+            dict[str, object],
+            commands_mod.schedule_cmd(
+                typer_ctx_factory(),
+                config='pipeline.yml',
+                show_state=True,
+            ),
         )
 
         assert payload['show_state'] is True
-
-    def test_schedule_emit_requires_named_schedule(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        typer_ctx_factory: TyperContextFactory,
-    ) -> None:
-        """Schedule helper emission should require one named schedule."""
-        monkeypatch.setattr(
-            schedule_mod.CommandHelperPolicy,
-            'fail_usage',
-            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
-        )
-
-        with pytest.raises(
-            typer.BadParameter,
-            match="'--emit' requires '--schedule'",
-        ):
-            commands_mod.schedule_cmd(
-                typer_ctx_factory(),
-                config='pipeline.yml',
-                emit='crontab',
-            )
-
-    def test_schedule_rejects_run_pending_with_emit(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        typer_ctx_factory: TyperContextFactory,
-    ) -> None:
-        """Run-pending mode should reject helper emission combinations."""
-        monkeypatch.setattr(
-            schedule_mod.CommandHelperPolicy,
-            'fail_usage',
-            lambda message: (_ for _ in ()).throw(typer.BadParameter(message)),
-        )
-
-        with pytest.raises(
-            typer.BadParameter,
-            match='--run-pending cannot be combined with --emit',
-        ):
-            commands_mod.schedule_cmd(
-                typer_ctx_factory(),
-                config='pipeline.yml',
-                schedule='nightly_all',
-                emit='crontab',
-                run_pending=True,
-            )
 
 
 class TestCliInvokeParsing:
@@ -865,23 +777,18 @@ class TestCliInvokeParsing:
         self,
         invoke_cli: InvokeCli,
         monkeypatch: pytest.MonkeyPatch,
+        stub_handler: StubHandler,
         argv: tuple[str, ...],
         module: object,
         handler_name: str,
         expected: dict[str, object],
     ) -> None:
         """Typer parsing should pass normalized option values to handlers."""
-        captured: dict[str, object] = {}
-
-        def _stub(**kwargs: object) -> int:
-            captured.update(kwargs)
-            return 0
-
-        monkeypatch.setattr(module, handler_name, _stub)
+        captured = stub_handler(module, handler_name)
 
         result = invoke_cli(*argv)
         assert result.exit_code == 0
-        assert_mapping_contains(captured, expected)
+        assert expected.items() <= captured.items()
 
     def test_schedule_run_pending_persists_state_across_cli_invocations(
         self,
@@ -1077,7 +984,7 @@ class TestTransformCommand:
         Test that, when source type is ``None``, source validation is skipped.
         """
         monkeypatch.setattr(
-            transform_mod,
+            helpers_mod,
             'ensure_state',
             lambda _ctx: CliState(),
         )

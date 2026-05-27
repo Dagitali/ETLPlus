@@ -19,7 +19,6 @@ from ._options.resources import SourceTypeOption
 from ._options.specs import RulesOption
 from ._options.specs import SchemaFormatOption
 from ._options.specs import SchemaOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -28,16 +27,6 @@ __all__ = [
     # Functions
     'validate_cmd',
 ]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _is_default_parameter_source(
-    source: object,
-) -> bool:
-    """Return whether a Click/Typer parameter source represents a default."""
-    return getattr(source, 'name', None) == 'DEFAULT'
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -98,8 +87,8 @@ def validate_cmd(
     ``--schema-format frictionless`` for CSV source documents, and
     ``--schema-format xsd`` for XML documents.
     """
-    rules_supplied = not _is_default_parameter_source(
-        ctx.get_parameter_source('rules'),
+    rules_supplied = (
+        getattr(ctx.get_parameter_source('rules'), 'name', None) != 'DEFAULT'
     )
     if schema_format is not None and schema is None:
         raise typer.BadParameter('--schema-format requires --schema')
@@ -108,9 +97,8 @@ def validate_cmd(
             'Use either --rules or --schema/--schema-format, not both.',
         )
 
-    state = ensure_state(ctx)
-    resolved_source = CommandHelperPolicy.resolve_resource(
-        state,
+    policy = CommandHelperPolicy.from_context(ctx)
+    resolved_source = policy.resolve_resource(
         role='source',
         value=source,
         connector_type=source_type,
@@ -118,9 +106,8 @@ def validate_cmd(
         soft_inference=True,
     )
 
-    return CommandHelperPolicy.call_handler(
+    return policy.call_handler(
         validate_handler,
-        state=state,
         source=resolved_source.value,
         rules=(
             {}

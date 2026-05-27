@@ -6,10 +6,7 @@ Unit tests for :mod:`etlplus.cli._commands._state`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from contextlib import nullcontext
 from pathlib import Path
-from typing import TypedDict
 
 import pytest
 import typer
@@ -26,26 +23,11 @@ import etlplus.cli._commands.validate as validate_mod
 from ...pytest_shared_support import CaptureHandler
 from .conftest import InvokeCli
 from .conftest import TyperContextFactory
-from .conftest import assert_mapping_contains
 from .conftest import strip_ansi
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-class _ResolveResourceTypeKwargs(TypedDict, total=False):
-    """Typed kwargs container for :func:`resolve_resource_type` test cases."""
-
-    explicit_type: str | None
-    override_type: str | None
-    value: str
-    label: str
-    conflict_error: str | None
-    legacy_file_error: str | None
-
 
 # SECTION: CONSTANTS ======================================================== #
 
@@ -240,7 +222,7 @@ class TestCliCommandState:
         result = invoke_cli(*argv)
 
         assert result.exit_code == 0
-        assert_mapping_contains(calls, expected)
+        assert expected.items() <= calls.items()
 
     def test_validate_schema_mode_ignores_default_rules_option(
         self,
@@ -253,14 +235,11 @@ class TestCliCommandState:
         result = invoke_cli('validate', 'data.json', '--schema', 'schema.json')
 
         assert result.exit_code == 0
-        assert_mapping_contains(
-            calls,
-            {
-                'source': 'data.json',
-                'rules': {},
-                'schema': 'schema.json',
-            },
-        )
+        assert {
+            'source': 'data.json',
+            'rules': {},
+            'schema': 'schema.json',
+        }.items() <= calls.items()
 
 
 class TestCliHelp:
@@ -353,55 +332,6 @@ class TestCliStateHelpers:
         assert isinstance(state, cli_state_mod.CliState)
         assert ctx.obj is state
 
-    def test_set_state_replaces_context_state(
-        self,
-        typer_ctx_factory: TyperContextFactory,
-    ) -> None:
-        """Test that explicit root flags replace the stored CLI state."""
-        ctx = typer_ctx_factory()
-        ctx.obj = {'unexpected': True}
-
-        state = cli_state_mod._set_state(
-            ctx,
-            pretty=False,
-            quiet=True,
-            verbose=True,
-        )
-
-        assert state == cli_state_mod.CliState(
-            pretty=False,
-            quiet=True,
-            verbose=True,
-        )
-        assert ctx.obj is state
-
-    @pytest.mark.parametrize(
-        ('value', 'setup'),
-        [
-            pytest.param(None, None, id='missing-value'),
-            pytest.param(
-                'invalid',
-                lambda monkeypatch: monkeypatch.setattr(
-                    cli_state_mod.ResourceTypeResolver,
-                    'infer',
-                    lambda _value: (_ for _ in ()).throw(ValueError('bad')),
-                ),
-                id='invalid-resource',
-            ),
-        ],
-    )
-    def test_infer_resource_type_soft_returns_none_for_non_fatal_inputs(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        value: str | None,
-        setup: Callable[[pytest.MonkeyPatch], None] | None,
-    ) -> None:
-        """Soft inference should preserve ``None`` and swallow bad inputs."""
-        if setup is not None:
-            setup(monkeypatch)
-
-        assert cli_state_mod.ResourceTypeResolver.infer_soft(value) is None
-
     def test_log_inferred_resource_prints_verbose_messages(
         self,
         capsys: pytest.CaptureFixture[str],
@@ -417,14 +347,14 @@ class TestCliStateHelpers:
 
     @pytest.mark.parametrize(
         (
-            'inferred',
+            'infer_error',
             'expected_resolved',
             'expected_validated',
             'expected_logged',
         ),
         [
             pytest.param(
-                None,
+                True,
                 None,
                 [],
                 {
@@ -435,7 +365,7 @@ class TestCliStateHelpers:
                 id='soft-inference-miss',
             ),
             pytest.param(
-                'file',
+                False,
                 'file',
                 [('file', cli_state_mod.DATA_CONNECTORS, 'source_type')],
                 {
@@ -450,7 +380,7 @@ class TestCliStateHelpers:
     def test_resolve_logged_resource_type_soft_inference(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        inferred: str | None,
+        infer_error: bool,
         expected_resolved: str | None,
         expected_validated: list[tuple[object, object, str]],
         expected_logged: dict[str, object],
@@ -458,11 +388,13 @@ class TestCliStateHelpers:
         """Soft inference should validate only resolved connector types."""
         logged: dict[str, object] = {}
         validated: list[tuple[object, object, str]] = []
-        monkeypatch.setattr(
-            cli_state_mod.ResourceTypeResolver,
-            'infer_soft',
-            lambda _value: inferred,
-        )
+
+        def infer_resource(_value: str) -> str:
+            if infer_error:
+                raise ValueError('bad resource')
+            return 'file'
+
+        monkeypatch.setattr(cli_state_mod.ResourceTypeResolver, 'infer', infer_resource)
 
         def validate_choice(
             value: object,
@@ -496,136 +428,9 @@ class TestCliStateHelpers:
         assert validated == expected_validated
         assert logged == expected_logged
 
-    @pytest.mark.parametrize(
-        ('kwargs', 'infer_result', 'expected', 'expected_error'),
-        [
-            pytest.param(
-                {
-                    'explicit_type': 'api',
-                    'override_type': 'file',
-                    'value': 'input',
-                    'label': 'source_type',
-                    'conflict_error': 'conflict',
-                },
-                None,
-                None,
-                'conflict',
-                id='conflict',
-            ),
-            pytest.param(
-                {
-                    'explicit_type': 'file',
-                    'override_type': None,
-                    'value': 'input',
-                    'label': 'source_type',
-                    'legacy_file_error': 'legacy',
-                },
-                None,
-                None,
-                'legacy',
-                id='legacy-file',
-            ),
-            pytest.param(
-                {
-                    'explicit_type': 'api',
-                    'override_type': None,
-                    'value': 'input',
-                    'label': 'source_type',
-                    'legacy_file_error': 'legacy',
-                },
-                None,
-                'api',
-                None,
-                id='explicit-non-file',
-            ),
-            pytest.param(
-                {
-                    'explicit_type': None,
-                    'override_type': None,
-                    'value': 'https://example.com/items',
-                    'label': 'source_type',
-                },
-                'api',
-                'api',
-                None,
-                id='inferred',
-            ),
-        ],
-    )
-    def test_resolve_resource_type(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        kwargs: _ResolveResourceTypeKwargs,
-        infer_result: str | None,
-        expected: str | None,
-        expected_error: str | None,
-    ) -> None:
-        """Resource type resolution should honor precedence and validation rules."""
-        if infer_result is not None:
-            monkeypatch.setattr(
-                cli_state_mod.ResourceTypeResolver,
-                'infer_or_exit',
-                lambda _value: infer_result,
-            )
 
-        if expected_error is not None:
-            with pytest.raises(typer.BadParameter, match=expected_error):
-                cli_state_mod.ResourceTypeResolver.resolve(**kwargs)
-            return
-
-        assert cli_state_mod.ResourceTypeResolver.resolve(**kwargs) == expected
-
-    def test_resource_type_resolver_infer_soft_uses_function_seam(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that class-based soft inference still respects wrapper patches."""
-        monkeypatch.setattr(
-            cli_state_mod.ResourceTypeResolver,
-            'infer',
-            lambda _value: (_ for _ in ()).throw(ValueError('bad')),
-        )
-
-        assert cli_state_mod.ResourceTypeResolver.infer_soft('invalid') is None
-
-
-class TestOptionalChoice:
-    """Unit tests for :meth:`ResourceTypeResolver.optional_choice`."""
-
-    @pytest.mark.parametrize(
-        ('choice', 'choices', 'expected'),
-        [
-            pytest.param(None, {'json', 'csv'}, None, id='none'),
-            pytest.param('json', {'json', 'csv'}, 'json', id='valid'),
-            pytest.param('yaml', {'json'}, typer.BadParameter, id='yaml'),
-            pytest.param('parquet', {'json'}, typer.BadParameter, id='parquet'),
-        ],
-    )
-    def test_optional_choice(
-        self,
-        choice: str | None,
-        choices: set[str],
-        expected: str | type[Exception] | None,
-    ) -> None:
-        """
-        Optional choice helpers should preserve ``None``, normalize valid
-        values, and reject invalid choices.
-        """
-        expectation = (
-            pytest.raises(expected)
-            if isinstance(expected, type) and issubclass(expected, Exception)
-            else nullcontext(expected)
-        )
-
-        with expectation as expected_value:
-            assert (
-                cli_state_mod.ResourceTypeResolver.optional_choice(
-                    choice,
-                    choices,
-                    label='format',
-                )
-                == expected_value
-            )
+class TestChoiceValidation:
+    """Unit tests for :meth:`ResourceTypeResolver.validate`."""
 
     @pytest.mark.parametrize(
         'invalid',

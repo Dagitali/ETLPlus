@@ -15,7 +15,6 @@ import json
 import re
 import types
 from collections.abc import Callable
-from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
@@ -24,7 +23,7 @@ from typing import cast
 
 import pytest
 import typer
-from click.testing import Result
+from typer._click.testing import Result
 from typer.testing import CliRunner
 
 from etlplus import Config
@@ -52,7 +51,6 @@ type StubCommandMain = Callable[
     [Callable[..., object] | BaseException],
     dict[str, object],
 ]
-type StubCommand = Callable[[Callable[..., object]], None]
 type TyperContextFactory = Callable[..., typer.Context]
 
 
@@ -112,24 +110,6 @@ def assert_emit_or_write(
     assert args[1] == target
     assert kwargs['pretty'] is pretty
     return kwargs
-
-
-def assert_mapping_contains(
-    actual: Mapping[str, object],
-    expected: Mapping[str, object],
-) -> None:
-    """
-    Assert that *actual* contains the *expected* key/value pairs.
-
-    Parameters
-    ----------
-    actual : Mapping[str, object]
-        Mapping returned by the handler capture fixture.
-    expected : Mapping[str, object]
-        Expected key/value pairs that must be present in *actual*.
-    """
-    for key, value in expected.items():
-        assert actual[key] == value
 
 
 def strip_ansi(text: str) -> str:
@@ -276,7 +256,7 @@ def dummy_cfg_fixture() -> Config:
 
 
 @pytest.fixture(name='invoke_cli')
-def invoke_cli_fixture(runner: CliRunner) -> Callable[..., Result]:
+def invoke_cli_fixture(runner: CliRunner) -> InvokeCli:
     """Invoke the Typer CLI with convenience defaults."""
 
     def _invoke(*args: str) -> Result:
@@ -289,18 +269,6 @@ def invoke_cli_fixture(runner: CliRunner) -> Callable[..., Result]:
 def runner_fixture() -> CliRunner:
     """Return a reusable Typer CLI runner."""
     return CliRunner()
-
-
-@pytest.fixture(name='stub_command')
-def stub_command_fixture(
-    stub_command_main: StubCommandMain,
-) -> Callable[[Callable[..., object]], None]:
-    """Install a Typer command stub that delegates to the provided action."""
-
-    def _install(action: Callable[..., object]) -> None:
-        stub_command_main(action)
-
-    return _install
 
 
 @pytest.fixture(name='stub_command_main')

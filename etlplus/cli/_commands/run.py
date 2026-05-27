@@ -22,7 +22,6 @@ from ._options.common import MaxConcurrencyOption
 from ._options.common import PipelineOption
 from ._options.common import RunAllOption
 from ._options.common import StructuredEventFormatOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -97,9 +96,8 @@ def run_cmd(
             '--all cannot be combined with --job or --pipeline.',
         )
 
-    return CommandHelperPolicy.call_handler(
+    return CommandHelperPolicy.from_context(ctx).call_handler(
         run_handler,
-        state=ensure_state(ctx),
         config=config,
         job=job,
         pipeline=pipeline,

@@ -6,8 +6,6 @@ Typer command for inspecting configured schedules.
 
 from __future__ import annotations
 
-from typing import Any
-
 import typer
 
 from .._handlers.schedule import schedule_handler
@@ -19,7 +17,6 @@ from ._options.common import RunPendingSchedulesOption
 from ._options.common import ScheduleNameOption
 from ._options.common import ShowScheduleStateOption
 from ._options.common import StructuredEventFormatOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -68,27 +65,20 @@ def schedule_cmd(
     int
         Exit code indicating success or failure of the command.
     """
-    if emit is not None and schedule is None:
-        CommandHelperPolicy.fail_usage("'--emit' requires '--schedule'.")
-    if emit is not None and run_pending:
-        CommandHelperPolicy.fail_usage(
-            '--run-pending cannot be combined with --emit.',
-        )
+    if emit is not None:
+        if schedule is None:
+            CommandHelperPolicy.fail_usage("'--emit' requires '--schedule'.")
+        if run_pending:
+            CommandHelperPolicy.fail_usage(
+                '--run-pending cannot be combined with --emit.',
+            )
 
-    handler_kwargs: Any = {
-        'config': config,
-        'emit': emit,
-        'schedule_name': schedule,
-    }
-    if show_state:
-        handler_kwargs['show_state'] = True
-    if run_pending:
-        handler_kwargs['run_pending'] = True
-    if event_format is not None:
-        handler_kwargs['event_format'] = event_format
-
-    return CommandHelperPolicy.call_handler(
+    return CommandHelperPolicy.from_context(ctx).call_handler(
         schedule_handler,
-        state=ensure_state(ctx),
-        **handler_kwargs,
+        config=config,
+        emit=emit,
+        event_format=event_format,
+        run_pending=run_pending,
+        schedule_name=schedule,
+        show_state=show_state,
     )

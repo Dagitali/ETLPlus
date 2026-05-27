@@ -18,7 +18,7 @@ from ._options.common import PrettyOption
 from ._options.common import QuietOption
 from ._options.common import VerboseOption
 from ._options.common import VersionOption
-from ._state import _set_state
+from ._state import CliState
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
@@ -53,12 +53,8 @@ def _root(
     typer.Exit
         When ``--version`` is provided or no subcommand is invoked.
     """
-    state = _set_state(
-        ctx,
-        pretty=pretty,
-        quiet=quiet,
-        verbose=verbose,
-    )
+    state = CliState(pretty=pretty, quiet=quiet, verbose=verbose)
+    ctx.obj = state
     RuntimeLoggingPolicy.configure(
         quiet=state.quiet,
         verbose=state.verbose,
