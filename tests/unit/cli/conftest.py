@@ -52,7 +52,6 @@ type StubCommandMain = Callable[
     [Callable[..., object] | BaseException],
     dict[str, object],
 ]
-type StubCommand = Callable[[Callable[..., object]], None]
 type TyperContextFactory = Callable[..., typer.Context]
 
 
@@ -289,18 +288,6 @@ def invoke_cli_fixture(runner: CliRunner) -> InvokeCli:
 def runner_fixture() -> CliRunner:
     """Return a reusable Typer CLI runner."""
     return CliRunner()
-
-
-@pytest.fixture(name='stub_command')
-def stub_command_fixture(
-    stub_command_main: StubCommandMain,
-) -> StubCommand:
-    """Install a Typer command stub that delegates to the provided action."""
-
-    def _install(action: Callable[..., object]) -> None:
-        stub_command_main(action)
-
-    return _install
 
 
 @pytest.fixture(name='stub_command_main')
