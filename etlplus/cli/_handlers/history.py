@@ -35,7 +35,7 @@ __all__ = [
 class _HistoryQuery:
     """Normalized persisted-history query filters shared by handler paths."""
 
-    # -- Instance Methods -- #
+    # -- Instance Attributes -- #
 
     level: Literal['run', 'job'] = 'run'
     job: str | None = None
@@ -108,7 +108,6 @@ def _emit_history_payload(
     table: bool = False,
     json_output: bool = False,
     table_rows: list[dict[str, Any]] | None = None,
-    exit_code: int = 0,
 ) -> int:
     """
     Emit history data as JSON or a Markdown table.
@@ -127,8 +126,6 @@ def _emit_history_payload(
         Whether to emit JSON output. Default is ``False``.
     table_rows : list[dict[str, Any]] | None, optional
         Optional precomputed table rows. Default is ``None``.
-    exit_code : int, optional
-        CLI exit code to return. Default is ``0``.
 
     Returns
     -------
@@ -143,8 +140,8 @@ def _emit_history_payload(
             else cast(list[dict[str, Any]], payload),
             columns=columns,
         )
-        return exit_code
-    return _output.emit_json_payload(payload, pretty=pretty, exit_code=exit_code)
+        return 0
+    return _output.emit_json_payload(payload, pretty=pretty)
 
 
 # SECTION: FUNCTIONS ======================================================== #
