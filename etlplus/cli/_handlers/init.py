@@ -161,27 +161,18 @@ def init_handler(
         raise ValueError(f'Init target must be a directory: {root}')
 
     root.mkdir(parents=True, exist_ok=True)
-    data_dir = root / _SAMPLE_INPUT_PATH.parent
-    output_dir = root / _SAMPLE_OUTPUT_DIR
-    for directory_path in (data_dir, output_dir):
+    for directory_path in (root / _SAMPLE_INPUT_PATH.parent, root / _SAMPLE_OUTPUT_DIR):
         if directory_path.exists() and not directory_path.is_dir():
             raise ValueError(
                 f'Init target requires a directory but found a file: {directory_path}',
             )
         directory_path.mkdir(parents=True, exist_ok=True)
 
-    pipeline_path = root / _PIPELINE_PATH
-    sample_input_path = root / _SAMPLE_INPUT_PATH
-    _write_text_file(
-        pipeline_path,
-        _pipeline_text(),
-        force=force,
-    )
-    _write_text_file(
-        sample_input_path,
-        _sample_csv_text(),
-        force=force,
-    )
+    for relative_path, content in {
+        _PIPELINE_PATH: _pipeline_text(),
+        _SAMPLE_INPUT_PATH: _sample_csv_text(),
+    }.items():
+        _write_text_file(root / relative_path, content, force=force)
 
     payload = {
         'status': 'ok',
