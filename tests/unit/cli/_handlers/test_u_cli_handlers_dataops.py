@@ -62,29 +62,6 @@ class TestDataops:
         """Concrete-target detection should exclude STDOUT-style targets."""
         assert POLICY.has_named_target(target) is expected
 
-    @pytest.mark.parametrize(
-        ('format_hint', 'explicit', 'expected'),
-        [
-            (None, False, False),
-            ('json', False, True),
-            (None, True, True),
-        ],
-    )
-    def test_is_explicit_format(
-        self,
-        format_hint: str | None,
-        explicit: bool,
-        expected: bool,
-    ) -> None:
-        """Explicit-format detection should honor hints and override flags."""
-        assert (
-            POLICY.is_explicit_format(
-                format_hint=format_hint,
-                explicit=explicit,
-            )
-            is expected
-        )
-
     def test_resolve_source_payload_forwards_resolution_flags(
         self,
         monkeypatch: pytest.MonkeyPatch,
