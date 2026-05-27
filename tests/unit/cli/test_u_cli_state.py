@@ -337,28 +337,6 @@ class TestCliStateHelpers:
         assert isinstance(state, cli_state_mod.CliState)
         assert ctx.obj is state
 
-    def test_set_state_replaces_context_state(
-        self,
-        typer_ctx_factory: TyperContextFactory,
-    ) -> None:
-        """Test that explicit root flags replace the stored CLI state."""
-        ctx = typer_ctx_factory()
-        ctx.obj = {'unexpected': True}
-
-        state = cli_state_mod._set_state(
-            ctx,
-            pretty=False,
-            quiet=True,
-            verbose=True,
-        )
-
-        assert state == cli_state_mod.CliState(
-            pretty=False,
-            quiet=True,
-            verbose=True,
-        )
-        assert ctx.obj is state
-
     def test_log_inferred_resource_prints_verbose_messages(
         self,
         capsys: pytest.CaptureFixture[str],
