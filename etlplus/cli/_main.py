@@ -167,7 +167,7 @@ def main(
 
     Raises
     ------
-    click.exceptions.UsageError
+    _USAGE_ERROR_TYPES
         Re-raises Typer/Click usage errors after printing help for unknown
         commands.
     SystemExit
