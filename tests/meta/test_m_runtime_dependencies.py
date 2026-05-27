@@ -23,8 +23,10 @@ _REQUIREMENT_NAME_PATTERN = re.compile(r'^[A-Za-z0-9_.-]+')
 # SECTION: CONSTANTS ======================================================== #
 
 
-PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
 CLI_PACKAGE_PATH = REPO_ROOT / 'etlplus' / 'cli'
+PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
+SBOM_WORKFLOW_PATH = REPO_ROOT / '.github' / 'workflows' / 'sbom.yml'
+
 RUNTIME_IMPORT_DISTRIBUTIONS = {
     'click': 'click',
     'typer': 'typer',
@@ -65,6 +67,12 @@ def _pyproject_dependency_names() -> set[str]:
     }
 
 
+def _pyproject_optional_dependencies(extra: str) -> list[str]:
+    """Return optional dependency requirements declared for one extra."""
+    pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
+    return list(pyproject['project']['optional-dependencies'][extra])
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -79,3 +87,16 @@ class TestRuntimeDependencyDeclarations:
         expected = {RUNTIME_IMPORT_DISTRIBUTIONS[module] for module in direct_imports}
 
         assert expected <= _pyproject_dependency_names()
+
+
+class TestToolDependencyDeclarations:
+    """Meta tests for CI tool dependency declarations."""
+
+    def test_sbom_workflow_installs_pinned_pyproject_extra(self) -> None:
+        """Test SBOM generation uses centrally pinned packaging metadata."""
+        workflow_text = SBOM_WORKFLOW_PATH.read_text(encoding='utf-8')
+        sbom_requirements = _pyproject_optional_dependencies('sbom')
+
+        assert 'python-bootstrap: ".[sbom]"' in workflow_text
+        assert 'python -m pip install cyclonedx-bom' not in workflow_text
+        assert sbom_requirements == ['cyclonedx-bom==7.2.2']
