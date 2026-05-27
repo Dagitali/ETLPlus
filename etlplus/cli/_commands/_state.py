@@ -71,6 +71,34 @@ class CliState:
 class ResourceTypeResolver:
     """Shared normalization and inference helpers for CLI resource types."""
 
+    # -- Class Methods -- #
+
+    @classmethod
+    def infer_soft(
+        cls,
+        value: str | None,
+    ) -> str | None:
+        """Make a best-effort inference that tolerates inline payloads."""
+        if value is None:
+            return None
+        try:
+            return cls.infer(value)
+        except ValueError:
+            return None
+
+    @classmethod
+    def optional_choice(
+        cls,
+        value: str | None,
+        choices: Collection[str],
+        *,
+        label: str,
+    ) -> str | None:
+        """Validate optional CLI choice inputs while preserving ``None``."""
+        if value is None:
+            return None
+        return cls.validate(value, choices, label=label)
+
     # -- Static Methods -- #
 
     @staticmethod
@@ -128,34 +156,6 @@ class ResourceTypeResolver:
         raise typer.BadParameter(
             f"Invalid {label} '{value}'. Choose from: {allowed}",
         )
-
-    # -- Class Methods -- #
-
-    @classmethod
-    def infer_soft(
-        cls,
-        value: str | None,
-    ) -> str | None:
-        """Make a best-effort inference that tolerates inline payloads."""
-        if value is None:
-            return None
-        try:
-            return cls.infer(value)
-        except ValueError:
-            return None
-
-    @classmethod
-    def optional_choice(
-        cls,
-        value: str | None,
-        choices: Collection[str],
-        *,
-        label: str,
-    ) -> str | None:
-        """Validate optional CLI choice inputs while preserving ``None``."""
-        if value is None:
-            return None
-        return cls.validate(value, choices, label=label)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
