@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.cli._commands._state`.
 
 from __future__ import annotations
 
-from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
@@ -434,43 +433,8 @@ class TestCliStateHelpers:
         assert logged == expected_logged
 
 
-class TestOptionalChoice:
-    """Unit tests for :meth:`ResourceTypeResolver.optional_choice`."""
-
-    @pytest.mark.parametrize(
-        ('choice', 'choices', 'expected'),
-        [
-            pytest.param(None, {'json', 'csv'}, None, id='none'),
-            pytest.param('json', {'json', 'csv'}, 'json', id='valid'),
-            pytest.param('yaml', {'json'}, typer.BadParameter, id='yaml'),
-            pytest.param('parquet', {'json'}, typer.BadParameter, id='parquet'),
-        ],
-    )
-    def test_optional_choice(
-        self,
-        choice: str | None,
-        choices: set[str],
-        expected: str | type[Exception] | None,
-    ) -> None:
-        """
-        Optional choice helpers should preserve ``None``, normalize valid
-        values, and reject invalid choices.
-        """
-        expectation = (
-            pytest.raises(expected)
-            if isinstance(expected, type) and issubclass(expected, Exception)
-            else nullcontext(expected)
-        )
-
-        with expectation as expected_value:
-            assert (
-                cli_state_mod.ResourceTypeResolver.optional_choice(
-                    choice,
-                    choices,
-                    label='format',
-                )
-                == expected_value
-            )
+class TestChoiceValidation:
+    """Unit tests for :meth:`ResourceTypeResolver.validate`."""
 
     @pytest.mark.parametrize(
         'invalid',
