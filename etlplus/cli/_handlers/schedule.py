@@ -275,8 +275,8 @@ def _schedule_payload(
             }
         if isinstance(timezone := getattr(schedule, 'timezone', None), str):
             schedule_payload['timezone'] = timezone
-        if target is not None:
-            target_payload = {
+        if target is not None and (
+            target_payload := {
                 key: value
                 for key, value in {
                     'job': target.job,
@@ -284,10 +284,10 @@ def _schedule_payload(
                 }.items()
                 if value is not None
             }
-            if target_payload:
-                schedule_payload['target'] = target_payload
-        if backfill is not None:
-            backfill_payload = {
+        ):
+            schedule_payload['target'] = target_payload
+        if backfill is not None and (
+            backfill_payload := {
                 key: value
                 for key, value in {
                     'enabled': backfill.enabled if backfill.enabled else None,
@@ -296,8 +296,8 @@ def _schedule_payload(
                 }.items()
                 if value is not None
             }
-            if backfill_payload:
-                schedule_payload['backfill'] = backfill_payload
+        ):
+            schedule_payload['backfill'] = backfill_payload
         if state_store is not None:
             schedule_payload['state'] = state_store.state(resolved_name)
         schedules.append(schedule_payload)
@@ -372,7 +372,7 @@ def schedule_handler(
             else _schedule_emit_payload(
                 config_path=config,
                 emit=emit,
-                schedule=(selected_schedule if selected_schedule is not None else None),
+                schedule=selected_schedule,
             )
         )
     except ValueError as exc:
