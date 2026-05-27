@@ -216,7 +216,6 @@ def _complete_validation_output(
     target: str | None,
     file_payload: Any,
     pretty: bool,
-    json_fields: dict[str, Any],
     file_fields: dict[str, Any],
 ) -> int:
     """Complete validation output to a file target or JSON stdout."""
@@ -240,7 +239,7 @@ def _complete_validation_output(
         result,
         mode='json',
         pretty=pretty,
-        **json_fields,
+        valid=result.get('valid'),
     )
 
 
@@ -589,7 +588,6 @@ def validate_handler(
                 target=target,
                 file_payload=result,
                 pretty=pretty,
-                json_fields=command_fields | {'valid': result.get('valid')},
                 file_fields={
                     'source': source,
                     'target': target,
@@ -617,7 +615,6 @@ def validate_handler(
             target=target,
             file_payload=result.get('data'),
             pretty=pretty,
-            json_fields=command_fields | {'valid': result.get('valid')},
             file_fields={
                 'source': source,
                 'target': target,
