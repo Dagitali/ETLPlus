@@ -61,8 +61,8 @@ def check_sections(
     dict[str, Any]
         A dictionary containing the requested sections of metadata.
     """
-    summary = pipeline_summary(cfg)
-    sections: dict[str, Any] = {'jobs': summary['jobs']} if jobs else {}
+    job_names = [job.name for job in cfg.jobs]
+    sections: dict[str, Any] = {'jobs': job_names} if jobs else {}
     sections |= {'pipelines': [cfg.name]} if pipelines else {}
     sections |= {'sources': [src.name for src in cfg.sources]} if sources else {}
     sections |= {'targets': [tgt.name for tgt in cfg.targets]} if targets else {}
@@ -72,7 +72,7 @@ def check_sections(
             if isinstance(cfg.transforms, Mapping)
             else [getattr(transform, 'name', None) for transform in cfg.transforms]
         )
-    return sections or {'jobs': summary['jobs']}
+    return sections or {'jobs': job_names}
 
 
 def collect_table_specs(
