@@ -110,6 +110,7 @@ class TestCommitizenBranchCheck:
         """
         Test that ranges with no non-merge commits pass validation.
         """
+
         class Checker(commitizen_branch.CommitizenBranchChecker):
             """Checker with only merge commits in range."""
 
@@ -171,6 +172,7 @@ class TestCommitizenBranchCheck:
         """
         Test invalid GitFlow branch names fail before commit-message checks.
         """
+
         class Checker(commitizen_branch.CommitizenBranchChecker):
             """Checker with invalid branch state."""
 
