@@ -22,8 +22,8 @@
 #   import sorting, or pyupgrade rewrites without separate plugins.
 #
 # References
-# - Flake8 configuration documentation: https://flake8.pycqa.org/en/latest/user/configuration.html
-# - Pycodestyle error-code documentation: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
+# - Flake8 configuration reference: https://flake8.pycqa.org/en/latest/user/configuration.html
+# - Pycodestyle error-code reference: https://pycodestyle.pycqa.org/en/latest/intro.html#error-codes
 
 [flake8]
 max-line-length = 88
