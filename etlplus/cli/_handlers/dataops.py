@@ -135,41 +135,6 @@ class DataCommandPolicy:
             **fields,
         )
 
-    @classmethod
-    def complete_json_success(
-        cls,
-        context: _lifecycle.CommandContext,
-        payload: Any,
-        *,
-        pretty: bool = True,
-        **fields: Any,
-    ) -> int:
-        """Complete one command by emitting its payload as JSON.
-
-        Parameters
-        ----------
-        context : _lifecycle.CommandContext
-            Command context for the active command scope.
-        payload : Any
-            Payload to include in the command output.
-        pretty : bool, optional
-            Whether to pretty-print the output.
-        **fields : Any
-            Additional fields to include in the command output.
-
-        Returns
-        -------
-        int
-            Exit code for the command.
-        """
-        return cls.complete_success(
-            context,
-            payload,
-            mode='json',
-            pretty=pretty,
-            **fields,
-        )
-
     @staticmethod
     def display_target(
         target: str | None,
@@ -352,9 +317,10 @@ def _complete_validation_output(
         )
         return 0
 
-    return DataCommandPolicy.complete_json_success(
+    return DataCommandPolicy.complete_success(
         context,
         result,
+        mode='json',
         pretty=pretty,
         **json_fields,
     )
@@ -418,9 +384,10 @@ def extract_handler(
                 _input.read_stdin_text(),
                 source_format,
             )
-            return DataCommandPolicy.complete_json_success(
+            return DataCommandPolicy.complete_success(
                 context,
                 payload,
+                mode='json',
                 pretty=pretty,
                 **command_fields,
             )
@@ -511,13 +478,14 @@ def load_handler(
         )
 
         if target_type == 'file' and target == '-':
-            return DataCommandPolicy.complete_json_success(
+            return DataCommandPolicy.complete_success(
                 context,
                 materialize_file_payload(
                     source_value,
                     format_hint=source_format,
                     format_explicit=source_format_explicit,
                 ),
+                mode='json',
                 pretty=pretty,
                 **command_fields,
             )
@@ -609,7 +577,7 @@ def transform_handler(
         if DataCommandPolicy.has_named_target(target):
             if target_type not in (None, 'file'):
                 resolved_target_type = cast(str, target_type)
-                return DataCommandPolicy.complete_json_success(
+                return DataCommandPolicy.complete_success(
                     context,
                     load(
                         data,
@@ -617,6 +585,7 @@ def transform_handler(
                         target,
                         file_format=target_format if target_format_explicit else None,
                     ),
+                    mode='json',
                     pretty=pretty,
                     source=source,
                     target=target,
@@ -635,9 +604,10 @@ def transform_handler(
                 target_type=target_type or 'file',
             )
 
-        return DataCommandPolicy.complete_json_success(
+        return DataCommandPolicy.complete_success(
             context,
             data,
+            mode='json',
             pretty=pretty,
             **command_fields,
         )
