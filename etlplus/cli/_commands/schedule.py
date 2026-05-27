@@ -19,7 +19,6 @@ from ._options.common import RunPendingSchedulesOption
 from ._options.common import ScheduleNameOption
 from ._options.common import ShowScheduleStateOption
 from ._options.common import StructuredEventFormatOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -87,8 +86,7 @@ def schedule_cmd(
     if event_format is not None:
         handler_kwargs['event_format'] = event_format
 
-    return CommandHelperPolicy.call_handler(
+    return CommandHelperPolicy.from_context(ctx).call_handler(
         schedule_handler,
-        state=ensure_state(ctx),
         **handler_kwargs,
     )
