@@ -173,33 +173,6 @@ class ResourceTypeResolver:
         )
 
     @staticmethod
-    def infer_or_exit(
-        value: str,
-    ) -> str:
-        """
-        Infer a resource type and map ``ValueError`` to ``BadParameter``.
-
-        Parameters
-        ----------
-        value : str
-            The resource identifier (path, URL, or DSN) to infer the type of.
-
-        Returns
-        -------
-        str
-            The inferred resource type.
-
-        Raises
-        ------
-        typer.BadParameter
-            If the resource type cannot be inferred.
-        """
-        try:
-            return ResourceTypeResolver.infer(value)
-        except ValueError as exc:  # pragma: no cover - exercised indirectly
-            raise typer.BadParameter(str(exc)) from exc
-
-    @staticmethod
     def validate(
         value: str | object,
         choices: Collection[str],
@@ -341,12 +314,13 @@ def resolve_logged_resource_type(
     """
     resource_type = explicit_type
     if resource_type is None:
-        infer = (
-            ResourceTypeResolver.infer_soft
-            if soft_inference
-            else ResourceTypeResolver.infer_or_exit
-        )
-        resource_type = infer(value)
+        if soft_inference:
+            resource_type = ResourceTypeResolver.infer_soft(value)
+        else:
+            try:
+                resource_type = ResourceTypeResolver.infer(value)
+            except ValueError as exc:  # pragma: no cover - exercised indirectly
+                raise typer.BadParameter(str(exc)) from exc
     if resource_type is not None:
         resource_type = ResourceTypeResolver.validate(
             resource_type,
