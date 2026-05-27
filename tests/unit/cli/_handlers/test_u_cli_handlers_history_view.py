@@ -711,8 +711,12 @@ class TestStatusHandler:
             'job': 'job-a',
             'level': 'run',
             'limit': 1,
+            'pipeline': None,
             'raw': False,
             'run_id': 'run-9',
+            'since': None,
+            'status': None,
+            'until': None,
         }
         assert_emit_json(
             capture_io,
