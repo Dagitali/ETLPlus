@@ -7,9 +7,7 @@ Data-operation handler implementations for the CLI facade.
 from __future__ import annotations
 
 import sys
-from collections.abc import Iterator
 from collections.abc import Mapping
-from contextlib import contextmanager
 from typing import Any
 from typing import TypeGuard
 from typing import cast
@@ -48,49 +46,6 @@ class DataCommandPolicy:
     """Own shared command lifecycle, payload resolution, and completion helpers."""
 
     # -- Static Methods -- #
-
-    @staticmethod
-    @contextmanager
-    def command_scope(
-        *,
-        command: str,
-        event_format: str | None,
-        fields: dict[str, Any],
-    ) -> Iterator[_lifecycle.CommandContext]:
-        """
-        Start a command context and wrap it in the shared failure boundary.
-
-        Parameters
-        ----------
-        command : str
-            Command name for lifecycle events.
-        event_format : str | None
-            Structured event output format, or ``None`` to disable structured
-            events.
-        fields : dict[str, Any]
-            Additional fields to include in lifecycle events.
-
-        Yields
-        ------
-        _lifecycle.CommandContext
-            Command context for the active command scope.
-
-        Raises
-        ------
-        Exception
-            Any exception raised within the command scope will be caught,
-            logged as a command failure event, and re-raised.
-        """
-        context = _lifecycle.start_command(
-            command=command,
-            event_format=event_format,
-            **fields,
-        )
-        try:
-            yield context
-        except Exception as exc:
-            _lifecycle.fail_command(context, exc, **fields)
-            raise
 
     @staticmethod
     def complete_success(
@@ -292,11 +247,12 @@ def extract_handler(
         'source_type': source_type,
     }
 
-    with DataCommandPolicy.command_scope(
+    context = _lifecycle.start_command(
         command='extract',
         event_format=event_format,
-        fields=command_fields,
-    ) as context:
+        **command_fields,
+    )
+    with _lifecycle.failure_boundary(context, **command_fields):
         if source == '-':
             payload = _input.parse_text_payload(
                 _input.read_stdin_text(),
@@ -377,11 +333,12 @@ def load_handler(
         'target_type': target_type,
     }
 
-    with DataCommandPolicy.command_scope(
+    context = _lifecycle.start_command(
         command='load',
         event_format=event_format,
-        fields=command_fields,
-    ) as context:
+        **command_fields,
+    )
+    with _lifecycle.failure_boundary(context, **command_fields):
         source_value = cast(
             JSONData | str,
             _input.resolve_cli_payload(
@@ -475,11 +432,12 @@ def transform_handler(
         'target_type': target_type,
     }
 
-    with DataCommandPolicy.command_scope(
+    context = _lifecycle.start_command(
         command='transform',
         event_format=event_format,
-        fields=command_fields,
-    ) as context:
+        **command_fields,
+    )
+    with _lifecycle.failure_boundary(context, **command_fields):
         payload, operations_payload = DataCommandPolicy.resolve_source_mapping_inputs(
             source=source,
             mapping_payload=operations,
@@ -579,11 +537,12 @@ def validate_handler(
         if schema_format is not None:
             command_fields['schema_format'] = schema_format
 
-    with DataCommandPolicy.command_scope(
+    context = _lifecycle.start_command(
         command='validate',
         event_format=event_format,
-        fields=command_fields,
-    ) as context:
+        **command_fields,
+    )
+    with _lifecycle.failure_boundary(context, **command_fields):
         if schema is not None:
             schema_source = (
                 _input.read_stdin_text() if _input.is_stdin_source(source) else source
