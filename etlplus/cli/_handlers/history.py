@@ -6,6 +6,7 @@ History, report, and status handler implementations for the CLI facade.
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from dataclasses import dataclass
 from time import sleep
 from typing import Any
@@ -35,7 +36,7 @@ __all__ = [
 class _HistoryQuery:
     """Normalized persisted-history query filters shared by handler paths."""
 
-    # -- Instance Methods -- #
+    # -- Instance Attributes -- #
 
     level: Literal['run', 'job'] = 'run'
     job: str | None = None
@@ -74,23 +75,11 @@ class _HistoryQuery:
         limit: int | None = None,
     ) -> list[dict[str, Any]]:
         """Load persisted history records for this query."""
-        load_kwargs: dict[str, Any] = {
-            'level': self.level,
-            'raw': raw,
-        }
-        if limit is not None:
-            load_kwargs['limit'] = limit
-        for key, value in {
-            'job': self.job,
-            'pipeline': self.pipeline,
-            'run_id': self.run_id,
-            'since': self.since,
-            'status': self.status,
-            'until': self.until,
-        }.items():
-            if value is not None:
-                load_kwargs[key] = value
-        return HistoryView.load_records(**load_kwargs)
+        return HistoryView.load_records(
+            raw=raw,
+            limit=limit,
+            **asdict(self),
+        )
 
     def table_columns(self) -> tuple[str, ...]:
         """Return the table columns for this query level."""
@@ -108,7 +97,6 @@ def _emit_history_payload(
     table: bool = False,
     json_output: bool = False,
     table_rows: list[dict[str, Any]] | None = None,
-    exit_code: int = 0,
 ) -> int:
     """
     Emit history data as JSON or a Markdown table.
@@ -127,8 +115,6 @@ def _emit_history_payload(
         Whether to emit JSON output. Default is ``False``.
     table_rows : list[dict[str, Any]] | None, optional
         Optional precomputed table rows. Default is ``None``.
-    exit_code : int, optional
-        CLI exit code to return. Default is ``0``.
 
     Returns
     -------
@@ -143,8 +129,8 @@ def _emit_history_payload(
             else cast(list[dict[str, Any]], payload),
             columns=columns,
         )
-        return exit_code
-    return _output.emit_json_payload(payload, pretty=pretty, exit_code=exit_code)
+        return 0
+    return _output.emit_json_payload(payload, pretty=pretty)
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -339,14 +325,11 @@ def status_handler(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    records = _HistoryQuery(
+    if records := _HistoryQuery(
         level=level,
         job=job,
         pipeline=pipeline,
         run_id=run_id,
-    ).load(
-        limit=1,
-    )
-    if not records:
-        return _output.emit_json_payload({}, pretty=pretty, exit_code=1)
-    return _output.emit_json_payload(records[0], pretty=pretty)
+    ).load(limit=1):
+        return _output.emit_json_payload(records[0], pretty=pretty)
+    return _output.emit_json_payload({}, pretty=pretty, exit_code=1)

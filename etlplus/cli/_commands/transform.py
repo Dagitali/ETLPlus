@@ -19,7 +19,6 @@ from ._options.resources import TargetArg
 from ._options.resources import TargetFormatOption
 from ._options.resources import TargetTypeOption
 from ._options.specs import OperationsOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -74,26 +73,23 @@ def transform_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    state = ensure_state(ctx)
-    resolved_source = CommandHelperPolicy.resolve_resource(
-        state,
+    policy = CommandHelperPolicy.from_context(ctx)
+    resolved_source = policy.resolve_resource(
         role='source',
         value=source,
         connector_type=source_type,
         format_value=source_format,
         soft_inference=True,
     )
-    resolved_target = CommandHelperPolicy.resolve_resource(
-        state,
+    resolved_target = policy.resolve_resource(
         role='target',
         value=target,
         connector_type=target_type,
         format_value=target_format,
     )
 
-    return CommandHelperPolicy.call_handler(
+    return policy.call_handler(
         transform_handler,
-        state=state,
         source=resolved_source.value,
         source_format=resolved_source.format_hint,
         target=resolved_target.value,

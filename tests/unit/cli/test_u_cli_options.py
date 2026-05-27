@@ -19,28 +19,6 @@ import etlplus.cli._commands._options.init as init_options_mod
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
-
-
-def _assert_shared_option_metadata(
-    kwargs: dict[str, object],
-    *,
-    help_text: str,
-    metavar: str | None = None,
-    show_default: bool | None = None,
-) -> None:
-    """Assert common Typer option metadata fields."""
-    assert kwargs['help'] == help_text
-    if metavar is None:
-        assert 'metavar' not in kwargs
-    else:
-        assert kwargs['metavar'] == metavar
-    if show_default is None:
-        assert 'show_default' not in kwargs
-    else:
-        assert kwargs['show_default'] is show_default
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -134,10 +112,8 @@ class TestHelperOptionKwargs:
             'typer_format_option_alias',
             'typer_option_alias',
             'typer_resource_argument_alias',
-            'typer_resource_argument_kwargs',
             'typer_timestamp_option_alias',
             'typer_value_option_alias',
-            'typer_value_option_kwargs',
         ]
 
     def test_resource_argument_alias_builds_typer_argument_metadata(self) -> None:
@@ -152,34 +128,6 @@ class TestHelperOptionKwargs:
         assert value_type is str
         assert isinstance(argument_info, typer.models.ArgumentInfo)
         assert 'Extract data from SOURCE' in str(argument_info.help)
-
-    @pytest.mark.parametrize(
-        ('context', 'expected_fragment'),
-        [
-            pytest.param(
-                'source',
-                'JSON payload, file path, URI/URL, or - for STDIN',
-                id='source',
-            ),
-            pytest.param(
-                'target',
-                'file path, URI/URL, or - for STDOUT',
-                id='target',
-            ),
-        ],
-    )
-    def test_resource_argument_kwargs_context_specific_help(
-        self,
-        context: str,
-        expected_fragment: str,
-    ) -> None:
-        """Resource-argument helpers should preserve command semantics."""
-        kwargs = cli_options.typer_resource_argument_kwargs(
-            context=context,  # type: ignore[arg-type]
-        )
-
-        assert kwargs['metavar'] == context.upper()
-        assert expected_fragment in str(kwargs['help'])
 
     @pytest.mark.parametrize(
         ('bound', 'expected_fragment'),
@@ -248,47 +196,6 @@ class TestHelperOptionKwargs:
         assert isinstance(option_info, typer.models.OptionInfo)
         assert option_info.help == 'Name of the job to run'
         assert option_info.metavar == 'JOB'
-
-    @pytest.mark.parametrize(
-        ('help_text', 'metavar', 'show_default'),
-        [
-            pytest.param(
-                'Path to YAML-formatted configuration file.',
-                'PATH',
-                False,
-                id='required-path',
-            ),
-            pytest.param(
-                'Write rendered SQL to PATH (default: STDOUT).',
-                'OUT',
-                None,
-                id='optional-show-default',
-            ),
-            pytest.param(
-                'Name of the job to run',
-                None,
-                None,
-                id='minimal',
-            ),
-        ],
-    )
-    def test_value_option_kwargs_preserve_metavar_and_optional_show_default(
-        self,
-        help_text: str,
-        metavar: str | None,
-        show_default: bool | None,
-    ) -> None:
-        """Test that scalar helpers preserve shared option metadata."""
-        _assert_shared_option_metadata(
-            cli_options.typer_value_option_kwargs(
-                help_text,
-                metavar=metavar,
-                show_default=show_default,
-            ),
-            help_text=help_text,
-            metavar=metavar,
-            show_default=show_default,
-        )
 
 
 class TestOptionPackageExports:

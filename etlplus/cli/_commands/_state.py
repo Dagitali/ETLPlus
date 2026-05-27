@@ -77,7 +77,23 @@ class ResourceTypeResolver:
     def infer(
         value: str,
     ) -> str:
-        """Infer the resource type from a path, URL, or DSN string."""
+        """Infer the resource type from a path, URL, or DSN string.
+
+        Parameters
+        ----------
+        value : str
+            The resource identifier (path, URL, or DSN) to infer the type of.
+
+        Returns
+        -------
+        str
+            The inferred resource type.
+
+        Raises
+        ------
+        ValueError
+            If the resource type cannot be inferred.
+        """
         val = (value or '').strip()
         low = val.lower()
 
@@ -101,23 +117,33 @@ class ResourceTypeResolver:
         )
 
     @staticmethod
-    def infer_or_exit(
-        value: str,
-    ) -> str:
-        """Infer a resource type and map ``ValueError`` to ``BadParameter``."""
-        try:
-            return ResourceTypeResolver.infer(value)
-        except ValueError as exc:  # pragma: no cover - exercised indirectly
-            raise typer.BadParameter(str(exc)) from exc
-
-    @staticmethod
     def validate(
         value: str | object,
         choices: Collection[str],
         *,
         label: str,
     ) -> str:
-        """Validate CLI input against a whitelist of choices."""
+        """Validate CLI input against a whitelist of choices.
+
+        Parameters
+        ----------
+        value : str | object
+            The value to validate.
+        choices : Collection[str]
+            The set of valid choices.
+        label : str
+            The label for the value being validated.
+
+        Returns
+        -------
+        str
+            The validated value.
+
+        Raises
+        ------
+        typer.BadParameter
+            If the value is not in the set of valid choices.
+        """
         normalized_value = TextNormalizer.normalize(str(value))
         normalized_choices = {
             TextNormalizer.normalize(choice): choice for choice in choices
@@ -128,72 +154,6 @@ class ResourceTypeResolver:
         raise typer.BadParameter(
             f"Invalid {label} '{value}'. Choose from: {allowed}",
         )
-
-    # -- Class Methods -- #
-
-    @classmethod
-    def infer_soft(
-        cls,
-        value: str | None,
-    ) -> str | None:
-        """Make a best-effort inference that tolerates inline payloads."""
-        if value is None:
-            return None
-        try:
-            return cls.infer(value)
-        except ValueError:
-            return None
-
-    @classmethod
-    def optional_choice(
-        cls,
-        value: str | None,
-        choices: Collection[str],
-        *,
-        label: str,
-    ) -> str | None:
-        """Validate optional CLI choice inputs while preserving ``None``."""
-        if value is None:
-            return None
-        return cls.validate(value, choices, label=label)
-
-    @classmethod
-    def resolve(
-        cls,
-        *,
-        explicit_type: str | None,
-        override_type: str | None,
-        value: str,
-        label: str,
-        conflict_error: str | None = None,
-        legacy_file_error: str | None = None,
-    ) -> str:
-        """Resolve resource type preference order and validate it."""
-        if explicit_type is not None:
-            if override_type is not None and conflict_error:
-                raise typer.BadParameter(conflict_error)
-            if legacy_file_error and explicit_type.strip().lower() == 'file':
-                raise typer.BadParameter(legacy_file_error)
-            candidate = explicit_type
-        else:
-            candidate = override_type or cls.infer_or_exit(value)
-        return cls.validate(candidate, DATA_CONNECTORS, label=label)
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _set_state(
-    ctx: typer.Context,
-    *,
-    pretty: bool,
-    quiet: bool,
-    verbose: bool,
-) -> CliState:
-    """Replace the context state with one explicit CLI root configuration."""
-    state = CliState(pretty=pretty, quiet=quiet, verbose=verbose)
-    ctx.obj = state
-    return state
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -279,15 +239,22 @@ def resolve_logged_resource_type(
     -------
     str | None
         The validated resource type, or ``None`` when soft inference fails.
+
+    Raises
+    ------
+    typer.BadParameter
+        If the resource type is invalid or cannot be inferred (when
+        ``soft_inference`` is ``False``).
     """
     resource_type = explicit_type
     if resource_type is None:
-        infer = (
-            ResourceTypeResolver.infer_soft
-            if soft_inference
-            else ResourceTypeResolver.infer_or_exit
-        )
-        resource_type = infer(value)
+        try:
+            resource_type = ResourceTypeResolver.infer(value)
+        except ValueError as exc:
+            if soft_inference:
+                resource_type = None
+            else:  # pragma: no cover - exercised indirectly
+                raise typer.BadParameter(str(exc)) from exc
     if resource_type is not None:
         resource_type = ResourceTypeResolver.validate(
             resource_type,

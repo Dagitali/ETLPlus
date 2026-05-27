@@ -298,7 +298,7 @@ class HistoryView:
         ):
             payload = dict(record)
             payload.setdefault('record_level', level if not raw else 'run')
-            if not HistoryView.matches(
+            if HistoryView.matches(
                 payload,
                 level=level,
                 job=job,
@@ -308,10 +308,8 @@ class HistoryView:
                 until=until,
                 status=status,
             ):
-                continue
-            matching.append(
-                {key: value for key, value in payload.items() if key != 'record_level'},
-            )
+                payload.pop('record_level', None)
+                matching.append(payload)
         return matching
 
     @staticmethod
@@ -441,10 +439,8 @@ class HistoryView:
         if status is not None and record.get('status') != status:
             return False
         record_timestamp = HistoryView.record_timestamp(record)
-        if since is not None:
-            if record_timestamp is None or record_timestamp < since:
-                return False
-        if until is not None:
-            if record_timestamp is None or record_timestamp > until:
-                return False
+        if since is not None and (record_timestamp is None or record_timestamp < since):
+            return False
+        if until is not None and (record_timestamp is None or record_timestamp > until):
+            return False
         return True

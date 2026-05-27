@@ -9,9 +9,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
-from typing import Final
 from typing import Literal
 from typing import NoReturn
+from typing import Self
 
 import typer
 
@@ -38,12 +38,6 @@ __all__ = [
 
 
 type _StateField = Literal['pretty', 'quiet', 'verbose']
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_MISSING: Final[object] = object()
 
 
 # SECTION: INTERNAL DATA CLASSES ============================================ #
@@ -101,15 +95,43 @@ class _ResolvedResource:
 # SECTION: CLASSES ========================================================== #
 
 
+@dataclass(frozen=True, slots=True)
 class CommandHelperPolicy:
     """Own shared command dispatch, validation, and resource normalization."""
 
-    @staticmethod
+    # -- Instance Attributes -- #
+
+    state: CliState
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_context(
+        cls,
+        ctx: typer.Context,
+    ) -> Self:
+        """
+        Return one command helper policy using CLI state from *ctx*.
+
+        Parameters
+        ----------
+        ctx : typer.Context
+            Typer context used to resolve shared CLI state.
+
+        Returns
+        -------
+        Self
+            A command helper policy bound to the current CLI state.
+        """
+        return cls(ensure_state(ctx))
+
+    # -- Instance Methods -- #
+
     def call_handler(
+        self,
         handler: Callable[..., int],
         /,
         *,
-        state: CliState,
         state_fields: tuple[_StateField, ...] = ('pretty',),
         **kwargs: Any,
     ) -> int:
@@ -120,8 +142,6 @@ class CommandHelperPolicy:
         ----------
         handler : Callable[..., int]
             The handler function to invoke.
-        state : CliState
-            The CLI state to pull keyword arguments from.
         state_fields : tuple[_StateField, ...], optional
             The fields of *state* to pass as keyword arguments to *handler*
             (defaults to ('pretty',)).
@@ -133,52 +153,12 @@ class CommandHelperPolicy:
         int
             The exit code returned by *handler*.
         """
-        state_kwargs: dict[str, Any] = {
-            field: getattr(state, field) for field in state_fields
-        }
-        return handler(**kwargs, **state_kwargs)
-
-    @staticmethod
-    def call_history_command(
-        handler: Callable[..., int],
-        /,
-        *,
-        ctx: typer.Context,
-        state: CliState | None = None,
-        **kwargs: Any,
-    ) -> int:
-        """
-        Invoke one history-style command using CLI state from *ctx* by
-        default.
-
-        Parameters
-        ----------
-        handler : Callable[..., int]
-            The history-oriented handler function to invoke.
-        ctx : typer.Context
-            The Typer context used to resolve CLI state when *state* is not given.
-        state : CliState | None, optional
-            Existing CLI state to reuse (defaults to ``None``, which means
-            :func:`ensure_state` will be called).
-        **kwargs : Any
-            Additional keyword arguments to pass to *handler*. Missing history
-            filter values are omitted so the handler's own defaults still
-            apply.
-
-        Returns
-        -------
-        int
-            The exit code returned by *handler*.
-        """
-        history_state = ensure_state(ctx) if state is None else state
-        history_kwargs: dict[str, Any] = {
-            key: value for key, value in kwargs.items() if value is not _MISSING
-        }
-        return CommandHelperPolicy.call_handler(
-            handler,
-            state=history_state,
-            **history_kwargs,
+        return handler(
+            **kwargs,
+            **{field: getattr(self.state, field) for field in state_fields},
         )
+
+    # -- Static Methods -- #
 
     @staticmethod
     def fail_usage(
@@ -267,9 +247,8 @@ class CommandHelperPolicy:
             )
         return value
 
-    @staticmethod
     def resolve_resource(
-        state: CliState,
+        self,
         *,
         role: DataConnectorContext,
         value: str | None,
@@ -284,8 +263,6 @@ class CommandHelperPolicy:
 
         Parameters
         ----------
-        state : CliState
-            The CLI state.
         role : DataConnectorContext
             The resource role for error messages ('source' or 'target').
         value : str | None
@@ -323,29 +300,36 @@ class CommandHelperPolicy:
                 message=f"Missing required argument '{role.upper()}'.",
                 positional_name=role.upper(),
             )
+        explicit_type = (
+            None
+            if connector_type is None
+            else ResourceTypeResolver.validate(
+                str(connector_type),
+                DATA_CONNECTORS,
+                label=f'{role}_type',
+            )
+        )
+        normalized_format = (
+            None
+            if format_value is None
+            else ResourceTypeResolver.validate(
+                str(format_value),
+                FILE_FORMATS,
+                label=f'{role}_format',
+            )
+        )
         return _ResolvedResource(
             value=resolved_value,
             resource_type=_resolve_logged_resource_type(
-                state,
+                self.state,
                 role=role,
                 value=resolved_value,
-                explicit_type=ResourceTypeResolver.optional_choice(
-                    None if connector_type is None else str(connector_type),
-                    DATA_CONNECTORS,
-                    label=f'{role}_type',
-                ),
+                explicit_type=explicit_type,
                 soft_inference=soft_inference,
             ),
             format_hint=(
                 None
-                if (
-                    normalized_format := ResourceTypeResolver.optional_choice(
-                        None if format_value is None else str(format_value),
-                        FILE_FORMATS,
-                        label=f'{role}_format',
-                    )
-                )
-                is None
+                if normalized_format is None
                 else FileFormat.coerce(normalized_format)
             ),
         )

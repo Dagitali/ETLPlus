@@ -26,18 +26,6 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _transform_names(
-    cfg: Config,
-) -> list[str | None]:
-    """Return transform names from mapping- or sequence-based config shapes."""
-    if isinstance(cfg.transforms, Mapping):
-        return list(cfg.transforms)
-    return [getattr(transform, 'name', None) for transform in cfg.transforms]
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -73,13 +61,18 @@ def check_sections(
     dict[str, Any]
         A dictionary containing the requested sections of metadata.
     """
-    summary = pipeline_summary(cfg)
-    sections: dict[str, Any] = {'jobs': summary['jobs']} if jobs else {}
+    job_names = [job.name for job in cfg.jobs]
+    sections: dict[str, Any] = {'jobs': job_names} if jobs else {}
     sections |= {'pipelines': [cfg.name]} if pipelines else {}
     sections |= {'sources': [src.name for src in cfg.sources]} if sources else {}
     sections |= {'targets': [tgt.name for tgt in cfg.targets]} if targets else {}
-    sections |= {'transforms': _transform_names(cfg)} if transforms else {}
-    return sections or {'jobs': summary['jobs']}
+    if transforms:
+        sections['transforms'] = (
+            list(cfg.transforms)
+            if isinstance(cfg.transforms, Mapping)
+            else [getattr(transform, 'name', None) for transform in cfg.transforms]
+        )
+    return sections or {'jobs': job_names}
 
 
 def collect_table_specs(

@@ -122,7 +122,9 @@ def patch_resolve_cli_payload_map(
         *,
         format_hint: str | None,
         format_explicit: bool,
+        hydrate_files: bool = True,
     ) -> object:
+        _ = hydrate_files
         if calls is not None:
             calls.append((source, format_hint, format_explicit))
         return payloads[source]

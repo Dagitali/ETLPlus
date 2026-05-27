@@ -21,7 +21,6 @@ from ._options.specs import StrictOption
 from ._options.specs import SummaryOption
 from ._options.specs import TargetsOption
 from ._options.specs import TransformsOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -88,11 +87,11 @@ def check_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    section_flags = (jobs, pipelines, sources, summary, targets, transforms)
-    section_inspection_requested = any(section_flags)
-    inspection_requested = graph or section_inspection_requested
+    section_inspection_requested = any(
+        (jobs, pipelines, sources, summary, targets, transforms),
+    )
 
-    if readiness and inspection_requested:
+    if readiness and (graph or section_inspection_requested):
         CommandHelperPolicy.fail_usage(
             '--readiness cannot be combined with inspection flags.',
         )
@@ -107,9 +106,8 @@ def check_cmd(
             message="Missing required option '--config'.",
         )
 
-    return CommandHelperPolicy.call_handler(
+    return CommandHelperPolicy.from_context(ctx).call_handler(
         check_handler,
-        state=ensure_state(ctx),
         config=config,
         graph=graph,
         jobs=jobs,

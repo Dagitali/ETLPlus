@@ -13,7 +13,6 @@ from ._app import app
 from ._helpers import CommandHelperPolicy
 from ._options.init import InitDirectoryArgument
 from ._options.init import InitForceOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -50,9 +49,8 @@ def init_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    return CommandHelperPolicy.call_handler(
+    return CommandHelperPolicy.from_context(ctx).call_handler(
         init_handler,
-        state=ensure_state(ctx),
         directory=directory,
         force=force,
     )

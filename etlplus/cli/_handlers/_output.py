@@ -50,10 +50,7 @@ def emit_json(
     pretty : bool
         Whether to pretty-print JSON output.
     """
-    if pretty:
-        JsonCodec(pretty=True).print(data)
-        return
-    print(JsonCodec().serialize(data))
+    JsonCodec(pretty=pretty).print(data)
 
 
 def emit_markdown_table(
