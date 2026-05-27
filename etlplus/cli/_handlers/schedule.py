@@ -92,14 +92,6 @@ def _cron_to_on_calendar(
     return f'{weekday_prefix}*-{month_text}-{day_text} {hour_text}:{minute_text}:00'
 
 
-def _resolved_paths(
-    config_path: str,
-) -> tuple[Path, Path]:
-    """Return resolved config path and working directory for helper snippets."""
-    resolved_config = Path(config_path).expanduser().resolve()
-    return resolved_config, resolved_config.parent
-
-
 def _resolve_schedule(
     cfg: Config,
     *,
@@ -228,7 +220,8 @@ def _schedule_emit_payload(
     schedule: object,
 ) -> dict[str, object]:
     """Return helper-emission payload for one named schedule."""
-    resolved_config, working_directory = _resolved_paths(config_path)
+    resolved_config = Path(config_path).expanduser().resolve()
+    working_directory = resolved_config.parent
     return (
         _crontab_payload(
             config_path=resolved_config,
