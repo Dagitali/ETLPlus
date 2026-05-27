@@ -82,8 +82,7 @@ class CommitizenBranchChecker:
             return 0
 
         print(
-            'GitFlow branch names must contain exactly one "/": '
-            f'{branch!r}',
+            f'GitFlow branch names must contain exactly one "/": {branch!r}',
             file=sys.stderr,
         )
         return 1
