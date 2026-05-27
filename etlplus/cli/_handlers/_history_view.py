@@ -298,7 +298,7 @@ class HistoryView:
         ):
             payload = dict(record)
             payload.setdefault('record_level', level if not raw else 'run')
-            if not HistoryView.matches(
+            if HistoryView.matches(
                 payload,
                 level=level,
                 job=job,
@@ -308,10 +308,13 @@ class HistoryView:
                 until=until,
                 status=status,
             ):
-                continue
-            matching.append(
-                {key: value for key, value in payload.items() if key != 'record_level'},
-            )
+                matching.append(
+                    {
+                        key: value
+                        for key, value in payload.items()
+                        if key != 'record_level'
+                    },
+                )
         return matching
 
     @staticmethod
