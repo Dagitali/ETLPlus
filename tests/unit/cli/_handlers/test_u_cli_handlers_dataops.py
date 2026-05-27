@@ -44,40 +44,6 @@ class TestDataops:
         """Concrete-target detection should exclude STDOUT-style targets."""
         assert POLICY.has_named_target(target) is expected
 
-    def test_resolve_source_payload_forwards_resolution_flags(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Source payload resolution should delegate with the expected flags."""
-        captured: dict[str, object] = {}
-
-        def fake_resolve(
-            payload: object,
-            *,
-            format_hint: str | None,
-            format_explicit: bool,
-            hydrate_files: bool = True,
-        ) -> object:
-            captured['params'] = (
-                payload,
-                format_hint,
-                format_explicit,
-                hydrate_files,
-            )
-            return {'payload': payload}
-
-        monkeypatch.setattr(dataops_mod._input, 'resolve_cli_payload', fake_resolve)
-
-        result = POLICY.resolve_source_payload(
-            'data.json',
-            source_format='json',
-            format_explicit=True,
-            hydrate_files=False,
-        )
-
-        assert result == {'payload': 'data.json'}
-        assert captured['params'] == ('data.json', 'json', True, False)
-
     def test_resolve_source_mapping_inputs_uses_shared_source_resolution(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -87,14 +53,14 @@ class TestDataops:
         mapping_calls: list[tuple[object, bool, str]] = []
 
         def fake_source(
-            source: str,
+            source: object,
             *,
-            source_format: str | None,
+            format_hint: str | None,
             format_explicit: bool,
             hydrate_files: bool = True,
         ) -> object:
             source_calls.append(
-                (source, source_format, format_explicit, hydrate_files),
+                (str(source), format_hint, format_explicit, hydrate_files),
             )
             return {'source': source}
 
@@ -107,7 +73,7 @@ class TestDataops:
             mapping_calls.append((payload, format_explicit, error_message))
             return {'select': ['id']}
 
-        monkeypatch.setattr(POLICY, 'resolve_source_payload', fake_source)
+        monkeypatch.setattr(dataops_mod._input, 'resolve_cli_payload', fake_source)
         monkeypatch.setattr(
             dataops_mod._payload,
             'resolve_mapping_payload',
