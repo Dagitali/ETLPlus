@@ -242,15 +242,12 @@ def resolve_logged_resource_type(
     """
     resource_type = explicit_type
     if resource_type is None:
-        if soft_inference:
-            try:
-                resource_type = ResourceTypeResolver.infer(value)
-            except ValueError:
+        try:
+            resource_type = ResourceTypeResolver.infer(value)
+        except ValueError as exc:
+            if soft_inference:
                 resource_type = None
-        else:
-            try:
-                resource_type = ResourceTypeResolver.infer(value)
-            except ValueError as exc:  # pragma: no cover - exercised indirectly
+            else:  # pragma: no cover - exercised indirectly
                 raise typer.BadParameter(str(exc)) from exc
     if resource_type is not None:
         resource_type = ResourceTypeResolver.validate(
