@@ -64,28 +64,22 @@ class TestCommitizenBranchCheck:
         )
         assert 'exactly one "/"' in capsys.readouterr().err
 
-    def test_run_stops_before_commitizen_when_branch_name_is_invalid(
+    def test_main_delegates_to_checker_run(
         self,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """
-        Test invalid GitFlow branch names fail before commit-message checks.
-        """
-        class Checker(commitizen_branch.CommitizenBranchChecker):
-            """Checker with invalid branch state."""
+        """Test the script entrypoint remains a thin compatibility wrapper."""
 
-            def check_message(self, message: str) -> int:
-                """Raise when Commitizen validation should not run."""
-                return TestCommitizenBranchCheck._unexpected_check(message)
+        class Checker:
+            """Minimal checker stub for entrypoint delegation."""
 
-            def current_branch(self) -> str:
-                """Return an invalid GitFlow branch name."""
-                return 'feature/api/add-connector-metadata'
+            def run(self) -> int:
+                """Return a deterministic status."""
+                return 23
 
-            def resolve_rev_range(self) -> str:
-                """Return a deterministic revision range."""
-                return 'origin/main..HEAD'
+        monkeypatch.setattr(commitizen_branch, 'CommitizenBranchChecker', Checker)
 
-        assert Checker().run() == 1
+        assert commitizen_branch.main() == 23
 
     def test_non_merge_commits_excludes_merge_commits(
         self,
@@ -137,6 +131,63 @@ class TestCommitizenBranchCheck:
 
         assert Checker().run() == 0
 
+    def test_run_returns_first_commitizen_failure(self) -> None:
+        """
+        Test that validation exits on the first failing non-merge commit.
+        """
+        checked_messages: list[str] = []
+
+        class Checker(commitizen_branch.CommitizenBranchChecker):
+            """Checker with a failing Commitizen result."""
+
+            def check_message(self, message: str) -> int:
+                """Capture messages checked by Commitizen and fail."""
+                checked_messages.append(message)
+                return 17
+
+            def commit_message(self, commit: str) -> str:
+                """Return deterministic commit messages."""
+                return f'{commit} message'
+
+            def current_branch(self) -> str:
+                """Return a valid GitFlow branch name."""
+                return 'bugfix/valid-branch-name'
+
+            def non_merge_commits(self, rev_range: str) -> list[str]:
+                """Return deterministic non-merge commits."""
+                return ['abc123', 'def456']
+
+            def resolve_rev_range(self) -> str:
+                """Return a deterministic revision range."""
+                return 'origin/main..HEAD'
+
+        assert Checker().run() == 17
+
+        assert checked_messages == ['abc123 message']
+
+    def test_run_stops_before_commitizen_when_branch_name_is_invalid(
+        self,
+    ) -> None:
+        """
+        Test invalid GitFlow branch names fail before commit-message checks.
+        """
+        class Checker(commitizen_branch.CommitizenBranchChecker):
+            """Checker with invalid branch state."""
+
+            def check_message(self, message: str) -> int:
+                """Raise when Commitizen validation should not run."""
+                return TestCommitizenBranchCheck._unexpected_check(message)
+
+            def current_branch(self) -> str:
+                """Return an invalid GitFlow branch name."""
+                return 'feature/api/add-connector-metadata'
+
+            def resolve_rev_range(self) -> str:
+                """Return a deterministic revision range."""
+                return 'origin/main..HEAD'
+
+        assert Checker().run() == 1
+
     def test_run_validates_non_merge_commit_messages(self) -> None:
         """
         Test that Commitizen validates only discovered non-merge commits.
@@ -174,57 +225,6 @@ class TestCommitizenBranchCheck:
         assert Checker().run() == 0
 
         assert checked_messages == list(messages.values())
-
-    def test_run_returns_first_commitizen_failure(self) -> None:
-        """
-        Test that validation exits on the first failing non-merge commit.
-        """
-        checked_messages: list[str] = []
-
-        class Checker(commitizen_branch.CommitizenBranchChecker):
-            """Checker with a failing Commitizen result."""
-
-            def check_message(self, message: str) -> int:
-                """Capture messages checked by Commitizen and fail."""
-                checked_messages.append(message)
-                return 17
-
-            def commit_message(self, commit: str) -> str:
-                """Return deterministic commit messages."""
-                return f'{commit} message'
-
-            def current_branch(self) -> str:
-                """Return a valid GitFlow branch name."""
-                return 'bugfix/valid-branch-name'
-
-            def non_merge_commits(self, rev_range: str) -> list[str]:
-                """Return deterministic non-merge commits."""
-                return ['abc123', 'def456']
-
-            def resolve_rev_range(self) -> str:
-                """Return a deterministic revision range."""
-                return 'origin/main..HEAD'
-
-        assert Checker().run() == 17
-
-        assert checked_messages == ['abc123 message']
-
-    def test_main_delegates_to_checker_run(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test the script entrypoint remains a thin compatibility wrapper."""
-
-        class Checker:
-            """Minimal checker stub for entrypoint delegation."""
-
-            def run(self) -> int:
-                """Return a deterministic status."""
-                return 23
-
-        monkeypatch.setattr(commitizen_branch, 'CommitizenBranchChecker', Checker)
-
-        assert commitizen_branch.main() == 23
 
     @staticmethod
     def _unexpected_check(message: str) -> int:
