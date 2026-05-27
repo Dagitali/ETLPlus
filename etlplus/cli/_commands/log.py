@@ -81,7 +81,7 @@ def log_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    return CommandHelperPolicy.from_context(ctx).call_history_command(
+    return CommandHelperPolicy.from_context(ctx).call_handler(
         history_handler,
         level=level,
         job=job,
