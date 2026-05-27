@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 from typing import NoReturn
+from typing import Self
 
 import typer
 
@@ -94,15 +95,43 @@ class _ResolvedResource:
 # SECTION: CLASSES ========================================================== #
 
 
+@dataclass(frozen=True, slots=True)
 class CommandHelperPolicy:
     """Own shared command dispatch, validation, and resource normalization."""
 
-    @staticmethod
+    # -- Instance Attributes -- #
+
+    state: CliState
+
+    # -- Class Methods -- #
+
+    @classmethod
+    def from_context(
+        cls,
+        ctx: typer.Context,
+    ) -> Self:
+        """
+        Return one command helper policy using CLI state from *ctx*.
+
+        Parameters
+        ----------
+        ctx : typer.Context
+            Typer context used to resolve shared CLI state.
+
+        Returns
+        -------
+        Self
+            A command helper policy bound to the current CLI state.
+        """
+        return cls(ensure_state(ctx))
+
+    # -- Instance Methods -- #
+
     def call_handler(
+        self,
         handler: Callable[..., int],
         /,
         *,
-        state: CliState,
         state_fields: tuple[_StateField, ...] = ('pretty',),
         **kwargs: Any,
     ) -> int:
@@ -113,8 +142,6 @@ class CommandHelperPolicy:
         ----------
         handler : Callable[..., int]
             The handler function to invoke.
-        state : CliState
-            The CLI state to pull keyword arguments from.
         state_fields : tuple[_StateField, ...], optional
             The fields of *state* to pass as keyword arguments to *handler*
             (defaults to ('pretty',)).
@@ -128,31 +155,21 @@ class CommandHelperPolicy:
         """
         return handler(
             **kwargs,
-            **{field: getattr(state, field) for field in state_fields},
+            **{field: getattr(self.state, field) for field in state_fields},
         )
 
-    @staticmethod
     def call_history_command(
+        self,
         handler: Callable[..., int],
-        /,
-        *,
-        ctx: typer.Context,
-        state: CliState | None = None,
         **kwargs: Any,
     ) -> int:
         """
-        Invoke one history-style command using CLI state from *ctx* by
-        default.
+        Invoke one history-style command using this policy's CLI state.
 
         Parameters
         ----------
         handler : Callable[..., int]
             The history-oriented handler function to invoke.
-        ctx : typer.Context
-            The Typer context used to resolve CLI state when *state* is not given.
-        state : CliState | None, optional
-            Existing CLI state to reuse (defaults to ``None``, which means
-            :func:`ensure_state` will be called).
         **kwargs : Any
             Additional keyword arguments to pass to *handler*.
 
@@ -161,9 +178,8 @@ class CommandHelperPolicy:
         int
             The exit code returned by *handler*.
         """
-        return CommandHelperPolicy.call_handler(
+        return self.call_handler(
             handler,
-            state=ensure_state(ctx) if state is None else state,
             **kwargs,
         )
 
@@ -254,9 +270,8 @@ class CommandHelperPolicy:
             )
         return value
 
-    @staticmethod
     def resolve_resource(
-        state: CliState,
+        self,
         *,
         role: DataConnectorContext,
         value: str | None,
@@ -271,8 +286,6 @@ class CommandHelperPolicy:
 
         Parameters
         ----------
-        state : CliState
-            The CLI state.
         role : DataConnectorContext
             The resource role for error messages ('source' or 'target').
         value : str | None
@@ -331,7 +344,7 @@ class CommandHelperPolicy:
         return _ResolvedResource(
             value=resolved_value,
             resource_type=_resolve_logged_resource_type(
-                state,
+                self.state,
                 role=role,
                 value=resolved_value,
                 explicit_type=explicit_type,
