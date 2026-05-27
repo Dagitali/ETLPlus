@@ -15,7 +15,6 @@ from ._options.common import StructuredEventFormatOption
 from ._options.resources import SourceArg
 from ._options.resources import SourceFormatOption
 from ._options.resources import SourceTypeOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -58,9 +57,8 @@ def extract_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    state = ensure_state(ctx)
-    resolved_source = CommandHelperPolicy.resolve_resource(
-        state,
+    policy = CommandHelperPolicy.from_context(ctx)
+    resolved_source = policy.resolve_resource(
         role='source',
         value=source,
         connector_type=source_type,
@@ -68,9 +66,8 @@ def extract_cmd(
         positional=True,
     )
 
-    return CommandHelperPolicy.call_handler(
+    return policy.call_handler(
         extract_handler,
-        state=state,
         source=resolved_source.value,
         source_type=resolved_source.require_resource_type(),
         source_format=resolved_source.format_hint,
