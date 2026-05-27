@@ -17,7 +17,6 @@ from ._options.specs import RenderSpecOption
 from ._options.specs import RenderTableOption
 from ._options.specs import RenderTemplateOption
 from ._options.specs import RenderTemplatePathOption
-from ._state import ensure_state
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -71,9 +70,8 @@ def render_cmd(
             "Missing required option '--config' or '--spec'.",
         )
 
-    return CommandHelperPolicy.call_handler(
+    return CommandHelperPolicy.from_context(ctx).call_handler(
         render_handler,
-        state=ensure_state(ctx),
         state_fields=('pretty', 'quiet'),
         config=config,
         spec=spec,
