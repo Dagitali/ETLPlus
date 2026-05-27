@@ -7,7 +7,6 @@ Typer command for validating data against field rules or schemas.
 from __future__ import annotations
 
 import typer
-from click.core import ParameterSource
 
 from .._handlers.dataops import validate_handler
 from ._app import app
@@ -29,6 +28,16 @@ __all__ = [
     # Functions
     'validate_cmd',
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _is_default_parameter_source(
+    source: object,
+) -> bool:
+    """Return whether a Click/Typer parameter source represents a default."""
+    return getattr(source, 'name', None) == 'DEFAULT'
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -89,7 +98,9 @@ def validate_cmd(
     ``--schema-format frictionless`` for CSV source documents, and
     ``--schema-format xsd`` for XML documents.
     """
-    rules_supplied = ctx.get_parameter_source('rules') is not ParameterSource.DEFAULT
+    rules_supplied = not _is_default_parameter_source(
+        ctx.get_parameter_source('rules'),
+    )
     if schema_format is not None and schema is None:
         raise typer.BadParameter('--schema-format requires --schema')
     if schema is not None and rules_supplied:
