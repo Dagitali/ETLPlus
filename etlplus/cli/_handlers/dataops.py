@@ -362,7 +362,7 @@ class DataCommandPolicy:
         """
         return cast(
             _ResolvedSourcePayload,
-            _payload.resolve_payload(
+            _input.resolve_cli_payload(
                 source,
                 format_hint=source_format,
                 format_explicit=format_explicit,
