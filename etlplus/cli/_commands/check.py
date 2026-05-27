@@ -87,11 +87,11 @@ def check_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    section_flags = (jobs, pipelines, sources, summary, targets, transforms)
-    section_inspection_requested = any(section_flags)
-    inspection_requested = graph or section_inspection_requested
+    section_inspection_requested = any(
+        (jobs, pipelines, sources, summary, targets, transforms),
+    )
 
-    if readiness and inspection_requested:
+    if readiness and (graph or section_inspection_requested):
         CommandHelperPolicy.fail_usage(
             '--readiness cannot be combined with inspection flags.',
         )
