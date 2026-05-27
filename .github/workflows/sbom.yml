@@ -57,10 +57,7 @@ jobs:
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
-          python-bootstrap: "."
-      - name: Install SBOM generator
-        run: |
-          python -m pip install cyclonedx-bom
+          python-bootstrap: ".[sbom]"
       - name: Generate SBOM
         run: |
           cyclonedx-py environment --output-format JSON --output-file sbom.json
