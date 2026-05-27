@@ -334,9 +334,13 @@ class TestReportHandler:
         assert recorded['validate'] == (True, False)
         assert recorded['load'] == {
             'job': 'job-a',
+            'limit': None,
             'level': 'run',
+            'pipeline': None,
             'raw': False,
+            'run_id': None,
             'since': '2026-03-23T00:00:00Z',
+            'status': None,
             'until': '2026-03-24T00:00:00Z',
         }
         assert recorded['build'] == (
