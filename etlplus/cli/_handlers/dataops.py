@@ -41,12 +41,6 @@ __all__ = [
 ]
 
 
-# SECTION: TYPE ALIASES ===================================================== #
-
-
-type _ResolvedSourcePayload = JSONData | str
-
-
 # SECTION: CLASSES ========================================================== #
 
 
@@ -138,50 +132,6 @@ class DataCommandPolicy:
             pretty=pretty,
             result_status=result_status,
             status='ok',
-            **fields,
-        )
-
-    @classmethod
-    def complete_file_success(
-        cls,
-        context: _lifecycle.CommandContext,
-        payload: JSONData,
-        *,
-        output_path: str,
-        format_hint: str | None = None,
-        success_message: str,
-        **fields: Any,
-    ) -> int:
-        """
-        Complete one command by writing a payload to a concrete target.
-
-        Parameters
-        ----------
-        context : _lifecycle.CommandContext
-            Command context for the active command scope.
-        payload : JSONData
-            Payload to include in the command output.
-        output_path : str
-            Path to the output file.
-        format_hint : str | None, optional
-            Hint for the output format.
-        success_message : str
-            Message to display on successful completion.
-        **fields : Any
-            Additional fields to include in the command output.
-
-        Returns
-        -------
-        int
-            Exit code for the command.
-        """
-        return cls.complete_success(
-            context,
-            payload,
-            mode='file',
-            output_path=output_path,
-            format_hint=format_hint,
-            success_message=success_message,
             **fields,
         )
 
@@ -339,7 +289,7 @@ class DataCommandPolicy:
         source_format: str | None,
         format_explicit: bool,
         hydrate_files: bool = True,
-    ) -> _ResolvedSourcePayload:
+    ) -> JSONData | str:
         """
         Resolve one CLI source argument into a loadable payload.
 
@@ -357,11 +307,11 @@ class DataCommandPolicy:
 
         Returns
         -------
-        _ResolvedSourcePayload
+        JSONData | str
             Resolved source payload.
         """
         return cast(
-            _ResolvedSourcePayload,
+            JSONData | str,
             _input.resolve_cli_payload(
                 source,
                 format_hint=source_format,
@@ -698,9 +648,10 @@ def transform_handler(
                     target_type=resolved_target_type,
                 )
 
-            return DataCommandPolicy.complete_file_success(
+            return DataCommandPolicy.complete_success(
                 context,
                 cast(JSONData, data),
+                mode='file',
                 output_path=target,
                 format_hint=target_format,
                 success_message='Data transformed and saved to',
