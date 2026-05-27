@@ -23,7 +23,6 @@ import etlplus.cli._commands.validate as validate_mod
 from ...pytest_shared_support import CaptureHandler
 from .conftest import InvokeCli
 from .conftest import TyperContextFactory
-from .conftest import assert_mapping_contains
 from .conftest import strip_ansi
 
 # SECTION: PRAGMAS ========================================================== #
@@ -223,7 +222,7 @@ class TestCliCommandState:
         result = invoke_cli(*argv)
 
         assert result.exit_code == 0
-        assert_mapping_contains(calls, expected)
+        assert expected.items() <= calls.items()
 
     def test_validate_schema_mode_ignores_default_rules_option(
         self,
@@ -236,14 +235,11 @@ class TestCliCommandState:
         result = invoke_cli('validate', 'data.json', '--schema', 'schema.json')
 
         assert result.exit_code == 0
-        assert_mapping_contains(
-            calls,
-            {
-                'source': 'data.json',
-                'rules': {},
-                'schema': 'schema.json',
-            },
-        )
+        assert {
+            'source': 'data.json',
+            'rules': {},
+            'schema': 'schema.json',
+        }.items() <= calls.items()
 
 
 class TestCliHelp:
