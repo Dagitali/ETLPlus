@@ -235,3 +235,60 @@ class TestMain:
         stub_command(_action)
         with pytest.raises(click.exceptions.UsageError, match='boom'):
             cli_main(['extract'])
+
+    def test_vendored_typer_click_option_error_emits_usage(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """
+        Test that Typer's vendored Click errors are handled like Click errors.
+        """
+
+        class _TyperUsageError(Exception):
+            """Stub Typer-vendored Click usage error."""
+
+            exit_code = 2
+            ctx = None
+
+        class _TyperNoSuchOption(_TyperUsageError):
+            """Stub Typer-vendored Click no-such-option error."""
+
+            def __str__(self) -> str:
+                """Return a Click-like option error message."""
+                return 'No such option: --bad'
+
+        class _StubCommand:
+            """Stub command that raises a Typer-vendored option error."""
+
+            def main(self, **kwargs: object) -> object:
+                """
+                Simulate Python 3.14 Typer option parsing behavior.
+                """
+                raise _TyperNoSuchOption()
+
+        root_help_calls = {'count': 0}
+        monkeypatch.setattr(
+            typer.main,
+            'get_command',
+            lambda _app: _StubCommand(),
+        )
+        monkeypatch.setattr(
+            main_mod,
+            '_USAGE_ERROR_TYPES',
+            (_TyperUsageError,),
+        )
+        monkeypatch.setattr(
+            main_mod,
+            '_ILLEGAL_OPTION_ERROR_TYPES',
+            (_TyperNoSuchOption,),
+        )
+        monkeypatch.setattr(
+            main_mod,
+            '_emit_root_help',
+            lambda _command: root_help_calls.__setitem__('count', 1),
+        )
+
+        assert cli_main(['--bad']) == 2
+        assert root_help_calls['count'] == 1
+        assert 'No such option' in capsys.readouterr().err
