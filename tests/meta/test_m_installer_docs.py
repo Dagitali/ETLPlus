@@ -116,14 +116,22 @@ def test_cross_platform_smoke_checks_cli_help_surfaces(snippet: str) -> None:
     assert snippet in workflow_text
 
 
-def test_installer_smoke_resolves_tool_installer_entrypoint_from_path(
+def test_installer_smoke_uses_explicit_tool_installer_entrypoint_paths(
     installer_smoke_action_text: str,
 ) -> None:
     """
-    Test that tool-installer smoke checks do not assume a fixed app-bin path.
+    Test that tool-installer smoke checks do not rely on ambient PATH state.
     """
+    expected_snippets = (
+        'PIPX_BIN_DIR="${RUNNER_TEMP}/etlplus-pipx-bin"',
+        'UV_TOOL_BIN_DIR="${RUNNER_TEMP}/etlplus-uv-bin"',
+        'etlplus_bin="${PIPX_BIN_DIR}/etlplus"',
+        'etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus"',
+    )
+
     assert '$HOME/.local/bin/etlplus' not in installer_smoke_action_text
-    assert 'etlplus_bin="$(command -v etlplus)"' in installer_smoke_action_text
+    assert 'command -v etlplus' not in installer_smoke_action_text
+    assert all(snippet in installer_smoke_action_text for snippet in expected_snippets)
 
 
 @pytest.mark.parametrize(
