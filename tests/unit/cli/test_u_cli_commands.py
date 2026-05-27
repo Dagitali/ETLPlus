@@ -453,7 +453,9 @@ class TestDelegatingCommands:
                 {
                     'config': 'pipeline.yml',
                     'emit': 'crontab',
+                    'event_format': None,
                     'pretty': False,
+                    'run_pending': False,
                     'schedule_name': 'nightly_all',
                     'show_state': True,
                 },
@@ -476,6 +478,7 @@ class TestDelegatingCommands:
                     'pretty': False,
                     'run_pending': True,
                     'schedule_name': None,
+                    'show_state': False,
                 },
                 0,
                 id='schedule-run-pending',
