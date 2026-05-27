@@ -22,7 +22,7 @@
 #   paths differently from the repository default.
 #
 # References
-# - Git attributes documentation: https://git-scm.com/docs/gitattributes
+# - Git attributes reference: https://git-scm.com/docs/gitattributes
 
 # Auto detect text files and perform LF normalization
 * text=auto
