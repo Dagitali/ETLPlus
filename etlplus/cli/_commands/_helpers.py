@@ -158,30 +158,7 @@ class CommandHelperPolicy:
             **{field: getattr(self.state, field) for field in state_fields},
         )
 
-    def call_history_command(
-        self,
-        handler: Callable[..., int],
-        **kwargs: Any,
-    ) -> int:
-        """
-        Invoke one history-style command using this policy's CLI state.
-
-        Parameters
-        ----------
-        handler : Callable[..., int]
-            The history-oriented handler function to invoke.
-        **kwargs : Any
-            Additional keyword arguments to pass to *handler*.
-
-        Returns
-        -------
-        int
-            The exit code returned by *handler*.
-        """
-        return self.call_handler(
-            handler,
-            **kwargs,
-        )
+    # -- Static Methods -- #
 
     @staticmethod
     def fail_usage(
