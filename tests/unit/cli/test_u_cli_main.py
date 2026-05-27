@@ -187,11 +187,7 @@ class TestMain:
         """
         Test that direct :class:`typer.Exit` from command.main are mapped.
         """
-
-        def _action(**kwargs: object) -> object:  # noqa: ARG001
-            raise typer.Exit(9)
-
-        stub_command_main(_action)
+        stub_command_main(typer.Exit(9))
         assert cli_main(['extract']) == 9
 
     def test_no_args_exits_zero(self) -> None:
@@ -227,11 +223,7 @@ class TestMain:
         stub_command_main: StubCommandMain,
     ) -> None:
         """Test that unhandled :class:`UsageError` cases be re-raised."""
-
-        def _action(**kwargs: object) -> object:  # noqa: ARG001
-            raise click.exceptions.UsageError('boom')
-
-        stub_command_main(_action)
+        stub_command_main(click.exceptions.UsageError('boom'))
         with pytest.raises(click.exceptions.UsageError, match='boom'):
             cli_main(['extract'])
 
