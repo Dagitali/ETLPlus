@@ -71,37 +71,6 @@ class CliState:
 class ResourceTypeResolver:
     """Shared normalization and inference helpers for CLI resource types."""
 
-    # -- Class Methods -- #
-
-    @classmethod
-    def optional_choice(
-        cls,
-        value: str | None,
-        choices: Collection[str],
-        *,
-        label: str,
-    ) -> str | None:
-        """
-        Validate optional CLI choice inputs while preserving ``None``.
-
-        Parameters
-        ----------
-        value : str | None
-            The value to validate.
-        choices : Collection[str]
-            The set of valid choices.
-        label : str
-            The label for the value being validated.
-
-        Returns
-        -------
-        str | None
-            The validated value, or ``None`` if the input is ``None``.
-        """
-        if value is None:
-            return None
-        return cls.validate(value, choices, label=label)
-
     # -- Static Methods -- #
 
     @staticmethod
