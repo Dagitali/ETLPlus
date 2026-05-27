@@ -29,6 +29,7 @@ classifiers = [
 # as part of the supported public surface.
 dependencies = [
   "cbor2>=6.1.1",
+  "click>=8.4.0",
   "duckdb>=1.5.3",
   "fastavro>=1.12.2",
   "frictionless>=5.19.0",
