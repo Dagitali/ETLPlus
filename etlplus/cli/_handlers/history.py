@@ -6,6 +6,7 @@ History, report, and status handler implementations for the CLI facade.
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from dataclasses import dataclass
 from time import sleep
 from typing import Any
@@ -76,14 +77,8 @@ class _HistoryQuery:
         """Load persisted history records for this query."""
         return HistoryView.load_records(
             raw=raw,
-            level=self.level,
-            job=self.job,
             limit=limit,
-            pipeline=self.pipeline,
-            run_id=self.run_id,
-            since=self.since,
-            status=self.status,
-            until=self.until,
+            **asdict(self),
         )
 
     def table_columns(self) -> tuple[str, ...]:
