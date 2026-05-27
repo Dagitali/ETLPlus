@@ -19,10 +19,10 @@
 #
 # References
 # - GNU Make documentation: https://www.gnu.org/software/make/manual/make.html
-# - GNU Make conventions: https://www.gnu.org/prep/standards/html_node/Makefile-Conventions.html
-# - GNU Make include directive documentation: https://www.gnu.org/software/make/manual/html_node/Include.html
-# - Python Makefile practices: https://earthly.dev/blog/python-makefile/
-# - Python virtualenv Makefile discussion: https://stackoverflow.com/questions/24736146/how-to-use-virtualenv-in-makefile
+# - GNU Make conventions reference: https://www.gnu.org/prep/standards/html_node/Makefile-Conventions.html
+# - GNU Make include directive reference: https://www.gnu.org/software/make/manual/html_node/Include.html
+# - Python Makefile guide: https://earthly.dev/blog/python-makefile/
+# - Python virtualenv Makefile guide: https://stackoverflow.com/questions/24736146/how-to-use-virtualenv-in-makefile
 #
 # Common Flows
 #

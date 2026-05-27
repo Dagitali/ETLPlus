@@ -24,17 +24,17 @@
 #   review clarity.
 #
 # References
-# - GitHub Actions for Python: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
-# - GitHub Actions expressions: https://docs.github.com/en/actions/learn-github-actions/expressions
-# - GitHub Actions security hardening: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
-# - GitHub Actions workflow syntax: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
+# - GitHub Actions Python guide: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# - GitHub Actions expressions reference: https://docs.github.com/en/actions/learn-github-actions/expressions
+# - GitHub Actions security hardening guide: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+# - GitHub Actions workflow syntax reference: https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions
 # - GitHub pull request documentation: https://docs.github.com/en/pull-requests
 # - GitHub merge queue documentation: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-merge-queues
-# - Python packaging and distribution: https://packaging.python.org/
-# - Python wheel documentation: https://packaging.python.org/en/latest/specifications/binary-distribution-format/#file-contents
+# - Python packaging documentation: https://packaging.python.org/
+# - Python wheel format specification: https://packaging.python.org/en/latest/specifications/binary-distribution-format/#file-contents
 # - Read the Docs documentation: https://docs.readthedocs.io/en/stable/
 # - Sphinx documentation: https://www.sphinx-doc.org/en/master/
-# - Sphinx builders: https://www.sphinx-doc.org/en/master/usage/builders/index.html
+# - Sphinx builders reference: https://www.sphinx-doc.org/en/master/usage/builders/index.html
 
 ---
 

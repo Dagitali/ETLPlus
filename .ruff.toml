@@ -20,8 +20,8 @@
 #
 # References
 # - Ruff configuration documentation: https://docs.astral.sh/ruff/configuration/
-# - Ruff linter settings documentation: https://docs.astral.sh/ruff/settings/
-# - Ruff rule documentation: https://docs.astral.sh/ruff/rules/
+# - Ruff linter settings reference: https://docs.astral.sh/ruff/settings/
+# - Ruff rule reference: https://docs.astral.sh/ruff/rules/
 
 line-length = 88  # Matches Ruff's default, popularized by Black.
 target-version = "py313"
