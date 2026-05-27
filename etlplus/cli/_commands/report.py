@@ -81,9 +81,8 @@ def report_cmd(
     int
         CLI exit code indicating success (``0``) or failure (non-zero).
     """
-    return CommandHelperPolicy.call_history_command(
+    return CommandHelperPolicy.from_context(ctx).call_history_command(
         report_handler,
-        ctx=ctx,
         level=level,
         group_by=group_by,
         job=job,
