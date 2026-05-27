@@ -136,26 +136,6 @@ class DataCommandPolicy:
         )
 
     @staticmethod
-    def display_target(
-        target: str | None,
-    ) -> str:
-        """
-        Return a human-readable target label for lifecycle events.
-
-        Parameters
-        ----------
-        target : str | None
-            Target identifier, which can be a path, URI, or special value like
-            '-' for STDOUT.
-
-        Returns
-        -------
-        str
-            Human-readable label for the target.
-        """
-        return target if DataCommandPolicy.has_named_target(target) else 'stdout'
-
-    @staticmethod
     def has_named_target(
         target: str | None,
     ) -> TypeGuard[str]:
@@ -429,7 +409,7 @@ def load_handler(
     target_format_explicit = target_format is not None or format_explicit
     command_fields: dict[str, Any] = {
         'source': source,
-        'target': DataCommandPolicy.display_target(target),
+        'target': target if DataCommandPolicy.has_named_target(target) else 'stdout',
         'target_type': target_type,
     }
 
@@ -524,7 +504,7 @@ def transform_handler(
     target_format_explicit = target_format is not None or format_explicit
     command_fields: dict[str, Any] = {
         'source': source,
-        'target': DataCommandPolicy.display_target(target),
+        'target': target if DataCommandPolicy.has_named_target(target) else 'stdout',
         'target_type': target_type,
     }
 
@@ -625,7 +605,7 @@ def validate_handler(
     """
     command_fields: dict[str, Any] = {
         'source': source,
-        'target': DataCommandPolicy.display_target(target),
+        'target': target if DataCommandPolicy.has_named_target(target) else 'stdout',
     }
     if schema is not None:
         command_fields['schema'] = schema
