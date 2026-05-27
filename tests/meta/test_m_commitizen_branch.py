@@ -20,6 +20,61 @@ import tools.check_commitizen_branch as commitizen_branch
 class TestCommitizenBranchCheck:
     """Test local Commitizen branch-check behavior."""
 
+    @pytest.mark.parametrize(
+        'branch',
+        [
+            pytest.param('', id='detached-head'),
+            pytest.param('develop', id='develop'),
+            pytest.param('main', id='main'),
+            pytest.param('bugfix/declare-click-runtime-dependency', id='bugfix'),
+            pytest.param('feature/add-connector-metadata', id='feature'),
+            pytest.param('release/v1.26.29', id='release'),
+        ],
+    )
+    def test_gitflow_branch_names_allow_one_slash_or_long_lived_branches(
+        self,
+        branch: str,
+    ) -> None:
+        """Test the local branch-name guard allows supported GitFlow names."""
+        assert commitizen_branch._validate_gitflow_branch_name(branch) == 0
+
+    @pytest.mark.parametrize(
+        'branch',
+        [
+            pytest.param('feature/api/add-connector-metadata', id='two-slashes'),
+            pytest.param('bugfix', id='no-slash-working-branch'),
+        ],
+    )
+    def test_gitflow_branch_names_reject_nonstandard_slash_counts(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        branch: str,
+    ) -> None:
+        """Test the local branch-name guard rejects nonstandard branch shapes."""
+        assert commitizen_branch._validate_gitflow_branch_name(branch) == 1
+        assert 'exactly one "/"' in capsys.readouterr().err
+
+    def test_main_stops_before_commitizen_when_branch_name_is_invalid(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """
+        Test invalid GitFlow branch names fail before commit-message checks.
+        """
+        monkeypatch.setattr(
+            commitizen_branch,
+            '_current_branch',
+            lambda: 'feature/api/add-connector-metadata',
+        )
+        monkeypatch.setattr(
+            commitizen_branch,
+            '_resolve_rev_range',
+            lambda: 'origin/main..HEAD',
+        )
+        monkeypatch.setattr(commitizen_branch, '_check_message', self._unexpected_check)
+
+        assert commitizen_branch.main() == 1
+
     def test_non_merge_commits_excludes_merge_commits(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -53,6 +108,11 @@ class TestCommitizenBranchCheck:
         """
         monkeypatch.setattr(
             commitizen_branch,
+            '_current_branch',
+            lambda: 'bugfix/valid-branch-name',
+        )
+        monkeypatch.setattr(
+            commitizen_branch,
             '_resolve_rev_range',
             lambda: 'origin/main..HEAD',
         )
@@ -78,6 +138,11 @@ class TestCommitizenBranchCheck:
             'def456': 'fix(ci): ignore merge commits in commitizen check',
         }
 
+        monkeypatch.setattr(
+            commitizen_branch,
+            '_current_branch',
+            lambda: 'bugfix/valid-branch-name',
+        )
         monkeypatch.setattr(
             commitizen_branch,
             '_resolve_rev_range',
@@ -109,6 +174,11 @@ class TestCommitizenBranchCheck:
         """
         checked_messages: list[str] = []
 
+        monkeypatch.setattr(
+            commitizen_branch,
+            '_current_branch',
+            lambda: 'bugfix/valid-branch-name',
+        )
         monkeypatch.setattr(
             commitizen_branch,
             '_resolve_rev_range',
