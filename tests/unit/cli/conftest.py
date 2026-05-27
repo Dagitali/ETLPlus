@@ -276,7 +276,7 @@ def dummy_cfg_fixture() -> Config:
 
 
 @pytest.fixture(name='invoke_cli')
-def invoke_cli_fixture(runner: CliRunner) -> Callable[..., Result]:
+def invoke_cli_fixture(runner: CliRunner) -> InvokeCli:
     """Invoke the Typer CLI with convenience defaults."""
 
     def _invoke(*args: str) -> Result:
@@ -294,7 +294,7 @@ def runner_fixture() -> CliRunner:
 @pytest.fixture(name='stub_command')
 def stub_command_fixture(
     stub_command_main: StubCommandMain,
-) -> Callable[[Callable[..., object]], None]:
+) -> StubCommand:
     """Install a Typer command stub that delegates to the provided action."""
 
     def _install(action: Callable[..., object]) -> None:
