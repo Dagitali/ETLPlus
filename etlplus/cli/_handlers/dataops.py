@@ -176,29 +176,6 @@ class DataCommandPolicy:
         """
         return PathParser.is_file_target(target)
 
-    @staticmethod
-    def is_explicit_format(
-        *,
-        format_hint: str | None,
-        explicit: bool,
-    ) -> bool:
-        """
-        Return True when a format hint should be treated as explicit.
-
-        Parameters
-        ----------
-        format_hint : str | None
-            Format hint for the payload.
-        explicit : bool
-            Whether the format was explicitly provided.
-
-        Returns
-        -------
-        bool
-            True if the format hint should be treated as explicit, False otherwise.
-        """
-        return format_hint is not None or explicit
-
     @classmethod
     def resolve_source_mapping_inputs(
         cls,
@@ -231,10 +208,7 @@ class DataCommandPolicy:
         tuple[JSONData | str, dict[str, Any]]
             Resolved source payload and mapping.
         """
-        source_format_explicit = cls.is_explicit_format(
-            format_hint=source_format,
-            explicit=format_explicit,
-        )
+        source_format_explicit = source_format is not None or format_explicit
         payload = cls.resolve_source_payload(
             source,
             source_format=source_format,
@@ -451,14 +425,8 @@ def load_handler(
     int
         Exit code indicating success (``0``) or failure (non-zero).
     """
-    source_format_explicit = DataCommandPolicy.is_explicit_format(
-        format_hint=source_format,
-        explicit=False,
-    )
-    target_format_explicit = DataCommandPolicy.is_explicit_format(
-        format_hint=target_format,
-        explicit=format_explicit,
-    )
+    source_format_explicit = source_format is not None
+    target_format_explicit = target_format is not None or format_explicit
     command_fields: dict[str, Any] = {
         'source': source,
         'target': DataCommandPolicy.display_target(target),
