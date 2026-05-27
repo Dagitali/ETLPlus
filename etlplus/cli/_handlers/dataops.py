@@ -156,9 +156,8 @@ class DataCommandPolicy:
         """
         return PathParser.is_file_target(target)
 
-    @classmethod
+    @staticmethod
     def resolve_source_mapping_inputs(
-        cls,
         *,
         source: str,
         mapping_payload: JSONData | str,
@@ -189,10 +188,13 @@ class DataCommandPolicy:
             Resolved source payload and mapping.
         """
         source_format_explicit = source_format is not None or format_explicit
-        payload = cls.resolve_source_payload(
-            source,
-            source_format=source_format,
-            format_explicit=source_format_explicit,
+        payload = cast(
+            JSONData | str,
+            _input.resolve_cli_payload(
+                source,
+                format_hint=source_format,
+                format_explicit=source_format_explicit,
+            ),
         )
         mapping = _payload.resolve_mapping_payload(
             mapping_payload,
@@ -200,44 +202,6 @@ class DataCommandPolicy:
             error_message=error_message,
         )
         return payload, mapping
-
-    @staticmethod
-    def resolve_source_payload(
-        source: str,
-        *,
-        source_format: str | None,
-        format_explicit: bool,
-        hydrate_files: bool = True,
-    ) -> JSONData | str:
-        """
-        Resolve one CLI source argument into a loadable payload.
-
-        Parameters
-        ----------
-        source : str
-            Source identifier, which can be a path, URI, or special value like
-            '-' for STDIN.
-        source_format : str | None
-            Format hint for the source payload.
-        format_explicit : bool
-            Whether the format was explicitly provided.
-        hydrate_files : bool, optional
-            Whether to hydrate file references. Default is ``True``.
-
-        Returns
-        -------
-        JSONData | str
-            Resolved source payload.
-        """
-        return cast(
-            JSONData | str,
-            _input.resolve_cli_payload(
-                source,
-                format_hint=source_format,
-                format_explicit=format_explicit,
-                hydrate_files=hydrate_files,
-            ),
-        )
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -418,11 +382,14 @@ def load_handler(
         event_format=event_format,
         fields=command_fields,
     ) as context:
-        source_value = DataCommandPolicy.resolve_source_payload(
-            source,
-            source_format=source_format,
-            format_explicit=source_format_explicit,
-            hydrate_files=False,
+        source_value = cast(
+            JSONData | str,
+            _input.resolve_cli_payload(
+                source,
+                format_hint=source_format,
+                format_explicit=source_format_explicit,
+                hydrate_files=False,
+            ),
         )
 
         if target_type == 'file' and target == '-':
