@@ -78,7 +78,19 @@ class ResourceTypeResolver:
         cls,
         value: str | None,
     ) -> str | None:
-        """Make a best-effort inference that tolerates inline payloads."""
+        """
+        Make a best-effort inference that tolerates inline payloads.
+
+        Parameters
+        ----------
+        value : str | None
+            The resource identifier (path, URL, or DSN) to infer the type of.
+
+        Returns
+        -------
+        str | None
+            The inferred resource type, or ``None`` if inference fails.
+        """
         if value is None:
             return None
         try:
@@ -94,7 +106,23 @@ class ResourceTypeResolver:
         *,
         label: str,
     ) -> str | None:
-        """Validate optional CLI choice inputs while preserving ``None``."""
+        """
+        Validate optional CLI choice inputs while preserving ``None``.
+
+        Parameters
+        ----------
+        value : str | None
+            The value to validate.
+        choices : Collection[str]
+            The set of valid choices.
+        label : str
+            The label for the value being validated.
+
+        Returns
+        -------
+        str | None
+            The validated value, or ``None`` if the input is ``None``.
+        """
         if value is None:
             return None
         return cls.validate(value, choices, label=label)
@@ -105,7 +133,23 @@ class ResourceTypeResolver:
     def infer(
         value: str,
     ) -> str:
-        """Infer the resource type from a path, URL, or DSN string."""
+        """Infer the resource type from a path, URL, or DSN string.
+
+        Parameters
+        ----------
+        value : str
+            The resource identifier (path, URL, or DSN) to infer the type of.
+
+        Returns
+        -------
+        str
+            The inferred resource type.
+
+        Raises
+        ------
+        ValueError
+            If the resource type cannot be inferred.
+        """
         val = (value or '').strip()
         low = val.lower()
 
@@ -132,7 +176,24 @@ class ResourceTypeResolver:
     def infer_or_exit(
         value: str,
     ) -> str:
-        """Infer a resource type and map ``ValueError`` to ``BadParameter``."""
+        """
+        Infer a resource type and map ``ValueError`` to ``BadParameter``.
+
+        Parameters
+        ----------
+        value : str
+            The resource identifier (path, URL, or DSN) to infer the type of.
+
+        Returns
+        -------
+        str
+            The inferred resource type.
+
+        Raises
+        ------
+        typer.BadParameter
+            If the resource type cannot be inferred.
+        """
         try:
             return ResourceTypeResolver.infer(value)
         except ValueError as exc:  # pragma: no cover - exercised indirectly
@@ -145,7 +206,27 @@ class ResourceTypeResolver:
         *,
         label: str,
     ) -> str:
-        """Validate CLI input against a whitelist of choices."""
+        """Validate CLI input against a whitelist of choices.
+
+        Parameters
+        ----------
+        value : str | object
+            The value to validate.
+        choices : Collection[str]
+            The set of valid choices.
+        label : str
+            The label for the value being validated.
+
+        Returns
+        -------
+        str
+            The validated value.
+
+        Raises
+        ------
+        typer.BadParameter
+            If the value is not in the set of valid choices.
+        """
         normalized_value = TextNormalizer.normalize(str(value))
         normalized_choices = {
             TextNormalizer.normalize(choice): choice for choice in choices
