@@ -32,6 +32,9 @@ from etlplus.database._schema import PrimaryKeySpec
 from etlplus.database._schema import TableSpec
 from etlplus.database._schema import UniqueConstraintSpec
 from etlplus.database._schema import load_table_specs
+from etlplus.database._schemes import DATABASE_SCHEMES
+from etlplus.database._schemes import is_database_dsn
+from etlplus.database._schemes import is_database_url
 
 from ..pytest_export_contracts import assert_package_exports
 
@@ -54,7 +57,10 @@ DATABASE_EXPORTS: tuple[tuple[str, object], ...] = (
     ('SqlTypeAffinity', SqlTypeAffinity),
     ('TableSpec', TableSpec),
     ('UniqueConstraintSpec', UniqueConstraintSpec),
+    ('DATABASE_SCHEMES', DATABASE_SCHEMES),
     ('build_models', build_models),
+    ('is_database_dsn', is_database_dsn),
+    ('is_database_url', is_database_url),
     ('load_and_build_models', load_and_build_models),
     ('load_database_url_from_config', load_database_url_from_config),
     ('load_table_spec', load_table_spec),

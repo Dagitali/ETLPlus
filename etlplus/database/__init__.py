@@ -33,6 +33,9 @@ from ._schema import PrimaryKeySpec
 from ._schema import TableSpec
 from ._schema import UniqueConstraintSpec
 from ._schema import load_table_specs
+from ._schemes import DATABASE_SCHEMES
+from ._schemes import is_database_dsn
+from ._schemes import is_database_url
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -50,8 +53,12 @@ __all__ = [
     'SqlTypeAffinity',
     'TableSpec',
     'UniqueConstraintSpec',
+    # Constants
+    'DATABASE_SCHEMES',
     # Functions
     'build_models',
+    'is_database_dsn',
+    'is_database_url',
     'load_and_build_models',
     'load_database_url_from_config',
     'load_table_spec',
