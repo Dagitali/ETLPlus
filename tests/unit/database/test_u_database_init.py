@@ -33,6 +33,7 @@ from etlplus.database._schema import TableSpec
 from etlplus.database._schema import UniqueConstraintSpec
 from etlplus.database._schema import load_table_specs
 from etlplus.database._schemes import DATABASE_SCHEMES
+from etlplus.database._schemes import database_schemes
 from etlplus.database._schemes import is_database_dsn
 from etlplus.database._schemes import is_database_url
 
@@ -59,6 +60,7 @@ DATABASE_EXPORTS: tuple[tuple[str, object], ...] = (
     ('UniqueConstraintSpec', UniqueConstraintSpec),
     ('DATABASE_SCHEMES', DATABASE_SCHEMES),
     ('build_models', build_models),
+    ('database_schemes', database_schemes),
     ('is_database_dsn', is_database_dsn),
     ('is_database_url', is_database_url),
     ('load_and_build_models', load_and_build_models),
