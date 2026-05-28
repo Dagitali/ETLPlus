@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Final
 
+from ._enums import DatabaseDialect
+
 # SECTION: EXPORTS ========================================================== #
 
 
@@ -15,6 +17,7 @@ __all__ = [
     # Constants
     'DATABASE_SCHEMES',
     # Functions
+    'database_schemes',
     'is_database_dsn',
     'is_database_url',
 ]
@@ -23,29 +26,22 @@ __all__ = [
 # SECTION: CONSTANTS ======================================================== #
 
 
-DATABASE_SCHEMES: Final[tuple[str, ...]] = (
-    'bigquery://',
-    'bigquery+',
-    'duckdb://',
-    'duckdb+',
-    'mssql://',
-    'mssql+',
-    'mysql://',
-    'mysql+',
-    'oracle://',
-    'oracle+',
-    'postgres://',
-    'postgres+',
-    'postgresql://',
-    'postgresql+',
-    'snowflake://',
-    'snowflake+',
-    'sqlite://',
-    'sqlite+',
-)
+DATABASE_SCHEMES: Final[tuple[str, ...]]
 
 
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def database_schemes() -> tuple[str, ...]:
+    """Return database URL and driver-DSN prefixes for supported dialects."""
+    return tuple(
+        prefix
+        for dialect in DatabaseDialect
+        for prefix in dialect.scheme_prefixes()
+    )
+
+
+DATABASE_SCHEMES = database_schemes()
 
 
 def is_database_dsn(
