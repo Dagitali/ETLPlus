@@ -271,6 +271,11 @@ class TestCliHelp:
 class TestInferResourceType:
     """Unit tests for :meth:`ResourceTypeResolver.infer`."""
 
+    def test_driver_prefixed_database_names_must_be_url_shaped(self) -> None:
+        """Driver-qualified database prefixes should still require a URL."""
+        with pytest.raises(ValueError, match='Could not infer resource type'):
+            cli_state_mod.ResourceTypeResolver.infer('sqlite+pysqlite')
+
     def test_invalid_raises(self) -> None:
         """
         Test that unknown resources raise ``ValueError`` to surface helpful
@@ -289,7 +294,49 @@ class TestInferResourceType:
                 'postgres://user@host/db',
                 'database',
                 False,
-                id='database-url',
+                id='database-postgres-url',
+            ),
+            pytest.param(
+                'postgresql+psycopg://user@host/db',
+                'database',
+                False,
+                id='database-postgresql-driver-url',
+            ),
+            pytest.param(
+                'mysql+pymysql://user@host/db',
+                'database',
+                False,
+                id='database-mysql-driver-url',
+            ),
+            pytest.param(
+                'sqlite:///source.db',
+                'database',
+                False,
+                id='database-sqlite-url',
+            ),
+            pytest.param(
+                'sqlite+pysqlite:///:memory:',
+                'database',
+                False,
+                id='database-sqlite-driver-url',
+            ),
+            pytest.param(
+                'mssql+pyodbc://user@host/db',
+                'database',
+                False,
+                id='database-mssql-driver-url',
+            ),
+            pytest.param(
+                'snowflake://user@account/db/schema',
+                'database',
+                False,
+                id='database-snowflake-url',
+            ),
+            pytest.param(
+                'bigquery://project/dataset',
+                'database',
+                False,
+                id='database-bigquery-url',
             ),
         ],
     )

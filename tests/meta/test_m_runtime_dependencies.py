@@ -96,7 +96,7 @@ class TestToolDependencyDeclarations:
             workflow_text
         )
         assert 'cyclonedx-bom-venv/bin/cyclonedx-py' in workflow_text
-        assert "environment \"$(python -c 'import sys; print(sys.executable)')\"" in (
+        assert 'environment "$(python -c \'import sys; print(sys.executable)\')"' in (
             workflow_text
         )
         assert 'python-bootstrap: ".[sbom]"' not in workflow_text

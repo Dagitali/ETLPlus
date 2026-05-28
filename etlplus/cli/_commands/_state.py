@@ -11,10 +11,10 @@ import sys
 from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
 
 import typer
 
+from ...database._schemes import is_database_url
 from ...utils import TextNormalizer
 from ._constants import DATA_CONNECTORS
 from ._types import DataConnectorContext
@@ -30,16 +30,6 @@ __all__ = [
     'log_inferred_resource',
     'resolve_logged_resource_type',
 ]
-
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_DB_SCHEMES: Final[tuple[str, ...]] = (
-    'postgres://',
-    'postgresql://',
-    'mysql://',
-)
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -102,7 +92,7 @@ class ResourceTypeResolver:
                 return 'file'
             case (_, inferred) if inferred.startswith(('http://', 'https://')):
                 return 'api'
-            case (_, inferred) if inferred.startswith(_DB_SCHEMES):
+            case (_, inferred) if is_database_url(inferred):
                 return 'database'
 
         path = Path(val)
