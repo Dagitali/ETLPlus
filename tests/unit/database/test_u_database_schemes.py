@@ -25,6 +25,7 @@ class TestDatabaseSchemes:
         ('value', 'expected'),
         [
             pytest.param('sqlite+pysqlite', True, id='driver-dsn'),
+            pytest.param('duckdb+duckdb_engine', True, id='duckdb-driver-dsn'),
             pytest.param('sqlite:///source.db', False, id='url-not-dsn'),
             pytest.param('payload.csv', False, id='file-path'),
         ],
@@ -42,6 +43,11 @@ class TestDatabaseSchemes:
         [
             pytest.param('postgres://user@host/db', id='postgres'),
             pytest.param('postgresql+psycopg://user@host/db', id='postgresql-driver'),
+            pytest.param('duckdb:///warehouse.duckdb', id='duckdb'),
+            pytest.param(
+                'duckdb+duckdb_engine:///warehouse.duckdb',
+                id='duckdb-driver',
+            ),
             pytest.param('mysql+pymysql://user@host/db', id='mysql-driver'),
             pytest.param('sqlite:///source.db', id='sqlite'),
             pytest.param('sqlite+pysqlite:///:memory:', id='sqlite-driver'),
