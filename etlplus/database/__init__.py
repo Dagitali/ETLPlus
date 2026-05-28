@@ -34,6 +34,7 @@ from ._schema import TableSpec
 from ._schema import UniqueConstraintSpec
 from ._schema import load_table_specs
 from ._schemes import DATABASE_SCHEMES
+from ._schemes import database_schemes
 from ._schemes import is_database_dsn
 from ._schemes import is_database_url
 
@@ -57,6 +58,7 @@ __all__ = [
     'DATABASE_SCHEMES',
     # Functions
     'build_models',
+    'database_schemes',
     'is_database_dsn',
     'is_database_url',
     'load_and_build_models',
