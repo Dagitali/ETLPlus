@@ -29,6 +29,8 @@ class TestDatabaseDialect:
             ('sqlite3', DatabaseDialect.SQLITE),
             ('sql server', DatabaseDialect.MSSQL),
             ('AZURE-SQL', DatabaseDialect.MSSQL),
+            ('gcp-bigquery', DatabaseDialect.BIGQUERY),
+            ('snowflake-db', DatabaseDialect.SNOWFLAKE),
         ],
     )
     def test_coerce_aliases(
@@ -38,6 +40,38 @@ class TestDatabaseDialect:
     ) -> None:
         """Test that dialect aliases coerce to the expected enum members."""
         assert DatabaseDialect.coerce(value) is expected
+
+    @pytest.mark.parametrize(
+        ('dialect', 'expected'),
+        [
+            (DatabaseDialect.SQLITE, 'sqlite+pysqlite'),
+            (DatabaseDialect.POSTGRESQL, 'postgresql+psycopg'),
+        ],
+    )
+    def test_dsn_scheme_appends_driver(
+        self,
+        dialect: DatabaseDialect,
+        expected: str,
+    ) -> None:
+        """Test that dialects generate SQLAlchemy driver DSN schemes."""
+        assert dialect.dsn_scheme(expected.rsplit('+', maxsplit=1)[-1]) == expected
+
+    def test_postgresql_scheme_prefixes_include_postgres_alias(self) -> None:
+        """Test that PostgreSQL keeps its accepted URL scheme alias."""
+        assert DatabaseDialect.POSTGRESQL.scheme_prefixes() == (
+            'postgres://',
+            'postgres+',
+            'postgresql://',
+            'postgresql+',
+        )
+
+    def test_url_prefix_appends_driver(self) -> None:
+        """Test that dialects generate URL prefixes with optional drivers."""
+        assert DatabaseDialect.MYSQL.url_prefix('pymysql') == 'mysql+pymysql://'
+
+    def test_uri_scheme_returns_preferred_scheme(self) -> None:
+        """Test that dialects expose their preferred URI scheme."""
+        assert DatabaseDialect.POSTGRESQL.uri_scheme == 'postgresql'
 
 
 class TestReferentialAction:
