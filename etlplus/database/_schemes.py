@@ -26,6 +26,8 @@ __all__ = [
 DATABASE_SCHEMES: Final[tuple[str, ...]] = (
     'bigquery://',
     'bigquery+',
+    'duckdb://',
+    'duckdb+',
     'mssql://',
     'mssql+',
     'mysql://',
