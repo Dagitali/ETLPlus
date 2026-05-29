@@ -140,6 +140,21 @@ define ECHO_INFO
 	printf "\033[36mℹ\033[0m %s\n" "$(1)"
 endef
 
+define ENSURE_LOCAL_EDITABLE_PATH
+	@site_packages="$$($(PYTHON) -c 'import sysconfig; print(sysconfig.get_path("purelib"))')" && \
+	printf "%s\n" "$(abspath $(PKG_DIR))" > "$$site_packages/etlplus-local-editable.pth"
+	@printf "%s\n" \
+		'#!$(abspath $(PYTHON))' \
+		'import sys' \
+		'sys.path.insert(0, "$(abspath $(PKG_DIR))")' \
+		'from etlplus.cli import main' \
+		"if __name__ == '__main__':" \
+		"    sys.argv[0] = sys.argv[0].removesuffix('.exe')" \
+		'    sys.exit(main())' \
+		> "$(ETLPLUS)"
+	@chmod +x "$(ETLPLUS)"
+endef
+
 define RUN_SPHINX_BUILD
 	@$(PYTHON) -m pip install --no-build-isolation -e $(PKG_DIR)[docs]
 	@find $(DOCS_GENERATED_DIR) -type f -name '*.rst' -delete 2>/dev/null || true
@@ -196,16 +211,17 @@ clean: ## Remove build artifacts and caches
 .PHONY: clean-venv
 clean-venv: ## Remove the virtual environment
 	@rm -rf "$(VENV_DIR)"
-	@$(call ECHO_OK,"Removed venv")
+	@$(call ECHO_OK,Removed venv)
 
 .PHONY: demo-snippets
-demo-snippets: ## Rebuild recorded CLI snippets embedded in DEMO.md
+demo-snippets: install ## Rebuild recorded CLI snippets embedded in DEMO.md
 	@$(PYTHON) tools/update_demo_snippets.py
 	@$(call ECHO_OK,Refreshed demo snippets)
 
 .PHONY: dev
 dev: venv ## Install package + dev tools (pytest, ruff, mypy, etc.)
 	@$(PYTHON) -m pip install -e $(PKG_DIR)[dev]
+	$(call ENSURE_LOCAL_EDITABLE_PATH)
 	@$(call ECHO_OK,Installed etlplus + dev extras)
 
 .PHONY: dist
@@ -235,7 +251,8 @@ docs-linkcheck: venv ## Run Sphinx linkcheck with CI-parity flags against the pu
 .PHONY: file
 file: venv ## Install package + file extras
 	@$(PYTHON) -m pip install -e $(PKG_DIR)[file]
-	@$(call ECHO_OK,"Installed etlplus + file extras")
+	$(call ENSURE_LOCAL_EDITABLE_PATH)
+	@$(call ECHO_OK,Installed etlplus + file extras)
 
 .PHONY: fix
 fix: ## Auto-fix with ruff
@@ -250,7 +267,8 @@ help: ## Show this help
 .PHONY: install
 install: venv ## Install the package (editable) and runtime deps
 	@$(PYTHON) -m pip install -e $(PKG_DIR)
-	@$(call ECHO_OK,"Installed etlplus (editable)")
+	$(call ENSURE_LOCAL_EDITABLE_PATH)
+	@$(call ECHO_OK,Installed etlplus editable)
 
 .PHONY: lint
 lint: ## Run ruff lint checks
@@ -281,11 +299,11 @@ fmt: ## Format code with Ruff fixes plus autopep8 normalization
 	$(shell git ls-files '*.py') || true
 
 .PHONY: run
-run: ## Run the etlplus CLI (dry-run) using $(ENV)
+run: install ## Run the etlplus CLI (dry-run) using $(ENV)
 	@$(ETLPLUS) --env "$(ENV)" --since 2025-09-01 --dry-run
 
 .PHONY: run-now
-run-now: ## Run the etlplus CLI without dry-run (CAUTION: posts to WorkMax)
+run-now: install ## Run the etlplus CLI without dry-run (CAUTION: posts to WorkMax)
 	@$(ETLPLUS) --env "$(ENV)"
 
 .PHONY: show-venv
@@ -303,8 +321,9 @@ test: venv ## Run the default test suite (excluding perf markers)
 .PHONY: test-full
 test-full: venv ## Install dev+file extras and run the default CI-parity test suite
 	@$(PYTHON) -m pip install -e $(PKG_DIR)[dev,file]
+	$(call ENSURE_LOCAL_EDITABLE_PATH)
 	@PYTHONPATH=. $(VENV_BIN)/pytest -m "$(TEST_MARK_EXPRESSION)"
-	@$(call ECHO_OK,"Completed default non-perf test suite")
+	@$(call ECHO_OK,Completed default non-perf test suite)
 
 .PHONY: test-meta
 test-meta: ## Run repository meta guardrail tests only
