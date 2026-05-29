@@ -507,6 +507,9 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/dropbox,emacs,linux,macos,pycharm+all,python,vim,visualstudiocode,windows
 
+# ETLPlus keeps pyproject.toml as canonical package metadata and commits
+# uv.lock as a reproducible CI/development environment snapshot.
+
 ### Read the Docs ###
 
 # Sphinx-generated API docs

@@ -314,6 +314,8 @@ Common commands:
 - Install dependencies:
   - `pip install -e ".[dev]"` (lightweight local development)
   - `pip install -e ".[dev,file]"` (full remaining optional-format CI parity)
+  - `uv sync --locked --extra dev` (locked contributor environment from `uv.lock`)
+  - `uv sync --locked --extra dev --extra file` (locked optional-format CI parity)
 - Run everything:
   - `pytest`
   - `make test-full` (installs `.[dev,file]` and runs pytest)

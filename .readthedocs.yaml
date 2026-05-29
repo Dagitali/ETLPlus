@@ -3,8 +3,22 @@
 #
 # Copyright © 2026 Dagitali LLC. All rights reserved.
 #
-# Read the Docs configuration file for Sphinx projects.
-# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details.
+# Read the Docs configuration for hosted documentation builds.
+#
+# Responsibilities
+# - Define the Read the Docs build environment and Python version.
+# - Build the Sphinx documentation from docs/source/conf.py.
+# - Install the package with documentation extras for hosted builds.
+#
+# Maintainer Notes
+# - Keep the Python version aligned with the default release/docs CI runtime.
+# - Keep hosted docs dependency installation aligned with pyproject.toml
+#   extras.
+# - Keep warning failures enabled so broken references do not publish silently.
+#
+# References
+# - Read the Docs configuration reference: https://docs.readthedocs.io/en/stable/config-file/v2.html
+# - Read the Docs reproducible builds guide: https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
 
 ---
 

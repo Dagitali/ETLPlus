@@ -102,6 +102,8 @@ ETLPlus currently supports Python 3.13 and 3.14.
   tool instead of a package installed into the current environment.
 - Use `pip install -e ".[dev]"` for contributor tooling and `pip install -e ".[file]"` when you need
   the remaining scientific and specialty format dependencies.
+- Use `uv sync --locked --extra dev` when you want the committed `uv.lock` development snapshot
+  instead of an unconstrained local resolver run.
 - Use `pip install -e ".[storage]"` when you want remote storage backends for `s3://`,
   `azure-blob://`, `abfs://`, or `hdfs://` URIs through `etlplus.storage` and `etlplus.file.File`.
 - Treat local paths, localhost databases, and Docker Compose helpers as development conveniences;
