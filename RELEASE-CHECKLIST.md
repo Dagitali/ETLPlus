@@ -107,8 +107,8 @@ release.
 - Database DDL/engine/ORM/schema helpers and storage enum/location helpers plus concrete storage
   backend implementations now follow the same package-facade pattern.
 - The stable database facade now treats BigQuery and Snowflake as database dialect identifiers for
-  connection-scheme recognition, and exposes generated database URL/DSN scheme helpers alongside the
-  compatibility `DATABASE_SCHEMES` tuple.
+  connection-scheme recognition, and exposes `DATABASE_SCHEMES` plus URL/DSN predicate helpers while
+  keeping generated scheme construction internal.
 - Connector config/type/enum helpers now also live behind the `etlplus.connector` package facade.
 - The top-level `__version__` module and the `etlplus.cli` entrypoint module, `etlplus.file`
   core/enums helpers, and `etlplus.api` utility helpers now also follow the underscore-prefixed
