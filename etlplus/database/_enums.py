@@ -318,8 +318,10 @@ def infer_database_dialect_and_driver(
     scheme, delimiter, driver = scheme.partition('+')
 
     if delimiter:
+        if not driver:
+            return None, None
         dialect = _DATABASE_URI_SCHEME_DIALECTS.get(scheme)
-        return (dialect, driver or None) if dialect is not None else (None, None)
+        return (dialect, driver) if dialect is not None else (None, None)
     if '://' in normalized:
         return _DATABASE_URI_SCHEME_DIALECTS.get(scheme), None
     return DatabaseDialect.try_coerce(normalized), None
