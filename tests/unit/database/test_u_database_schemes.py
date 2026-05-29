@@ -10,7 +10,6 @@ import pytest
 
 from etlplus.database import DATABASE_SCHEMES
 from etlplus.database import DatabaseDialect
-from etlplus.database import database_schemes
 from etlplus.database import is_database_dsn
 from etlplus.database import is_database_url
 
@@ -43,7 +42,6 @@ class TestDatabaseSchemes:
 
     def test_database_schemes_are_generated_from_dialects(self) -> None:
         """Test database scheme constants come from dialect scheme metadata."""
-        assert DATABASE_SCHEMES == database_schemes()
         assert DATABASE_SCHEMES == tuple(
             prefix
             for dialect in DatabaseDialect
