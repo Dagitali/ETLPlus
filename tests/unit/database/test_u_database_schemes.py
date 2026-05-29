@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.database._schemes`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 
 from etlplus.database import DATABASE_SCHEMES
@@ -24,21 +26,41 @@ class TestDatabaseSchemes:
     """Unit tests for database scheme helpers."""
 
     @pytest.mark.parametrize(
-        ('value', 'expected'),
+        ('predicate', 'value', 'expected'),
         [
-            pytest.param('sqlite+pysqlite', True, id='driver-dsn'),
-            pytest.param('duckdb+duckdb_engine', True, id='duckdb-driver-dsn'),
-            pytest.param('sqlite:///source.db', False, id='url-not-dsn'),
-            pytest.param('payload.csv', False, id='file-path'),
+            (is_database_dsn, 'sqlite+pysqlite', True),
+            (is_database_dsn, 'duckdb+duckdb_engine', True),
+            (is_database_dsn, 'sqlite:///source.db', False),
+            (is_database_dsn, 'payload.csv', False),
+            (is_database_dsn, '', False),
+            (is_database_dsn, 'https://example.com/data.json', False),
+            (is_database_url, 'postgres://user@host/db', True),
+            (is_database_url, 'postgresql+psycopg://user@host/db', True),
+            (is_database_url, 'duckdb:///warehouse.duckdb', True),
+            (is_database_url, 'duckdb+duckdb_engine:///warehouse.duckdb', True),
+            (is_database_url, 'mysql+pymysql://user@host/db', True),
+            (is_database_url, 'sqlite:///source.db', True),
+            (is_database_url, 'sqlite+pysqlite:///:memory:', True),
+            (is_database_url, 'mssql+pyodbc://user@host/db', True),
+            (is_database_url, 'oracle+cx_oracle://user@host/db', True),
+            (is_database_url, 'snowflake://user@account/db/schema', True),
+            (is_database_url, 'bigquery://project/dataset', True),
+            (is_database_url, '', False),
+            (is_database_url, 'payload.csv', False),
+            (is_database_url, 'https://example.com/data.json', False),
+            (is_database_url, 'sqlite+pysqlite', False),
+            (is_database_url, 'postgresql+://user@host/db', False),
         ],
+        ids=lambda param: getattr(param, '__name__', None),
     )
-    def test_database_dsns_are_recognized(
+    def test_database_scheme_predicates(
         self,
+        predicate: Callable[[str], bool],
         value: str,
         expected: bool,
     ) -> None:
-        """Test database DSN detection stays distinct from URL detection."""
-        assert is_database_dsn(value) is expected
+        """Test database DSN and URL detection."""
+        assert predicate(value) is expected
 
     def test_database_schemes_are_generated_from_dialects(self) -> None:
         """Test database scheme constants come from dialect scheme metadata."""
@@ -47,61 +69,3 @@ class TestDatabaseSchemes:
             for dialect in DatabaseDialect
             for prefix in dialect.scheme_prefixes()
         )
-
-    @pytest.mark.parametrize(
-        'value',
-        [
-            pytest.param('postgres://user@host/db', id='postgres'),
-            pytest.param('postgresql+psycopg://user@host/db', id='postgresql-driver'),
-            pytest.param('duckdb:///warehouse.duckdb', id='duckdb'),
-            pytest.param(
-                'duckdb+duckdb_engine:///warehouse.duckdb',
-                id='duckdb-driver',
-            ),
-            pytest.param('mysql+pymysql://user@host/db', id='mysql-driver'),
-            pytest.param('sqlite:///source.db', id='sqlite'),
-            pytest.param('sqlite+pysqlite:///:memory:', id='sqlite-driver'),
-            pytest.param('mssql+pyodbc://user@host/db', id='mssql-driver'),
-            pytest.param('oracle+cx_oracle://user@host/db', id='oracle-driver'),
-            pytest.param('snowflake://user@account/db/schema', id='snowflake'),
-            pytest.param('bigquery://project/dataset', id='bigquery'),
-        ],
-    )
-    def test_database_urls_are_recognized(
-        self,
-        value: str,
-    ) -> None:
-        """Test known database URL schemes are recognized."""
-        assert is_database_url(value) is True
-
-    @pytest.mark.parametrize(
-        'value',
-        [
-            pytest.param('', id='empty'),
-            pytest.param('payload.csv', id='file-path'),
-            pytest.param('https://example.com/data.json', id='api-url'),
-        ],
-    )
-    def test_non_database_dsns_are_rejected(
-        self,
-        value: str,
-    ) -> None:
-        """Test non-database DSN values are not recognized."""
-        assert is_database_dsn(value) is False
-
-    @pytest.mark.parametrize(
-        'value',
-        [
-            pytest.param('', id='empty'),
-            pytest.param('payload.csv', id='file-path'),
-            pytest.param('https://example.com/data.json', id='api-url'),
-            pytest.param('sqlite+pysqlite', id='driver-name-without-url'),
-            pytest.param('postgresql+://user@host/db', id='empty-driver'),
-        ],
-    )
-    def test_non_database_urls_are_rejected(
-        self,
-        value: str,
-    ) -> None:
-        """Test non-database URL values are not recognized."""
-        assert is_database_url(value) is False
