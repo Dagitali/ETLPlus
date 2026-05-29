@@ -115,7 +115,8 @@ def _spreadsheet_dependency_spec(
     Returns
     -------
     SpreadsheetDependencySpec | None
-        The dependency metadata for the specified engine, or None if not found.
+        The dependency metadata for the specified engine if found, else
+        ``None``.
     """
     if engine is None:
         return None

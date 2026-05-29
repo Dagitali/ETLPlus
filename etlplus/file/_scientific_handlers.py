@@ -97,8 +97,8 @@ class SingleDatasetTabularScientificReadMixin(
         pandas : Any
             The pandas module, passed via dependency injection.
         pyreadstat : Any | None
-            The pyreadstat module, passed via dependency injection when
-            required by the mixin. Will be None if not required.
+            The pyreadstat module, passed via dependency injection if required
+            by the mixin, else ``None``.
         options : ReadOptions | None
             Optional read options.
 
@@ -199,8 +199,8 @@ class SingleDatasetTabularScientificReadWriteMixin(
         pandas : Any
             The pandas module, passed via dependency injection.
         pyreadstat : Any | None
-            The pyreadstat module, passed via dependency injection when
-            required by the mixin. Will be None if not required.
+            The pyreadstat module, passed via dependency injection if required
+            by the mixin, else ``None``.
         options : WriteOptions | None
             Optional write options.
         """
