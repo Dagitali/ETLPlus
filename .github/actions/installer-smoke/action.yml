@@ -46,11 +46,18 @@ runs:
       shell: bash
       run: |
         python -m venv "${{ inputs.venv-path }}"
-        "${{ inputs.venv-path }}/bin/python" -m pip install --upgrade pip
-        "${{ inputs.venv-path }}/bin/python" -m pip install ${{ inputs.artifact-wheel }}
-        "${{ inputs.venv-path }}/bin/etlplus" --version
-        "${{ inputs.venv-path }}/bin/etlplus" --help
-        "${{ inputs.venv-path }}/bin/etlplus" check --help
+        if [[ "${RUNNER_OS}" == "Windows" ]]; then
+          venv_python="${{ inputs.venv-path }}/Scripts/python.exe"
+          etlplus_bin="${{ inputs.venv-path }}/Scripts/etlplus.exe"
+        else
+          venv_python="${{ inputs.venv-path }}/bin/python"
+          etlplus_bin="${{ inputs.venv-path }}/bin/etlplus"
+        fi
+        "$venv_python" -m pip install --upgrade pip
+        "$venv_python" -m pip install ${{ inputs.artifact-wheel }}
+        "$etlplus_bin" --version
+        "$etlplus_bin" --help
+        "$etlplus_bin" check --help
 
     - name: Smoke-test pipx wheel install
       shell: bash
@@ -60,7 +67,11 @@ runs:
         mkdir -p "$PIPX_HOME" "$PIPX_BIN_DIR"
         python -m pip install --upgrade pipx
         python -m pipx install ${{ inputs.artifact-wheel }}
-        etlplus_bin="${PIPX_BIN_DIR}/etlplus"
+        if [[ "${RUNNER_OS}" == "Windows" ]]; then
+          etlplus_bin="${PIPX_BIN_DIR}/etlplus.exe"
+        else
+          etlplus_bin="${PIPX_BIN_DIR}/etlplus"
+        fi
         "$etlplus_bin" --version
         "$etlplus_bin" --help
         "$etlplus_bin" check --help
@@ -74,7 +85,11 @@ runs:
         mkdir -p "$UV_TOOL_DIR" "$UV_TOOL_BIN_DIR"
         python -m pip install --upgrade uv
         uv tool install --force ${{ inputs.artifact-wheel }}
-        etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus"
+        if [[ "${RUNNER_OS}" == "Windows" ]]; then
+          etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus.exe"
+        else
+          etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus"
+        fi
         "$etlplus_bin" --version
         "$etlplus_bin" --help
         "$etlplus_bin" check --help
