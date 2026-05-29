@@ -225,7 +225,7 @@ def response_json_or_text(
     Returns
     -------
     Any
-        The JSON-decoded response content if available, otherwise the raw text
+        The JSON-decoded response content if available, else the raw text
         content.
     """
     try:

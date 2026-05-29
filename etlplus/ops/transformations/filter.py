@@ -89,7 +89,7 @@ def _eval_condition(
     Returns
     -------
     bool
-        True if the condition is met; False if not.
+        ``True`` if the condition is met, else ``False``.
 
     Raises
     ------

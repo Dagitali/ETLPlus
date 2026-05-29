@@ -68,16 +68,30 @@ class PaginationClient:
     fetch: FetchPageCallable
     rate_limiter: RateLimiter | None = None
 
-    # -- Properties -- #
+    # -- Getters -- #
 
     @property
     def is_paginated(self) -> bool:
-        """Return ``True`` when a known pagination type is configured."""
+        """
+        Return ``True`` when a known pagination type is configured.
+
+        Returns
+        -------
+        bool
+            ``True`` when a known pagination type is configured.
+        """
         return self.pagination_type is not None
 
     @property
     def pagination_type(self) -> PaginationType | None:
-        """Return the normalized pagination type when available."""
+        """
+        Return the normalized pagination type when available.
+
+        Returns
+        -------
+        PaginationType | None
+            Normalized pagination type or ``None`` if not available.
+        """
         if isinstance(self.pagination, PaginationConfig):
             return self.pagination.type
         return Paginator.detect_type(

@@ -40,7 +40,7 @@ def _load_typer_click_exceptions() -> ModuleType:
     -------
     ModuleType
         Typer's vendored Click exception module on Python/Typer combinations
-        that expose it, otherwise the public Click exception module.
+        that expose it, else the public Click exception module.
     """
     with contextlib.suppress(ModuleNotFoundError):
         return importlib.import_module('typer._click.exceptions')

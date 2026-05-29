@@ -23,20 +23,12 @@ __all__ = [
 ]
 
 
-# SECTION: INTERNAL FUNCTIONS ============================================== #
-
-
-def _database_schemes() -> tuple[str, ...]:
-    """Return database URL and driver-DSN prefixes for supported dialects."""
-    return tuple(
-        prefix for dialect in DatabaseDialect for prefix in dialect.scheme_prefixes()
-    )
-
-
 # SECTION: CONSTANTS ======================================================== #
 
 
-DATABASE_SCHEMES: Final[tuple[str, ...]] = _database_schemes()
+DATABASE_SCHEMES: Final[tuple[str, ...]] = tuple(
+    prefix for dialect in DatabaseDialect for prefix in dialect.scheme_prefixes()
+)
 
 
 # SECTION: FUNCTIONS ======================================================== #

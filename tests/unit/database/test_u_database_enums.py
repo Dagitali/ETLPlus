@@ -102,6 +102,14 @@ class TestInferDatabaseDialectAndDriver:
                 (DatabaseDialect.SQLITE, 'pysqlite'),
             ),
             (
+                'postgresql+://user@host/db',
+                (None, None),
+            ),
+            (
+                'postgresql+psycopg+extra://user@host/db',
+                (None, None),
+            ),
+            (
                 'https://example.com/data.json',
                 (None, None),
             ),

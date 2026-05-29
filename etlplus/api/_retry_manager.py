@@ -208,7 +208,7 @@ class RetryManager:
             ),
         )
 
-    # -- Properties -- #
+    # -- Getters -- #
 
     @property
     def backoff(self) -> float:

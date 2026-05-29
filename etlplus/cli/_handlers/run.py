@@ -293,7 +293,7 @@ class RunHistoryPolicy:
         Returns
         -------
         str | None
-            The value of the trailing field if present, otherwise ``None``.
+            The value of the trailing field if present, else ``None``.
         """
         for item in reversed(executed_jobs):
             if not isinstance(item, Mapping):
@@ -362,7 +362,7 @@ class RunHistoryPolicy:
         Returns
         -------
         HistoryStore | None
-            The local history store if persistence is enabled, otherwise ``None``.
+            The local history store if persistence is enabled, else ``None``.
         """
         if not settings.enabled:
             return None
@@ -393,7 +393,7 @@ class RunHistoryPolicy:
         Returns
         -------
         JSONData | None
-            The persisted run summary shape if available, ``None`` if not.
+            The persisted run summary shape if available, else ``None``.
         """
         if result is None:
             return None

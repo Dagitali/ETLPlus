@@ -160,7 +160,7 @@ class ValueParser:
         Returns
         -------
         str | None
-            The string value if present, otherwise None.
+            The string value if present, else ``None``.
         """
         if value is None:
             return None
@@ -197,7 +197,7 @@ class MappingFieldParser(ValueParser):
         Returns
         -------
         str | None
-            The string value if present and valid, otherwise None.
+            The string value if present and valid, else ``None``.
         """
         return value if isinstance(value := data.get(key), str) else None
 

@@ -160,7 +160,7 @@ def _normalize_specs(
     Returns
     -------
     list[StepSpec]
-        An empty list for ``None``, otherwise a list form of *config*.
+        An empty list for ``None``, else a list form of *config*.
     """
     if config is None:
         return []

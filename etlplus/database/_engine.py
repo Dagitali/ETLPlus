@@ -18,7 +18,6 @@ from sqlalchemy.orm import sessionmaker
 
 from ..file import File
 from ..utils import MappingParser
-from ..utils._types import StrAnyMap
 from ..utils._types import StrPath
 
 # SECTION: EXPORTS ========================================================== #
@@ -48,32 +47,6 @@ DATABASE_URL: Final[str] = (
     or os.getenv('DATABASE_DSN')
     or 'sqlite+pysqlite:///:memory:'
 )
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _resolve_url_from_mapping(
-    cfg: StrAnyMap,
-) -> str | None:
-    """
-    Return a URL/DSN from a mapping if present.
-
-    Parameters
-    ----------
-    cfg : StrAnyMap
-        Configuration mapping potentially containing connection fields.
-
-    Returns
-    -------
-    str | None
-        Resolved URL/DSN string, if present.
-    """
-    return MappingParser.first_non_empty_str(
-        cfg,
-        _CONNECTION_KEYS,
-        nested_key='default',
-    )
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -129,7 +102,11 @@ def load_database_url_from_config(
     if not isinstance(entry, Mapping):
         raise TypeError(f'Database entry "{target}" must be a mapping')
 
-    url = _resolve_url_from_mapping(entry)
+    url = MappingParser.first_non_empty_str(
+        entry,
+        _CONNECTION_KEYS,
+        nested_key='default',
+    )
     if not url:
         raise ValueError(
             f'Database entry "{target}" lacks connection_string/url/dsn',

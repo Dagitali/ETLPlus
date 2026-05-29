@@ -538,7 +538,7 @@ def _type_matches(
     Returns
     -------
     bool
-        ``True`` if the value matches the expected type; ``False`` if not.
+        ``True`` if the value matches the expected type, else ``False``.
     """
     match expected:
         case 'array':
