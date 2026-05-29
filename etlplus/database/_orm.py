@@ -171,28 +171,6 @@ def _parse_type_params(params_raw: str | None) -> tuple[int, ...]:
     return tuple(int(p) for p in params if p.isdecimal())
 
 
-def _table_kwargs(
-    spec: TableSpec,
-) -> dict[str, str]:
-    """
-    Generate table keyword arguments based on the table specification.
-
-    Parameters
-    ----------
-    spec : TableSpec
-        Table specification.
-
-    Returns
-    -------
-    dict[str, str]
-        Dictionary of table keyword arguments.
-    """
-    kwargs: dict[str, str] = {}
-    if spec.schema_name:
-        kwargs['schema'] = spec.schema_name
-    return kwargs
-
-
 def _append_table_constraints(
     table_args: list[object],
     spec: TableSpec,
@@ -319,7 +297,7 @@ def build_models(
 
     for spec in specs:
         table_args: list[object] = []
-        table_kwargs = _table_kwargs(spec)
+        table_kwargs = {'schema': spec.schema_name} if spec.schema_name else {}
         pk_cols = set(spec.primary_key.columns) if spec.primary_key else set()
         _append_table_constraints(table_args, spec)
         fk_by_column = _single_column_foreign_keys(spec)
