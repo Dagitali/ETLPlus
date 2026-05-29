@@ -11,6 +11,7 @@ import pytest
 from etlplus.database._enums import DatabaseDialect
 from etlplus.database._enums import ReferentialAction
 from etlplus.database._enums import SqlTypeAffinity
+from etlplus.database._enums import infer_database_dialect_and_driver
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -72,6 +73,47 @@ class TestDatabaseDialect:
     def test_uri_scheme_returns_preferred_scheme(self) -> None:
         """Test that dialects expose their preferred URI scheme."""
         assert DatabaseDialect.POSTGRESQL.uri_scheme == 'postgresql'
+
+
+class TestInferDatabaseDialectAndDriver:
+    """Unit tests for database dialect and driver inference."""
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            (
+                DatabaseDialect.SQLITE,
+                (DatabaseDialect.SQLITE, None),
+            ),
+            (
+                'Postgres',
+                (DatabaseDialect.POSTGRESQL, None),
+            ),
+            (
+                'postgres://user@host/db',
+                (DatabaseDialect.POSTGRESQL, None),
+            ),
+            (
+                'postgresql+psycopg://user@host/db',
+                (DatabaseDialect.POSTGRESQL, 'psycopg'),
+            ),
+            (
+                'sqlite+pysqlite',
+                (DatabaseDialect.SQLITE, 'pysqlite'),
+            ),
+            (
+                'https://example.com/data.json',
+                (None, None),
+            ),
+        ],
+    )
+    def test_infers_database_dialect_and_driver(
+        self,
+        value: object,
+        expected: tuple[DatabaseDialect | None, str | None],
+    ) -> None:
+        """Test database dialect and driver inference from common inputs."""
+        assert infer_database_dialect_and_driver(value) == expected
 
 
 class TestReferentialAction:
