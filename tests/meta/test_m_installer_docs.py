@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any
 
 import pytest
+import yaml
 
 from tests.pytest_shared_support import REPO_ROOT
 
@@ -17,6 +19,7 @@ from tests.pytest_shared_support import REPO_ROOT
 
 
 type InstallerContract = tuple[str, re.Pattern[str]]
+type InstallerStep = tuple[str, str]
 
 
 # SECTION: CONSTANTS ======================================================== #
@@ -88,6 +91,20 @@ def installer_smoke_action_text_fixture() -> str:
     return INSTALLER_SMOKE_ACTION_PATH.read_text(encoding='utf-8')
 
 
+@pytest.fixture(name='installer_smoke_steps', scope='module')
+def installer_smoke_steps_fixture() -> tuple[InstallerStep, ...]:
+    """Return installer smoke step names and scripts from the composite action."""
+    action_data: dict[str, Any] = yaml.safe_load(
+        INSTALLER_SMOKE_ACTION_PATH.read_text(encoding='utf-8'),
+    )
+    steps = action_data['runs']['steps']
+    return tuple(
+        (step['name'], step['run'])
+        for step in steps
+        if step.get('name', '').startswith('Smoke-test ')
+    )
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -114,6 +131,53 @@ def test_cross_platform_smoke_checks_cli_help_surfaces(snippet: str) -> None:
     workflow_text = CI_WORKFLOW_PATH.read_text(encoding='utf-8')
 
     assert snippet in workflow_text
+
+
+@pytest.mark.parametrize(
+    ('step_name', 'expected_bin'),
+    [
+        pytest.param(
+            'Smoke-test pip wheel install',
+            '"$etlplus_bin"',
+            id='pip',
+        ),
+        pytest.param(
+            'Smoke-test pipx wheel install',
+            '"$etlplus_bin"',
+            id='pipx',
+        ),
+        pytest.param(
+            'Smoke-test uv tool wheel install',
+            '"$etlplus_bin"',
+            id='uv',
+        ),
+    ],
+)
+def test_installer_smoke_checks_stable_cli_surfaces(
+    installer_smoke_steps: tuple[InstallerStep, ...],
+    step_name: str,
+    expected_bin: str,
+) -> None:
+    """Test each installer verifies stable CLI version and help surfaces."""
+    scripts_by_name = dict(installer_smoke_steps)
+    script = scripts_by_name[step_name]
+
+    assert f'{expected_bin} --version' in script
+    assert f'{expected_bin} --help' in script
+    assert f'{expected_bin} check --help' in script
+
+
+def test_installer_smoke_keeps_expected_supported_installer_steps(
+    installer_smoke_steps: tuple[InstallerStep, ...],
+) -> None:
+    """Test release smoke continues to cover all supported installer paths."""
+    step_names = [name for name, _script in installer_smoke_steps]
+
+    assert step_names == [
+        'Smoke-test pip wheel install',
+        'Smoke-test pipx wheel install',
+        'Smoke-test uv tool wheel install',
+    ]
 
 
 def test_installer_smoke_resolves_pip_venv_paths_per_runner_os(
