@@ -242,6 +242,6 @@ class MappingParser:
         Returns
         -------
         StrAnyMap | None
-            The input value if it is a mapping; ``None`` if not.
+            The input value if it is a mapping;, else ``None``.
         """
         return value if isinstance(value, Mapping) else None

@@ -73,7 +73,7 @@ def materialize_file_payload(
     Returns
     -------
     JSONData | object
-        The materialized payload if a file was read, otherwise the original
+        The materialized payload if a file was read, else the original
         source.
 
     Raises
