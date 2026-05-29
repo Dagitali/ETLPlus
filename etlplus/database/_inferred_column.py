@@ -43,7 +43,7 @@ class InferredColumn:
     type_affinity: SqlTypeAffinity
     nullable: bool = True
 
-    # -- Properties -- #
+    # -- Getters -- #
 
     @property
     def odbc_type(self) -> str:

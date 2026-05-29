@@ -164,7 +164,7 @@ def write_json_output(
     Returns
     -------
     bool
-        True if data was written to disk; False if not.
+        ``True`` if data was written to disk, else ``False``.
     """
     if not PathParser.is_file_target(output_path):
         return False

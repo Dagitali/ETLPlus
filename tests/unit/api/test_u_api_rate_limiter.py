@@ -134,7 +134,9 @@ class TestResolveSleepSeconds:
         )
 
     def test_rate_limit_fallback(self) -> None:
-        """Test that fallback to rate limit config when override is None."""
+        """
+        Test that fallback to rate limit config when override is ``None``.
+        """
         assert (
             RateLimiter.resolve_sleep_seconds(
                 rate_limit={'max_per_sec': 2},

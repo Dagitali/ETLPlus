@@ -163,7 +163,7 @@ class ReadinessBaseMixin:
         Returns
         -------
         bool
-            ``True`` if the module is available, ``False`` if not.
+            ``True`` if the module is available, else ``False``.
         """
         return safe_module_available(
             module_name,

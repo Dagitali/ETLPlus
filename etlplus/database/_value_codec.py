@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from datetime import date
 from datetime import datetime
 from datetime import time
-from decimal import Decimal
 from typing import Any
+from typing import Final
 
 from ..utils import JsonCodec
 from ..utils import finite_decimal_or_none
@@ -24,6 +24,15 @@ __all__ = [
     # Classes
     'ValueCodec',
 ]
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_JSON_CODEC: Final[JsonCodec] = JsonCodec(
+    compact=False,
+    default_serializer=JsonCodec.default,
+)
 
 
 # SECTION: CLASSES ========================================================== #
@@ -87,27 +96,24 @@ class ValueCodec:
             case SqlTypeAffinity.BINARY:
                 return self._to_blob(value)
             case SqlTypeAffinity.JSON:
-                return JsonCodec(
-                    compact=False,
-                    default_serializer=JsonCodec.default,
-                ).serialize(value)
+                return _JSON_CODEC.serialize(value)
             case _:
                 return self._to_text(value)
 
     # -- Internal Instance Methods -- #
 
     def _to_int(self, v: Any) -> int | None:
-        value = self._decimal_or_none(v)
+        value = finite_decimal_or_none(v)
         return int(value) if value is not None else None
 
     def _to_real(self, v: Any) -> float | None:
-        value = self._decimal_or_none(v)
+        value = finite_decimal_or_none(v)
         return float(value) if value is not None else None
 
     def _to_numeric_text(self, v: Any) -> str | None:
         if isinstance(v, str):
             return v
-        value = self._decimal_or_none(v)
+        value = finite_decimal_or_none(v)
         if value is not None:
             return str(value)
         return None
@@ -115,10 +121,7 @@ class ValueCodec:
     def _to_blob(self, v: Any) -> bytes:
         if isinstance(v, (bytes, bytearray, memoryview)):
             return bytes(v)
-        enc = JsonCodec(
-            compact=False,
-            default_serializer=JsonCodec.default,
-        ).serialize(v)
+        enc = _JSON_CODEC.serialize(v)
         return enc.encode('utf-8')
 
     def _to_text(self, value: Any) -> str:
@@ -127,18 +130,6 @@ class ValueCodec:
             case datetime() | date() | time():
                 return JsonCodec.isoformat(value)
             case list() | dict() | tuple() | set() if self.keep_unknown_as_json:
-                return JsonCodec(
-                    compact=False,
-                    default_serializer=JsonCodec.default,
-                ).serialize(value)
+                return _JSON_CODEC.serialize(value)
             case _:
                 return str(value)
-
-    # -- Internal Static Methods -- #
-
-    @staticmethod
-    def _decimal_or_none(
-        value: Any,
-    ) -> Decimal | None:
-        """Return a finite :class:`Decimal` for numeric-like values."""
-        return finite_decimal_or_none(value)

@@ -180,16 +180,21 @@ class RateLimitConfig(BoundsWarningsMixin):
     sleep_seconds: float | None = None
     max_per_sec: float | None = None
 
-    # -- Properties -- #
+    # -- Getters -- #
 
     @property
     def enabled(self) -> bool:
         """
         Whether this configuration enables rate limiting.
 
-        The configuration is considered enabled when either
-        ``sleep_seconds`` or ``max_per_sec`` contains a positive,
-        numeric value after coercion.
+        The configuration is considered enabled if either ``sleep_seconds`` or
+        ``max_per_sec`` contains a positive, numeric value after coercion.
+
+        Returns
+        -------
+        bool
+            ``True`` if this configuration enables rate limiting, else
+            ``False``.
         """
         sleep, per_sec = _normalized_rate_values(self.as_mapping())
         return sleep is not None or per_sec is not None
