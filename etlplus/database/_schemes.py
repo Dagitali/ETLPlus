@@ -18,16 +18,15 @@ __all__ = [
     # Constants
     'DATABASE_SCHEMES',
     # Functions
-    'database_schemes',
     'is_database_dsn',
     'is_database_url',
 ]
 
 
-# SECTION: FUNCTIONS ======================================================== #
+# SECTION: INTERNAL FUNCTIONS ============================================== #
 
 
-def database_schemes() -> tuple[str, ...]:
+def _database_schemes() -> tuple[str, ...]:
     """Return database URL and driver-DSN prefixes for supported dialects."""
     return tuple(
         prefix
@@ -39,7 +38,10 @@ def database_schemes() -> tuple[str, ...]:
 # SECTION: CONSTANTS ======================================================== #
 
 
-DATABASE_SCHEMES: Final[tuple[str, ...]] = database_schemes()
+DATABASE_SCHEMES: Final[tuple[str, ...]] = _database_schemes()
+
+
+# SECTION: FUNCTIONS ======================================================== #
 
 
 def is_database_dsn(
