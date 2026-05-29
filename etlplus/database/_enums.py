@@ -17,6 +17,8 @@ __all__ = [
     'DatabaseDialect',
     'ReferentialAction',
     'SqlTypeAffinity',
+    # Functions
+    'infer_database_dialect_and_driver',
 ]
 
 
@@ -274,3 +276,52 @@ class SqlTypeAffinity(CoercibleStrEnum):
             'timestamp': 'datetime',
             'varchar': 'text',
         }
+
+
+# SECTION: INTERNAL CONSTANTS ============================================== #
+
+
+_DATABASE_URI_SCHEME_DIALECTS: dict[str, DatabaseDialect] = {
+    scheme: dialect
+    for dialect in DatabaseDialect
+    for scheme in (*dialect.uri_scheme_aliases, dialect.uri_scheme)
+}
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def infer_database_dialect_and_driver(
+    value: object,
+) -> tuple[DatabaseDialect | None, str | None]:
+    """
+    Infer a database dialect and optional driver from a dialect, URL, or DSN.
+
+    Parameters
+    ----------
+    value : object
+        A database dialect, URL, SQLAlchemy-style dialect+driver DSN, or
+        dialect-like string.
+
+    Returns
+    -------
+    tuple[DatabaseDialect | None, str | None]
+        The inferred database dialect and optional driver name.
+    """
+    if isinstance(value, DatabaseDialect):
+        return value, None
+
+    text = str(value).strip()
+    if not text:
+        return None, None
+
+    normalized = text.lower()
+    scheme = normalized.split('://', maxsplit=1)[0]
+    scheme, delimiter, driver = scheme.partition('+')
+
+    if delimiter:
+        dialect = _DATABASE_URI_SCHEME_DIALECTS.get(scheme)
+        return (dialect, driver or None) if dialect is not None else (None, None)
+    if '://' in normalized:
+        return _DATABASE_URI_SCHEME_DIALECTS.get(scheme), None
+    return DatabaseDialect.try_coerce(normalized), None
