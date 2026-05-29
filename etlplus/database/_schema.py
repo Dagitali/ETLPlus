@@ -47,7 +47,15 @@ __all__ = [
 
 
 class _StrictDatabaseModel(BaseModel):
-    """Base model for database specs with strict field validation."""
+
+    """
+    Base model for database specs with strict field validation.
+
+    Class Attributes
+    ----------------
+    model_config : ConfigDict
+        Pydantic model configuration.
+    """
 
     model_config = ConfigDict(extra='forbid')
 
@@ -71,8 +79,6 @@ class ColumnSpec(_StrictDatabaseModel):
 
     Attributes
     ----------
-    model_config : ClassVar[ConfigDict]
-        Pydantic model configuration.
     name : NonEmptyStr
         Unquoted column name.
     type : NonEmptyStr
@@ -80,13 +86,13 @@ class ColumnSpec(_StrictDatabaseModel):
     nullable : bool
         True if NULL values are allowed.
     default : str | None
-        Default value expression, or None if no default.
+        Default value expression, or ``None`` if no default.
     identity : IdentitySpec | None
-        Identity specification, or None if not an identity column.
+        Identity specification, or ``None`` if not an identity column.
     check : str | None
-        Check constraint expression, or None if no check constraint.
+        Check constraint expression, or ``None`` if no check constraint.
     enum : list[str] | None
-        List of allowed string values for enum-like columns, or None.
+        List of allowed string values for enum-like columns, or ``None``.
     unique : bool
         True if the column has a UNIQUE constraint.
     """
@@ -107,8 +113,6 @@ class ForeignKeySpec(_ColumnListModel):
 
     Attributes
     ----------
-    model_config : ClassVar[ConfigDict]
-        Pydantic model configuration.
     columns : NonEmptyStrList
         List of local column names.
     ref_table : NonEmptyStr
@@ -116,7 +120,7 @@ class ForeignKeySpec(_ColumnListModel):
     ref_columns : NonEmptyStrList
         List of referenced column names.
     ondelete : str | None
-        ON DELETE action, or None.
+        ON DELETE action, or ``None``.
     """
 
     columns: NonEmptyStrList
@@ -154,8 +158,6 @@ class IdentitySpec(_StrictDatabaseModel):
 
     Attributes
     ----------
-    model_config : ClassVar[ConfigDict]
-        Pydantic model configuration.
     seed : int | None
         Identity seed value (default: 1).
     increment : int | None
@@ -172,8 +174,6 @@ class IndexSpec(_ColumnListModel):
 
     Attributes
     ----------
-    model_config : ClassVar[ConfigDict]
-        Pydantic model configuration.
     name : NonEmptyStr
         Index name.
     columns : NonEmptyStrList
@@ -196,10 +196,8 @@ class PrimaryKeySpec(_ColumnListModel):
 
     Attributes
     ----------
-    model_config : ClassVar[ConfigDict]
-        Pydantic model configuration.
     name : str | None
-        Primary key constraint name, or None if unnamed.
+        Primary key constraint name, or ``None`` if unnamed.
     columns : NonEmptyStrList
         List of column names included in the primary key.
     """
@@ -214,10 +212,8 @@ class UniqueConstraintSpec(_ColumnListModel):
 
     Attributes
     ----------
-    model_config : ClassVar[ConfigDict]
-        Pydantic model configuration.
     name : str | None
-        Unique constraint name, or None if unnamed.
+        Unique constraint name, or ``None`` if unnamed.
     columns : NonEmptyStrList
         List of column names included in the unique constraint.
     """
@@ -232,18 +228,16 @@ class TableSpec(_StrictDatabaseModel):
 
     Attributes
     ----------
-    model_config : ClassVar[ConfigDict]
-        Pydantic model configuration.
     table : NonEmptyStr
         Table name.
     schema_name : NonEmptyStr | None
-        Schema name, or None if not specified.
+        Schema name, or ``None`` if not specified.
     create_schema : bool
         Whether to create the schema if it does not exist.
     columns : Annotated[list[ColumnSpec], Field(min_length=1)]
         List of column specifications.
     primary_key : PrimaryKeySpec | None
-        Primary key specification, or None if no primary key.
+        Primary key specification, or ``None`` if no primary key.
     unique_constraints : list[UniqueConstraintSpec]
         List of unique constraint specifications.
     indexes : list[IndexSpec]
