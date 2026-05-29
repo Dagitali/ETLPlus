@@ -47,7 +47,6 @@ __all__ = [
 
 
 class _StrictDatabaseModel(BaseModel):
-
     """
     Base model for database specs with strict field validation.
 

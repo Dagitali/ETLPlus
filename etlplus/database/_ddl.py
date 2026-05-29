@@ -197,9 +197,8 @@ def _template_text_from_override_payload(
     match payload:
         case [first, *_]:
             if (
-                (template_mapping := MappingParser.optional(first)) is not None
-                and isinstance(template_mapping.get('template'), str)
-            ):
+                template_mapping := MappingParser.optional(first)
+            ) is not None and isinstance(template_mapping.get('template'), str):
                 return template_mapping['template']
     raise TypeError('JINJA2 template payload must include text')
 
