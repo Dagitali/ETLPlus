@@ -50,6 +50,7 @@ class TestDatabaseSchemes:
             (is_database_url, 'https://example.com/data.json', False),
             (is_database_url, 'sqlite+pysqlite', False),
             (is_database_url, 'postgresql+://user@host/db', False),
+            (is_database_url, 'postgresql+psycopg+extra://user@host/db', False),
         ],
         ids=lambda param: getattr(param, '__name__', None),
     )
