@@ -10,7 +10,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Annotated
-from typing import ClassVar
 from typing import Self
 
 from pydantic import BaseModel
@@ -47,7 +46,13 @@ __all__ = [
 # SECTION: INTERNAL CLASSES ================================================= #
 
 
-class _ColumnListModel(BaseModel):
+class _StrictDatabaseModel(BaseModel):
+    """Base model for database specs with strict field validation."""
+
+    model_config = ConfigDict(extra='forbid')
+
+
+class _ColumnListModel(_StrictDatabaseModel):
     """Base model for specs with a column-name list field."""
 
     @field_validator('columns', mode='before', check_fields=False)
@@ -60,7 +65,7 @@ class _ColumnListModel(BaseModel):
 # SECTION: CLASSES ========================================================== #
 
 
-class ColumnSpec(BaseModel):
+class ColumnSpec(_StrictDatabaseModel):
     """
     Column specification suitable for ODBC / SQLite DDL.
 
@@ -85,8 +90,6 @@ class ColumnSpec(BaseModel):
     unique : bool
         True if the column has a UNIQUE constraint.
     """
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra='forbid')
 
     name: NonEmptyStr
     type: NonEmptyStr = Field(description='SQL type string, e.g., INT, NVARCHAR(100)')
@@ -115,8 +118,6 @@ class ForeignKeySpec(_ColumnListModel):
     ondelete : str | None
         ON DELETE action, or None.
     """
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra='forbid')
 
     columns: NonEmptyStrList
     ref_table: NonEmptyStr
@@ -147,7 +148,7 @@ class ForeignKeySpec(_ColumnListModel):
         return self
 
 
-class IdentitySpec(BaseModel):
+class IdentitySpec(_StrictDatabaseModel):
     """
     Identity specification.
 
@@ -160,8 +161,6 @@ class IdentitySpec(BaseModel):
     increment : int | None
         Identity increment value (default: 1).
     """
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra='forbid')
 
     seed: int | None = Field(default=None, ge=1)
     increment: int | None = Field(default=None, ge=1)
@@ -185,8 +184,6 @@ class IndexSpec(_ColumnListModel):
         Optional WHERE clause for filtered indexes.
     """
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra='forbid')
-
     name: NonEmptyStr
     columns: NonEmptyStrList
     unique: bool = False
@@ -207,8 +204,6 @@ class PrimaryKeySpec(_ColumnListModel):
         List of column names included in the primary key.
     """
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra='forbid')
-
     name: str | None = None
     columns: NonEmptyStrList
 
@@ -227,13 +222,11 @@ class UniqueConstraintSpec(_ColumnListModel):
         List of column names included in the unique constraint.
     """
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra='forbid')
-
     name: str | None = None
     columns: NonEmptyStrList
 
 
-class TableSpec(BaseModel):
+class TableSpec(_StrictDatabaseModel):
     """
     Table specification.
 
@@ -258,8 +251,6 @@ class TableSpec(BaseModel):
     foreign_keys : list[ForeignKeySpec]
         List of foreign key specifications.
     """
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra='forbid')
 
     table: NonEmptyStr = Field(alias='name')
     schema_name: NonEmptyStr | None = Field(default=None, alias='schema')
