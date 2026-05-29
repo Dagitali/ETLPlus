@@ -37,8 +37,10 @@ project.
 
 ## Documentation and Maintenance
 
-- Call out important docs improvements, CI/release automation changes, or
-  contributor-facing maintenance work.
+- Call out important docs improvements, CI/release automation changes, or contributor-facing
+  maintenance work.
+- For lockfile or release-smoke changes, state whether `pyproject.toml` remains the canonical
+  package metadata source and whether release builds still use the built distribution artifacts.
 
 ## Upgrade Notes
 
