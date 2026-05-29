@@ -96,6 +96,7 @@ class TestDatabaseSchemes:
             pytest.param('payload.csv', id='file-path'),
             pytest.param('https://example.com/data.json', id='api-url'),
             pytest.param('sqlite+pysqlite', id='driver-name-without-url'),
+            pytest.param('postgresql+://user@host/db', id='empty-driver'),
         ],
     )
     def test_non_database_urls_are_rejected(
