@@ -12,6 +12,7 @@ from datetime import datetime
 from datetime import time
 from decimal import Decimal
 from typing import Any
+from typing import Final
 
 from ..utils import JsonCodec
 from ..utils import finite_decimal_or_none
@@ -24,6 +25,15 @@ __all__ = [
     # Classes
     'ValueCodec',
 ]
+
+
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_JSON_CODEC: Final[JsonCodec] = JsonCodec(
+    compact=False,
+    default_serializer=JsonCodec.default,
+)
 
 
 # SECTION: CLASSES ========================================================== #
@@ -87,10 +97,7 @@ class ValueCodec:
             case SqlTypeAffinity.BINARY:
                 return self._to_blob(value)
             case SqlTypeAffinity.JSON:
-                return JsonCodec(
-                    compact=False,
-                    default_serializer=JsonCodec.default,
-                ).serialize(value)
+                return _JSON_CODEC.serialize(value)
             case _:
                 return self._to_text(value)
 
@@ -115,10 +122,7 @@ class ValueCodec:
     def _to_blob(self, v: Any) -> bytes:
         if isinstance(v, (bytes, bytearray, memoryview)):
             return bytes(v)
-        enc = JsonCodec(
-            compact=False,
-            default_serializer=JsonCodec.default,
-        ).serialize(v)
+        enc = _JSON_CODEC.serialize(v)
         return enc.encode('utf-8')
 
     def _to_text(self, value: Any) -> str:
@@ -127,10 +131,7 @@ class ValueCodec:
             case datetime() | date() | time():
                 return JsonCodec.isoformat(value)
             case list() | dict() | tuple() | set() if self.keep_unknown_as_json:
-                return JsonCodec(
-                    compact=False,
-                    default_serializer=JsonCodec.default,
-                ).serialize(value)
+                return _JSON_CODEC.serialize(value)
             case _:
                 return str(value)
 
