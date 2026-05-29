@@ -11,6 +11,7 @@ import pytest
 from etlplus.database._enums import DatabaseDialect
 from etlplus.database._enums import ReferentialAction
 from etlplus.database._enums import SqlTypeAffinity
+from etlplus.database._enums import infer_database_dialect_and_driver
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -29,6 +30,8 @@ class TestDatabaseDialect:
             ('sqlite3', DatabaseDialect.SQLITE),
             ('sql server', DatabaseDialect.MSSQL),
             ('AZURE-SQL', DatabaseDialect.MSSQL),
+            ('gcp-bigquery', DatabaseDialect.BIGQUERY),
+            ('snowflake-db', DatabaseDialect.SNOWFLAKE),
         ],
     )
     def test_coerce_aliases(
@@ -38,6 +41,79 @@ class TestDatabaseDialect:
     ) -> None:
         """Test that dialect aliases coerce to the expected enum members."""
         assert DatabaseDialect.coerce(value) is expected
+
+    @pytest.mark.parametrize(
+        ('dialect', 'expected'),
+        [
+            (DatabaseDialect.SQLITE, 'sqlite+pysqlite'),
+            (DatabaseDialect.POSTGRESQL, 'postgresql+psycopg'),
+        ],
+    )
+    def test_dsn_scheme_appends_driver(
+        self,
+        dialect: DatabaseDialect,
+        expected: str,
+    ) -> None:
+        """Test that dialects generate SQLAlchemy driver DSN schemes."""
+        assert dialect.dsn_scheme(expected.rsplit('+', maxsplit=1)[-1]) == expected
+
+    def test_postgresql_scheme_prefixes_include_postgres_alias(self) -> None:
+        """Test that PostgreSQL keeps its accepted URL scheme alias."""
+        assert DatabaseDialect.POSTGRESQL.scheme_prefixes() == (
+            'postgres://',
+            'postgres+',
+            'postgresql://',
+            'postgresql+',
+        )
+
+    def test_url_prefix_appends_driver(self) -> None:
+        """Test that dialects generate URL prefixes with optional drivers."""
+        assert DatabaseDialect.MYSQL.url_prefix('pymysql') == 'mysql+pymysql://'
+
+    def test_uri_scheme_returns_preferred_scheme(self) -> None:
+        """Test that dialects expose their preferred URI scheme."""
+        assert DatabaseDialect.POSTGRESQL.uri_scheme == 'postgresql'
+
+
+class TestInferDatabaseDialectAndDriver:
+    """Unit tests for database dialect and driver inference."""
+
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            (
+                DatabaseDialect.SQLITE,
+                (DatabaseDialect.SQLITE, None),
+            ),
+            (
+                'Postgres',
+                (DatabaseDialect.POSTGRESQL, None),
+            ),
+            (
+                'postgres://user@host/db',
+                (DatabaseDialect.POSTGRESQL, None),
+            ),
+            (
+                'postgresql+psycopg://user@host/db',
+                (DatabaseDialect.POSTGRESQL, 'psycopg'),
+            ),
+            (
+                'sqlite+pysqlite',
+                (DatabaseDialect.SQLITE, 'pysqlite'),
+            ),
+            (
+                'https://example.com/data.json',
+                (None, None),
+            ),
+        ],
+    )
+    def test_infers_database_dialect_and_driver(
+        self,
+        value: object,
+        expected: tuple[DatabaseDialect | None, str | None],
+    ) -> None:
+        """Test database dialect and driver inference from common inputs."""
+        assert infer_database_dialect_and_driver(value) == expected
 
 
 class TestReferentialAction:

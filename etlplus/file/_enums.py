@@ -14,8 +14,9 @@ from ..utils._types import StrStrMap
 
 # SECTION: EXPORTS ========================================================= #
 
+
 __all__ = [
-    # Classes
+    # Enums
     'CompressionFormat',
     'FileFormat',
     # Functions

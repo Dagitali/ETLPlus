@@ -8,6 +8,9 @@ from __future__ import annotations
 
 from typing import Final
 
+from ._enums import DatabaseDialect
+from ._enums import infer_database_dialect_and_driver
+
 # SECTION: EXPORTS ========================================================== #
 
 
@@ -20,29 +23,20 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL FUNCTIONS ============================================== #
+
+
+def _database_schemes() -> tuple[str, ...]:
+    """Return database URL and driver-DSN prefixes for supported dialects."""
+    return tuple(
+        prefix for dialect in DatabaseDialect for prefix in dialect.scheme_prefixes()
+    )
+
+
 # SECTION: CONSTANTS ======================================================== #
 
 
-DATABASE_SCHEMES: Final[tuple[str, ...]] = (
-    'bigquery://',
-    'bigquery+',
-    'duckdb://',
-    'duckdb+',
-    'mssql://',
-    'mssql+',
-    'mysql://',
-    'mysql+',
-    'oracle://',
-    'oracle+',
-    'postgres://',
-    'postgres+',
-    'postgresql://',
-    'postgresql+',
-    'snowflake://',
-    'snowflake+',
-    'sqlite://',
-    'sqlite+',
-)
+DATABASE_SCHEMES: Final[tuple[str, ...]] = _database_schemes()
 
 
 # SECTION: FUNCTIONS ======================================================== #
@@ -65,7 +59,8 @@ def is_database_dsn(
         ``True`` when *value* uses a recognized database DSN prefix.
     """
     normalized = value.strip().lower()
-    return normalized.startswith(DATABASE_SCHEMES) and '+' in normalized
+    dialect, driver = infer_database_dialect_and_driver(normalized)
+    return dialect is not None and driver is not None and '://' not in normalized
 
 
 def is_database_url(
@@ -85,4 +80,5 @@ def is_database_url(
         ``True`` when *value* uses a recognized database URL prefix.
     """
     normalized = value.strip().lower()
-    return normalized.startswith(DATABASE_SCHEMES) and '://' in normalized
+    dialect, _ = infer_database_dialect_and_driver(normalized)
+    return dialect is not None and '://' in normalized
