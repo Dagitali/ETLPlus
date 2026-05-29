@@ -496,8 +496,8 @@ class ConnectorReadinessPolicy:
         Returns
         -------
         bool
-            ``True`` if netCDF support dependencies are installed, ``False``
-            if not.
+            ``True`` if netCDF support dependencies are installed, else
+            ``False``.
         """
         return package_available('xarray') and (
             package_available('netCDF4') or package_available('h5netcdf')
