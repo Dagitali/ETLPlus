@@ -369,6 +369,9 @@ The current stable-line posture is:
 - Continue execution-hygiene work that supports the documented CLI/runtime contract.
 - Keep `pipx` and `uv tool install` support stable as non-breaking packaging and smoke-test
   improvements for the existing PyPI artifact.
+- Treat `uv.lock` as a committed CI/development environment snapshot while keeping `pyproject.toml`
+  as canonical package metadata; release builds continue to use `python -m build`, `twine check`,
+  and built-wheel smoke validation rather than treating the lockfile as package metadata.
 - Treat scheduler hardening and backing-service/connector clarity as completed stable-line runtime
   hygiene, with future work limited to regression coverage and usage-driven refinements.
 - Leave any smaller default dependency split as a future major-version packaging decision, and treat
