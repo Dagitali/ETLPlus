@@ -1,3 +1,27 @@
+# pyproject.toml
+# ETLPlus
+#
+# Copyright © 2026 Dagitali LLC. All rights reserved.
+#
+# Python project configuration and canonical package metadata.
+#
+# Responsibilities
+# - Define build-system requirements and setuptools backend configuration.
+# - Declare canonical package metadata, runtime dependencies, optional extras,
+#   console scripts, and package data.
+# - Configure Python tooling that reads project settings from pyproject.toml.
+#
+# Maintainer Notes
+# - Treat this file as the canonical source for packaging metadata.
+# - Keep setup.py as a minimal compatibility shim.
+# - Keep uv.lock as a reproducible CI/development environment snapshot, not as
+#   package metadata.
+#
+# References
+# - pyproject.toml specification: https://packaging.python.org/en/latest/specifications/pyproject-toml/
+# - PEP 621 project metadata: https://peps.python.org/pep-0621/
+# - setuptools pyproject configuration: https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
+
 [build-system]
 # Use a modern setuptools that supports PEP 621 & editable installs (PEP 660).
 requires = ["setuptools>=80", "setuptools-scm>=8", "wheel"]
