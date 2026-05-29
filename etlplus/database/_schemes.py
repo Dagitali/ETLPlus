@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Final
 
 from ._enums import DatabaseDialect
+from ._enums import infer_database_dialect_and_driver
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -23,12 +24,6 @@ __all__ = [
 ]
 
 
-# SECTION: CONSTANTS ======================================================== #
-
-
-DATABASE_SCHEMES: Final[tuple[str, ...]]
-
-
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -41,7 +36,10 @@ def database_schemes() -> tuple[str, ...]:
     )
 
 
-DATABASE_SCHEMES = database_schemes()
+# SECTION: CONSTANTS ======================================================== #
+
+
+DATABASE_SCHEMES: Final[tuple[str, ...]] = database_schemes()
 
 
 def is_database_dsn(
@@ -61,7 +59,8 @@ def is_database_dsn(
         ``True`` when *value* uses a recognized database DSN prefix.
     """
     normalized = value.strip().lower()
-    return normalized.startswith(DATABASE_SCHEMES) and '+' in normalized
+    dialect, driver = infer_database_dialect_and_driver(normalized)
+    return dialect is not None and driver is not None and '://' not in normalized
 
 
 def is_database_url(
@@ -81,4 +80,5 @@ def is_database_url(
         ``True`` when *value* uses a recognized database URL prefix.
     """
     normalized = value.strip().lower()
-    return normalized.startswith(DATABASE_SCHEMES) and '://' in normalized
+    dialect, _ = infer_database_dialect_and_driver(normalized)
+    return dialect is not None and '://' in normalized
