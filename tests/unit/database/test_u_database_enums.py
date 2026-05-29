@@ -57,6 +57,10 @@ class TestDatabaseDialect:
         """Test that dialects generate SQLAlchemy driver DSN schemes."""
         assert dialect.dsn_scheme(expected.rsplit('+', maxsplit=1)[-1]) == expected
 
+    def test_dsn_scheme_defaults_to_uri_scheme(self) -> None:
+        """Test that dialect-only DSN schemes omit driver separators."""
+        assert DatabaseDialect.SQLITE.dsn_scheme() == 'sqlite'
+
     def test_postgresql_scheme_prefixes_include_postgres_alias(self) -> None:
         """Test that PostgreSQL keeps its accepted URL scheme alias."""
         assert DatabaseDialect.POSTGRESQL.scheme_prefixes() == (
@@ -111,6 +115,10 @@ class TestInferDatabaseDialectAndDriver:
             ),
             (
                 'https://example.com/data.json',
+                (None, None),
+            ),
+            (
+                '   ',
                 (None, None),
             ),
         ],
