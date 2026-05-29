@@ -29,9 +29,7 @@ __all__ = [
 def _database_schemes() -> tuple[str, ...]:
     """Return database URL and driver-DSN prefixes for supported dialects."""
     return tuple(
-        prefix
-        for dialect in DatabaseDialect
-        for prefix in dialect.scheme_prefixes()
+        prefix for dialect in DatabaseDialect for prefix in dialect.scheme_prefixes()
     )
 
 
