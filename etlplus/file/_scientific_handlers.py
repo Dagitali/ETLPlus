@@ -130,7 +130,7 @@ class SingleDatasetTabularScientificReadMixin(
         Returns
         -------
         Any | None
-            The pyreadstat module when required, else None.
+            The pyreadstat module when required, else ``None``.
 
         Raises
         ------
