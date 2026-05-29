@@ -108,7 +108,7 @@ def _ordered_specs(
         return materialized
     names = [name for name in maybe_names if name is not None]
 
-    known_names = frozenset(name for name in names if name is not None)
+    known_names = frozenset(names)
     if len(known_names) != len(names):
         raise ValueError('Duplicate table spec name')
 
@@ -194,13 +194,13 @@ def _template_text_from_override_payload(
     payload: object,
 ) -> str:
     """Return template text from a file-handler override payload."""
-    if (
-        isinstance(payload, list)
-        and payload
-        and (template_mapping := MappingParser.optional(payload[0])) is not None
-        and isinstance(template_mapping.get('template'), str)
-    ):
-        return template_mapping['template']
+    match payload:
+        case [first, *_]:
+            if (
+                (template_mapping := MappingParser.optional(first)) is not None
+                and isinstance(template_mapping.get('template'), str)
+            ):
+                return template_mapping['template']
     raise TypeError('JINJA2 template payload must include text')
 
 
