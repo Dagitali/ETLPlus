@@ -78,6 +78,8 @@ env:
   DEFAULT_PYTHON_VERSION: '3.13'
   # Keep this width aligned with .ruff.toml:line-length.
   PY_LINE_LENGTH: '88'
+  # Keep the uv minor version aligned with the committed uv.lock schema.
+  UV_VERSION: '0.10.11'
 
 jobs:
   pr-target-guard:
@@ -141,6 +143,19 @@ jobs:
           if [ -n "$files" ]; then
             autopep8 --diff --exit-code --max-line-length=${PY_LINE_LENGTH} $files
           fi
+
+  lockfile:
+    name: Check uv lockfile
+    runs-on: ubuntu-latest
+    permissions: *permissions_read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
+      - uses: ./.github/actions/python-bootstrap
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
+          python-bootstrap: "uv==${{ env.UV_VERSION }}"
+      - name: Verify committed uv.lock matches pyproject metadata
+        run: uv lock --check
 
   test:
     name: Test on Python ${{ matrix.python-version }}
