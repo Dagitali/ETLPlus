@@ -101,9 +101,7 @@ class DatabaseDialect(CoercibleStrEnum):
         """
         schemes = (*self.uri_scheme_aliases, self.uri_scheme)
         return tuple(
-            prefix
-            for scheme in schemes
-            for prefix in (f'{scheme}://', f'{scheme}+')
+            prefix for scheme in schemes for prefix in (f'{scheme}://', f'{scheme}+')
         )
 
     def url_prefix(
