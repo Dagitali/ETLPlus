@@ -314,11 +314,11 @@ def infer_database_dialect_and_driver(
         return None, None
 
     normalized = text.lower()
-    scheme = normalized.split('://', maxsplit=1)[0]
-    scheme, delimiter, driver = scheme.partition('+')
+    scheme_text = normalized.split('://', maxsplit=1)[0]
+    scheme, delimiter, driver = scheme_text.partition('+')
 
     if delimiter:
-        if not driver:
+        if not driver or '+' in driver:
             return None, None
         dialect = _DATABASE_URI_SCHEME_DIALECTS.get(scheme)
         return (dialect, driver) if dialect is not None else (None, None)
