@@ -123,6 +123,22 @@ class TestToolDependencyDeclarations:
         assert 'canonical package metadata source' in release_notes_text
         assert 'built distribution artifacts' in release_notes_text
 
+    def test_release_workflow_docs_preserve_artifact_validation_path(self) -> None:
+        """Test workflow docs keep release validation responsibilities explicit."""
+        ci_cd_text = _normalized_text(
+            CI_CD_WORKFLOWS_PATH.read_text(encoding='utf-8'),
+        )
+
+        expected_snippets = (
+            'build source and wheel distributions with `python -m build`',
+            'audit release artifacts and validate them with `twine check`',
+            'smoke-test supported installer paths against the built wheel',
+            'smoke-test packaged behavior against the built wheel',
+            'publish to pypi through trusted publishing',
+        )
+
+        assert all(snippet in ci_cd_text for snippet in expected_snippets)
+
     def test_uv_lockfile_gate_is_documented_for_required_checks(self) -> None:
         """Test PR lockfile gate stays reflected in workflow and branch docs."""
         pr_workflow_text = PR_WORKFLOW_PATH.read_text(encoding='utf-8')
