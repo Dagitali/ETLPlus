@@ -36,7 +36,7 @@ Workflow name: `PR Gates`
 
 Primary role:
 
-- run the required validation used by protected-branch pull requests and merge queues
+- Run the required validation used by protected-branch pull requests and merge queues
 
 Current responsibilities:
 
@@ -58,13 +58,13 @@ Workflow name: `CI`
 
 Primary role:
 
-- run heavier pre-merge validation for protected-branch pull requests and merge queue entries
+- Run heavier pre-merge validation for protected-branch pull requests and merge queue entries
 
 Current responsibilities:
 
-- non-PR docs builders such as `epub` and `linkcheck`
+- Non-PR docs builders such as `epub` and `linkcheck`
 - macOS and Windows install smoke coverage
-- distribution build, verification, and wheel smoke testing
+- Distribution build, verification, and wheel smoke testing
 
 This workflow runs on pull requests into `main` and `develop`, on `merge_group` for those same
 protected branches, and manually via `workflow_dispatch`.
@@ -81,11 +81,13 @@ Primary role:
 
 Current responsibilities:
 
-- build and verify distributions for a release tag
-- smoke-test the built wheel
-- build release-time documentation targets
-- publish a GitHub Release
-- publish to PyPI through trusted publishing
+- Build source and wheel distributions with `python -m build`
+- Audit release artifacts and validate them with `twine check`
+- Smoke-test supported installer paths against the built wheel
+- Smoke-test packaged behavior against the built wheel
+- Build release-time documentation targets
+- Publish a GitHub Release
+- Publish to PyPI through trusted publishing
 
 This workflow is tag-driven. It runs when a `v*.*.*` tag is pushed.
 
