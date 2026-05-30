@@ -149,7 +149,7 @@ class HistoryView:
         Returns
         -------
         datetime | None
-            A datetime object if a valid timestamp is found, otherwise ``None``.
+            A datetime object if a valid timestamp is found, else ``None``.
         """
         return HistoryView.parse_timestamp(
             record.get('started_at') or record.get('finished_at'),

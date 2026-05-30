@@ -69,3 +69,45 @@ class TestProperties(
 
         with pytest.raises(TypeError, match='PROPERTIES'):
             mod.PropertiesFile().write(path, ['nope'])
+
+    def test_read_accepts_whitespace_separated_properties(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test whitespace-separated PROPERTIES entries parse as key-value rows."""
+        path = self.format_path(tmp_path, stem='whitespace')
+        path.write_text(
+            'path /srv/app\n'
+            'timeout   30\n'
+            r'escaped\ key=value'
+            '\n',
+            encoding='utf-8',
+        )
+
+        assert mod.PropertiesFile().read(path) == {
+            'path': '/srv/app',
+            'timeout': '30',
+            r'escaped\ key': 'value',
+        }
+
+    @pytest.mark.parametrize(
+        ('line', 'expected'),
+        [
+            pytest.param('path /srv/app', ('path', '/srv/app'), id='space'),
+            pytest.param('path\t/srv/app', ('path', '/srv/app'), id='tab'),
+            pytest.param('path   = /srv/app', ('path', '/srv/app'), id='space-equals'),
+            pytest.param('path   : /srv/app', ('path', '/srv/app'), id='space-colon'),
+            pytest.param(
+                r'escaped\ key=value',
+                (r'escaped\ key', 'value'),
+                id='escaped-space',
+            ),
+        ],
+    )
+    def test_split_key_value_handles_java_style_separators(
+        self,
+        line: str,
+        expected: tuple[str, str],
+    ) -> None:
+        """Test Java-style PROPERTIES separators without changing the API."""
+        assert mod._split_key_value(line) == expected
