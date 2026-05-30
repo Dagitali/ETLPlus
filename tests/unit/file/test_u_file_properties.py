@@ -90,6 +90,24 @@ class TestProperties(
             r'escaped\ key': 'value',
         }
 
+    def test_read_joins_continued_properties_lines(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test Java-style PROPERTIES line continuations."""
+        path = self.format_path(tmp_path, stem='continued')
+        path.write_text(
+            'message=hello \\\n'
+            '    world\n'
+            'path=/srv/app\n',
+            encoding='utf-8',
+        )
+
+        assert mod.PropertiesFile().read(path) == {
+            'message': 'hello world',
+            'path': '/srv/app',
+        }
+
     @pytest.mark.parametrize(
         ('line', 'expected'),
         [
