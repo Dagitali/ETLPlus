@@ -569,6 +569,30 @@ class TestHistoryQuery:
         }
 
 
+class TestHistoryView:
+    """Unit tests for direct history-view helpers."""
+
+    def test_record_timestamp_falls_back_to_finished_at_when_started_at_is_invalid(
+        self,
+    ) -> None:
+        """
+        Test that filtering can still use a valid finished timestamp.
+        """
+        expected = history_view_mod.HistoryView.parse_timestamp(
+            '2026-03-24T00:00:05Z',
+        )
+
+        assert (
+            history_view_mod.HistoryView.record_timestamp(
+                {
+                    'finished_at': '2026-03-24T00:00:05Z',
+                    'started_at': 'not-a-timestamp',
+                },
+            )
+            == expected
+        )
+
+
 class TestStatusHandler:
     """Unit tests for :func:`status_handler`."""
 
