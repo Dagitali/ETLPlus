@@ -25,6 +25,10 @@ _REQUIREMENT_NAME_PATTERN = re.compile(r'^[A-Za-z0-9_.-]+')
 
 CLI_PACKAGE_PATH = REPO_ROOT / 'etlplus' / 'cli'
 PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
+BRANCH_PROTECTION_PATH = REPO_ROOT / '.github' / 'BRANCH-PROTECTION.md'
+CI_CD_WORKFLOWS_PATH = REPO_ROOT / 'CI-CD-WORKFLOWS.md'
+PR_WORKFLOW_PATH = REPO_ROOT / '.github' / 'workflows' / 'pr.yml'
+RELEASE_NOTES_TEMPLATE_PATH = REPO_ROOT / '.github' / 'RELEASE-NOTES-TEMPLATE.md'
 SBOM_WORKFLOW_PATH = REPO_ROOT / '.github' / 'workflows' / 'sbom.yml'
 
 RUNTIME_IMPORT_DISTRIBUTIONS = {
@@ -56,6 +60,11 @@ def _direct_external_imports(package_path: Path) -> set[str]:
                 imports.add(node.module.partition('.')[0])
 
     return imports - sys.stdlib_module_names - {'etlplus'}
+
+
+def _normalized_text(value: str) -> str:
+    """Return case-folded text with Markdown line wrapping normalized."""
+    return ' '.join(value.casefold().split())
 
 
 def _pyproject_dependency_names() -> set[str]:
@@ -101,3 +110,29 @@ class TestToolDependencyDeclarations:
         )
         assert 'python-bootstrap: ".[sbom]"' not in workflow_text
         assert 'python -m pip install cyclonedx-bom' not in workflow_text
+
+    def test_release_notes_template_calls_out_lockfile_release_boundary(
+        self,
+    ) -> None:
+        """Test release notes keep lockfile changes framed as maintenance."""
+        release_notes_text = _normalized_text(
+            RELEASE_NOTES_TEMPLATE_PATH.read_text(encoding='utf-8'),
+        )
+
+        assert '`pyproject.toml`' in release_notes_text
+        assert 'canonical package metadata source' in release_notes_text
+        assert 'built distribution artifacts' in release_notes_text
+
+    def test_uv_lockfile_gate_is_documented_for_required_checks(self) -> None:
+        """Test PR lockfile gate stays reflected in workflow and branch docs."""
+        pr_workflow_text = PR_WORKFLOW_PATH.read_text(encoding='utf-8')
+        ci_cd_text = _normalized_text(
+            CI_CD_WORKFLOWS_PATH.read_text(encoding='utf-8'),
+        )
+        branch_protection_text = BRANCH_PROTECTION_PATH.read_text(encoding='utf-8')
+
+        assert 'name: Check uv lockfile' in pr_workflow_text
+        assert 'run: uv lock --check' in pr_workflow_text
+        assert 'committed `uv.lock` freshness against `pyproject.toml`' in ci_cd_text
+        assert '- `check uv lockfile`' in ci_cd_text
+        assert '- `Check uv lockfile`' in branch_protection_text

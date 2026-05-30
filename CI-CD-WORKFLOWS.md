@@ -41,9 +41,10 @@ Primary role:
 Current responsibilities:
 
 - Ruff linting and formatting drift detection
-- unit and integration test execution with coverage
-- docstring linting
-- type checking
+- Committed `uv.lock` freshness against `pyproject.toml`
+- Unit and integration test execution with coverage
+- Docstring linting
+- Type checking
 - HTML docs build
 
 This workflow runs on pull requests into protected branches and also on pushes to the working and
@@ -107,6 +108,7 @@ you want the heavier docs, smoke-install, and distribution-validation workflow t
 At the time of writing, the expected required checks are:
 
 - `Lint on Python 3.13`
+- `Check uv lockfile`
 - `Test on Python 3.13`
 - `Doclint on Python 3.13`
 - `Type-check on Python 3.13`
