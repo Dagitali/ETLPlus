@@ -151,9 +151,11 @@ class HistoryView:
         datetime | None
             A datetime object if a valid timestamp is found, else ``None``.
         """
-        return HistoryView.parse_timestamp(
-            record.get('started_at') or record.get('finished_at'),
-        )
+        for field_name in ('started_at', 'finished_at'):
+            timestamp = HistoryView.parse_timestamp(record.get(field_name))
+            if timestamp is not None:
+                return timestamp
+        return None
 
     @staticmethod
     def sort_key(
