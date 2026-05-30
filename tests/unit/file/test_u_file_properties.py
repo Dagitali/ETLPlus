@@ -106,6 +106,19 @@ class TestProperties(
             'path': '/srv/app',
         }
 
+    def test_read_keeps_property_after_continued_comment_line(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test comment lines ending in backslash do not consume properties."""
+        path = self.format_path(tmp_path, stem='comment-continuation')
+        path.write_text(
+            '# ignored comment \\\nhost=localhost\n',
+            encoding='utf-8',
+        )
+
+        assert mod.PropertiesFile().read(path) == {'host': 'localhost'}
+
     @pytest.mark.parametrize(
         ('line', 'expected'),
         [

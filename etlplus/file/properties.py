@@ -86,6 +86,9 @@ def _iter_logical_property_lines(
 
     for physical_line in text.splitlines():
         line = physical_line.lstrip() if continuing else physical_line
+        if not continuing and line.lstrip().startswith(('#', '!')):
+            lines.append(line)
+            continue
         if _is_logical_line_continued(line):
             pending += line[:-1]
             continuing = True
