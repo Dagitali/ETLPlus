@@ -1125,6 +1125,16 @@ class TestSchedulerInternals:
             == expected
         )
 
+    def test_interval_due_times_floors_current_time_to_minute_precision(self) -> None:
+        """Interval trigger timestamps should match scheduler minute precision."""
+        schedule = SimpleNamespace(interval=SimpleNamespace(minutes=15), timezone='UTC')
+
+        assert scheduler_mod.LocalScheduler._interval_due_times(
+            schedule,
+            now=datetime(2026, 5, 12, 0, 30, 45, 123456, tzinfo=UTC),
+            previous_triggered_at=None,
+        ) == [datetime(2026, 5, 12, 0, 30, tzinfo=UTC)]
+
     @pytest.mark.parametrize(
         ('value', 'expected'),
         [

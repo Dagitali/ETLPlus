@@ -842,7 +842,7 @@ class LocalScheduler:
         if not isinstance(minutes, int) or minutes < 1:
             return []
         timezone = _resolve_timezone(schedule)
-        current_local = now.astimezone(timezone)
+        current_local = _floor_to_minute(now.astimezone(timezone))
         step = timedelta(minutes=minutes)
         previous = _parse_timestamp(previous_triggered_at)
 
