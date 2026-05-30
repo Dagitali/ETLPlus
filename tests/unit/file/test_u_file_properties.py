@@ -113,8 +113,7 @@ class TestProperties(
         """Test comment lines ending in backslash do not consume properties."""
         path = self.format_path(tmp_path, stem='comment-continuation')
         path.write_text(
-            '# ignored comment \\\n'
-            'host=localhost\n',
+            '# ignored comment \\\nhost=localhost\n',
             encoding='utf-8',
         )
 
