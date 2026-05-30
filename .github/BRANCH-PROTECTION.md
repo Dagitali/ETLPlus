@@ -60,6 +60,7 @@ Use this baseline for protected-branch merge gates. It covers the checks that ru
 
 - GitFlow target-branch enforcement for pull requests
 - Linting on the primary supported Python line
+- Lockfile freshness against canonical package metadata
 - Docstring linting on the primary supported Python line
 - Tests on the primary supported Python line
 - Type-checking on the primary supported Python line
@@ -73,6 +74,7 @@ In the current PR-gates workflow, the baseline above resolves to:
 
 - `Guard PR target branch`
 - `Lint on Python 3.13`
+- `Check uv lockfile`
 - `Test on Python 3.13`
 - `Doclint on Python 3.13`
 - `Type-check on Python 3.13`
@@ -88,6 +90,7 @@ job names as the minimum required checks:
 
 - `Guard PR target branch`
 - `Lint on Python 3.13`
+- `Check uv lockfile`
 - `Test on Python 3.13`
 - `Doclint on Python 3.13`
 - `Type-check on Python 3.13`
@@ -239,6 +242,7 @@ In GitHub:
 5. Add these minimum required checks from `pr.yml`:
   - `Guard PR target branch`
   - `Lint on Python 3.13`
+  - `Check uv lockfile`
   - `Test on Python 3.13`
   - `Doclint on Python 3.13`
   - `Type-check on Python 3.13`
