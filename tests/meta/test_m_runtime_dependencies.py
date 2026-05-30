@@ -62,6 +62,11 @@ def _direct_external_imports(package_path: Path) -> set[str]:
     return imports - sys.stdlib_module_names - {'etlplus'}
 
 
+def _normalized_text(value: str) -> str:
+    """Return case-folded text with Markdown line wrapping normalized."""
+    return ' '.join(value.casefold().split())
+
+
 def _pyproject_dependency_names() -> set[str]:
     """Return base dependency names declared by ``pyproject.toml``."""
     pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
@@ -110,7 +115,9 @@ class TestToolDependencyDeclarations:
         self,
     ) -> None:
         """Test release notes keep lockfile changes framed as maintenance."""
-        release_notes_text = RELEASE_NOTES_TEMPLATE_PATH.read_text(encoding='utf-8')
+        release_notes_text = _normalized_text(
+            RELEASE_NOTES_TEMPLATE_PATH.read_text(encoding='utf-8'),
+        )
 
         assert '`pyproject.toml`' in release_notes_text
         assert 'canonical package metadata source' in release_notes_text
@@ -119,11 +126,13 @@ class TestToolDependencyDeclarations:
     def test_uv_lockfile_gate_is_documented_for_required_checks(self) -> None:
         """Test PR lockfile gate stays reflected in workflow and branch docs."""
         pr_workflow_text = PR_WORKFLOW_PATH.read_text(encoding='utf-8')
-        ci_cd_text = CI_CD_WORKFLOWS_PATH.read_text(encoding='utf-8')
+        ci_cd_text = _normalized_text(
+            CI_CD_WORKFLOWS_PATH.read_text(encoding='utf-8'),
+        )
         branch_protection_text = BRANCH_PROTECTION_PATH.read_text(encoding='utf-8')
 
         assert 'name: Check uv lockfile' in pr_workflow_text
         assert 'run: uv lock --check' in pr_workflow_text
         assert 'committed `uv.lock` freshness against `pyproject.toml`' in ci_cd_text
-        assert '- `Check uv lockfile`' in ci_cd_text
+        assert '- `check uv lockfile`' in ci_cd_text
         assert '- `Check uv lockfile`' in branch_protection_text
