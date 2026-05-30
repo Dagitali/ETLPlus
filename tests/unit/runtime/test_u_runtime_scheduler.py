@@ -1088,6 +1088,20 @@ class TestSchedulerInternals:
                     timezone='UTC',
                     backfill=SimpleNamespace(
                         enabled=True,
+                        max_catchup_runs=1,
+                        start_at='2026-05-12T00:00:45+00:00',
+                    ),
+                ),
+                None,
+                [datetime(2026, 5, 12, 0, 0, tzinfo=UTC)],
+                id='backfill-start-floors-to-minute',
+            ),
+            pytest.param(
+                SimpleNamespace(
+                    interval=SimpleNamespace(minutes=15),
+                    timezone='UTC',
+                    backfill=SimpleNamespace(
+                        enabled=True,
                         start_at='not-a-timestamp',
                     ),
                 ),
@@ -1100,6 +1114,19 @@ class TestSchedulerInternals:
                 '2026-05-12T00:30:00+00:00',
                 [],
                 id='previous-trigger-can-produce-no-due-times',
+            ),
+            pytest.param(
+                SimpleNamespace(
+                    interval=SimpleNamespace(minutes=15),
+                    timezone='UTC',
+                    backfill=SimpleNamespace(enabled=True, max_catchup_runs=2),
+                ),
+                '2026-05-12T00:00:45+00:00',
+                [
+                    datetime(2026, 5, 12, 0, 15, tzinfo=UTC),
+                    datetime(2026, 5, 12, 0, 30, tzinfo=UTC),
+                ],
+                id='previous-trigger-floors-to-minute',
             ),
             pytest.param(
                 SimpleNamespace(interval=SimpleNamespace(minutes=15), timezone='UTC'),
