@@ -847,7 +847,7 @@ class LocalScheduler:
         previous = _parse_timestamp(previous_triggered_at)
 
         if previous is not None:
-            next_due = previous.astimezone(timezone) + step
+            next_due = _floor_to_minute(previous.astimezone(timezone)) + step
             due_times: list[datetime] = []
             while next_due <= current_local and len(due_times) < _backfill_limit(
                 schedule,
@@ -861,7 +861,7 @@ class LocalScheduler:
             start_at = _parse_timestamp(getattr(backfill, 'start_at', None))
             if start_at is not None:
                 due_times = []
-                cursor = start_at.astimezone(timezone)
+                cursor = _floor_to_minute(start_at.astimezone(timezone))
                 while cursor <= current_local and len(due_times) < _backfill_limit(
                     schedule,
                 ):
