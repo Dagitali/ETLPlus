@@ -97,9 +97,7 @@ class TestProperties(
         """Test Java-style PROPERTIES line continuations."""
         path = self.format_path(tmp_path, stem='continued')
         path.write_text(
-            'message=hello \\\n'
-            '    world\n'
-            'path=/srv/app\n',
+            'message=hello \\\n    world\npath=/srv/app\n',
             encoding='utf-8',
         )
 
