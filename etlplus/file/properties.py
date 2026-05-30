@@ -46,10 +46,7 @@ def _first_properties_separator_index(
 ) -> int | None:
     """Return the first unescaped PROPERTIES separator index."""
     for index, char in enumerate(line):
-        if (
-            char in _SEPARATORS
-            or char.isspace()
-        ) and not _is_escaped(line, index):
+        if (char in _SEPARATORS or char.isspace()) and not _is_escaped(line, index):
             return index
     return None
 
