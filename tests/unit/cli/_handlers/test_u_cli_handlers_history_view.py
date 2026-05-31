@@ -572,6 +572,36 @@ class TestHistoryQuery:
 class TestHistoryView:
     """Unit tests for direct history-view helpers."""
 
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(
+                '2026-03-23T00:00:00Z',
+                '2026-03-23T00:00:00+00:00',
+                id='utc-z-suffix',
+            ),
+            pytest.param(
+                '2026-03-23T00:00:00+00:00',
+                '2026-03-23T00:00:00+00:00',
+                id='offset',
+            ),
+            pytest.param(
+                '2026-03-23T00:00:00Z+00:00',
+                None,
+                id='interior-z-is-invalid',
+            ),
+        ],
+    )
+    def test_parse_timestamp_normalizes_only_terminal_utc_z_suffix(
+        self,
+        value: str,
+        expected: str | None,
+    ) -> None:
+        """Test UTC ``Z`` normalization does not rewrite interior characters."""
+        timestamp = history_view_mod.HistoryView.parse_timestamp(value)
+
+        assert (None if timestamp is None else timestamp.isoformat()) == expected
+
     def test_record_timestamp_falls_back_to_finished_at_when_started_at_is_invalid(
         self,
     ) -> None:

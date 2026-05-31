@@ -122,7 +122,7 @@ class HistoryView:
         """
         if not isinstance(value, str) or not value:
             return None
-        normalized = value.replace('Z', '+00:00')
+        normalized = f'{value[:-1]}+00:00' if value.endswith('Z') else value
         try:
             return datetime.fromisoformat(normalized)
         except ValueError:
