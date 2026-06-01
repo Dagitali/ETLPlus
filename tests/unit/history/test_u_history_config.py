@@ -44,6 +44,23 @@ class TestHistoryConfig:
             capture_tracebacks=False,
         )
 
+    def test_from_obj_strips_blank_string_state_dir(self) -> None:
+        """Blank string state directories should parse as absent."""
+        config = history_config_mod.HistoryConfig.from_obj(
+            {'state_dir': '   ', 'backend': 'jsonl'},
+        )
+
+        assert config.state_dir is None
+        assert config.backend == 'jsonl'
+
+    def test_from_obj_strips_string_state_dir(self) -> None:
+        """String state directories should trim accidental outer whitespace."""
+        config = history_config_mod.HistoryConfig.from_obj(
+            {'state_dir': '  ./.etlplus-state  '},
+        )
+
+        assert config.state_dir == './.etlplus-state'
+
 
 class TestHistoryConfigModuleHelpers:
     """Unit tests for :mod:`etlplus.history._config` helper functions."""
