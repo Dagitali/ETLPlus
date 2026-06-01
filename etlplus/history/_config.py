@@ -107,16 +107,17 @@ class HistoryConfig:
             return cls()
 
         raw_state_dir = data.get('state_dir')
+        state_dir = (
+            None
+            if raw_state_dir is None
+            else raw_state_dir.strip()
+            if isinstance(raw_state_dir, str)
+            else str(raw_state_dir)
+        )
         return cls(
             enabled=ValueParser.bool_flag(data.get('enabled'), default=True),
             backend=_coerce_backend(data.get('backend')),
-            state_dir=(
-                None
-                if raw_state_dir is None
-                else raw_state_dir
-                if isinstance(raw_state_dir, str)
-                else str(raw_state_dir)
-            ),
+            state_dir=state_dir or None,
             capture_tracebacks=ValueParser.bool_flag(
                 data.get('capture_tracebacks'),
                 default=False,
