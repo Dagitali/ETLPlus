@@ -58,6 +58,8 @@ class TestConnectorBaseContracts:
         [
             pytest.param({}, id='missing-name'),
             pytest.param({'name': None}, id='non-string-name'),
+            pytest.param({'name': ''}, id='empty-name'),
+            pytest.param({'name': '   '}, id='whitespace-name'),
         ],
     )
     def test_requires_name(
@@ -71,3 +73,16 @@ class TestConnectorBaseContracts:
             match=f'{connector_cls.__name__} requires a "name"',
         ):
             connector_cls.from_obj(name_fields)
+
+    @pytest.mark.parametrize(
+        'connector_cls',
+        CONNECTOR_CLASS_PARAMS,
+    )
+    def test_strips_name(
+        self,
+        connector_cls: ConnectorClass,
+    ) -> None:
+        """Connector constructors should strip accidental name whitespace."""
+        connector = connector_cls.from_obj({'name': '  connector  '})
+
+        assert connector.name == 'connector'
