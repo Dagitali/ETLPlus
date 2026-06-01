@@ -249,6 +249,56 @@ class TestSecretResolver:
         assert SecretResolver(env_map).resolve_token(f'secret:file:{key}') == expected
 
     @pytest.mark.parametrize(
+        ('file_name', 'contents'),
+        [
+            pytest.param('broken.json', '{not-json', id='json'),
+            pytest.param('broken.yaml', 'service: [unterminated', id='yaml'),
+        ],
+    )
+    def test_resolve_token_ignores_malformed_local_files(
+        self,
+        tmp_path: Path,
+        file_name: str,
+        contents: str,
+    ) -> None:
+        """Test file-backed resolution fails closed for malformed files."""
+        path = tmp_path / file_name
+        path.write_text(contents, encoding='utf-8')
+
+        assert (
+            SecretResolver(
+                {DEFAULT_SECRETS_FILE_ENV_VAR: str(path)},
+            ).resolve_token('secret:file:service.password')
+            is None
+        )
+
+    def test_resolve_token_ignores_missing_local_file(self, tmp_path: Path) -> None:
+        """Test file-backed resolution returns ``None`` for missing files."""
+        missing = tmp_path / 'missing.json'
+
+        assert (
+            SecretResolver(
+                {DEFAULT_SECRETS_FILE_ENV_VAR: str(missing)},
+            ).resolve_token('secret:file:service.password')
+            is None
+        )
+
+    def test_resolve_token_ignores_non_mapping_file_payloads(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test file-backed resolution ignores scalar payload files."""
+        path = tmp_path / 'scalar.yaml'
+        path.write_text('value\n', encoding='utf-8')
+
+        assert (
+            SecretResolver(
+                {DEFAULT_SECRETS_FILE_ENV_VAR: str(path)},
+            ).resolve_token('secret:file:service.password')
+            is None
+        )
+
+    @pytest.mark.parametrize(
         ('extension', 'key', 'expected'),
         [
             pytest.param('json', 'service.password', 'json-secret', id='json-file'),
@@ -271,32 +321,6 @@ class TestSecretResolver:
         env_map = {DEFAULT_SECRETS_FILE_ENV_VAR: str(secrets_path)}
 
         assert SecretResolver(env_map).resolve_token(f'secret:file:{key}') == expected
-
-    def test_resolve_token_ignores_non_mapping_file_payloads(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test file-backed resolution ignores scalar payload files."""
-        path = tmp_path / 'scalar.yaml'
-        path.write_text('value\n', encoding='utf-8')
-
-        assert (
-            SecretResolver(
-                {DEFAULT_SECRETS_FILE_ENV_VAR: str(path)},
-            ).resolve_token('secret:file:service.password')
-            is None
-        )
-
-    def test_resolve_token_ignores_missing_local_file(self, tmp_path: Path) -> None:
-        """Test file-backed resolution returns ``None`` for missing files."""
-        missing = tmp_path / 'missing.json'
-
-        assert (
-            SecretResolver(
-                {DEFAULT_SECRETS_FILE_ENV_VAR: str(missing)},
-            ).resolve_token('secret:file:service.password')
-            is None
-        )
 
     def test_secrets_file_path_expands_user_home(self) -> None:
         """Test configured secret file paths expand user-home markers."""
