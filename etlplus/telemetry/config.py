@@ -41,6 +41,16 @@ _VALID_EXPORTERS = frozenset({'none', 'opentelemetry'})
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _first_non_blank_string(
+    *values: str | None,
+) -> str | None:
+    """Return the first non-blank string after trimming whitespace."""
+    for value in values:
+        if isinstance(value, str) and (text := value.strip()):
+            return text
+    return None
+
+
 def _telemetry_exporter(
     value: object,
 ) -> TelemetryExporter | None:
@@ -133,13 +143,14 @@ class ResolvedTelemetryConfig:
         if resolved_enabled and resolved_exporter == 'none':
             resolved_exporter = 'opentelemetry'
 
-        raw_service_name = (
-            service_name
-            or env_map.get('ETLPLUS_TELEMETRY_SERVICE_NAME')
-            or telemetry_cfg.service_name
+        cleaned_service_name = (
+            _first_non_blank_string(
+                service_name,
+                env_map.get('ETLPLUS_TELEMETRY_SERVICE_NAME'),
+                telemetry_cfg.service_name,
+            )
             or 'etlplus'
         )
-        cleaned_service_name = raw_service_name.strip() or 'etlplus'
 
         return cls(
             enabled=resolved_enabled,
