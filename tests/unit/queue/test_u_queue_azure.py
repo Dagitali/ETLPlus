@@ -24,13 +24,21 @@ class TestAzureServiceBusQueue:
 
     def test_from_obj_accepts_queue_alias(self) -> None:
         """Test Azure Service Bus queue metadata accepts the ``queue`` alias."""
-        queue = AzureServiceBusQueue.from_obj({'name': 'orders', 'queue': 'orders-in'})
+        queue = AzureServiceBusQueue.from_obj(
+            {'name': '  orders  ', 'queue': '  orders-in  '},
+        )
 
+        assert queue.name == 'orders'
         assert queue.queue_name == 'orders-in'
         assert queue.to_connector_options() == {
             'service': 'azure-service-bus',
             'queue_name': 'orders-in',
         }
+
+    def test_from_obj_rejects_blank_target(self) -> None:
+        """Blank Azure Service Bus targets should parse as absent."""
+        with pytest.raises(ValueError, match='requires "queue_name" or "topic"'):
+            AzureServiceBusQueue.from_obj({'name': 'orders', 'queue_name': '   '})
 
     def test_from_obj_rejects_missing_target(self) -> None:
         """Test Azure Service Bus metadata requires a queue or topic."""
