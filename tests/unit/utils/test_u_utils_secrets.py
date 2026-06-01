@@ -65,6 +65,17 @@ class TestSecretProviders:
         assert provider.resolve('EMPTY') is None
         assert provider.resolve('MISSING') is None
 
+    def test_local_file_provider_strips_configured_file_path(
+        self,
+        json_secrets_path: Path,
+    ) -> None:
+        """Local file provider should tolerate padded env path values."""
+        provider = LocalFileSecretProvider(
+            {DEFAULT_SECRETS_FILE_ENV_VAR: f'  {json_secrets_path}  '},
+        )
+
+        assert provider.resolve('service.password') == 'json-secret'
+
     def test_local_file_provider_uses_explicit_file_provider_name(
         self,
         json_secrets_path: Path,
@@ -295,6 +306,7 @@ class TestSecretResolver:
             pytest.param(None, id='missing-env-map'),
             pytest.param({}, id='missing-path'),
             pytest.param({DEFAULT_SECRETS_FILE_ENV_VAR: ''}, id='empty-path'),
+            pytest.param({DEFAULT_SECRETS_FILE_ENV_VAR: '   '}, id='blank-path'),
         ],
     )
     def test_secrets_file_path_returns_none_without_usable_path(
