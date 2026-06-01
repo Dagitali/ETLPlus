@@ -121,6 +121,8 @@ class TestNormalizeText:
         [
             pytest.param('abcdef', 3, 'abc', id='truncated'),
             pytest.param('abc', 10, 'abc', id='shorter-than-limit'),
+            pytest.param('abc', 0, '', id='zero-limit'),
+            pytest.param('abc', -1, '', id='negative-limit'),
             pytest.param('', 3, '', id='empty'),
             pytest.param(None, 3, '', id='none'),
         ],
