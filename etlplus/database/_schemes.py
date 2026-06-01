@@ -50,7 +50,7 @@ def is_database_dsn(
     bool
         ``True`` when *value* uses a recognized database DSN prefix.
     """
-    normalized = value.strip().lower()
+    normalized = value.strip()
     dialect, driver = infer_database_dialect_and_driver(normalized)
     return dialect is not None and driver is not None and '://' not in normalized
 
@@ -71,6 +71,6 @@ def is_database_url(
     bool
         ``True`` when *value* uses a recognized database URL prefix.
     """
-    normalized = value.strip().lower()
+    normalized = value.strip()
     dialect, _ = infer_database_dialect_and_driver(normalized)
     return dialect is not None and '://' in normalized

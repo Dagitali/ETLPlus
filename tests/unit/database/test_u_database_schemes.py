@@ -35,6 +35,7 @@ class TestDatabaseSchemes:
             (is_database_dsn, '', False),
             (is_database_dsn, 'https://example.com/data.json', False),
             (is_database_url, 'postgres://user@host/db', True),
+            (is_database_url, 'PostgreSQL+Psycopg://User@Host/Db', True),
             (is_database_url, 'postgresql+psycopg://user@host/db', True),
             (is_database_url, 'duckdb:///warehouse.duckdb', True),
             (is_database_url, 'duckdb+duckdb_engine:///warehouse.duckdb', True),
