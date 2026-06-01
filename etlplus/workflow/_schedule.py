@@ -48,6 +48,16 @@ def _append_issue(
     issues.append({'issue': issue, 'schedule': schedule_name})
 
 
+def _optional_stripped(
+    value: object,
+) -> str | None:
+    """Return one optional string with surrounding whitespace removed."""
+    text = ValueParser.optional_str(value)
+    if text is None:
+        return None
+    return text.strip() or None
+
+
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -98,7 +108,7 @@ class ScheduleTargetConfig:
         if not data:
             return None
         return cls(
-            job=ValueParser.optional_str(data.get('job')),
+            job=_optional_stripped(data.get('job')),
             run_all=ValueParser.bool_flag(data.get('run_all'), default=False),
         )
 
@@ -131,7 +141,7 @@ class ScheduleBackfillConfig:
                 default=None,
                 minimum=1,
             ),
-            start_at=ValueParser.optional_str(data.get('start_at')),
+            start_at=_optional_stripped(data.get('start_at')),
         )
 
 
@@ -160,13 +170,13 @@ class ScheduleConfig:
         data = MappingParser.optional(obj)
         if not data:
             return None
-        if not (name := ValueParser.optional_str(data.get('name'))):
+        if not (name := _optional_stripped(data.get('name'))):
             return None
         return cls(
             name=name,
-            cron=ValueParser.optional_str(data.get('cron')),
+            cron=_optional_stripped(data.get('cron')),
             interval=ScheduleIntervalConfig.from_obj(data.get('interval')),
-            timezone=ValueParser.optional_str(data.get('timezone')),
+            timezone=_optional_stripped(data.get('timezone')),
             paused=ValueParser.bool_flag(data.get('paused'), default=False),
             target=ScheduleTargetConfig.from_obj(data.get('target')),
             backfill=ScheduleBackfillConfig.from_obj(data.get('backfill')),
