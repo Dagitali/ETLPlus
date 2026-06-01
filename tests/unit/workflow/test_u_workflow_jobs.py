@@ -120,11 +120,15 @@ class TestReferenceParsing(WorkflowAssertions):
         [
             pytest.param(ExtractRef, None, id='extract-none'),
             pytest.param(ExtractRef, {'source': 123}, id='extract-bad'),
+            pytest.param(ExtractRef, {'source': ''}, id='extract-blank'),
             pytest.param(LoadRef, {'target': 123}, id='load-bad'),
+            pytest.param(LoadRef, {'target': ''}, id='load-blank'),
             pytest.param(JobRetryConfig, None, id='retry-none'),
             pytest.param(TransformRef, {'pipeline': 123}, id='transform-bad'),
+            pytest.param(TransformRef, {'pipeline': ''}, id='transform-blank'),
             pytest.param(ValidationRef, None, id='validation-none'),
             pytest.param(ValidationRef, {'ruleset': 123}, id='validation-bad'),
+            pytest.param(ValidationRef, {'ruleset': ''}, id='validation-blank'),
         ],
     )
     def test_ref_from_obj_invalid(
@@ -185,6 +189,7 @@ class TestJobConfigParsing(WorkflowAssertions):
             pytest.param(None, id='none'),
             pytest.param({}, id='empty-mapping'),
             pytest.param({'name': 123}, id='bad-name'),
+            pytest.param({'name': ''}, id='blank-name'),
         ],
     )
     def test_jobconfig_from_obj_invalid(
