@@ -74,6 +74,29 @@ class TestHdf5Datasets(PathMixin):
 
     format_name = 'hdf5'
 
+    def test_read_dataset_accepts_leading_slash_dataset_argument(
+        self,
+        tmp_path: Path,
+        optional_module_stub: OptionalModuleInstaller,
+    ) -> None:
+        """
+        Test that explicit HDF5 dataset selectors normalize leading slashes.
+        """
+        default_frame = DictRecordsFrameStub([{'id': 1}])
+        other_frame = DictRecordsFrameStub([{'id': 2}])
+        store = _HDFStore(
+            ['data', 'other'],
+            {'data': default_frame, 'other': other_frame},
+        )
+        TestHdf5Read._install_store(optional_module_stub, store)
+
+        result = mod.Hdf5File().read_dataset(
+            self.format_path(tmp_path),
+            dataset='/other',
+        )
+
+        assert result == [{'id': 2}]
+
     def test_list_datasets_raises_when_tables_missing(
         self,
         tmp_path: Path,

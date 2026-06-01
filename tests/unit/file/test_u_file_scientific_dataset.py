@@ -157,6 +157,18 @@ class TestScientificDatasetHelpers:
         )
         assert keys == ['data', 'features', 'labels']
 
+    def test_resolve_store_dataset_key_normalizes_default_key(self) -> None:
+        """Test that default keys are normalized like store keys."""
+        assert (
+            scientific_dataset_mod.resolve_store_dataset_key(
+                ['data', 'features'],
+                dataset=None,
+                default_key='/data',
+                format_name='HDF5',
+            )
+            == 'data'
+        )
+
     @pytest.mark.parametrize(
         ('keys', 'dataset', 'expected'),
         [
@@ -166,6 +178,12 @@ class TestScientificDatasetHelpers:
                 'features',
                 'features',
                 id='explicit-key',
+            ),
+            pytest.param(
+                ['data', 'features'],
+                '/features',
+                'features',
+                id='explicit-key-leading-slash',
             ),
             pytest.param([], None, None, id='empty-key-set'),
             pytest.param(['features'], None, 'features', id='single-key-fallback'),
