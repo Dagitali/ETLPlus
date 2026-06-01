@@ -192,8 +192,11 @@ class TokenReferenceCollector:
         """Record token names and paths found in *node*."""
         match node:
             case str():
-                for match in self.pattern.findall(node):
-                    self.paths_by_name.setdefault(match, set()).add(path or '<root>')
+                for match in self.pattern.finditer(node):
+                    token_name = match.group(1)
+                    self.paths_by_name.setdefault(token_name, set()).add(
+                        path or '<root>',
+                    )
             case Mapping():
                 for key, inner in node.items():
                     key_text = str(key)
