@@ -110,7 +110,10 @@ class ConnectorBase(ABC, ConnectorProtocol):
     @classmethod
     def _name_from_obj(cls, obj: StrAnyMap) -> str:
         """Return the required connector name for this connector class."""
-        return MappingFieldParser.require_str(obj, 'name', label=cls.__name__)
+        name = MappingFieldParser.require_str(obj, 'name', label=cls.__name__).strip()
+        if name:
+            return name
+        raise TypeError(f'{cls.__name__} requires a "name" (str)')
 
     @classmethod
     def _optional_str(
@@ -123,8 +126,11 @@ class ConnectorBase(ABC, ConnectorProtocol):
             if field_name not in obj:
                 continue
             if (value := ValueParser.optional_str(obj.get(field_name))) is not None:
-                if not value and len(field_names) > 1:
-                    continue
+                value = value.strip()
+                if not value:
+                    if len(field_names) > 1:
+                        continue
+                    return None
                 return value
         return None
 
