@@ -11,6 +11,7 @@ import os
 from collections.abc import Mapping
 from importlib import import_module
 from typing import Any
+from typing import TypeGuard
 
 from ..__version__ import __version__
 from .config import ResolvedTelemetryConfig
@@ -42,7 +43,7 @@ _LOGGER = logging.getLogger(__name__)
 
 def _is_plain_int(
     value: object,
-) -> bool:
+) -> TypeGuard[int]:
     """Return whether *value* is an integer metric value, excluding booleans."""
     return isinstance(value, int) and not isinstance(value, bool)
 
