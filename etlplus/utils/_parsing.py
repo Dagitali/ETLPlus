@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from collections.abc import Sequence
+from numbers import Real
 from typing import SupportsIndex
 from typing import SupportsInt
 from typing import TypeGuard
@@ -135,6 +136,9 @@ class ValueParser:
             return None
         if isinstance(value, bool):
             raise TypeError(f'{label} "{field_name}" must be an integer')
+        if isinstance(value, Real) and not isinstance(value, int):
+            if not float(value).is_integer():
+                raise TypeError(f'{label} "{field_name}" must be an integer')
         try:
             if not isinstance(
                 value,
