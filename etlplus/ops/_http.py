@@ -148,6 +148,8 @@ def require_url(
     env_map = cast(Mapping[str, Any], env)
     if not (url := MappingFieldParser.required_str(env_map, 'url')):
         raise ValueError(error_message)
+    if not (url := url.strip()):
+        raise ValueError(error_message)
     return url
 
 
