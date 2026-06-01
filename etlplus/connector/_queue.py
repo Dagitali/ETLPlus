@@ -124,9 +124,7 @@ class ConnectorQueue(ConnectorBase):
     ) -> str | None:
         """Return the first normalized queue name alias with a value."""
         for field_name in 'queue_name', 'queue':
-            if (
-                queue_name := ValueParser.optional_str(obj.get(field_name))
-            ) is not None:
+            if queue_name := ValueParser.optional_str(obj.get(field_name)):
                 return queue_name
         return None
 
