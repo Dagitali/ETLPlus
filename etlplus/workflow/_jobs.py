@@ -239,7 +239,11 @@ class JobConfig:
         return cls(
             name=name,
             description=ValueParser.optional_str(data.get('description')),
-            depends_on=SequenceParser.str_list(data.get('depends_on')),
+            depends_on=[
+                dependency
+                for dependency in SequenceParser.str_list(data.get('depends_on'))
+                if dependency.strip()
+            ],
             extract=ExtractRef.from_obj(data.get('extract')),
             validate=ValidationRef.from_obj(data.get('validate')),
             retry=JobRetryConfig.from_obj(data.get('retry')),
