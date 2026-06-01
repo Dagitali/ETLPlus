@@ -72,7 +72,8 @@ class ProfileConfig:
         if not (data := MappingParser.optional(obj)):
             return cls()
 
+        default_target = ValueParser.optional_str(data.get('default_target'))
         return cls(
-            default_target=ValueParser.optional_str(data.get('default_target')),
+            default_target=default_target if default_target else None,
             env=MappingParser.to_str_dict(MappingParser.optional(data.get('env'))),
         )
