@@ -63,7 +63,8 @@ def _mapping_with_required_str(
     """Return one parsed mapping together with its required string field."""
     if not (data := MappingParser.optional(obj)):
         return None
-    if not (value := MappingFieldParser.required_str(data, key)):
+    value = MappingFieldParser.required_str(data, key)
+    if value is None or not (value := value.strip()):
         return None
     return data, value
 
@@ -240,7 +241,7 @@ class JobConfig:
             name=name,
             description=ValueParser.optional_str(data.get('description')),
             depends_on=[
-                dependency
+                dependency.strip()
                 for dependency in SequenceParser.str_list(data.get('depends_on'))
                 if dependency.strip()
             ],
