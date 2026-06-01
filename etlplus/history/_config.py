@@ -78,6 +78,10 @@ def _coerce_state_dir(
     """Return one normalized history state directory path."""
     if value is None:
         return DEFAULT_STATE_DIR
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return DEFAULT_STATE_DIR
     return Path(value).expanduser()
 
 
