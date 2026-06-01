@@ -125,6 +125,28 @@ class TestApiConfig:
         assert cfg.headers.get('X-Token') == 'abc'
         assert 'ping' in cfg.endpoints
 
+    def test_invalid_profile_base_path_does_not_break_effective_url(
+        self,
+        base_url: str,
+        api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+    ) -> None:
+        """
+        Test that non-string profile base_path values are ignored safely.
+        """
+        obj = {
+            'profiles': {
+                'default': {
+                    'base_url': base_url,
+                    'base_path': {'invalid': '/v1'},
+                },
+            },
+            'endpoints': {},
+        }
+        cfg = api_config_factory(obj)
+
+        assert cfg.effective_base_path() is None
+        assert cfg.effective_base_url() == base_url
+
     def test_parses_profiles_and_sets_defaults(
         self,
         base_url: str,

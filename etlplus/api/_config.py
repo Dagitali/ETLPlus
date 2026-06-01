@@ -283,7 +283,8 @@ class ApiProfileConfig:
             defaults_raw.get('headers'),
         ) | MappingParser.to_str_dict(obj.get('headers'))
 
-        base_path = obj.get('base_path')
+        base_path_raw = obj.get('base_path')
+        base_path = base_path_raw if isinstance(base_path_raw, str) else None
         auth = MappingParser.to_dict(obj.get('auth'))
 
         pag_def = PaginationConfig.from_defaults(
