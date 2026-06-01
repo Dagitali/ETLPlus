@@ -160,7 +160,7 @@ class ScheduleConfig:
         data = MappingParser.optional(obj)
         if not data:
             return None
-        if (name := ValueParser.optional_str(data.get('name'))) is None:
+        if not (name := ValueParser.optional_str(data.get('name'))):
             return None
         return cls(
             name=name,
