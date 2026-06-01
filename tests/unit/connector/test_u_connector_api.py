@@ -30,14 +30,14 @@ class TestConnectorApi:
                 {
                     'name': 'users_api',
                     'type': 'api',
-                    'url': 'https://example.test/users',
-                    'method': 'GET',
+                    'url': '  https://example.test/users  ',
+                    'method': '  GET  ',
                     'headers': {1: True},
                     'query_params': [('bad', 'shape')],
                     'pagination': {'type': 'page', 'start_page': '2'},
                     'rate_limit': {'sleep_seconds': '0.2'},
-                    'service': 'people',
-                    'endpoint': 'users',
+                    'service': '  people  ',
+                    'endpoint': '  users  ',
                 },
                 {
                     'type': DataConnectorType.API,
@@ -99,7 +99,7 @@ class TestConnectorApi:
                 {
                     'name': 'users_api',
                     'type': 'api',
-                    'api': '',
+                    'api': '   ',
                     'service': 'fallback',
                 },
                 {
