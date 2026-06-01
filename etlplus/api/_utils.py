@@ -15,6 +15,7 @@ from typing import cast
 
 import requests  # type: ignore[import]
 
+from ..utils import IntParser
 from ..utils import MappingParser
 from ..utils._types import Timeout
 from ._config import ApiConfig
@@ -35,6 +36,18 @@ from .rate_limiting import RateLimiter
 
 
 DEFAULT_TIMEOUT: float = 10.0
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _positive_int_or_default(
+    value: object,
+    *,
+    default: int,
+) -> int:
+    """Return a positive integer parsed from config-like values."""
+    return IntParser.parse(value, default=default, minimum=1) or default
 
 
 # SECTION: EXPORTS ========================================================== #
@@ -546,8 +559,14 @@ def build_pagination_cfg(
                 {
                     'page_param': str(page_param or 'page'),
                     'size_param': str(size_param or 'per_page'),
-                    'start_page': int(start_page or 1),
-                    'page_size': int(page_size or 100),
+                    'start_page': _positive_int_or_default(
+                        start_page,
+                        default=1,
+                    ),
+                    'page_size': _positive_int_or_default(
+                        page_size,
+                        default=100,
+                    ),
                 },
             )
         case 'cursor':
@@ -572,7 +591,10 @@ def build_pagination_cfg(
                 {
                     'cursor_param': str(cursor_param or 'cursor'),
                     'cursor_path': cursor_path,
-                    'page_size': int(page_size or 100),
+                    'page_size': _positive_int_or_default(
+                        page_size,
+                        default=100,
+                    ),
                     'start_cursor': start_cursor,
                 },
             )
