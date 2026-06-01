@@ -215,3 +215,12 @@ class TestTokenReferenceCollector:
             {'path': 'Hello {{NAME}}'},
             pattern=re.compile(r'\{\{([^}]+)\}\}'),
         ) == [{'name': 'NAME', 'paths': ['path']}]
+
+    def test_collect_rows_uses_first_group_for_custom_patterns(self) -> None:
+        """Test extra capture groups do not become token-name tuples."""
+        import re
+
+        assert TokenReferenceCollector.collect_rows(
+            {'path': 'Hello {{NAME:ignored}}'},
+            pattern=re.compile(r'\{\{([^}:]+)(:([^}]+))?\}\}'),
+        ) == [{'name': 'NAME', 'paths': ['path']}]
