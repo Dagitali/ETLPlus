@@ -422,6 +422,53 @@ class TestExtractFromApi:
             'content_type': 'text/plain',
         }
 
+    @pytest.mark.parametrize(
+        'sleep_seconds',
+        [
+            pytest.param('not-a-number', id='invalid'),
+            pytest.param(-1, id='negative'),
+            pytest.param(True, id='boolean'),
+        ],
+    )
+    def test_use_client_defaults_invalid_sleep_seconds(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sleep_seconds: object,
+    ) -> None:
+        """Invalid client sleep values should fall back to a non-delay value."""
+        paginate_calls: list[dict[str, Any]] = []
+
+        class _Client:
+            """Stub EndpointClient that captures paginate_url calls."""
+
+            def __init__(self, **_kwargs: Any) -> None:
+                return None
+
+            def paginate_url(
+                self,
+                _url: str,
+                _pagination: Any,
+                *,
+                request: Any,
+                sleep_seconds: float,
+            ) -> list[dict[str, int]]:
+                del request
+                paginate_calls.append({'sleep_seconds': sleep_seconds})
+                return [{'id': 1}]
+
+        monkeypatch.setattr(extract_mod, 'EndpointClient', _Client)
+
+        result = extract_mod._extract_from_api_env(
+            {
+                'url': 'https://example.test/v1/items',
+                'sleep_seconds': sleep_seconds,
+            },
+            use_client=True,
+        )
+
+        assert result == [{'id': 1}]
+        assert paginate_calls[0]['sleep_seconds'] == 0.0
+
     def test_use_client_with_direct_url_path(
         self,
         monkeypatch: pytest.MonkeyPatch,
