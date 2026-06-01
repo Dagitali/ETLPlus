@@ -47,6 +47,12 @@ class TestScheduleParsing:
                 id='target-coerces-run-all-flag',
             ),
             pytest.param(
+                ScheduleTargetConfig,
+                {'job': '  daily-sync  '},
+                ScheduleTargetConfig(job='daily-sync', run_all=False),
+                id='target-strips-job-name',
+            ),
+            pytest.param(
                 ScheduleBackfillConfig,
                 {'enabled': 'yes', 'max_catchup_runs': '3', 'start_at': 20260508},
                 ScheduleBackfillConfig(
@@ -57,11 +63,21 @@ class TestScheduleParsing:
                 id='backfill-coerces-fields',
             ),
             pytest.param(
+                ScheduleBackfillConfig,
+                {'start_at': '  2026-05-08T00:00:00Z  '},
+                ScheduleBackfillConfig(
+                    enabled=False,
+                    max_catchup_runs=None,
+                    start_at='2026-05-08T00:00:00Z',
+                ),
+                id='backfill-strips-start-at',
+            ),
+            pytest.param(
                 ScheduleConfig,
                 {
-                    'name': 'weekday-refresh',
-                    'cron': '0 6 * * *',
-                    'timezone': 'UTC',
+                    'name': '  weekday-refresh  ',
+                    'cron': '  0 6 * * *  ',
+                    'timezone': '  UTC  ',
                     'paused': 'on',
                     'target': {'job': 'refresh-warehouse'},
                     'backfill': {'enabled': True, 'max_catchup_runs': 2},
@@ -117,6 +133,11 @@ class TestScheduleParsing:
                 ScheduleConfig,
                 {'name': '', 'cron': '0 0 * * *'},
                 id='schedule-blank-name',
+            ),
+            pytest.param(
+                ScheduleConfig,
+                {'name': '   ', 'cron': '0 0 * * *'},
+                id='schedule-whitespace-name',
             ),
         ],
     )
