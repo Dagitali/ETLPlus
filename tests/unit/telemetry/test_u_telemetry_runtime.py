@@ -234,6 +234,16 @@ class TestTelemetryConfig:
         assert resolved.exporter == 'opentelemetry'
         assert resolved.service_name == 'env-service'
 
+    def test_resolve_ignores_blank_service_name_overrides(self) -> None:
+        """Blank service-name overrides should not hide configured names."""
+        resolved = telemetry_mod.ResolvedTelemetryConfig.resolve(
+            telemetry_mod.TelemetryConfig(service_name='configured-service'),
+            env={'ETLPLUS_TELEMETRY_SERVICE_NAME': '   '},
+            service_name=' ',
+        )
+
+        assert resolved.service_name == 'configured-service'
+
 
 class TestTelemetryRuntime:
     """Unit tests for the process-local telemetry bridge."""
