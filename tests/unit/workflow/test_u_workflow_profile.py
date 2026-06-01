@@ -66,3 +66,10 @@ class TestProfileConfig:
         Test that non-mapping profile payloads produce a default config.
         """
         assert ProfileConfig.from_obj(payload) == ProfileConfig()
+
+    def test_from_obj_treats_blank_default_target_as_absent(self) -> None:
+        """Blank default target names should parse as missing identifiers."""
+        cfg = ProfileConfig.from_obj({'default_target': '', 'env': {'TXT': 'x'}})
+
+        assert cfg.default_target is None
+        assert cfg.env == {'TXT': 'x'}
