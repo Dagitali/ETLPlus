@@ -176,7 +176,7 @@ class TestRequireUrl:
 
     @pytest.mark.parametrize(
         'env',
-        [{}, {'url': ''}, {'url': None}, {'url': 7}],
+        [{}, {'url': ''}, {'url': '   '}, {'url': None}, {'url': 7}],
     )
     def test_require_url_rejects_missing_or_invalid_values(
         self,
@@ -190,6 +190,7 @@ class TestRequireUrl:
         ('env', 'expected'),
         [
             ({'url': 'https://example.test'}, 'https://example.test'),
+            ({'url': '  https://example.test/api  '}, 'https://example.test/api'),
         ],
     )
     def test_require_url_returns_string(
