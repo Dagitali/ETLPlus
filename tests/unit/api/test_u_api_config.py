@@ -318,6 +318,12 @@ class TestApiConfig:
         assert pdef.page_size == 25
         assert pdef.max_pages == 10
 
+    def test_strips_flat_base_url(self) -> None:
+        """Flat API base URLs should trim accidental outer whitespace."""
+        cfg = ApiConfig.from_obj({'base_url': '  https://api.example.test  '})
+
+        assert cfg.base_url == 'https://api.example.test'
+
 
 class TestApiProfileConfig:
     """
@@ -445,6 +451,22 @@ class TestApiProfileConfig:
         assert prof.base_path == '/v1'
         assert prof.auth == {'token': 'abc'}
 
+    def test_strips_url_fields(
+        self,
+        base_url: str,
+        profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
+    ) -> None:
+        """Profile URL fields should trim accidental outer whitespace."""
+        prof = profile_config_factory(
+            {
+                'base_url': f'  {base_url}  ',
+                'base_path': '  /v1  ',
+            },
+        )
+
+        assert prof.base_url == base_url
+        assert prof.base_path == '/v1'
+
     def test_requires_base_url(
         self,
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
@@ -495,7 +517,7 @@ class TestEndpointConfig:
         """
         Test that from_str sets no method for :class:`EndpointConfig`.
         """
-        ep = endpoint_config_factory('/ping')
+        ep = endpoint_config_factory('  /ping  ')
         assert ep.path == '/ping'
         assert ep.method is None
 
@@ -560,6 +582,15 @@ class TestEndpointConfig:
         assert ep.path == '/users'
         assert ep.method == 'GET'
         assert ep.query_params.get('active') is True
+
+    def test_strips_mapping_path(
+        self,
+        endpoint_config_factory: Callable[[dict[str, Any]], EndpointConfig],
+    ) -> None:
+        """Mapping endpoint paths should trim accidental outer whitespace."""
+        ep = endpoint_config_factory({'path': '  /users  '})
+
+        assert ep.path == '/users'
 
 
 class TestConfigInternalBranches:
