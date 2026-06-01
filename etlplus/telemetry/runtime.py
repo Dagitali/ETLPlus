@@ -40,6 +40,13 @@ _LOGGER = logging.getLogger(__name__)
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
+def _is_plain_int(
+    value: object,
+) -> bool:
+    """Return whether *value* is an integer metric value, excluding booleans."""
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 def _span_name(
     event: Mapping[str, Any],
 ) -> str:
@@ -149,7 +156,7 @@ class _OpenTelemetryAdapter:
         span.add_event(str(event.get('event', lifecycle)), attributes=attrs)
 
         duration_ms = event.get('duration_ms')
-        if isinstance(duration_ms, int):
+        if _is_plain_int(duration_ms):
             self._duration_histogram.record(duration_ms, attrs)
 
         if lifecycle == 'failed':
@@ -187,7 +194,7 @@ class _OpenTelemetryAdapter:
             ('records_out', self._history_records_out_histogram),
         ):
             value = record.get(field_name)
-            if isinstance(value, int):
+            if _is_plain_int(value):
                 histogram.record(value, attrs)
 
     # -- Static Methods -- #
@@ -285,7 +292,7 @@ def _history_record_attributes(
         ),
     )
     sequence_index = record.get('sequence_index')
-    if isinstance(sequence_index, int):
+    if _is_plain_int(sequence_index):
         attrs['etlplus.history.sequence_index'] = sequence_index
     return attrs
 
