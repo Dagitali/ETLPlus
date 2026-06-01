@@ -38,7 +38,9 @@ def resolve_store_dataset_key(
     """Resolve one selected dataset key from available store keys."""
     if not keys:
         return None
+    default_key = default_key.lstrip('/')
     if dataset is not None:
+        dataset = dataset.lstrip('/')
         if dataset not in keys:
             raise ValueError(f'{format_name} dataset {dataset!r} not found')
         return dataset
