@@ -466,6 +466,32 @@ class TestTelemetryRuntime:
         assert tracer.spans == []
         assert len(meter.counters[0].calls) == 2
 
+    def test_emit_event_defaults_invalid_schema_version(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Invalid schema versions should not prevent telemetry export."""
+        _tracer, meter = _FakeOpenTelemetryInstaller.install(monkeypatch)
+        adapter = telemetry_mod._OpenTelemetryAdapter(
+            telemetry_mod.ResolvedTelemetryConfig(
+                enabled=True,
+                exporter='opentelemetry',
+                service_name='etlplus-tests',
+            ),
+        )
+
+        adapter.emit_event(
+            {
+                'command': 'run',
+                'event': 'run.completed',
+                'lifecycle': 'completed',
+                'run_id': 'run-123',
+                'schema_version': 'v1',
+            },
+        )
+
+        assert meter.counters[0].calls[0][1]['etlplus.schema_version'] == 0
+
     def test_emit_event_is_noop_when_disabled(self) -> None:
         """Disabled telemetry should not create any runtime adapter."""
         settings = telemetry_mod.RuntimeTelemetry.configure(
