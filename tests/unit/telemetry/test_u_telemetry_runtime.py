@@ -589,3 +589,43 @@ class TestTelemetryRuntime:
         assert meter.histograms[1].calls == []
         assert meter.histograms[2].calls == []
         assert meter.histograms[3].calls == []
+
+    def test_numeric_telemetry_fields_ignore_booleans(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Boolean payload fields should not be exported as integer metrics."""
+        _tracer, meter = _FakeOpenTelemetryInstaller.install(monkeypatch)
+        adapter = telemetry_mod._OpenTelemetryAdapter(
+            telemetry_mod.ResolvedTelemetryConfig(
+                enabled=True,
+                exporter='opentelemetry',
+                service_name='etlplus-tests',
+            ),
+        )
+
+        adapter.emit_event(
+            {
+                'command': 'run',
+                'duration_ms': True,
+                'event': 'run.completed',
+                'lifecycle': 'completed',
+                'run_id': 'run-123',
+            },
+        )
+        adapter.emit_history_record(
+            {
+                'duration_ms': True,
+                'records_in': False,
+                'records_out': True,
+                'run_id': 'run-123',
+                'sequence_index': True,
+            },
+            record_level='job',
+        )
+
+        assert 'etlplus.history.sequence_index' not in meter.counters[2].calls[0][1]
+        assert meter.histograms[0].calls == []
+        assert meter.histograms[1].calls == []
+        assert meter.histograms[2].calls == []
+        assert meter.histograms[3].calls == []
