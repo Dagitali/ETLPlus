@@ -102,7 +102,9 @@ class EnvironmentSecretProvider:
         if not key or self.env_map is None:
             return None
         value = self.env_map.get(key)
-        return value if value not in (None, '') else None
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,7 +175,9 @@ class LocalFileSecretProvider:
             if not isinstance(current, Mapping) or part not in current:
                 return None
             current = current[part]
-        return current if current not in (None, '') else None
+        if current is None or (isinstance(current, str) and not current.strip()):
+            return None
+        return current
 
 
 @dataclass(frozen=True, slots=True)
