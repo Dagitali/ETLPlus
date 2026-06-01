@@ -95,6 +95,7 @@ class TestValueParser:
         [
             pytest.param('not-an-int', id='string'),
             pytest.param(True, id='bool'),
+            pytest.param(5.5, id='fractional-float'),
             pytest.param(object(), id='object'),
         ],
     )
