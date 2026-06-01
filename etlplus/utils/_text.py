@@ -69,6 +69,8 @@ class TextNormalizer:
         str
             Truncated text, or ``""`` when *text* is falsey.
         """
+        if limit <= 0:
+            return ''
         return (text or '')[:limit]
 
 
