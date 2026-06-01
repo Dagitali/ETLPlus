@@ -44,7 +44,7 @@ def yaml_secrets_path_fixture(
     """Write one YAML secrets file used by file-backed resolver tests."""
     path = tmp_path / 'secrets.yaml'
     path.write_text(
-        'service:\n  password: yaml-secret\n  empty_value: ""\n',
+        'service:\n  password: yaml-secret\n  empty_value: ""\n  blank_value: "   "\n',
         encoding='utf-8',
     )
     return path
@@ -58,11 +58,14 @@ class TestSecretProviders:
 
     def test_environment_provider_resolves_non_empty_values(self) -> None:
         """Environment provider should be the stable first provider."""
-        provider = EnvironmentSecretProvider({'API_TOKEN': 'env-secret', 'EMPTY': ''})
+        provider = EnvironmentSecretProvider(
+            {'API_TOKEN': 'env-secret', 'EMPTY': '', 'BLANK': '   '},
+        )
 
         assert provider.name == 'env'
         assert provider.resolve('API_TOKEN') == 'env-secret'
         assert provider.resolve('EMPTY') is None
+        assert provider.resolve('BLANK') is None
         assert provider.resolve('MISSING') is None
 
     def test_local_file_provider_strips_configured_file_path(
@@ -252,6 +255,7 @@ class TestSecretResolver:
             pytest.param('yaml', 'service.password', 'yaml-secret', id='yaml-file'),
             pytest.param('yaml', 'service.missing', None, id='missing-key'),
             pytest.param('yaml', 'service.empty_value', None, id='empty-leaf-value'),
+            pytest.param('yaml', 'service.blank_value', None, id='blank-leaf-value'),
         ],
     )
     def test_resolve_token_reads_local_mapping_files(
