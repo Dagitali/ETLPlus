@@ -123,6 +123,8 @@ class ConnectorBase(ABC, ConnectorProtocol):
             if field_name not in obj:
                 continue
             if (value := ValueParser.optional_str(obj.get(field_name))) is not None:
+                if not value and len(field_names) > 1:
+                    continue
                 return value
         return None
 
