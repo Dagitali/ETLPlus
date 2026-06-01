@@ -41,6 +41,7 @@ class TestRedisQueue:
         [
             pytest.param('not-an-int', id='string'),
             pytest.param(True, id='bool'),
+            pytest.param(1.5, id='fractional-float'),
         ],
     )
     def test_from_obj_rejects_invalid_database(self, database: object) -> None:
