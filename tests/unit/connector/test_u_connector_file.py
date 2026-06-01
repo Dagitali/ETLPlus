@@ -45,8 +45,8 @@ class TestConnectorFile:
                 {
                     'name': 'input_csv',
                     'type': 'file',
-                    'format': 'csv',
-                    'path': '/tmp/input.csv',
+                    'format': '  csv  ',
+                    'path': '  /tmp/input.csv  ',
                     'options': [('delimiter', ',')],
                 },
                 {
