@@ -113,6 +113,11 @@ class TestScheduleParsing:
                 {'cron': '0 0 * * *'},
                 id='schedule-missing-name',
             ),
+            pytest.param(
+                ScheduleConfig,
+                {'name': '', 'cron': '0 0 * * *'},
+                id='schedule-blank-name',
+            ),
         ],
     )
     def test_from_obj_invalid(
