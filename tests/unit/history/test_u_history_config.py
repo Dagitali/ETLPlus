@@ -65,11 +65,29 @@ class TestHistoryConfig:
 class TestHistoryConfigModuleHelpers:
     """Unit tests for :mod:`etlplus.history._config` helper functions."""
 
+    def test_resolve_ignores_blank_string_state_dir(self) -> None:
+        """Blank explicit state directories should fall back to defaults."""
+        resolved = history_config_mod.ResolvedHistoryConfig.resolve(
+            None,
+            state_dir='   ',
+        )
+
+        assert resolved.state_dir == history_config_mod.DEFAULT_STATE_DIR
+
     def test_resolve_normalizes_explicit_pathlike_state_dir(self) -> None:
         """Explicit state directories should normalize through :class:`Path`."""
         resolved = history_config_mod.ResolvedHistoryConfig.resolve(
             None,
             state_dir=Path('~/etlplus-state'),
+        )
+
+        assert resolved.state_dir == Path('~/etlplus-state').expanduser()
+
+    def test_resolve_strips_explicit_string_state_dir(self) -> None:
+        """Explicit string state directories should trim accidental whitespace."""
+        resolved = history_config_mod.ResolvedHistoryConfig.resolve(
+            None,
+            state_dir='  ~/etlplus-state  ',
         )
 
         assert resolved.state_dir == Path('~/etlplus-state').expanduser()
