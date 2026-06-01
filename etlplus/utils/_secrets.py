@@ -158,9 +158,14 @@ class LocalFileSecretProvider:
             return None
 
         text = path.read_text(encoding='utf-8')
-        payload = (
-            json.loads(text) if path.suffix.lower() == '.json' else yaml.safe_load(text)
-        )
+        try:
+            payload = (
+                json.loads(text)
+                if path.suffix.lower() == '.json'
+                else yaml.safe_load(text)
+            )
+        except (json.JSONDecodeError, yaml.YAMLError):
+            return None
 
         return MappingParser.to_dict(payload) if isinstance(payload, Mapping) else None
 
