@@ -132,6 +132,20 @@ class TestMappingHelpers:
             is None
         )
 
+    def test_first_non_empty_str_stops_on_nested_mapping_cycles(self) -> None:
+        """Test recursive nested lookup fails closed for cyclic mappings."""
+        mapping: dict[str, Any] = {}
+        mapping['default'] = mapping
+
+        assert (
+            MappingParser.first_non_empty_str(
+                mapping,
+                ('connection_string', 'url', 'dsn'),
+                nested_key='default',
+            )
+            is None
+        )
+
     def test_freeze_returns_read_only_copy_with_optional_key_cast(self) -> None:
         """Test immutable mapping snapshots with optional key normalization."""
         source = {1: 'a'}
