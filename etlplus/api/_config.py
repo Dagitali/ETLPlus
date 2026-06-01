@@ -93,7 +93,7 @@ def _effective_service_defaults(
 
     if not isinstance(fallback_base, str):
         raise TypeError('ApiConfig requires "base_url" (str)')
-    return fallback_base, fallback_headers
+    return fallback_base.strip(), fallback_headers
 
 
 def _normalize_method(
@@ -190,6 +190,13 @@ def _selected_profile(
     )
 
 
+def _strip_string(
+    value: str | None,
+) -> str | None:
+    """Return a string with accidental outer whitespace removed."""
+    return value.strip() if isinstance(value, str) else value
+
+
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -284,7 +291,9 @@ class ApiProfileConfig:
         ) | MappingParser.to_str_dict(obj.get('headers'))
 
         base_path_raw = obj.get('base_path')
-        base_path = base_path_raw if isinstance(base_path_raw, str) else None
+        base_path = (
+            _strip_string(base_path_raw) if isinstance(base_path_raw, str) else None
+        )
         auth = MappingParser.to_dict(obj.get('auth'))
 
         pag_def = PaginationConfig.from_defaults(
@@ -293,7 +302,7 @@ class ApiProfileConfig:
         rl_def = RateLimitConfig.from_defaults(defaults_raw.get('rate_limit'))
 
         return cls(
-            base_url=base,
+            base_url=base.strip(),
             headers=merged_headers,
             base_path=base_path,
             auth=auth,
@@ -558,7 +567,7 @@ class EndpointConfig:
         """
         match obj:
             case str():
-                return cls(path=obj, method=None)
+                return cls(path=obj.strip(), method=None)
             case Mapping():
                 path = obj.get('path') or obj.get('url')
                 if not isinstance(path, str):
@@ -579,7 +588,7 @@ class EndpointConfig:
                     raise TypeError('query_params must be a mapping if set')
 
                 return cls(
-                    path=path,
+                    path=path.strip(),
                     method=_normalize_method(obj.get('method')),
                     path_params=MappingParser.to_dict(path_params_raw),
                     query_params=MappingParser.to_dict(query_params_raw),
