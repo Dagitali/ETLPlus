@@ -48,6 +48,22 @@ def _is_plain_int(
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+def _plain_int_or_default(
+    value: object,
+    *,
+    default: int = 0,
+) -> int:
+    """Return one integer attribute value, falling back for invalid inputs."""
+    if _is_plain_int(value):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    return default
+
+
 def _span_name(
     event: Mapping[str, Any],
 ) -> str:
@@ -232,7 +248,9 @@ def _event_attributes(
     attrs: dict[str, str | bool | int | float] = {
         'etlplus.service_name': service_name,
         'etlplus.schema': str(event.get('schema', '')),
-        'etlplus.schema_version': int(event.get('schema_version', 0) or 0),
+        'etlplus.schema_version': _plain_int_or_default(
+            event.get('schema_version'),
+        ),
         'etlplus.command': str(event.get('command', '')),
         'etlplus.lifecycle': str(event.get('lifecycle', '')),
         'etlplus.run_id': str(event.get('run_id', '')),
