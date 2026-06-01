@@ -23,6 +23,7 @@ from ..file import File
 from ..file import FileFormat
 from ..file._core import FileFormatArg
 from ..file.base import ReadOptions
+from ..utils import FloatParser
 from ..utils._types import JSONData
 from ..utils._types import JSONList
 from ..utils._types import StrPath
@@ -135,7 +136,13 @@ def _extract_from_api_env(
     headers = cast(Mapping[str, str] | None, request_env.get('headers'))
     timeout = cast(Timeout | None, request_env.get('timeout'))
     pagination = request_env.get('pagination')
-    sleep_seconds = float(request_env.get('sleep_seconds', 0.0))
+    sleep_seconds = FloatParser.parse(
+        request_env.get('sleep_seconds'),
+        default=0.0,
+        minimum=0.0,
+    )
+    if sleep_seconds is None:
+        sleep_seconds = 0.0
     use_endpoints = bool(request_env.get('use_endpoints'))
     base_url = (
         raw_base_url
