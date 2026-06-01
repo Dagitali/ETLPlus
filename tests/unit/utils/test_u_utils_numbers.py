@@ -91,6 +91,7 @@ class TestFloatCoercion:
         [
             pytest.param(FloatParser.at_least, ('1.5', 2.0), 2.0, id='at_least'),
             pytest.param(FloatParser.at_most, ('9.0', 5.0), 5.0, id='at_most'),
+            pytest.param(FloatParser.at_most, ('0', 5.0), 0.0, id='at_most-zero'),
             pytest.param(FloatParser.positive, ('2.5',), 2.5, id='positive'),
             pytest.param(FloatParser.positive, ('-1',), None, id='non-positive'),
         ],
@@ -115,6 +116,7 @@ class TestIntCoercion:
         [
             pytest.param(IntParser.at_least, ('7', 10), 10, id='at_least'),
             pytest.param(IntParser.at_most, ('2', 5), 2, id='at_most'),
+            pytest.param(IntParser.at_most, ('0', 5), 0, id='at_most-zero'),
         ],
     )
     def test_int_parser_bound_variants(

@@ -255,7 +255,8 @@ class FloatParser(_NumberParser):
         float
             Greater of *default* and parsed float value.
         """
-        return max(default, cls.parse(value, default) or default)
+        parsed = cls.parse(value, default)
+        return max(default, default if parsed is None else parsed)
 
     @classmethod
     def at_most(
@@ -278,7 +279,8 @@ class FloatParser(_NumberParser):
         float
             Lesser of *default* and parsed float value.
         """
-        return min(default, cls.parse(value, default) or default)
+        parsed = cls.parse(value, default)
+        return min(default, default if parsed is None else parsed)
 
     @classmethod
     def coerce(
@@ -418,7 +420,8 @@ class IntParser(_NumberParser):
         int
             Greater of *default* and the parsed integer value.
         """
-        return max(default, cls.parse(value, default) or default)
+        parsed = cls.parse(value, default)
+        return max(default, default if parsed is None else parsed)
 
     @classmethod
     def at_most(
@@ -441,7 +444,8 @@ class IntParser(_NumberParser):
         int
             Lesser of *default* and the parsed integer value.
         """
-        return min(default, cls.parse(value, default) or default)
+        parsed = cls.parse(value, default)
+        return min(default, default if parsed is None else parsed)
 
     @classmethod
     def coerce(
