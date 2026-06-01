@@ -75,9 +75,17 @@ class ProviderQueueConfigMixin:
         -------
         dict[str, Any]
             Parsed ``name`` and provider-specific options fields.
+
+        Raises
+        ------
+        TypeError
+            If required fields are missing or invalid.
         """
+        name = MappingFieldParser.require_str(obj, 'name', label=label).strip()
+        if not name:
+            raise TypeError(f'{label} requires a "name" (str)')
         return {
-            'name': MappingFieldParser.require_str(obj, 'name', label=label),
+            'name': name,
             options_field: MappingParser.to_dict(obj.get(options_key)),
         }
 
@@ -106,9 +114,11 @@ class ProviderQueueConfigMixin:
             Parsed optional string field.
         """
         if field_name in obj:
-            return ValueParser.optional_str(obj.get(field_name))
+            value = ValueParser.optional_str(obj.get(field_name))
+            return value.strip() or None if isinstance(value, str) else value
         if alias is not None and alias in obj:
-            return ValueParser.optional_str(obj.get(alias))
+            value = ValueParser.optional_str(obj.get(alias))
+            return value.strip() or None if isinstance(value, str) else value
         return None
 
     # -- Internal Instance Methods -- #
