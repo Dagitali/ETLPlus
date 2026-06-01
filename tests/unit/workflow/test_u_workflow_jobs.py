@@ -58,21 +58,21 @@ class TestReferenceParsing(WorkflowAssertions):
         [
             pytest.param(
                 ExtractRef,
+                {'source': '  my_source  ', 'options': {'foo': 1}},
                 {'source': 'my_source', 'options': {'foo': 1}},
-                {'source': 'my_source', 'options': {'foo': 1}},
-                id='extract-ref',
+                id='extract-ref-strips-source',
             ),
             pytest.param(
                 LoadRef,
+                {'target': '  my_target  ', 'overrides': {'foo': 2}},
                 {'target': 'my_target', 'overrides': {'foo': 2}},
-                {'target': 'my_target', 'overrides': {'foo': 2}},
-                id='load-ref',
+                id='load-ref-strips-target',
             ),
             pytest.param(
                 TransformRef,
+                {'pipeline': '  my_pipeline  '},
                 {'pipeline': 'my_pipeline'},
-                {'pipeline': 'my_pipeline'},
-                id='transform-ref',
+                id='transform-ref-strips-pipeline',
             ),
             pytest.param(
                 JobRetryConfig,
@@ -82,9 +82,9 @@ class TestReferenceParsing(WorkflowAssertions):
             ),
             pytest.param(
                 ValidationRef,
+                {'ruleset': '  rs  ', 'severity': 'warn', 'phase': 'both'},
                 {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'},
-                {'ruleset': 'rs', 'severity': 'warn', 'phase': 'both'},
-                id='validation-ref',
+                id='validation-ref-strips-ruleset',
             ),
             pytest.param(
                 ValidationRef,
@@ -121,14 +121,18 @@ class TestReferenceParsing(WorkflowAssertions):
             pytest.param(ExtractRef, None, id='extract-none'),
             pytest.param(ExtractRef, {'source': 123}, id='extract-bad'),
             pytest.param(ExtractRef, {'source': ''}, id='extract-blank'),
+            pytest.param(ExtractRef, {'source': '   '}, id='extract-whitespace'),
             pytest.param(LoadRef, {'target': 123}, id='load-bad'),
             pytest.param(LoadRef, {'target': ''}, id='load-blank'),
+            pytest.param(LoadRef, {'target': '   '}, id='load-whitespace'),
             pytest.param(JobRetryConfig, None, id='retry-none'),
             pytest.param(TransformRef, {'pipeline': 123}, id='transform-bad'),
             pytest.param(TransformRef, {'pipeline': ''}, id='transform-blank'),
+            pytest.param(TransformRef, {'pipeline': '   '}, id='transform-whitespace'),
             pytest.param(ValidationRef, None, id='validation-none'),
             pytest.param(ValidationRef, {'ruleset': 123}, id='validation-bad'),
             pytest.param(ValidationRef, {'ruleset': ''}, id='validation-blank'),
+            pytest.param(ValidationRef, {'ruleset': '   '}, id='validation-whitespace'),
         ],
     )
     def test_ref_from_obj_invalid(
@@ -165,7 +169,7 @@ class TestJobConfigParsing(WorkflowAssertions):
         """
         cfg = JobConfig.from_obj(
             {
-                'name': 'job1',
+                'name': '  job1  ',
                 'description': 'desc',
                 'extract': {'source': 'src'},
                 'validate': {'ruleset': 'rs'},
@@ -190,6 +194,7 @@ class TestJobConfigParsing(WorkflowAssertions):
             pytest.param({}, id='empty-mapping'),
             pytest.param({'name': 123}, id='bad-name'),
             pytest.param({'name': ''}, id='blank-name'),
+            pytest.param({'name': '   '}, id='whitespace-name'),
         ],
     )
     def test_jobconfig_from_obj_invalid(
@@ -213,9 +218,9 @@ class TestJobConfigParsing(WorkflowAssertions):
                 id='filters-non-string-dependencies',
             ),
             pytest.param(
-                {'name': 'x', 'depends_on': ['a', '', '  ', 'b']},
+                {'name': 'x', 'depends_on': ['  a  ', '', '  ', 'b']},
                 {'name': 'x', 'description': None, 'depends_on': ['a', 'b']},
-                id='filters-blank-dependencies',
+                id='strips-and-filters-blank-dependencies',
             ),
             pytest.param(
                 {'name': 'x', 'depends_on': 'prepare'},
