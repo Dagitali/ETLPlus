@@ -98,6 +98,17 @@ class TestConnectorQueue:
                 {
                     'name': 'events',
                     'type': 'queue',
+                    'queue_name': '',
+                    'queue': 'events.fifo',
+                },
+                'events.fifo',
+                QueueService.AWS_SQS,
+                id='queue-alias-used-when-primary-blank',
+            ),
+            pytest.param(
+                {
+                    'name': 'events',
+                    'type': 'queue',
                     'service': None,
                 },
                 None,
