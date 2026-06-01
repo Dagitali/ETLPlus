@@ -74,8 +74,14 @@ class MappingParser:
         """
         candidates = tuple(keys)
         current_mapping: Mapping[str, object] | None = mapping
+        visited_mapping_ids: set[int] = set()
 
         while current_mapping is not None:
+            mapping_id = id(current_mapping)
+            if mapping_id in visited_mapping_ids:
+                break
+            visited_mapping_ids.add(mapping_id)
+
             for key in candidates:
                 if (
                     text := MappingParser._non_empty_str(current_mapping.get(key))
