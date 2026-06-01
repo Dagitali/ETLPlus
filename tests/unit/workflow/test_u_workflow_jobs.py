@@ -208,6 +208,11 @@ class TestJobConfigParsing(WorkflowAssertions):
                 id='filters-non-string-dependencies',
             ),
             pytest.param(
+                {'name': 'x', 'depends_on': ['a', '', '  ', 'b']},
+                {'name': 'x', 'description': None, 'depends_on': ['a', 'b']},
+                id='filters-blank-dependencies',
+            ),
+            pytest.param(
                 {'name': 'x', 'depends_on': 'prepare'},
                 {'name': 'x', 'description': None, 'depends_on': ['prepare']},
                 id='wraps-string-dependency',
