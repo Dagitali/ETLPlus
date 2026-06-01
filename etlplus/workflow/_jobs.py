@@ -63,7 +63,7 @@ def _mapping_with_required_str(
     """Return one parsed mapping together with its required string field."""
     if not (data := MappingParser.optional(obj)):
         return None
-    if (value := MappingFieldParser.required_str(data, key)) is None:
+    if not (value := MappingFieldParser.required_str(data, key)):
         return None
     return data, value
 
