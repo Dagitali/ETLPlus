@@ -124,9 +124,9 @@ class LocalFileSecretProvider:
         if self.env_map is None:
             return None
         raw_path = self.env_map.get(self.secrets_file_env_var)
-        if not isinstance(raw_path, str) or not raw_path:
+        if not isinstance(raw_path, str) or not (path_text := raw_path.strip()):
             return None
-        return Path(raw_path).expanduser()
+        return Path(path_text).expanduser()
 
     # -- Instance Methods -- #
 
