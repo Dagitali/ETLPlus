@@ -73,6 +73,8 @@ class ProfileConfig:
             return cls()
 
         default_target = ValueParser.optional_str(data.get('default_target'))
+        if default_target is not None:
+            default_target = default_target.strip()
         return cls(
             default_target=default_target if default_target else None,
             env=MappingParser.to_str_dict(MappingParser.optional(data.get('env'))),

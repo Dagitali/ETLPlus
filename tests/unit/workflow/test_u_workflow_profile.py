@@ -67,9 +67,27 @@ class TestProfileConfig:
         """
         assert ProfileConfig.from_obj(payload) == ProfileConfig()
 
-    def test_from_obj_treats_blank_default_target_as_absent(self) -> None:
+    def test_from_obj_strips_default_target(self) -> None:
+        """Padded default target names should normalize to usable identifiers."""
+        cfg = ProfileConfig.from_obj({'default_target': '  warehouse  '})
+
+        assert cfg.default_target == 'warehouse'
+
+    @pytest.mark.parametrize(
+        'default_target',
+        [
+            pytest.param('', id='empty'),
+            pytest.param('   ', id='whitespace'),
+        ],
+    )
+    def test_from_obj_treats_blank_default_target_as_absent(
+        self,
+        default_target: str,
+    ) -> None:
         """Blank default target names should parse as missing identifiers."""
-        cfg = ProfileConfig.from_obj({'default_target': '', 'env': {'TXT': 'x'}})
+        cfg = ProfileConfig.from_obj(
+            {'default_target': default_target, 'env': {'TXT': 'x'}},
+        )
 
         assert cfg.default_target is None
         assert cfg.env == {'TXT': 'x'}
