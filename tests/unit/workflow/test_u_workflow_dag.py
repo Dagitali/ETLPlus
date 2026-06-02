@@ -24,11 +24,6 @@ def _job(name: str, *depends_on: str) -> JobConfig:
     return JobConfig(name=name, depends_on=list(depends_on))
 
 
-def _ordered_names(jobs: list[JobConfig]) -> list[str]:
-    """Return job names after topological sorting."""
-    return [job.name for job in topological_sort_jobs(jobs)]
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -77,7 +72,7 @@ class TestDagHelpers:
         Test that :func:`topological_sort_jobs` honors declared dependency
         ordering.
         """
-        assert _ordered_names(jobs) == expected
+        assert [job.name for job in topological_sort_jobs(jobs)] == expected
 
     @pytest.mark.parametrize(
         ('jobs', 'match'),
