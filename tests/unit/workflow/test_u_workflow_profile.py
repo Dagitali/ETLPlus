@@ -21,26 +21,35 @@ class TestProfileConfig:
     """Unit tests for workflow profile parsing."""
 
     @pytest.mark.parametrize(
-        ('payload', 'expected_env'),
+        ('payload', 'expected_default_target', 'expected_env'),
         [
             pytest.param(
                 {
                     'default_target': 'warehouse',
                     'env': {'INT': 1, 'BOOL': False, 'TXT': 'x'},
                 },
+                'warehouse',
                 {'INT': '1', 'BOOL': 'False', 'TXT': 'x'},
                 id='coerces-env-values',
             ),
             pytest.param(
                 {'default_target': 'warehouse', 'env': ['bad']},
+                'warehouse',
                 {},
                 id='ignores-non-mapping-env',
+            ),
+            pytest.param(
+                {'env': {'TXT': 'x'}},
+                None,
+                {'TXT': 'x'},
+                id='handles-missing-default-target-with-env',
             ),
         ],
     )
     def test_from_obj_normalizes_env_payload(
         self,
         payload: dict[str, object],
+        expected_default_target: str | None,
         expected_env: dict[str, str],
     ) -> None:
         """
@@ -48,7 +57,7 @@ class TestProfileConfig:
         mappings.
         """
         cfg = ProfileConfig.from_obj(payload)
-        assert cfg.default_target == 'warehouse'
+        assert cfg.default_target == expected_default_target
         assert cfg.env == expected_env
 
     @pytest.mark.parametrize(
