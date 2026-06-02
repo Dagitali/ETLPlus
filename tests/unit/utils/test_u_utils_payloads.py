@@ -38,7 +38,7 @@ class TestMaterializeFilePayload:
         'source_factory',
         [
             pytest.param(str, id='string-path'),
-            pytest.param(lambda path: path, id='pathlike'),
+            pytest.param(Path, id='pathlike'),
         ],
     )
     def test_missing_file_sources_raise_file_not_found(
