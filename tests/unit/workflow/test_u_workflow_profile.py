@@ -21,34 +21,61 @@ class TestProfileConfig:
     """Unit tests for workflow profile parsing."""
 
     @pytest.mark.parametrize(
-        ('payload', 'expected_env'),
+        ('payload', 'expected_default_target', 'expected_env'),
         [
             pytest.param(
                 {
                     'default_target': 'warehouse',
                     'env': {'INT': 1, 'BOOL': False, 'TXT': 'x'},
                 },
+                'warehouse',
                 {'INT': '1', 'BOOL': 'False', 'TXT': 'x'},
                 id='coerces-env-values',
             ),
             pytest.param(
                 {'default_target': 'warehouse', 'env': ['bad']},
+                'warehouse',
                 {},
                 id='ignores-non-mapping-env',
             ),
+            pytest.param(
+                {'env': {'TXT': 'x'}},
+                None,
+                {'TXT': 'x'},
+                id='handles-missing-default-target-with-env',
+            ),
+            pytest.param(
+                {'default_target': '  warehouse  '},
+                'warehouse',
+                {},
+                id='strips-default-target',
+            ),
+            pytest.param(
+                {'default_target': '', 'env': {'TXT': 'x'}},
+                None,
+                {'TXT': 'x'},
+                id='empty-default-target',
+            ),
+            pytest.param(
+                {'default_target': '   ', 'env': {'TXT': 'x'}},
+                None,
+                {'TXT': 'x'},
+                id='whitespace-default-target',
+            ),
         ],
     )
-    def test_from_obj_normalizes_env_payload(
+    def test_from_obj_normalizes_mapping_payload(
         self,
         payload: dict[str, object],
+        expected_default_target: str | None,
         expected_env: dict[str, str],
     ) -> None:
         """
-        Test that profile parsing normalizes ``env`` payloads into string
-        mappings.
+        Test that profile parsing normalizes mapping payloads into concrete
+        profile fields.
         """
         cfg = ProfileConfig.from_obj(payload)
-        assert cfg.default_target == 'warehouse'
+        assert cfg.default_target == expected_default_target
         assert cfg.env == expected_env
 
     @pytest.mark.parametrize(
@@ -66,28 +93,3 @@ class TestProfileConfig:
         Test that non-mapping profile payloads produce a default config.
         """
         assert ProfileConfig.from_obj(payload) == ProfileConfig()
-
-    def test_from_obj_strips_default_target(self) -> None:
-        """Padded default target names should normalize to usable identifiers."""
-        cfg = ProfileConfig.from_obj({'default_target': '  warehouse  '})
-
-        assert cfg.default_target == 'warehouse'
-
-    @pytest.mark.parametrize(
-        'default_target',
-        [
-            pytest.param('', id='empty'),
-            pytest.param('   ', id='whitespace'),
-        ],
-    )
-    def test_from_obj_treats_blank_default_target_as_absent(
-        self,
-        default_target: str,
-    ) -> None:
-        """Blank default target names should parse as missing identifiers."""
-        cfg = ProfileConfig.from_obj(
-            {'default_target': default_target, 'env': {'TXT': 'x'}},
-        )
-
-        assert cfg.default_target is None
-        assert cfg.env == {'TXT': 'x'}
