@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
+from typing import cast
 
 import pytest
 
@@ -269,8 +271,9 @@ class TestReadinessReportBuilderCore:
         """Schedule validation errors should fail readiness before runtime checks."""
         config_path = write_pipeline_config(tmp_path)
         resolved_cfg = _cfg()
-        resolved_cfg.jobs = [SimpleNamespace(name='job-a')]
-        resolved_cfg.schedules = [
+        resolved_cfg_double = cast(Any, resolved_cfg)
+        resolved_cfg_double.jobs = [SimpleNamespace(name='job-a')]
+        resolved_cfg_double.schedules = [
             SimpleNamespace(
                 name='nightly_all',
                 cron='*/15 * * * *',
@@ -321,8 +324,9 @@ class TestReadinessReportBuilderCore:
         """Supported schedule shapes should continue into runtime readiness checks."""
         config_path = write_pipeline_config(tmp_path)
         resolved_cfg = _cfg()
-        resolved_cfg.jobs = [SimpleNamespace(name='job-a')]
-        resolved_cfg.schedules = [
+        resolved_cfg_double = cast(Any, resolved_cfg)
+        resolved_cfg_double.jobs = [SimpleNamespace(name='job-a')]
+        resolved_cfg_double.schedules = [
             SimpleNamespace(
                 name='nightly_all',
                 cron='0 2 * * *',
