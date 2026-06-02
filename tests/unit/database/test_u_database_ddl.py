@@ -270,45 +270,45 @@ class TestRenderTables:
         assert 'widgets' in rendered[0]
         assert 'widgets_history' in rendered[1]
 
-    def test_renders_specs_in_foreign_key_dependency_order(
+    @pytest.mark.parametrize(
+        ('template_text', 'parent_updates', 'child_updates'),
+        [
+            (
+                '{{ spec.table }}',
+                {'table': 'accounts'},
+                {'table': 'orders', 'foreign_keys': [{'ref_table': 'accounts'}]},
+            ),
+            (
+                '{{ spec.name }}',
+                {'table': ' ', 'name': 'accounts'},
+                {
+                    'table': ' ',
+                    'name': 'orders',
+                    'foreign_keys': [{'ref_table': 'accounts'}],
+                },
+            ),
+            (
+                '{{ spec.table }}',
+                {'table': 'accounts'},
+                {'table': 'orders', 'foreign_keys': 'not-a-sequence'},
+            ),
+        ],
+    )
+    def test_orders_specs_by_declared_dependencies(
         self,
         tmp_path: Path,
         ddl_sample_spec: dict[str, object],
+        template_text: str,
+        parent_updates: dict[str, object],
+        child_updates: dict[str, object],
     ) -> None:
-        """Test that in-batch foreign-key dependencies render first."""
+        """Test dependency ordering and fallback ordering behavior."""
         template_path = tmp_path / 'names.sql.j2'
-        template_path.write_text('{{ spec.table }}', encoding='utf-8')
+        template_path.write_text(template_text, encoding='utf-8')
         parent = deepcopy(ddl_sample_spec)
         child = deepcopy(ddl_sample_spec)
-        parent['table'] = 'accounts'
-        child['table'] = 'orders'
-        child['foreign_keys'] = [
-            {
-                'columns': ['account_id'],
-                'ref_table': 'accounts',
-                'ref_columns': ['id'],
-            },
-        ]
-
-        rendered = ddl.render_tables([child, parent], template_path=template_path)
-
-        assert rendered == ['accounts\n', 'orders\n']
-
-    def test_orders_by_name_key_when_table_key_is_blank(
-        self,
-        tmp_path: Path,
-        ddl_sample_spec: dict[str, object],
-    ) -> None:
-        """Test table-name resolution falls back to a nonblank name key."""
-        template_path = tmp_path / 'names.sql.j2'
-        template_path.write_text('{{ spec.name }}', encoding='utf-8')
-        parent = deepcopy(ddl_sample_spec)
-        child = deepcopy(ddl_sample_spec)
-        parent['table'] = ' '
-        parent['name'] = 'accounts'
-        child['table'] = ' '
-        child['name'] = 'orders'
-        child['foreign_keys'] = [{'ref_table': 'accounts'}]
+        parent.update(parent_updates)
+        child.update(child_updates)
 
         rendered = ddl.render_tables([child, parent], template_path=template_path)
 
@@ -316,9 +316,7 @@ class TestRenderTables:
 
 
 class TestRenderTablesToString:
-    """
-    Unit tests for :func:`render_tables_to_string`.
-    """
+    """Unit tests for :func:`render_tables_to_string`."""
 
     def test_custom_template(
         self,
@@ -345,8 +343,7 @@ class TestRenderTablesToString:
         ddl_sample_spec: dict[str, object],
     ) -> None:
         """
-        Test rendering multiple table specs from file paths to one SQL
-        string.
+        Test rendering multiple table specs from file paths to one SQL string.
         """
         spec_paths: list[Path] = []
         for idx, table_name in enumerate(('widgets', 'widgets_history')):
