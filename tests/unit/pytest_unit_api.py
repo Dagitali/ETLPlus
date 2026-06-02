@@ -344,6 +344,7 @@ def retry_cfg() -> Callable[..., dict[str, Any]]:
 @pytest.fixture
 def token_sequence(
     monkeypatch: pytest.MonkeyPatch,
+    fake_response_factory: Callable[..., Any],
 ) -> dict[str, int]:
     """
     Stub :func:`requests.post` and return call count holder for token flow.
@@ -352,6 +353,8 @@ def token_sequence(
     ----------
     monkeypatch : pytest.MonkeyPatch
         Pytest monkeypatch fixture.
+    fake_response_factory : Callable[..., Any]
+        Factory fixture that builds response-like token payloads.
 
     Returns
     -------
@@ -365,8 +368,9 @@ def token_sequence(
         **kwargs: object,
     ) -> object:
         calls['n'] += 1
-        # _Resp is defined in test_u_auth.py, so return a dict for generality.
-        return {'access_token': f't{calls["n"]}', 'expires_in': 60}
+        return fake_response_factory(
+            payload={'access_token': f't{calls["n"]}', 'expires_in': 60},
+        )
 
     monkeypatch.setattr(requests, 'post', fake_post)
 
