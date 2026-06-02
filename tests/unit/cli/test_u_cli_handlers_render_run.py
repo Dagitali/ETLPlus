@@ -6,6 +6,8 @@ Unit tests for render and run entry points in :mod:`etlplus.cli._handlers`.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from dataclasses import field
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -25,6 +27,43 @@ from .pytest_cli_handlers_support import patch_config_from_yaml
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+@dataclass(slots=True)
+class RecordingHistoryStore:
+    """History store double that records persisted run lifecycle objects."""
+
+    started: list[object] = field(default_factory=list)
+    jobs: list[object] = field(default_factory=list)
+    completions: list[object] = field(default_factory=list)
+
+    def record_run_started(self, record: object) -> None:
+        """Record one run-start payload."""
+        self.started.append(record)
+
+    def record_job_run(self, record: object) -> None:
+        """Record one job-run payload."""
+        self.jobs.append(record)
+
+    def record_run_finished(self, completion: object) -> None:
+        """Record one run-completion payload."""
+        self.completions.append(completion)
+
+
+def patch_recording_history_store(
+    monkeypatch: pytest.MonkeyPatch,
+) -> RecordingHistoryStore:
+    """Patch local history-store creation and return the recorder."""
+    store = RecordingHistoryStore()
+    monkeypatch.setattr(
+        handlers.HistoryStore,
+        'from_environment',
+        lambda: store,
+    )
+    return store
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -219,11 +258,27 @@ class TestRenderHandler:
 
     def test_writes_sql_from_spec(
         self,
-        widget_spec_paths: tuple[Path, Path],
+        tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test that :func:`render_handler` writes SQL for standalone specs."""
-        spec_path, output_path = widget_spec_paths
+        spec_path = tmp_path / 'spec.json'
+        output_path = tmp_path / 'out.sql'
+        spec_path.write_text(
+            """
+            {
+              "schema": "dbo",
+              "table": "Widget",
+              "columns": [
+                {"name": "Id", "type": "int", "nullable": false},
+                {"name": "Name", "type": "nvarchar(50)", "nullable": true}
+              ],
+              "primary_key": {"columns": ["Id"]}
+            }
+            """,
+            encoding='utf-8',
+        )
+
         assert (
             handlers.render_handler(
                 config=None,
@@ -295,37 +350,7 @@ class TestRunHandler:
             lambda: 'run-123',
         )
 
-        history_calls: dict[str, object] = {}
-        job_runs: list[object] = []
-
-        class _FakeHistoryStore:
-            def record_run_started(self, record: object) -> None:
-                history_calls['started'] = record
-
-            def record_job_run(self, record: object) -> None:
-                job_runs.append(record)
-
-            def record_run_finished(
-                self,
-                completion: object,
-            ) -> None:
-                completion_obj = cast(Any, completion)
-                history_calls['finished'] = {
-                    'duration_ms': completion_obj.state.duration_ms,
-                    'error_message': completion_obj.state.error_message,
-                    'error_traceback': completion_obj.state.error_traceback,
-                    'error_type': completion_obj.state.error_type,
-                    'finished_at': completion_obj.state.finished_at,
-                    'result_summary': completion_obj.state.result_summary,
-                    'run_id': completion_obj.run_id,
-                    'status': completion_obj.state.status,
-                }
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            _FakeHistoryStore,
-        )
+        history_store = patch_recording_history_store(monkeypatch)
         run_calls: dict[str, object] = {}
 
         def fake_run(
@@ -356,8 +381,18 @@ class TestRunHandler:
             == 0
         )
         assert run_calls['params'] == ('job1', 'pipeline.yml', False, False, None)
-        assert cast(Any, history_calls['started']).run_id == 'run-123'
-        assert history_calls['finished'] == {
+        assert cast(Any, history_store.started[0]).run_id == 'run-123'
+        completion = cast(Any, history_store.completions[0])
+        assert {
+            'duration_ms': completion.state.duration_ms,
+            'error_message': completion.state.error_message,
+            'error_traceback': completion.state.error_traceback,
+            'error_type': completion.state.error_type,
+            'finished_at': completion.state.finished_at,
+            'result_summary': completion.state.result_summary,
+            'run_id': completion.run_id,
+            'status': completion.state.status,
+        } == {
             'duration_ms': ANY,
             'error_message': None,
             'error_traceback': None,
@@ -391,28 +426,7 @@ class TestRunHandler:
             lambda: 'run-all-1',
         )
 
-        history_calls: dict[str, object] = {}
-        job_runs: list[object] = []
-
-        class _FakeHistoryStore:
-            def record_run_started(self, record: object) -> None:
-                history_calls['started'] = record
-
-            def record_job_run(self, record: object) -> None:
-                job_runs.append(record)
-
-            def record_run_finished(
-                self,
-                completion: object,
-            ) -> None:
-                completion_obj = cast(Any, completion)
-                history_calls['finished'] = completion_obj.state
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            _FakeHistoryStore,
-        )
+        history_store = patch_recording_history_store(monkeypatch)
         lifecycle_calls: list[dict[str, object]] = []
         monkeypatch.setattr(
             run_mod._lifecycle,
@@ -451,8 +465,8 @@ class TestRunHandler:
             )
             == 1
         )
-        assert cast(Any, history_calls['started']).job_name is None
-        finished = cast(Any, history_calls['finished'])
+        assert cast(Any, history_store.started[0]).job_name is None
+        finished = cast(Any, history_store.completions[0]).state
         assert finished.status == 'failed'
         assert finished.error_type == 'RunExecutionFailed'
         assert 'DAG execution' in cast(str, finished.error_message)
@@ -473,7 +487,7 @@ class TestRunHandler:
             'succeeded_job_count': 0,
             'succeeded_jobs': [],
         }
-        assert len(job_runs) == 2
+        assert len(history_store.jobs) == 2
         assert [call['lifecycle'] for call in lifecycle_calls] == [
             'started',
             'failed',
@@ -535,23 +549,7 @@ class TestRunHandler:
             lambda: 'run-trace-1',
         )
 
-        completions: list[Any] = []
-
-        class _FakeHistoryStore:
-            def record_run_started(self, record: object) -> None:
-                _ = record
-
-            def record_job_run(self, record: object) -> None:
-                _ = record
-
-            def record_run_finished(self, completion: object) -> None:
-                completions.append(completion)
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            _FakeHistoryStore,
-        )
+        history_store = patch_recording_history_store(monkeypatch)
 
         def _raise_error(**_kwargs: object) -> object:
             raise ValueError('boom')
@@ -566,11 +564,12 @@ class TestRunHandler:
                 pretty=False,
             )
 
-        assert len(completions) == 1
-        assert completions[0].state.error_type == 'ValueError'
-        assert completions[0].state.error_message == 'boom'
-        assert completions[0].state.error_traceback is not None
-        assert 'ValueError: boom' in cast(str, completions[0].state.error_traceback)
+        assert len(history_store.completions) == 1
+        completion = cast(Any, history_store.completions[0])
+        assert completion.state.error_type == 'ValueError'
+        assert completion.state.error_message == 'boom'
+        assert completion.state.error_traceback is not None
+        assert 'ValueError: boom' in cast(str, completion.state.error_traceback)
 
     def test_run_exception_emits_failed_event_with_stable_context(
         self,
@@ -588,21 +587,7 @@ class TestRunHandler:
             lambda: 'run-exc-1',
         )
 
-        class _FakeHistoryStore:
-            def record_run_started(self, record: object) -> None:
-                _ = record
-
-            def record_job_run(self, record: object) -> None:
-                _ = record
-
-            def record_run_finished(self, completion: object) -> None:
-                _ = completion
-
-        monkeypatch.setattr(
-            handlers.HistoryStore,
-            'from_environment',
-            _FakeHistoryStore,
-        )
+        patch_recording_history_store(monkeypatch)
         lifecycle_calls: list[dict[str, object]] = []
         monkeypatch.setattr(
             run_mod._lifecycle,
