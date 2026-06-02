@@ -24,6 +24,11 @@ from etlplus.utils import JsonCodec
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: CONSTANTS ======================================================== #
+
+
+CSV_TEXT = 'a,b\n1,2\n3,4\n'
+
 # SECTION: TYPES ============================================================ #
 
 
@@ -276,11 +281,10 @@ class TestMaterializeFilePayload:
     def test_inferring_csv(
         self,
         tmp_path: Path,
-        csv_text: str,
     ) -> None:
         """Test that CSV files are parsed when no explicit hint is provided."""
         file_path = tmp_path / 'file.csv'
-        file_path.write_text(csv_text)
+        file_path.write_text(CSV_TEXT)
 
         rows = input_mod.materialize_file_payload(
             str(file_path),
@@ -474,12 +478,11 @@ class TestParseTextPayload:
 
     def test_inferring_csv_when_unspecified(
         self,
-        csv_text: str,
     ) -> None:
         """
         Test that CSV payloads are parsed when no format hint is provided.
         """
-        result = input_mod.parse_text_payload(csv_text, fmt_hint=None)
+        result = input_mod.parse_text_payload(CSV_TEXT, fmt_hint=None)
         assert result == [
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},
@@ -497,13 +500,12 @@ class TestCsvPayloadHandling:
     def test_materializing_csv_file_payload(
         self,
         tmp_path: Path,
-        csv_text: str,
     ) -> None:
         """
         Test that CSV file payloads hydrate into row dictionaries.
         """
         file_path = tmp_path / 'data.csv'
-        file_path.write_text(csv_text)
+        file_path.write_text(CSV_TEXT)
 
         assert input_mod.materialize_file_payload(
             str(file_path),
