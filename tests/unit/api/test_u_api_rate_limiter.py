@@ -92,13 +92,10 @@ class TestResolveSleepSeconds:
         """
         Test rate-limit overrides, fallbacks, invalid values, and precedence.
         """
-        assert (
-            RateLimiter.resolve_sleep_seconds(
-                rate_limit=rate_limit,
-                overrides=overrides,
-            )
-            == pytest.approx(expected_sleep)
-        )
+        assert RateLimiter.resolve_sleep_seconds(
+            rate_limit=rate_limit,
+            overrides=overrides,
+        ) == pytest.approx(expected_sleep)
 
 
 class TestRateLimiterBasics:
