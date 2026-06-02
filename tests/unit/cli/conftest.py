@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from pathlib import Path
 from typing import Final
+from typing import Literal
 from typing import cast
 
 import pytest
@@ -52,9 +53,10 @@ type StubCommandMain = Callable[
     dict[str, object],
 ]
 type TyperContextFactory = Callable[..., typer.Context]
+type CapturedStreamName = Literal['err', 'out']
 
 
-# SECTION: ASSERTIONS ======================================================= #
+# SECTION: FUNCTIONS ======================================================= #
 
 
 def assert_emit_json(
@@ -117,7 +119,22 @@ def strip_ansi(text: str) -> str:
     return _ANSI_ESCAPE_PATTERN.sub('', text)
 
 
-# SECTION: HELPERS ========================================================= #
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _captured_text_assertion(
+    capsys: pytest.CaptureFixture[str],
+    stream_name: CapturedStreamName,
+) -> AssertCapturedText:
+    """Return helper asserting a substring exists in one captured stream."""
+
+    def _assert(expected: str) -> str:
+        captured = capsys.readouterr()
+        stream = getattr(captured, stream_name)
+        assert expected in stream
+        return stream
+
+    return _assert
 
 
 def _record_calls(
@@ -139,6 +156,9 @@ def _record_calls(
         monkeypatch.setattr(module, name, _record)
 
     return calls
+
+
+# SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,13 +201,7 @@ def assert_stdout_contains_fixture(
     AssertCapturedText
         Assertion helper returning captured STDOUT text.
     """
-
-    def _assert(expected: str) -> str:
-        captured = capsys.readouterr()
-        assert expected in captured.out
-        return captured.out
-
-    return _assert
+    return _captured_text_assertion(capsys, 'out')
 
 
 @pytest.fixture(name='assert_stderr_contains')
@@ -207,13 +221,7 @@ def assert_stderr_contains_fixture(
     AssertCapturedText
         Assertion helper returning captured STDERR text.
     """
-
-    def _assert(expected: str) -> str:
-        captured = capsys.readouterr()
-        assert expected in captured.err
-        return captured.err
-
-    return _assert
+    return _captured_text_assertion(capsys, 'err')
 
 
 @pytest.fixture(name='capture_io')
