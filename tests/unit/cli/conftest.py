@@ -11,13 +11,11 @@ Notes
 
 from __future__ import annotations
 
-import json
 import re
 import types
 from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
-from pathlib import Path
 from typing import Final
 from typing import Literal
 from typing import cast
@@ -38,11 +36,14 @@ from etlplus.cli._commands._state import CliState
 pytestmark = pytest.mark.unit
 
 
+# SECTION: CONSTANTS ======================================================== #
+
+
+_ANSI_ESCAPE_PATTERN: Final[re.Pattern[str]] = re.compile(r'\x1b\[[0-9;]*m')
+
+
 # SECTION: TYPES ============================================================ #
 
-
-CSV_TEXT: Final[str] = 'a,b\n1,2\n3,4\n'
-_ANSI_ESCAPE_PATTERN: Final[re.Pattern[str]] = re.compile(r'\x1b\[[0-9;]*m')
 
 type AssertCapturedText = Callable[[str], str]
 type CaptureIo = dict[str, list[tuple[tuple[object, ...], dict[str, object]]]]
@@ -53,7 +54,6 @@ type StubCommandMain = Callable[
     dict[str, object],
 ]
 type TyperContextFactory = Callable[..., typer.Context]
-type CapturedStreamName = Literal['err', 'out']
 
 
 # SECTION: FUNCTIONS ======================================================= #
@@ -124,7 +124,7 @@ def strip_ansi(text: str) -> str:
 
 def _captured_text_assertion(
     capsys: pytest.CaptureFixture[str],
-    stream_name: CapturedStreamName,
+    stream_name: Literal['err', 'out'],
 ) -> AssertCapturedText:
     """Return helper asserting a substring exists in one captured stream."""
 
@@ -249,12 +249,6 @@ def capture_io_fixture(monkeypatch: pytest.MonkeyPatch) -> CaptureIo:
         'emit_json',
         'emit_markdown_table',
     )
-
-
-@pytest.fixture(name='csv_text')
-def csv_text_fixture() -> str:
-    """Return sample CSV text."""
-    return CSV_TEXT
 
 
 @pytest.fixture(name='dummy_cfg')
@@ -395,21 +389,3 @@ def typer_ctx_factory_fixture() -> TyperContextFactory:
         return ctx
 
     return _make
-
-
-@pytest.fixture(name='widget_spec_paths')
-def widget_spec_paths_fixture(tmp_path: Path) -> tuple[Path, Path]:
-    """Return paths for a widget spec and output SQL file."""
-    spec = {
-        'schema': 'dbo',
-        'table': 'Widget',
-        'columns': [
-            {'name': 'Id', 'type': 'int', 'nullable': False},
-            {'name': 'Name', 'type': 'nvarchar(50)', 'nullable': True},
-        ],
-        'primary_key': {'columns': ['Id']},
-    }
-    spec_path = tmp_path / 'spec.json'
-    out_path = tmp_path / 'out.sql'
-    spec_path.write_text(json.dumps(spec))
-    return spec_path, out_path
