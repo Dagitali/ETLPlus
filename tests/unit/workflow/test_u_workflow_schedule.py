@@ -19,6 +19,28 @@ from etlplus.workflow._schedule import schedule_validation_issues
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 
+# SECTION: HELPERS ========================================================== #
+
+
+type ScheduleParserClass = type[
+    ScheduleIntervalConfig
+    | ScheduleTargetConfig
+    | ScheduleBackfillConfig
+    | ScheduleConfig
+]
+
+
+def _schedule(
+    name: str,
+    *,
+    cron: str | None = None,
+    interval: ScheduleIntervalConfig | None = None,
+    target: ScheduleTargetConfig | None = None,
+) -> ScheduleConfig:
+    """Build a compact schedule config for validation tests."""
+    return ScheduleConfig(name=name, cron=cron, interval=interval, target=target)
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -100,12 +122,7 @@ class TestScheduleParsing:
     )
     def test_from_obj_valid(
         self,
-        schedule_cls: type[
-            ScheduleIntervalConfig
-            | ScheduleTargetConfig
-            | ScheduleBackfillConfig
-            | ScheduleConfig
-        ],
+        schedule_cls: ScheduleParserClass,
         payload: dict[str, object],
         expected: object,
     ) -> None:
@@ -143,12 +160,7 @@ class TestScheduleParsing:
     )
     def test_from_obj_invalid(
         self,
-        schedule_cls: type[
-            ScheduleIntervalConfig
-            | ScheduleTargetConfig
-            | ScheduleBackfillConfig
-            | ScheduleConfig
-        ],
+        schedule_cls: ScheduleParserClass,
         payload: dict[str, object] | None,
     ) -> None:
         """Test invalid schedule payloads yield ``None`` where expected."""
@@ -163,7 +175,7 @@ class TestScheduleValidation:
         [
             pytest.param(
                 [
-                    ScheduleConfig(
+                    _schedule(
                         name='nightly',
                         cron='0 0 * * *',
                         target=ScheduleTargetConfig(job='sync-db'),
@@ -175,12 +187,12 @@ class TestScheduleValidation:
             ),
             pytest.param(
                 [
-                    ScheduleConfig(
+                    _schedule(
                         name='nightly',
                         cron='0 0 * * *',
                         target=ScheduleTargetConfig(job='sync-db'),
                     ),
-                    ScheduleConfig(
+                    _schedule(
                         name='nightly',
                         interval=ScheduleIntervalConfig(minutes=10),
                         target=ScheduleTargetConfig(run_all=True),
@@ -192,7 +204,7 @@ class TestScheduleValidation:
             ),
             pytest.param(
                 [
-                    ScheduleConfig(
+                    _schedule(
                         name='broken-trigger',
                         target=ScheduleTargetConfig(job='sync-db'),
                     ),
@@ -203,7 +215,7 @@ class TestScheduleValidation:
             ),
             pytest.param(
                 [
-                    ScheduleConfig(
+                    _schedule(
                         name='missing-target',
                         cron='0 0 * * *',
                     ),
@@ -214,7 +226,7 @@ class TestScheduleValidation:
             ),
             pytest.param(
                 [
-                    ScheduleConfig(
+                    _schedule(
                         name='invalid-target-mode',
                         cron='0 0 * * *',
                         target=ScheduleTargetConfig(job='sync-db', run_all=True),
@@ -226,7 +238,7 @@ class TestScheduleValidation:
             ),
             pytest.param(
                 [
-                    ScheduleConfig(
+                    _schedule(
                         name='unknown-job',
                         cron='0 0 * * *',
                         target=ScheduleTargetConfig(job='missing-job'),
@@ -238,7 +250,7 @@ class TestScheduleValidation:
             ),
             pytest.param(
                 [
-                    ScheduleConfig(
+                    _schedule(
                         name='bad-cron-length',
                         cron='0 0 * *',
                         target=ScheduleTargetConfig(run_all=True),
@@ -250,7 +262,7 @@ class TestScheduleValidation:
             ),
             pytest.param(
                 [
-                    ScheduleConfig(
+                    _schedule(
                         name='bad-cron-token',
                         cron='*/5 0 * * *',
                         target=ScheduleTargetConfig(run_all=True),
