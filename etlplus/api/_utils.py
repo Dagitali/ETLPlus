@@ -47,7 +47,8 @@ def _positive_int_or_default(
     default: int,
 ) -> int:
     """Return a positive integer parsed from config-like values."""
-    return IntParser.parse(value, default=default, minimum=1) or default
+    parsed = IntParser.parse(value)
+    return parsed if parsed is not None and parsed > 0 else default
 
 
 # SECTION: EXPORTS ========================================================== #
