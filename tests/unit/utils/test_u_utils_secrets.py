@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
+from typing import cast
 
 import pytest
 
@@ -94,7 +96,7 @@ class TestSecretProviders:
     def test_provider_protocol_default_members_raise(self) -> None:
         """Protocol default members should fail loudly when called directly."""
         with pytest.raises(NotImplementedError):
-            SecretProvider.name.fget(None)  # type: ignore[arg-type]
+            cast(Any, SecretProvider.name).fget(None)
 
         with pytest.raises(NotImplementedError):
             SecretProvider.resolve(None, 'API_TOKEN')  # type: ignore[arg-type]
