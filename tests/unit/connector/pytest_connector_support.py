@@ -149,18 +149,9 @@ QUEUE_CONNECTOR_PROVIDER_CASES: dict[str, QueueConnectorProviderCase] = {
     ),
 }
 
-QUEUE_CONNECTOR_PROVIDER_PARAMS = (
-    pytest.param(QUEUE_CONNECTOR_PROVIDER_CASES['aws-sqs'], id='aws-sqs'),
-    pytest.param(
-        QUEUE_CONNECTOR_PROVIDER_CASES['azure-service-bus'],
-        id='azure-service-bus',
-    ),
-    pytest.param(QUEUE_CONNECTOR_PROVIDER_CASES['gcp-pubsub'], id='gcp-pubsub'),
-    pytest.param(QUEUE_CONNECTOR_PROVIDER_CASES['rabbitmq'], id='rabbitmq-alias'),
-    pytest.param(
-        QUEUE_CONNECTOR_PROVIDER_CASES['redis-streams'],
-        id='redis-streams-alias',
-    ),
+QUEUE_CONNECTOR_PROVIDER_PARAMS = tuple(
+    pytest.param(case, id=case_id)
+    for case_id, case in QUEUE_CONNECTOR_PROVIDER_CASES.items()
 )
 
 

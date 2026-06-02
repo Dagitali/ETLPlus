@@ -180,6 +180,12 @@ class TestConnectorDb:
                 ('schema',),
                 id='mapping-uses-hint-fields-when-provider-empty',
             ),
+            pytest.param({}, (), id='missing-provider-returns-empty'),
+            pytest.param(
+                SimpleNamespace(provider='gcp-bigquery', project=None),
+                ('project', 'dataset'),
+                id='object-provider-fields',
+            ),
         ],
     )
     def test_missing_provider_fields_infers_provider_for_raw_mapping(
@@ -240,6 +246,7 @@ class TestConnectorDb:
                 None,
                 id='missing-provider',
             ),
+            pytest.param('   ', None, (), None, id='blank-provider'),
         ],
     )
     def test_provider_metadata_helpers_cover_supported_alias_and_none_paths(
