@@ -156,8 +156,7 @@ class TestConnectorApi:
 
         assert_connector_fields(connector, expected)
         assert (
-            getattr(connector.pagination, 'start_page', None)
-            == pagination_start_page
+            getattr(connector.pagination, 'start_page', None) == pagination_start_page
         )
         assert (
             getattr(connector.rate_limit, 'sleep_seconds', None)
