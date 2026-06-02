@@ -34,23 +34,19 @@ type RefClass = (
 )
 
 
-class WorkflowAssertions:
-    """Shared assertions for workflow unit tests."""
-
-    def assert_fields(
-        self,
-        actual: object,
-        expected: Mapping[str, object],
-    ) -> None:
-        """Assert that *actual* exposes the expected field values."""
-        for field, value in expected.items():
-            assert getattr(actual, field) == value
+def assert_fields(
+    actual: object,
+    expected: Mapping[str, object],
+) -> None:
+    """Assert that *actual* exposes the expected field values."""
+    for field, value in expected.items():
+        assert getattr(actual, field) == value
 
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestReferenceParsing(WorkflowAssertions):
+class TestReferenceParsing:
     """Unit tests for reference dataclass parsing."""
 
     @pytest.mark.parametrize(
@@ -113,7 +109,7 @@ class TestReferenceParsing(WorkflowAssertions):
         """
         ref = ref_cls.from_obj(obj)
         assert ref is not None
-        self.assert_fields(ref, expected)
+        assert_fields(ref, expected)
 
     @pytest.mark.parametrize(
         ('ref_cls', 'obj'),
@@ -159,7 +155,7 @@ class TestReferenceParsing(WorkflowAssertions):
         assert config.enabled is expected
 
 
-class TestJobConfigParsing(WorkflowAssertions):
+class TestJobConfigParsing:
     """Unit tests for job configuration parsing."""
 
     def test_jobconfig_from_obj_valid(self) -> None:
@@ -180,7 +176,7 @@ class TestJobConfigParsing(WorkflowAssertions):
         )
 
         assert cfg is not None
-        self.assert_fields(cfg, {'name': 'job1', 'description': 'desc'})
+        assert_fields(cfg, {'name': 'job1', 'description': 'desc'})
         assert cfg.extract is not None
         assert cfg.validate is not None
         assert cfg.retry == JobRetryConfig(max_attempts=3, backoff_seconds=0.25)
@@ -247,6 +243,6 @@ class TestJobConfigParsing(WorkflowAssertions):
         """
         cfg = JobConfig.from_obj(obj)
         assert cfg is not None
-        self.assert_fields(cfg, expected)
+        assert_fields(cfg, expected)
         if 'retry' in obj:
             assert cfg.retry == JobRetryConfig(max_attempts=4, backoff_seconds=1.25)
