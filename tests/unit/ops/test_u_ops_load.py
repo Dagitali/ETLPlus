@@ -63,6 +63,33 @@ class _CallRecord:
     kwargs: dict[str, Any]
 
 
+class _ApiEnvResponse:
+    """Configurable response stub for normalized API environment tests."""
+
+    def __init__(
+        self,
+        payload: object | None = None,
+        *,
+        status_code: int = 200,
+        text: str = 'fallback',
+        json_error: bool = False,
+    ) -> None:
+        self._payload = {'ok': True} if payload is None else payload
+        self.status_code = status_code
+        self.text = text
+        self._json_error = json_error
+
+    def json(self) -> object:
+        """Return JSON payload or simulate a JSON decoding failure."""
+        if self._json_error:
+            raise ValueError('bad json')
+        return self._payload
+
+    def raise_for_status(self) -> None:
+        """No-op for status raising in stub."""
+        return None
+
+
 class _StubResponse:
     """Minimal HTTP response stub for API load tests."""
 
@@ -517,31 +544,22 @@ class TestLoadToApi:
         """
         Test that normalized API env forwards headers and request kwargs.
         """
-
-        class _Response:
-            status_code = 201
-            text = 'fallback'
-
-            def json(self) -> object:
-                """Simulate a successful JSON response."""
-                return {'ok': True}
-
-            def raise_for_status(self) -> None:
-                """No-op for status raising in stub."""
-                return None
-
         captured: dict[str, Any] = {}
 
-        def _request(url: str, **kwargs: Any) -> _Response:
+        def _request(url: str, **kwargs: Any) -> _ApiEnvResponse:
             """Stub request function that captures URL and kwargs."""
             captured['url'] = url
             captured['kwargs'] = kwargs
-            return _Response()
+            return _ApiEnvResponse(status_code=201)
 
-        monkeypatch.setattr(
-            load_mod,
-            'build_request_call',
-            lambda env, error_message, default_method, json_data=None: SimpleNamespace(
+        def _build_request_call(
+            env: dict[str, Any],
+            error_message: str,
+            default_method: HttpMethod,
+            json_data: object = None,
+        ) -> SimpleNamespace:
+            _ = error_message, default_method
+            return SimpleNamespace(
                 url=env['url'],
                 request_callable=_request,
                 timeout=9.5,
@@ -551,7 +569,12 @@ class TestLoadToApi:
                     'json': json_data,
                     'verify': False,
                 },
-            ),
+            )
+
+        monkeypatch.setattr(
+            load_mod,
+            'build_request_call',
+            _build_request_call,
         )
         result = load_mod._load_to_api_env(
             [{'id': 1}],
@@ -577,32 +600,29 @@ class TestLoadToApi:
     ) -> None:
         """Test that JSON decoding errors fall back to response text."""
 
-        class _Response:
-            status_code = 200
-            text = 'text payload'
-
-            def json(self) -> object:
-                """Simulate a JSON decoding failure."""
-                raise ValueError('bad json')
-
-            def raise_for_status(self) -> None:
-                """No-op for status raising in stub."""
-                return None
-
-        def _request(url: str, **kwargs: Any) -> _Response:  # noqa: ARG001
+        def _request(url: str, **kwargs: Any) -> _ApiEnvResponse:  # noqa: ARG001
             """Stub request function that returns a predefined response."""
-            return _Response()
+            return _ApiEnvResponse(text='text payload', json_error=True)
 
-        monkeypatch.setattr(
-            load_mod,
-            'build_request_call',
-            lambda env, error_message, default_method, json_data=None: SimpleNamespace(
+        def _build_request_call(
+            env: dict[str, Any],
+            error_message: str,
+            default_method: HttpMethod,
+            json_data: object = None,
+        ) -> SimpleNamespace:
+            _ = error_message, default_method
+            return SimpleNamespace(
                 url=env['url'],
                 request_callable=_request,
                 timeout=10.0,
                 http_method=HttpMethod.POST,
                 kwargs={'json': json_data},
-            ),
+            )
+
+        monkeypatch.setattr(
+            load_mod,
+            'build_request_call',
+            _build_request_call,
         )
         result = load_mod._load_to_api_env(
             {'x': 1},

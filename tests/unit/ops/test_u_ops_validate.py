@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -34,6 +35,21 @@ from etlplus.utils._types import JSONData
 
 validate_mod = importlib.import_module('etlplus.ops.validate')
 ops_imports_mod = importlib.import_module('etlplus.ops._imports')
+
+
+def _csv_format_hint(_format_hint: object) -> object:
+    """Return CSV as a normalized schema format hint."""
+    return validate_mod.FileFormat.CSV
+
+
+def _raise_runtime_error(message: str) -> None:
+    """Raise a runtime error with the supplied message."""
+    raise RuntimeError(message)
+
+
+def _raise_yaml_install_error() -> None:
+    """Raise the standard YAML dependency error used by parser tests."""
+    _raise_runtime_error('install yaml')
 
 
 # SECTION: TESTS ============================================================ #
@@ -971,7 +987,7 @@ class TestValidateInternalHelpers:
         monkeypatch.setattr(
             validate_mod,
             '_normalize_jsonschema_format_hint',
-            lambda _format_hint: validate_mod.FileFormat.CSV,
+            _csv_format_hint,
         )
 
         with pytest.raises(
@@ -1026,7 +1042,7 @@ class TestValidateInternalHelpers:
         monkeypatch.setattr(
             validate_mod,
             'get_yaml',
-            lambda: (_ for _ in ()).throw(RuntimeError('install yaml')),
+            _raise_yaml_install_error,
         )
 
         with pytest.raises(RuntimeError, match='install yaml'):
@@ -1158,7 +1174,7 @@ class TestValidateInternalHelpers:
         monkeypatch.setattr(
             validate_mod,
             helper_name,
-            lambda: (_ for _ in ()).throw(RuntimeError(expected_error)),
+            partial(_raise_runtime_error, expected_error),
         )
 
         result = validator('{}', '{}', None)

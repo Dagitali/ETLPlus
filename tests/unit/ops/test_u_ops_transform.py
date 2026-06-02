@@ -72,29 +72,22 @@ transform_mod = importlib.import_module('etlplus.ops.transform')
 type StepType = Literal['aggregate', 'filter', 'map', 'select', 'sort']
 
 
-# SECTION: FIXTURES ========================================================= #
+PEOPLE_ROWS: tuple[dict[str, Any], ...] = (
+    {'name': 'John', 'age': 30, 'city': 'New York', 'status': 'active'},
+    {'name': 'Jane', 'age': 25, 'city': 'Newark', 'status': 'inactive'},
+    {'name': 'Bob', 'age': 35, 'city': 'Boston', 'status': 'active'},
+)
+
+VALUE_ROWS: tuple[dict[str, Any], ...] = (
+    {'name': 'John', 'value': 10},
+    {'name': 'Jane', 'value': 20},
+    {'name': 'Bob', 'value': 15},
+)
 
 
-@pytest.fixture(name='rows_people')
-def rows_people_fixture() -> list[dict[str, Any]]:
-    """Return a small dataset of people-like records."""
-
-    return [
-        {'name': 'John', 'age': 30, 'city': 'New York', 'status': 'active'},
-        {'name': 'Jane', 'age': 25, 'city': 'Newark', 'status': 'inactive'},
-        {'name': 'Bob', 'age': 35, 'city': 'Boston', 'status': 'active'},
-    ]
-
-
-@pytest.fixture(name='rows_values')
-def rows_values_fixture() -> list[dict[str, Any]]:
-    """Return a small dataset with a numeric ``value`` field."""
-
-    return [
-        {'name': 'John', 'value': 10},
-        {'name': 'Jane', 'value': 20},
-        {'name': 'Bob', 'value': 15},
-    ]
+def copy_rows(rows: tuple[dict[str, Any], ...]) -> list[dict[str, Any]]:
+    """Return mutable record copies for tests that pass rows into transforms."""
+    return [row.copy() for row in rows]
 
 
 # SECTION: TESTS ============================================================ #
@@ -115,29 +108,25 @@ class TestApplyAggregate:
     )
     def test_aggregate_builtin(
         self,
-        rows_values: list[dict[str, int]],
         func: str,
         expected_key: str,
         expected_value: int,
     ) -> None:
         """Test aggregating ``value`` with built-in aggregator names."""
         result = apply_aggregate(
-            rows_values,
+            copy_rows(VALUE_ROWS),
             {'field': 'value', 'func': func},
         )
         assert result[expected_key] == expected_value
 
-    def test_aggregate_callable_with_alias(
-        self,
-        rows_values: list[dict[str, int]],
-    ) -> None:
+    def test_aggregate_callable_with_alias(self) -> None:
         """Test aggregating with a callable and a custom alias."""
 
         def score(nums: list[float], present: int) -> float:
             return sum(nums) + present
 
         result = apply_aggregate(
-            rows_values,
+            copy_rows(VALUE_ROWS),
             {
                 'field': 'value',
                 'func': score,
@@ -201,14 +190,11 @@ class TestApplyFilter:
         )
         assert not result
 
-    def test_filter_in_operator(
-        self,
-        rows_people: list[dict[str, Any]],
-    ) -> None:
+    def test_filter_in_operator(self) -> None:
         """Test filtering with the ``in`` operator."""
 
         result = apply_filter(
-            rows_people,
+            copy_rows(PEOPLE_ROWS),
             {
                 'field': 'status',
                 'op': 'in',
@@ -549,17 +535,14 @@ class TestTransform:
         )
         assert result == {'sum_value': 6, 'count': 3}
 
-    def test_with_multiple_filters_and_select(
-        self,
-        rows_people: list[dict[str, Any]],
-    ) -> None:
+    def test_with_multiple_filters_and_select(self) -> None:
         """Test transforming with multiple filters and a select sequence."""
 
         def starts_with(value: object, prefix: str) -> bool:
             return str(value).startswith(prefix)
 
         result = transform(
-            rows_people,
+            copy_rows(PEOPLE_ROWS),
             {
                 'filter': [
                     {'field': 'age', 'op': 'gte', 'value': 26},
