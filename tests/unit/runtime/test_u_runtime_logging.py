@@ -33,6 +33,21 @@ class _ResolveLogLevelKwargs(TypedDict, total=False):
     verbose: bool
 
 
+class _LoggingSetupRecorder:
+    """Record process-wide logging setup hook calls."""
+
+    def __init__(self) -> None:
+        self.calls: dict[str, object] = {}
+
+    def basic_config(self, **kwargs: object) -> None:
+        """Record one ``logging.basicConfig`` call."""
+        self.calls['basicConfig'] = kwargs
+
+    def capture_warnings(self, enabled: bool) -> None:
+        """Record one ``logging.captureWarnings`` call."""
+        self.calls['captureWarnings'] = enabled
+
+
 # SECTION: FIXTURES ========================================================= #
 
 
@@ -41,18 +56,19 @@ def logging_setup_calls_fixture(
     monkeypatch: pytest.MonkeyPatch,
 ) -> dict[str, object]:
     """Patch process-wide logging setup hooks and capture their calls."""
-    calls: dict[str, object] = {}
+    recorder = _LoggingSetupRecorder()
+
     monkeypatch.setattr(
         logging_mod.logging,
         'basicConfig',
-        lambda **kwargs: calls.setdefault('basicConfig', kwargs),
+        recorder.basic_config,
     )
     monkeypatch.setattr(
         logging_mod.logging,
         'captureWarnings',
-        lambda enabled: calls.setdefault('captureWarnings', enabled),
+        recorder.capture_warnings,
     )
-    return calls
+    return recorder.calls
 
 
 # SECTION: TESTS ============================================================ #

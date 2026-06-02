@@ -9,6 +9,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
+from typing import cast
 
 import pytest
 
@@ -27,6 +29,28 @@ from .pytest_runtime_readiness import write_pipeline_config
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: HELPERS ========================================================== #
+
+
+def _connector_ok_checks(*_args: object, **_kwargs: object) -> list[dict[str, object]]:
+    """Return one successful connector-readiness check."""
+    return [{'name': 'connector-readiness', 'status': 'ok'}]
+
+
+def _provider_ok_checks(**_kwargs: object) -> list[dict[str, object]]:
+    """Return one successful provider-environment check."""
+    return [{'name': 'provider-environment', 'status': 'ok'}]
+
+
+def _no_issue_rows(**_kwargs: object) -> list[dict[str, object]]:
+    """Return no strict configuration issue rows."""
+    return []
+
+
+def _fail_runtime_checks(*_args: object, **_kwargs: object) -> list[dict[str, object]]:
+    pytest.fail('runtime checks should be skipped')
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -223,9 +247,7 @@ class TestReadinessReportBuilderCore:
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: pytest.fail(
-                'runtime checks should be skipped',
-            ),
+            _fail_runtime_checks,
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -269,8 +291,9 @@ class TestReadinessReportBuilderCore:
         """Schedule validation errors should fail readiness before runtime checks."""
         config_path = write_pipeline_config(tmp_path)
         resolved_cfg = _cfg()
-        resolved_cfg.jobs = [SimpleNamespace(name='job-a')]
-        resolved_cfg.schedules = [
+        resolved_cfg_double = cast(Any, resolved_cfg)
+        resolved_cfg_double.jobs = [SimpleNamespace(name='job-a')]
+        resolved_cfg_double.schedules = [
             SimpleNamespace(
                 name='nightly_all',
                 cron='*/15 * * * *',
@@ -290,9 +313,7 @@ class TestReadinessReportBuilderCore:
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: pytest.fail(
-                'runtime checks should be skipped',
-            ),
+            _fail_runtime_checks,
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -321,8 +342,9 @@ class TestReadinessReportBuilderCore:
         """Supported schedule shapes should continue into runtime readiness checks."""
         config_path = write_pipeline_config(tmp_path)
         resolved_cfg = _cfg()
-        resolved_cfg.jobs = [SimpleNamespace(name='job-a')]
-        resolved_cfg.schedules = [
+        resolved_cfg_double = cast(Any, resolved_cfg)
+        resolved_cfg_double.jobs = [SimpleNamespace(name='job-a')]
+        resolved_cfg_double.schedules = [
             SimpleNamespace(
                 name='nightly_all',
                 cron='0 2 * * *',
@@ -341,12 +363,12 @@ class TestReadinessReportBuilderCore:
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: [{'name': 'connector-readiness', 'status': 'ok'}],
+            _connector_ok_checks,
         )
         monkeypatch.setattr(
             readiness_providers_mod.ProviderEnvironmentPolicy,
             'environment_checks',
-            lambda **_kwargs: [{'name': 'provider-environment', 'status': 'ok'}],
+            _provider_ok_checks,
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -384,9 +406,7 @@ class TestReadinessReportBuilderCore:
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: pytest.fail(
-                'runtime checks should be skipped',
-            ),
+            _fail_runtime_checks,
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -424,17 +444,17 @@ class TestReadinessReportBuilderCore:
         monkeypatch.setattr(
             readiness_strict_mod.StrictConfigValidator,
             'config_issue_rows',
-            lambda **_kwargs: [],
+            _no_issue_rows,
         )
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: [{'name': 'connector-readiness', 'status': 'ok'}],
+            _connector_ok_checks,
         )
         monkeypatch.setattr(
             readiness_providers_mod.ProviderEnvironmentPolicy,
             'environment_checks',
-            lambda **_kwargs: [{'name': 'provider-environment', 'status': 'ok'}],
+            _provider_ok_checks,
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -472,12 +492,12 @@ class TestReadinessReportBuilderCore:
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: [{'name': 'connector-readiness', 'status': 'ok'}],
+            _connector_ok_checks,
         )
         monkeypatch.setattr(
             readiness_providers_mod.ProviderEnvironmentPolicy,
             'environment_checks',
-            lambda **_kwargs: [{'name': 'provider-environment', 'status': 'ok'}],
+            _provider_ok_checks,
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(

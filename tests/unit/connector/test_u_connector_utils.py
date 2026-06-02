@@ -19,7 +19,8 @@ from etlplus.connector import ConnectorApi
 from etlplus.connector import ConnectorDb
 from etlplus.connector import ConnectorFile
 from etlplus.connector import ConnectorQueue
-from tests.pytest_shared_support import get_cloud_database_provider_case
+from tests.pytest_shared_support import BIGQUERY_CASE
+from tests.pytest_shared_support import SNOWFLAKE_CASE
 
 from .pytest_connector_support import QUEUE_CONNECTOR_PROVIDER_CASES
 from .pytest_connector_support import assert_connector_fields
@@ -32,8 +33,6 @@ from .pytest_connector_support import assert_connector_fields
 
 
 AWS_SQS_CASE = QUEUE_CONNECTOR_PROVIDER_CASES['aws-sqs']
-BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
-SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
 
 
 # SECTION: TESTS ============================================================ #

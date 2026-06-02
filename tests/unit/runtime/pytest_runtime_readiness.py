@@ -14,6 +14,7 @@ from typing import cast
 import pytest
 
 import etlplus.runtime.readiness._builder as readiness_builder_mod
+from etlplus import Config
 from etlplus.runtime.readiness._support import ResolvedConfigContext
 
 # SECTION: PRAGMAS ========================================================== #
@@ -46,14 +47,19 @@ def build_runtime_cfg(
     apis: dict[str, object] | None = None,
     profile_env: dict[str, str] | None = None,
     variables: dict[str, object] | None = None,
-) -> SimpleNamespace:
+) -> Config:
     """Build one light-weight config-like object for readiness tests."""
-    return SimpleNamespace(
-        apis={} if apis is None else dict(apis),
-        profile=SimpleNamespace(env={} if profile_env is None else dict(profile_env)),
-        sources=[] if sources is None else list(sources),
-        targets=[] if targets is None else list(targets),
-        vars={} if variables is None else dict(variables),
+    return cast(
+        Config,
+        SimpleNamespace(
+            apis={} if apis is None else dict(apis),
+            profile=SimpleNamespace(
+                env={} if profile_env is None else dict(profile_env),
+            ),
+            sources=[] if sources is None else list(sources),
+            targets=[] if targets is None else list(targets),
+            vars={} if variables is None else dict(variables),
+        ),
     )
 
 
