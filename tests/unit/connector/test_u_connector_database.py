@@ -13,20 +13,14 @@ import pytest
 import etlplus.connector._database as database_mod
 from etlplus.connector._database import ConnectorDb
 from etlplus.connector._enums import DataConnectorType
-from tests.pytest_shared_support import get_cloud_database_provider_case
+from tests.pytest_shared_support import BIGQUERY_CASE
+from tests.pytest_shared_support import SNOWFLAKE_CASE
 
 from .pytest_connector_support import assert_connector_fields
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
-SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
-
 
 # SECTION: TESTS ============================================================ #
 
