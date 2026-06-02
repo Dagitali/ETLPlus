@@ -7,7 +7,9 @@ Direct unit tests for history view and status entry points in
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
+from typing import cast
 
 import pytest
 
@@ -572,6 +574,66 @@ class TestHistoryQuery:
 class TestHistoryView:
     """Unit tests for direct history-view helpers."""
 
+    def test_fingerprint_is_stable_for_mapping_key_order(self) -> None:
+        """History fingerprints should not depend on mapping insertion order."""
+        left = {'run_id': 'run-1', 'status': 'succeeded'}
+        right = {'status': 'succeeded', 'run_id': 'run-1'}
+
+        assert history_view_mod.HistoryView.fingerprint(left) == (
+            history_view_mod.HistoryView.fingerprint(right)
+        )
+
+    def test_load_records_sorts_reverse_chronological_and_applies_limit(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Loaded history records should be sorted newest first before limiting."""
+        received: dict[str, object] = {}
+
+        def fake_matching_records(**kwargs: object) -> list[dict[str, object]]:
+            received.update(kwargs)
+            return [
+                {'run_id': 'run-1', 'started_at': '2026-03-23T00:00:00Z'},
+                {'run_id': 'run-3', 'started_at': '2026-03-25T00:00:00Z'},
+                {'run_id': 'run-2', 'started_at': '2026-03-24T00:00:00Z'},
+            ]
+
+        monkeypatch.setattr(
+            history_view_mod.HistoryView,
+            '_matching_records',
+            staticmethod(fake_matching_records),
+        )
+
+        records = history_view_mod.HistoryView.load_records(
+            raw=False,
+            limit=2,
+            since='2026-03-23T00:00:00Z',
+            until='2026-03-26T00:00:00Z',
+        )
+
+        assert records == [
+            {'run_id': 'run-3', 'started_at': '2026-03-25T00:00:00Z'},
+            {'run_id': 'run-2', 'started_at': '2026-03-24T00:00:00Z'},
+        ]
+        assert received['since'] == datetime.fromisoformat(
+            '2026-03-23T00:00:00+00:00',
+        )
+        assert received['until'] == datetime.fromisoformat(
+            '2026-03-26T00:00:00+00:00',
+        )
+
+    def test_matches_rejects_timestamp_filters_when_record_has_no_timestamp(
+        self,
+    ) -> None:
+        """Timestamp filters should reject records without usable timestamps."""
+        assert (
+            history_view_mod.HistoryView.matches(
+                {'run_id': 'run-1', 'record_level': 'run'},
+                since=datetime.fromisoformat('2026-03-23T00:00:00+00:00'),
+            )
+            is False
+        )
+
     @pytest.mark.parametrize(
         ('value', 'expected'),
         [
@@ -620,6 +682,60 @@ class TestHistoryView:
                 },
             )
             == expected
+        )
+
+    def test_records_iter_selects_raw_run_or_job_iterator(self) -> None:
+        """Record iteration should route to the requested store iterator."""
+
+        class _Store:
+            def iter_records(self) -> Any:
+                return iter([{'source': 'raw'}])
+
+            def iter_job_runs(self) -> Any:
+                return iter([{'source': 'job'}])
+
+            def iter_runs(self) -> Any:
+                return iter([{'source': 'run'}])
+
+        store = cast(history_view_mod.HistoryStore, _Store())
+
+        assert list(
+            history_view_mod.HistoryView._records_iter(
+                store,
+                raw=True,
+                level='run',
+            ),
+        ) == [{'source': 'raw'}]
+        assert list(
+            history_view_mod.HistoryView._records_iter(
+                store,
+                raw=False,
+                level='job',
+            ),
+        ) == [{'source': 'job'}]
+        assert list(
+            history_view_mod.HistoryView._records_iter(
+                store,
+                raw=False,
+                level='run',
+            ),
+        ) == [{'source': 'run'}]
+
+    def test_validate_output_mode_allows_default_and_single_explicit_modes(
+        self,
+    ) -> None:
+        """Output mode validation should allow unambiguous output choices."""
+        history_view_mod.HistoryView.validate_output_mode(
+            json_output=False,
+            table=False,
+        )
+        history_view_mod.HistoryView.validate_output_mode(
+            json_output=True,
+            table=False,
+        )
+        history_view_mod.HistoryView.validate_output_mode(
+            json_output=False,
+            table=True,
         )
 
 
