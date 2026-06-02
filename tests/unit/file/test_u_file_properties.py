@@ -7,6 +7,8 @@ Unit tests for :mod:`etlplus.file.properties`.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
+from typing import cast
 
 import pytest
 
@@ -61,14 +63,66 @@ class TestProperties(
         """Assert PROPERTIES writes sorted keys in output."""
         assert path.read_text(encoding='utf-8') == 'a=1\nb=2\n'
 
-    def test_write_rejects_non_dict(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        path = self.format_path(tmp_path, stem='config')
+    def test_encode_dict_payload_text_stringifies_none_values(self) -> None:
+        """PROPERTIES serialization should stringify ``None`` as an empty value."""
+        assert (
+            mod.PropertiesFile().encode_dict_payload_text(
+                {
+                    'empty': None,
+                    'enabled': True,
+                },
+            )
+            == 'empty=\nenabled=True\n'
+        )
 
-        with pytest.raises(TypeError, match='PROPERTIES'):
-            mod.PropertiesFile().write(path, ['nope'])
+    @pytest.mark.parametrize(
+        ('line', 'index', 'expected'),
+        [
+            pytest.param(r'key\=name=value', 4, True, id='single-backslash'),
+            pytest.param(r'key\\=name=value', 5, False, id='double-backslash'),
+            pytest.param('key=value', 3, False, id='unescaped'),
+        ],
+    )
+    def test_is_escaped_counts_preceding_backslashes(
+        self,
+        line: str,
+        index: int,
+        expected: bool,
+    ) -> None:
+        """Test escape detection for odd and even backslash runs."""
+        assert mod._is_escaped(line, index) is expected
+
+    @pytest.mark.parametrize(
+        ('line', 'expected'),
+        [
+            pytest.param(r'message=hello\\', False, id='even-backslashes'),
+            pytest.param('message=hello\\', True, id='odd-backslashes'),
+            pytest.param('message=hello', False, id='no-backslash'),
+        ],
+    )
+    def test_is_logical_line_continued_counts_trailing_backslashes(
+        self,
+        line: str,
+        expected: bool,
+    ) -> None:
+        """Test continuation detection for trailing backslash runs."""
+        assert mod._is_logical_line_continued(line) is expected
+
+    def test_iter_logical_property_lines_flushes_dangling_continuation(
+        self,
+    ) -> None:
+        """Dangling continuations should keep the pending logical line."""
+        assert mod._iter_logical_property_lines('message=hello \\') == [
+            'message=hello ',
+        ]
+
+    def test_parse_properties_text_skips_blank_and_comment_lines(
+        self,
+    ) -> None:
+        """Blank and comment-only PROPERTIES lines should not emit payload keys."""
+        assert mod._parse_properties_text(
+            '\n   \n# comment\n! comment\nhost=localhost\n',
+        ) == {'host': 'localhost'}
 
     def test_read_accepts_whitespace_separated_properties(
         self,
@@ -131,6 +185,17 @@ class TestProperties(
                 (r'escaped\ key', 'value'),
                 id='escaped-space',
             ),
+            pytest.param(
+                r'escaped\:key=value',
+                (r'escaped\:key', 'value'),
+                id='escaped-colon',
+            ),
+            pytest.param(
+                r'escaped\=key:value',
+                (r'escaped\=key', 'value'),
+                id='escaped-equals',
+            ),
+            pytest.param('flag', ('flag', ''), id='key-only'),
         ],
     )
     def test_split_key_value_handles_java_style_separators(
@@ -140,3 +205,12 @@ class TestProperties(
     ) -> None:
         """Test Java-style PROPERTIES separators without changing the API."""
         assert mod._split_key_value(line) == expected
+
+    def test_write_rejects_non_dict(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        path = self.format_path(tmp_path, stem='config')
+
+        with pytest.raises(TypeError, match='PROPERTIES'):
+            mod.PropertiesFile().write(path, cast(Any, ['nope']))
