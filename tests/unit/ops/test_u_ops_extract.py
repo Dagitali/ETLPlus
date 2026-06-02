@@ -18,12 +18,14 @@ import importlib
 import json
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
 from etlplus.ops.extract import extract
 from etlplus.ops.extract import extract_from_api
+from etlplus.ops.extract import extract_from_api_source
 from etlplus.ops.extract import extract_from_database
 from etlplus.ops.extract import extract_from_file
 from etlplus.utils._types import JSONData
@@ -340,6 +342,50 @@ class TestExtractFromApi:
         with pytest.raises(ValueError, match='API source missing URL'):
             extract_mod._extract_from_api_env({}, use_client=False)
 
+    def test_extract_from_api_source_composes_request_environment(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Connector-aware API extraction should compose and use client envs."""
+        calls: list[tuple[object, ...]] = []
+        cfg = object()
+        source = object()
+        overrides = {'timeout': 2.0}
+        env = {'url': 'https://example.test/data'}
+
+        def _compose_api_request_env(
+            received_cfg: object,
+            received_source: object,
+            received_overrides: dict[str, Any],
+        ) -> dict[str, str]:
+            calls.append(('compose', received_cfg, received_source, received_overrides))
+            return env
+
+        def _extract_from_api_env(
+            received_env: dict[str, str],
+            *,
+            use_client: bool,
+        ) -> dict[str, object]:
+            calls.append(('extract', received_env, use_client))
+            return {'ok': True}
+
+        monkeypatch.setattr(
+            extract_mod,
+            'compose_api_request_env',
+            _compose_api_request_env,
+        )
+        monkeypatch.setattr(
+            extract_mod,
+            '_extract_from_api_env',
+            _extract_from_api_env,
+        )
+
+        assert extract_from_api_source(cfg, source, overrides) == {'ok': True}
+        assert calls == [
+            ('compose', cfg, source, overrides),
+            ('extract', env, True),
+        ]
+
     def test_invalid_json_fallback(
         self,
         base_url: str,
@@ -531,6 +577,69 @@ class TestExtractFromApi:
         assert request.headers == {'Accept': 'application/json'}
         assert request.timeout == 2.0
 
+    def test_use_client_with_endpoint_map_path(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Endpoint-backed API envs should use shared client pagination."""
+        client = object()
+        build_calls: list[dict[str, Any]] = []
+        paginate_calls: list[tuple[Any, ...]] = []
+
+        def _build_client(**kwargs: Any) -> object:
+            build_calls.append(kwargs)
+            return client
+
+        def _paginate_with_client(*args: Any) -> list[dict[str, int]]:
+            paginate_calls.append(args)
+            return [{'id': 1}]
+
+        monkeypatch.setattr(extract_mod, '_build_client', _build_client)
+        monkeypatch.setattr(
+            extract_mod,
+            'paginate_with_client',
+            _paginate_with_client,
+        )
+
+        env = {
+            'base_path': '/v1',
+            'base_url': 'https://example.test',
+            'endpoint_key': 'items',
+            'endpoints_map': {'items': '/items'},
+            'headers': {'Accept': 'application/json'},
+            'pagination': {'type': 'cursor'},
+            'params': {'limit': 5},
+            'retry': {'max_attempts': 2},
+            'retry_network_errors': True,
+            'session': object(),
+            'sleep_seconds': 0.1,
+            'timeout': 3.0,
+            'use_endpoints': True,
+        }
+
+        assert extract_mod._extract_from_api_env(env, use_client=True) == [{'id': 1}]
+        assert build_calls == [
+            {
+                'base_path': '/v1',
+                'base_url': 'https://example.test',
+                'endpoints': {'items': '/items'},
+                'retry': {'max_attempts': 2},
+                'retry_network_errors': True,
+                'session': env['session'],
+            },
+        ]
+        assert paginate_calls == [
+            (
+                client,
+                'items',
+                {'limit': 5},
+                {'Accept': 'application/json'},
+                3.0,
+                {'type': 'cursor'},
+                0.1,
+            ),
+        ]
+
 
 class TestExtractFromDatabase:
     """
@@ -618,6 +727,45 @@ class TestExtractFromFile:
         result = extract_from_file(str(path), None)
 
         assert result == {'ok': True}
+
+    def test_read_without_options_uses_plain_file_read(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """File extraction without options should not pass read options."""
+        calls: list[dict[str, object]] = []
+
+        class _File:
+            def read(self, **kwargs: object) -> JSONData:
+                calls.append(kwargs)
+                return {'ok': True}
+
+        def _resolve_file(
+            file_path: object,
+            file_format: object,
+            *,
+            file_cls: object,
+        ) -> SimpleNamespace:
+            calls.append(
+                {
+                    'file_cls': file_cls,
+                    'file_format': file_format,
+                    'file_path': file_path,
+                },
+            )
+            return SimpleNamespace(file=_File())
+
+        monkeypatch.setattr(extract_mod, 'resolve_file', _resolve_file)
+
+        assert extract_from_file('/tmp/data.json', 'json') == {'ok': True}
+        assert calls == [
+            {
+                'file_cls': extract_mod.File,
+                'file_format': 'json',
+                'file_path': '/tmp/data.json',
+            },
+            {},
+        ]
 
     def test_remote_uri_preserves_path_and_coerces_read_options(
         self,
