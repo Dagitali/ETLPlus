@@ -17,7 +17,6 @@ Examples
 from __future__ import annotations
 
 from typing import Any
-from typing import cast
 
 import pytest
 
@@ -29,25 +28,6 @@ from etlplus.api.rate_limiting import RateLimitInput
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: FIXTURES ======================================================== #
-
-
-@pytest.fixture(name='disabled_limiter')
-def disabled_limiter_fixture() -> RateLimiter:
-    """
-    Fixture returning a :class:`RateLimiter` instance with no delay.
-    """
-    return RateLimiter.disabled()
-
-
-@pytest.fixture(name='fixed_limiter')
-def fixed_limiter_fixture() -> RateLimiter:
-    """
-    Fixture returning a :class:`RateLimiter` instance with a small delay.
-    """
-    return RateLimiter.fixed(0.25)
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -78,82 +58,44 @@ class TestResolveSleepSeconds:
     """
 
     @pytest.mark.parametrize(
-        ('rate_limit', 'config', 'expected_sleep'),
+        ('rate_limit', 'overrides', 'expected_sleep'),
         [
             pytest.param(
                 {'sleep_seconds': -1},
                 None,
                 0.0,
-                id='negative_sleep_seconds',
+                id='negative-sleep-seconds',
             ),
             pytest.param(
                 None,
-                {'max_per_sec': 'oops'},
+                {'max_per_sec': 'oops'},  # type: ignore[typeddict-item]
                 0.0,
-                id='non_numeric_max_per_sec',
+                id='non-numeric-max-per-sec',
+            ),
+            pytest.param(None, {'max_per_sec': 4}, 0.25, id='override-max-per-sec'),
+            pytest.param(None, {'sleep_seconds': 0.2}, 0.2, id='override-sleep'),
+            pytest.param({'max_per_sec': 2}, None, 0.5, id='rate-limit-fallback'),
+            pytest.param(
+                {'sleep_seconds': 0.2, 'max_per_sec': 1},
+                None,
+                0.2,
+                id='sleep-precedence',
             ),
         ],
     )
-    def test_invalid_values(
+    def test_resolve_sleep_seconds_precedence_and_fallbacks(
         self,
         rate_limit: RateLimitConfigDict | None,
-        config: RateLimitConfigDict | dict[str, Any] | None,
+        overrides: RateLimitConfigDict | None,
         expected_sleep: float,
     ) -> None:
         """
-        Test that non-positive and non-numeric values are ignored and return
-        0.0.
-        """
-        overrides = cast(RateLimitConfigDict | None, config)
-        assert (
-            RateLimiter.resolve_sleep_seconds(
-                rate_limit=rate_limit,
-                overrides=overrides,
-            )
-            == expected_sleep
-        )
-
-    def test_overrides_max_per_sec(self) -> None:
-        """Test that max_per_sec in config overrides other values."""
-        assert (
-            RateLimiter.resolve_sleep_seconds(
-                rate_limit=None,
-                overrides={'max_per_sec': 4},
-            )
-            == 0.25
-        )
-
-    def test_overrides_sleep_seconds(self) -> None:
-        """Test that sleep_seconds in config overrides other values."""
-        assert (
-            RateLimiter.resolve_sleep_seconds(
-                rate_limit=None,
-                overrides={'sleep_seconds': 0.2},
-            )
-            == 0.2
-        )
-
-    def test_rate_limit_fallback(self) -> None:
-        """
-        Test that fallback to rate limit config when override is ``None``.
-        """
-        assert (
-            RateLimiter.resolve_sleep_seconds(
-                rate_limit={'max_per_sec': 2},
-                overrides=None,
-            )
-            == 0.5
-        )
-
-    def test_sleep_seconds_precedence(self) -> None:
-        """
-        Test that ``sleep_seconds`` takes precedence over ``max_per_sec`` when
-        both are set.
+        Test rate-limit overrides, fallbacks, invalid values, and precedence.
         """
         assert RateLimiter.resolve_sleep_seconds(
-            rate_limit={'sleep_seconds': 0.2, 'max_per_sec': 1},
-            overrides=None,
-        ) == pytest.approx(0.2)
+            rate_limit=rate_limit,
+            overrides=overrides,
+        ) == pytest.approx(expected_sleep)
 
 
 class TestRateLimiterBasics:
@@ -171,26 +113,36 @@ class TestRateLimiterBasics:
     RateLimiter(...)
     """
 
-    def test_disabled_constructor(self, disabled_limiter: RateLimiter) -> None:
-        """
-        Test that disabled() returns a limiter that never sleeps.
-        """
-        assert disabled_limiter.sleep_seconds == 0.0
-        assert disabled_limiter.enabled is False
-        assert bool(disabled_limiter) is False
-        assert disabled_limiter.max_per_sec is None
-
-    def test_fixed_constructor(
+    @pytest.mark.parametrize(
+        ('limiter', 'expected_sleep', 'expected_enabled', 'expected_max_per_sec'),
+        [
+            pytest.param(RateLimiter.disabled(), 0.0, False, None, id='disabled'),
+            pytest.param(RateLimiter.fixed(0.25), 0.25, True, 4.0, id='fixed'),
+            pytest.param(
+                RateLimiter(sleep_seconds=0.0, max_per_sec=4.0),
+                0.25,
+                True,
+                4.0,
+                id='derive-sleep-from-rate',
+            ),
+        ],
+    )
+    def test_constructor_state(
         self,
-        fixed_limiter: RateLimiter,
+        limiter: RateLimiter,
+        expected_sleep: float,
+        expected_enabled: bool,
+        expected_max_per_sec: float | None,
     ) -> None:
-        """
-        Test that fixed() returns a limiter with the specified positive delay.
-        """
-        assert fixed_limiter.sleep_seconds == pytest.approx(0.25)
-        assert fixed_limiter.enabled is True
-        assert bool(fixed_limiter) is True
-        assert fixed_limiter.max_per_sec == pytest.approx(4.0)
+        """Test constructor state, truthiness, and derived sleep values."""
+        assert limiter.sleep_seconds == pytest.approx(expected_sleep)
+        assert limiter.enabled is expected_enabled
+        assert bool(limiter) is expected_enabled
+        assert limiter.max_per_sec == (
+            None
+            if expected_max_per_sec is None
+            else pytest.approx(expected_max_per_sec)
+        )
 
     @pytest.mark.parametrize(
         ('seconds', 'expected_sleep'),
@@ -211,16 +163,6 @@ class TestRateLimiterBasics:
         """
         limiter = RateLimiter.fixed(seconds)  # type: ignore[arg-type]
         assert limiter.sleep_seconds == pytest.approx(expected_sleep)
-
-    def test_post_init_prefers_positive_rate_when_sleep_not_positive(
-        self,
-    ) -> None:
-        """
-        Test that positive max_per_sec derives sleep when sleep_seconds <= 0.
-        """
-        limiter = RateLimiter(sleep_seconds=0.0, max_per_sec=4.0)
-        assert limiter.max_per_sec == pytest.approx(4.0)
-        assert limiter.sleep_seconds == pytest.approx(0.25)
 
     @pytest.mark.parametrize(
         ('seconds', 'expected_enabled'),
@@ -289,51 +231,26 @@ class TestRateLimiterEnforce:
     and disabled states.
     """
 
-    def test_enforce_calls_sleep_when_enabled(
+    @pytest.mark.parametrize(
+        ('limiter', 'expected_calls'),
+        [
+            pytest.param(RateLimiter.fixed(0.5), [pytest.approx(0.5)], id='enabled'),
+            pytest.param(RateLimiter.disabled(), [], id='disabled'),
+        ],
+    )
+    def test_enforce_sleep_behavior(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        limiter: RateLimiter,
+        expected_calls: list[float],
     ) -> None:
-        """
-        Test that ``enforce`` call :func:`time.sleep` with ``sleep_seconds``
-        when the limiter is enabled.
-        """
+        """Test that ``enforce`` sleeps only when the limiter is enabled."""
         calls: list[float] = []
-
-        def fake_sleep(value: float) -> None:
-            calls.append(value)
-
-        # Patch the module-level ``time.sleep`` used by
-        # :class:`RateLimiter`.
         monkeypatch.setattr(
             'etlplus.api.rate_limiting._rate_limiter.time.sleep',
-            fake_sleep,
+            calls.append,
         )
 
-        limiter = RateLimiter.fixed(0.5)
         limiter.enforce()
 
-        assert calls == [pytest.approx(0.5)]
-
-    def test_enforce_noop_when_disabled(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        disabled_limiter: RateLimiter,
-    ) -> None:
-        """
-        Test that ``enforce`` does not call :func:`time.sleep` when the limiter
-        is disabled.
-        """
-        calls: list[float] = []
-
-        def fake_sleep(value: float) -> None:  # pragma: no cover
-            # Should not run.
-            calls.append(value)
-
-        monkeypatch.setattr(
-            'etlplus.api.rate_limiting._rate_limiter.time.sleep',
-            fake_sleep,
-        )
-
-        disabled_limiter.enforce()
-
-        assert not calls
+        assert calls == expected_calls

@@ -144,7 +144,7 @@ class TestRequestOptions:
 
     def test_request_options_rejects_non_mapping_params_headers(self) -> None:
         """Test that non-mapping params and headers normalize to empty dicts."""
-        opts = RequestOptions(params='bad', headers=object())
+        opts = RequestOptions(params='bad', headers=object())  # type: ignore[arg-type]
 
         assert opts.params == {}
         assert opts.headers == {}

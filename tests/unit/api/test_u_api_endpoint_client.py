@@ -635,7 +635,7 @@ class TestRequestOptionIntegration:
             attempts['n'] += 1
             if attempts['n'] == 1:
                 err = requests.HTTPError('boom')
-                err.response = types.SimpleNamespace(status_code=503)
+                cast(Any, err).response = types.SimpleNamespace(status_code=503)
                 raise err
             return {'items': [{'i': 1}], 'next': None}
 
@@ -1111,7 +1111,7 @@ class TestRetryLogic:
             attempts['n'] += 1
             if attempts['n'] < 3:
                 err = requests.HTTPError('boom')
-                err.response = types.SimpleNamespace(status_code=503)
+                cast(Any, err).response = types.SimpleNamespace(status_code=503)
                 raise err
             return {'ok': True}
 

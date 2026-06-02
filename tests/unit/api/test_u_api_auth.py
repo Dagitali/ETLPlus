@@ -37,41 +37,6 @@ from ...pytest_shared_support import RequestFactory
 # SECTION: FIXTURES ========================================================= #
 
 
-@pytest.fixture(name='token_sequence')
-def token_sequence_fixture(
-    monkeypatch: pytest.MonkeyPatch,
-    fake_response_factory: Callable[..., Any],
-) -> dict[str, int]:
-    """
-    Track token fetch count and patch requests.post for token acquisition.
-
-    Parameters
-    ----------
-    monkeypatch : pytest.MonkeyPatch
-        Pytest monkeypatch fixture.
-
-    Returns
-    -------
-    dict[str, int]
-        Dictionary tracking token fetch count.
-    """
-
-    calls: dict[str, int] = {'n': 0}
-
-    def fake_post(
-        *args,
-        **kwargs,
-    ) -> Any:
-        calls['n'] += 1
-        return fake_response_factory(
-            payload={'access_token': f't{calls["n"]}', 'expires_in': 60},
-        )
-
-    monkeypatch.setattr(requests, 'post', fake_post)
-
-    return calls
-
-
 @pytest.fixture(name='bearer_factory')
 def bearer_factory_fixture() -> Callable[..., EndpointCredentialsBearer]:
     """

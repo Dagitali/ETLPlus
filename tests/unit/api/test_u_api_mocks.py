@@ -95,7 +95,7 @@ class MockSession(Session):  # pragma: no cover - exercised indirectly
 
     # -- Instance Methods -- #
 
-    def get(
+    def get(  # type: ignore[override]
         self,
         url: str | bytes,
         *,
@@ -114,7 +114,7 @@ class MockSession(Session):  # pragma: no cover - exercised indirectly
         cert: Any = None,
         json: Any = None,
         **kwargs: Any,
-    ) -> Response:  # type: ignore[override]
+    ) -> Response:
         """
         Capture ``get`` call arguments and return a simple JSON response.
 
