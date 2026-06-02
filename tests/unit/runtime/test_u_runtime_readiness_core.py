@@ -48,6 +48,10 @@ def _no_issue_rows(**_kwargs: object) -> list[dict[str, object]]:
     return []
 
 
+def _fail_runtime_checks(*_args: object, **_kwargs: object) -> list[dict[str, object]]:
+    pytest.fail('runtime checks should be skipped')
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -243,9 +247,7 @@ class TestReadinessReportBuilderCore:
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: pytest.fail(
-                'runtime checks should be skipped',
-            ),
+            _fail_runtime_checks,
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -311,9 +313,7 @@ class TestReadinessReportBuilderCore:
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: pytest.fail(
-                'runtime checks should be skipped',
-            ),
+            _fail_runtime_checks,
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
@@ -406,9 +406,7 @@ class TestReadinessReportBuilderCore:
         monkeypatch.setattr(
             readiness_connectors_mod.ConnectorReadinessPolicy,
             'readiness_checks',
-            lambda *_args, **_kwargs: pytest.fail(
-                'runtime checks should be skipped',
-            ),
+            _fail_runtime_checks,
         )
 
         checks = readiness_builder_mod.ReadinessReportBuilder.config_checks(
