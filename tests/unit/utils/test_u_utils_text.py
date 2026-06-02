@@ -17,16 +17,25 @@ from etlplus.utils import TextNormalizer
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: CONSTANTS ======================================================== #
+
+
+CHOICE_MAPPING = {'file': 'file', 'api': 'api'}
+
+
+# SECTION: HELPERS ========================================================== #
+
+
+def lower_or_empty(value: str | None) -> str:
+    """Return a lowercase string or an empty string for missing values."""
+    return (value or '').lower()
+
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestNormalizeText:
     """Unit tests for text-normalization helpers."""
-
-    @pytest.fixture(name='choice_mapping')
-    def choice_mapping_fixture(self) -> dict[str, str]:
-        """Return one reusable normalized choice mapping."""
-        return {'file': 'file', 'api': 'api'}
 
     def test_choice_resolver_is_frozen(self) -> None:
         """Test that choice policy cannot be reassigned after construction."""
@@ -56,15 +65,12 @@ class TestNormalizeText:
         """
         assert TextNormalizer.normalize(value) == expected
 
-    def test_normalize_choice_with_default_normalizer(
-        self,
-        choice_mapping: dict[str, str],
-    ) -> None:
+    def test_normalize_choice_with_default_normalizer(self) -> None:
         """
         Test that :meth:`TextChoiceResolver.resolve` resolves choices and
         falls back to defaults.
         """
-        resolver = TextChoiceResolver(choice_mapping, 'file')
+        resolver = TextChoiceResolver(CHOICE_MAPPING, 'file')
 
         assert resolver.resolve('  FILE  ') == 'file'
         assert resolver.resolve('unknown') == 'file'
@@ -79,7 +85,7 @@ class TestNormalizeText:
             TextChoiceResolver(
                 {'v1': 'version-1'},
                 'fallback',
-                normalize=lambda value: (value or '').lower(),
+                normalize=lower_or_empty,
             ).resolve('V1')
             == 'version-1'
         )
@@ -91,7 +97,7 @@ class TestNormalizeText:
                 {'v1': 'version-1'},
                 'fallback',
                 'V1',
-                normalize=lambda value: (value or '').lower(),
+                normalize=lower_or_empty,
             )
             == 'version-1'
         )
@@ -106,13 +112,12 @@ class TestNormalizeText:
     )
     def test_resolve_mapping_without_resolver_instance(
         self,
-        choice_mapping: dict[str, str],
         value: str | None,
         expected: str,
     ) -> None:
         """Test direct mapping resolution without resolver allocation."""
         assert (
-            TextChoiceResolver.resolve_mapping(choice_mapping, 'file', value)
+            TextChoiceResolver.resolve_mapping(CHOICE_MAPPING, 'file', value)
             == expected
         )
 
