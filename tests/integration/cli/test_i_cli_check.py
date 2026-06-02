@@ -14,7 +14,8 @@ from typing import Any
 import pytest
 import yaml
 
-from tests.pytest_shared_support import get_cloud_database_provider_case
+from tests.pytest_shared_support import BIGQUERY_CASE
+from tests.pytest_shared_support import SNOWFLAKE_CASE
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.integration.cli.pytest_cli_integration_support import (
@@ -26,12 +27,6 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
-SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
 
 # SECTION: TESTS ============================================================ #
 
