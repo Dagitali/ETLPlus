@@ -13,20 +13,14 @@ import pytest
 
 import etlplus.runtime.readiness._strict as readiness_strict_mod
 from etlplus.runtime.readiness._support import ReadinessRow
-from tests.pytest_shared_support import get_cloud_database_provider_case
+from tests.pytest_shared_support import BIGQUERY_CASE
+from tests.pytest_shared_support import SNOWFLAKE_CASE
 
 from .pytest_runtime_readiness import build_issue_row as _issue
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: HELPERS ========================================================== #
-
-
-BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
-SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
-
 
 # SECTION: TESTS ============================================================ #
 
