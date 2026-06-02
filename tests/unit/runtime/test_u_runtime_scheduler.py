@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 from datetime import UTC
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -739,7 +741,11 @@ class TestRunPending:
 
         def _run_callback(**kwargs: object) -> int:
             dispatch_calls.append(dict(kwargs))
-            kwargs['result_recorder']({'run_id': 'run-scheduled', 'status': 'ok'})
+            result_recorder = cast(
+                Callable[[dict[str, object]], None],
+                kwargs['result_recorder'],
+            )
+            result_recorder({'run_id': 'run-scheduled', 'status': 'ok'})
             return 0
 
         payload = scheduler_mod.LocalScheduler.run_pending(
