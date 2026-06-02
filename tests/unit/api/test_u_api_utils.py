@@ -84,6 +84,20 @@ class _Endpoint:
 class TestBuildPaginationCfg:
     """Unit tests for :func:`build_pagination_cfg`."""
 
+    def test_cursor_config_defaults_non_positive_page_size(self) -> None:
+        """Non-positive cursor page-size overrides should fall back without raising."""
+        cfg_map = _utils.build_pagination_cfg(
+            None,
+            {
+                'type': 'cursor',
+                'page_size': 0,
+            },
+        )
+
+        assert cfg_map is not None
+        cursor_cfg = cast(CursorPaginationConfigDict, cfg_map)
+        assert cursor_cfg['page_size'] == 100
+
     def test_cursor_config_without_base(self) -> None:
         """
         Test building cursor-based pagination config without a base config.
@@ -141,6 +155,22 @@ class TestBuildPaginationCfg:
         assert cfg_map is not None
         cursor_cfg = cast(CursorPaginationConfigDict, cfg_map)
         assert cursor_cfg['page_size'] == 100
+
+    def test_page_config_defaults_non_positive_page_size(self) -> None:
+        """Non-positive page-size overrides should fall back without raising."""
+        cfg_map = _utils.build_pagination_cfg(
+            None,
+            {
+                'type': 'page',
+                'start_page': 0,
+                'page_size': 0,
+            },
+        )
+
+        assert cfg_map is not None
+        page_cfg = cast(PagePaginationConfigDict, cfg_map)
+        assert page_cfg['start_page'] == 1
+        assert page_cfg['page_size'] == 100
 
     def test_page_config_with_overrides(self) -> None:
         """Test building page-based pagination config with overrides."""
