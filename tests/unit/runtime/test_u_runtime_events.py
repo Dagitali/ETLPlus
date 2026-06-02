@@ -7,6 +7,8 @@ Unit tests for :mod:`etlplus.runtime._events`.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
+from typing import cast
 from uuid import UUID
 
 import pytest
@@ -31,6 +33,19 @@ type EventExtraFields = dict[str, object]
 
 RUN_ID = 'run-123'
 FROZEN_TIMESTAMP = '2025-01-01T00:00:00+00:00'
+
+
+# SECTION: HELPERS ========================================================== #
+
+
+def frozen_timestamp() -> str:
+    """Return a stable timestamp for runtime event tests."""
+    return FROZEN_TIMESTAMP
+
+
+def serialized_event(_codec: object, _event: object) -> str:
+    """Return stable serialized event text for stderr emission tests."""
+    return 'SERIALIZED'
 
 
 # SECTION: TESTS ============================================================ #
@@ -116,9 +131,9 @@ class TestRuntimeEvents:
         monkeypatch.setattr(
             events_mod.RuntimeEvents,
             'utc_now_iso',
-            staticmethod(lambda: FROZEN_TIMESTAMP),
+            staticmethod(frozen_timestamp),
         )
-        event = events_mod.RuntimeEvents.build(**kwargs)
+        event = events_mod.RuntimeEvents.build(**cast(Any, kwargs))
 
         assert STRUCTURED_EVENT_BASE_FIELDS.issubset(event)
         assert event == {
@@ -179,7 +194,7 @@ class TestRuntimeEvents:
         monkeypatch.setattr(
             events_mod.JsonCodec,
             'serialize',
-            lambda _codec, event: 'SERIALIZED',
+            serialized_event,
         )
 
         events_mod.RuntimeEvents.emit(
