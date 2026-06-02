@@ -27,6 +27,46 @@ from etlplus.runtime import _scheduler as scheduler_mod
 # SECTION: HELPERS ========================================================== #
 
 
+def _cron_due_now() -> datetime:
+    """Return the fixed UTC time for cron schedule dispatch tests."""
+    return datetime(2026, 5, 11, 2, 0, tzinfo=UTC)
+
+
+def _dispatch_failed(**_kwargs: object) -> int:
+    """Raise the standard scheduler dispatch failure used by tests."""
+    raise RuntimeError('dispatch failed')
+
+
+def _exit_with_error(**_kwargs: object) -> int:
+    """Return a nonzero callback exit code."""
+    return 2
+
+
+def _fail_if_dispatched(**_kwargs: object) -> int:
+    """Fail when a scheduler test unexpectedly dispatches a run."""
+    pytest.fail('dispatch should be skipped')
+
+
+def _interval_catchup_now() -> datetime:
+    """Return the fixed UTC time for interval catch-up tests."""
+    return datetime(2026, 5, 12, 0, 31, tzinfo=UTC)
+
+
+def _interval_due_now() -> datetime:
+    """Return the fixed UTC time for interval schedule dispatch tests."""
+    return datetime(2026, 5, 12, 0, 1, tzinfo=UTC)
+
+
+def _record_run_1(**kwargs: object) -> int:
+    """Record one successful scheduler run and return success."""
+    result_recorder = cast(
+        Callable[[dict[str, object]], None],
+        kwargs['result_recorder'],
+    )
+    result_recorder({'run_id': 'run-1', 'status': 'ok'})
+    return 0
+
+
 def _scheduler_config(
     *,
     jobs: list[dict[str, object]] | None = None,
@@ -348,7 +388,7 @@ class TestRunPending:
         monkeypatch.setattr(
             scheduler_mod.LocalScheduler,
             'utc_now',
-            staticmethod(lambda: datetime(2026, 5, 12, 0, 1, tzinfo=UTC)),
+            staticmethod(_interval_due_now),
         )
 
         payload = scheduler_mod.LocalScheduler.run_pending(
@@ -356,7 +396,7 @@ class TestRunPending:
             config_path='pipeline.yml',
             event_format=None,
             pretty=False,
-            run_callback=lambda **_kwargs: 2,
+            run_callback=_exit_with_error,
             state_dir=tmp_path,
         )
 
@@ -415,7 +455,7 @@ class TestRunPending:
         monkeypatch.setattr(
             scheduler_mod.LocalScheduler,
             'utc_now',
-            staticmethod(lambda: datetime(2026, 5, 12, 0, 31, tzinfo=UTC)),
+            staticmethod(_interval_catchup_now),
         )
 
         def _run_callback(**kwargs: object) -> int:
@@ -480,7 +520,7 @@ class TestRunPending:
         monkeypatch.setattr(
             scheduler_mod.LocalScheduler,
             'utc_now',
-            staticmethod(lambda: datetime(2026, 5, 12, 0, 1, tzinfo=UTC)),
+            staticmethod(_interval_due_now),
         )
 
         with pytest.raises(RuntimeError, match='dispatch failed'):
@@ -489,9 +529,7 @@ class TestRunPending:
                 config_path='pipeline.yml',
                 event_format=None,
                 pretty=False,
-                run_callback=lambda **_kwargs: (_ for _ in ()).throw(
-                    RuntimeError('dispatch failed'),
-                ),
+                run_callback=_dispatch_failed,
                 state_dir=tmp_path,
             )
 
@@ -573,7 +611,7 @@ class TestRunPending:
         monkeypatch.setattr(
             scheduler_mod.LocalScheduler,
             'utc_now',
-            staticmethod(lambda: datetime(2026, 5, 12, 0, 1, tzinfo=UTC)),
+            staticmethod(_interval_due_now),
         )
 
         with pytest.raises(scheduler_mod.SchedulerDispatchError) as exc_info:
@@ -582,9 +620,7 @@ class TestRunPending:
                 config_path='pipeline.yml',
                 event_format=None,
                 pretty=False,
-                run_callback=lambda **_kwargs: (_ for _ in ()).throw(
-                    RuntimeError('dispatch failed'),
-                ),
+                run_callback=_dispatch_failed,
                 state_dir=tmp_path,
             )
 
@@ -641,7 +677,7 @@ class TestRunPending:
         monkeypatch.setattr(
             scheduler_mod.LocalScheduler,
             'utc_now',
-            staticmethod(lambda: datetime(2026, 5, 12, 0, 31, tzinfo=UTC)),
+            staticmethod(_interval_catchup_now),
         )
 
         def _run_callback(**kwargs: object) -> int:
@@ -736,7 +772,7 @@ class TestRunPending:
         monkeypatch.setattr(
             scheduler_mod.LocalScheduler,
             'utc_now',
-            staticmethod(lambda: datetime(2026, 5, 11, 2, 0, tzinfo=UTC)),
+            staticmethod(_cron_due_now),
         )
 
         def _run_callback(**kwargs: object) -> int:
@@ -809,7 +845,7 @@ class TestRunPending:
         monkeypatch.setattr(
             scheduler_mod.LocalScheduler,
             'utc_now',
-            staticmethod(lambda: datetime(2026, 5, 12, 0, 1, tzinfo=UTC)),
+            staticmethod(_interval_due_now),
         )
 
         with pytest.raises(scheduler_mod.SchedulerDispatchError):
@@ -818,9 +854,7 @@ class TestRunPending:
                 config_path='pipeline.yml',
                 event_format=None,
                 pretty=False,
-                run_callback=lambda **_kwargs: (_ for _ in ()).throw(
-                    RuntimeError('dispatch failed'),
-                ),
+                run_callback=_dispatch_failed,
                 state_dir=tmp_path,
             )
 
@@ -829,9 +863,7 @@ class TestRunPending:
             config_path='pipeline.yml',
             event_format=None,
             pretty=False,
-            run_callback=lambda **kwargs: (
-                kwargs['result_recorder']({'run_id': 'run-1', 'status': 'ok'}) or 0
-            ),
+            run_callback=_record_run_1,
             state_dir=tmp_path,
         )
 
@@ -879,7 +911,7 @@ class TestRunPending:
         monkeypatch.setattr(
             scheduler_mod.LocalScheduler,
             'utc_now',
-            staticmethod(lambda: datetime(2026, 5, 11, 2, 0, tzinfo=UTC)),
+            staticmethod(_cron_due_now),
         )
 
         payload = scheduler_mod.LocalScheduler.run_pending(
@@ -887,7 +919,7 @@ class TestRunPending:
             config_path='pipeline.yml',
             event_format=None,
             pretty=False,
-            run_callback=lambda **_kwargs: pytest.fail('dispatch should be skipped'),
+            run_callback=_fail_if_dispatched,
             state_dir=tmp_path,
         )
 
