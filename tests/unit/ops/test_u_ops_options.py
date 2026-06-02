@@ -7,7 +7,8 @@ Unit tests for :mod:`etlplus.ops._options`.
 from __future__ import annotations
 
 import importlib
-from typing import Any
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import pytest
 
@@ -24,75 +25,78 @@ from etlplus.file.base import WriteOptions
 options_mod = importlib.import_module('etlplus.ops._options')
 
 
-# SECTION: FIXTURES ========================================================= #
+@dataclass(frozen=True, slots=True)
+class OptionCase:
+    """Typed read/write option coercion test case."""
+
+    coerce: Callable[[object], object]
+    mapping: dict[str, object]
+    option_type: type[ReadOptions] | type[WriteOptions]
+    expected_attrs: dict[str, object]
+    expected_extras: dict[str, object]
+    instance: ReadOptions | WriteOptions
 
 
-@pytest.fixture(
-    name='option_case',
-    params=[
-        pytest.param(
-            {
-                'coerce': options_mod.coerce_read_options,
-                'mapping': {
-                    'encoding': 'utf-16',
-                    'sheet': 2,
-                    'table': 123,
-                    'dataset': 456,
-                    'inner_name': 789,
-                    'delimiter': '|',
-                },
-                'option_type': ReadOptions,
-                'expected_attrs': {
-                    'encoding': 'utf-16',
-                    'sheet': 2,
-                    'table': '123',
-                    'dataset': '456',
-                    'inner_name': '789',
-                },
-                'expected_extras': {'delimiter': '|'},
-                'instance': ReadOptions(
-                    encoding='utf-8',
-                    table='people',
-                    extras={'delimiter': ','},
-                ),
+OPTION_CASES = [
+    pytest.param(
+        OptionCase(
+            coerce=options_mod.coerce_read_options,
+            mapping={
+                'encoding': 'utf-16',
+                'sheet': 2,
+                'table': 123,
+                'dataset': 456,
+                'inner_name': 789,
+                'delimiter': '|',
             },
-            id='read-options',
-        ),
-        pytest.param(
-            {
-                'coerce': options_mod.coerce_write_options,
-                'mapping': {
-                    'encoding': 65001,
-                    'root_tag': 7,
-                    'sheet': 'Summary',
-                    'table': 123,
-                    'dataset': 456,
-                    'inner_name': 789,
-                    'indent': 2,
-                },
-                'option_type': WriteOptions,
-                'expected_attrs': {
-                    'encoding': '65001',
-                    'root_tag': '7',
-                    'sheet': 'Summary',
-                    'table': '123',
-                    'dataset': '456',
-                    'inner_name': '789',
-                },
-                'expected_extras': {'indent': 2},
-                'instance': WriteOptions(
-                    encoding='utf-8',
-                    root_tag='records',
-                    extras={'indent': 4},
-                ),
+            option_type=ReadOptions,
+            expected_attrs={
+                'encoding': 'utf-16',
+                'sheet': 2,
+                'table': '123',
+                'dataset': '456',
+                'inner_name': '789',
             },
-            id='write-options',
+            expected_extras={'delimiter': '|'},
+            instance=ReadOptions(
+                encoding='utf-8',
+                table='people',
+                extras={'delimiter': ','},
+            ),
         ),
-    ],
-)
-def option_case_fixture(request: pytest.FixtureRequest) -> dict[str, Any]:
-    """Provide parametrized read/write option coercion cases."""
-    return request.param
+        id='read-options',
+    ),
+    pytest.param(
+        OptionCase(
+            coerce=options_mod.coerce_write_options,
+            mapping={
+                'encoding': 65001,
+                'root_tag': 7,
+                'sheet': 'Summary',
+                'table': 123,
+                'dataset': 456,
+                'inner_name': 789,
+                'indent': 2,
+            },
+            option_type=WriteOptions,
+            expected_attrs={
+                'encoding': '65001',
+                'root_tag': '7',
+                'sheet': 'Summary',
+                'table': '123',
+                'dataset': '456',
+                'inner_name': '789',
+            },
+            expected_extras={'indent': 2},
+            instance=WriteOptions(
+                encoding='utf-8',
+                root_tag='records',
+                extras={'indent': 4},
+            ),
+        ),
+        id='write-options',
+    ),
+]
 
 
 # SECTION: TESTS ============================================================ #
@@ -101,29 +105,29 @@ def option_case_fixture(request: pytest.FixtureRequest) -> dict[str, Any]:
 class TestFileOptionHelpers:
     """Unit tests for file-option normalization helpers."""
 
+    @pytest.mark.parametrize('option_case', OPTION_CASES)
     def test_coerce_file_options_from_mapping(
         self,
-        option_case: dict[str, Any],
+        option_case: OptionCase,
     ) -> None:
         """
         Test that mapping inputs are normalized into concrete option objects.
         """
-        case = option_case
-        options = case['coerce'](case['mapping'])
+        options = option_case.coerce(option_case.mapping)
 
-        assert isinstance(options, case['option_type'])
+        assert isinstance(options, option_case.option_type)
         assert options is not None
-        for attr_name, expected_value in case['expected_attrs'].items():
+        for attr_name, expected_value in option_case.expected_attrs.items():
             assert getattr(options, attr_name) == expected_value
-        assert options.extras == case['expected_extras']
+        assert options.extras == option_case.expected_extras
 
+    @pytest.mark.parametrize('option_case', OPTION_CASES)
     def test_coerce_file_options_passthrough(
         self,
-        option_case: dict[str, Any],
+        option_case: OptionCase,
     ) -> None:
         """Test that existing option objects are returned unchanged."""
-        case = option_case
-        assert case['coerce'](case['instance']) is case['instance']
+        assert option_case.coerce(option_case.instance) is option_case.instance
 
     def test_internal_coerce_file_options_rejects_invalid_object(self) -> None:
         """

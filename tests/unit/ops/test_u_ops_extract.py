@@ -14,6 +14,7 @@ Notes
 
 from __future__ import annotations
 
+import csv
 import importlib
 import json
 from collections.abc import Callable
@@ -40,9 +41,32 @@ from etlplus.utils._types import JSONData
 extract_mod = importlib.import_module('etlplus.ops.extract')
 
 
+def _write_csv_person_payload(path: str) -> None:
+    """Write a small CSV person payload using UTF-8 encoding."""
+    with Path(path).open('w', newline='', encoding='utf-8') as file_obj:
+        writer = csv.DictWriter(file_obj, fieldnames=['name', 'age'])
+        writer.writeheader()
+        writer.writerows(
+            [
+                {'name': 'John', 'age': '30'},
+                {'name': 'Jane', 'age': '25'},
+            ],
+        )
+
+
 def _write_json_payload(path: str, payload: dict[str, Any]) -> None:
     """Write one JSON payload using UTF-8 encoding."""
     Path(path).write_text(json.dumps(payload), encoding='utf-8')
+
+
+def _write_person_json_payload(path: str) -> None:
+    """Write the standard person JSON payload."""
+    _write_json_payload(path, {'name': 'John', 'age': 30})
+
+
+def _write_test_json_payload(path: str) -> None:
+    """Write the standard wrapper-file JSON payload."""
+    _write_json_payload(path, {'test': 'data'})
 
 
 def _write_xml_person_payload(path: str) -> None:
@@ -126,7 +150,7 @@ class TestExtract:
         [
             (
                 'json',
-                lambda p: _write_json_payload(p, {'test': 'data'}),
+                _write_test_json_payload,
                 {'test': 'data'},
             ),
         ],
@@ -855,15 +879,12 @@ class TestExtractFromFile:
         [
             (
                 'json',
-                lambda p: _write_json_payload(
-                    p,
-                    {'name': 'John', 'age': 30},
-                ),
+                _write_person_json_payload,
                 {'name': 'John', 'age': 30},
             ),
             (
                 'csv',
-                pytest.fixture(lambda csv_writer: csv_writer),
+                _write_csv_person_payload,
                 [
                     {'name': 'John', 'age': '30'},
                     {'name': 'Jane', 'age': '25'},
@@ -880,9 +901,8 @@ class TestExtractFromFile:
         self,
         tmp_path: Path,
         file_format: str,
-        write: Callable[[str], None] | None,
+        write: Callable[[str], None],
         expected_extracts: Any,
-        request: pytest.FixtureRequest,
     ) -> None:
         """
         Test extracting data from a file with a supported format.
@@ -893,21 +913,13 @@ class TestExtractFromFile:
             Temporary directory provided by pytest.
         file_format : str
             File format of the data.
-        write : Callable[[str], None] | None
-            Optional function to write data to the file. For CSV, the
-            ``csv_writer`` fixture is used instead.
+        write : Callable[[str], None]
+            Function to write data to the file.
         expected_extracts : Any
             Expected extracted data.
-        request : pytest.FixtureRequest
-            Pytest fixture request object used to access other fixtures.
         """
         path = tmp_path / f'data.{file_format}'
-        if file_format == 'csv':
-            write_fn = request.getfixturevalue('csv_writer')
-        else:
-            write_fn = write
-        assert write_fn is not None
-        write_fn(str(path))
+        write(str(path))
         result = extract_from_file(str(path), file_format)
         if file_format == 'json' and isinstance(result, dict):
             # Allow minor type differences (e.g., age as int vs. str).

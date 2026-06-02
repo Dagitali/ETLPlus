@@ -48,6 +48,22 @@ class _Response:
         return None
 
 
+def _noop_request(_url: str, **_kwargs: Any) -> None:
+    """Accept request-call arguments without doing network work."""
+    return None
+
+
+def _resolve_post_request(
+    method: object,
+    *,
+    session: object,
+    timeout: object,
+) -> tuple[object, object, HttpMethod]:
+    """Return one stable resolved POST request tuple."""
+    _ = method, session
+    return _noop_request, timeout, HttpMethod.POST
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -105,11 +121,7 @@ class TestBuildRequestCall:
         monkeypatch.setattr(
             http_mod,
             'resolve_request',
-            lambda method, session, timeout: (
-                lambda url, **kwargs: None,
-                timeout,
-                HttpMethod.POST,
-            ),
+            _resolve_post_request,
         )
 
         result = http_mod.build_request_call(
@@ -137,14 +149,19 @@ class TestBuildRequestCall:
             captured['url'] = url
             captured['kwargs'] = kwargs
 
+        def _resolve_request(
+            method: object,
+            *,
+            session: object,
+            timeout: object,
+        ) -> tuple[object, float, HttpMethod]:
+            _ = method, session, timeout
+            return _callable, 9.5, HttpMethod.PUT
+
         monkeypatch.setattr(
             http_mod,
             'resolve_request',
-            lambda method, session, timeout: (
-                _callable,
-                9.5,
-                HttpMethod.PUT,
-            ),
+            _resolve_request,
         )
 
         result = http_mod.build_request_call(

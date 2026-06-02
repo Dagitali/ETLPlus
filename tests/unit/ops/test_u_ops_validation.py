@@ -23,6 +23,11 @@ from etlplus.ops._validation import maybe_validate
 # SECTION: HELPERS ========================================================== #
 
 
+def _noop_print(_message: dict[str, object]) -> None:
+    """Ignore structured validation log payloads."""
+    return None
+
+
 def _printer(messages: list[dict[str, object]]):
     """Build a simple structured logger for test assertions."""
 
@@ -292,7 +297,7 @@ class TestMaybeValidate:
                 phase='before_transform',
                 severity='error',
                 validate_fn=_successful_validator(calls),
-                print_json_fn=lambda _: None,
+                print_json_fn=_noop_print,
             )
             is payload
         )
@@ -323,7 +328,7 @@ class TestMaybeValidate:
                 phase=phase,
                 severity='error',
                 validate_fn=_successful_validator(calls),
-                print_json_fn=lambda _: None,
+                print_json_fn=_noop_print,
             )
             is payload
         )
@@ -345,7 +350,7 @@ class TestMaybeValidate:
             phase='before_transform',
             severity='error',
             validate_fn=validator,
-            print_json_fn=lambda _: None,
+            print_json_fn=_noop_print,
         ) == {'mutated': True}
 
     def test_warn_severity_logs_without_raising(
