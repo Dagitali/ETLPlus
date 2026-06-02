@@ -30,25 +30,6 @@ from etlplus.api.rate_limiting import RateLimitInput
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: FIXTURES ======================================================== #
-
-
-@pytest.fixture(name='disabled_limiter')
-def disabled_limiter_fixture() -> RateLimiter:
-    """
-    Fixture returning a :class:`RateLimiter` instance with no delay.
-    """
-    return RateLimiter.disabled()
-
-
-@pytest.fixture(name='fixed_limiter')
-def fixed_limiter_fixture() -> RateLimiter:
-    """
-    Fixture returning a :class:`RateLimiter` instance with a small delay.
-    """
-    return RateLimiter.fixed(0.25)
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -171,22 +152,23 @@ class TestRateLimiterBasics:
     RateLimiter(...)
     """
 
-    def test_disabled_constructor(self, disabled_limiter: RateLimiter) -> None:
+    def test_disabled_constructor(self) -> None:
         """
         Test that disabled() returns a limiter that never sleeps.
         """
+        disabled_limiter = RateLimiter.disabled()
+
         assert disabled_limiter.sleep_seconds == 0.0
         assert disabled_limiter.enabled is False
         assert bool(disabled_limiter) is False
         assert disabled_limiter.max_per_sec is None
 
-    def test_fixed_constructor(
-        self,
-        fixed_limiter: RateLimiter,
-    ) -> None:
+    def test_fixed_constructor(self) -> None:
         """
         Test that fixed() returns a limiter with the specified positive delay.
         """
+        fixed_limiter = RateLimiter.fixed(0.25)
+
         assert fixed_limiter.sleep_seconds == pytest.approx(0.25)
         assert fixed_limiter.enabled is True
         assert bool(fixed_limiter) is True
@@ -298,15 +280,9 @@ class TestRateLimiterEnforce:
         when the limiter is enabled.
         """
         calls: list[float] = []
-
-        def fake_sleep(value: float) -> None:
-            calls.append(value)
-
-        # Patch the module-level ``time.sleep`` used by
-        # :class:`RateLimiter`.
         monkeypatch.setattr(
             'etlplus.api.rate_limiting._rate_limiter.time.sleep',
-            fake_sleep,
+            calls.append,
         )
 
         limiter = RateLimiter.fixed(0.5)
@@ -317,23 +293,17 @@ class TestRateLimiterEnforce:
     def test_enforce_noop_when_disabled(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        disabled_limiter: RateLimiter,
     ) -> None:
         """
         Test that ``enforce`` does not call :func:`time.sleep` when the limiter
         is disabled.
         """
         calls: list[float] = []
-
-        def fake_sleep(value: float) -> None:  # pragma: no cover
-            # Should not run.
-            calls.append(value)
-
         monkeypatch.setattr(
             'etlplus.api.rate_limiting._rate_limiter.time.sleep',
-            fake_sleep,
+            calls.append,
         )
 
-        disabled_limiter.enforce()
+        RateLimiter.disabled().enforce()
 
         assert not calls
