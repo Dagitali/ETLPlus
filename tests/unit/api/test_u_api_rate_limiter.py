@@ -17,7 +17,6 @@ Examples
 from __future__ import annotations
 
 from typing import Any
-from typing import cast
 
 import pytest
 
@@ -59,82 +58,47 @@ class TestResolveSleepSeconds:
     """
 
     @pytest.mark.parametrize(
-        ('rate_limit', 'config', 'expected_sleep'),
+        ('rate_limit', 'overrides', 'expected_sleep'),
         [
             pytest.param(
                 {'sleep_seconds': -1},
                 None,
                 0.0,
-                id='negative_sleep_seconds',
+                id='negative-sleep-seconds',
             ),
             pytest.param(
                 None,
-                {'max_per_sec': 'oops'},
+                {'max_per_sec': 'oops'},  # type: ignore[typeddict-item]
                 0.0,
-                id='non_numeric_max_per_sec',
+                id='non-numeric-max-per-sec',
+            ),
+            pytest.param(None, {'max_per_sec': 4}, 0.25, id='override-max-per-sec'),
+            pytest.param(None, {'sleep_seconds': 0.2}, 0.2, id='override-sleep'),
+            pytest.param({'max_per_sec': 2}, None, 0.5, id='rate-limit-fallback'),
+            pytest.param(
+                {'sleep_seconds': 0.2, 'max_per_sec': 1},
+                None,
+                0.2,
+                id='sleep-precedence',
             ),
         ],
     )
-    def test_invalid_values(
+    def test_resolve_sleep_seconds_precedence_and_fallbacks(
         self,
         rate_limit: RateLimitConfigDict | None,
-        config: RateLimitConfigDict | dict[str, Any] | None,
+        overrides: RateLimitConfigDict | None,
         expected_sleep: float,
     ) -> None:
         """
-        Test that non-positive and non-numeric values are ignored and return
-        0.0.
+        Test rate-limit overrides, fallbacks, invalid values, and precedence.
         """
-        overrides = cast(RateLimitConfigDict | None, config)
         assert (
             RateLimiter.resolve_sleep_seconds(
                 rate_limit=rate_limit,
                 overrides=overrides,
             )
-            == expected_sleep
+            == pytest.approx(expected_sleep)
         )
-
-    def test_overrides_max_per_sec(self) -> None:
-        """Test that max_per_sec in config overrides other values."""
-        assert (
-            RateLimiter.resolve_sleep_seconds(
-                rate_limit=None,
-                overrides={'max_per_sec': 4},
-            )
-            == 0.25
-        )
-
-    def test_overrides_sleep_seconds(self) -> None:
-        """Test that sleep_seconds in config overrides other values."""
-        assert (
-            RateLimiter.resolve_sleep_seconds(
-                rate_limit=None,
-                overrides={'sleep_seconds': 0.2},
-            )
-            == 0.2
-        )
-
-    def test_rate_limit_fallback(self) -> None:
-        """
-        Test that fallback to rate limit config when override is ``None``.
-        """
-        assert (
-            RateLimiter.resolve_sleep_seconds(
-                rate_limit={'max_per_sec': 2},
-                overrides=None,
-            )
-            == 0.5
-        )
-
-    def test_sleep_seconds_precedence(self) -> None:
-        """
-        Test that ``sleep_seconds`` takes precedence over ``max_per_sec`` when
-        both are set.
-        """
-        assert RateLimiter.resolve_sleep_seconds(
-            rate_limit={'sleep_seconds': 0.2, 'max_per_sec': 1},
-            overrides=None,
-        ) == pytest.approx(0.2)
 
 
 class TestRateLimiterBasics:
