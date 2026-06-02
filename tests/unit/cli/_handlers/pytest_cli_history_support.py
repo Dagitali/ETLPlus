@@ -6,7 +6,7 @@ Shared helper seams for CLI history handler unit tests.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Iterator
 
 import pytest
 
@@ -17,6 +17,62 @@ from ..conftest import CaptureIo
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+NORMALIZED_RUN_DEFAULTS: dict[str, object] = {
+    'config_path': None,
+    'config_sha256': None,
+    'duration_ms': None,
+    'error_message': None,
+    'error_traceback': None,
+    'error_type': None,
+    'etlplus_version': None,
+    'finished_at': None,
+    'host': None,
+    'job_name': None,
+    'pid': None,
+    'pipeline_name': None,
+    'records_in': None,
+    'records_out': None,
+    'result_summary': None,
+    'run_id': None,
+    'started_at': None,
+    'status': None,
+}
+
+NORMALIZED_JOB_DEFAULTS: dict[str, object] = {
+    'duration_ms': None,
+    'error_message': None,
+    'error_type': None,
+    'finished_at': None,
+    'job_name': None,
+    'pipeline_name': None,
+    'records_in': None,
+    'records_out': None,
+    'result_status': None,
+    'result_summary': None,
+    'run_id': None,
+    'sequence_index': None,
+    'skipped_due_to': None,
+    'started_at': None,
+    'status': None,
+}
+
+REPORT_ROW_DEFAULTS: dict[str, object] = {
+    'avg_duration_ms': None,
+    'failed': 0,
+    'group': None,
+    'last_started_at': None,
+    'max_duration_ms': None,
+    'min_duration_ms': None,
+    'other': 0,
+    'running': 0,
+    'runs': 0,
+    'success_rate_pct': None,
+    'succeeded': 0,
+}
 
 # SECTION: FUNCTIONS ======================================================== #
 
@@ -34,47 +90,12 @@ def assert_emit_markdown_table(
 
 def normalized_run(**overrides: object) -> dict[str, object]:
     """Build one normalized run payload with stable default ``None`` fields."""
-    return {
-        'config_path': None,
-        'config_sha256': None,
-        'duration_ms': None,
-        'error_message': None,
-        'error_traceback': None,
-        'error_type': None,
-        'etlplus_version': None,
-        'finished_at': None,
-        'host': None,
-        'job_name': None,
-        'pid': None,
-        'pipeline_name': None,
-        'records_in': None,
-        'records_out': None,
-        'result_summary': None,
-        'run_id': None,
-        'started_at': None,
-        'status': None,
-    } | overrides
+    return NORMALIZED_RUN_DEFAULTS | overrides
 
 
 def normalized_job(**overrides: object) -> dict[str, object]:
     """Build one normalized job payload with stable default ``None`` fields."""
-    return {
-        'duration_ms': None,
-        'error_message': None,
-        'error_type': None,
-        'finished_at': None,
-        'job_name': None,
-        'pipeline_name': None,
-        'records_in': None,
-        'records_out': None,
-        'result_status': None,
-        'result_summary': None,
-        'run_id': None,
-        'sequence_index': None,
-        'skipped_due_to': None,
-        'started_at': None,
-        'status': None,
-    } | overrides
+    return NORMALIZED_JOB_DEFAULTS | overrides
 
 
 def patch_history_store_records(
@@ -84,7 +105,7 @@ def patch_history_store_records(
     """Patch :class:`HistoryStore` to yield one fixed record sequence."""
 
     class _FakeHistoryStore(history_view_mod.HistoryStore):
-        def iter_records(self) -> Any:
+        def iter_records(self) -> Iterator[dict[str, object]]:
             return iter(records)
 
         def record_run_started(self, record: object) -> None:
@@ -105,19 +126,7 @@ def patch_history_store_records(
 
 def report_row(**overrides: object) -> dict[str, object]:
     """Build one aggregated history report row with zero/``None`` defaults."""
-    return {
-        'avg_duration_ms': None,
-        'failed': 0,
-        'group': None,
-        'last_started_at': None,
-        'max_duration_ms': None,
-        'min_duration_ms': None,
-        'other': 0,
-        'running': 0,
-        'runs': 0,
-        'success_rate_pct': None,
-        'succeeded': 0,
-    } | overrides
+    return REPORT_ROW_DEFAULTS | overrides
 
 
 def report_summary(**overrides: object) -> dict[str, object]:

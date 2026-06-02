@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import io
 import types
-from collections.abc import Callable
 from pathlib import Path
+from typing import Literal
+from typing import NamedTuple
+from typing import cast
 
 import pytest
 
@@ -22,14 +24,59 @@ from etlplus.utils import JsonCodec
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: TESTS ============================================================ #
+# SECTION: CONSTANTS ======================================================== #
 
 
-type SourceBuilder = Callable[[Path], str | Path]
+CSV_TEXT = 'a,b\n1,2\n3,4\n'
+
+# SECTION: TYPES ============================================================ #
 
 
-def _build_writable_file_double() -> tuple[type[object], dict[str, object]]:
-    """Build a ``File`` double that captures write-target construction."""
+type MissingSourceKind = Literal['path', 'string']
+
+
+# SECTION: DATA CLASSES ===================================================== #
+
+
+class WritableFileDouble(NamedTuple):
+    """Writable ``File`` double plus captured construction/write arguments."""
+
+    file_cls: type[object]
+    captured: dict[str, object]
+
+
+class MissingSourceCase(NamedTuple):
+    """Materialized missing source case for file-materialization tests."""
+
+    source: str | Path
+    match: str
+
+
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(
+    name='missing_source_case',
+    params=[
+        pytest.param('string', id='string-path'),
+        pytest.param('path', id='pathlike'),
+    ],
+)
+def missing_source_case_fixture(
+    request: pytest.FixtureRequest,
+    tmp_path: Path,
+) -> MissingSourceCase:
+    """Return one missing source shape and expected error text."""
+    source_kind = cast(MissingSourceKind, request.param)
+    missing_path = tmp_path / 'missing.json'
+    if source_kind == 'path':
+        return MissingSourceCase(missing_path, 'File not found')
+    return MissingSourceCase(str(missing_path), 'File not found: ')
+
+
+@pytest.fixture(name='writable_file_double')
+def writable_file_double_fixture() -> WritableFileDouble:
+    """Return a ``File`` double that captures construction and writes."""
     captured: dict[str, object] = {}
 
     class DummyFile:
@@ -43,17 +90,7 @@ def _build_writable_file_double() -> tuple[type[object], dict[str, object]]:
             """Capture the written payload."""
             captured['data'] = data
 
-    return DummyFile, captured
-
-
-def _path_missing_source(tmp_path: Path) -> Path:
-    """Build one missing pathlike source for file-materialization tests."""
-    return tmp_path / 'missing.json'
-
-
-def _string_missing_source(tmp_path: Path) -> str:
-    """Build one missing string path for file-materialization tests."""
-    return str(tmp_path / 'missing.json')
+    return WritableFileDouble(DummyFile, captured)
 
 
 # SECTION: TESTS ============================================================ #
@@ -244,11 +281,10 @@ class TestMaterializeFilePayload:
     def test_inferring_csv(
         self,
         tmp_path: Path,
-        csv_text: str,
     ) -> None:
         """Test that CSV files are parsed when no explicit hint is provided."""
         file_path = tmp_path / 'file.csv'
-        file_path.write_text(csv_text)
+        file_path.write_text(CSV_TEXT)
 
         rows = input_mod.materialize_file_payload(
             str(file_path),
@@ -295,33 +331,14 @@ class TestMaterializeFilePayload:
         )
         assert payload == expected
 
-    @pytest.mark.parametrize(
-        ('source_builder', 'match'),
-        [
-            pytest.param(
-                _string_missing_source,
-                'File not found: ',
-                id='string-path',
-            ),
-            pytest.param(
-                _path_missing_source,
-                'File not found',
-                id='pathlike',
-            ),
-        ],
-    )
     def test_missing_file_sources_raise_file_not_found(
         self,
-        tmp_path: Path,
-        source_builder: SourceBuilder,
-        match: str,
+        missing_source_case: MissingSourceCase,
     ) -> None:
         """Missing file sources should propagate :class:`FileNotFoundError`."""
-        missing_source = source_builder(tmp_path)
-
-        with pytest.raises(FileNotFoundError, match=match):
+        with pytest.raises(FileNotFoundError, match=missing_source_case.match):
             input_mod.materialize_file_payload(
-                missing_source,
+                missing_source_case.source,
                 format_hint=None,
                 format_explicit=False,
             )
@@ -461,12 +478,11 @@ class TestParseTextPayload:
 
     def test_inferring_csv_when_unspecified(
         self,
-        csv_text: str,
     ) -> None:
         """
         Test that CSV payloads are parsed when no format hint is provided.
         """
-        result = input_mod.parse_text_payload(csv_text, fmt_hint=None)
+        result = input_mod.parse_text_payload(CSV_TEXT, fmt_hint=None)
         assert result == [
             {'a': '1', 'b': '2'},
             {'a': '3', 'b': '4'},
@@ -484,13 +500,12 @@ class TestCsvPayloadHandling:
     def test_materializing_csv_file_payload(
         self,
         tmp_path: Path,
-        csv_text: str,
     ) -> None:
         """
         Test that CSV file payloads hydrate into row dictionaries.
         """
         file_path = tmp_path / 'data.csv'
-        file_path.write_text(csv_text)
+        file_path.write_text(CSV_TEXT)
 
         assert input_mod.materialize_file_payload(
             str(file_path),
@@ -605,18 +620,18 @@ class TestWriteJsonOutput:
         self,
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
+        writable_file_double: WritableFileDouble,
         output_path: str,
     ) -> None:
         """File-like output paths should write JSON through :class:`File`."""
         data = {'x': 1}
-        dummy_file, captured = _build_writable_file_double()
-        monkeypatch.setattr(output_mod, 'File', dummy_file)
+        monkeypatch.setattr(output_mod, 'File', writable_file_double.file_cls)
 
         assert (
             output_mod.write_json_output(data, output_path, success_message='msg')
             is True
         )
-        assert captured == {
+        assert writable_file_double.captured == {
             'path': output_path,
             'fmt': FileFormat.JSON,
             'data': data,
