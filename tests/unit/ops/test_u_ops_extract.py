@@ -515,6 +515,49 @@ class TestExtractFromApi:
         assert result == [{'id': 1}]
         assert paginate_calls[0]['sleep_seconds'] == 0.0
 
+    def test_use_client_defaults_parser_none_sleep_seconds(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Client extraction should defensively default parser ``None`` results."""
+        paginate_calls: list[dict[str, Any]] = []
+
+        class _Client:
+            """Stub EndpointClient that captures paginate_url calls."""
+
+            def __init__(self, **_kwargs: Any) -> None:
+                return None
+
+            def paginate_url(
+                self,
+                _url: str,
+                _pagination: Any,
+                *,
+                request: Any,
+                sleep_seconds: float,
+            ) -> list[dict[str, int]]:
+                del request
+                paginate_calls.append({'sleep_seconds': sleep_seconds})
+                return [{'id': 1}]
+
+        monkeypatch.setattr(extract_mod, 'EndpointClient', _Client)
+        monkeypatch.setattr(
+            extract_mod.FloatParser,
+            'parse',
+            classmethod(lambda *_args, **_kwargs: None),
+        )
+
+        result = extract_mod._extract_from_api_env(
+            {
+                'url': 'https://example.test/v1/items',
+                'sleep_seconds': 0.5,
+            },
+            use_client=True,
+        )
+
+        assert result == [{'id': 1}]
+        assert paginate_calls[0]['sleep_seconds'] == 0.0
+
     def test_use_client_with_direct_url_path(
         self,
         monkeypatch: pytest.MonkeyPatch,
