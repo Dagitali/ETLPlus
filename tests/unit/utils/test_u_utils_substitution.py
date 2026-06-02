@@ -20,19 +20,11 @@ from etlplus.utils import TokenReferenceCollector
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: FIXTURES ========================================================= #
+# SECTION: CONSTANTS ======================================================== #
 
 
-@pytest.fixture(name='vars_map_basic')
-def vars_map_basic_fixture() -> dict[str, str]:
-    """Return a basic variables mapping used for substitution tests."""
-    return {'FOO': 'foo', 'BAR': 'bar'}
-
-
-@pytest.fixture(name='vars_map_nested')
-def vars_map_nested_fixture() -> dict[str, int]:
-    """Return an integer variables mapping used for nested substitution tests."""
-    return {'X': 1, 'Y': 2, 'Z': 3}
+BASIC_VARS_MAP = {'FOO': 'foo', 'BAR': 'bar'}
+NESTED_VARS_MAP = {'X': 1, 'Y': 2, 'Z': 3}
 
 
 # SECTION: TESTS ============================================================ #
@@ -41,16 +33,13 @@ def vars_map_nested_fixture() -> dict[str, int]:
 class TestDeepSubstitute:
     """Unit tests for recursive substitution helpers."""
 
-    def test_basic_nested_substitution(
-        self,
-        vars_map_basic: dict[str, str],
-    ) -> None:
+    def test_basic_nested_substitution(self) -> None:
         """
         Test that :meth:`SubstitutionResolver.deep` recurses through nested
         mappings and sequences to replace tokens with values from the provided
         maps.
         """
-        assert SubstitutionResolver(vars_map_basic).deep(
+        assert SubstitutionResolver(BASIC_VARS_MAP).deep(
             {'a': '${FOO}', 'b': 2, 'c': ['${BAR}', 3]},
         ) == {
             'a': 'foo',
@@ -58,15 +47,12 @@ class TestDeepSubstitute:
             'c': ['bar', 3],
         }
 
-    def test_env_overrides_vars(
-        self,
-        vars_map_basic: dict[str, str],
-    ) -> None:
+    def test_env_overrides_vars(self) -> None:
         """
         Test that :meth:`SubstitutionResolver.deep` environment values take
         precedence over vars-map values when keys overlap.
         """
-        assert SubstitutionResolver(vars_map_basic, {'FOO': 'envfoo'}).deep(
+        assert SubstitutionResolver(BASIC_VARS_MAP, {'FOO': 'envfoo'}).deep(
             {'a': '${FOO}', 'b': '${BAR}'},
         ) == {
             'a': 'envfoo',
@@ -122,15 +108,12 @@ class TestDeepSubstitute:
         """
         assert SubstitutionResolver().deep(value) == expected
 
-    def test_nested_container_types(
-        self,
-        vars_map_nested: dict[str, int],
-    ) -> None:
+    def test_nested_container_types(self) -> None:
         """
         Test that :meth:`SubstitutionResolver.deep` supports tuple, set, and frozenset
         containers.
         """
-        result = SubstitutionResolver(vars_map_nested).deep(
+        result = SubstitutionResolver(NESTED_VARS_MAP).deep(
             {
                 'a': ['${X}', {'b': '${Y}'}],
                 'b': ({'c': '${Z}'},),
