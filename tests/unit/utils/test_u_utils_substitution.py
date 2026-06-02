@@ -34,6 +34,7 @@ def vars_map_nested_fixture() -> dict[str, int]:
     """Return an integer variables mapping used for nested substitution tests."""
     return {'X': 1, 'Y': 2, 'Z': 3}
 
+
 # SECTION: TESTS ============================================================ #
 
 
