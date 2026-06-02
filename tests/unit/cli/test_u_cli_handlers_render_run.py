@@ -219,11 +219,27 @@ class TestRenderHandler:
 
     def test_writes_sql_from_spec(
         self,
-        widget_spec_paths: tuple[Path, Path],
+        tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test that :func:`render_handler` writes SQL for standalone specs."""
-        spec_path, output_path = widget_spec_paths
+        spec_path = tmp_path / 'spec.json'
+        output_path = tmp_path / 'out.sql'
+        spec_path.write_text(
+            """
+            {
+              "schema": "dbo",
+              "table": "Widget",
+              "columns": [
+                {"name": "Id", "type": "int", "nullable": false},
+                {"name": "Name", "type": "nvarchar(50)", "nullable": true}
+              ],
+              "primary_key": {"columns": ["Id"]}
+            }
+            """,
+            encoding='utf-8',
+        )
+
         assert (
             handlers.render_handler(
                 config=None,
