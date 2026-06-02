@@ -23,6 +23,14 @@ from etlplus.utils import TextNormalizer
 CHOICE_MAPPING = {'file': 'file', 'api': 'api'}
 
 
+# SECTION: HELPERS ========================================================== #
+
+
+def lower_or_empty(value: str | None) -> str:
+    """Return a lowercase string or an empty string for missing values."""
+    return (value or '').lower()
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -77,7 +85,7 @@ class TestNormalizeText:
             TextChoiceResolver(
                 {'v1': 'version-1'},
                 'fallback',
-                normalize=lambda value: (value or '').lower(),
+                normalize=lower_or_empty,
             ).resolve('V1')
             == 'version-1'
         )
@@ -89,7 +97,7 @@ class TestNormalizeText:
                 {'v1': 'version-1'},
                 'fallback',
                 'V1',
-                normalize=lambda value: (value or '').lower(),
+                normalize=lower_or_empty,
             )
             == 'version-1'
         )
