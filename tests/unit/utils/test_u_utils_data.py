@@ -6,6 +6,7 @@ Unit tests for :mod:`etlplus.utils._data`.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from dataclasses import FrozenInstanceError
 from datetime import date
@@ -36,13 +37,35 @@ class _FalseyStringIO(StringIO):
         return False
 
 
+type JsonOutputAsserter = Callable[[str, object], None]
+
+
 # SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='assert_json_output')
+def assert_json_output_fixture() -> JsonOutputAsserter:
+    """Return an assertion helper that validates printed JSON output."""
+
+    def _assert_json_output(
+        output: str,
+        expected: object,
+    ) -> None:
+        assert json.loads(output) == expected
+
+    return _assert_json_output
 
 
 @pytest.fixture(name='json_record_parser')
 def json_record_parser_fixture() -> RecordPayloadParser:
     """Return one parser with stable JSON error-message context."""
     return RecordPayloadParser('JSON')
+
+
+@pytest.fixture(name='unicode_payload')
+def unicode_payload_fixture() -> dict[str, str]:
+    """Return a payload containing non-ASCII text for JSON print tests."""
+    return {'emoji': '\u2603'}
 
 
 # SECTION: TESTS ============================================================ #
