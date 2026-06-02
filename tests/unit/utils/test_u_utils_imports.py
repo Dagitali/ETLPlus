@@ -7,7 +7,6 @@ Unit tests for :mod:`etlplus.utils._imports`.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -28,20 +27,18 @@ from etlplus.utils._imports import safe_module_available
 # SECTION: HELPERS ========================================================== #
 
 
+def missing_importer(_name: str) -> object:
+    """Raise ``ImportError`` for dependency-import failure tests."""
+    raise ImportError('missing')
+
+
+# SECTION: FIXTURES ========================================================= #
+
+
 @pytest.fixture(name='sentinel')
 def sentinel_fixture() -> object:
     """Return one stable sentinel object for importer/cache tests."""
     return object()
-
-
-@pytest.fixture(name='missing_importer')
-def missing_importer_fixture() -> Callable[[str], object]:
-    """Return one importer callable that always raises ``ImportError``."""
-
-    def _missing(_name: str) -> object:
-        raise ImportError('missing')
-
-    return _missing
 
 
 # SECTION: TESTS ============================================================ #
@@ -283,10 +280,7 @@ class TestDependencyImporter:
         )
         assert cache == {'yaml': sentinel}
 
-    def test_get_uses_standard_dependency_error(
-        self,
-        missing_importer: Callable[[str], object],
-    ) -> None:
+    def test_get_uses_standard_dependency_error(self) -> None:
         """Test missing imports receive the standard formatted error."""
         importer = DependencyImporter(importer=missing_importer, cache={})
         expected = (
@@ -369,10 +363,7 @@ class TestDependencyImporter:
 
         assert result is sentinel
 
-    def test_import_package_wraps_missing_dependency(
-        self,
-        missing_importer: Callable[[str], object],
-    ) -> None:
+    def test_import_package_wraps_missing_dependency(self) -> None:
         """Test import failures are translated to the configured error type."""
         importer = DependencyImporter(
             error_type=RuntimeError,
