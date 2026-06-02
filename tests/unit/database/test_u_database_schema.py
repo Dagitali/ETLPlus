@@ -33,46 +33,6 @@ from etlplus.database._schema import UniqueConstraintSpec
 PayloadFactory = Callable[[dict[str, object]], object]
 
 
-# SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture(name='sample_spec')
-def sample_spec_fixture() -> dict[str, object]:
-    """Return a representative table specification mapping."""
-    return {
-        'name': 'users',
-        'schema': 'public',
-        'create_schema': True,
-        'columns': [
-            {
-                'name': 'id',
-                'type': 'INT',
-                'nullable': False,
-                'identity': {'seed': 1, 'increment': 1},
-            },
-            {
-                'name': 'email',
-                'type': 'VARCHAR(255)',
-                'nullable': False,
-                'unique': True,
-            },
-        ],
-        'primary_key': {'columns': ['id']},
-        'unique_constraints': [
-            {'columns': ['email'], 'name': 'uq_users_email'},
-        ],
-        'indexes': [{'name': 'ix_users_email', 'columns': ['email']}],
-        'foreign_keys': [
-            {
-                'columns': ['id'],
-                'ref_table': 'accounts',
-                'ref_columns': ['id'],
-                'ondelete': 'CASCADE',
-            },
-        ],
-    }
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -141,7 +101,7 @@ class TestLoadTableSpecs:
         self,
         payload_factory: PayloadFactory,
         expected_names: list[str],
-        sample_spec: dict[str, object],
+        schema_sample_spec: dict[str, object],
         patch_read_file: Callable[[Any], None],
     ) -> None:
         """
@@ -151,7 +111,7 @@ class TestLoadTableSpecs:
 
         def _fake_read_file(path: Path) -> object:
             captured_paths.append(path)
-            return payload_factory(deepcopy(sample_spec))
+            return payload_factory(deepcopy(schema_sample_spec))
 
         patch_read_file(_fake_read_file)  # type: ignore[arg-type]
 
@@ -345,12 +305,12 @@ class TestModels:
 
     def test_table_spec_aliases_name_and_schema(
         self,
-        sample_spec: dict[str, object],
+        schema_sample_spec: dict[str, object],
     ) -> None:
         """
         Test that incoming aliases map to attributes with expected defaults.
         """
-        spec = TableSpec.model_validate(deepcopy(sample_spec))
+        spec = TableSpec.model_validate(deepcopy(schema_sample_spec))
 
         assert spec.table == 'users'
         assert spec.schema_name == 'public'
@@ -385,10 +345,10 @@ class TestModels:
         self,
         schema_name: str | None,
         expected: str,
-        sample_spec: dict[str, object],
+        schema_sample_spec: dict[str, object],
     ) -> None:
         """Test that ``fq_name`` includes schema when provided."""
-        spec_data = deepcopy(sample_spec)
+        spec_data = deepcopy(schema_sample_spec)
         spec_data['schema'] = schema_name
         spec = TableSpec.model_validate(spec_data)
 
