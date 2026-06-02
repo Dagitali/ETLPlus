@@ -92,33 +92,6 @@ _CLOUD_DATABASE_PROVIDER_FIELDS: tuple[str, ...] = (
 )
 
 
-# SECTION: CONSTANTS ======================================================== #
-
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-TESTS_ROOT = REPO_ROOT / 'tests'
-
-
-STRUCTURED_EVENT_BASE_FIELDS = frozenset(
-    {
-        'command',
-        'event',
-        'lifecycle',
-        'run_id',
-        'schema',
-        'schema_version',
-        'timestamp',
-    },
-)
-STRUCTURED_EVENT_LIFECYCLES = frozenset(
-    {
-        'started',
-        'completed',
-        'failed',
-    },
-)
-
-
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -217,7 +190,34 @@ class CloudDatabaseProviderCase:
         return SimpleNamespace(**fields)
 
 
-_CLOUD_DATABASE_PROVIDER_CASES: dict[str, CloudDatabaseProviderCase] = {
+# SECTION: CONSTANTS ======================================================== #
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+TESTS_ROOT = REPO_ROOT / 'tests'
+
+
+STRUCTURED_EVENT_BASE_FIELDS = frozenset(
+    {
+        'command',
+        'event',
+        'lifecycle',
+        'run_id',
+        'schema',
+        'schema_version',
+        'timestamp',
+    },
+)
+STRUCTURED_EVENT_LIFECYCLES = frozenset(
+    {
+        'started',
+        'completed',
+        'failed',
+    },
+)
+
+
+CLOUD_DATABASE_PROVIDER_CASES: dict[str, CloudDatabaseProviderCase] = {
     'bigquery': CloudDatabaseProviderCase(
         provider='bigquery',
         provider_alias='gcp-bigquery',
@@ -246,6 +246,10 @@ _CLOUD_DATABASE_PROVIDER_CASES: dict[str, CloudDatabaseProviderCase] = {
         missing_package='snowflake-connector-python/snowflake-sqlalchemy',
     ),
 }
+
+
+BIGQUERY_CASE = CLOUD_DATABASE_PROVIDER_CASES['bigquery']
+SNOWFLAKE_CASE = CLOUD_DATABASE_PROVIDER_CASES['snowflake']
 
 
 # SECTIONS: FUNCTIONS ======================================================= #
@@ -279,4 +283,4 @@ def get_cloud_database_provider_case(
     provider: str,
 ) -> CloudDatabaseProviderCase:
     """Return one canonical shared test-data case for *provider*."""
-    return _CLOUD_DATABASE_PROVIDER_CASES[provider]
+    return CLOUD_DATABASE_PROVIDER_CASES[provider]

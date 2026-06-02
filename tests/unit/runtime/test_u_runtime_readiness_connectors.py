@@ -13,9 +13,11 @@ import pytest
 
 import etlplus.runtime.readiness._builder as readiness_builder_mod
 import etlplus.runtime.readiness._connectors as readiness_connectors_mod
+from etlplus import Config
 from etlplus.connector import ConnectorDiagnosticPolicy
 from etlplus.runtime.readiness._support import RequirementSpec
-from tests.pytest_shared_support import get_cloud_database_provider_case
+from tests.pytest_shared_support import BIGQUERY_CASE
+from tests.pytest_shared_support import SNOWFLAKE_CASE
 
 from .pytest_runtime_readiness import build_connector_gap_row as _connector_gap
 from .pytest_runtime_readiness import (
@@ -27,10 +29,6 @@ from .pytest_runtime_readiness import build_runtime_cfg as _cfg
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-BIGQUERY_CASE = get_cloud_database_provider_case('bigquery')
-SNOWFLAKE_CASE = get_cloud_database_provider_case('snowflake')
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -246,7 +244,7 @@ class TestReadinessReportBuilderConnectors:
         self,
     ) -> None:
         """Test that unsupported connector types include actionable guidance."""
-        cfg = SimpleNamespace(
+        cfg = _cfg(
             sources=[
                 SimpleNamespace(
                     name='remote-source',
@@ -329,7 +327,7 @@ class TestReadinessReportBuilderConnectors:
     )
     def test_connector_gap_rows_return_empty_for_complete_connectors(
         self,
-        cfg: SimpleNamespace,
+        cfg: Config,
     ) -> None:
         """Test that complete connector definitions produce no gap rows."""
         rows = readiness_connectors_mod.ConnectorReadinessPolicy.gap_rows(
@@ -707,7 +705,7 @@ class TestReadinessReportBuilderConnectors:
     )
     def test_missing_requirement_rows_return_empty_when_no_requirements_are_missing(
         self,
-        cfg: SimpleNamespace,
+        cfg: Config,
         package_available: Callable[[str], bool],
     ) -> None:
         """Requirement rows should stay empty when no optional dependency is missing."""
@@ -819,7 +817,7 @@ class TestReadinessReportBuilderConnectors:
             'package_available',
             lambda module_name: False if module_name == 'boto3' else True,
         )
-        cfg = SimpleNamespace(
+        cfg = _cfg(
             sources=[
                 SimpleNamespace(
                     format='csv',
