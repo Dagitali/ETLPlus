@@ -10,6 +10,7 @@ import operator
 from collections.abc import Mapping
 from types import SimpleNamespace
 from typing import Any
+from typing import cast
 
 import pytest
 
@@ -40,7 +41,7 @@ class TestMappingHelpers:
     )
     def test_cast_str_dict(
         self,
-        mapping: Mapping[object, object] | None,
+        mapping: Mapping[str, Any] | None,
         expected: dict[str, str],
     ) -> None:
         """
@@ -154,7 +155,7 @@ class TestMappingHelpers:
 
         assert dict(frozen) == {'1': 'a'}
         with pytest.raises(TypeError):
-            operator.setitem(frozen, '2', 'b')
+            operator.setitem(cast(Any, frozen), '2', 'b')
 
     def test_index_named_items_normalizes_names(self) -> None:
         """Test that usable names are stripped before indexing."""

@@ -6,7 +6,7 @@ Unit tests for :mod:`etlplus.utils._data`.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import json
 from dataclasses import FrozenInstanceError
 from datetime import date
 from datetime import datetime
@@ -34,6 +34,11 @@ class _FalseyStringIO(StringIO):
 
     def __bool__(self) -> bool:
         return False
+
+
+def assert_json_output(output: str, expected: object) -> None:
+    """Assert that printed JSON output decodes to the expected payload."""
+    assert json.loads(output) == expected
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -236,23 +241,20 @@ class TestDataHelpers:
 
     def test_print_json_uses_utf8_without_ascii_escaping(
         self,
-        unicode_payload: dict[str, str],
         capsys: pytest.CaptureFixture[str],
-        assert_json_output: Callable[[str, object], None],
     ) -> None:
         """
         Test that :meth:`JsonCodec.print` preserves readable Unicode output.
         """
+        unicode_payload = {'emoji': '\u2603'}
+
         JsonCodec(pretty=True).print(unicode_payload)
         captured = capsys.readouterr().out
 
         assert '\\u2603' not in captured
         assert_json_output(captured, unicode_payload)
 
-    def test_print_json_honors_falsey_stream(
-        self,
-        assert_json_output: Callable[[str, object], None],
-    ) -> None:
+    def test_print_json_honors_falsey_stream(self) -> None:
         """Test that explicit streams are used even when they evaluate false."""
         stream = _FalseyStringIO()
         payload = {'ok': True}
