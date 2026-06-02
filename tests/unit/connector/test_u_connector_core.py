@@ -63,37 +63,33 @@ class TestConnectorBaseContracts:
         """Non-mapping optional fields should normalize to an empty dict."""
         assert ConnectorFile._dict_field({'options': ['invalid']}, 'options') == {}
 
-    def test_optional_str_coerces_scalar_values_to_strings(self) -> None:
-        """Scalar optional field values should normalize to strings."""
-        assert ConnectorFile._optional_str({'path': True}, 'path') == 'True'
-
-    def test_optional_str_keeps_single_blank_field_absent(self) -> None:
-        """A single blank optional string field should normalize to ``None``."""
-        assert ConnectorFile._optional_str({'path': '   '}, 'path') is None
-
-    def test_optional_str_returns_trimmed_first_present_value(self) -> None:
-        """Optional string parsing should trim the first present string value."""
-        assert (
-            ConnectorApi._optional_str(
+    @pytest.mark.parametrize(
+        ('payload', 'fields', 'expected'),
+        [
+            pytest.param({'path': True}, ('path',), 'True', id='coerces-scalar'),
+            pytest.param({'path': '   '}, ('path',), None, id='single-blank'),
+            pytest.param(
                 {'api': '  service-name  ', 'service': 'fallback'},
-                'api',
-                'service',
-            )
-            == 'service-name'
-        )
-
-    def test_optional_str_skips_blank_when_multiple_fields_are_available(
-        self,
-    ) -> None:
-        """Blank preferred fields should fall through to aliases."""
-        assert (
-            ConnectorApi._optional_str(
+                ('api', 'service'),
+                'service-name',
+                id='trims-first-present',
+            ),
+            pytest.param(
                 {'api': '   ', 'service': '  fallback  '},
-                'api',
-                'service',
-            )
-            == 'fallback'
-        )
+                ('api', 'service'),
+                'fallback',
+                id='skips-blank-alias',
+            ),
+        ],
+    )
+    def test_optional_str_normalizes_scalar_blank_and_alias_values(
+        self,
+        payload: dict[str, object],
+        fields: tuple[str, ...],
+        expected: str | None,
+    ) -> None:
+        """Optional string parsing should normalize scalars, blanks, and aliases."""
+        assert ConnectorApi._optional_str(payload, *fields) == expected
 
     @pytest.mark.parametrize(
         'connector_cls',
