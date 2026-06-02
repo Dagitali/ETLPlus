@@ -155,13 +155,11 @@ class TestConnectorApi:
         connector = ConnectorApi.from_obj(payload)
 
         assert_connector_fields(connector, expected)
-        if pagination_start_page is None:
-            assert connector.pagination is None
-        else:
-            assert connector.pagination is not None
-            assert connector.pagination.start_page == pagination_start_page
-        if rate_limit_sleep_seconds is None:
-            assert connector.rate_limit is None
-        else:
-            assert connector.rate_limit is not None
-            assert connector.rate_limit.sleep_seconds == rate_limit_sleep_seconds
+        assert (
+            getattr(connector.pagination, 'start_page', None)
+            == pagination_start_page
+        )
+        assert (
+            getattr(connector.rate_limit, 'sleep_seconds', None)
+            == rate_limit_sleep_seconds
+        )
