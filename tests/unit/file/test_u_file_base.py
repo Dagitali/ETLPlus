@@ -444,23 +444,21 @@ class TestBaseAbcContracts:
             'expected_written',
         ),
         [
-            pytest.param(
+            (
                 _DelimitedStub,
                 'ignored.csv',
                 'tabular_delimited_text',
                 [{'id': 1}],
                 [{'id': 1}, {'id': 2}],
                 2,
-                id='delimited',
             ),
-            pytest.param(
+            (
                 _TextFixedWidthStub,
                 'ignored.txt',
                 'text_fixed_width',
                 [{'text': 'ok'}],
                 [{'text': 'ok'}],
                 1,
-                id='text_fixed_width',
             ),
         ],
     )
@@ -500,29 +498,26 @@ class TestBaseAbcContracts:
             'error_pattern',
         ),
         [
-            pytest.param(
+            (
                 _ReadOnlyScientificStub,
                 'ignored.hdf5',
                 'other',
                 RuntimeError,
                 'read-only',
-                id='scientific_read_only',
             ),
-            pytest.param(
+            (
                 _ReadOnlySingleScientificStub,
                 'ignored.sas7bdat',
                 'data',
                 RuntimeError,
                 'read-only',
-                id='single_default_dataset_write',
             ),
-            pytest.param(
+            (
                 _ReadOnlySingleScientificStub,
                 'ignored.sas7bdat',
                 'other',
                 ValueError,
                 'supports only dataset key',
-                id='single_invalid_dataset_key',
             ),
         ],
     )
