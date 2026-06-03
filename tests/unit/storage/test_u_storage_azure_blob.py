@@ -68,6 +68,26 @@ class TestAzureBlobStorageBackend:
         with pytest.raises(ValueError, match='blob path'):
             backend.ensure_parent_dir(location)
 
+    def test_exists_returns_false_when_blob_client_reports_missing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that Azure Blob existence checks preserve false client results."""
+        backend = AzureBlobStorageBackend()
+        location = StorageLocation.from_value(
+            'azure-blob://container/missing.json',
+        )
+
+        class FakeBlobClient:
+            """Blob client missing-object test double."""
+
+            def exists(self) -> bool:
+                """Return a missing-object result."""
+                return False
+
+        monkeypatch.setattr(backend, '_blob_client', lambda _location: FakeBlobClient())
+        assert backend.exists(location) is False
+
     def test_exists_uses_blob_client(
         self,
         monkeypatch: pytest.MonkeyPatch,
