@@ -23,6 +23,22 @@ from etlplus.storage import StorageScheme
 class TestStorageLocation:
     """Unit tests for :class:`etlplus.storage.StorageLocation`."""
 
+    def test_from_path_object(self, tmp_path: Path) -> None:
+        """Test that :class:`Path` inputs are preserved as local locations."""
+        target = tmp_path / 'sample.json'
+        location = StorageLocation.from_value(target)
+        assert location.scheme is StorageScheme.FILE
+        assert location.as_path() == target
+
+    def test_from_scheme_alias_uri(
+        self,
+        raw: str,
+        scheme: StorageScheme,
+    ) -> None:
+        """Test that known remote scheme aliases normalize correctly."""
+        location = StorageLocation.from_value(raw)
+        assert location.scheme is scheme
+
     @pytest.mark.parametrize(
         ('raw', 'scheme', 'authority', 'path', 'as_path'),
         [
@@ -102,13 +118,6 @@ class TestStorageLocation:
         if as_path is not None:
             assert location.as_path() == as_path
 
-    def test_from_path_object(self, tmp_path: Path) -> None:
-        """Test that :class:`Path` inputs are preserved as local locations."""
-        target = tmp_path / 'sample.json'
-        location = StorageLocation.from_value(target)
-        assert location.scheme is StorageScheme.FILE
-        assert location.as_path() == target
-
     @pytest.mark.parametrize(
         ('raw', 'scheme'),
         [
@@ -122,15 +131,6 @@ class TestStorageLocation:
             ('webhdfs://namenode.example.com/data.json', StorageScheme.HDFS),
         ],
     )
-    def test_from_scheme_alias_uri(
-        self,
-        raw: str,
-        scheme: StorageScheme,
-    ) -> None:
-        """Test that known remote scheme aliases normalize correctly."""
-        location = StorageLocation.from_value(raw)
-        assert location.scheme is scheme
-
     def test_from_value_rejects_empty_input(self) -> None:
         """Test that blank location inputs are rejected."""
         with pytest.raises(ValueError, match='cannot be empty'):
