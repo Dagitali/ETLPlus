@@ -31,7 +31,7 @@ class TestQueueOptions:
     @pytest.mark.parametrize(
         ('factory', 'payload', 'expected'),
         [
-            pytest.param(
+            (
                 AmqpQueue.from_obj,
                 {
                     'name': 'orders',
@@ -45,9 +45,8 @@ class TestQueueOptions:
                     'service': 'amqp',
                     'host': 'localhost',
                 },
-                id='amqp',
             ),
-            pytest.param(
+            (
                 AwsSqsQueue.from_obj,
                 {
                     'name': 'events',
@@ -65,9 +64,8 @@ class TestQueueOptions:
                     'queue_name': 'events',
                     'region': 'us-east-1',
                 },
-                id='aws-sqs',
             ),
-            pytest.param(
+            (
                 AzureServiceBusQueue.from_obj,
                 {
                     'name': 'orders',
@@ -81,9 +79,8 @@ class TestQueueOptions:
                     'service': 'azure-service-bus',
                     'queue_name': 'orders',
                 },
-                id='azure-service-bus',
             ),
-            pytest.param(
+            (
                 GcpPubSubQueue.from_obj,
                 {
                     'name': 'orders',
@@ -100,9 +97,8 @@ class TestQueueOptions:
                     'project': 'example-project',
                     'topic': 'orders-topic',
                 },
-                id='gcp-pubsub',
             ),
-            pytest.param(
+            (
                 RedisQueue.from_obj,
                 {
                     'name': 'orders',
@@ -119,7 +115,6 @@ class TestQueueOptions:
                     'key': 'events',
                     'database': 1,
                 },
-                id='redis',
             ),
         ],
     )
