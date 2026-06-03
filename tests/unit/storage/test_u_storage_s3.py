@@ -138,6 +138,16 @@ class TestS3StorageBackend:
         monkeypatch.setattr(backend, '_client', lambda: FakeS3Client())
         assert backend.exists(location) is True
 
+    def test_import_boto3_returns_module(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that the SDK module is returned from the S3 import helper."""
+        module = object()
+        monkeypatch.setattr(s3_mod, 'import_module', lambda _: module)
+
+        assert s3_mod._import_boto3() is module
+
     def test_is_not_found_error_returns_false_without_mapping_response(self) -> None:
         """Test that malformed boto-style errors are not treated as missing."""
         backend = S3StorageBackend()
