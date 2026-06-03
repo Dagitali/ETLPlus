@@ -48,8 +48,8 @@ from .pytest_file_core_cases import UNKNOWN_FORMAT_CASE_IDS
 from .pytest_file_core_cases import UNKNOWN_FORMAT_CASES
 from .pytest_file_core_cases import XML_ROUNDTRIP_NORMALIZED_FORMATS
 from .pytest_file_core_cases import FormatPayload
-from .pytest_file_support import CaptureBytesUpload
 from .pytest_file_support import FakeHttpSession
+from .pytest_file_support import RemoteBytesBackendStub
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -571,34 +571,13 @@ class TestFile:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that remote reads download to a local temp path first."""
-        calls: list[tuple[str, str]] = []
-
-        class FakeBackend:
-            """Remote backend read test double."""
-
-            def exists(self, location: object) -> bool:
-                """Report the remote object as present."""
-                calls.append(('exists', str(location)))
-                return True
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> BytesIO:
-                """Return a readable byte stream for the remote object."""
-                del kwargs
-                calls.append((mode, str(location)))
-                return BytesIO(b'{"name": "Ada"}')
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = RemoteBytesBackendStub(read_payload=b'{"name": "Ada"}')
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         result = File('s3://bucket/data.json', FileFormat.JSON).read()
 
         assert result == {'name': 'Ada'}
-        assert calls[0][0] == 'exists'
-        assert calls[1][0] == 'rb'
+        assert backend.calls == ['exists', 'rb']
 
     def test_remote_uri_infers_s3_backend_and_csv_format(self) -> None:
         """Test that remote URI strings infer both storage scheme and format."""
@@ -614,34 +593,16 @@ class TestFile:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that remote writes upload the local staged file content."""
-        uploads: list[bytes] = []
-
-        class FakeBackend:
-            """Remote backend write test double."""
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Accept parent preparation for remote storage."""
-                del location
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> CaptureBytesUpload:
-                """Return a writable byte stream for the remote object."""
-                del location, kwargs
-                assert mode == 'wb'
-                return CaptureBytesUpload(uploads)
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = RemoteBytesBackendStub()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         written = File('s3://bucket/data.json', FileFormat.JSON).write(
             {'name': 'Ada'},
         )
 
         assert written == 1
-        assert uploads == [b'{\n  "name": "Ada"\n}\n']
+        assert backend.calls == ['ensure_parent_dir', 'wb']
+        assert backend.uploads == [b'{\n  "name": "Ada"\n}\n']
 
     def test_repr_preserves_public_path_and_format(
         self,
@@ -752,80 +713,26 @@ class TestFile:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that remote touch creates an empty object when absent."""
-        uploads: list[bytes] = []
-
-        class FakeBackend:
-            """Remote backend touch test double."""
-
-            def __init__(self) -> None:
-                self.parent_calls = 0
-                self.exists_calls = 0
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Record parent preparation for the new object."""
-                del location
-                self.parent_calls += 1
-
-            def exists(self, location: object) -> bool:
-                """Report the object as missing on first touch."""
-                del location
-                self.exists_calls += 1
-                return False
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> CaptureBytesUpload:
-                """Return a writable stream for the new object."""
-                del location, kwargs
-                assert mode == 'wb'
-                return CaptureBytesUpload(uploads)
-
-        backend = FakeBackend()
+        backend = RemoteBytesBackendStub(exists_result=False)
         monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         File('s3://bucket/data.json', FileFormat.JSON).touch()
 
-        assert backend.exists_calls == 1
-        assert backend.parent_calls == 1
-        assert uploads == [b'']
+        assert backend.calls == ['exists', 'ensure_parent_dir', 'wb']
+        assert backend.uploads == [b'']
 
     def test_touch_remote_is_noop_when_object_exists(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that remote touch avoids truncating existing objects."""
-        calls: list[str] = []
-
-        class FakeBackend:
-            """Remote backend touch no-op test double."""
-
-            def exists(self, location: object) -> bool:
-                """Report the object as already present."""
-                del location
-                calls.append('exists')
-                return True
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Fail if parent preparation happens unexpectedly."""
-                raise AssertionError('ensure_parent_dir should not be called')
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> BytesIO:
-                """Fail if open happens unexpectedly."""
-                raise AssertionError('open should not be called')
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = RemoteBytesBackendStub()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         File('s3://bucket/data.json', FileFormat.JSON).touch()
 
-        assert calls == ['exists']
+        assert backend.calls == ['exists']
+        assert backend.uploads == []
 
     @pytest.mark.parametrize(
         ('filename', 'contents', 'operation', 'error_pattern'),
@@ -859,27 +766,13 @@ class TestFile:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that :meth:`File.write_bytes` uses the storage backend."""
-        uploads: list[bytes] = []
-
-        class FakeBackend:
-            """Remote backend write-bytes test double."""
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> CaptureBytesUpload:
-                """Capture the write open request and return a binary sink."""
-                del location, kwargs
-                assert mode == 'wb'
-                return CaptureBytesUpload(uploads)
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = RemoteBytesBackendStub()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         File('s3://bucket/data.bin').write_bytes(b'payload')
 
-        assert uploads == [b'payload']
+        assert backend.calls == ['wb']
+        assert backend.uploads == [b'payload']
 
     def test_write_bytes_uses_local_backend(
         self,
@@ -1015,64 +908,23 @@ class TestFileCoreDispatch:
         expected_name: str,
     ) -> None:
         """Test that remote write dispatch uploads the staged file payload."""
-        uploads: list[bytes] = []
-        calls: list[str] = []
-
-        class FakeBackend:
-            """Remote backend test double for staging uploads."""
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Record parent preparation before upload."""
-                del location
-                calls.append('ensure_parent_dir')
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> CaptureBytesUpload:
-                """Return one writable upload target."""
-                del location, kwargs
-                calls.append(mode)
-                return CaptureBytesUpload(uploads)
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = RemoteBytesBackendStub()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         with File(uri, file_format)._dispatch_path(for_write=True) as dispatch_path:
             assert dispatch_path.name == expected_name
             dispatch_path.write_bytes(b'payload')
 
-        assert calls == ['ensure_parent_dir', 'wb']
-        assert uploads == [b'payload']
+        assert backend.calls == ['ensure_parent_dir', 'wb']
+        assert backend.uploads == [b'payload']
 
     def test_dispatch_path_for_remote_writes_propagates_upload_open_errors(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that upload-open failures propagate after staging writes."""
-        calls: list[str] = []
-
-        class FakeBackend:
-            """Remote backend test double raising during upload open."""
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Record parent preparation before upload."""
-                del location
-                calls.append('ensure_parent_dir')
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> BytesIO:
-                """Raise while opening the remote upload target."""
-                del location, kwargs
-                calls.append(mode)
-                raise RuntimeError('upload failed')
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = RemoteBytesBackendStub(open_error=RuntimeError('upload failed'))
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         with pytest.raises(RuntimeError, match='upload failed'):
             with File('s3://bucket', FileFormat.JSON)._dispatch_path(
@@ -1080,7 +932,7 @@ class TestFileCoreDispatch:
             ) as dispatch_path:
                 dispatch_path.write_bytes(b'payload')
 
-        assert calls == ['ensure_parent_dir', 'wb']
+        assert backend.calls == ['ensure_parent_dir', 'wb']
 
     def test_read_forwards_options_to_bound_handler(
         self,
