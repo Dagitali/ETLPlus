@@ -7,6 +7,7 @@ Shared unit-test stubs and helper factories for :mod:`etlplus.file` tests.
 from __future__ import annotations
 
 from io import BytesIO
+from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -73,6 +74,19 @@ class CaptureBytesUpload(BytesIO):
 
     def close(self) -> None:
         """Capture written bytes before closing the stream."""
+        self._uploads.append(self.getvalue())
+        super().close()
+
+
+class CaptureTextUpload(StringIO):
+    """Writable text stream that records its payload on close."""
+
+    def __init__(self, uploads: list[str]) -> None:
+        self._uploads = uploads
+        super().__init__()
+
+    def close(self) -> None:
+        """Capture written text before closing the stream."""
         self._uploads.append(self.getvalue())
         super().close()
 
@@ -450,6 +464,36 @@ class RemoteBytesBackendStub:
             return BytesIO(self.read_payload)
         assert mode == 'wb'
         return CaptureBytesUpload(self.uploads)
+
+
+class RemoteTextBackendStub:
+    """Storage backend stub for text-oriented remote file tests."""
+
+    def __init__(
+        self,
+        *,
+        read_payload: str = '',
+    ) -> None:
+        self.calls: list[str] = []
+        self.read_payload = read_payload
+        self.uploads: list[str] = []
+
+    def ensure_parent_dir(self, location: object) -> None:
+        """Record parent preparation for a remote object."""
+        self.calls.append('ensure_parent_dir')
+
+    def open(
+        self,
+        location: object,
+        mode: str = 'r',
+        **kwargs: object,
+    ) -> StringIO:
+        """Return a readable or writable text stream for the requested mode."""
+        self.calls.append(mode)
+        if mode == 'r':
+            return StringIO(self.read_payload)
+        assert mode == 'w'
+        return CaptureTextUpload(self.uploads)
 
 
 class RDataNoWriterStub:
