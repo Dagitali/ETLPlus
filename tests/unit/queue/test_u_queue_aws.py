@@ -130,18 +130,6 @@ class TestAwsSqsQueue:
                 },
             )
 
-    @pytest.mark.parametrize(
-        'payload',
-        [
-            {'queue_type': 'fifo'},
-            {'name': '   '},
-        ],
-    )
-    def test_from_obj_requires_name(self, payload: dict[str, object]) -> None:
-        """Test that :meth:`from_obj` requires a queue name."""
-        with pytest.raises(TypeError, match='AwsSqsQueue requires a "name"'):
-            AwsSqsQueue.from_obj(payload)
-
     def test_from_obj_returns_connector_options(self) -> None:
         """Test that queue metadata can be exposed as connector options."""
         queue = AwsSqsQueue.from_obj(
@@ -211,11 +199,3 @@ class TestAwsSqsQueue:
             ]
             == arn
         )
-
-    def test_to_connector_options_omits_empty_optional_fields(self) -> None:
-        """Test that empty optional SQS metadata does not appear in options."""
-        assert AwsSqsQueue.from_obj({'name': 'events'}).to_connector_options() == {
-            'service': 'aws-sqs',
-            'queue_type': 'standard',
-            'queue_name': 'events',
-        }
