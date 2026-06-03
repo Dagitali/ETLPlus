@@ -73,30 +73,6 @@ class TestAwsSqsQueue:
         assert queue.dead_letter_queue_arn == 'arn:aws:sqs:us-east-1:123:dead'
         assert queue.attributes == {'VisibilityTimeout': '30'}
 
-    def test_from_obj_requires_name(self) -> None:
-        """Test that :meth:`from_obj` requires a queue name."""
-        with pytest.raises(TypeError, match='AwsSqsQueue requires a "name"'):
-            AwsSqsQueue.from_obj({'queue_type': 'fifo'})
-
-    @pytest.mark.parametrize(
-        ('payload', 'expected_fifo', 'expected_standard'),
-        [
-            ({'name': 'events'}, False, True),
-            ({'name': 'events.fifo'}, True, False),
-        ],
-    )
-    def test_queue_type_getters(
-        self,
-        payload: dict[str, object],
-        expected_fifo: bool,
-        expected_standard: bool,
-    ) -> None:
-        """Test that queue type getters expose normalized SQS semantics."""
-        queue = AwsSqsQueue.from_obj(payload)
-
-        assert queue.is_fifo is expected_fifo
-        assert queue.is_standard is expected_standard
-
     def test_from_obj_rejects_boolean_integer_metadata(self) -> None:
         """Test that boolean values are not accepted as integer metadata."""
         with pytest.raises(TypeError, match='"visibility_timeout" must be an integer'):
@@ -139,34 +115,10 @@ class TestAwsSqsQueue:
                 },
             )
 
-    def test_standard_queue_rejects_fifo_only_metadata(self) -> None:
-        """Test that standard queues reject FIFO-only message metadata."""
-        with pytest.raises(ValueError, match='FIFO fields require'):
-            AwsSqsQueue.from_obj(
-                {
-                    'name': 'events',
-                    'message_group_id': 'events',
-                },
-            )
-
-    def test_to_connector_options_includes_arn(self) -> None:
-        """Test that SQS ARN metadata is preserved in connector options."""
-        arn = 'arn:aws:sqs:us-east-1:123:events'
-
-        assert (
-            AwsSqsQueue.from_obj({'name': 'events', 'arn': arn}).to_connector_options()[
-                'arn'
-            ]
-            == arn
-        )
-
-    def test_to_connector_options_omits_empty_optional_fields(self) -> None:
-        """Test that empty optional SQS metadata does not appear in options."""
-        assert AwsSqsQueue.from_obj({'name': 'events'}).to_connector_options() == {
-            'service': 'aws-sqs',
-            'queue_type': 'standard',
-            'queue_name': 'events',
-        }
+    def test_from_obj_requires_name(self) -> None:
+        """Test that :meth:`from_obj` requires a queue name."""
+        with pytest.raises(TypeError, match='AwsSqsQueue requires a "name"'):
+            AwsSqsQueue.from_obj({'queue_type': 'fifo'})
 
     def test_from_obj_returns_connector_options(self) -> None:
         """Test that queue metadata can be exposed as connector options."""
@@ -196,4 +148,52 @@ class TestAwsSqsQueue:
             'wait_time_seconds': 20,
             'content_based_deduplication': True,
             'message_group_id': 'events',
+        }
+
+    @pytest.mark.parametrize(
+        ('payload', 'expected_fifo', 'expected_standard'),
+        [
+            ({'name': 'events'}, False, True),
+            ({'name': 'events.fifo'}, True, False),
+        ],
+    )
+    def test_queue_type_getters(
+        self,
+        payload: dict[str, object],
+        expected_fifo: bool,
+        expected_standard: bool,
+    ) -> None:
+        """Test that queue type getters expose normalized SQS semantics."""
+        queue = AwsSqsQueue.from_obj(payload)
+
+        assert queue.is_fifo is expected_fifo
+        assert queue.is_standard is expected_standard
+
+    def test_standard_queue_rejects_fifo_only_metadata(self) -> None:
+        """Test that standard queues reject FIFO-only message metadata."""
+        with pytest.raises(ValueError, match='FIFO fields require'):
+            AwsSqsQueue.from_obj(
+                {
+                    'name': 'events',
+                    'message_group_id': 'events',
+                },
+            )
+
+    def test_to_connector_options_includes_arn(self) -> None:
+        """Test that SQS ARN metadata is preserved in connector options."""
+        arn = 'arn:aws:sqs:us-east-1:123:events'
+
+        assert (
+            AwsSqsQueue.from_obj({'name': 'events', 'arn': arn}).to_connector_options()[
+                'arn'
+            ]
+            == arn
+        )
+
+    def test_to_connector_options_omits_empty_optional_fields(self) -> None:
+        """Test that empty optional SQS metadata does not appear in options."""
+        assert AwsSqsQueue.from_obj({'name': 'events'}).to_connector_options() == {
+            'service': 'aws-sqs',
+            'queue_type': 'standard',
+            'queue_name': 'events',
         }
