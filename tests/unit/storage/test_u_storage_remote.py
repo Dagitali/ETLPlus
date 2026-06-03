@@ -21,45 +21,114 @@ from etlplus.storage import StubStorageBackend
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: TYPE ALIASES ===================================================== #
+
+RemoteBackendType = type[RemoteStorageBackend]
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+REMOTE_BACKEND_TYPES: tuple[RemoteBackendType, ...] = (
+    AbfsStorageBackend,
+    AzureBlobStorageBackend,
+    HdfsStorageBackend,
+    S3StorageBackend,
+)
+
+VALIDATED_PROVIDER_CASES: tuple[
+    tuple[RemoteBackendType, StorageScheme, str, str, str],
+    ...,
+] = (
+    (
+        AbfsStorageBackend,
+        StorageScheme.ABFS,
+        'filesystem@example.dfs.core.windows.net',
+        'abfs://filesystem@example.dfs.core.windows.net',
+        'filesystem/account authority',
+    ),
+    (
+        AzureBlobStorageBackend,
+        StorageScheme.AZURE_BLOB,
+        'container',
+        'azure-blob://container',
+        'container name',
+    ),
+    (
+        S3StorageBackend,
+        StorageScheme.S3,
+        'bucket',
+        's3://bucket',
+        'bucket name',
+    ),
+)
+
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestRemoteStorageBackend:
     """Unit tests for shared remote-backend validation."""
 
-    @pytest.mark.parametrize(
-        'backend_type',
-        [
-            AbfsStorageBackend,
-            AzureBlobStorageBackend,
-            HdfsStorageBackend,
-            S3StorageBackend,
-        ],
-    )
+    @pytest.mark.parametrize('backend_type', REMOTE_BACKEND_TYPES)
     def test_concrete_backends_use_remote_backend_base(
         self,
-        backend_type: type[object],
+        backend_type: RemoteBackendType,
     ) -> None:
         """Test concrete remote backends use the shared remote base class."""
         assert issubclass(backend_type, RemoteStorageBackend)
         assert not issubclass(backend_type, StubStorageBackend)
 
-    def test_validate_requires_authority(self) -> None:
+    @pytest.mark.parametrize(
+        ('backend_type', 'scheme', 'authority', 'missing_path_raw', 'authority_label'),
+        VALIDATED_PROVIDER_CASES,
+    )
+    def test_validate_requires_authority(
+        self,
+        backend_type: RemoteBackendType,
+        scheme: StorageScheme,
+        authority: str,
+        missing_path_raw: str,
+        authority_label: str,
+    ) -> None:
         """Test that remote backends reject locations without authority."""
-        backend = S3StorageBackend()
+        backend = backend_type()
         location = StorageLocation(
-            raw='s3:///data.csv',
-            scheme=StorageScheme.S3,
+            raw=f'{scheme.value}:///data.csv',
+            scheme=scheme,
             authority='',
             path='data.csv',
         )
 
-        with pytest.raises(ValueError, match='bucket name'):
+        with pytest.raises(ValueError, match=authority_label):
             backend.ensure_parent_dir(location)
 
-    def test_validate_rejects_wrong_scheme(self) -> None:
+    @pytest.mark.parametrize(
+        ('backend_type', 'scheme', 'authority', 'missing_path_raw', 'authority_label'),
+        VALIDATED_PROVIDER_CASES,
+    )
+    def test_validate_requires_path(
+        self,
+        backend_type: RemoteBackendType,
+        scheme: StorageScheme,
+        authority: str,
+        missing_path_raw: str,
+        authority_label: str,
+    ) -> None:
+        """Test that remote backends reject locations without resource paths."""
+        del scheme, authority, authority_label
+        backend = backend_type()
+        location = StorageLocation.from_value(missing_path_raw)
+
+        with pytest.raises(ValueError, match=backend.path_label):
+            backend.ensure_parent_dir(location)
+
+    @pytest.mark.parametrize('backend_type', REMOTE_BACKEND_TYPES)
+    def test_validate_rejects_wrong_scheme(
+        self,
+        backend_type: RemoteBackendType,
+    ) -> None:
         """Test that remote backends reject locations with the wrong scheme."""
-        backend = S3StorageBackend()
+        backend = backend_type()
         location = StorageLocation.from_value('https://example.com/files/data.csv')
 
         with pytest.raises(TypeError, match='only supports'):
