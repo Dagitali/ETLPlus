@@ -29,26 +29,6 @@ class TestAzureBlobStorageBackend:
         backend = AzureBlobStorageBackend()
         assert backend._account_url_from_authority('container') is None
 
-    def test_exists_uses_blob_client(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that Azure Blob exists delegates to the blob client."""
-        backend = AzureBlobStorageBackend()
-        location = StorageLocation.from_value(
-            'azure-blob://container/blob.json',
-        )
-
-        class FakeBlobClient:
-            """Blob client test double."""
-
-            def exists(self) -> bool:
-                """Return a present-object result."""
-                return True
-
-        monkeypatch.setattr(backend, '_blob_client', lambda _location: FakeBlobClient())
-        assert backend.exists(location) is True
-
     def test_delete_uses_blob_client(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -87,6 +67,26 @@ class TestAzureBlobStorageBackend:
         location = StorageLocation.from_value('azure-blob://container')
         with pytest.raises(ValueError, match='blob path'):
             backend.ensure_parent_dir(location)
+
+    def test_exists_uses_blob_client(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that Azure Blob exists delegates to the blob client."""
+        backend = AzureBlobStorageBackend()
+        location = StorageLocation.from_value(
+            'azure-blob://container/blob.json',
+        )
+
+        class FakeBlobClient:
+            """Blob client test double."""
+
+            def exists(self) -> bool:
+                """Return a present-object result."""
+                return True
+
+        monkeypatch.setattr(backend, '_blob_client', lambda _location: FakeBlobClient())
+        assert backend.exists(location) is True
 
     def test_import_blob_types_returns_sdk_types(
         self,
@@ -132,6 +132,18 @@ class TestAzureBlobStorageBackend:
         monkeypatch.setattr(backend, '_blob_client', lambda _location: FakeBlobClient())
         with backend.open(location, encoding='utf-8') as handle:
             assert handle.read() == '{"ok": true}'
+
+    def test_open_rejects_unexpected_kwargs(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that Azure Blob open rejects unsupported keyword arguments."""
+        backend = AzureBlobStorageBackend()
+        location = StorageLocation.from_value('azure-blob://container/blob.bin')
+        monkeypatch.setattr(backend, '_blob_client', lambda _location: object())
+
+        with pytest.raises(TypeError, match='Unsupported Azure Blob open'):
+            backend.open(location, 'rb', unsupported=True)
 
     def test_open_writes_binary_payload(
         self,
@@ -245,52 +257,6 @@ class TestAzureBlobStorageBackend:
         assert backend.exists(location) is True
         assert calls == ['https://example.blob.core.windows.net']
 
-    def test_service_client_uses_connection_string_env(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that Azure Blob resolves client config from env settings."""
-        backend = AzureBlobStorageBackend()
-        location = StorageLocation.from_value('azure-blob://container/blob.json')
-        calls: list[str] = []
-
-        class FakeBlobClient:
-            """Blob client existence test double."""
-
-            def exists(self) -> bool:
-                """Return a present-object result."""
-                return True
-
-        class FakeBlobServiceClient:
-            """Blob service client test double."""
-
-            @classmethod
-            def from_connection_string(cls, value: str) -> object:
-                """Return a configured service client instance."""
-                calls.append(value)
-                return cls()
-
-            def get_blob_client(self, **kwargs: object) -> FakeBlobClient:
-                """Return a blob client for the requested location."""
-                assert kwargs == {
-                    'blob': 'blob.json',
-                    'container': 'container',
-                }
-                return FakeBlobClient()
-
-        monkeypatch.setenv(
-            'AZURE_STORAGE_CONNECTION_STRING',
-            'UseDevelopmentStorage=true',
-        )
-        monkeypatch.setattr(
-            azure_blob_mod,
-            '_import_blob_types',
-            lambda: (FakeBlobServiceClient, None),
-        )
-
-        assert backend.exists(location) is True
-        assert calls == ['UseDevelopmentStorage=true']
-
     def test_service_client_requires_resolvable_account_url(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -363,6 +329,52 @@ class TestAzureBlobStorageBackend:
             },
         ]
 
+    def test_service_client_uses_connection_string_env(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that Azure Blob resolves client config from env settings."""
+        backend = AzureBlobStorageBackend()
+        location = StorageLocation.from_value('azure-blob://container/blob.json')
+        calls: list[str] = []
+
+        class FakeBlobClient:
+            """Blob client existence test double."""
+
+            def exists(self) -> bool:
+                """Return a present-object result."""
+                return True
+
+        class FakeBlobServiceClient:
+            """Blob service client test double."""
+
+            @classmethod
+            def from_connection_string(cls, value: str) -> object:
+                """Return a configured service client instance."""
+                calls.append(value)
+                return cls()
+
+            def get_blob_client(self, **kwargs: object) -> FakeBlobClient:
+                """Return a blob client for the requested location."""
+                assert kwargs == {
+                    'blob': 'blob.json',
+                    'container': 'container',
+                }
+                return FakeBlobClient()
+
+        monkeypatch.setenv(
+            'AZURE_STORAGE_CONNECTION_STRING',
+            'UseDevelopmentStorage=true',
+        )
+        monkeypatch.setattr(
+            azure_blob_mod,
+            '_import_blob_types',
+            lambda: (FakeBlobServiceClient, None),
+        )
+
+        assert backend.exists(location) is True
+        assert calls == ['UseDevelopmentStorage=true']
+
     @pytest.mark.parametrize(
         'authority',
         [
@@ -375,15 +387,3 @@ class TestAzureBlobStorageBackend:
         backend = AzureBlobStorageBackend()
         with pytest.raises(ValueError, match='container'):
             backend._split_authority(authority)
-
-    def test_open_rejects_unexpected_kwargs(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that Azure Blob open rejects unsupported keyword arguments."""
-        backend = AzureBlobStorageBackend()
-        location = StorageLocation.from_value('azure-blob://container/blob.bin')
-        monkeypatch.setattr(backend, '_blob_client', lambda _location: object())
-
-        with pytest.raises(TypeError, match='Unsupported Azure Blob open'):
-            backend.open(location, 'rb', unsupported=True)
