@@ -882,17 +882,15 @@ class TestFileCoreDispatch:
     @pytest.mark.parametrize(
         ('uri', 'file_format', 'expected_name'),
         [
-            pytest.param(
+            (
                 's3://bucket',
                 FileFormat.JSON,
                 'payload.json',
-                id='format-fallback',
             ),
-            pytest.param(
+            (
                 's3://bucket',
                 None,
                 'payload.tmp',
-                id='tmp-fallback',
             ),
         ],
     )
