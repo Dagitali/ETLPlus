@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Literal
+from typing import Never
 
 import pytest
 
@@ -40,6 +41,14 @@ type ScientificModuleCase = tuple[
     type[ScientificDatasetFileHandlerABC],
     str,
 ]
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _raise_unexpected_stub_call(*_args: object, **_kwargs: object) -> Never:
+    """Raise when dataset validation fails to short-circuit stub I/O."""
+    raise AssertionError('stub operation should not be called')
 
 
 # SECTION: FIXTURES ========================================================= #
@@ -126,10 +135,7 @@ class TestScientificStubDatasetKeys:
         handler_cls, _ = scientific_module_case
         handler = handler_cls()
 
-        def _raise_stub_called(*_args: object, **_kwargs: object) -> object:
-            raise AssertionError('stub operation should not be called')
-
-        monkeypatch.setattr(StubFileHandlerABC, operation, _raise_stub_called)
+        monkeypatch.setattr(StubFileHandlerABC, operation, _raise_unexpected_stub_call)
         method = getattr(handler, method_name)
         args: tuple[object, ...] = (Path('ignored.file'),)
         if operation == 'write':
