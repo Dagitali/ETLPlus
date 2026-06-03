@@ -34,9 +34,9 @@ class TestLog(JsonLinesWriteContractMixin, RoundtripUnitModuleContract):
     @pytest.mark.parametrize(
         ('line', 'parsed_payload', 'expected_message'),
         [
-            pytest.param('["a", "b"]', None, '["a", "b"]', id='non-object-json'),
-            pytest.param('plain message', None, 'plain message', id='plain-text'),
-            pytest.param('ignored', ['a', 'b'], 'ignored', id='non-mapping-parse'),
+            ('["a", "b"]', None, '["a", "b"]'),
+            ('plain message', None, 'plain message'),
+            ('ignored', ['a', 'b'], 'ignored'),
         ],
     )
     def test_parse_line_falls_back_to_message(
