@@ -24,10 +24,6 @@ from .pytest_file_support import SpreadsheetSheetPandasStub
 # SECTION: HELPERS ========================================================== #
 
 
-class _Handler:
-    """Simple handler stub for dependency resolver tests."""
-
-
 class _SpreadsheetEngineHandler(mod._PandasSpreadsheetEngineMixin):
     """Concrete spreadsheet engine resolver stub for mixin unit tests."""
 
@@ -109,7 +105,7 @@ class TestResolvePyarrowDependency:
         monkeypatch.setattr(mod, 'resolve_dependency', _resolve)
 
         result = mod._resolve_pyarrow_dependency(
-            _Handler(),
+            object(),
             format_name='PARQUET',
         )
 
@@ -143,7 +139,7 @@ class TestResolvePyarrowDependency:
         )
 
         result = mod._resolve_pyarrow_dependency(
-            _Handler(),
+            _SpreadsheetEngineHandler(),
             format_name='PARQUET',
         )
 
@@ -167,7 +163,7 @@ class TestResolveSpreadsheetEngineDependency:
             ),
         )
         mod._resolve_spreadsheet_engine_dependency(
-            _Handler(),
+            object(),
             engine='unknown',
             format_name='XLSX',
         )
@@ -195,7 +191,7 @@ class TestResolveSpreadsheetEngineDependency:
         monkeypatch.setattr(mod, 'resolve_dependency', _resolve)
 
         mod._resolve_spreadsheet_engine_dependency(
-            _Handler(),
+            object(),
             engine='odf',
             format_name='ODS',
         )
@@ -209,11 +205,11 @@ class TestSpreadsheetDependencySpec:
     @pytest.mark.parametrize(
         ('engine', 'expected'),
         [
-            pytest.param(None, None, id='none'),
-            pytest.param('openpyxl', ('openpyxl', None), id='openpyxl'),
-            pytest.param('xlrd', ('xlrd', None), id='xlrd'),
-            pytest.param('odf', ('odf', 'odfpy'), id='odf'),
-            pytest.param('unknown', None, id='unknown'),
+            (None, None),
+            ('openpyxl', ('openpyxl', None)),
+            ('xlrd', ('xlrd', None)),
+            ('odf', ('odf', 'odfpy')),
+            ('unknown', None),
         ],
     )
     def test_spreadsheet_dependency_spec(
