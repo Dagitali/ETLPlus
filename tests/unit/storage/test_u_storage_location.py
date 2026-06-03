@@ -30,15 +30,6 @@ class TestStorageLocation:
         assert location.scheme is StorageScheme.FILE
         assert location.as_path() == target
 
-    def test_from_scheme_alias_uri(
-        self,
-        raw: str,
-        scheme: StorageScheme,
-    ) -> None:
-        """Test that known remote scheme aliases normalize correctly."""
-        location = StorageLocation.from_value(raw)
-        assert location.scheme is scheme
-
     @pytest.mark.parametrize(
         ('raw', 'scheme', 'authority', 'path', 'as_path'),
         [
@@ -131,6 +122,14 @@ class TestStorageLocation:
             ('webhdfs://namenode.example.com/data.json', StorageScheme.HDFS),
         ],
     )
+    def test_from_value_accepts_scheme_aliases(
+        self,
+        raw: str,
+        scheme: StorageScheme,
+    ) -> None:
+        """Test that storage location parsing accepts documented aliases."""
+        assert StorageLocation.from_value(raw).scheme is scheme
+
     def test_from_value_rejects_empty_input(self) -> None:
         """Test that blank location inputs are rejected."""
         with pytest.raises(ValueError, match='cannot be empty'):
