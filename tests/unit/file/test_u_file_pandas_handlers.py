@@ -288,21 +288,19 @@ class TestSpreadsheetReadWriteFallbacks:
     @pytest.mark.parametrize(
         ('engine', 'expected_kwargs'),
         [
-            pytest.param(
+            (
                 'openpyxl',
                 [
                     {'sheet_name': 'Sheet1', 'engine': 'openpyxl'},
                     {'engine': 'openpyxl'},
                 ],
-                id='engine',
             ),
-            pytest.param(
+            (
                 None,
                 [
                     {'sheet_name': 'Sheet1'},
                     {},
                 ],
-                id='no-engine',
             ),
         ],
     )
@@ -334,7 +332,7 @@ class TestSpreadsheetReadWriteFallbacks:
     @pytest.mark.parametrize(
         ('engine', 'expected_kwargs'),
         [
-            pytest.param(
+            (
                 'openpyxl',
                 [
                     {
@@ -347,9 +345,8 @@ class TestSpreadsheetReadWriteFallbacks:
                         'engine': 'openpyxl',
                     },
                 ],
-                id='engine',
             ),
-            pytest.param(
+            (
                 None,
                 [
                     {
@@ -358,7 +355,6 @@ class TestSpreadsheetReadWriteFallbacks:
                     },
                     {'index': False},
                 ],
-                id='no-engine',
             ),
         ],
     )
