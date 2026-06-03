@@ -228,39 +228,35 @@ class TestSpreadsheetDependencySpec:
 class TestSpreadsheetEngineResolverMixin:
     """Unit tests for shared spreadsheet engine resolver mixin behavior."""
 
-    def test_resolve_engine_uses_default_engine_when_not_overridden(
+    @pytest.mark.parametrize(
+        ('handler_cls', 'method_name', 'args', 'expected'),
+        [
+            (_SpreadsheetEngineHandler, 'resolve_engine', ('read',), 'openpyxl'),
+            (
+                _SpreadsheetEngineWriteOverrideHandler,
+                'resolve_engine',
+                ('write',),
+                'odf',
+            ),
+            (_SpreadsheetReadHandler, 'resolve_read_engine', (), 'openpyxl'),
+            (_SpreadsheetWriteHandler, 'resolve_write_engine', (), 'odf'),
+        ],
+        ids=(
+            'default-read-engine',
+            'write-engine-override',
+            'read-wrapper',
+            'write-wrapper',
+        ),
+    )
+    def test_engine_resolution_helpers_return_expected_engine(
         self,
+        handler_cls: type[object],
+        method_name: str,
+        args: tuple[str, ...],
+        expected: str,
     ) -> None:
-        """Test fallback engine behavior for read operations."""
-        handler = _SpreadsheetEngineHandler()
-        assert handler.resolve_engine('read') == 'openpyxl'
-
-    def test_resolve_engine_prefers_write_override_for_write_operations(
-        self,
-    ) -> None:
-        """
-        Test that write operation resolves explicit write-engine overrides.
-        """
-        handler = _SpreadsheetEngineWriteOverrideHandler()
-        assert handler.resolve_engine('write') == 'odf'
-
-    def test_resolve_read_engine_wrapper_uses_shared_engine_resolution(
-        self,
-    ) -> None:
-        """
-        Test that read-engine wrapper forwards to operation-aware resolver.
-        """
-        handler = _SpreadsheetReadHandler()
-        assert handler.resolve_read_engine() == 'openpyxl'
-
-    def test_resolve_write_engine_wrapper_uses_shared_engine_resolution(
-        self,
-    ) -> None:
-        """
-        Test that write-engine wrapper forwards to operation-aware resolver.
-        """
-        handler = _SpreadsheetWriteHandler()
-        assert handler.resolve_write_engine() == 'odf'
+        """Test direct and wrapper engine resolution helper behavior."""
+        assert getattr(handler_cls(), method_name)(*args) == expected
 
     def test_resolve_engine_dependency_delegates_with_format_context(
         self,
