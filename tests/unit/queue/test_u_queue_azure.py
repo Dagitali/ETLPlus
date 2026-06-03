@@ -35,7 +35,7 @@ class TestAzureServiceBusQueue:
         """Test Azure Service Bus metadata trims optional target fields."""
         queue = AzureServiceBusQueue.from_obj(
             {
-                'name': 'orders',
+                'name': '  orders  ',
                 'namespace': 123,
                 'queue_name': '  orders-in  ',
                 'topic': '  orders-topic  ',
@@ -43,6 +43,7 @@ class TestAzureServiceBusQueue:
             },
         )
 
+        assert queue.name == 'orders'
         assert queue.namespace == '123'
         assert queue.queue_name == 'orders-in'
         assert queue.topic == 'orders-topic'
