@@ -57,6 +57,8 @@ IMPLEMENTED_REMOTE_BACKEND_TYPES: tuple[RemoteBackendType, ...] = (
     S3StorageBackend,
 )
 
+PLACEHOLDER_REMOTE_BACKEND_TYPES: tuple[RemoteBackendType, ...] = (FtpStorageBackend,)
+
 REMOTE_BACKEND_TYPES: tuple[RemoteBackendType, ...] = (
     AbfsStorageBackend,
     AzureBlobStorageBackend,
@@ -153,6 +155,14 @@ class TestRemoteStorageBackend:
     ) -> None:
         """Test implemented remote backends do not use placeholder behavior."""
         assert not issubclass(backend_type, StubStorageBackend)
+
+    @pytest.mark.parametrize('backend_type', PLACEHOLDER_REMOTE_BACKEND_TYPES)
+    def test_placeholder_backends_use_stub_base(
+        self,
+        backend_type: RemoteBackendType,
+    ) -> None:
+        """Test placeholder remote backends use shared stub behavior."""
+        assert issubclass(backend_type, StubStorageBackend)
 
     @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
     def test_validate_accepts_valid_remote_location(
