@@ -42,6 +42,7 @@ class RemoteProviderCase:
     authority_label: str
     path_label: str
     service_name: str
+    package_name: str | None
     missing_path_raw: str
     valid_raw: str
 
@@ -72,6 +73,7 @@ REMOTE_PROVIDER_CASES: tuple[RemoteProviderCase, ...] = (
         authority_label='filesystem/account authority',
         path_label='filesystem path',
         service_name='Azure Data Lake Storage Gen2',
+        package_name='azure-storage-file-datalake',
         missing_path_raw='abfs://filesystem@example.dfs.core.windows.net',
         valid_raw='abfs://filesystem@example.dfs.core.windows.net/data.csv',
     ),
@@ -81,6 +83,7 @@ REMOTE_PROVIDER_CASES: tuple[RemoteProviderCase, ...] = (
         authority_label='container name',
         path_label='blob path',
         service_name='Azure Blob',
+        package_name='azure-storage-blob',
         missing_path_raw='azure-blob://container',
         valid_raw='azure-blob://container/data.csv',
     ),
@@ -90,6 +93,7 @@ REMOTE_PROVIDER_CASES: tuple[RemoteProviderCase, ...] = (
         authority_label='host',
         path_label='remote path',
         service_name='FTP',
+        package_name='ftplib',
         missing_path_raw='ftp://example.com',
         valid_raw='ftp://example.com/data.csv',
     ),
@@ -99,6 +103,7 @@ REMOTE_PROVIDER_CASES: tuple[RemoteProviderCase, ...] = (
         authority_label='host',
         path_label='URL path',
         service_name='HTTP',
+        package_name=None,
         missing_path_raw='https://example.com',
         valid_raw='https://example.com/data.csv',
     ),
@@ -108,6 +113,7 @@ REMOTE_PROVIDER_CASES: tuple[RemoteProviderCase, ...] = (
         authority_label='bucket name',
         path_label='object key',
         service_name='S3',
+        package_name='boto3',
         missing_path_raw='s3://bucket',
         valid_raw='s3://bucket/data.csv',
     ),
@@ -130,6 +136,7 @@ class TestRemoteStorageBackend:
         assert case.backend_type.authority_label == case.authority_label
         assert case.backend_type.path_label == case.path_label
         assert case.backend_type.service_name == case.service_name
+        assert getattr(case.backend_type, 'package_name', None) == case.package_name
 
     @pytest.mark.parametrize('backend_type', REMOTE_BACKEND_TYPES)
     def test_concrete_backends_use_remote_backend_base(
