@@ -61,13 +61,6 @@ class TestS3StorageBackend:
         backend.delete(location)
         assert deletes == [{'Bucket': 'bucket', 'Key': 'data.json'}]
 
-    def test_exists_raises_import_error_without_sdk(self) -> None:
-        """Test that S3 runtime needs the optional SDK package."""
-        backend = S3StorageBackend()
-        location = StorageLocation.from_value('s3://bucket/data.json')
-        with pytest.raises(ImportError, match='boto3'):
-            backend.exists(location)
-
     @pytest.mark.parametrize(
         ('error_code', 'expected_missing'),
         [('AccessDenied', False), ('NoSuchKey', True)],
@@ -97,6 +90,13 @@ class TestS3StorageBackend:
             return
 
         with pytest.raises(FakeS3Error):
+            backend.exists(location)
+
+    def test_exists_raises_import_error_without_sdk(self) -> None:
+        """Test that S3 runtime needs the optional SDK package."""
+        backend = S3StorageBackend()
+        location = StorageLocation.from_value('s3://bucket/data.json')
+        with pytest.raises(ImportError, match='boto3'):
             backend.exists(location)
 
     def test_exists_returns_true_when_object_is_found(
