@@ -234,11 +234,10 @@ class TestRegistryInternalHelpers:
     @pytest.mark.parametrize(
         ('symbol', 'error_pattern'),
         [
-            pytest.param(object(), 'must be a class', id='non_class'),
-            pytest.param(
+            (object(), 'must be a class'),
+            (
                 type('_NotAHandler', (), {}),
                 'must inherit FileHandlerABC',
-                id='wrong_base_class',
             ),
         ],
     )
