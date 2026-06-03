@@ -77,6 +77,26 @@ class TestAbfsStorageBackend:
         ):
             backend.exists(location)
 
+    def test_exists_returns_false_when_file_client_reports_missing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ABFS existence checks preserve false client results."""
+        backend = AbfsStorageBackend()
+        location = StorageLocation.from_value(
+            'abfs://filesystem@example.dfs.core.windows.net/missing.json',
+        )
+
+        class FakeFileClient:
+            """Data Lake file client missing-file test double."""
+
+            def exists(self) -> bool:
+                """Return a missing-file result."""
+                return False
+
+        monkeypatch.setattr(backend, '_file_client', lambda _location: FakeFileClient())
+        assert backend.exists(location) is False
+
     def test_exists_uses_file_client(
         self,
         monkeypatch: pytest.MonkeyPatch,
