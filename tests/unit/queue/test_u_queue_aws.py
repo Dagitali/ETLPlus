@@ -28,16 +28,29 @@ class TestAwsSqsQueue:
         with pytest.raises(ValueError, match='must end with ".fifo"'):
             AwsSqsQueue.from_obj({'name': 'events', 'queue_type': 'fifo'})
 
+    def test_from_obj_normalizes_fifo_string_fields(self) -> None:
+        """Test SQS FIFO-only string metadata trims optional fields."""
+        queue = AwsSqsQueue.from_obj(
+            {
+                'name': 'events.fifo',
+                'deduplication_id': '  dedupe-1  ',
+                'message_group_id': '  events  ',
+            },
+        )
+
+        assert queue.deduplication_id == 'dedupe-1'
+        assert queue.message_group_id == 'events'
+
     @pytest.mark.parametrize(
         ('payload', 'expected_type'),
         [
-            pytest.param({'name': 'events'}, QueueType.STANDARD, id='standard'),
-            pytest.param({'name': 'events.fifo'}, QueueType.FIFO, id='fifo-suffix'),
-            pytest.param(
+            ({'name': '  events  '}, QueueType.STANDARD),
+            ({'name': 'events.fifo'}, QueueType.FIFO),
+            (
                 {'name': 'events.fifo', 'queue_type': 'fifo'},
                 QueueType.FIFO,
-                id='explicit-fifo',
             ),
+            ({'name': 'events.fifo', 'type': 'fifo'}, QueueType.FIFO),
         ],
     )
     def test_from_obj_normalizes_queue_fields(
@@ -46,7 +59,7 @@ class TestAwsSqsQueue:
         expected_type: QueueType,
     ) -> None:
         """Test that :meth:`from_obj` normalizes SQS queue metadata."""
-        connector = AwsSqsQueue.from_obj(
+        queue = AwsSqsQueue.from_obj(
             {
                 **payload,
                 'url': 123,
@@ -62,43 +75,18 @@ class TestAwsSqsQueue:
             },
         )
 
-        assert connector.service is QueueService.AWS_SQS
-        assert isinstance(connector, QueueConfigProtocol)
-        assert connector.queue_type is expected_type
-        assert connector.url == '123'
-        assert connector.arn == 'False'
-        assert connector.region == 'us-east-1'
-        assert connector.delay_seconds == 5
-        assert connector.max_messages == 10
-        assert connector.message_retention_period == 345600
-        assert connector.visibility_timeout == 30
-        assert connector.wait_time_seconds == 20
-        assert connector.dead_letter_queue_arn == 'arn:aws:sqs:us-east-1:123:dead'
-        assert connector.attributes == {'VisibilityTimeout': '30'}
-
-    def test_from_obj_requires_name(self) -> None:
-        """Test that :meth:`from_obj` requires a queue name."""
-        with pytest.raises(TypeError, match='AwsSqsQueue requires a "name"'):
-            AwsSqsQueue.from_obj({'queue_type': 'fifo'})
-
-    @pytest.mark.parametrize(
-        ('payload', 'expected_fifo', 'expected_standard'),
-        [
-            pytest.param({'name': 'events'}, False, True, id='standard'),
-            pytest.param({'name': 'events.fifo'}, True, False, id='fifo'),
-        ],
-    )
-    def test_queue_type_getters(
-        self,
-        payload: dict[str, object],
-        expected_fifo: bool,
-        expected_standard: bool,
-    ) -> None:
-        """Test that queue type getters expose normalized SQS semantics."""
-        queue = AwsSqsQueue.from_obj(payload)
-
-        assert queue.is_fifo is expected_fifo
-        assert queue.is_standard is expected_standard
+        assert queue.name == str(payload['name']).strip()
+        assert queue.queue_type is expected_type
+        assert queue.url == '123'
+        assert queue.arn == 'False'
+        assert queue.region == 'us-east-1'
+        assert queue.delay_seconds == 5
+        assert queue.max_messages == 10
+        assert queue.message_retention_period == 345600
+        assert queue.visibility_timeout == 30
+        assert queue.wait_time_seconds == 20
+        assert queue.dead_letter_queue_arn == 'arn:aws:sqs:us-east-1:123:dead'
+        assert queue.attributes == {'VisibilityTimeout': '30'}
 
     def test_from_obj_rejects_boolean_integer_metadata(self) -> None:
         """Test that boolean values are not accepted as integer metadata."""
@@ -118,15 +106,14 @@ class TestAwsSqsQueue:
     @pytest.mark.parametrize(
         ('field_name', 'value'),
         [
-            pytest.param('delay_seconds', 901, id='delay-seconds'),
-            pytest.param('max_messages', 11, id='max-messages'),
-            pytest.param(
+            ('delay_seconds', 901),
+            ('max_messages', 11),
+            (
                 'message_retention_period',
                 1_209_601,
-                id='message-retention-period',
             ),
-            pytest.param('visibility_timeout', 43_201, id='visibility-timeout'),
-            pytest.param('wait_time_seconds', 21, id='wait-time-seconds'),
+            ('visibility_timeout', 43_201),
+            ('wait_time_seconds', 21),
         ],
     )
     def test_from_obj_rejects_out_of_range_integer_metadata(
@@ -142,6 +129,55 @@ class TestAwsSqsQueue:
                     field_name: value,
                 },
             )
+
+    def test_from_obj_returns_connector_options(self) -> None:
+        """Test that queue metadata can be exposed as connector options."""
+        queue = AwsSqsQueue.from_obj(
+            {
+                'name': 'events.fifo',
+                'url': 'https://sqs.us-east-1.amazonaws.com/123/events.fifo',
+                'region': 'us-east-1',
+                'visibility_timeout': 30,
+                'wait_time_seconds': 20,
+                'content_based_deduplication': True,
+                'message_group_id': 'events',
+                'attributes': {'ContentBasedDeduplication': 'true'},
+            },
+        )
+
+        assert isinstance(queue, QueueConfigProtocol)
+        assert queue.service is QueueService.AWS_SQS
+        assert queue.to_connector_options() == {
+            'ContentBasedDeduplication': 'true',
+            'service': 'aws-sqs',
+            'queue_type': 'fifo',
+            'queue_name': 'events.fifo',
+            'url': 'https://sqs.us-east-1.amazonaws.com/123/events.fifo',
+            'region': 'us-east-1',
+            'visibility_timeout': 30,
+            'wait_time_seconds': 20,
+            'content_based_deduplication': True,
+            'message_group_id': 'events',
+        }
+
+    @pytest.mark.parametrize(
+        ('payload', 'expected_fifo', 'expected_standard'),
+        [
+            ({'name': 'events'}, False, True),
+            ({'name': 'events.fifo'}, True, False),
+        ],
+    )
+    def test_queue_type_getters(
+        self,
+        payload: dict[str, object],
+        expected_fifo: bool,
+        expected_standard: bool,
+    ) -> None:
+        """Test that queue type getters expose normalized SQS semantics."""
+        queue = AwsSqsQueue.from_obj(payload)
+
+        assert queue.is_fifo is expected_fifo
+        assert queue.is_standard is expected_standard
 
     def test_standard_queue_rejects_fifo_only_metadata(self) -> None:
         """Test that standard queues reject FIFO-only message metadata."""
@@ -163,39 +199,3 @@ class TestAwsSqsQueue:
             ]
             == arn
         )
-
-    def test_to_connector_options_omits_empty_optional_fields(self) -> None:
-        """Test that empty optional SQS metadata does not appear in options."""
-        assert AwsSqsQueue.from_obj({'name': 'events'}).to_connector_options() == {
-            'service': 'aws-sqs',
-            'queue_type': 'standard',
-            'queue_name': 'events',
-        }
-
-    def test_to_connector_options_returns_plain_mapping(self) -> None:
-        """Test that queue metadata can be exposed as connector options."""
-        queue = AwsSqsQueue.from_obj(
-            {
-                'name': 'events.fifo',
-                'url': 'https://sqs.us-east-1.amazonaws.com/123/events.fifo',
-                'region': 'us-east-1',
-                'visibility_timeout': 30,
-                'wait_time_seconds': 20,
-                'content_based_deduplication': True,
-                'message_group_id': 'events',
-                'attributes': {'ContentBasedDeduplication': 'true'},
-            },
-        )
-
-        assert queue.to_connector_options() == {
-            'ContentBasedDeduplication': 'true',
-            'service': 'aws-sqs',
-            'queue_type': 'fifo',
-            'queue_name': 'events.fifo',
-            'url': 'https://sqs.us-east-1.amazonaws.com/123/events.fifo',
-            'region': 'us-east-1',
-            'visibility_timeout': 30,
-            'wait_time_seconds': 20,
-            'content_based_deduplication': True,
-            'message_group_id': 'events',
-        }

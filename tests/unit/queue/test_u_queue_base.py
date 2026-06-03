@@ -64,43 +64,35 @@ class TestProviderQueueConfigMixin:
 
         assert fields == {'name': 'jobs', 'settings': {'durable': True}}
 
-    def test_optional_str_treats_blank_values_as_absent(self) -> None:
-        """Blank optional strings should normalize to ``None``."""
-        assert (
-            ProviderQueueConfigMixin._optional_str({'endpoint': '   '}, 'endpoint')
-            is None
-        )
-
-    def test_optional_str_trims_preferred_field(self) -> None:
-        """Optional string fields should return trimmed preferred values."""
-        assert (
-            ProviderQueueConfigMixin._optional_str(
+    @pytest.mark.parametrize(
+        ('obj', 'field', 'alias', 'expected'),
+        [
+            ({'endpoint': '   '}, 'endpoint', None, None),
+            (
                 {'endpoint': '  redis://localhost  '},
                 'endpoint',
-            )
-            == 'redis://localhost'
-        )
-
-    def test_optional_str_prefers_primary_field_over_alias(self) -> None:
-        """Primary field names should take precedence over aliases."""
-        assert (
-            ProviderQueueConfigMixin._optional_str(
+                None,
+                'redis://localhost',
+            ),
+            (
                 {'queue_name': '  primary  ', 'queue': 'alias'},
                 'queue_name',
-                alias='queue',
-            )
-            == 'primary'
-        )
-
-    def test_optional_str_uses_alias_when_preferred_field_is_absent(self) -> None:
-        """Optional string fields should support provider-specific aliases."""
+                'queue',
+                'primary',
+            ),
+            ({'queue': '  jobs  '}, 'queue_name', 'queue', 'jobs'),
+        ],
+    )
+    def test_optional_str_normalizes_values(
+        self,
+        obj: dict[str, object],
+        field: str,
+        alias: str | None,
+        expected: str | None,
+    ) -> None:
+        """Optional string fields should trim values and support aliases."""
         assert (
-            ProviderQueueConfigMixin._optional_str(
-                {'queue': '  jobs  '},
-                'queue_name',
-                alias='queue',
-            )
-            == 'jobs'
+            ProviderQueueConfigMixin._optional_str(obj, field, alias=alias) == expected
         )
 
     def test_to_connector_options_does_not_mutate_provider_options(self) -> None:

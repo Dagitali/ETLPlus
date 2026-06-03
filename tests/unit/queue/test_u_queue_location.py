@@ -22,65 +22,55 @@ class TestQueueLocation:
     """Unit tests for :class:`etlplus.queue.QueueLocation`."""
 
     @pytest.mark.parametrize(
-        ('value', 'expected'),
+        ('value', 'service', 'authority', 'path'),
         [
-            pytest.param(
+            (
                 'aws-sqs://us-east-1/events.fifo',
-                {
-                    'service': QueueService.AWS_SQS,
-                    'authority': 'us-east-1',
-                    'path': 'events.fifo',
-                },
-                id='aws-sqs',
+                QueueService.AWS_SQS,
+                'us-east-1',
+                'events.fifo',
             ),
-            pytest.param(
+            (
                 'redis://localhost:6379/0/events',
-                {
-                    'service': QueueService.REDIS,
-                    'authority': 'localhost:6379',
-                    'path': '0/events',
-                },
-                id='redis',
+                QueueService.REDIS,
+                'localhost:6379',
+                '0/events',
             ),
-            pytest.param(
+            (
                 'sqs://us-east-1/events',
-                {
-                    'service': QueueService.AWS_SQS,
-                    'authority': 'us-east-1',
-                    'path': 'events',
-                },
-                id='sqs-alias',
+                QueueService.AWS_SQS,
+                'us-east-1',
+                'events',
             ),
-            pytest.param(
+            (
                 'redis://localhost:6379/0/orders%2Fcreated',
-                {
-                    'service': QueueService.REDIS,
-                    'authority': 'localhost:6379',
-                    'path': '0/orders/created',
-                },
-                id='percent-encoded-path',
+                QueueService.REDIS,
+                'localhost:6379',
+                '0/orders/created',
             ),
         ],
     )
     def test_from_value_parses_queue_uri(
         self,
         value: str,
-        expected: dict[str, object],
+        service: QueueService,
+        authority: str,
+        path: str,
     ) -> None:
         """Test that queue URIs parse into normalized location parts."""
         location = QueueLocation.from_value(value)
 
         assert location.raw == value
-        assert location.service is expected['service']
-        assert location.authority == expected['authority']
-        assert location.path == expected['path']
+        assert location.service is service
+        assert location.authority == authority
+        assert location.path == path
 
     @pytest.mark.parametrize(
         ('value', 'match'),
         [
-            pytest.param('', 'cannot be empty', id='empty'),
-            pytest.param('events', 'requires a service scheme', id='missing-scheme'),
-            pytest.param('aws-sqs://us-east-1', 'requires a queue path', id='no-path'),
+            ('', 'cannot be empty'),
+            ('events', 'requires a service scheme'),
+            ('aws-sqs://us-east-1', 'requires a queue path'),
         ],
     )
     def test_from_value_rejects_invalid_queue_uri(

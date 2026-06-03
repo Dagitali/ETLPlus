@@ -29,9 +29,50 @@ class TestQueueOptions:
     """Unit tests for shared queue option serialization."""
 
     @pytest.mark.parametrize(
+        ('factory', 'target_payload', 'match'),
+        [
+            (
+                AmqpQueue.from_obj,
+                {'url': 'amqp://guest:guest@localhost:5672/%2f'},
+                'AmqpQueue requires a "name"',
+            ),
+            (
+                AwsSqsQueue.from_obj,
+                {'queue_type': 'fifo'},
+                'AwsSqsQueue requires a "name"',
+            ),
+            (
+                AzureServiceBusQueue.from_obj,
+                {'queue_name': 'orders-in'},
+                'AzureServiceBusQueue requires a "name"',
+            ),
+            (
+                GcpPubSubQueue.from_obj,
+                {'project': 'example-project', 'subscription': 'etlplus'},
+                'GcpPubSubQueue requires a "name"',
+            ),
+            (
+                RedisQueue.from_obj,
+                {'url': 'redis://localhost:6379/0'},
+                'RedisQueue requires a "name"',
+            ),
+        ],
+    )
+    def test_from_obj_requires_name(
+        self,
+        factory: Callable[[StrAnyMap], QueueConfig],
+        target_payload: StrAnyMap,
+        match: str,
+    ) -> None:
+        """Test that provider queue metadata requires a nonblank name."""
+        for payload in (target_payload, {'name': '   ', **target_payload}):
+            with pytest.raises(TypeError, match=match):
+                factory(payload)
+
+    @pytest.mark.parametrize(
         ('factory', 'payload', 'expected'),
         [
-            pytest.param(
+            (
                 AmqpQueue.from_obj,
                 {
                     'name': 'orders',
@@ -45,9 +86,8 @@ class TestQueueOptions:
                     'service': 'amqp',
                     'host': 'localhost',
                 },
-                id='amqp',
             ),
-            pytest.param(
+            (
                 AwsSqsQueue.from_obj,
                 {
                     'name': 'events',
@@ -65,9 +105,8 @@ class TestQueueOptions:
                     'queue_name': 'events',
                     'region': 'us-east-1',
                 },
-                id='aws-sqs',
             ),
-            pytest.param(
+            (
                 AzureServiceBusQueue.from_obj,
                 {
                     'name': 'orders',
@@ -81,9 +120,8 @@ class TestQueueOptions:
                     'service': 'azure-service-bus',
                     'queue_name': 'orders',
                 },
-                id='azure-service-bus',
             ),
-            pytest.param(
+            (
                 GcpPubSubQueue.from_obj,
                 {
                     'name': 'orders',
@@ -100,9 +138,8 @@ class TestQueueOptions:
                     'project': 'example-project',
                     'topic': 'orders-topic',
                 },
-                id='gcp-pubsub',
             ),
-            pytest.param(
+            (
                 RedisQueue.from_obj,
                 {
                     'name': 'orders',
@@ -119,7 +156,6 @@ class TestQueueOptions:
                     'key': 'events',
                     'database': 1,
                 },
-                id='redis',
             ),
         ],
     )
@@ -130,4 +166,61 @@ class TestQueueOptions:
         expected: dict[str, object],
     ) -> None:
         """Test top-level queue fields take precedence over duplicate options."""
+        assert factory(payload).to_connector_options() == expected
+
+    @pytest.mark.parametrize(
+        ('factory', 'payload', 'expected'),
+        [
+            (
+                AmqpQueue.from_obj,
+                {'name': 'orders', 'host': 'localhost'},
+                {
+                    'service': 'amqp',
+                    'host': 'localhost',
+                },
+            ),
+            (
+                AwsSqsQueue.from_obj,
+                {'name': 'events'},
+                {
+                    'service': 'aws-sqs',
+                    'queue_type': 'standard',
+                    'queue_name': 'events',
+                },
+            ),
+            (
+                AzureServiceBusQueue.from_obj,
+                {'name': 'orders', 'queue': 'orders-in'},
+                {
+                    'service': 'azure-service-bus',
+                    'queue_name': 'orders-in',
+                },
+            ),
+            (
+                GcpPubSubQueue.from_obj,
+                {
+                    'name': 'orders',
+                    'project': 'example-project',
+                    'topic': 'orders-topic',
+                },
+                {
+                    'service': 'gcp-pubsub',
+                    'project': 'example-project',
+                    'topic': 'orders-topic',
+                },
+            ),
+            (
+                RedisQueue.from_obj,
+                {'name': 'orders'},
+                {'service': 'redis'},
+            ),
+        ],
+    )
+    def test_to_connector_options_omits_empty_optional_fields(
+        self,
+        factory: Callable[[StrAnyMap], QueueConfig],
+        payload: StrAnyMap,
+        expected: dict[str, object],
+    ) -> None:
+        """Test empty optional provider metadata does not appear in options."""
         assert factory(payload).to_connector_options() == expected
