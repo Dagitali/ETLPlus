@@ -31,12 +31,11 @@ class TestAwsSqsQueue:
     @pytest.mark.parametrize(
         ('payload', 'expected_type'),
         [
-            pytest.param({'name': 'events'}, QueueType.STANDARD, id='standard'),
-            pytest.param({'name': 'events.fifo'}, QueueType.FIFO, id='fifo-suffix'),
-            pytest.param(
+            ({'name': 'events'}, QueueType.STANDARD),
+            ({'name': 'events.fifo'}, QueueType.FIFO),
+            (
                 {'name': 'events.fifo', 'queue_type': 'fifo'},
                 QueueType.FIFO,
-                id='explicit-fifo',
             ),
         ],
     )
@@ -84,8 +83,8 @@ class TestAwsSqsQueue:
     @pytest.mark.parametrize(
         ('payload', 'expected_fifo', 'expected_standard'),
         [
-            pytest.param({'name': 'events'}, False, True, id='standard'),
-            pytest.param({'name': 'events.fifo'}, True, False, id='fifo'),
+            ({'name': 'events'}, False, True),
+            ({'name': 'events.fifo'}, True, False),
         ],
     )
     def test_queue_type_getters(
@@ -118,15 +117,14 @@ class TestAwsSqsQueue:
     @pytest.mark.parametrize(
         ('field_name', 'value'),
         [
-            pytest.param('delay_seconds', 901, id='delay-seconds'),
-            pytest.param('max_messages', 11, id='max-messages'),
-            pytest.param(
+            ('delay_seconds', 901),
+            ('max_messages', 11),
+            (
                 'message_retention_period',
                 1_209_601,
-                id='message-retention-period',
             ),
-            pytest.param('visibility_timeout', 43_201, id='visibility-timeout'),
-            pytest.param('wait_time_seconds', 21, id='wait-time-seconds'),
+            ('visibility_timeout', 43_201),
+            ('wait_time_seconds', 21),
         ],
     )
     def test_from_obj_rejects_out_of_range_integer_metadata(
