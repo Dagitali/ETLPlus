@@ -68,9 +68,9 @@ class TestQueueLocation:
     @pytest.mark.parametrize(
         ('value', 'match'),
         [
-            pytest.param('', 'cannot be empty', id='empty'),
-            pytest.param('events', 'requires a service scheme', id='missing-scheme'),
-            pytest.param('aws-sqs://us-east-1', 'requires a queue path', id='no-path'),
+            ('', 'cannot be empty'),
+            ('events', 'requires a service scheme'),
+            ('aws-sqs://us-east-1', 'requires a queue path'),
         ],
     )
     def test_from_value_rejects_invalid_queue_uri(
