@@ -68,50 +68,36 @@ class TestS3StorageBackend:
         with pytest.raises(ImportError, match='boto3'):
             backend.exists(location)
 
-    def test_exists_reraises_non_not_found_errors(
+    @pytest.mark.parametrize(
+        ('error_code', 'expected_missing'),
+        [('AccessDenied', False), ('NoSuchKey', True)],
+    )
+    def test_exists_handles_client_errors(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        error_code: str,
+        expected_missing: bool,
     ) -> None:
-        """Test that S3 existence checks propagate non-not-found errors."""
+        """Test that S3 existence checks distinguish missing-object errors."""
         backend = S3StorageBackend()
         location = StorageLocation.from_value('s3://bucket/data.json')
 
         class FakeS3Error(Exception):
             def __init__(self) -> None:
-                self.response = {'Error': {'Code': 'AccessDenied'}}
+                self.response = {'Error': {'Code': error_code}}
 
         class FakeS3Client:
             def head_object(self, **kwargs: object) -> None:
                 raise FakeS3Error()
 
         monkeypatch.setattr(backend, '_client', lambda: FakeS3Client())
+
+        if expected_missing:
+            assert backend.exists(location) is False
+            return
 
         with pytest.raises(FakeS3Error):
             backend.exists(location)
-
-    def test_exists_returns_false_for_missing_object(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that S3 existence checks treat not-found errors as false."""
-        backend = S3StorageBackend()
-        location = StorageLocation.from_value('s3://bucket/missing.json')
-
-        class FakeS3Error(Exception):
-            """S3 not-found error test double."""
-
-            def __init__(self) -> None:
-                self.response = {'Error': {'Code': 'NoSuchKey'}}
-
-        class FakeS3Client:
-            """S3 client missing-object test double."""
-
-            def head_object(self, **kwargs: object) -> None:
-                """Raise a not-found error for the requested object."""
-                raise FakeS3Error()
-
-        monkeypatch.setattr(backend, '_client', lambda: FakeS3Client())
-        assert backend.exists(location) is False
 
     def test_exists_returns_true_when_object_is_found(
         self,
