@@ -120,29 +120,25 @@ _SPREADSHEET_HANDLER_CLASSES = (
     OdsFile,
 )
 _NAMING_METHOD_CASES = (
-    pytest.param(
+    (
         _DELIMITED_HANDLER_CLASSES,
         'read_rows',
         'write_rows',
-        id='delimited',
     ),
-    pytest.param(
+    (
         _EMBEDDED_DB_HANDLER_CLASSES,
         'read_table',
         'write_table',
-        id='embedded_db',
     ),
-    pytest.param(
+    (
         _SCIENTIFIC_HANDLER_CLASSES,
         'read_dataset',
         'write_dataset',
-        id='scientific',
     ),
-    pytest.param(
+    (
         _SPREADSHEET_HANDLER_CLASSES,
         'read_sheet',
         'write_sheet',
-        id='spreadsheet',
     ),
 )
 
@@ -309,73 +305,58 @@ class _ReadOnlySingleScientificStub(
 
 
 _OPTION_HELPER_CASES = (
-    pytest.param(
-        _OptionHelperCase(
-            handler_cls=_DelimitedStub,
-            method_name='delimiter_from_options',
-            read_options=ReadOptions(extras={'delimiter': '|'}),
-            write_options=WriteOptions(extras={'delimiter': '\t'}),
-            baseline=',',
-            read_expected='|',
-            write_expected='\t',
-            read_default=';',
-            write_default=':',
-        ),
-        id='delimiter',
+    _OptionHelperCase(
+        handler_cls=_DelimitedStub,
+        method_name='delimiter_from_options',
+        read_options=ReadOptions(extras={'delimiter': '|'}),
+        write_options=WriteOptions(extras={'delimiter': '\t'}),
+        baseline=',',
+        read_expected='|',
+        write_expected='\t',
+        read_default=';',
+        write_default=':',
     ),
-    pytest.param(
-        _OptionHelperCase(
-            handler_cls=XlsFile,
-            method_name='encoding_from_options',
-            read_options=ReadOptions(encoding='latin-1'),
-            write_options=WriteOptions(encoding='utf-16'),
-            baseline='utf-8',
-            read_expected='latin-1',
-            write_expected='utf-16',
-            read_default='utf-16',
-            write_default='ascii',
-        ),
-        id='encoding',
+    _OptionHelperCase(
+        handler_cls=XlsFile,
+        method_name='encoding_from_options',
+        read_options=ReadOptions(encoding='latin-1'),
+        write_options=WriteOptions(encoding='utf-16'),
+        baseline='utf-8',
+        read_expected='latin-1',
+        write_expected='utf-16',
+        read_default='utf-16',
+        write_default='ascii',
     ),
-    pytest.param(
-        _OptionHelperCase(
-            handler_cls=ZipFile,
-            method_name='inner_name_from_options',
-            read_options=ReadOptions(inner_name='data.json'),
-            write_options=WriteOptions(inner_name='payload.csv'),
-            baseline=None,
-            read_expected='data.json',
-            write_expected='payload.csv',
-        ),
-        id='inner_name',
+    _OptionHelperCase(
+        handler_cls=ZipFile,
+        method_name='inner_name_from_options',
+        read_options=ReadOptions(inner_name='data.json'),
+        write_options=WriteOptions(inner_name='payload.csv'),
+        baseline=None,
+        read_expected='data.json',
+        write_expected='payload.csv',
     ),
-    pytest.param(
-        _OptionHelperCase(
-            handler_cls=XlsxFile,
-            method_name='sheet_from_options',
-            read_options=ReadOptions(sheet='Sheet2'),
-            write_options=WriteOptions(sheet=3),
-            baseline=0,
-            read_expected='Sheet2',
-            write_expected=3,
-            read_default='fallback_sheet',
-            write_default=99,
-        ),
-        id='sheet',
+    _OptionHelperCase(
+        handler_cls=XlsxFile,
+        method_name='sheet_from_options',
+        read_options=ReadOptions(sheet='Sheet2'),
+        write_options=WriteOptions(sheet=3),
+        baseline=0,
+        read_expected='Sheet2',
+        write_expected=3,
+        read_default='fallback_sheet',
+        write_default=99,
     ),
-    pytest.param(
-        _OptionHelperCase(
-            handler_cls=SqliteFile,
-            method_name='table_from_options',
-            read_options=ReadOptions(table='events'),
-            write_options=WriteOptions(table='staging'),
-            baseline=None,
-            read_expected='events',
-            write_expected='staging',
-            read_default='fallback_table',
-            write_default='fallback_table',
-        ),
-        id='table',
+    _OptionHelperCase(
+        handler_cls=SqliteFile,
+        method_name='table_from_options',
+        read_options=ReadOptions(table='events'),
+        write_options=WriteOptions(table='staging'),
+        baseline=None,
+        read_expected='events',
+        write_expected='staging',
+        read_default='fallback_table',
+        write_default='fallback_table',
     ),
 )
 
