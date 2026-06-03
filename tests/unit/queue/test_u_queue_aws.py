@@ -45,7 +45,7 @@ class TestAwsSqsQueue:
         expected_type: QueueType,
     ) -> None:
         """Test that :meth:`from_obj` normalizes SQS queue metadata."""
-        connector = AwsSqsQueue.from_obj(
+        queue = AwsSqsQueue.from_obj(
             {
                 **payload,
                 'url': 123,
@@ -61,19 +61,17 @@ class TestAwsSqsQueue:
             },
         )
 
-        assert connector.service is QueueService.AWS_SQS
-        assert isinstance(connector, QueueConfigProtocol)
-        assert connector.queue_type is expected_type
-        assert connector.url == '123'
-        assert connector.arn == 'False'
-        assert connector.region == 'us-east-1'
-        assert connector.delay_seconds == 5
-        assert connector.max_messages == 10
-        assert connector.message_retention_period == 345600
-        assert connector.visibility_timeout == 30
-        assert connector.wait_time_seconds == 20
-        assert connector.dead_letter_queue_arn == 'arn:aws:sqs:us-east-1:123:dead'
-        assert connector.attributes == {'VisibilityTimeout': '30'}
+        assert queue.queue_type is expected_type
+        assert queue.url == '123'
+        assert queue.arn == 'False'
+        assert queue.region == 'us-east-1'
+        assert queue.delay_seconds == 5
+        assert queue.max_messages == 10
+        assert queue.message_retention_period == 345600
+        assert queue.visibility_timeout == 30
+        assert queue.wait_time_seconds == 20
+        assert queue.dead_letter_queue_arn == 'arn:aws:sqs:us-east-1:123:dead'
+        assert queue.attributes == {'VisibilityTimeout': '30'}
 
     def test_from_obj_requires_name(self) -> None:
         """Test that :meth:`from_obj` requires a queue name."""
@@ -170,7 +168,7 @@ class TestAwsSqsQueue:
             'queue_name': 'events',
         }
 
-    def test_to_connector_options_returns_plain_mapping(self) -> None:
+    def test_from_obj_returns_connector_options(self) -> None:
         """Test that queue metadata can be exposed as connector options."""
         queue = AwsSqsQueue.from_obj(
             {
@@ -185,6 +183,8 @@ class TestAwsSqsQueue:
             },
         )
 
+        assert isinstance(queue, QueueConfigProtocol)
+        assert queue.service is QueueService.AWS_SQS
         assert queue.to_connector_options() == {
             'ContentBasedDeduplication': 'true',
             'service': 'aws-sqs',
