@@ -9,6 +9,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+import pytest
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def clear_azure_storage_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Clear Azure storage configuration environment variables."""
+    for name in (
+        'AZURE_STORAGE_CONNECTION_STRING',
+        'AZURE_STORAGE_ACCOUNT_URL',
+        'AZURE_STORAGE_CREDENTIAL',
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+
 # SECTION: CLASSES ========================================================== #
 
 
