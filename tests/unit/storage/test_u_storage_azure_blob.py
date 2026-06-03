@@ -24,10 +24,24 @@ from .pytest_storage_support import FakeContentSettings
 class TestAzureBlobStorageBackend:
     """Unit tests for :class:`etlplus.storage.AzureBlobStorageBackend`."""
 
-    def test_account_url_from_authority_returns_none_without_account_host(self) -> None:
-        """Test that simple container authorities do not imply an account URL."""
+    @pytest.mark.parametrize(
+        ('authority', 'expected_account_url'),
+        [
+            ('container', None),
+            (
+                'container@example.blob.core.windows.net',
+                'https://example.blob.core.windows.net',
+            ),
+        ],
+    )
+    def test_account_url_from_authority(
+        self,
+        authority: str,
+        expected_account_url: str | None,
+    ) -> None:
+        """Test that Azure Blob account URLs reflect authority shape."""
         backend = AzureBlobStorageBackend()
-        assert backend._account_url_from_authority('container') is None
+        assert backend._account_url_from_authority(authority) == expected_account_url
 
     def test_delete_uses_blob_client(
         self,
