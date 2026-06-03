@@ -44,7 +44,7 @@ class TestAwsSqsQueue:
     @pytest.mark.parametrize(
         ('payload', 'expected_type'),
         [
-            ({'name': 'events'}, QueueType.STANDARD),
+            ({'name': '  events  '}, QueueType.STANDARD),
             ({'name': 'events.fifo'}, QueueType.FIFO),
             (
                 {'name': 'events.fifo', 'queue_type': 'fifo'},
@@ -75,6 +75,7 @@ class TestAwsSqsQueue:
             },
         )
 
+        assert queue.name == str(payload['name']).strip()
         assert queue.queue_type is expected_type
         assert queue.url == '123'
         assert queue.arn == 'False'
@@ -129,10 +130,17 @@ class TestAwsSqsQueue:
                 },
             )
 
-    def test_from_obj_requires_name(self) -> None:
+    @pytest.mark.parametrize(
+        'payload',
+        [
+            {'queue_type': 'fifo'},
+            {'name': '   '},
+        ],
+    )
+    def test_from_obj_requires_name(self, payload: dict[str, object]) -> None:
         """Test that :meth:`from_obj` requires a queue name."""
         with pytest.raises(TypeError, match='AwsSqsQueue requires a "name"'):
-            AwsSqsQueue.from_obj({'queue_type': 'fifo'})
+            AwsSqsQueue.from_obj(payload)
 
     def test_from_obj_returns_connector_options(self) -> None:
         """Test that queue metadata can be exposed as connector options."""
