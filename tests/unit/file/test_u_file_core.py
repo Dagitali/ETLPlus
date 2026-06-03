@@ -986,23 +986,20 @@ class TestFileCoreDispatch:
     @pytest.mark.parametrize(
         ('root_tag', 'option_root_tag', 'same_object'),
         [
-            pytest.param(
+            (
                 xml_file.DEFAULT_XML_ROOT,
                 'records',
                 True,
-                id='default-root-keeps-options',
             ),
-            pytest.param(
+            (
                 'records',
                 'records',
                 True,
-                id='matching-root-keeps-options',
             ),
-            pytest.param(
+            (
                 'records',
                 'items',
                 False,
-                id='different-root-replaces-options',
             ),
         ],
     )
@@ -1046,17 +1043,15 @@ class TestFileCoreDispatch:
     @pytest.mark.parametrize(
         ('root_tag', 'expected_root_tag', 'write_result'),
         [
-            pytest.param(
+            (
                 None,
                 xml_file.DEFAULT_XML_ROOT,
                 1,
-                id='default_root_tag',
             ),
-            pytest.param(
+            (
                 'records',
                 'records',
                 3,
-                id='custom_root_tag',
             ),
         ],
     )
