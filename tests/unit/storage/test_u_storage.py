@@ -202,11 +202,6 @@ class TestAbfsStorageBackend:
         backend.delete(location)
         assert deleted == [True]
 
-    def test_inherits_remote_storage_backend_base(self) -> None:
-        """Test that ABFS uses the shared remote backend base class."""
-        assert issubclass(AbfsStorageBackend, RemoteStorageBackend)
-        assert not issubclass(AbfsStorageBackend, StubStorageBackend)
-
     def test_open_reads_text_payload(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -627,11 +622,6 @@ class TestAzureBlobStorageBackend:
             FakeModule.BlobServiceClient,
             FakeModule.ContentSettings,
         )
-
-    def test_inherits_remote_storage_backend_base(self) -> None:
-        """Test that Azure Blob uses the shared remote backend base class."""
-        assert issubclass(AzureBlobStorageBackend, RemoteStorageBackend)
-        assert not issubclass(AzureBlobStorageBackend, StubStorageBackend)
 
     def test_open_reads_text_payload(
         self,
@@ -1065,11 +1055,6 @@ class TestHdfsStorageBackend:
 
         assert hdfs_mod._import_fsspec() is module
 
-    def test_inherits_remote_storage_backend_base(self) -> None:
-        """Test that HDFS uses the shared remote backend base class."""
-        assert issubclass(HdfsStorageBackend, RemoteStorageBackend)
-        assert not issubclass(HdfsStorageBackend, StubStorageBackend)
-
     def test_open_uses_fsspec_open(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -1340,26 +1325,25 @@ class TestLocalStorageBackend:
 class TestOtherStubStorageBackends:
     """Unit tests for other placeholder storage backends."""
 
-    def test_ftp_exists_raises_placeholder_error(self) -> None:
-        """Test that FTP routes through the shared placeholder behavior."""
+    @pytest.mark.parametrize(
+        ('method_name', 'args', 'kwargs'),
+        [
+            ('exists', (), {}),
+            ('delete', (), {}),
+            ('open', ('rb',), {'newline': None}),
+        ],
+    )
+    def test_ftp_routes_through_placeholder_behavior(
+        self,
+        method_name: str,
+        args: tuple[object, ...],
+        kwargs: dict[str, object],
+    ) -> None:
+        """Test that FTP operations route through shared placeholder behavior."""
         backend = FtpStorageBackend()
         location = StorageLocation.from_value('ftp://example.com/data.json')
         with pytest.raises(NotImplementedError, match='ftplib'):
-            backend.exists(location)
-
-    def test_ftp_delete_raises_placeholder_error(self) -> None:
-        """Test that FTP delete routes through the shared placeholder behavior."""
-        backend = FtpStorageBackend()
-        location = StorageLocation.from_value('ftp://example.com/data.json')
-        with pytest.raises(NotImplementedError, match='ftplib'):
-            backend.delete(location)
-
-    def test_ftp_open_raises_placeholder_error(self) -> None:
-        """Test that FTP open routes through the shared placeholder behavior."""
-        backend = FtpStorageBackend()
-        location = StorageLocation.from_value('ftp://example.com/data.json')
-        with pytest.raises(NotImplementedError, match='ftplib'):
-            backend.open(location, 'rb', newline=None)
+            getattr(backend, method_name)(location, *args, **kwargs)
 
 
 class TestRemoteBufferHelpers:
@@ -1423,6 +1407,23 @@ class TestRemoteBufferHelpers:
 
 class TestRemoteStorageBackend:
     """Unit tests for shared remote-backend validation."""
+
+    @pytest.mark.parametrize(
+        'backend_type',
+        [
+            AbfsStorageBackend,
+            AzureBlobStorageBackend,
+            HdfsStorageBackend,
+            S3StorageBackend,
+        ],
+    )
+    def test_concrete_backends_use_remote_backend_base(
+        self,
+        backend_type: type[object],
+    ) -> None:
+        """Test concrete remote backends use the shared remote base class."""
+        assert issubclass(backend_type, RemoteStorageBackend)
+        assert not issubclass(backend_type, StubStorageBackend)
 
     def test_validate_rejects_wrong_scheme(self) -> None:
         """Test that remote backends reject locations with the wrong scheme."""
@@ -1572,11 +1573,6 @@ class TestS3StorageBackend:
         monkeypatch.setattr(backend, '_client', fake_client)
         assert backend.exists(location) is True
 
-    def test_inherits_remote_storage_backend_base(self) -> None:
-        """Test that S3 uses the shared remote backend base class."""
-        assert issubclass(S3StorageBackend, RemoteStorageBackend)
-        assert not issubclass(S3StorageBackend, StubStorageBackend)
-
     def test_is_not_found_error_returns_false_without_mapping_response(self) -> None:
         """Test that malformed boto-style errors are not treated as missing."""
         backend = S3StorageBackend()
@@ -1687,64 +1683,84 @@ class TestS3StorageBackend:
 class TestStorageLocation:
     """Unit tests for :class:`etlplus.storage.StorageLocation`."""
 
-    def test_from_abfs_uri(self) -> None:
-        """Test that ABFS URIs keep authority and filesystem path segments."""
-        location = StorageLocation.from_value(
-            ('abfs://filesystem@example.dfs.core.windows.net/path/to/blob.parquet'),
-        )
-        assert location.scheme is StorageScheme.ABFS
-        assert location.authority == 'filesystem@example.dfs.core.windows.net'
-        assert location.path == 'path/to/blob.parquet'
-
-    def test_from_azure_blob_uri(self) -> None:
-        """Test that Azure Blob URIs keep container and blob path segments."""
-        location = StorageLocation.from_value(
-            'azure-blob://container/path/to/blob.json',
-        )
-        assert location.scheme is StorageScheme.AZURE_BLOB
-        assert location.authority == 'container'
-        assert location.path == 'path/to/blob.json'
-
-    def test_from_https_abfs_url(self) -> None:
-        """Test that ADLS HTTPS URLs normalize into ABFS storage locations."""
-        location = StorageLocation.from_value(
-            'https://example.dfs.core.windows.net/filesystem/path/to/blob.parquet',
-        )
-        assert location.scheme is StorageScheme.ABFS
-        assert location.authority == 'filesystem@example.dfs.core.windows.net'
-        assert location.path == 'path/to/blob.parquet'
-
-    def test_from_https_azure_blob_url(self) -> None:
-        """Test that Azure Blob HTTPS URLs normalize into blob locations."""
-        location = StorageLocation.from_value(
-            'https://example.blob.core.windows.net/container/path/to/blob.json',
-        )
-        assert location.scheme is StorageScheme.AZURE_BLOB
-        assert location.authority == 'container@example.blob.core.windows.net'
-        assert location.path == 'path/to/blob.json'
-
-    def test_from_https_url(self) -> None:
-        """Test that generic HTTPS URLs normalize into HTTP locations."""
-        location = StorageLocation.from_value(
-            'https://example.com/files/data.csv?download=1',
-        )
-        assert location.scheme is StorageScheme.HTTP
-        assert location.authority == 'example.com'
-        assert location.path == 'files/data.csv'
-
-    def test_from_file_uri(self) -> None:
-        """Test that ``file://`` URIs normalize to local file locations."""
-        location = StorageLocation.from_value('file:///tmp/example.csv')
-        assert location.scheme is StorageScheme.FILE
-        assert location.path == '/tmp/example.csv'
-        assert location.as_path() == Path('/tmp/example.csv')
-
-    def test_from_local_path_string(self) -> None:
-        """Test that plain paths are treated as local storage."""
-        location = StorageLocation.from_value('data/input.csv')
-        assert location.scheme is StorageScheme.FILE
-        assert location.path == 'data/input.csv'
-        assert location.is_local is True
+    @pytest.mark.parametrize(
+        ('raw', 'scheme', 'authority', 'path', 'as_path'),
+        [
+            (
+                'abfs://filesystem@example.dfs.core.windows.net/path/to/blob.parquet',
+                StorageScheme.ABFS,
+                'filesystem@example.dfs.core.windows.net',
+                'path/to/blob.parquet',
+                None,
+            ),
+            (
+                'azure-blob://container/path/to/blob.json',
+                StorageScheme.AZURE_BLOB,
+                'container',
+                'path/to/blob.json',
+                None,
+            ),
+            (
+                'https://example.dfs.core.windows.net/filesystem/path/to/blob.parquet',
+                StorageScheme.ABFS,
+                'filesystem@example.dfs.core.windows.net',
+                'path/to/blob.parquet',
+                None,
+            ),
+            (
+                'https://example.blob.core.windows.net/container/path/to/blob.json',
+                StorageScheme.AZURE_BLOB,
+                'container@example.blob.core.windows.net',
+                'path/to/blob.json',
+                None,
+            ),
+            (
+                'https://example.com/files/data.csv?download=1',
+                StorageScheme.HTTP,
+                'example.com',
+                'files/data.csv',
+                None,
+            ),
+            (
+                'file:///tmp/example.csv',
+                StorageScheme.FILE,
+                '',
+                '/tmp/example.csv',
+                Path('/tmp/example.csv'),
+            ),
+            (
+                'data/input.csv',
+                StorageScheme.FILE,
+                '',
+                'data/input.csv',
+                Path('data/input.csv'),
+            ),
+            (
+                's3://bucket/path/to/object.parquet',
+                StorageScheme.S3,
+                'bucket',
+                'path/to/object.parquet',
+                None,
+            ),
+        ],
+    )
+    def test_from_value_parses_storage_location(
+        self,
+        raw: str,
+        scheme: StorageScheme,
+        authority: str,
+        path: str,
+        as_path: Path | None,
+    ) -> None:
+        """Test that storage location strings normalize into parsed parts."""
+        location = StorageLocation.from_value(raw)
+        assert location.scheme is scheme
+        assert location.authority == authority
+        assert location.path == path
+        assert location.is_local is (scheme is StorageScheme.FILE)
+        assert location.is_remote is (scheme is not StorageScheme.FILE)
+        if as_path is not None:
+            assert location.as_path() == as_path
 
     def test_from_path_object(self, tmp_path: Path) -> None:
         """Test that :class:`Path` inputs are preserved as local locations."""
@@ -1752,16 +1768,6 @@ class TestStorageLocation:
         location = StorageLocation.from_value(target)
         assert location.scheme is StorageScheme.FILE
         assert location.as_path() == target
-
-    def test_from_remote_uri(self) -> None:
-        """Test that remote URIs keep scheme, authority, and relative path."""
-        location = StorageLocation.from_value(
-            's3://bucket/path/to/object.parquet',
-        )
-        assert location.scheme is StorageScheme.S3
-        assert location.authority == 'bucket'
-        assert location.path == 'path/to/object.parquet'
-        assert location.is_remote is True
 
     @pytest.mark.parametrize(
         ('raw', 'scheme'),
@@ -1810,33 +1816,16 @@ class TestStorageRegistry:
     @pytest.mark.parametrize(
         ('raw', 'backend_type'),
         [
-            pytest.param(
+            (
                 'abfs://filesystem@example.dfs.core.windows.net/path.json',
                 AbfsStorageBackend,
-                id='abfs',
             ),
-            pytest.param(
-                'azure-blob://container/path.json',
-                AzureBlobStorageBackend,
-                id='azure-blob',
-            ),
-            pytest.param(
-                'ftp://example.com/path.json',
-                FtpStorageBackend,
-                id='ftp',
-            ),
-            pytest.param(
-                'https://example.com/files/data.csv',
-                HttpStorageBackend,
-                id='http',
-            ),
-            pytest.param(
-                'hdfs://namenode.example.com:8020/path.json',
-                HdfsStorageBackend,
-                id='hdfs',
-            ),
-            pytest.param('data/input.csv', LocalStorageBackend, id='local'),
-            pytest.param('s3://bucket/path.json', S3StorageBackend, id='s3'),
+            ('azure-blob://container/path.json', AzureBlobStorageBackend),
+            ('ftp://example.com/path.json', FtpStorageBackend),
+            ('https://example.com/files/data.csv', HttpStorageBackend),
+            ('hdfs://namenode.example.com:8020/path.json', HdfsStorageBackend),
+            ('data/input.csv', LocalStorageBackend),
+            ('s3://bucket/path.json', S3StorageBackend),
         ],
     )
     def test_get_backend_for_location(
