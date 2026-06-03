@@ -36,17 +36,17 @@ class TestAzureServiceBusQueue:
         queue = AzureServiceBusQueue.from_obj(
             {
                 'name': 'orders',
-                'namespace': '  example-bus  ',
+                'namespace': 123,
                 'queue_name': '  orders-in  ',
                 'topic': '  orders-topic  ',
-                'subscription': '  etlplus  ',
+                'subscription': False,
             },
         )
 
-        assert queue.namespace == 'example-bus'
+        assert queue.namespace == '123'
         assert queue.queue_name == 'orders-in'
         assert queue.topic == 'orders-topic'
-        assert queue.subscription == 'etlplus'
+        assert queue.subscription == 'False'
 
     @pytest.mark.parametrize(
         ('payload', 'match'),
@@ -55,6 +55,7 @@ class TestAzureServiceBusQueue:
                 {'name': 'orders', 'queue_name': '   '},
                 'requires "queue_name" or "topic"',
             ),
+            ({'name': 'orders', 'topic': '   '}, 'requires "queue_name" or "topic"'),
             ({'name': 'orders'}, 'requires "queue_name" or "topic"'),
             ({'name': 'orders', 'subscription': 'etlplus'}, 'requires "topic"'),
         ],
