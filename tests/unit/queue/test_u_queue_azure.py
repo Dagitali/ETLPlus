@@ -69,10 +69,17 @@ class TestAzureServiceBusQueue:
         with pytest.raises(ValueError, match=match):
             AzureServiceBusQueue.from_obj(payload)
 
-    def test_from_obj_requires_name(self) -> None:
+    @pytest.mark.parametrize(
+        'payload',
+        [
+            {'queue_name': 'orders-in'},
+            {'name': '   ', 'queue_name': 'orders-in'},
+        ],
+    )
+    def test_from_obj_requires_name(self, payload: dict[str, object]) -> None:
         """Test that :meth:`from_obj` requires a queue metadata name."""
         with pytest.raises(TypeError, match='AzureServiceBusQueue requires a "name"'):
-            AzureServiceBusQueue.from_obj({'queue_name': 'orders-in'})
+            AzureServiceBusQueue.from_obj(payload)
 
     def test_from_obj_returns_connector_options(self) -> None:
         """Test Azure Service Bus metadata parsing and option serialization."""
