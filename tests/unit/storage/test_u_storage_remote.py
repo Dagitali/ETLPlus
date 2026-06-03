@@ -10,7 +10,9 @@ import pytest
 
 from etlplus.storage import AbfsStorageBackend
 from etlplus.storage import AzureBlobStorageBackend
+from etlplus.storage import FtpStorageBackend
 from etlplus.storage import HdfsStorageBackend
+from etlplus.storage import HttpStorageBackend
 from etlplus.storage import RemoteStorageBackend
 from etlplus.storage import S3StorageBackend
 from etlplus.storage import StorageLocation
@@ -28,10 +30,20 @@ RemoteBackendType = type[RemoteStorageBackend]
 
 # SECTION: CONSTANTS ======================================================== #
 
-REMOTE_BACKEND_TYPES: tuple[RemoteBackendType, ...] = (
+IMPLEMENTED_REMOTE_BACKEND_TYPES: tuple[RemoteBackendType, ...] = (
     AbfsStorageBackend,
     AzureBlobStorageBackend,
     HdfsStorageBackend,
+    HttpStorageBackend,
+    S3StorageBackend,
+)
+
+REMOTE_BACKEND_TYPES: tuple[RemoteBackendType, ...] = (
+    AbfsStorageBackend,
+    AzureBlobStorageBackend,
+    FtpStorageBackend,
+    HdfsStorageBackend,
+    HttpStorageBackend,
     S3StorageBackend,
 )
 
@@ -52,6 +64,20 @@ VALIDATED_PROVIDER_CASES: tuple[
         'container',
         'azure-blob://container',
         'container name',
+    ),
+    (
+        FtpStorageBackend,
+        StorageScheme.FTP,
+        'example.com',
+        'ftp://example.com',
+        'host',
+    ),
+    (
+        HttpStorageBackend,
+        StorageScheme.HTTP,
+        'example.com',
+        'https://example.com',
+        'host',
     ),
     (
         S3StorageBackend,
@@ -76,6 +102,13 @@ class TestRemoteStorageBackend:
     ) -> None:
         """Test concrete remote backends use the shared remote base class."""
         assert issubclass(backend_type, RemoteStorageBackend)
+
+    @pytest.mark.parametrize('backend_type', IMPLEMENTED_REMOTE_BACKEND_TYPES)
+    def test_implemented_backends_do_not_use_stub_base(
+        self,
+        backend_type: RemoteBackendType,
+    ) -> None:
+        """Test implemented remote backends do not use placeholder behavior."""
         assert not issubclass(backend_type, StubStorageBackend)
 
     @pytest.mark.parametrize(
@@ -129,7 +162,7 @@ class TestRemoteStorageBackend:
     ) -> None:
         """Test that remote backends reject locations with the wrong scheme."""
         backend = backend_type()
-        location = StorageLocation.from_value('https://example.com/files/data.csv')
+        location = StorageLocation.from_value('data.csv')
 
         with pytest.raises(TypeError, match='only supports'):
             backend.ensure_parent_dir(location)
