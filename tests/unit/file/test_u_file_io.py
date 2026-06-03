@@ -70,19 +70,15 @@ class TestIoHelpers:
             ({'a': 1}, {'a': 1}),
             ([{'a': 1}, {'a': 2}], [{'a': 1}, {'a': 2}]),
         ):
-            assert (
-                mod.coerce_record_payload(valid_payload, format_name='JSON') == expected
-            )
+            result = mod.coerce_record_payload(valid_payload, format_name='JSON')
+            assert result == expected
 
         for invalid_payload, pattern in (
             ([{'a': 1}, 2], 'array must contain only objects'),
             ('bad', 'root must be an object'),
         ):
             with pytest.raises(TypeError, match=pattern):
-                mod.coerce_record_payload(
-                    invalid_payload,
-                    format_name='JSON',
-                )
+                mod.coerce_record_payload(invalid_payload, format_name='JSON')
 
     def test_normalize_records_contract(self) -> None:
         """Test record normalization for valid and invalid payloads."""
@@ -215,12 +211,12 @@ class TestIoHelpers:
         )
 
         assert result == {'ok': True}
-        assert len(pandas.calls) == 1
-        staged_path = pandas.calls[0]['path']
+        [call] = pandas.calls
+        staged_path = call['path']
         assert isinstance(staged_path, Path)
         assert staged_path.name == 'sample.sas7bdat'
-        assert pandas.calls[0]['payload'] == payload
-        assert pandas.calls[0]['format'] == 'sas7bdat'
+        assert call['payload'] == payload
+        assert call['format'] == 'sas7bdat'
         assert backend.calls == ['rb']
 
     def test_records_from_table(self) -> None:
