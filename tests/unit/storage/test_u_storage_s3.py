@@ -68,8 +68,8 @@ class TestS3StorageBackend:
         with pytest.raises(ValueError, match='object key'):
             backend.ensure_parent_dir(location)
 
-    def test_exists_raises_placeholder_error(self) -> None:
-        """Test that runtime S3 operations are explicit placeholders."""
+    def test_exists_raises_import_error_without_sdk(self) -> None:
+        """Test that S3 runtime needs the optional SDK package."""
         backend = S3StorageBackend()
         location = StorageLocation.from_value('s3://bucket/data.json')
         with pytest.raises(ImportError, match='boto3'):
