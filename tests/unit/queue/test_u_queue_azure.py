@@ -23,17 +23,13 @@ class TestAzureServiceBusQueue:
     """Unit tests for :class:`etlplus.queue.AzureServiceBusQueue`."""
 
     def test_from_obj_accepts_queue_alias(self) -> None:
-        """Test Azure queue alias parsing and omission of empty optional fields."""
+        """Test Azure queue alias parsing."""
         queue = AzureServiceBusQueue.from_obj(
             {'name': '  orders  ', 'queue': '  orders-in  '},
         )
 
         assert queue.name == 'orders'
         assert queue.queue_name == 'orders-in'
-        assert queue.to_connector_options() == {
-            'service': 'azure-service-bus',
-            'queue_name': 'orders-in',
-        }
 
     def test_from_obj_normalizes_optional_string_fields(self) -> None:
         """Test Azure Service Bus metadata trims optional target fields."""
@@ -99,4 +95,13 @@ class TestAzureServiceBusQueue:
             'queue_name': 'orders-in',
             'topic': 'orders-topic',
             'subscription': 'etlplus',
+        }
+
+    def test_to_connector_options_omits_empty_optional_fields(self) -> None:
+        """Test that empty optional Azure metadata does not appear in options."""
+        assert AzureServiceBusQueue.from_obj(
+            {'name': 'orders', 'queue': 'orders-in'},
+        ).to_connector_options() == {
+            'service': 'azure-service-bus',
+            'queue_name': 'orders-in',
         }
