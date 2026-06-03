@@ -56,6 +56,7 @@ REMOTE_PROVIDER_CASES: tuple[
         str,
         str,
         str,
+        str,
     ],
     ...,
 ] = (
@@ -67,6 +68,7 @@ REMOTE_PROVIDER_CASES: tuple[
         'filesystem/account authority',
         'filesystem path',
         'Azure Data Lake Storage Gen2',
+        'abfs://filesystem@example.dfs.core.windows.net/data.csv',
     ),
     (
         AzureBlobStorageBackend,
@@ -76,6 +78,7 @@ REMOTE_PROVIDER_CASES: tuple[
         'container name',
         'blob path',
         'Azure Blob',
+        'azure-blob://container/data.csv',
     ),
     (
         FtpStorageBackend,
@@ -85,6 +88,7 @@ REMOTE_PROVIDER_CASES: tuple[
         'host',
         'remote path',
         'FTP',
+        'ftp://example.com/data.csv',
     ),
     (
         HttpStorageBackend,
@@ -94,6 +98,7 @@ REMOTE_PROVIDER_CASES: tuple[
         'host',
         'URL path',
         'HTTP',
+        'https://example.com/data.csv',
     ),
     (
         S3StorageBackend,
@@ -103,6 +108,7 @@ REMOTE_PROVIDER_CASES: tuple[
         'bucket name',
         'object key',
         'S3',
+        's3://bucket/data.csv',
     ),
 )
 
@@ -122,6 +128,7 @@ class TestRemoteStorageBackend:
             'authority_label',
             'path_label',
             'service_name',
+            'valid_raw',
         ),
         REMOTE_PROVIDER_CASES,
     )
@@ -134,9 +141,10 @@ class TestRemoteStorageBackend:
         authority_label: str,
         path_label: str,
         service_name: str,
+        valid_raw: str,
     ) -> None:
         """Test that remote providers expose consistent validation metadata."""
-        del authority, missing_path_raw
+        del authority, missing_path_raw, valid_raw
         assert backend_type.scheme is scheme
         assert backend_type.authority_label == authority_label
         assert backend_type.path_label == path_label
@@ -167,6 +175,45 @@ class TestRemoteStorageBackend:
             'authority_label',
             'path_label',
             'service_name',
+            'valid_raw',
+        ),
+        REMOTE_PROVIDER_CASES,
+    )
+    def test_validate_accepts_valid_remote_location(
+        self,
+        backend_type: RemoteBackendType,
+        scheme: StorageScheme,
+        authority: str,
+        missing_path_raw: str,
+        authority_label: str,
+        path_label: str,
+        service_name: str,
+        valid_raw: str,
+    ) -> None:
+        """Test that remote backends accept well-formed provider locations."""
+        del (
+            scheme,
+            authority,
+            missing_path_raw,
+            authority_label,
+            path_label,
+            service_name,
+        )
+        backend = backend_type()
+        location = StorageLocation.from_value(valid_raw)
+
+        backend.ensure_parent_dir(location)
+
+    @pytest.mark.parametrize(
+        (
+            'backend_type',
+            'scheme',
+            'authority',
+            'missing_path_raw',
+            'authority_label',
+            'path_label',
+            'service_name',
+            'valid_raw',
         ),
         REMOTE_PROVIDER_CASES,
     )
@@ -179,9 +226,10 @@ class TestRemoteStorageBackend:
         authority_label: str,
         path_label: str,
         service_name: str,
+        valid_raw: str,
     ) -> None:
         """Test that remote backends reject locations without authority."""
-        del authority, missing_path_raw, path_label, service_name
+        del authority, missing_path_raw, path_label, service_name, valid_raw
         backend = backend_type()
         location = StorageLocation(
             raw=f'{scheme.value}:///data.csv',
@@ -202,6 +250,7 @@ class TestRemoteStorageBackend:
             'authority_label',
             'path_label',
             'service_name',
+            'valid_raw',
         ),
         REMOTE_PROVIDER_CASES,
     )
@@ -214,9 +263,10 @@ class TestRemoteStorageBackend:
         authority_label: str,
         path_label: str,
         service_name: str,
+        valid_raw: str,
     ) -> None:
         """Test that remote backends reject locations without resource paths."""
-        del scheme, authority, authority_label, service_name
+        del scheme, authority, authority_label, service_name, valid_raw
         backend = backend_type()
         location = StorageLocation.from_value(missing_path_raw)
 
