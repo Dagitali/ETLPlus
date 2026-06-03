@@ -23,17 +23,6 @@ from etlplus.storage import StorageLocation
 class TestLocalStorageBackend:
     """Unit tests for :class:`etlplus.storage.LocalStorageBackend`."""
 
-    def test_open_creates_parent_for_write_modes(self, tmp_path: Path) -> None:
-        """Test that write modes create missing parent directories."""
-        target = tmp_path / 'nested' / 'output.txt'
-        backend = LocalStorageBackend()
-        location = StorageLocation.from_value(target)
-
-        with backend.open(location, 'w', encoding='utf-8') as handle:
-            handle.write('payload')
-
-        assert target.read_text(encoding='utf-8') == 'payload'
-
     def test_delete_existing_directory(self, tmp_path: Path) -> None:
         """Test that delete removes empty directories."""
         target = tmp_path / 'folder'
@@ -69,6 +58,17 @@ class TestLocalStorageBackend:
         target.write_text('hello', encoding='utf-8')
         backend = LocalStorageBackend()
         assert backend.exists(StorageLocation.from_value(target)) is True
+
+    def test_open_creates_parent_for_write_modes(self, tmp_path: Path) -> None:
+        """Test that write modes create missing parent directories."""
+        target = tmp_path / 'nested' / 'output.txt'
+        backend = LocalStorageBackend()
+        location = StorageLocation.from_value(target)
+
+        with backend.open(location, 'w', encoding='utf-8') as handle:
+            handle.write('payload')
+
+        assert target.read_text(encoding='utf-8') == 'payload'
 
     def test_open_read_mode_skips_parent_creation(
         self,
