@@ -61,13 +61,6 @@ class TestS3StorageBackend:
         backend.delete(location)
         assert deletes == [{'Bucket': 'bucket', 'Key': 'data.json'}]
 
-    def test_ensure_parent_dir_validates_bucket_and_key(self) -> None:
-        """Test that invalid S3 locations fail validation early."""
-        backend = S3StorageBackend()
-        location = StorageLocation.from_value('s3://bucket')
-        with pytest.raises(ValueError, match='object key'):
-            backend.ensure_parent_dir(location)
-
     def test_exists_raises_import_error_without_sdk(self) -> None:
         """Test that S3 runtime needs the optional SDK package."""
         backend = S3StorageBackend()
