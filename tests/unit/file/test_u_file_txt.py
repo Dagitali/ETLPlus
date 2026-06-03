@@ -92,8 +92,8 @@ class TestTxt(RoundtripUnitModuleContract):
     @pytest.mark.parametrize(
         'payload',
         [
-            pytest.param('', id='empty_text'),
-            pytest.param([], id='empty_lines'),
+            '',
+            [],
         ],
     )
     def test_write_empty_payload_creates_empty_file(
@@ -113,28 +113,24 @@ class TestTxt(RoundtripUnitModuleContract):
     @pytest.mark.parametrize(
         ('payload', 'match'),
         [
-            pytest.param(
+            (
                 {'nope': 'value'},
                 'TXT payload',
-                id='mapping_without_text',
             ),
-            pytest.param(
+            (
                 {'text': 'alpha'},
                 'TXT payload',
-                id='legacy_mapping',
             ),
-            pytest.param(
+            (
                 [{'text': 1}],
                 'TXT payload',
-                id='legacy_record_without_string_text',
             ),
-            pytest.param(
+            (
                 [{'text': 'alpha'}, {'text': 'beta'}],
                 'TXT payload lists must contain',
-                id='legacy_record_list',
             ),
-            pytest.param([1], 'TXT payload', id='non_string_list_item'),
-            pytest.param(123, 'TXT payload', id='scalar'),
+            ([1], 'TXT payload'),
+            (123, 'TXT payload'),
         ],
     )
     def test_write_rejects_non_text_payloads(
