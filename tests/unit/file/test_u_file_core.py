@@ -137,6 +137,10 @@ def _install_core_handler_stub(
     return calls
 
 
+def _install_storage_backend(monkeypatch: pytest.MonkeyPatch, backend: object) -> None:
+    monkeypatch.setattr(core_mod, 'get_backend', lambda _value: backend)
+
+
 class _RemoteCallRecorder:
     """Remote storage backend test double recording simple operations."""
 
@@ -250,7 +254,7 @@ class TestFile:
     ) -> None:
         """Test that binary read operations use remote storage streams."""
         backend = _RemoteCallRecorder()
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+        _install_storage_backend(monkeypatch, backend)
 
         file = File('s3://bucket/data.bin')
         if operation == 'open':
@@ -534,17 +538,14 @@ class TestFile:
     ) -> None:
         """Test that missing remote objects raise using the raw URI."""
         backend = _RemoteCallRecorder(exists_result=False)
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+        _install_storage_backend(monkeypatch, backend)
 
         with pytest.raises(FileNotFoundError, match='s3://bucket/missing.json'):
             File('s3://bucket/missing.json', FileFormat.JSON).read()
 
         assert backend.calls == ['exists']
 
-    @pytest.mark.parametrize(
-        'operation',
-        ['delete', 'ensure_parent_dir', 'exists'],
-    )
+    @pytest.mark.parametrize('operation', ['delete', 'ensure_parent_dir', 'exists'])
     def test_remote_file_operations_delegate_to_storage_backend(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -552,14 +553,11 @@ class TestFile:
     ) -> None:
         """Test that simple remote file operations delegate to storage."""
         backend = _RemoteCallRecorder()
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+        _install_storage_backend(monkeypatch, backend)
 
         result = getattr(File('s3://bucket/data.json', FileFormat.JSON), operation)()
 
-        if operation == 'exists':
-            assert result is True
-        else:
-            assert result is None
+        assert result is (True if operation == 'exists' else None)
         assert backend.calls == [operation]
 
     def test_remote_read_stages_payload_through_storage_backend(
@@ -568,7 +566,7 @@ class TestFile:
     ) -> None:
         """Test that remote reads download to a local temp path first."""
         backend = RemoteBytesBackendStub(read_payload=b'{"name": "Ada"}')
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+        _install_storage_backend(monkeypatch, backend)
 
         result = File('s3://bucket/data.json', FileFormat.JSON).read()
 
@@ -590,7 +588,7 @@ class TestFile:
     ) -> None:
         """Test that remote writes upload the local staged file content."""
         backend = RemoteBytesBackendStub()
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+        _install_storage_backend(monkeypatch, backend)
 
         written = File('s3://bucket/data.json', FileFormat.JSON).write(
             {'name': 'Ada'},
@@ -710,7 +708,7 @@ class TestFile:
     ) -> None:
         """Test that remote touch creates an empty object when absent."""
         backend = RemoteBytesBackendStub(exists_result=False)
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+        _install_storage_backend(monkeypatch, backend)
 
         File('s3://bucket/data.json', FileFormat.JSON).touch()
 
@@ -723,7 +721,7 @@ class TestFile:
     ) -> None:
         """Test that remote touch avoids truncating existing objects."""
         backend = RemoteBytesBackendStub()
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+        _install_storage_backend(monkeypatch, backend)
 
         File('s3://bucket/data.json', FileFormat.JSON).touch()
 
@@ -763,7 +761,7 @@ class TestFile:
     ) -> None:
         """Test that :meth:`File.write_bytes` uses the storage backend."""
         backend = RemoteBytesBackendStub()
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+        _install_storage_backend(monkeypatch, backend)
 
         File('s3://bucket/data.bin').write_bytes(b'payload')
 
@@ -903,7 +901,7 @@ class TestFileCoreDispatch:
     ) -> None:
         """Test that remote write dispatch uploads the staged file payload."""
         backend = RemoteBytesBackendStub()
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+        _install_storage_backend(monkeypatch, backend)
 
         with File(uri, file_format)._dispatch_path(for_write=True) as dispatch_path:
             assert dispatch_path.name == expected_name
@@ -918,7 +916,7 @@ class TestFileCoreDispatch:
     ) -> None:
         """Test that upload-open failures propagate after staging writes."""
         backend = RemoteBytesBackendStub(open_error=RuntimeError('upload failed'))
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+        _install_storage_backend(monkeypatch, backend)
 
         with pytest.raises(RuntimeError, match='upload failed'):
             with File('s3://bucket', FileFormat.JSON)._dispatch_path(
