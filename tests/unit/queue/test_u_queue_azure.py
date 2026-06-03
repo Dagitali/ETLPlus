@@ -23,7 +23,7 @@ class TestAzureServiceBusQueue:
     """Unit tests for :class:`etlplus.queue.AzureServiceBusQueue`."""
 
     def test_from_obj_accepts_queue_alias(self) -> None:
-        """Test Azure Service Bus queue metadata accepts the ``queue`` alias."""
+        """Test Azure queue alias parsing and omission of empty optional fields."""
         queue = AzureServiceBusQueue.from_obj(
             {'name': '  orders  ', 'queue': '  orders-in  '},
         )
