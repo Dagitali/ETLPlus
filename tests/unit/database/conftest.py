@@ -6,9 +6,18 @@ Shared fixtures for database unit tests.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 import pytest
 
 from etlplus.database._schema import TableSpec
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type FileReadPatcher = Callable[[Any, Any], None]
+
 
 # SECTION: FIXTURES ========================================================= #
 
@@ -35,6 +44,19 @@ def ddl_sample_spec_fixture() -> dict[str, object]:
         ],
         'foreign_keys': [],
     }
+
+
+@pytest.fixture(name='patch_file_read')
+def patch_file_read_fixture(monkeypatch: pytest.MonkeyPatch) -> FileReadPatcher:
+    """Patch a file wrapper class so ``read`` returns a test payload."""
+
+    def _patch(file_cls: Any, payload: Any) -> None:
+        def fake_read(self: Any, *_args: Any, **_kwargs: Any) -> Any:
+            return payload(self.path) if callable(payload) else payload
+
+        monkeypatch.setattr(file_cls, 'read', fake_read)
+
+    return _patch
 
 
 @pytest.fixture(name='rich_spec')
