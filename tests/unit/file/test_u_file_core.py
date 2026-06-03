@@ -279,19 +279,6 @@ def _read_with_known_io_skip(
 class TestFile:
     """Unit tests for :class:`etlplus.file.File`."""
 
-    def test_delete_delegates_to_remote_storage_backend(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that remote deletes delegate to the storage layer."""
-        backend = _RemoteCallRecorder()
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
-
-        File('s3://bucket/data.json', FileFormat.JSON).delete()
-
-        assert len(backend.calls) == 1
-        assert backend.calls[0][0] == 'delete'
-
     def test_delete_removes_local_files(
         self,
         tmp_path: Path,
@@ -345,31 +332,6 @@ class TestFile:
         File(path, FileFormat.JSON).ensure_parent_dir()
 
         assert path.parent.exists()
-
-    def test_ensure_parent_dir_delegates_to_remote_storage_backend(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that remote parent preparation delegates to storage."""
-        backend = _RemoteCallRecorder()
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
-
-        File('s3://bucket/data.json', FileFormat.JSON).ensure_parent_dir()
-
-        assert len(backend.calls) == 1
-        assert backend.calls[0][0] == 'ensure_parent_dir'
-
-    def test_exists_delegates_to_remote_storage_backend(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that remote existence checks delegate to the storage layer."""
-        backend = _RemoteCallRecorder()
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
-
-        assert File('s3://bucket/data.json', FileFormat.JSON).exists() is True
-        assert len(backend.calls) == 1
-        assert backend.calls[0][0] == 'exists'
 
     def test_exists_returns_false_for_missing_local_files(
         self,
@@ -474,6 +436,28 @@ class TestFile:
         assert repr(File(path, FileFormat.JSON)) == (
             f'File(path={path!r}, file_format={FileFormat.JSON!r})'
         )
+
+    @pytest.mark.parametrize(
+        'operation',
+        ['delete', 'ensure_parent_dir', 'exists'],
+    )
+    def test_remote_file_operations_delegate_to_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        operation: str,
+    ) -> None:
+        """Test that simple remote file operations delegate to storage."""
+        backend = _RemoteCallRecorder()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+
+        result = getattr(File('s3://bucket/data.json', FileFormat.JSON), operation)()
+
+        if operation == 'exists':
+            assert result is True
+        else:
+            assert result is None
+        assert len(backend.calls) == 1
+        assert backend.calls[0][0] == operation
 
     def test_touch_creates_missing_local_file(
         self,
