@@ -35,22 +35,25 @@ class TestAzureServiceBusQueue:
             'queue_name': 'orders-in',
         }
 
-    def test_from_obj_rejects_blank_target(self) -> None:
-        """Blank Azure Service Bus targets should parse as absent."""
-        with pytest.raises(ValueError, match='requires "queue_name" or "topic"'):
-            AzureServiceBusQueue.from_obj({'name': 'orders', 'queue_name': '   '})
-
-    def test_from_obj_rejects_missing_target(self) -> None:
-        """Test Azure Service Bus metadata requires a queue or topic."""
-        with pytest.raises(ValueError, match='requires "queue_name" or "topic"'):
-            AzureServiceBusQueue.from_obj({'name': 'orders'})
-
-    def test_from_obj_rejects_subscription_without_topic(self) -> None:
-        """Test Azure Service Bus subscriptions require a topic."""
-        with pytest.raises(ValueError, match='requires "topic"'):
-            AzureServiceBusQueue.from_obj(
-                {'name': 'orders', 'subscription': 'etlplus'},
-            )
+    @pytest.mark.parametrize(
+        ('payload', 'match'),
+        [
+            (
+                {'name': 'orders', 'queue_name': '   '},
+                'requires "queue_name" or "topic"',
+            ),
+            ({'name': 'orders'}, 'requires "queue_name" or "topic"'),
+            ({'name': 'orders', 'subscription': 'etlplus'}, 'requires "topic"'),
+        ],
+    )
+    def test_from_obj_rejects_invalid_targets(
+        self,
+        payload: dict[str, object],
+        match: str,
+    ) -> None:
+        """Test Azure Service Bus metadata requires a valid queue or topic."""
+        with pytest.raises(ValueError, match=match):
+            AzureServiceBusQueue.from_obj(payload)
 
     def test_from_obj_returns_connector_options(self) -> None:
         """Test Azure Service Bus metadata parsing and option serialization."""
