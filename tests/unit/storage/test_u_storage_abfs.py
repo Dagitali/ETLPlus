@@ -24,7 +24,7 @@ from .pytest_storage_support import FakeContentSettings
 class TestAbfsStorageBackend:
     """Unit tests for :class:`etlplus.storage.AbfsStorageBackend`."""
 
-    def test_account_url_from_authority_uses_account_host(self) -> None:
+    def test_account_url_from_authority(self) -> None:
         """Test that ABFS account URLs are derived from the authority host."""
         backend = AbfsStorageBackend()
         assert (
