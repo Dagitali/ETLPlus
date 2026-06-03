@@ -167,6 +167,18 @@ class TestS3StorageBackend:
         with backend.open(location, encoding='utf-8') as handle:
             assert handle.read() == '{"ok": true}'
 
+    def test_open_rejects_unexpected_kwargs(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that S3 open rejects unsupported keyword arguments."""
+        backend = S3StorageBackend()
+        location = StorageLocation.from_value('s3://bucket/data.bin')
+        monkeypatch.setattr(backend, '_client', lambda: object())
+
+        with pytest.raises(TypeError, match='Unsupported S3 open'):
+            backend.open(location, 'rb', unsupported=True)
+
     def test_open_writes_binary_payload(
         self,
         monkeypatch: pytest.MonkeyPatch,
@@ -194,18 +206,6 @@ class TestS3StorageBackend:
                 'Key': 'data.bin',
             },
         ]
-
-    def test_open_rejects_unexpected_kwargs(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that S3 open rejects unsupported keyword arguments."""
-        backend = S3StorageBackend()
-        location = StorageLocation.from_value('s3://bucket/data.bin')
-        monkeypatch.setattr(backend, '_client', lambda: object())
-
-        with pytest.raises(TypeError, match='Unsupported S3 open'):
-            backend.open(location, 'rb', unsupported=True)
 
     def test_open_writes_content_type_when_provided(
         self,
