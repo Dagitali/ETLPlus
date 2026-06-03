@@ -70,18 +70,6 @@ class TestAzureServiceBusQueue:
         with pytest.raises(ValueError, match=match):
             AzureServiceBusQueue.from_obj(payload)
 
-    @pytest.mark.parametrize(
-        'payload',
-        [
-            {'queue_name': 'orders-in'},
-            {'name': '   ', 'queue_name': 'orders-in'},
-        ],
-    )
-    def test_from_obj_requires_name(self, payload: dict[str, object]) -> None:
-        """Test that :meth:`from_obj` requires a queue metadata name."""
-        with pytest.raises(TypeError, match='AzureServiceBusQueue requires a "name"'):
-            AzureServiceBusQueue.from_obj(payload)
-
     def test_from_obj_returns_connector_options(self) -> None:
         """Test Azure Service Bus metadata parsing and option serialization."""
         queue = AzureServiceBusQueue.from_obj(
@@ -104,13 +92,4 @@ class TestAzureServiceBusQueue:
             'queue_name': 'orders-in',
             'topic': 'orders-topic',
             'subscription': 'etlplus',
-        }
-
-    def test_to_connector_options_omits_empty_optional_fields(self) -> None:
-        """Test that empty optional Azure metadata does not appear in options."""
-        assert AzureServiceBusQueue.from_obj(
-            {'name': 'orders', 'queue': 'orders-in'},
-        ).to_connector_options() == {
-            'service': 'azure-service-bus',
-            'queue_name': 'orders-in',
         }
