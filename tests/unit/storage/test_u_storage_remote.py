@@ -1,0 +1,251 @@
+"""
+:mod:`tests.unit.storage.test_u_storage_remote` module.
+
+Unit tests for :mod:`etlplus.storage._remote`.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Literal
+
+import pytest
+
+from etlplus.storage import AbfsStorageBackend
+from etlplus.storage import AzureBlobStorageBackend
+from etlplus.storage import FtpStorageBackend
+from etlplus.storage import HdfsStorageBackend
+from etlplus.storage import HttpStorageBackend
+from etlplus.storage import RemoteStorageBackend
+from etlplus.storage import S3StorageBackend
+from etlplus.storage import StorageLocation
+from etlplus.storage import StorageScheme
+from etlplus.storage import StubStorageBackend
+
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+RemoteBackendType = type[RemoteStorageBackend]
+RemoteOperationCase = tuple[str, tuple[object, ...], dict[str, object]]
+RemoteValidationKind = Literal['missing_authority', 'missing_path']
+
+
+# SECTION: DATA CLASSES ===================================================== #
+
+
+@dataclass(frozen=True, slots=True)
+class RemoteProviderCase:
+    """Provider metadata used by shared remote-backend contract tests."""
+
+    backend_type: RemoteBackendType
+    scheme: StorageScheme
+    authority_label: str
+    path_label: str
+    service_name: str
+    package_name: str | None
+    missing_path_raw: str
+    valid_raw: str
+    uses_stub_base: bool = False
+
+    def invalid_location(
+        self,
+        validation_kind: RemoteValidationKind,
+    ) -> tuple[StorageLocation, str]:
+        """Return one invalid location and the expected validation-message text."""
+        if validation_kind == 'missing_authority':
+            return (
+                StorageLocation(
+                    raw=f'{self.scheme.value}:///data.csv',
+                    scheme=self.scheme,
+                    authority='',
+                    path='data.csv',
+                ),
+                self.authority_label,
+            )
+        return StorageLocation.from_value(self.missing_path_raw), self.path_label
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+REMOTE_BACKEND_TYPES: tuple[RemoteBackendType, ...] = (
+    AbfsStorageBackend,
+    AzureBlobStorageBackend,
+    FtpStorageBackend,
+    HdfsStorageBackend,
+    HttpStorageBackend,
+    S3StorageBackend,
+)
+
+REMOTE_OPERATION_CASES: tuple[RemoteOperationCase, ...] = (
+    ('delete', (), {}),
+    ('exists', (), {}),
+    ('open', ('rb',), {}),
+)
+
+REMOTE_PROVIDER_VALIDATION_KINDS: tuple[RemoteValidationKind, ...] = (
+    'missing_authority',
+    'missing_path',
+)
+
+REMOTE_PROVIDER_CASES: tuple[RemoteProviderCase, ...] = (
+    RemoteProviderCase(
+        backend_type=AbfsStorageBackend,
+        scheme=StorageScheme.ABFS,
+        authority_label='filesystem/account authority',
+        path_label='filesystem path',
+        service_name='Azure Data Lake Storage Gen2',
+        package_name='azure-storage-file-datalake',
+        missing_path_raw='abfs://filesystem@example.dfs.core.windows.net',
+        valid_raw='abfs://filesystem@example.dfs.core.windows.net/data.csv',
+    ),
+    RemoteProviderCase(
+        backend_type=AzureBlobStorageBackend,
+        scheme=StorageScheme.AZURE_BLOB,
+        authority_label='container name',
+        path_label='blob path',
+        service_name='Azure Blob',
+        package_name='azure-storage-blob',
+        missing_path_raw='azure-blob://container',
+        valid_raw='azure-blob://container/data.csv',
+    ),
+    RemoteProviderCase(
+        backend_type=FtpStorageBackend,
+        scheme=StorageScheme.FTP,
+        authority_label='host',
+        path_label='remote path',
+        service_name='FTP',
+        package_name='ftplib',
+        missing_path_raw='ftp://example.com',
+        valid_raw='ftp://example.com/data.csv',
+        uses_stub_base=True,
+    ),
+    RemoteProviderCase(
+        backend_type=HttpStorageBackend,
+        scheme=StorageScheme.HTTP,
+        authority_label='host',
+        path_label='URL path',
+        service_name='HTTP',
+        package_name=None,
+        missing_path_raw='https://example.com',
+        valid_raw='https://example.com/data.csv',
+    ),
+    RemoteProviderCase(
+        backend_type=S3StorageBackend,
+        scheme=StorageScheme.S3,
+        authority_label='bucket name',
+        path_label='object key',
+        service_name='S3',
+        package_name='boto3',
+        missing_path_raw='s3://bucket',
+        valid_raw='s3://bucket/data.csv',
+    ),
+)
+
+
+# SECTION: TESTS ============================================================ #
+
+
+class TestRemoteStorageBackend:
+    """Unit tests for shared remote-backend validation."""
+
+    @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
+    def test_backend_metadata_matches_provider_contract(
+        self,
+        case: RemoteProviderCase,
+    ) -> None:
+        """Test that remote providers expose consistent validation metadata."""
+        assert case.backend_type.scheme is case.scheme
+        assert case.backend_type.authority_label == case.authority_label
+        assert case.backend_type.path_label == case.path_label
+        assert case.backend_type.service_name == case.service_name
+        assert getattr(case.backend_type, 'package_name', None) == case.package_name
+
+    @pytest.mark.parametrize('backend_type', REMOTE_BACKEND_TYPES)
+    def test_concrete_backends_use_remote_backend_base(
+        self,
+        backend_type: RemoteBackendType,
+    ) -> None:
+        """Test concrete remote backends use the shared remote base class."""
+        assert issubclass(backend_type, RemoteStorageBackend)
+
+    @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
+    @pytest.mark.parametrize('validation_kind', REMOTE_PROVIDER_VALIDATION_KINDS)
+    @pytest.mark.parametrize(('method_name', 'args', 'kwargs'), REMOTE_OPERATION_CASES)
+    def test_operations_reject_invalid_locations_before_runtime_behavior(
+        self,
+        case: RemoteProviderCase,
+        validation_kind: RemoteValidationKind,
+        method_name: str,
+        args: tuple[object, ...],
+        kwargs: dict[str, object],
+    ) -> None:
+        """Test public remote operations reject invalid locations consistently."""
+        backend = case.backend_type()
+        location, match = case.invalid_location(validation_kind)
+
+        with pytest.raises(ValueError, match=match):
+            getattr(backend, method_name)(location, *args, **kwargs)
+
+    @pytest.mark.parametrize('backend_type', REMOTE_BACKEND_TYPES)
+    @pytest.mark.parametrize(('method_name', 'args', 'kwargs'), REMOTE_OPERATION_CASES)
+    def test_operations_reject_wrong_scheme_before_runtime_behavior(
+        self,
+        backend_type: RemoteBackendType,
+        method_name: str,
+        args: tuple[object, ...],
+        kwargs: dict[str, object],
+    ) -> None:
+        """Test public remote operations reject wrong schemes consistently."""
+        backend = backend_type()
+        location = StorageLocation.from_value('data.csv')
+
+        with pytest.raises(TypeError, match='only supports'):
+            getattr(backend, method_name)(location, *args, **kwargs)
+
+    @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
+    def test_provider_stub_status_matches_contract(
+        self,
+        case: RemoteProviderCase,
+    ) -> None:
+        """Test provider placeholder status matches shared backend contracts."""
+        assert issubclass(case.backend_type, StubStorageBackend) is case.uses_stub_base
+
+    @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
+    def test_validate_accepts_valid_remote_location(
+        self,
+        case: RemoteProviderCase,
+    ) -> None:
+        """Test that remote backends accept well-formed provider locations."""
+        backend = case.backend_type()
+        location = StorageLocation.from_value(case.valid_raw)
+
+        backend.ensure_parent_dir(location)
+
+    @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
+    @pytest.mark.parametrize('validation_kind', REMOTE_PROVIDER_VALIDATION_KINDS)
+    def test_validate_rejects_invalid_locations(
+        self,
+        case: RemoteProviderCase,
+        validation_kind: RemoteValidationKind,
+    ) -> None:
+        """Test that remote backends reject invalid locations."""
+        backend = case.backend_type()
+        location, match = case.invalid_location(validation_kind)
+
+        with pytest.raises(ValueError, match=match):
+            backend.ensure_parent_dir(location)
+
+    @pytest.mark.parametrize('backend_type', REMOTE_BACKEND_TYPES)
+    def test_validate_rejects_wrong_scheme(
+        self,
+        backend_type: RemoteBackendType,
+    ) -> None:
+        """Test that remote backends reject locations with the wrong scheme."""
+        backend = backend_type()
+        location = StorageLocation.from_value('data.csv')
+
+        with pytest.raises(TypeError, match='only supports'):
+            backend.ensure_parent_dir(location)
