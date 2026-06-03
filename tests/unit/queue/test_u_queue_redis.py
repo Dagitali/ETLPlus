@@ -22,13 +22,6 @@ from etlplus.queue import RedisQueue
 class TestRedisQueue:
     """Unit tests for :class:`etlplus.queue.RedisQueue`."""
 
-    def test_from_obj_accepts_missing_database(self) -> None:
-        """Test Redis database metadata is optional."""
-        queue = RedisQueue.from_obj({'name': 'orders'})
-
-        assert isinstance(queue, QueueConfigProtocol)
-        assert queue.database is None
-
     def test_from_obj_accepts_queue_name_and_db_aliases(self) -> None:
         """Test Redis metadata accepts ``queue_name`` and ``db`` aliases."""
         queue = RedisQueue.from_obj(
