@@ -44,14 +44,6 @@ class TestRemoteStorageBackend:
         assert issubclass(backend_type, RemoteStorageBackend)
         assert not issubclass(backend_type, StubStorageBackend)
 
-    def test_validate_rejects_wrong_scheme(self) -> None:
-        """Test that remote backends reject locations with the wrong scheme."""
-        backend = S3StorageBackend()
-        location = StorageLocation.from_value('https://example.com/files/data.csv')
-
-        with pytest.raises(TypeError, match='only supports'):
-            backend.ensure_parent_dir(location)
-
     def test_validate_requires_authority(self) -> None:
         """Test that remote backends reject locations without authority."""
         backend = S3StorageBackend()
@@ -63,4 +55,12 @@ class TestRemoteStorageBackend:
         )
 
         with pytest.raises(ValueError, match='bucket name'):
+            backend.ensure_parent_dir(location)
+
+    def test_validate_rejects_wrong_scheme(self) -> None:
+        """Test that remote backends reject locations with the wrong scheme."""
+        backend = S3StorageBackend()
+        location = StorageLocation.from_value('https://example.com/files/data.csv')
+
+        with pytest.raises(TypeError, match='only supports'):
             backend.ensure_parent_dir(location)
