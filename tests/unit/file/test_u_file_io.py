@@ -7,7 +7,6 @@ Unit tests for :mod:`etlplus.file._io`.
 from __future__ import annotations
 
 from io import BytesIO
-from io import StringIO
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +15,7 @@ import pytest
 from etlplus.file import _io as mod
 
 from .pytest_file_support import RemoteBytesBackendStub
+from .pytest_file_support import RemoteTextBackendStub
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -53,22 +53,6 @@ class _PandasReadSasStub:
         """Capture calls and return a sentinel object."""
         self.calls.append({'path': path, **kwargs})
         return {'ok': True}
-
-
-class _RemoteTextWriter(StringIO):
-    """Capture text written through one storage-backed file handle."""
-
-    def __init__(
-        self,
-        bucket: list[str],
-    ) -> None:
-        super().__init__()
-        self._bucket = bucket
-
-    def close(self) -> None:
-        """Persist captured text before closing the handle."""
-        self._bucket.append(self.getvalue())
-        super().close()
 
 
 # SECTION: TESTS ============================================================ #
@@ -168,29 +152,8 @@ class TestIoHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test delimited helpers against one storage-backed remote location."""
-        writes: list[str] = []
-
-        class FakeBackend:
-            """Minimal remote backend for delimited helper tests."""
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Accept parent preparation for remote writes."""
-                del location
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> StringIO:
-                """Return one text-mode handle for the requested mode."""
-                del location, kwargs
-                if mode == 'r':
-                    return StringIO('a,b\n1,2\n')
-                assert mode == 'w'
-                return _RemoteTextWriter(writes)
-
-        monkeypatch.setattr(mod, 'get_backend', lambda location: FakeBackend())
+        backend = RemoteTextBackendStub(read_payload='a,b\n1,2\n')
+        monkeypatch.setattr(mod, 'get_backend', lambda location: backend)
 
         uri = 's3://bucket/rows.csv'
         count = mod.write_delimited(
@@ -201,8 +164,10 @@ class TestIoHelpers:
         )
 
         assert count == 1
-        assert writes == ['a,b\r\n1,2\r\n']
+        assert backend.calls == ['ensure_parent_dir', 'w']
+        assert backend.uploads == ['a,b\r\n1,2\r\n']
         assert mod.read_delimited(uri, delimiter=',') == [{'a': '1', 'b': '2'}]
+        assert backend.calls == ['ensure_parent_dir', 'w', 'r']
 
     def test_read_and_write_text(
         self,
@@ -219,35 +184,16 @@ class TestIoHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test text helpers against one storage-backed remote location."""
-        writes: list[str] = []
-
-        class FakeBackend:
-            """Minimal remote backend for text helper tests."""
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Accept parent preparation for remote writes."""
-                del location
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> StringIO:
-                """Return one text-mode handle for the requested mode."""
-                del location, kwargs
-                if mode == 'r':
-                    return StringIO('line\n')
-                assert mode == 'w'
-                return _RemoteTextWriter(writes)
-
-        monkeypatch.setattr(mod, 'get_backend', lambda location: FakeBackend())
+        backend = RemoteTextBackendStub(read_payload='line\n')
+        monkeypatch.setattr(mod, 'get_backend', lambda location: backend)
 
         uri = 's3://bucket/data.txt'
         mod.write_text(uri, 'line', trailing_newline=True)
 
-        assert writes == ['line\n']
+        assert backend.calls == ['ensure_parent_dir', 'w']
+        assert backend.uploads == ['line\n']
         assert mod.read_text(uri) == 'line\n'
+        assert backend.calls == ['ensure_parent_dir', 'w', 'r']
 
     def test_read_sas_table_without_format_hint_omits_format_kwarg(
         self,
