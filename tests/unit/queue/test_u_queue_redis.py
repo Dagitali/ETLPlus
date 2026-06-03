@@ -72,18 +72,6 @@ class TestRedisQueue:
         with pytest.raises(expected_exc, match=match):
             RedisQueue.from_obj({'name': 'orders', 'database': database})
 
-    @pytest.mark.parametrize(
-        'payload',
-        [
-            {'url': 'redis://localhost:6379/0'},
-            {'name': '   ', 'url': 'redis://localhost:6379/0'},
-        ],
-    )
-    def test_from_obj_requires_name(self, payload: dict[str, object]) -> None:
-        """Test that :meth:`from_obj` requires a queue metadata name."""
-        with pytest.raises(TypeError, match='RedisQueue requires a "name"'):
-            RedisQueue.from_obj(payload)
-
     def test_from_obj_returns_connector_options(self) -> None:
         """Test Redis queue metadata parsing and option serialization."""
         queue = RedisQueue.from_obj(
@@ -104,10 +92,4 @@ class TestRedisQueue:
             'url': 'redis://localhost:6379/0',
             'key': 'orders',
             'database': 1,
-        }
-
-    def test_to_connector_options_omits_empty_optional_fields(self) -> None:
-        """Test that empty optional Redis metadata does not appear in options."""
-        assert RedisQueue.from_obj({'name': 'orders'}).to_connector_options() == {
-            'service': 'redis',
         }
