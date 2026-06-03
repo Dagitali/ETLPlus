@@ -48,6 +48,7 @@ from .pytest_file_core_cases import UNKNOWN_FORMAT_CASE_IDS
 from .pytest_file_core_cases import UNKNOWN_FORMAT_CASES
 from .pytest_file_core_cases import XML_ROUNDTRIP_NORMALIZED_FORMATS
 from .pytest_file_core_cases import FormatPayload
+from .pytest_file_support import CaptureBytesUpload
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -133,19 +134,6 @@ def _install_core_handler_stub(
 
     monkeypatch.setattr(core_mod, 'get_handler', _get_handler)
     return calls
-
-
-class _CaptureUpload(BytesIO):
-    """Writable remote upload stream test double."""
-
-    def __init__(self, uploads: list[bytes]) -> None:
-        self._uploads = uploads
-        super().__init__()
-
-    def close(self) -> None:
-        """Capture uploaded bytes before closing the stream."""
-        self._uploads.append(self.getvalue())
-        super().close()
 
 
 class _FakeHttpResponse:
@@ -515,11 +503,11 @@ class TestFile:
                 location: object,
                 mode: str = 'r',
                 **kwargs: object,
-            ) -> _CaptureUpload:
+            ) -> CaptureBytesUpload:
                 """Capture the write open request and return a binary sink."""
                 del location, kwargs
                 assert mode == 'wb'
-                return _CaptureUpload(uploads)
+                return CaptureBytesUpload(uploads)
 
         monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
 
@@ -568,11 +556,11 @@ class TestFile:
                 location: object,
                 mode: str = 'r',
                 **kwargs: object,
-            ) -> _CaptureUpload:
+            ) -> CaptureBytesUpload:
                 """Return a writable stream for the new object."""
                 del location, kwargs
                 assert mode == 'wb'
-                return _CaptureUpload(uploads)
+                return CaptureBytesUpload(uploads)
 
         backend = FakeBackend()
         monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
@@ -819,11 +807,11 @@ class TestFile:
                 location: object,
                 mode: str = 'r',
                 **kwargs: object,
-            ) -> _CaptureUpload:
+            ) -> CaptureBytesUpload:
                 """Return a writable byte stream for the remote object."""
                 del location, kwargs
                 assert mode == 'wb'
-                return _CaptureUpload(uploads)
+                return CaptureBytesUpload(uploads)
 
         monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
 
@@ -1136,11 +1124,11 @@ class TestFileCoreDispatch:
                 location: object,
                 mode: str = 'r',
                 **kwargs: object,
-            ) -> _CaptureUpload:
+            ) -> CaptureBytesUpload:
                 """Return one writable upload target."""
                 del location, kwargs
                 calls.append(mode)
-                return _CaptureUpload(uploads)
+                return CaptureBytesUpload(uploads)
 
         monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
 
