@@ -32,43 +32,31 @@ class TestHttpStorageBackend:
         with pytest.raises(ValueError, match='read-only'):
             backend.delete(location)
 
-    def test_exists_falls_back_to_get_when_head_not_supported(self) -> None:
-        """Test that HTTP exists falls back to GET when HEAD is unsupported."""
-        session = FakeHttpSession(head_status=405, get_status=200)
+    @pytest.mark.parametrize(
+        ('head_status', 'get_status', 'expected_exists'),
+        [
+            (200, 200, True),
+            (404, 200, False),
+            (405, 200, True),
+            (405, 404, False),
+        ],
+    )
+    def test_exists_uses_head_and_get_fallback(
+        self,
+        head_status: int,
+        get_status: int,
+        expected_exists: bool,
+    ) -> None:
+        """Test that HTTP existence checks handle HEAD and GET outcomes."""
+        session = FakeHttpSession(head_status=head_status, get_status=get_status)
         backend = HttpStorageBackend(session=session)
         location = StorageLocation.from_value('https://example.com/files/data.csv')
+        expected_calls = [('head', 'https://example.com/files/data.csv', True)]
+        if head_status in {405, 501}:
+            expected_calls.append(('get', 'https://example.com/files/data.csv', True))
 
-        assert backend.exists(location) is True
-        assert session.calls == [
-            ('head', 'https://example.com/files/data.csv', True),
-            ('get', 'https://example.com/files/data.csv', True),
-        ]
-
-    def test_exists_returns_false_for_not_found(self) -> None:
-        """Test that HTTP exists returns false for 404 responses."""
-        backend = HttpStorageBackend(session=FakeHttpSession(head_status=404))
-        location = StorageLocation.from_value('https://example.com/files/data.csv')
-
-        assert backend.exists(location) is False
-
-    def test_exists_returns_true_for_successful_head(self) -> None:
-        """Test that HTTP exists returns true for successful HEAD calls."""
-        session = FakeHttpSession(head_status=200)
-        backend = HttpStorageBackend(session=session)
-        location = StorageLocation.from_value('https://example.com/files/data.csv')
-
-        assert backend.exists(location) is True
-        assert session.calls == [
-            ('head', 'https://example.com/files/data.csv', True),
-        ]
-
-    def test_exists_returns_false_when_get_fallback_is_not_found(self) -> None:
-        """Test that HTTP exists treats a 404 fallback GET as missing."""
-        session = FakeHttpSession(head_status=405, get_status=404)
-        backend = HttpStorageBackend(session=session)
-        location = StorageLocation.from_value('https://example.com/files/data.csv')
-
-        assert backend.exists(location) is False
+        assert backend.exists(location) is expected_exists
+        assert session.calls == expected_calls
 
     def test_open_raises_file_not_found_for_missing_resource(self) -> None:
         """Test that HTTP open maps 404 responses to FileNotFoundError."""
