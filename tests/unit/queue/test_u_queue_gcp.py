@@ -22,18 +22,53 @@ from etlplus.queue import QueueService
 class TestGcpPubSubQueue:
     """Unit tests for :class:`etlplus.queue.GcpPubSubQueue`."""
 
-    def test_from_obj_rejects_missing_project(self) -> None:
-        """Test Google Cloud Pub/Sub metadata requires a project."""
-        with pytest.raises(ValueError, match='requires "project"'):
-            GcpPubSubQueue.from_obj(
-                {'name': 'orders', 'subscription': 'etlplus'},
-            )
+    def test_from_obj_normalizes_optional_string_fields(self) -> None:
+        """Test Google Cloud Pub/Sub metadata trims optional target fields."""
+        queue = GcpPubSubQueue.from_obj(
+            {
+                'name': 'orders',
+                'project': '  example-project  ',
+                'topic': '  orders-topic  ',
+                'subscription': '  etlplus  ',
+            },
+        )
 
-    def test_from_obj_rejects_missing_target(self) -> None:
-        """Test Google Cloud Pub/Sub metadata requires a topic or subscription."""
-        with pytest.raises(ValueError, match='requires "topic" or "subscription"'):
-            GcpPubSubQueue.from_obj(
+        assert queue.project == 'example-project'
+        assert queue.topic == 'orders-topic'
+        assert queue.subscription == 'etlplus'
+
+    @pytest.mark.parametrize(
+        ('payload', 'match'),
+        [
+            ({'name': 'orders', 'subscription': 'etlplus'}, 'requires "project"'),
+            (
+                {'name': 'orders', 'project': '   ', 'subscription': 'etlplus'},
+                'requires "project"',
+            ),
+            (
                 {'name': 'orders', 'project': 'example-project'},
+                'requires "topic" or "subscription"',
+            ),
+            (
+                {'name': 'orders', 'project': 'example-project', 'topic': '   '},
+                'requires "topic" or "subscription"',
+            ),
+        ],
+    )
+    def test_from_obj_rejects_invalid_targets(
+        self,
+        payload: dict[str, object],
+        match: str,
+    ) -> None:
+        """Test Google Cloud Pub/Sub metadata requires valid target fields."""
+        with pytest.raises(ValueError, match=match):
+            GcpPubSubQueue.from_obj(payload)
+
+    def test_from_obj_requires_name(self) -> None:
+        """Test that :meth:`from_obj` requires a queue metadata name."""
+        with pytest.raises(TypeError, match='GcpPubSubQueue requires a "name"'):
+            GcpPubSubQueue.from_obj(
+                {'project': 'example-project', 'subscription': 'etlplus'},
             )
 
     def test_from_obj_returns_connector_options(self) -> None:
@@ -56,4 +91,14 @@ class TestGcpPubSubQueue:
             'project': 'example-project',
             'topic': 'orders-topic',
             'subscription': 'etlplus',
+        }
+
+    def test_to_connector_options_omits_empty_optional_fields(self) -> None:
+        """Test that empty optional Pub/Sub metadata does not appear in options."""
+        assert GcpPubSubQueue.from_obj(
+            {'name': 'orders', 'project': 'example-project', 'topic': 'orders-topic'},
+        ).to_connector_options() == {
+            'service': 'gcp-pubsub',
+            'project': 'example-project',
+            'topic': 'orders-topic',
         }
