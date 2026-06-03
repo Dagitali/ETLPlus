@@ -546,11 +546,10 @@ class TestBaseAbcContracts:
     @pytest.mark.parametrize(
         ('operation', 'kwargs'),
         [
-            pytest.param('write', {'data': [{'a': 1}]}, id='module_write'),
-            pytest.param(
+            ('write', {'data': [{'a': 1}]}),
+            (
                 'write_sheet',
                 {'rows': [{'a': 1}], 'sheet': 0},
-                id='sheet_write',
             ),
         ],
     )
@@ -569,10 +568,7 @@ class TestBaseAbcContracts:
 
     @pytest.mark.parametrize(
         'incomplete_handler_cls',
-        [
-            pytest.param(_IncompleteDelimited, id='delimited'),
-            pytest.param(_IncompleteTextFixedWidth, id='text_fixed_width'),
-        ],
+        [_IncompleteDelimited, _IncompleteTextFixedWidth],
     )
     def test_row_abcs_require_row_methods(
         self,
@@ -735,11 +731,7 @@ class TestScientificStubConventions:
 
     @pytest.mark.parametrize(
         'handler_cls',
-        [
-            pytest.param(MatFile, id='mat'),
-            pytest.param(SylkFile, id='sylk'),
-            pytest.param(ZsavFile, id='zsav'),
-        ],
+        [MatFile, SylkFile, ZsavFile],
     )
     def test_scientific_stubs_inherit_stub_single_dataset_abc(
         self,
