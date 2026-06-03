@@ -78,9 +78,9 @@ class TestProperties(
     @pytest.mark.parametrize(
         ('line', 'index', 'expected'),
         [
-            pytest.param(r'key\=name=value', 4, True, id='single-backslash'),
-            pytest.param(r'key\\=name=value', 5, False, id='double-backslash'),
-            pytest.param('key=value', 3, False, id='unescaped'),
+            (r'key\=name=value', 4, True),
+            (r'key\\=name=value', 5, False),
+            ('key=value', 3, False),
         ],
     )
     def test_is_escaped_counts_preceding_backslashes(
@@ -95,9 +95,9 @@ class TestProperties(
     @pytest.mark.parametrize(
         ('line', 'expected'),
         [
-            pytest.param(r'message=hello\\', False, id='even-backslashes'),
-            pytest.param('message=hello\\', True, id='odd-backslashes'),
-            pytest.param('message=hello', False, id='no-backslash'),
+            (r'message=hello\\', False),
+            ('message=hello\\', True),
+            ('message=hello', False),
         ],
     )
     def test_is_logical_line_continued_counts_trailing_backslashes(
@@ -176,26 +176,23 @@ class TestProperties(
     @pytest.mark.parametrize(
         ('line', 'expected'),
         [
-            pytest.param('path /srv/app', ('path', '/srv/app'), id='space'),
-            pytest.param('path\t/srv/app', ('path', '/srv/app'), id='tab'),
-            pytest.param('path   = /srv/app', ('path', '/srv/app'), id='space-equals'),
-            pytest.param('path   : /srv/app', ('path', '/srv/app'), id='space-colon'),
-            pytest.param(
+            ('path /srv/app', ('path', '/srv/app')),
+            ('path\t/srv/app', ('path', '/srv/app')),
+            ('path   = /srv/app', ('path', '/srv/app')),
+            ('path   : /srv/app', ('path', '/srv/app')),
+            (
                 r'escaped\ key=value',
                 (r'escaped\ key', 'value'),
-                id='escaped-space',
             ),
-            pytest.param(
+            (
                 r'escaped\:key=value',
                 (r'escaped\:key', 'value'),
-                id='escaped-colon',
             ),
-            pytest.param(
+            (
                 r'escaped\=key:value',
                 (r'escaped\=key', 'value'),
-                id='escaped-equals',
             ),
-            pytest.param('flag', ('flag', ''), id='key-only'),
+            ('flag', ('flag', '')),
         ],
     )
     def test_split_key_value_handles_java_style_separators(
