@@ -77,9 +77,9 @@ class TestSqlHelpers:
     @pytest.mark.parametrize(
         ('tables', 'expected'),
         [
-            pytest.param([], None, id='no-tables'),
-            pytest.param(['data', 'other'], 'data', id='default-table'),
-            pytest.param(['single'], 'single', id='single-table'),
+            ([], None),
+            (['data', 'other'], 'data'),
+            (['single'], 'single'),
         ],
     )
     def test_resolve_table_success_cases(
