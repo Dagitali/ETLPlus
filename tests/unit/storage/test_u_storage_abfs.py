@@ -68,31 +68,13 @@ class TestAbfsStorageBackend:
         ):
             backend.exists(location)
 
-    def test_exists_returns_false_when_file_client_reports_missing(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that ABFS existence checks preserve false client results."""
-        backend = AbfsStorageBackend()
-        location = StorageLocation.from_value(
-            'abfs://filesystem@example.dfs.core.windows.net/missing.json',
-        )
-
-        class FakeFileClient:
-            """Data Lake file client missing-file test double."""
-
-            def exists(self) -> bool:
-                """Return a missing-file result."""
-                return False
-
-        monkeypatch.setattr(backend, '_file_client', lambda _location: FakeFileClient())
-        assert backend.exists(location) is False
-
+    @pytest.mark.parametrize('exists_result', [False, True])
     def test_exists_uses_file_client(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        exists_result: bool,
     ) -> None:
-        """Test that ABFS exists delegates to the file client."""
+        """Test that ABFS existence checks preserve client results."""
         backend = AbfsStorageBackend()
         location = StorageLocation.from_value(
             'abfs://filesystem@example.dfs.core.windows.net/blob.json',
@@ -102,11 +84,11 @@ class TestAbfsStorageBackend:
             """Data Lake file client test double."""
 
             def exists(self) -> bool:
-                """Return a present-file result."""
-                return True
+                """Return the configured file-existence result."""
+                return exists_result
 
         monkeypatch.setattr(backend, '_file_client', lambda _location: FakeFileClient())
-        assert backend.exists(location) is True
+        assert backend.exists(location) is exists_result
 
     def test_import_datalake_types_returns_sdk_types(
         self,
