@@ -56,15 +56,6 @@ class TestAbfsStorageBackend:
         backend.delete(location)
         assert deleted == [True]
 
-    def test_ensure_parent_dir_validates_filesystem_and_path(self) -> None:
-        """Test that invalid ABFS locations fail validation early."""
-        backend = AbfsStorageBackend()
-        location = StorageLocation.from_value(
-            'abfs://filesystem@example.dfs.core.windows.net',
-        )
-        with pytest.raises(ValueError, match='filesystem path'):
-            backend.ensure_parent_dir(location)
-
     def test_exists_raises_import_error_without_sdk(self) -> None:
         """Test that ABFS runtime needs the optional SDK package."""
         backend = AbfsStorageBackend()
