@@ -22,37 +22,48 @@ from etlplus.queue import RedisQueue
 class TestRedisQueue:
     """Unit tests for :class:`etlplus.queue.RedisQueue`."""
 
-    def test_from_obj_accepts_missing_database(self) -> None:
-        """Test Redis database metadata is optional."""
-        queue = RedisQueue.from_obj({'name': 'orders'})
-
-        assert isinstance(queue, QueueConfigProtocol)
-        assert queue.database is None
-
     def test_from_obj_accepts_queue_name_and_db_aliases(self) -> None:
         """Test Redis metadata accepts ``queue_name`` and ``db`` aliases."""
-        queue = RedisQueue.from_obj({'name': 'orders', 'queue_name': 'events', 'db': 2})
+        queue = RedisQueue.from_obj(
+            {'name': '  orders  ', 'queue_name': '  events  ', 'db': 2},
+        )
 
+        assert queue.name == 'orders'
         assert queue.key == 'events'
         assert queue.database == 2
 
+    def test_from_obj_normalizes_optional_string_fields(self) -> None:
+        """Test Redis metadata trims optional string fields."""
+        queue = RedisQueue.from_obj(
+            {
+                'name': '  orders  ',
+                'url': 123,
+                'key': '  events  ',
+            },
+        )
+
+        assert queue.name == 'orders'
+        assert queue.url == '123'
+        assert queue.key == 'events'
+
     @pytest.mark.parametrize(
-        'database',
+        ('database', 'expected_exc', 'match'),
         [
-            pytest.param('not-an-int', id='string'),
-            pytest.param(True, id='bool'),
-            pytest.param(1.5, id='fractional-float'),
+            ('not-an-int', TypeError, '"database" must be an integer'),
+            (True, TypeError, '"database" must be an integer'),
+            (1.5, TypeError, '"database" must be an integer'),
+            (-1, ValueError, 'greater than or equal to 0'),
         ],
     )
-    def test_from_obj_rejects_invalid_database(self, database: object) -> None:
-        """Test Redis database metadata rejects non-integer values."""
-        with pytest.raises(TypeError, match='"database" must be an integer'):
+    def test_from_obj_rejects_invalid_database(
+        self,
+        database: object,
+        expected_exc: type[Exception],
+        match: str,
+    ) -> None:
+        """Test Redis database metadata rejects invalid values."""
+        with pytest.raises(expected_exc, match=match):
             RedisQueue.from_obj({'name': 'orders', 'database': database})
-
-    def test_from_obj_rejects_negative_database(self) -> None:
-        """Test Redis database metadata rejects negative values."""
-        with pytest.raises(ValueError, match='greater than or equal to 0'):
-            RedisQueue.from_obj({'name': 'orders', 'database': -1})
 
     def test_from_obj_returns_connector_options(self) -> None:
         """Test Redis queue metadata parsing and option serialization."""
