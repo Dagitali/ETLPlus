@@ -7,6 +7,8 @@ Unit tests for :mod:`etlplus.file.txt`.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
+from typing import cast
 
 import pytest
 
@@ -85,7 +87,7 @@ class TestTxt(RoundtripUnitModuleContract):
         path = self.format_path(tmp_path)
 
         with pytest.raises(TypeError, match='TXT row payloads must contain'):
-            mod.TxtFile().write_rows(path, ['alpha', 1])
+            mod.TxtFile().write_rows(path, cast(Any, ['alpha', 1]))
 
     @pytest.mark.parametrize(
         'payload',
