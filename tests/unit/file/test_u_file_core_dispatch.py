@@ -62,10 +62,7 @@ class TestCoreDispatchHelpers:
 
     @pytest.mark.parametrize(
         'filename',
-        [
-            pytest.param('../escape.json', id='parent_traversal'),
-            pytest.param('/tmp/escape.json', id='absolute'),
-        ],
+        ['../escape.json', '/tmp/escape.json'],
     )
     def test_write_payload_with_core_rejects_unsafe_paths(
         self,
