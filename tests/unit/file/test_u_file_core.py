@@ -191,6 +191,27 @@ class _FakeHttpSession:
         return _FakeHttpResponse(status_code=self.head_status)
 
 
+class _RemoteCallRecorder:
+    """Remote storage backend test double recording simple operations."""
+
+    def __init__(self, *, exists_result: bool = True) -> None:
+        self.calls: list[tuple[str, object]] = []
+        self.exists_result = exists_result
+
+    def delete(self, location: object) -> None:
+        """Record one delete request."""
+        self.calls.append(('delete', location))
+
+    def ensure_parent_dir(self, location: object) -> None:
+        """Record one parent-preparation request."""
+        self.calls.append(('ensure_parent_dir', location))
+
+    def exists(self, location: object) -> bool:
+        """Record one existence check and return the configured result."""
+        self.calls.append(('exists', location))
+        return self.exists_result
+
+
 def normalize_numeric_records(records: FormatPayload) -> FormatPayload:
     """Normalize numeric values for deterministic record comparisons."""
     if not isinstance(records, list):
@@ -263,20 +284,13 @@ class TestFile:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that remote deletes delegate to the storage layer."""
-        calls: list[object] = []
-
-        class FakeBackend:
-            """Remote backend delete test double."""
-
-            def delete(self, location: object) -> None:
-                """Capture the deleted location."""
-                calls.append(location)
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = _RemoteCallRecorder()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         File('s3://bucket/data.json', FileFormat.JSON).delete()
 
-        assert len(calls) == 1
+        assert len(backend.calls) == 1
+        assert backend.calls[0][0] == 'delete'
 
     def test_delete_removes_local_files(
         self,
@@ -337,40 +351,25 @@ class TestFile:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that remote parent preparation delegates to storage."""
-        calls: list[object] = []
-
-        class FakeBackend:
-            """Remote backend parent-preparation test double."""
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Capture the prepared location."""
-                calls.append(location)
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = _RemoteCallRecorder()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         File('s3://bucket/data.json', FileFormat.JSON).ensure_parent_dir()
 
-        assert len(calls) == 1
+        assert len(backend.calls) == 1
+        assert backend.calls[0][0] == 'ensure_parent_dir'
 
     def test_exists_delegates_to_remote_storage_backend(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that remote existence checks delegate to the storage layer."""
-        calls: list[object] = []
-
-        class FakeBackend:
-            """Remote backend existence test double."""
-
-            def exists(self, location: object) -> bool:
-                """Capture the location and report it as existing."""
-                calls.append(location)
-                return True
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = _RemoteCallRecorder()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         assert File('s3://bucket/data.json', FileFormat.JSON).exists() is True
-        assert len(calls) == 1
+        assert len(backend.calls) == 1
+        assert backend.calls[0][0] == 'exists'
 
     def test_exists_returns_false_for_missing_local_files(
         self,
@@ -863,19 +862,13 @@ class TestFile:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that missing remote objects raise using the raw URI."""
-
-        class FakeBackend:
-            """Remote backend test double reporting one missing object."""
-
-            def exists(self, location: object) -> bool:
-                """Report the remote object as absent."""
-                del location
-                return False
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = _RemoteCallRecorder(exists_result=False)
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         with pytest.raises(FileNotFoundError, match='s3://bucket/missing.json'):
             File('s3://bucket/missing.json', FileFormat.JSON).read()
+
+        assert backend.calls[0][0] == 'exists'
 
     @pytest.mark.parametrize(
         ('filename', 'contents', 'operation', 'error_pattern'),
