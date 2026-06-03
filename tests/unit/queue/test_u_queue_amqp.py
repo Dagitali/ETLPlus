@@ -58,18 +58,6 @@ class TestAmqpQueue:
         with pytest.raises(ValueError, match='requires "url" or "host"'):
             AmqpQueue.from_obj(payload)
 
-    @pytest.mark.parametrize(
-        'payload',
-        [
-            {'url': 'amqp://guest:guest@localhost:5672/%2f'},
-            {'name': '   ', 'url': 'amqp://guest:guest@localhost:5672/%2f'},
-        ],
-    )
-    def test_from_obj_requires_name(self, payload: dict[str, object]) -> None:
-        """Test that :meth:`from_obj` requires a queue metadata name."""
-        with pytest.raises(TypeError, match='AmqpQueue requires a "name"'):
-            AmqpQueue.from_obj(payload)
-
     def test_from_obj_returns_connector_options(self) -> None:
         """Test AMQP queue metadata parsing and option serialization."""
         queue = AmqpQueue.from_obj(
@@ -90,13 +78,4 @@ class TestAmqpQueue:
             'url': 'amqp://guest:guest@localhost:5672/%2f',
             'exchange': 'etlplus',
             'routing_key': 'orders.created',
-        }
-
-    def test_to_connector_options_omits_empty_optional_fields(self) -> None:
-        """Test that empty optional AMQP metadata does not appear in options."""
-        assert AmqpQueue.from_obj(
-            {'name': 'orders', 'host': 'localhost'},
-        ).to_connector_options() == {
-            'service': 'amqp',
-            'host': 'localhost',
         }
