@@ -61,31 +61,13 @@ class TestAzureBlobStorageBackend:
         ):
             backend.exists(location)
 
-    def test_exists_returns_false_when_blob_client_reports_missing(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that Azure Blob existence checks preserve false client results."""
-        backend = AzureBlobStorageBackend()
-        location = StorageLocation.from_value(
-            'azure-blob://container/missing.json',
-        )
-
-        class FakeBlobClient:
-            """Blob client missing-object test double."""
-
-            def exists(self) -> bool:
-                """Return a missing-object result."""
-                return False
-
-        monkeypatch.setattr(backend, '_blob_client', lambda _location: FakeBlobClient())
-        assert backend.exists(location) is False
-
+    @pytest.mark.parametrize('exists_result', [False, True])
     def test_exists_uses_blob_client(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        exists_result: bool,
     ) -> None:
-        """Test that Azure Blob exists delegates to the blob client."""
+        """Test that Azure Blob existence checks preserve client results."""
         backend = AzureBlobStorageBackend()
         location = StorageLocation.from_value(
             'azure-blob://container/blob.json',
@@ -95,11 +77,11 @@ class TestAzureBlobStorageBackend:
             """Blob client test double."""
 
             def exists(self) -> bool:
-                """Return a present-object result."""
-                return True
+                """Return the configured object-existence result."""
+                return exists_result
 
         monkeypatch.setattr(backend, '_blob_client', lambda _location: FakeBlobClient())
-        assert backend.exists(location) is True
+        assert backend.exists(location) is exists_result
 
     def test_import_blob_types_returns_sdk_types(
         self,
