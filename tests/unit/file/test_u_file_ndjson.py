@@ -61,17 +61,15 @@ class TestNdjson(
     @pytest.mark.parametrize(
         ('content', 'error_type', 'match'),
         [
-            pytest.param(
+            (
                 '{"id": 1}\n{broken\n',
                 json.JSONDecodeError,
                 None,
-                id='invalid-json',
             ),
-            pytest.param(
+            (
                 '{"id": 1}\n42\n',
                 TypeError,
                 'line 2',
-                id='non-object-line',
             ),
         ],
     )
