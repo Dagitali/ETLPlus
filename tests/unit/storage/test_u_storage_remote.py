@@ -45,19 +45,10 @@ class RemoteProviderCase:
     package_name: str | None
     missing_path_raw: str
     valid_raw: str
+    uses_stub_base: bool = False
 
 
 # SECTION: CONSTANTS ======================================================== #
-
-IMPLEMENTED_REMOTE_BACKEND_TYPES: tuple[RemoteBackendType, ...] = (
-    AbfsStorageBackend,
-    AzureBlobStorageBackend,
-    HdfsStorageBackend,
-    HttpStorageBackend,
-    S3StorageBackend,
-)
-
-PLACEHOLDER_REMOTE_BACKEND_TYPES: tuple[RemoteBackendType, ...] = (FtpStorageBackend,)
 
 REMOTE_BACKEND_TYPES: tuple[RemoteBackendType, ...] = (
     AbfsStorageBackend,
@@ -98,6 +89,7 @@ REMOTE_PROVIDER_CASES: tuple[RemoteProviderCase, ...] = (
         package_name='ftplib',
         missing_path_raw='ftp://example.com',
         valid_raw='ftp://example.com/data.csv',
+        uses_stub_base=True,
     ),
     RemoteProviderCase(
         backend_type=HttpStorageBackend,
@@ -148,21 +140,13 @@ class TestRemoteStorageBackend:
         """Test concrete remote backends use the shared remote base class."""
         assert issubclass(backend_type, RemoteStorageBackend)
 
-    @pytest.mark.parametrize('backend_type', IMPLEMENTED_REMOTE_BACKEND_TYPES)
-    def test_implemented_backends_do_not_use_stub_base(
+    @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
+    def test_provider_stub_status_matches_contract(
         self,
-        backend_type: RemoteBackendType,
+        case: RemoteProviderCase,
     ) -> None:
-        """Test implemented remote backends do not use placeholder behavior."""
-        assert not issubclass(backend_type, StubStorageBackend)
-
-    @pytest.mark.parametrize('backend_type', PLACEHOLDER_REMOTE_BACKEND_TYPES)
-    def test_placeholder_backends_use_stub_base(
-        self,
-        backend_type: RemoteBackendType,
-    ) -> None:
-        """Test placeholder remote backends use shared stub behavior."""
-        assert issubclass(backend_type, StubStorageBackend)
+        """Test provider placeholder status matches shared backend contracts."""
+        assert issubclass(case.backend_type, StubStorageBackend) is case.uses_stub_base
 
     @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
     def test_validate_accepts_valid_remote_location(
