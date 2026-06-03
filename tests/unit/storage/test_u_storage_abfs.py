@@ -13,6 +13,7 @@ from etlplus.storage import StorageLocation
 from etlplus.storage import _abfs as abfs_mod
 
 from .pytest_storage_support import FakeContentSettings
+from .pytest_storage_support import clear_azure_storage_env
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -217,9 +218,7 @@ class TestAbfsStorageBackend:
                     },
                 )
 
-        monkeypatch.delenv('AZURE_STORAGE_CONNECTION_STRING', raising=False)
-        monkeypatch.delenv('AZURE_STORAGE_ACCOUNT_URL', raising=False)
-        monkeypatch.delenv('AZURE_STORAGE_CREDENTIAL', raising=False)
+        clear_azure_storage_env(monkeypatch)
         monkeypatch.setattr(
             abfs_mod,
             '_import_datalake_types',
@@ -242,9 +241,7 @@ class TestAbfsStorageBackend:
         """Test that ABFS rejects missing connection and account settings."""
         backend = AbfsStorageBackend()
 
-        monkeypatch.delenv('AZURE_STORAGE_CONNECTION_STRING', raising=False)
-        monkeypatch.delenv('AZURE_STORAGE_ACCOUNT_URL', raising=False)
-        monkeypatch.delenv('AZURE_STORAGE_CREDENTIAL', raising=False)
+        clear_azure_storage_env(monkeypatch)
         monkeypatch.setattr(
             abfs_mod,
             '_import_datalake_types',
@@ -334,11 +331,8 @@ class TestAbfsStorageBackend:
                     },
                 )
 
-        monkeypatch.delenv('AZURE_STORAGE_CONNECTION_STRING', raising=False)
-        monkeypatch.delenv('AZURE_STORAGE_ACCOUNT_URL', raising=False)
-        if env_credential is None:
-            monkeypatch.delenv('AZURE_STORAGE_CREDENTIAL', raising=False)
-        else:
+        clear_azure_storage_env(monkeypatch)
+        if env_credential is not None:
             monkeypatch.setenv('AZURE_STORAGE_CREDENTIAL', env_credential)
         monkeypatch.setattr(
             abfs_mod,
