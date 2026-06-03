@@ -140,6 +140,29 @@ class TestRemoteStorageBackend:
         """Test concrete remote backends use the shared remote base class."""
         assert issubclass(backend_type, RemoteStorageBackend)
 
+    @pytest.mark.parametrize('backend_type', REMOTE_BACKEND_TYPES)
+    @pytest.mark.parametrize(
+        ('method_name', 'args', 'kwargs'),
+        [
+            ('delete', (), {}),
+            ('exists', (), {}),
+            ('open', ('rb',), {}),
+        ],
+    )
+    def test_operations_reject_wrong_scheme_before_runtime_behavior(
+        self,
+        backend_type: RemoteBackendType,
+        method_name: str,
+        args: tuple[object, ...],
+        kwargs: dict[str, object],
+    ) -> None:
+        """Test public remote operations reject wrong schemes consistently."""
+        backend = backend_type()
+        location = StorageLocation.from_value('data.csv')
+
+        with pytest.raises(TypeError, match='only supports'):
+            getattr(backend, method_name)(location, *args, **kwargs)
+
     @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
     def test_provider_stub_status_matches_contract(
         self,
