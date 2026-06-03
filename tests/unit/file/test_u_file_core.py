@@ -135,6 +135,19 @@ def _install_core_handler_stub(
     return calls
 
 
+class _CaptureUpload(BytesIO):
+    """Writable remote upload stream test double."""
+
+    def __init__(self, uploads: list[bytes]) -> None:
+        self._uploads = uploads
+        super().__init__()
+
+    def close(self) -> None:
+        """Capture uploaded bytes before closing the stream."""
+        self._uploads.append(self.getvalue())
+        super().close()
+
+
 class _FakeHttpResponse:
     """Minimal HTTP response test double for File-level HTTP tests."""
 
@@ -494,14 +507,6 @@ class TestFile:
         """Test that :meth:`File.write_bytes` uses the storage backend."""
         uploads: list[bytes] = []
 
-        class CaptureUpload(BytesIO):
-            """Writable remote upload stream test double."""
-
-            def close(self) -> None:
-                """Capture uploaded bytes before closing the stream."""
-                uploads.append(self.getvalue())
-                super().close()
-
         class FakeBackend:
             """Remote backend write-bytes test double."""
 
@@ -510,11 +515,11 @@ class TestFile:
                 location: object,
                 mode: str = 'r',
                 **kwargs: object,
-            ) -> CaptureUpload:
+            ) -> _CaptureUpload:
                 """Capture the write open request and return a binary sink."""
                 del location, kwargs
                 assert mode == 'wb'
-                return CaptureUpload()
+                return _CaptureUpload(uploads)
 
         monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
 
@@ -540,14 +545,6 @@ class TestFile:
         """Test that remote touch creates an empty object when absent."""
         uploads: list[bytes] = []
 
-        class CaptureUpload(BytesIO):
-            """Writable remote upload stream test double."""
-
-            def close(self) -> None:
-                """Capture uploaded bytes before closing the stream."""
-                uploads.append(self.getvalue())
-                super().close()
-
         class FakeBackend:
             """Remote backend touch test double."""
 
@@ -571,11 +568,11 @@ class TestFile:
                 location: object,
                 mode: str = 'r',
                 **kwargs: object,
-            ) -> CaptureUpload:
+            ) -> _CaptureUpload:
                 """Return a writable stream for the new object."""
                 del location, kwargs
                 assert mode == 'wb'
-                return CaptureUpload()
+                return _CaptureUpload(uploads)
 
         backend = FakeBackend()
         monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
@@ -810,14 +807,6 @@ class TestFile:
         """Test that remote writes upload the local staged file content."""
         uploads: list[bytes] = []
 
-        class CaptureUpload(BytesIO):
-            """Writable remote upload stream test double."""
-
-            def close(self) -> None:
-                """Capture uploaded bytes before closing the stream."""
-                uploads.append(self.getvalue())
-                super().close()
-
         class FakeBackend:
             """Remote backend write test double."""
 
@@ -830,11 +819,11 @@ class TestFile:
                 location: object,
                 mode: str = 'r',
                 **kwargs: object,
-            ) -> CaptureUpload:
+            ) -> _CaptureUpload:
                 """Return a writable byte stream for the remote object."""
                 del location, kwargs
                 assert mode == 'wb'
-                return CaptureUpload()
+                return _CaptureUpload(uploads)
 
         monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
 
@@ -1134,14 +1123,6 @@ class TestFileCoreDispatch:
         uploads: list[bytes] = []
         calls: list[str] = []
 
-        class CaptureUpload(BytesIO):
-            """Writable upload stream test double."""
-
-            def close(self) -> None:
-                """Capture uploaded bytes before closing the stream."""
-                uploads.append(self.getvalue())
-                super().close()
-
         class FakeBackend:
             """Remote backend test double for staging uploads."""
 
@@ -1155,11 +1136,11 @@ class TestFileCoreDispatch:
                 location: object,
                 mode: str = 'r',
                 **kwargs: object,
-            ) -> CaptureUpload:
+            ) -> _CaptureUpload:
                 """Return one writable upload target."""
                 del location, kwargs
                 calls.append(mode)
-                return CaptureUpload()
+                return _CaptureUpload(uploads)
 
         monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
 
