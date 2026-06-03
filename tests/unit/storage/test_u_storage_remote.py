@@ -47,8 +47,16 @@ REMOTE_BACKEND_TYPES: tuple[RemoteBackendType, ...] = (
     S3StorageBackend,
 )
 
-VALIDATED_PROVIDER_CASES: tuple[
-    tuple[RemoteBackendType, StorageScheme, str, str, str],
+REMOTE_PROVIDER_CASES: tuple[
+    tuple[
+        RemoteBackendType,
+        StorageScheme,
+        str,
+        str,
+        str,
+        str,
+        str,
+    ],
     ...,
 ] = (
     (
@@ -57,6 +65,8 @@ VALIDATED_PROVIDER_CASES: tuple[
         'filesystem@example.dfs.core.windows.net',
         'abfs://filesystem@example.dfs.core.windows.net',
         'filesystem/account authority',
+        'filesystem path',
+        'Azure Data Lake Storage Gen2',
     ),
     (
         AzureBlobStorageBackend,
@@ -64,6 +74,8 @@ VALIDATED_PROVIDER_CASES: tuple[
         'container',
         'azure-blob://container',
         'container name',
+        'blob path',
+        'Azure Blob',
     ),
     (
         FtpStorageBackend,
@@ -71,6 +83,8 @@ VALIDATED_PROVIDER_CASES: tuple[
         'example.com',
         'ftp://example.com',
         'host',
+        'remote path',
+        'FTP',
     ),
     (
         HttpStorageBackend,
@@ -78,6 +92,8 @@ VALIDATED_PROVIDER_CASES: tuple[
         'example.com',
         'https://example.com',
         'host',
+        'URL path',
+        'HTTP',
     ),
     (
         S3StorageBackend,
@@ -85,6 +101,8 @@ VALIDATED_PROVIDER_CASES: tuple[
         'bucket',
         's3://bucket',
         'bucket name',
+        'object key',
+        'S3',
     ),
 )
 
@@ -94,6 +112,35 @@ VALIDATED_PROVIDER_CASES: tuple[
 
 class TestRemoteStorageBackend:
     """Unit tests for shared remote-backend validation."""
+
+    @pytest.mark.parametrize(
+        (
+            'backend_type',
+            'scheme',
+            'authority',
+            'missing_path_raw',
+            'authority_label',
+            'path_label',
+            'service_name',
+        ),
+        REMOTE_PROVIDER_CASES,
+    )
+    def test_backend_metadata_matches_provider_contract(
+        self,
+        backend_type: RemoteBackendType,
+        scheme: StorageScheme,
+        authority: str,
+        missing_path_raw: str,
+        authority_label: str,
+        path_label: str,
+        service_name: str,
+    ) -> None:
+        """Test that remote providers expose consistent validation metadata."""
+        del authority, missing_path_raw
+        assert backend_type.scheme is scheme
+        assert backend_type.authority_label == authority_label
+        assert backend_type.path_label == path_label
+        assert backend_type.service_name == service_name
 
     @pytest.mark.parametrize('backend_type', REMOTE_BACKEND_TYPES)
     def test_concrete_backends_use_remote_backend_base(
@@ -112,8 +159,16 @@ class TestRemoteStorageBackend:
         assert not issubclass(backend_type, StubStorageBackend)
 
     @pytest.mark.parametrize(
-        ('backend_type', 'scheme', 'authority', 'missing_path_raw', 'authority_label'),
-        VALIDATED_PROVIDER_CASES,
+        (
+            'backend_type',
+            'scheme',
+            'authority',
+            'missing_path_raw',
+            'authority_label',
+            'path_label',
+            'service_name',
+        ),
+        REMOTE_PROVIDER_CASES,
     )
     def test_validate_requires_authority(
         self,
@@ -122,8 +177,11 @@ class TestRemoteStorageBackend:
         authority: str,
         missing_path_raw: str,
         authority_label: str,
+        path_label: str,
+        service_name: str,
     ) -> None:
         """Test that remote backends reject locations without authority."""
+        del authority, missing_path_raw, path_label, service_name
         backend = backend_type()
         location = StorageLocation(
             raw=f'{scheme.value}:///data.csv',
@@ -136,8 +194,16 @@ class TestRemoteStorageBackend:
             backend.ensure_parent_dir(location)
 
     @pytest.mark.parametrize(
-        ('backend_type', 'scheme', 'authority', 'missing_path_raw', 'authority_label'),
-        VALIDATED_PROVIDER_CASES,
+        (
+            'backend_type',
+            'scheme',
+            'authority',
+            'missing_path_raw',
+            'authority_label',
+            'path_label',
+            'service_name',
+        ),
+        REMOTE_PROVIDER_CASES,
     )
     def test_validate_requires_path(
         self,
@@ -146,13 +212,15 @@ class TestRemoteStorageBackend:
         authority: str,
         missing_path_raw: str,
         authority_label: str,
+        path_label: str,
+        service_name: str,
     ) -> None:
         """Test that remote backends reject locations without resource paths."""
-        del scheme, authority, authority_label
+        del scheme, authority, authority_label, service_name
         backend = backend_type()
         location = StorageLocation.from_value(missing_path_raw)
 
-        with pytest.raises(ValueError, match=backend.path_label):
+        with pytest.raises(ValueError, match=path_label):
             backend.ensure_parent_dir(location)
 
     @pytest.mark.parametrize('backend_type', REMOTE_BACKEND_TYPES)
