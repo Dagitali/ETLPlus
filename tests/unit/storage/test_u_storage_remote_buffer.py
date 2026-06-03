@@ -23,6 +23,11 @@ from etlplus.storage import _remote_buffer as remote_buffer_mod
 class TestRemoteBufferHelpers:
     """Unit tests for the shared in-memory remote buffer helpers."""
 
+    def test_parse_remote_open_mode_rejects_invalid_mode(self) -> None:
+        """Test that invalid remote open modes are rejected."""
+        with pytest.raises(ValueError, match='support only'):
+            remote_buffer_mod.parse_remote_open_mode('a')
+
     def test_read_buffer_binary_mode_returns_bytes_buffer(self) -> None:
         """Test that binary read mode returns the raw bytes buffer."""
         handle = remote_buffer_mod.open_remote_buffer(
@@ -72,8 +77,3 @@ class TestRemoteBufferHelpers:
         handle.write('payload')
         handle.close()
         assert uploads == [b'payload']
-
-    def test_parse_remote_open_mode_rejects_invalid_mode(self) -> None:
-        """Test that invalid remote open modes are rejected."""
-        with pytest.raises(ValueError, match='support only'):
-            remote_buffer_mod.parse_remote_open_mode('a')
