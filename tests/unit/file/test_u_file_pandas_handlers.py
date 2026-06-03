@@ -14,6 +14,9 @@ import pytest
 from etlplus.file import _pandas_handlers as mod
 from etlplus.file._enums import FileFormat
 
+from .pytest_file_support import SpreadsheetSheetFrameStub
+from .pytest_file_support import SpreadsheetSheetPandasStub
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -71,37 +74,6 @@ class _ColumnarNoPyarrowHandler(mod.PandasColumnarHandlerMixin):
 
     def resolve_pyarrow(self) -> object:
         raise AssertionError('resolve_pyarrow should not be called')
-
-
-class _ReadExcelFallbackPandasStub:
-    """
-    Pandas stub that rejects ``sheet_name`` to exercise fallback behavior.
-    """
-
-    def __init__(self) -> None:
-        self.calls: list[dict[str, object]] = []
-
-    def read_excel(self, path: object, **kwargs: object) -> str:
-        """Record read_excel calls and reject ``sheet_name`` kwargs."""
-        call = {'path': path, **dict(kwargs)}
-        self.calls.append(call)
-        if 'sheet_name' in kwargs:
-            raise TypeError('sheet_name unsupported')
-        return 'frame'
-
-
-class _WriteExcelFallbackFrameStub:
-    """Frame stub that rejects ``sheet_name`` to exercise write fallback."""
-
-    def __init__(self) -> None:
-        self.calls: list[dict[str, object]] = []
-
-    def to_excel(self, path: object, **kwargs: object) -> None:
-        """Record to_excel calls and reject ``sheet_name`` kwargs."""
-        call = {'path': path, **dict(kwargs)}
-        self.calls.append(call)
-        if 'sheet_name' in kwargs:
-            raise TypeError('sheet_name unsupported')
 
 
 # SECTION: TESTS ============================================================ #
@@ -348,7 +320,11 @@ class TestSpreadsheetReadWriteFallbacks:
         expected_kwargs: list[dict[str, object]],
     ) -> None:
         """Test read helper retry behavior with optional engine kwargs."""
-        pandas = _ReadExcelFallbackPandasStub()
+        frame = SpreadsheetSheetFrameStub([{'id': 1}])
+        pandas = SpreadsheetSheetPandasStub(
+            frame,
+            read_supports_sheet_name=False,
+        )
         path = Path('sample.xlsx')
 
         result = mod._read_excel_frame(
@@ -358,8 +334,10 @@ class TestSpreadsheetReadWriteFallbacks:
             engine=engine,
         )
 
-        assert result == 'frame'
-        assert pandas.calls == [{'path': path, **kwargs} for kwargs in expected_kwargs]
+        assert result is frame
+        assert pandas.read_calls == [
+            {'path': path, **kwargs} for kwargs in expected_kwargs
+        ]
 
     @pytest.mark.parametrize(
         ('engine', 'expected_kwargs'),
@@ -398,7 +376,7 @@ class TestSpreadsheetReadWriteFallbacks:
         expected_kwargs: list[dict[str, object]],
     ) -> None:
         """Test write helper retry behavior with optional engine kwargs."""
-        frame = _WriteExcelFallbackFrameStub()
+        frame = SpreadsheetSheetFrameStub([], allow_sheet_name=False)
         path = Path('sample.xlsx')
 
         mod._write_excel_frame(
@@ -408,7 +386,9 @@ class TestSpreadsheetReadWriteFallbacks:
             engine=engine,
         )
 
-        assert frame.calls == [{'path': path, **kwargs} for kwargs in expected_kwargs]
+        assert frame.to_excel_calls == [
+            {'path': path, **kwargs} for kwargs in expected_kwargs
+        ]
 
 
 class TestColumnarRuntimeDependencyValidation:
