@@ -743,15 +743,13 @@ class TemplateFileContractMixin(EmptyWriteReturnsZeroMixin):
     @pytest.mark.parametrize(
         ('payload', 'match'),
         [
-            pytest.param(
+            (
                 [{'template': 'a'}, {'template': 'b'}],
                 'exactly one object',
-                id='multiple-template-objects',
             ),
-            pytest.param(
+            (
                 [{'name': 'missing'}],
                 '"template" string',
-                id='missing-template',
             ),
         ],
     )
