@@ -62,10 +62,7 @@ class TestHandlerAbcHelpers:
 
     @pytest.mark.parametrize(
         'raises',
-        [
-            pytest.param(False, id='success'),
-            pytest.param(True, id='failure'),
-        ],
+        [False, True],
     )
     def test_use_connection_always_closes(
         self,
