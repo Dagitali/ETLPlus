@@ -140,6 +140,57 @@ class TestRemoteStorageBackend:
         """Test concrete remote backends use the shared remote base class."""
         assert issubclass(backend_type, RemoteStorageBackend)
 
+    @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
+    @pytest.mark.parametrize(
+        ('method_name', 'args', 'kwargs'),
+        [
+            ('delete', (), {}),
+            ('exists', (), {}),
+            ('open', ('rb',), {}),
+        ],
+    )
+    def test_operations_reject_missing_authority_before_runtime_behavior(
+        self,
+        case: RemoteProviderCase,
+        method_name: str,
+        args: tuple[object, ...],
+        kwargs: dict[str, object],
+    ) -> None:
+        """Test public remote operations reject missing authorities consistently."""
+        backend = case.backend_type()
+        location = StorageLocation(
+            raw=f'{case.scheme.value}:///data.csv',
+            scheme=case.scheme,
+            authority='',
+            path='data.csv',
+        )
+
+        with pytest.raises(ValueError, match=case.authority_label):
+            getattr(backend, method_name)(location, *args, **kwargs)
+
+    @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
+    @pytest.mark.parametrize(
+        ('method_name', 'args', 'kwargs'),
+        [
+            ('delete', (), {}),
+            ('exists', (), {}),
+            ('open', ('rb',), {}),
+        ],
+    )
+    def test_operations_reject_missing_path_before_runtime_behavior(
+        self,
+        case: RemoteProviderCase,
+        method_name: str,
+        args: tuple[object, ...],
+        kwargs: dict[str, object],
+    ) -> None:
+        """Test public remote operations reject missing paths consistently."""
+        backend = case.backend_type()
+        location = StorageLocation.from_value(case.missing_path_raw)
+
+        with pytest.raises(ValueError, match=case.path_label):
+            getattr(backend, method_name)(location, *args, **kwargs)
+
     @pytest.mark.parametrize('backend_type', REMOTE_BACKEND_TYPES)
     @pytest.mark.parametrize(
         ('method_name', 'args', 'kwargs'),
