@@ -172,13 +172,13 @@ class TestAvroHelpers:
     @pytest.mark.parametrize(
         ('value', 'expected'),
         [
-            pytest.param(None, 'null', id='null'),
-            pytest.param(True, 'boolean', id='bool'),
-            pytest.param(1, 'long', id='int'),
-            pytest.param(1.25, 'double', id='float'),
-            pytest.param('text', 'string', id='str'),
-            pytest.param(b'bytes', 'bytes', id='bytes'),
-            pytest.param(bytearray(b'data'), 'bytes', id='bytearray'),
+            (None, 'null'),
+            (True, 'boolean'),
+            (1, 'long'),
+            (1.25, 'double'),
+            ('text', 'string'),
+            (b'bytes', 'bytes'),
+            (bytearray(b'data'), 'bytes'),
         ],
     )
     def test_infer_value_type_supported(
