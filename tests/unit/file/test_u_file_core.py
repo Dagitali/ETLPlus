@@ -296,6 +296,26 @@ def _read_with_known_io_skip(
 class TestFile:
     """Unit tests for :class:`etlplus.file.File`."""
 
+    @pytest.mark.parametrize('operation', ['open', 'read_bytes'])
+    def test_binary_read_operations_delegate_to_remote_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        operation: str,
+    ) -> None:
+        """Test that binary read operations use remote storage streams."""
+        backend = _RemoteCallRecorder()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+
+        file = File('s3://bucket/data.bin')
+        if operation == 'open':
+            with file.open('rb') as handle:
+                result = handle.read()
+        else:
+            result = file.read_bytes()
+
+        assert result == b'payload'
+        assert backend.open_modes == ['rb']
+
     def test_delete_removes_local_files(
         self,
         tmp_path: Path,
@@ -350,225 +370,25 @@ class TestFile:
 
         assert path.parent.exists()
 
-    def test_exists_returns_false_for_missing_local_files(
+    @pytest.mark.parametrize(
+        ('present', 'expected'),
+        [
+            pytest.param(False, False, id='missing'),
+            pytest.param(True, True, id='present'),
+        ],
+    )
+    def test_exists_reflects_local_file_state(
         self,
         tmp_path: Path,
-    ) -> None:
-        """Test that missing local files report ``False`` for exists."""
-        assert File(tmp_path / 'missing.json', FileFormat.JSON).exists() is False
-
-    def test_exists_returns_true_for_local_files(
-        self,
-        tmp_path: Path,
+        present: bool,
+        expected: bool,
     ) -> None:
         """Test that local existence checks use the local filesystem."""
-        path = tmp_path / 'present.json'
-        path.write_text('{}', encoding='utf-8')
-
-        assert File(path, FileFormat.JSON).exists() is True
-
-    @pytest.mark.parametrize('operation', ['open', 'read_bytes'])
-    def test_binary_read_operations_delegate_to_remote_storage_backend(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        operation: str,
-    ) -> None:
-        """Test that binary read operations use remote storage streams."""
-        backend = _RemoteCallRecorder()
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
-
-        file = File('s3://bucket/data.bin')
-        if operation == 'open':
-            with file.open('rb') as handle:
-                result = handle.read()
-        else:
-            result = file.read_bytes()
-
-        assert result == b'payload'
-        assert backend.open_modes == ['rb']
-
-    def test_open_uses_local_backend_for_text_reads(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that :meth:`File.open` reads local text content."""
-        path = tmp_path / 'data.txt'
-        path.write_text('alpha', encoding='utf-8')
-
-        with File(path).open(encoding='utf-8') as handle:
-            assert handle.read() == 'alpha'
-
-    def test_read_bytes_uses_local_backend(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that :meth:`File.read_bytes` returns local binary content."""
-        path = tmp_path / 'data.bin'
-        path.write_bytes(b'payload')
-
-        assert File(path).read_bytes() == b'payload'
-
-    def test_repr_preserves_public_path_and_format(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that ``repr(file)`` shows the public path and file format."""
         path = tmp_path / 'data.json'
+        if present:
+            path.write_text('{}', encoding='utf-8')
 
-        assert repr(File(path, FileFormat.JSON)) == (
-            f'File(path={path!r}, file_format={FileFormat.JSON!r})'
-        )
-
-    @pytest.mark.parametrize(
-        'operation',
-        ['delete', 'ensure_parent_dir', 'exists'],
-    )
-    def test_remote_file_operations_delegate_to_storage_backend(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        operation: str,
-    ) -> None:
-        """Test that simple remote file operations delegate to storage."""
-        backend = _RemoteCallRecorder()
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
-
-        result = getattr(File('s3://bucket/data.json', FileFormat.JSON), operation)()
-
-        if operation == 'exists':
-            assert result is True
-        else:
-            assert result is None
-        assert backend.calls == [operation]
-
-    def test_touch_creates_missing_local_file(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that local touch creates missing files and parents."""
-        path = tmp_path / 'nested' / 'data.json'
-
-        File(path, FileFormat.JSON).touch()
-
-        assert path.exists()
-        assert path.read_text(encoding='utf-8') == ''
-
-    def test_write_bytes_delegates_to_remote_storage_backend(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that :meth:`File.write_bytes` uses the storage backend."""
-        uploads: list[bytes] = []
-
-        class FakeBackend:
-            """Remote backend write-bytes test double."""
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> CaptureBytesUpload:
-                """Capture the write open request and return a binary sink."""
-                del location, kwargs
-                assert mode == 'wb'
-                return CaptureBytesUpload(uploads)
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
-
-        File('s3://bucket/data.bin').write_bytes(b'payload')
-
-        assert uploads == [b'payload']
-
-    def test_write_bytes_uses_local_backend(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that :meth:`File.write_bytes` writes local binary content."""
-        path = tmp_path / 'data.bin'
-
-        File(path).write_bytes(b'payload')
-
-        assert path.read_bytes() == b'payload'
-
-    def test_touch_remote_creates_empty_object_when_missing(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that remote touch creates an empty object when absent."""
-        uploads: list[bytes] = []
-
-        class FakeBackend:
-            """Remote backend touch test double."""
-
-            def __init__(self) -> None:
-                self.parent_calls = 0
-                self.exists_calls = 0
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Record parent preparation for the new object."""
-                del location
-                self.parent_calls += 1
-
-            def exists(self, location: object) -> bool:
-                """Report the object as missing on first touch."""
-                del location
-                self.exists_calls += 1
-                return False
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> CaptureBytesUpload:
-                """Return a writable stream for the new object."""
-                del location, kwargs
-                assert mode == 'wb'
-                return CaptureBytesUpload(uploads)
-
-        backend = FakeBackend()
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
-
-        File('s3://bucket/data.json', FileFormat.JSON).touch()
-
-        assert backend.exists_calls == 1
-        assert backend.parent_calls == 1
-        assert uploads == [b'']
-
-    def test_touch_remote_is_noop_when_object_exists(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that remote touch avoids truncating existing objects."""
-        calls: list[str] = []
-
-        class FakeBackend:
-            """Remote backend touch no-op test double."""
-
-            def exists(self, location: object) -> bool:
-                """Report the object as already present."""
-                del location
-                calls.append('exists')
-                return True
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Fail if parent preparation happens unexpectedly."""
-                raise AssertionError('ensure_parent_dir should not be called')
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> BytesIO:
-                """Fail if open happens unexpectedly."""
-                raise AssertionError('open should not be called')
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
-
-        File('s3://bucket/data.json', FileFormat.JSON).touch()
-
-        assert calls == ['exists']
+        assert File(path, FileFormat.JSON).exists() is expected
 
     @pytest.mark.parametrize(
         ('raw_format', 'expected'),
@@ -655,6 +475,17 @@ class TestFile:
 
         assert file.file_format == expected_format
 
+    def test_open_uses_local_backend_for_text_reads(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that :meth:`File.open` reads local text content."""
+        path = tmp_path / 'data.txt'
+        path.write_text('alpha', encoding='utf-8')
+
+        with File(path).open(encoding='utf-8') as handle:
+            assert handle.read() == 'alpha'
+
     def test_path_property_reflects_local_location(self, tmp_path: Path) -> None:
         """Test that local files expose a :class:`Path` via ``file.path``."""
         path = tmp_path / 'data.json'
@@ -708,6 +539,86 @@ class TestFile:
             path = tmp_path / filename
             handler.write(path, payload, **write_kwargs)
             assert handler.read(path) == expected
+
+    def test_read_bytes_uses_local_backend(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that :meth:`File.read_bytes` returns local binary content."""
+        path = tmp_path / 'data.bin'
+        path.write_bytes(b'payload')
+
+        assert File(path).read_bytes() == b'payload'
+
+    def test_read_csv_skips_blank_rows(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that CSV reader ignoring empty rows."""
+        payload = 'name,age\nJohn,30\n,\nJane,25\n'
+        path = tmp_path / 'data.csv'
+        path.write_text(payload, encoding='utf-8')
+
+        rows = File(path, FileFormat.CSV).read()
+
+        assert [
+            row['name'] for row in rows if isinstance(row, dict) and 'name' in row
+        ] == ['John', 'Jane']
+
+    def test_read_json_type_errors(self, tmp_path: Path) -> None:
+        """Test that list elements being dicts when reading JSON."""
+        path = tmp_path / 'bad.json'
+        path.write_text('[{"ok": 1}, 2]', encoding='utf-8')
+
+        with pytest.raises(TypeError):
+            File(path, FileFormat.JSON).read()
+
+    def test_read_missing_file_raises_before_format_inference(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """
+        Test that missing path checks run before format inference on read.
+        """
+        missing = tmp_path / 'missing.unknown'
+        file = File(missing)
+
+        with pytest.raises(FileNotFoundError):
+            file.read()
+
+    def test_read_missing_remote_file_raises_before_dispatch(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that missing remote objects raise using the raw URI."""
+        backend = _RemoteCallRecorder(exists_result=False)
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+
+        with pytest.raises(FileNotFoundError, match='s3://bucket/missing.json'):
+            File('s3://bucket/missing.json', FileFormat.JSON).read()
+
+        assert backend.calls == ['exists']
+
+    @pytest.mark.parametrize(
+        'operation',
+        ['delete', 'ensure_parent_dir', 'exists'],
+    )
+    def test_remote_file_operations_delegate_to_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        operation: str,
+    ) -> None:
+        """Test that simple remote file operations delegate to storage."""
+        backend = _RemoteCallRecorder()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+
+        result = getattr(File('s3://bucket/data.json', FileFormat.JSON), operation)()
+
+        if operation == 'exists':
+            assert result is True
+        else:
+            assert result is None
+        assert backend.calls == [operation]
 
     def test_remote_read_stages_payload_through_storage_backend(
         self,
@@ -786,81 +697,16 @@ class TestFile:
         assert written == 1
         assert uploads == [b'{\n  "name": "Ada"\n}\n']
 
-    def test_read_csv_skips_blank_rows(
+    def test_repr_preserves_public_path_and_format(
         self,
         tmp_path: Path,
     ) -> None:
-        """Test that CSV reader ignoring empty rows."""
-        payload = 'name,age\nJohn,30\n,\nJane,25\n'
-        path = tmp_path / 'data.csv'
-        path.write_text(payload, encoding='utf-8')
+        """Test that ``repr(file)`` shows the public path and file format."""
+        path = tmp_path / 'data.json'
 
-        rows = File(path, FileFormat.CSV).read()
-
-        assert [
-            row['name'] for row in rows if isinstance(row, dict) and 'name' in row
-        ] == ['John', 'Jane']
-
-    def test_read_json_type_errors(self, tmp_path: Path) -> None:
-        """Test that list elements being dicts when reading JSON."""
-        path = tmp_path / 'bad.json'
-        path.write_text('[{"ok": 1}, 2]', encoding='utf-8')
-
-        with pytest.raises(TypeError):
-            File(path, FileFormat.JSON).read()
-
-    def test_read_missing_file_raises_before_format_inference(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """
-        Test that missing path checks run before format inference on read.
-        """
-        missing = tmp_path / 'missing.unknown'
-        file = File(missing)
-
-        with pytest.raises(FileNotFoundError):
-            file.read()
-
-    def test_read_missing_remote_file_raises_before_dispatch(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that missing remote objects raise using the raw URI."""
-        backend = _RemoteCallRecorder(exists_result=False)
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
-
-        with pytest.raises(FileNotFoundError, match='s3://bucket/missing.json'):
-            File('s3://bucket/missing.json', FileFormat.JSON).read()
-
-        assert backend.calls == ['exists']
-
-    @pytest.mark.parametrize(
-        ('filename', 'contents', 'operation', 'error_pattern'),
-        UNKNOWN_FORMAT_CASES,
-        ids=UNKNOWN_FORMAT_CASE_IDS,
-    )
-    def test_unknown_formats_defer_error(
-        self,
-        tmp_path: Path,
-        filename: str,
-        contents: str | None,
-        operation: Operation,
-        error_pattern: str,
-    ) -> None:
-        """Test that unresolved formats deferring failure until dispatch."""
-        path = tmp_path / filename
-        if contents is not None:
-            path.write_text(contents, encoding='utf-8')
-        file = File(path)
-
-        assert file.file_format is None
-        operation_kwargs = {
-            'read': {},
-            'write': {'data': {'ok': True}},
-        }[operation]
-        with pytest.raises(ValueError, match=error_pattern):
-            getattr(file, operation)(**operation_kwargs)
+        assert repr(File(path, FileFormat.JSON)) == (
+            f'File(path={path!r}, file_format={FileFormat.JSON!r})'
+        )
 
     @pytest.mark.parametrize(
         ('file_format', 'filename', 'payload', 'expected', 'requires'),
@@ -942,6 +788,163 @@ class TestFile:
         }[operation]
         with pytest.raises(NotImplementedError):
             getattr(file, operation)(**operation_kwargs)
+
+    def test_touch_creates_missing_local_file(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that local touch creates missing files and parents."""
+        path = tmp_path / 'nested' / 'data.json'
+
+        File(path, FileFormat.JSON).touch()
+
+        assert path.exists()
+        assert path.read_text(encoding='utf-8') == ''
+
+    def test_touch_remote_creates_empty_object_when_missing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote touch creates an empty object when absent."""
+        uploads: list[bytes] = []
+
+        class FakeBackend:
+            """Remote backend touch test double."""
+
+            def __init__(self) -> None:
+                self.parent_calls = 0
+                self.exists_calls = 0
+
+            def ensure_parent_dir(self, location: object) -> None:
+                """Record parent preparation for the new object."""
+                del location
+                self.parent_calls += 1
+
+            def exists(self, location: object) -> bool:
+                """Report the object as missing on first touch."""
+                del location
+                self.exists_calls += 1
+                return False
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> CaptureBytesUpload:
+                """Return a writable stream for the new object."""
+                del location, kwargs
+                assert mode == 'wb'
+                return CaptureBytesUpload(uploads)
+
+        backend = FakeBackend()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
+
+        File('s3://bucket/data.json', FileFormat.JSON).touch()
+
+        assert backend.exists_calls == 1
+        assert backend.parent_calls == 1
+        assert uploads == [b'']
+
+    def test_touch_remote_is_noop_when_object_exists(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that remote touch avoids truncating existing objects."""
+        calls: list[str] = []
+
+        class FakeBackend:
+            """Remote backend touch no-op test double."""
+
+            def exists(self, location: object) -> bool:
+                """Report the object as already present."""
+                del location
+                calls.append('exists')
+                return True
+
+            def ensure_parent_dir(self, location: object) -> None:
+                """Fail if parent preparation happens unexpectedly."""
+                raise AssertionError('ensure_parent_dir should not be called')
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> BytesIO:
+                """Fail if open happens unexpectedly."""
+                raise AssertionError('open should not be called')
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        File('s3://bucket/data.json', FileFormat.JSON).touch()
+
+        assert calls == ['exists']
+
+    @pytest.mark.parametrize(
+        ('filename', 'contents', 'operation', 'error_pattern'),
+        UNKNOWN_FORMAT_CASES,
+        ids=UNKNOWN_FORMAT_CASE_IDS,
+    )
+    def test_unknown_formats_defer_error(
+        self,
+        tmp_path: Path,
+        filename: str,
+        contents: str | None,
+        operation: Operation,
+        error_pattern: str,
+    ) -> None:
+        """Test that unresolved formats deferring failure until dispatch."""
+        path = tmp_path / filename
+        if contents is not None:
+            path.write_text(contents, encoding='utf-8')
+        file = File(path)
+
+        assert file.file_format is None
+        operation_kwargs = {
+            'read': {},
+            'write': {'data': {'ok': True}},
+        }[operation]
+        with pytest.raises(ValueError, match=error_pattern):
+            getattr(file, operation)(**operation_kwargs)
+
+    def test_write_bytes_delegates_to_remote_storage_backend(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that :meth:`File.write_bytes` uses the storage backend."""
+        uploads: list[bytes] = []
+
+        class FakeBackend:
+            """Remote backend write-bytes test double."""
+
+            def open(
+                self,
+                location: object,
+                mode: str = 'r',
+                **kwargs: object,
+            ) -> CaptureBytesUpload:
+                """Capture the write open request and return a binary sink."""
+                del location, kwargs
+                assert mode == 'wb'
+                return CaptureBytesUpload(uploads)
+
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+
+        File('s3://bucket/data.bin').write_bytes(b'payload')
+
+        assert uploads == [b'payload']
+
+    def test_write_bytes_uses_local_backend(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Test that :meth:`File.write_bytes` writes local binary content."""
+        path = tmp_path / 'data.bin'
+
+        File(path).write_bytes(b'payload')
+
+        assert path.read_bytes() == b'payload'
 
     def test_write_csv_rejects_non_dicts(
         self,
