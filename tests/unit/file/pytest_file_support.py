@@ -6,6 +6,7 @@ Shared unit-test stubs and helper factories for :mod:`etlplus.file` tests.
 
 from __future__ import annotations
 
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -61,6 +62,19 @@ def make_import_error_writer_mod() -> object:
 
 
 # SECTION: CLASSES ========================================================== #
+
+
+class CaptureBytesUpload(BytesIO):
+    """Writable byte stream that records its payload on close."""
+
+    def __init__(self, uploads: list[bytes]) -> None:
+        self._uploads = uploads
+        super().__init__()
+
+    def close(self) -> None:
+        """Capture written bytes before closing the stream."""
+        self._uploads.append(self.getvalue())
+        super().close()
 
 
 class DictRecordsFrameStub:
