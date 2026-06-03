@@ -317,24 +317,20 @@ class TestFile:
         assert path.parent.exists()
 
     @pytest.mark.parametrize(
-        ('present', 'expected'),
-        [
-            pytest.param(False, False, id='missing'),
-            pytest.param(True, True, id='present'),
-        ],
+        'present',
+        [False, True],
     )
     def test_exists_reflects_local_file_state(
         self,
         tmp_path: Path,
         present: bool,
-        expected: bool,
     ) -> None:
         """Test that local existence checks use the local filesystem."""
         path = tmp_path / 'data.json'
         if present:
             path.write_text('{}', encoding='utf-8')
 
-        assert File(path, FileFormat.JSON).exists() is expected
+        assert File(path, FileFormat.JSON).exists() is present
 
     @pytest.mark.parametrize(
         ('raw_format', 'expected'),
