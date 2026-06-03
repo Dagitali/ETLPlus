@@ -29,6 +29,7 @@ from etlplus.storage import StubStorageBackend
 
 RemoteBackendType = type[RemoteStorageBackend]
 RemoteOperationCase = tuple[str, tuple[object, ...], dict[str, object]]
+RemoteValidationKind = str
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -64,6 +65,11 @@ REMOTE_OPERATION_CASES: tuple[RemoteOperationCase, ...] = (
     ('delete', (), {}),
     ('exists', (), {}),
     ('open', ('rb',), {}),
+)
+
+REMOTE_PROVIDER_VALIDATION_KINDS: tuple[RemoteValidationKind, ...] = (
+    'missing_authority',
+    'missing_path',
 )
 
 REMOTE_PROVIDER_CASES: tuple[RemoteProviderCase, ...] = (
@@ -148,40 +154,31 @@ class TestRemoteStorageBackend:
         assert issubclass(backend_type, RemoteStorageBackend)
 
     @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
+    @pytest.mark.parametrize('validation_kind', REMOTE_PROVIDER_VALIDATION_KINDS)
     @pytest.mark.parametrize(('method_name', 'args', 'kwargs'), REMOTE_OPERATION_CASES)
-    def test_operations_reject_missing_authority_before_runtime_behavior(
+    def test_operations_reject_invalid_locations_before_runtime_behavior(
         self,
         case: RemoteProviderCase,
+        validation_kind: RemoteValidationKind,
         method_name: str,
         args: tuple[object, ...],
         kwargs: dict[str, object],
     ) -> None:
-        """Test public remote operations reject missing authorities consistently."""
+        """Test public remote operations reject invalid locations consistently."""
         backend = case.backend_type()
-        location = StorageLocation(
-            raw=f'{case.scheme.value}:///data.csv',
-            scheme=case.scheme,
-            authority='',
-            path='data.csv',
-        )
+        if validation_kind == 'missing_authority':
+            location = StorageLocation(
+                raw=f'{case.scheme.value}:///data.csv',
+                scheme=case.scheme,
+                authority='',
+                path='data.csv',
+            )
+            match = case.authority_label
+        else:
+            location = StorageLocation.from_value(case.missing_path_raw)
+            match = case.path_label
 
-        with pytest.raises(ValueError, match=case.authority_label):
-            getattr(backend, method_name)(location, *args, **kwargs)
-
-    @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
-    @pytest.mark.parametrize(('method_name', 'args', 'kwargs'), REMOTE_OPERATION_CASES)
-    def test_operations_reject_missing_path_before_runtime_behavior(
-        self,
-        case: RemoteProviderCase,
-        method_name: str,
-        args: tuple[object, ...],
-        kwargs: dict[str, object],
-    ) -> None:
-        """Test public remote operations reject missing paths consistently."""
-        backend = case.backend_type()
-        location = StorageLocation.from_value(case.missing_path_raw)
-
-        with pytest.raises(ValueError, match=case.path_label):
+        with pytest.raises(ValueError, match=match):
             getattr(backend, method_name)(location, *args, **kwargs)
 
     @pytest.mark.parametrize('backend_type', REMOTE_BACKEND_TYPES)
@@ -220,32 +217,27 @@ class TestRemoteStorageBackend:
         backend.ensure_parent_dir(location)
 
     @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
-    def test_validate_requires_authority(
+    @pytest.mark.parametrize('validation_kind', REMOTE_PROVIDER_VALIDATION_KINDS)
+    def test_validate_rejects_invalid_locations(
         self,
         case: RemoteProviderCase,
+        validation_kind: RemoteValidationKind,
     ) -> None:
-        """Test that remote backends reject locations without authority."""
+        """Test that remote backends reject invalid locations."""
         backend = case.backend_type()
-        location = StorageLocation(
-            raw=f'{case.scheme.value}:///data.csv',
-            scheme=case.scheme,
-            authority='',
-            path='data.csv',
-        )
+        if validation_kind == 'missing_authority':
+            location = StorageLocation(
+                raw=f'{case.scheme.value}:///data.csv',
+                scheme=case.scheme,
+                authority='',
+                path='data.csv',
+            )
+            match = case.authority_label
+        else:
+            location = StorageLocation.from_value(case.missing_path_raw)
+            match = case.path_label
 
-        with pytest.raises(ValueError, match=case.authority_label):
-            backend.ensure_parent_dir(location)
-
-    @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
-    def test_validate_requires_path(
-        self,
-        case: RemoteProviderCase,
-    ) -> None:
-        """Test that remote backends reject locations without resource paths."""
-        backend = case.backend_type()
-        location = StorageLocation.from_value(case.missing_path_raw)
-
-        with pytest.raises(ValueError, match=case.path_label):
+        with pytest.raises(ValueError, match=match):
             backend.ensure_parent_dir(location)
 
     @pytest.mark.parametrize('backend_type', REMOTE_BACKEND_TYPES)
