@@ -68,19 +68,17 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
     @pytest.mark.parametrize(
         ('stem', 'suffix', 'text_content', 'error_pattern'),
         [
-            pytest.param(
+            (
                 'payload',
                 None,
                 None,
                 'Cannot infer file format',
-                id='missing-inner-format',
             ),
-            pytest.param(
+            (
                 'payload',
                 'json',
                 'irrelevant',
                 'Not a gzip file',
-                id='non-gzip-payload',
             ),
         ],
     )
