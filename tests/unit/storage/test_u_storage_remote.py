@@ -28,6 +28,7 @@ from etlplus.storage import StubStorageBackend
 # SECTION: TYPE ALIASES ===================================================== #
 
 RemoteBackendType = type[RemoteStorageBackend]
+RemoteOperationCase = tuple[str, tuple[object, ...], dict[str, object]]
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -57,6 +58,12 @@ REMOTE_BACKEND_TYPES: tuple[RemoteBackendType, ...] = (
     HdfsStorageBackend,
     HttpStorageBackend,
     S3StorageBackend,
+)
+
+REMOTE_OPERATION_CASES: tuple[RemoteOperationCase, ...] = (
+    ('delete', (), {}),
+    ('exists', (), {}),
+    ('open', ('rb',), {}),
 )
 
 REMOTE_PROVIDER_CASES: tuple[RemoteProviderCase, ...] = (
@@ -141,14 +148,7 @@ class TestRemoteStorageBackend:
         assert issubclass(backend_type, RemoteStorageBackend)
 
     @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
-    @pytest.mark.parametrize(
-        ('method_name', 'args', 'kwargs'),
-        [
-            ('delete', (), {}),
-            ('exists', (), {}),
-            ('open', ('rb',), {}),
-        ],
-    )
+    @pytest.mark.parametrize(('method_name', 'args', 'kwargs'), REMOTE_OPERATION_CASES)
     def test_operations_reject_missing_authority_before_runtime_behavior(
         self,
         case: RemoteProviderCase,
@@ -169,14 +169,7 @@ class TestRemoteStorageBackend:
             getattr(backend, method_name)(location, *args, **kwargs)
 
     @pytest.mark.parametrize('case', REMOTE_PROVIDER_CASES)
-    @pytest.mark.parametrize(
-        ('method_name', 'args', 'kwargs'),
-        [
-            ('delete', (), {}),
-            ('exists', (), {}),
-            ('open', ('rb',), {}),
-        ],
-    )
+    @pytest.mark.parametrize(('method_name', 'args', 'kwargs'), REMOTE_OPERATION_CASES)
     def test_operations_reject_missing_path_before_runtime_behavior(
         self,
         case: RemoteProviderCase,
@@ -192,14 +185,7 @@ class TestRemoteStorageBackend:
             getattr(backend, method_name)(location, *args, **kwargs)
 
     @pytest.mark.parametrize('backend_type', REMOTE_BACKEND_TYPES)
-    @pytest.mark.parametrize(
-        ('method_name', 'args', 'kwargs'),
-        [
-            ('delete', (), {}),
-            ('exists', (), {}),
-            ('open', ('rb',), {}),
-        ],
-    )
+    @pytest.mark.parametrize(('method_name', 'args', 'kwargs'), REMOTE_OPERATION_CASES)
     def test_operations_reject_wrong_scheme_before_runtime_behavior(
         self,
         backend_type: RemoteBackendType,
