@@ -416,12 +416,19 @@ class TestAbfsStorageBackend:
         assert backend.exists(location) is True
         assert calls == ['UseDevelopmentStorage=true']
 
-    def test_service_client_uses_credential_env(
+    @pytest.mark.parametrize(
+        ('use_explicit_credential', 'env_credential'),
+        [(False, 'secret'), (True, None)],
+    )
+    def test_service_client_uses_configured_credential(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        use_explicit_credential: bool,
+        env_credential: str | None,
     ) -> None:
-        """Test that ABFS forwards configured credentials when present."""
-        backend = AbfsStorageBackend()
+        """Test that ABFS forwards env and explicit credentials."""
+        explicit_credential = object() if use_explicit_credential else None
+        backend = AbfsStorageBackend(credential=explicit_credential)
         location = StorageLocation.from_value(
             'abfs://filesystem@example.dfs.core.windows.net/blob.parquet',
         )
@@ -443,7 +450,10 @@ class TestAbfsStorageBackend:
 
         monkeypatch.delenv('AZURE_STORAGE_CONNECTION_STRING', raising=False)
         monkeypatch.delenv('AZURE_STORAGE_ACCOUNT_URL', raising=False)
-        monkeypatch.setenv('AZURE_STORAGE_CREDENTIAL', 'secret')
+        if env_credential is None:
+            monkeypatch.delenv('AZURE_STORAGE_CREDENTIAL', raising=False)
+        else:
+            monkeypatch.setenv('AZURE_STORAGE_CREDENTIAL', env_credential)
         monkeypatch.setattr(
             abfs_mod,
             '_import_datalake_types',
@@ -455,51 +465,7 @@ class TestAbfsStorageBackend:
         assert calls == [
             {
                 'account_url': 'https://example.dfs.core.windows.net',
-                'credential': 'secret',
-            },
-        ]
-
-    def test_service_client_uses_explicit_credential(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that ABFS preserves an explicit constructor credential."""
-        credential = object()
-        backend = AbfsStorageBackend(credential=credential)
-        location = StorageLocation.from_value(
-            'abfs://filesystem@example.dfs.core.windows.net/blob.parquet',
-        )
-        calls: list[dict[str, object]] = []
-
-        class FakeServiceClient:
-            def __init__(
-                self,
-                *,
-                account_url: str,
-                credential: object | None = None,
-            ) -> None:
-                calls.append(
-                    {
-                        'account_url': account_url,
-                        'credential': credential,
-                    },
-                )
-
-        monkeypatch.delenv('AZURE_STORAGE_CONNECTION_STRING', raising=False)
-        monkeypatch.delenv('AZURE_STORAGE_ACCOUNT_URL', raising=False)
-        monkeypatch.delenv('AZURE_STORAGE_CREDENTIAL', raising=False)
-        monkeypatch.setattr(
-            abfs_mod,
-            '_import_datalake_types',
-            lambda: (FakeServiceClient, None),
-        )
-
-        backend._service_client(location)
-
-        assert calls == [
-            {
-                'account_url': 'https://example.dfs.core.windows.net',
-                'credential': credential,
+                'credential': explicit_credential or env_credential,
             },
         ]
 
@@ -761,12 +727,19 @@ class TestAzureBlobStorageBackend:
         with pytest.raises(ValueError, match='AZURE_STORAGE_CONNECTION_STRING'):
             backend._service_client()
 
-    def test_service_client_uses_credential_env(
+    @pytest.mark.parametrize(
+        ('use_explicit_credential', 'env_credential'),
+        [(False, 'secret'), (True, None)],
+    )
+    def test_service_client_uses_configured_credential(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        use_explicit_credential: bool,
+        env_credential: str | None,
     ) -> None:
-        """Test that Azure Blob forwards configured credentials when present."""
-        backend = AzureBlobStorageBackend()
+        """Test that Azure Blob forwards env and explicit credentials."""
+        explicit_credential = object() if use_explicit_credential else None
+        backend = AzureBlobStorageBackend(credential=explicit_credential)
         location = StorageLocation.from_value(
             'azure-blob://container@example.blob.core.windows.net/blob.json',
         )
@@ -788,7 +761,10 @@ class TestAzureBlobStorageBackend:
 
         monkeypatch.delenv('AZURE_STORAGE_CONNECTION_STRING', raising=False)
         monkeypatch.delenv('AZURE_STORAGE_ACCOUNT_URL', raising=False)
-        monkeypatch.setenv('AZURE_STORAGE_CREDENTIAL', 'secret')
+        if env_credential is None:
+            monkeypatch.delenv('AZURE_STORAGE_CREDENTIAL', raising=False)
+        else:
+            monkeypatch.setenv('AZURE_STORAGE_CREDENTIAL', env_credential)
         monkeypatch.setattr(
             azure_blob_mod,
             '_import_blob_types',
@@ -800,51 +776,7 @@ class TestAzureBlobStorageBackend:
         assert calls == [
             {
                 'account_url': 'https://example.blob.core.windows.net',
-                'credential': 'secret',
-            },
-        ]
-
-    def test_service_client_uses_explicit_credential(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that Azure Blob preserves an explicit constructor credential."""
-        credential = object()
-        backend = AzureBlobStorageBackend(credential=credential)
-        location = StorageLocation.from_value(
-            'azure-blob://container@example.blob.core.windows.net/blob.json',
-        )
-        calls: list[dict[str, object]] = []
-
-        class FakeBlobServiceClient:
-            def __init__(
-                self,
-                *,
-                account_url: str,
-                credential: object | None = None,
-            ) -> None:
-                calls.append(
-                    {
-                        'account_url': account_url,
-                        'credential': credential,
-                    },
-                )
-
-        monkeypatch.delenv('AZURE_STORAGE_CONNECTION_STRING', raising=False)
-        monkeypatch.delenv('AZURE_STORAGE_ACCOUNT_URL', raising=False)
-        monkeypatch.delenv('AZURE_STORAGE_CREDENTIAL', raising=False)
-        monkeypatch.setattr(
-            azure_blob_mod,
-            '_import_blob_types',
-            lambda: (FakeBlobServiceClient, None),
-        )
-
-        backend._service_client(location)
-
-        assert calls == [
-            {
-                'account_url': 'https://example.blob.core.windows.net',
-                'credential': credential,
+                'credential': explicit_credential or env_credential,
             },
         ]
 
@@ -1453,10 +1385,7 @@ class TestS3StorageBackend:
                 """Record object deletion arguments."""
                 deletes.append(kwargs)
 
-        def fake_client() -> FakeS3Client:
-            return FakeS3Client()
-
-        monkeypatch.setattr(backend, '_client', fake_client)
+        monkeypatch.setattr(backend, '_client', lambda: FakeS3Client())
         backend.delete(location)
         assert deletes == [{'Bucket': 'bucket', 'Key': 'data.json'}]
 
@@ -1516,10 +1445,7 @@ class TestS3StorageBackend:
                 """Raise a not-found error for the requested object."""
                 raise FakeS3Error()
 
-        def fake_client() -> FakeS3Client:
-            return FakeS3Client()
-
-        monkeypatch.setattr(backend, '_client', fake_client)
+        monkeypatch.setattr(backend, '_client', lambda: FakeS3Client())
         assert backend.exists(location) is False
 
     def test_exists_returns_true_when_object_is_found(
@@ -1537,10 +1463,7 @@ class TestS3StorageBackend:
                 """Assert the requested object identity."""
                 assert kwargs == {'Bucket': 'bucket', 'Key': 'data.json'}
 
-        def fake_client() -> FakeS3Client:
-            return FakeS3Client()
-
-        monkeypatch.setattr(backend, '_client', fake_client)
+        monkeypatch.setattr(backend, '_client', lambda: FakeS3Client())
         assert backend.exists(location) is True
 
     def test_is_not_found_error_returns_false_without_mapping_response(self) -> None:
@@ -1568,10 +1491,7 @@ class TestS3StorageBackend:
                 assert kwargs == {'Bucket': 'bucket', 'Key': 'data.json'}
                 return {'Body': BytesIO(b'{"ok": true}')}
 
-        def fake_client() -> FakeS3Client:
-            return FakeS3Client()
-
-        monkeypatch.setattr(backend, '_client', fake_client)
+        monkeypatch.setattr(backend, '_client', lambda: FakeS3Client())
         with backend.open(location, encoding='utf-8') as handle:
             assert handle.read() == '{"ok": true}'
 
@@ -1591,10 +1511,7 @@ class TestS3StorageBackend:
                 """Record upload arguments."""
                 uploads.append(kwargs)
 
-        def fake_client() -> FakeS3Client:
-            return FakeS3Client()
-
-        monkeypatch.setattr(backend, '_client', fake_client)
+        monkeypatch.setattr(backend, '_client', lambda: FakeS3Client())
         with backend.open(location, 'wb') as handle:
             handle.write(b'payload')
 
