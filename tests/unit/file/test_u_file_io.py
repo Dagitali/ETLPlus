@@ -7,7 +7,6 @@ Unit tests for :mod:`etlplus.file._io`.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -75,11 +74,10 @@ class TestIoHelpers:
                 mod.coerce_record_payload(valid_payload, format_name='JSON') == expected
             )
 
-        invalid_payload_cases: tuple[tuple[Any, str], ...] = (
+        for invalid_payload, pattern in (
             ([{'a': 1}, 2], 'array must contain only objects'),
             ('bad', 'root must be an object'),
-        )
-        for invalid_payload, pattern in invalid_payload_cases:
+        ):
             with pytest.raises(TypeError, match=pattern):
                 mod.coerce_record_payload(
                     invalid_payload,
@@ -94,11 +92,10 @@ class TestIoHelpers:
         ):
             assert mod.normalize_records(valid_payload, 'CSV') == expected
 
-        invalid_payload_cases: tuple[tuple[Any, str], ...] = (
+        for invalid_payload, pattern in (
             (1, 'must be an object or an array'),
             ([{'id': 1}, 'x'], 'contain only objects'),
-        )
-        for invalid_payload, pattern in invalid_payload_cases:
+        ):
             with pytest.raises(TypeError, match=pattern):
                 mod.normalize_records(invalid_payload, 'CSV')
 
