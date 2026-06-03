@@ -350,10 +350,7 @@ class TestRegistryStrictPolicy:
 
     @pytest.mark.parametrize(
         'resolver',
-        [
-            pytest.param(mod.get_handler_class, id='class_lookup'),
-            pytest.param(mod.get_handler, id='instance_lookup'),
-        ],
+        [mod.get_handler_class, mod.get_handler],
     )
     def test_lookups_raise_without_explicit_mapping(
         self,
