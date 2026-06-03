@@ -42,11 +42,7 @@ class TestHdfsStorageBackend:
                 """Record the delete target."""
                 deletes.append(raw)
 
-        monkeypatch.setattr(
-            backend,
-            '_filesystem',
-            lambda _location: FakeFilesystem(),
-        )
+        monkeypatch.setattr(backend, '_filesystem', lambda _location: FakeFilesystem())
 
         backend.delete(location)
 
@@ -72,11 +68,7 @@ class TestHdfsStorageBackend:
                 """Record the mkdirs target."""
                 mkdirs.append({'path': path, **kwargs})
 
-        monkeypatch.setattr(
-            backend,
-            '_filesystem',
-            lambda _location: FakeFilesystem(),
-        )
+        monkeypatch.setattr(backend, '_filesystem', lambda _location: FakeFilesystem())
 
         backend.ensure_parent_dir(location)
 
