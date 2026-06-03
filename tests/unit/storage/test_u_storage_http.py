@@ -32,6 +32,18 @@ class TestHttpStorageBackend:
         with pytest.raises(ValueError, match='read-only'):
             backend.delete(location)
 
+    def test_exists_falls_back_to_get_when_head_not_supported(self) -> None:
+        """Test that HTTP exists falls back to GET when HEAD is unsupported."""
+        session = FakeHttpSession(head_status=405, get_status=200)
+        backend = HttpStorageBackend(session=session)
+        location = StorageLocation.from_value('https://example.com/files/data.csv')
+
+        assert backend.exists(location) is True
+        assert session.calls == [
+            ('head', 'https://example.com/files/data.csv', True),
+            ('get', 'https://example.com/files/data.csv', True),
+        ]
+
     def test_exists_returns_false_for_not_found(self) -> None:
         """Test that HTTP exists returns false for 404 responses."""
         backend = HttpStorageBackend(session=FakeHttpSession(head_status=404))
@@ -48,18 +60,6 @@ class TestHttpStorageBackend:
         assert backend.exists(location) is True
         assert session.calls == [
             ('head', 'https://example.com/files/data.csv', True),
-        ]
-
-    def test_exists_falls_back_to_get_when_head_not_supported(self) -> None:
-        """Test that HTTP exists falls back to GET when HEAD is unsupported."""
-        session = FakeHttpSession(head_status=405, get_status=200)
-        backend = HttpStorageBackend(session=session)
-        location = StorageLocation.from_value('https://example.com/files/data.csv')
-
-        assert backend.exists(location) is True
-        assert session.calls == [
-            ('head', 'https://example.com/files/data.csv', True),
-            ('get', 'https://example.com/files/data.csv', True),
         ]
 
     def test_exists_returns_false_when_get_fallback_is_not_found(self) -> None:
