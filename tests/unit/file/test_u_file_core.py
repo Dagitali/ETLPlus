@@ -367,17 +367,24 @@ class TestFile:
 
         assert File(path, FileFormat.JSON).exists() is True
 
-    def test_open_delegates_to_remote_storage_backend(
+    @pytest.mark.parametrize('operation', ['open', 'read_bytes'])
+    def test_binary_read_operations_delegate_to_remote_storage_backend(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        operation: str,
     ) -> None:
-        """Test that :meth:`File.open` forwards to the remote backend."""
+        """Test that binary read operations use remote storage streams."""
         backend = _RemoteCallRecorder()
         monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
-        with File('s3://bucket/data.bin').open('rb') as handle:
-            assert handle.read() == b'payload'
+        file = File('s3://bucket/data.bin')
+        if operation == 'open':
+            with file.open('rb') as handle:
+                result = handle.read()
+        else:
+            result = file.read_bytes()
 
+        assert result == b'payload'
         assert len(backend.open_calls) == 1
         assert backend.open_calls[0][1] == 'rb'
 
@@ -391,18 +398,6 @@ class TestFile:
 
         with File(path).open(encoding='utf-8') as handle:
             assert handle.read() == 'alpha'
-
-    def test_read_bytes_delegates_to_remote_storage_backend(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that :meth:`File.read_bytes` uses the storage backend."""
-        backend = _RemoteCallRecorder()
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
-
-        assert File('s3://bucket/data.bin').read_bytes() == b'payload'
-        assert len(backend.open_calls) == 1
-        assert backend.open_calls[0][1] == 'rb'
 
     def test_read_bytes_uses_local_backend(
         self,
