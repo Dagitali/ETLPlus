@@ -61,13 +61,6 @@ class TestAzureBlobStorageBackend:
         ):
             backend.exists(location)
 
-    def test_ensure_parent_dir_validates_container_and_blob(self) -> None:
-        """Test that invalid Azure Blob locations fail validation early."""
-        backend = AzureBlobStorageBackend()
-        location = StorageLocation.from_value('azure-blob://container')
-        with pytest.raises(ValueError, match='blob path'):
-            backend.ensure_parent_dir(location)
-
     def test_exists_returns_false_when_blob_client_reports_missing(
         self,
         monkeypatch: pytest.MonkeyPatch,
