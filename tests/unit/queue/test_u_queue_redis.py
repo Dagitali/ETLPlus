@@ -31,8 +31,11 @@ class TestRedisQueue:
 
     def test_from_obj_accepts_queue_name_and_db_aliases(self) -> None:
         """Test Redis metadata accepts ``queue_name`` and ``db`` aliases."""
-        queue = RedisQueue.from_obj({'name': 'orders', 'queue_name': 'events', 'db': 2})
+        queue = RedisQueue.from_obj(
+            {'name': '  orders  ', 'queue_name': '  events  ', 'db': 2},
+        )
 
+        assert queue.name == 'orders'
         assert queue.key == 'events'
         assert queue.database == 2
 
