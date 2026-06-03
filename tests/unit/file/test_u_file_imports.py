@@ -168,7 +168,7 @@ class TestImportsHelpers:
     @pytest.mark.parametrize(
         ('module_name', 'format_name', 'pip_name', 'required', 'expected'),
         [
-            pytest.param(
+            (
                 'xarray',
                 'NC',
                 None,
@@ -177,9 +177,8 @@ class TestImportsHelpers:
                     'NC support requires optional dependency "xarray".\n'
                     'Install with: pip install xarray'
                 ),
-                id='optional-default-pip-name',
             ),
-            pytest.param(
+            (
                 'bson',
                 'BSON',
                 'pymongo',
@@ -188,9 +187,8 @@ class TestImportsHelpers:
                     'BSON support requires dependency "pymongo".\n'
                     'Install with: pip install pymongo'
                 ),
-                id='required-explicit-pip-name',
             ),
-            pytest.param(
+            (
                 'missing_dep',
                 'CUSTOM',
                 None,
@@ -199,7 +197,6 @@ class TestImportsHelpers:
                     'CUSTOM support requires optional dependency "missing_dep".\n'
                     'Install with: pip install missing_dep'
                 ),
-                id='optional-custom-format',
             ),
         ],
     )
