@@ -64,12 +64,11 @@ class TestJson(
     @pytest.mark.parametrize(
         ('content', 'match'),
         [
-            pytest.param(
+            (
                 json.dumps([1, 2]),
                 'JSON array must contain',
-                id='non-object-array',
             ),
-            pytest.param('42', 'JSON root must be', id='scalar-root'),
+            ('42', 'JSON root must be'),
         ],
     )
     def test_read_rejects_invalid_root(
