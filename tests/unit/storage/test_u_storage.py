@@ -171,10 +171,7 @@ class TestAbfsStorageBackend:
                 """Return a present-file result."""
                 return True
 
-        def fake_file_client(_location: StorageLocation) -> FakeFileClient:
-            return FakeFileClient()
-
-        monkeypatch.setattr(backend, '_file_client', fake_file_client)
+        monkeypatch.setattr(backend, '_file_client', lambda _location: FakeFileClient())
         assert backend.exists(location) is True
 
     def test_delete_uses_file_client(
@@ -195,10 +192,7 @@ class TestAbfsStorageBackend:
                 """Record that delete_file was invoked."""
                 deleted.append(True)
 
-        def fake_file_client(_location: StorageLocation) -> FakeFileClient:
-            return FakeFileClient()
-
-        monkeypatch.setattr(backend, '_file_client', fake_file_client)
+        monkeypatch.setattr(backend, '_file_client', lambda _location: FakeFileClient())
         backend.delete(location)
         assert deleted == [True]
 
@@ -226,10 +220,7 @@ class TestAbfsStorageBackend:
                 """Return the fake download wrapper."""
                 return FakeDownload()
 
-        def fake_file_client(_location: StorageLocation) -> FakeFileClient:
-            return FakeFileClient()
-
-        monkeypatch.setattr(backend, '_file_client', fake_file_client)
+        monkeypatch.setattr(backend, '_file_client', lambda _location: FakeFileClient())
         with backend.open(location, encoding='utf-8') as handle:
             assert handle.read() == '{"ok": true}'
 
@@ -265,10 +256,7 @@ class TestAbfsStorageBackend:
                 """Record upload arguments."""
                 uploads.append(kwargs)
 
-        def fake_file_client(_location: StorageLocation) -> FakeFileClient:
-            return FakeFileClient()
-
-        monkeypatch.setattr(backend, '_file_client', fake_file_client)
+        monkeypatch.setattr(backend, '_file_client', lambda _location: FakeFileClient())
         monkeypatch.setattr(
             abfs_mod,
             '_import_datalake_types',
@@ -368,16 +356,13 @@ class TestAbfsStorageBackend:
         """Test that ABFS rejects missing connection and account settings."""
         backend = AbfsStorageBackend()
 
-        class FakeServiceClient:
-            pass
-
         monkeypatch.delenv('AZURE_STORAGE_CONNECTION_STRING', raising=False)
         monkeypatch.delenv('AZURE_STORAGE_ACCOUNT_URL', raising=False)
         monkeypatch.delenv('AZURE_STORAGE_CREDENTIAL', raising=False)
         monkeypatch.setattr(
             abfs_mod,
             '_import_datalake_types',
-            lambda: (FakeServiceClient, None),
+            lambda: (object, None),
         )
 
         with pytest.raises(ValueError, match='AZURE_STORAGE_CONNECTION_STRING'):
@@ -558,10 +543,7 @@ class TestAzureBlobStorageBackend:
                 """Return a present-object result."""
                 return True
 
-        def fake_blob_client(_location: StorageLocation) -> FakeBlobClient:
-            return FakeBlobClient()
-
-        monkeypatch.setattr(backend, '_blob_client', fake_blob_client)
+        monkeypatch.setattr(backend, '_blob_client', lambda _location: FakeBlobClient())
         assert backend.exists(location) is True
 
     def test_delete_uses_blob_client(
@@ -580,10 +562,7 @@ class TestAzureBlobStorageBackend:
                 """Record blob deletion arguments."""
                 deletes.append(kwargs)
 
-        def fake_blob_client(_location: StorageLocation) -> FakeBlobClient:
-            return FakeBlobClient()
-
-        monkeypatch.setattr(backend, '_blob_client', fake_blob_client)
+        monkeypatch.setattr(backend, '_blob_client', lambda _location: FakeBlobClient())
         backend.delete(location)
         assert deletes == [{'delete_snapshots': 'include'}]
 
@@ -647,10 +626,7 @@ class TestAzureBlobStorageBackend:
                 """Return the fake download wrapper."""
                 return FakeDownload()
 
-        def fake_blob_client(_location: StorageLocation) -> FakeBlobClient:
-            return FakeBlobClient()
-
-        monkeypatch.setattr(backend, '_blob_client', fake_blob_client)
+        monkeypatch.setattr(backend, '_blob_client', lambda _location: FakeBlobClient())
         with backend.open(location, encoding='utf-8') as handle:
             assert handle.read() == '{"ok": true}'
 
@@ -672,10 +648,7 @@ class TestAzureBlobStorageBackend:
                 """Record upload arguments."""
                 uploads.append(kwargs)
 
-        def fake_blob_client(_location: StorageLocation) -> FakeBlobClient:
-            return FakeBlobClient()
-
-        monkeypatch.setattr(backend, '_blob_client', fake_blob_client)
+        monkeypatch.setattr(backend, '_blob_client', lambda _location: FakeBlobClient())
         monkeypatch.setattr(
             azure_blob_mod,
             '_import_blob_types',
@@ -776,16 +749,13 @@ class TestAzureBlobStorageBackend:
         """Test that Azure Blob rejects missing connection and account settings."""
         backend = AzureBlobStorageBackend()
 
-        class FakeBlobServiceClient:
-            pass
-
         monkeypatch.delenv('AZURE_STORAGE_CONNECTION_STRING', raising=False)
         monkeypatch.delenv('AZURE_STORAGE_ACCOUNT_URL', raising=False)
         monkeypatch.delenv('AZURE_STORAGE_CREDENTIAL', raising=False)
         monkeypatch.setattr(
             azure_blob_mod,
             '_import_blob_types',
-            lambda: (FakeBlobServiceClient, None),
+            lambda: (object, None),
         )
 
         with pytest.raises(ValueError, match='AZURE_STORAGE_CONNECTION_STRING'):
