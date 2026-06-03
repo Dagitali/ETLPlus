@@ -34,7 +34,7 @@ class TestModuleCallables:
             'match',
         ),
         [
-            pytest.param(
+            (
                 object(),
                 'XPT',
                 'read_xpt',
@@ -42,9 +42,8 @@ class TestModuleCallables:
                 'pyreadstat',
                 ImportError,
                 'XPT read support requires "pyreadstat" with read_xpt\\(\\)\\.',
-                id='missing-method',
             ),
-            pytest.param(
+            (
                 None,
                 'SAV',
                 'write_sav',
@@ -52,7 +51,6 @@ class TestModuleCallables:
                 'pyreadstat',
                 RuntimeError,
                 'pyreadstat dependency is required for SAV write',
-                id='missing-module',
             ),
         ],
     )
