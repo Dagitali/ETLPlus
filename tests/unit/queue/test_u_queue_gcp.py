@@ -27,15 +27,15 @@ class TestGcpPubSubQueue:
         queue = GcpPubSubQueue.from_obj(
             {
                 'name': 'orders',
-                'project': '  example-project  ',
+                'project': 123,
                 'topic': '  orders-topic  ',
-                'subscription': '  etlplus  ',
+                'subscription': False,
             },
         )
 
-        assert queue.project == 'example-project'
+        assert queue.project == '123'
         assert queue.topic == 'orders-topic'
-        assert queue.subscription == 'etlplus'
+        assert queue.subscription == 'False'
 
     @pytest.mark.parametrize(
         ('payload', 'match'),
