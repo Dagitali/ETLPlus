@@ -77,6 +77,23 @@ class CaptureBytesUpload(BytesIO):
         super().close()
 
 
+class ContextManagerSelfMixin:
+    """
+    Tiny mixin for stubs that act as context managers returning ``self``.
+    """
+
+    def __enter__(self) -> ContextManagerSelfMixin:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: object,
+        exc: object,
+        tb: object,
+    ) -> None:
+        return None
+
+
 class DictRecordsFrameStub:
     """
     Minimal records-only frame stub shared by scientific format tests.
@@ -394,21 +411,45 @@ class RDataPandasStub:
     DataFrame = DictRecordsFrameStub
 
 
-class ContextManagerSelfMixin:
-    """
-    Tiny mixin for stubs that act as context managers returning ``self``.
-    """
+class RemoteBytesBackendStub:
+    """Storage backend stub for byte-oriented remote file tests."""
 
-    def __enter__(self) -> ContextManagerSelfMixin:
-        return self
-
-    def __exit__(
+    def __init__(
         self,
-        exc_type: object,
-        exc: object,
-        tb: object,
+        *,
+        exists_result: bool = True,
+        open_error: Exception | None = None,
+        read_payload: bytes = b'',
     ) -> None:
-        return None
+        self.calls: list[str] = []
+        self.exists_result = exists_result
+        self.open_error = open_error
+        self.read_payload = read_payload
+        self.uploads: list[bytes] = []
+
+    def ensure_parent_dir(self, location: object) -> None:
+        """Record parent preparation for a remote object."""
+        self.calls.append('ensure_parent_dir')
+
+    def exists(self, location: object) -> bool:
+        """Record an existence check and return the configured result."""
+        self.calls.append('exists')
+        return self.exists_result
+
+    def open(
+        self,
+        location: object,
+        mode: str = 'r',
+        **kwargs: object,
+    ) -> BytesIO:
+        """Return a readable or writable byte stream for the requested mode."""
+        self.calls.append(mode)
+        if self.open_error is not None:
+            raise self.open_error
+        if mode == 'rb':
+            return BytesIO(self.read_payload)
+        assert mode == 'wb'
+        return CaptureBytesUpload(self.uploads)
 
 
 class RDataNoWriterStub:
