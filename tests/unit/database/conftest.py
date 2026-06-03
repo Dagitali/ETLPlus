@@ -13,6 +13,13 @@ import pytest
 
 from etlplus.database._schema import TableSpec
 
+# SECTION: MARKERS ========================================================== #
+
+
+# Directory-level marker for unit tests.
+pytestmark = pytest.mark.unit
+
+
 # SECTION: TYPE ALIASES ===================================================== #
 
 
