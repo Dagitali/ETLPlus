@@ -15,6 +15,8 @@ import pytest
 
 from etlplus.file import _io as mod
 
+from .pytest_file_support import RemoteBytesBackendStub
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -51,22 +53,6 @@ class _PandasReadSasStub:
         """Capture calls and return a sentinel object."""
         self.calls.append({'path': path, **kwargs})
         return {'ok': True}
-
-
-class _RemoteBinaryWriter(BytesIO):
-    """Capture binary payloads written through one storage-backed handle."""
-
-    def __init__(
-        self,
-        bucket: list[bytes],
-    ) -> None:
-        super().__init__()
-        self._bucket = bucket
-
-    def close(self) -> None:
-        """Persist captured bytes before closing the handle."""
-        self._bucket.append(self.getvalue())
-        super().close()
 
 
 class _RemoteTextWriter(StringIO):
@@ -148,35 +134,16 @@ class TestIoHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test binary helpers against one storage-backed remote location."""
-        writes: list[bytes] = []
-
-        class FakeBackend:
-            """Minimal remote backend for binary helper tests."""
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Accept parent preparation for remote writes."""
-                del location
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> BytesIO:
-                """Return one binary handle for the requested mode."""
-                del location, kwargs
-                if mode == 'rb':
-                    return BytesIO(b'payload')
-                assert mode == 'wb'
-                return _RemoteBinaryWriter(writes)
-
-        monkeypatch.setattr(mod, 'get_backend', lambda location: FakeBackend())
+        backend = RemoteBytesBackendStub(read_payload=b'payload')
+        monkeypatch.setattr(mod, 'get_backend', lambda location: backend)
 
         uri = 's3://bucket/data.bin'
         mod.write_bytes(uri, b'payload')
 
-        assert writes == [b'payload']
+        assert backend.calls == ['ensure_parent_dir', 'wb']
+        assert backend.uploads == [b'payload']
         assert mod.read_bytes(uri) == b'payload'
+        assert backend.calls == ['ensure_parent_dir', 'wb', 'rb']
 
     def test_read_and_write_delimited(
         self,
