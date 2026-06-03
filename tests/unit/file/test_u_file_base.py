@@ -9,7 +9,6 @@ from __future__ import annotations
 import inspect
 from dataclasses import FrozenInstanceError
 from dataclasses import dataclass
-from io import BytesIO
 from pathlib import Path
 from typing import Any
 from typing import NoReturn
@@ -56,6 +55,7 @@ from etlplus.utils._types import JSONData
 from etlplus.utils._types import JSONList
 
 from .pytest_file_contract_utils import assert_single_dataset_rejects_non_default_key
+from .pytest_file_support import CaptureBytesUpload
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -474,14 +474,6 @@ class TestBaseAbcContracts:
         """Test that ``at(path)`` routes remote URI writes through storage."""
         uploads: list[bytes] = []
 
-        class CaptureUpload(BytesIO):
-            """Writable upload stream test double."""
-
-            def close(self) -> None:
-                """Capture uploaded bytes before closing the stream."""
-                uploads.append(self.getvalue())
-                super().close()
-
         class FakeBackend:
             """Remote backend write test double."""
 
@@ -494,11 +486,11 @@ class TestBaseAbcContracts:
                 location: object,
                 mode: str = 'r',
                 **kwargs: object,
-            ) -> CaptureUpload:
+            ) -> CaptureBytesUpload:
                 """Return one writable byte stream for the remote object."""
                 del location, kwargs
                 assert mode == 'wb'
-                return CaptureUpload()
+                return CaptureBytesUpload(uploads)
 
         monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
 
