@@ -179,9 +179,21 @@ class TestS3StorageBackend:
         with pytest.raises(TypeError, match='Unsupported S3 open'):
             backend.open(location, 'rb', unsupported=True)
 
+    @pytest.mark.parametrize(
+        ('content_type', 'expected_extra'),
+        [
+            (None, {}),
+            (
+                'application/octet-stream',
+                {'ContentType': 'application/octet-stream'},
+            ),
+        ],
+    )
     def test_open_writes_binary_payload(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        content_type: str | None,
+        expected_extra: dict[str, str],
     ) -> None:
         """Test that S3 writes upload buffered payloads on close."""
         backend = S3StorageBackend()
@@ -196,7 +208,8 @@ class TestS3StorageBackend:
                 uploads.append(kwargs)
 
         monkeypatch.setattr(backend, '_client', lambda: FakeS3Client())
-        with backend.open(location, 'wb') as handle:
+        kwargs = {'content_type': content_type} if content_type else {}
+        with backend.open(location, 'wb', **kwargs) as handle:
             handle.write(b'payload')
 
         assert uploads == [
@@ -204,36 +217,6 @@ class TestS3StorageBackend:
                 'Body': b'payload',
                 'Bucket': 'bucket',
                 'Key': 'data.bin',
-            },
-        ]
-
-    def test_open_writes_content_type_when_provided(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that S3 uploads include ContentType when requested."""
-        backend = S3StorageBackend()
-        location = StorageLocation.from_value('s3://bucket/data.bin')
-        uploads: list[dict[str, object]] = []
-
-        class FakeS3Client:
-            def put_object(self, **kwargs: object) -> None:
-                uploads.append(kwargs)
-
-        monkeypatch.setattr(backend, '_client', lambda: FakeS3Client())
-
-        with backend.open(
-            location,
-            'wb',
-            content_type='application/octet-stream',
-        ) as handle:
-            handle.write(b'payload')
-
-        assert uploads == [
-            {
-                'Body': b'payload',
-                'Bucket': 'bucket',
-                'Key': 'data.bin',
-                'ContentType': 'application/octet-stream',
+                **expected_extra,
             },
         ]
