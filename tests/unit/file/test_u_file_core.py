@@ -194,9 +194,16 @@ class _FakeHttpSession:
 class _RemoteCallRecorder:
     """Remote storage backend test double recording simple operations."""
 
-    def __init__(self, *, exists_result: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        exists_result: bool = True,
+        open_payload: bytes = b'payload',
+    ) -> None:
         self.calls: list[tuple[str, object]] = []
         self.exists_result = exists_result
+        self.open_calls: list[tuple[object, str, dict[str, object]]] = []
+        self.open_payload = open_payload
 
     def delete(self, location: object) -> None:
         """Record one delete request."""
@@ -210,6 +217,16 @@ class _RemoteCallRecorder:
         """Record one existence check and return the configured result."""
         self.calls.append(('exists', location))
         return self.exists_result
+
+    def open(
+        self,
+        location: object,
+        mode: str = 'r',
+        **kwargs: object,
+    ) -> BytesIO:
+        """Record one open request and return a binary stream."""
+        self.open_calls.append((location, mode, dict(kwargs)))
+        return BytesIO(self.open_payload)
 
 
 def normalize_numeric_records(records: FormatPayload) -> FormatPayload:
@@ -355,28 +372,14 @@ class TestFile:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that :meth:`File.open` forwards to the remote backend."""
-        calls: list[tuple[object, str, dict[str, object]]] = []
-
-        class FakeBackend:
-            """Remote backend open test double."""
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> BytesIO:
-                """Capture the open request and return a stream."""
-                calls.append((location, mode, dict(kwargs)))
-                return BytesIO(b'payload')
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = _RemoteCallRecorder()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         with File('s3://bucket/data.bin').open('rb') as handle:
             assert handle.read() == b'payload'
 
-        assert len(calls) == 1
-        assert calls[0][1] == 'rb'
+        assert len(backend.open_calls) == 1
+        assert backend.open_calls[0][1] == 'rb'
 
     def test_open_uses_local_backend_for_text_reads(
         self,
@@ -394,27 +397,12 @@ class TestFile:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that :meth:`File.read_bytes` uses the storage backend."""
-        calls: list[tuple[object, str]] = []
-
-        class FakeBackend:
-            """Remote backend read-bytes test double."""
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> BytesIO:
-                """Capture the open request and return a binary stream."""
-                del kwargs
-                calls.append((location, mode))
-                return BytesIO(b'payload')
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = _RemoteCallRecorder()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         assert File('s3://bucket/data.bin').read_bytes() == b'payload'
-        assert len(calls) == 1
-        assert calls[0][1] == 'rb'
+        assert len(backend.open_calls) == 1
+        assert backend.open_calls[0][1] == 'rb'
 
     def test_read_bytes_uses_local_backend(
         self,
