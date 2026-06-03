@@ -10,7 +10,6 @@ import inspect
 from dataclasses import FrozenInstanceError
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 from typing import NoReturn
 from typing import cast
 
@@ -56,6 +55,7 @@ from etlplus.utils._types import JSONList
 
 from .pytest_file_contract_utils import assert_single_dataset_rejects_non_default_key
 from .pytest_file_support import CaptureBytesUpload
+from .pytest_file_support import FakeHttpSession
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -65,54 +65,6 @@ from .pytest_file_support import CaptureBytesUpload
 
 
 _NO_DEFAULT: object = object()
-
-
-class _FakeHttpResponse:
-    """Minimal HTTP response double for bound-handler tests."""
-
-    def __init__(
-        self,
-        *,
-        status_code: int,
-        payload: bytes = b'',
-    ) -> None:
-        self.status_code = status_code
-        self.content = payload
-
-    def close(self) -> None:
-        """Close the response without side effects."""
-
-    def raise_for_status(self) -> None:
-        """Raise one error for non-successful response codes."""
-        if self.status_code >= 400:
-            raise RuntimeError(f'HTTP {self.status_code}')
-
-
-class _FakeHttpSession:
-    """Minimal HTTP session double for bound-handler tests."""
-
-    def __init__(
-        self,
-        *,
-        payload: bytes = b'',
-    ) -> None:
-        self.calls: list[tuple[str, str, bool]] = []
-        self.payload = payload
-
-    def close(self) -> None:
-        """Close the fake session without side effects."""
-
-    def get(self, url: str, **kwargs: Any) -> _FakeHttpResponse:
-        """Return one fake GET response and capture call metadata."""
-        self.calls.append(('get', url, bool(kwargs.get('stream', False))))
-        return _FakeHttpResponse(status_code=200, payload=self.payload)
-
-    def head(self, url: str, **kwargs: Any) -> _FakeHttpResponse:
-        """Return one fake HEAD response and capture call metadata."""
-        self.calls.append(
-            ('head', url, bool(kwargs.get('allow_redirects', False))),
-        )
-        return _FakeHttpResponse(status_code=200)
 
 
 @dataclass(slots=True, frozen=True)
@@ -452,7 +404,7 @@ class TestBaseAbcContracts:
     ) -> None:
         """Test that ``at(path)`` routes remote URI reads through storage."""
         uri = 'https://example.com/files/data.json?download=1'
-        session = _FakeHttpSession(payload=b'{"name": "Ada"}')
+        session = FakeHttpSession(payload=b'{"name": "Ada"}')
         handler = JsonFile()
 
         monkeypatch.setattr(http_storage_mod.requests, 'Session', lambda: session)
