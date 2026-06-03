@@ -147,9 +147,15 @@ class TestAbfsStorageBackend:
         with pytest.raises(TypeError, match='Unsupported ABFS open'):
             backend.open(location, 'rb', unsupported=True)
 
+    @pytest.mark.parametrize(
+        ('content_type', 'content_settings_type'),
+        [(None, None), ('application/octet-stream', FakeContentSettings)],
+    )
     def test_open_writes_binary_payload(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        content_type: str | None,
+        content_settings_type: type[FakeContentSettings] | None,
     ) -> None:
         """Test that ABFS writes upload buffered payloads on close."""
         backend = AbfsStorageBackend()
@@ -169,51 +175,20 @@ class TestAbfsStorageBackend:
         monkeypatch.setattr(
             abfs_mod,
             '_import_datalake_types',
-            lambda: (object, None),
+            lambda: (object, content_settings_type),
         )
 
-        with backend.open(location, 'wb') as handle:
-            handle.write(b'payload')
-
-        assert uploads == [{'data': b'payload', 'overwrite': True}]
-
-    def test_open_writes_content_settings_when_available(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that ABFS uploads include content settings when requested."""
-        backend = AbfsStorageBackend()
-        location = StorageLocation.from_value(
-            'abfs://filesystem@example.dfs.core.windows.net/blob.bin',
-        )
-        uploads: list[dict[str, object]] = []
-
-        class FakeFileClient:
-            def upload_data(self, **kwargs: object) -> None:
-                uploads.append(kwargs)
-
-        monkeypatch.setattr(
-            backend,
-            '_file_client',
-            lambda _location: FakeFileClient(),
-        )
-        monkeypatch.setattr(
-            abfs_mod,
-            '_import_datalake_types',
-            lambda: (object, FakeContentSettings),
-        )
-
-        with backend.open(
-            location,
-            'wb',
-            content_type='application/octet-stream',
-        ) as handle:
+        kwargs = {'content_type': content_type} if content_type else {}
+        with backend.open(location, 'wb', **kwargs) as handle:
             handle.write(b'payload')
 
         assert uploads[0]['data'] == b'payload'
         assert uploads[0]['overwrite'] is True
-        assert isinstance(uploads[0]['content_settings'], FakeContentSettings)
-        assert uploads[0]['content_settings'].content_type == 'application/octet-stream'
+        if content_type:
+            assert isinstance(uploads[0]['content_settings'], FakeContentSettings)
+            assert uploads[0]['content_settings'].content_type == content_type
+        else:
+            assert 'content_settings' not in uploads[0]
 
     def test_service_client_derives_account_url_from_location(
         self,
