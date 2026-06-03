@@ -6,7 +6,6 @@ Unit tests for :mod:`etlplus.file._io`.
 
 from __future__ import annotations
 
-from io import BytesIO
 from pathlib import Path
 from typing import Any
 
@@ -46,12 +45,20 @@ class _TableStub:
 class _PandasReadSasStub:
     """Minimal pandas-like stub for ``read_sas`` helper tests."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        capture_payload: bool = False,
+    ) -> None:
         self.calls: list[dict[str, object]] = []
+        self.capture_payload = capture_payload
 
     def read_sas(self, path: Path, **kwargs: object) -> object:
         """Capture calls and return a sentinel object."""
-        self.calls.append({'path': path, **kwargs})
+        call = {'path': path, **kwargs}
+        if self.capture_payload:
+            call['payload'] = path.read_bytes()
+        self.calls.append(call)
         return {'ok': True}
 
 
@@ -218,38 +225,9 @@ class TestIoHelpers:
     ) -> None:
         """Test SAS helper staging remote input before pandas reads it."""
         payload = b'remote-sas-payload'
-
-        class AssertingPandasReadSasStub(_PandasReadSasStub):
-            """Pandas-like stub that inspects the staged local file."""
-
-            def read_sas(self, path: Path, **kwargs: object) -> object:
-                """Capture the staged payload while the temp file exists."""
-                self.calls.append(
-                    {
-                        'path': path,
-                        'payload': path.read_bytes(),
-                        **kwargs,
-                    },
-                )
-                return {'ok': True}
-
-        pandas = AssertingPandasReadSasStub()
-
-        class FakeBackend:
-            """Minimal remote backend for staged SAS reads."""
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> BytesIO:
-                """Return one readable binary payload for remote staging."""
-                del location, kwargs
-                assert mode == 'rb'
-                return BytesIO(payload)
-
-        monkeypatch.setattr(mod, 'get_backend', lambda location: FakeBackend())
+        pandas = _PandasReadSasStub(capture_payload=True)
+        backend = RemoteBytesBackendStub(read_payload=payload)
+        monkeypatch.setattr(mod, 'get_backend', lambda location: backend)
 
         result = mod.read_sas_table(
             pandas,
@@ -264,6 +242,7 @@ class TestIoHelpers:
         assert staged_path.name == 'sample.sas7bdat'
         assert pandas.calls[0]['payload'] == payload
         assert pandas.calls[0]['format'] == 'sas7bdat'
+        assert backend.calls == ['rb']
 
     def test_records_from_table(self) -> None:
         """Test conversion from dataframe-like objects."""
