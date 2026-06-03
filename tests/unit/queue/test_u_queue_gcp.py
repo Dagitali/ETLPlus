@@ -26,13 +26,14 @@ class TestGcpPubSubQueue:
         """Test Google Cloud Pub/Sub metadata trims optional target fields."""
         queue = GcpPubSubQueue.from_obj(
             {
-                'name': 'orders',
+                'name': '  orders  ',
                 'project': 123,
                 'topic': '  orders-topic  ',
                 'subscription': False,
             },
         )
 
+        assert queue.name == 'orders'
         assert queue.project == '123'
         assert queue.topic == 'orders-topic'
         assert queue.subscription == 'False'
@@ -51,6 +52,14 @@ class TestGcpPubSubQueue:
             ),
             (
                 {'name': 'orders', 'project': 'example-project', 'topic': '   '},
+                'requires "topic" or "subscription"',
+            ),
+            (
+                {
+                    'name': 'orders',
+                    'project': 'example-project',
+                    'subscription': '   ',
+                },
                 'requires "topic" or "subscription"',
             ),
         ],
