@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.storage._remote`.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 import pytest
 
@@ -29,7 +30,7 @@ from etlplus.storage import StubStorageBackend
 
 RemoteBackendType = type[RemoteStorageBackend]
 RemoteOperationCase = tuple[str, tuple[object, ...], dict[str, object]]
-RemoteValidationKind = str
+RemoteValidationKind = Literal['missing_authority', 'missing_path']
 
 
 # SECTION: DATA CLASSES ===================================================== #
@@ -48,6 +49,23 @@ class RemoteProviderCase:
     missing_path_raw: str
     valid_raw: str
     uses_stub_base: bool = False
+
+    def invalid_location(
+        self,
+        validation_kind: RemoteValidationKind,
+    ) -> tuple[StorageLocation, str]:
+        """Return one invalid location and the expected validation-message text."""
+        if validation_kind == 'missing_authority':
+            return (
+                StorageLocation(
+                    raw=f'{self.scheme.value}:///data.csv',
+                    scheme=self.scheme,
+                    authority='',
+                    path='data.csv',
+                ),
+                self.authority_label,
+            )
+        return StorageLocation.from_value(self.missing_path_raw), self.path_label
 
 
 # SECTION: CONSTANTS ======================================================== #
@@ -166,17 +184,7 @@ class TestRemoteStorageBackend:
     ) -> None:
         """Test public remote operations reject invalid locations consistently."""
         backend = case.backend_type()
-        if validation_kind == 'missing_authority':
-            location = StorageLocation(
-                raw=f'{case.scheme.value}:///data.csv',
-                scheme=case.scheme,
-                authority='',
-                path='data.csv',
-            )
-            match = case.authority_label
-        else:
-            location = StorageLocation.from_value(case.missing_path_raw)
-            match = case.path_label
+        location, match = case.invalid_location(validation_kind)
 
         with pytest.raises(ValueError, match=match):
             getattr(backend, method_name)(location, *args, **kwargs)
@@ -225,17 +233,7 @@ class TestRemoteStorageBackend:
     ) -> None:
         """Test that remote backends reject invalid locations."""
         backend = case.backend_type()
-        if validation_kind == 'missing_authority':
-            location = StorageLocation(
-                raw=f'{case.scheme.value}:///data.csv',
-                scheme=case.scheme,
-                authority='',
-                path='data.csv',
-            )
-            match = case.authority_label
-        else:
-            location = StorageLocation.from_value(case.missing_path_raw)
-            match = case.path_label
+        location, match = case.invalid_location(validation_kind)
 
         with pytest.raises(ValueError, match=match):
             backend.ensure_parent_dir(location)
