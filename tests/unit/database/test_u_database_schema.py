@@ -33,46 +33,6 @@ from etlplus.database._schema import UniqueConstraintSpec
 PayloadFactory = Callable[[dict[str, object]], object]
 
 
-# SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture(name='sample_spec')
-def sample_spec_fixture() -> dict[str, object]:
-    """Return a representative table specification mapping."""
-    return {
-        'name': 'users',
-        'schema': 'public',
-        'create_schema': True,
-        'columns': [
-            {
-                'name': 'id',
-                'type': 'INT',
-                'nullable': False,
-                'identity': {'seed': 1, 'increment': 1},
-            },
-            {
-                'name': 'email',
-                'type': 'VARCHAR(255)',
-                'nullable': False,
-                'unique': True,
-            },
-        ],
-        'primary_key': {'columns': ['id']},
-        'unique_constraints': [
-            {'columns': ['email'], 'name': 'uq_users_email'},
-        ],
-        'indexes': [{'name': 'ix_users_email', 'columns': ['email']}],
-        'foreign_keys': [
-            {
-                'columns': ['id'],
-                'ref_table': 'accounts',
-                'ref_columns': ['id'],
-                'ondelete': 'CASCADE',
-            },
-        ],
-    }
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -85,41 +45,20 @@ class TestLoadTableSpecs:
     Reuses a helper fixture to patch :meth:`File.read` and avoid disk IO.
     """
 
-    @pytest.fixture
-    def patch_read_file(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> Callable[[Any], None]:
-        """
-        Return helper that patches the :meth:`read` instance method to return a
-        payload.
-        """
-
-        def _apply(payload: Any) -> None:
-            """Apply the patch to :meth:`File.read` to return the payload."""
-
-            def fake_read(self, *args, **kwargs):
-                """Fake :meth:`File.read` method returning the payload."""
-                return payload(self.path) if callable(payload) else payload
-
-            monkeypatch.setattr(schema_mod.File, 'read', fake_read)
-
-        return _apply
-
     def test_empty_payload(
         self,
-        patch_read_file: Callable[[Any], None],
+        patch_file_read: Callable[[Any, Any], None],
     ) -> None:
         """Test that an empty list is returned when the file is empty."""
-        patch_read_file(None)
+        patch_file_read(schema_mod.File, None)
         assert schema_mod.load_table_specs('missing.yml') == []
 
     def test_empty_table_schemas_payload(
         self,
-        patch_read_file: Callable[[Any], None],
+        patch_file_read: Callable[[Any, Any], None],
     ) -> None:
         """Test that null ``table_schemas`` yields no specs."""
-        patch_read_file({'table_schemas': None})
+        patch_file_read(schema_mod.File, {'table_schemas': None})
         assert schema_mod.load_table_specs('empty.yml') == []
 
     @pytest.mark.parametrize(
@@ -141,8 +80,8 @@ class TestLoadTableSpecs:
         self,
         payload_factory: PayloadFactory,
         expected_names: list[str],
-        sample_spec: dict[str, object],
-        patch_read_file: Callable[[Any], None],
+        schema_sample_spec: dict[str, object],
+        patch_file_read: Callable[[Any, Any], None],
     ) -> None:
         """
         Test that supported input shapes coerce to :class:`TableSpec` list.
@@ -151,9 +90,9 @@ class TestLoadTableSpecs:
 
         def _fake_read_file(path: Path) -> object:
             captured_paths.append(path)
-            return payload_factory(deepcopy(sample_spec))
+            return payload_factory(deepcopy(schema_sample_spec))
 
-        patch_read_file(_fake_read_file)  # type: ignore[arg-type]
+        patch_file_read(schema_mod.File, _fake_read_file)
 
         specs = schema_mod.load_table_specs('input.yml')
 
@@ -162,10 +101,10 @@ class TestLoadTableSpecs:
 
     def test_table_schemas_requires_list(
         self,
-        patch_read_file: Callable[[Any], None],
+        patch_file_read: Callable[[Any, Any], None],
     ) -> None:
         """Test that wrapped table schemas must be list-shaped."""
-        patch_read_file({'table_schemas': {'name': 'users'}})
+        patch_file_read(schema_mod.File, {'table_schemas': {'name': 'users'}})
 
         with pytest.raises(TypeError, match='table_schemas must be a list'):
             schema_mod.load_table_specs('bad.yml')
@@ -345,12 +284,12 @@ class TestModels:
 
     def test_table_spec_aliases_name_and_schema(
         self,
-        sample_spec: dict[str, object],
+        schema_sample_spec: dict[str, object],
     ) -> None:
         """
         Test that incoming aliases map to attributes with expected defaults.
         """
-        spec = TableSpec.model_validate(deepcopy(sample_spec))
+        spec = TableSpec.model_validate(deepcopy(schema_sample_spec))
 
         assert spec.table == 'users'
         assert spec.schema_name == 'public'
@@ -385,10 +324,10 @@ class TestModels:
         self,
         schema_name: str | None,
         expected: str,
-        sample_spec: dict[str, object],
+        schema_sample_spec: dict[str, object],
     ) -> None:
         """Test that ``fq_name`` includes schema when provided."""
-        spec_data = deepcopy(sample_spec)
+        spec_data = deepcopy(schema_sample_spec)
         spec_data['schema'] = schema_name
         spec = TableSpec.model_validate(spec_data)
 

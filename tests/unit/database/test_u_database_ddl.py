@@ -18,43 +18,6 @@ import etlplus.database._ddl as ddl
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture(name='sample_spec')
-def fixture_sample_spec() -> dict[str, object]:
-    """Sample table specification for testing."""
-    return {
-        'schema': 'dbo',
-        'table': 'widgets',
-        'create_schema': False,
-        'columns': [
-            {
-                'name': 'id',
-                'type': 'INT',
-                'nullable': False,
-                'identity': {'seed': 1, 'increment': 1},
-            },
-            {
-                'name': 'name',
-                'type': 'NVARCHAR(255)',
-                'nullable': True,
-            },
-        ],
-        'primary_key': {
-            'columns': ['id'],
-        },
-        'indexes': [
-            {
-                'name': 'IX_widgets_name',
-                'columns': ['name'],
-                'unique': True,
-            },
-        ],
-        'foreign_keys': [],
-    }
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -83,14 +46,14 @@ class TestLoadTableSpec:
     def test_missing_yaml_dependency(
         self,
         tmp_path: Path,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that loading a YAML spec without PyYAML raises RuntimeError."""
         yaml = pytest.importorskip('yaml')
         spec_path = tmp_path / 'spec.yaml'
         spec_path.write_text(
-            yaml.safe_dump(sample_spec, sort_keys=False),
+            yaml.safe_dump(ddl_sample_spec, sort_keys=False),
             encoding='utf-8',
         )
         import etlplus.file.yaml as file_mod
@@ -124,11 +87,11 @@ class TestLoadTableSpec:
         self,
         tmp_path: Path,
         extension: str,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
     ) -> None:
         """Test loading a table spec from JSON and YAML formats."""
         spec_path = tmp_path / f'spec.{extension}'
-        materialized = deepcopy(sample_spec)
+        materialized = deepcopy(ddl_sample_spec)
         if extension == 'json':
             spec_path.write_text(json.dumps(materialized), encoding='utf-8')
         else:
@@ -161,32 +124,32 @@ class TestRenderTableSql:
     def test_custom_template_path(
         self,
         tmp_path: Path,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
     ) -> None:
         """Test rendering SQL with a custom template path."""
         template_path = tmp_path / 'custom.sql.j2'
         template_path.write_text('{{ spec.table }}', encoding='utf-8')
 
         sql = ddl.render_table_sql(
-            sample_spec,
+            ddl_sample_spec,
             template_path=str(template_path),
         )
 
-        assert sql == f'{sample_spec["table"]}\n'
+        assert sql == f'{ddl_sample_spec["table"]}\n'
 
     def test_default_template(
         self,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
     ) -> None:
         """Test rendering SQL with the default template."""
-        sql = ddl.render_table_sql(sample_spec)
-        assert f'CREATE TABLE [dbo].[{sample_spec["table"]}' in sql
+        sql = ddl.render_table_sql(ddl_sample_spec)
+        assert f'CREATE TABLE [dbo].[{ddl_sample_spec["table"]}' in sql
         assert '[id] INT' in sql
 
     def test_env_override(
         self,
         tmp_path: Path,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test rendering SQL with a template-path environment override."""
@@ -197,18 +160,18 @@ class TestRenderTableSql:
         )
         monkeypatch.setenv('TEMPLATE_NAME', str(template_path))
 
-        sql = ddl.render_table_sql(sample_spec, template=None)
+        sql = ddl.render_table_sql(ddl_sample_spec, template=None)
 
         assert sql == 'dbo.widgets\n'
 
     def test_missing_template_path(
         self,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
     ) -> None:
         """Test that a missing template path raises FileNotFoundError."""
         missing = Path('/nonexistent/template.sql.j2')
         with pytest.raises(FileNotFoundError):
-            ddl.render_table_sql(sample_spec, template_path=str(missing))
+            ddl.render_table_sql(ddl_sample_spec, template_path=str(missing))
 
     @pytest.mark.parametrize(
         'payload',
@@ -222,7 +185,7 @@ class TestRenderTableSql:
     def test_template_override_requires_template_text(
         self,
         tmp_path: Path,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
         monkeypatch: pytest.MonkeyPatch,
         payload: object,
     ) -> None:
@@ -240,18 +203,18 @@ class TestRenderTableSql:
 
         with pytest.raises(TypeError):
             ddl.render_table_sql(
-                sample_spec,
+                ddl_sample_spec,
                 template_path=str(template_path),
             )
 
     def test_unknown_template_key(
         self,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
     ) -> None:
         """Test that an unknown template key raises ValueError."""
         with pytest.raises(ValueError, match='Unknown template key'):
             ddl.render_table_sql(
-                sample_spec,
+                ddl_sample_spec,
                 template='does not exist',  # type: ignore[arg-type]
             )
 
@@ -262,7 +225,7 @@ class TestRenderTables:
     def test_preserves_input_order_when_any_spec_lacks_table_name(
         self,
         tmp_path: Path,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
     ) -> None:
         """Test anonymous specs bypass dependency ordering."""
         template_path = tmp_path / 'names.sql.j2'
@@ -270,8 +233,8 @@ class TestRenderTables:
             '{{ spec.table|default(spec.columns[0].name) }}',
             encoding='utf-8',
         )
-        anonymous = deepcopy(sample_spec)
-        named = deepcopy(sample_spec)
+        anonymous = deepcopy(ddl_sample_spec)
+        named = deepcopy(ddl_sample_spec)
         anonymous.pop('table')
         named['table'] = 'named'
 
@@ -284,21 +247,21 @@ class TestRenderTables:
 
     def test_rejects_duplicate_table_names(
         self,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
     ) -> None:
         """Test duplicate table specs fail instead of being overwritten."""
-        duplicate = deepcopy(sample_spec)
+        duplicate = deepcopy(ddl_sample_spec)
 
         with pytest.raises(ValueError, match='Duplicate table spec name'):
-            ddl.render_tables([sample_spec, duplicate])
+            ddl.render_tables([ddl_sample_spec, duplicate])
 
     def test_renders_multiple_specs(
         self,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
     ) -> None:
         """Test rendering an iterable of table specs into SQL strings."""
-        first = deepcopy(sample_spec)
-        second = deepcopy(sample_spec)
+        first = deepcopy(ddl_sample_spec)
+        second = deepcopy(ddl_sample_spec)
         second['table'] = 'widgets_history'
 
         rendered = ddl.render_tables([first, second])
@@ -307,45 +270,45 @@ class TestRenderTables:
         assert 'widgets' in rendered[0]
         assert 'widgets_history' in rendered[1]
 
-    def test_renders_specs_in_foreign_key_dependency_order(
+    @pytest.mark.parametrize(
+        ('template_text', 'parent_updates', 'child_updates'),
+        [
+            (
+                '{{ spec.table }}',
+                {'table': 'accounts'},
+                {'table': 'orders', 'foreign_keys': [{'ref_table': 'accounts'}]},
+            ),
+            (
+                '{{ spec.name }}',
+                {'table': ' ', 'name': 'accounts'},
+                {
+                    'table': ' ',
+                    'name': 'orders',
+                    'foreign_keys': [{'ref_table': 'accounts'}],
+                },
+            ),
+            (
+                '{{ spec.table }}',
+                {'table': 'accounts'},
+                {'table': 'orders', 'foreign_keys': 'not-a-sequence'},
+            ),
+        ],
+    )
+    def test_orders_specs_by_declared_dependencies(
         self,
         tmp_path: Path,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
+        template_text: str,
+        parent_updates: dict[str, object],
+        child_updates: dict[str, object],
     ) -> None:
-        """Test that in-batch foreign-key dependencies render first."""
+        """Test dependency ordering and fallback ordering behavior."""
         template_path = tmp_path / 'names.sql.j2'
-        template_path.write_text('{{ spec.table }}', encoding='utf-8')
-        parent = deepcopy(sample_spec)
-        child = deepcopy(sample_spec)
-        parent['table'] = 'accounts'
-        child['table'] = 'orders'
-        child['foreign_keys'] = [
-            {
-                'columns': ['account_id'],
-                'ref_table': 'accounts',
-                'ref_columns': ['id'],
-            },
-        ]
-
-        rendered = ddl.render_tables([child, parent], template_path=template_path)
-
-        assert rendered == ['accounts\n', 'orders\n']
-
-    def test_orders_by_name_key_when_table_key_is_blank(
-        self,
-        tmp_path: Path,
-        sample_spec: dict[str, object],
-    ) -> None:
-        """Test table-name resolution falls back to a nonblank name key."""
-        template_path = tmp_path / 'names.sql.j2'
-        template_path.write_text('{{ spec.name }}', encoding='utf-8')
-        parent = deepcopy(sample_spec)
-        child = deepcopy(sample_spec)
-        parent['table'] = ' '
-        parent['name'] = 'accounts'
-        child['table'] = ' '
-        child['name'] = 'orders'
-        child['foreign_keys'] = [{'ref_table': 'accounts'}]
+        template_path.write_text(template_text, encoding='utf-8')
+        parent = deepcopy(ddl_sample_spec)
+        child = deepcopy(ddl_sample_spec)
+        parent.update(parent_updates)
+        child.update(child_updates)
 
         rendered = ddl.render_tables([child, parent], template_path=template_path)
 
@@ -353,41 +316,38 @@ class TestRenderTables:
 
 
 class TestRenderTablesToString:
-    """
-    Unit tests for :func:`render_tables_to_string`.
-    """
+    """Unit tests for :func:`render_tables_to_string`."""
 
     def test_custom_template(
         self,
         tmp_path: Path,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
     ) -> None:
         """Test rendering multiple table specs with a custom template."""
         template_path = tmp_path / 'concat_template.sql.j2'
         template_path.write_text('{{ spec.table }}', encoding='utf-8')
 
         path = tmp_path / 'spec.json'
-        path.write_text(json.dumps(sample_spec), encoding='utf-8')
+        path.write_text(json.dumps(ddl_sample_spec), encoding='utf-8')
 
         sql = ddl.render_tables_to_string(
             [path],
             template_path=template_path,
         )
 
-        assert sql == f'{sample_spec["table"]}\n'
+        assert sql == f'{ddl_sample_spec["table"]}\n'
 
     def test_from_paths(
         self,
         tmp_path: Path,
-        sample_spec: dict[str, object],
+        ddl_sample_spec: dict[str, object],
     ) -> None:
         """
-        Test rendering multiple table specs from file paths to one SQL
-        string.
+        Test rendering multiple table specs from file paths to one SQL string.
         """
         spec_paths: list[Path] = []
         for idx, table_name in enumerate(('widgets', 'widgets_history')):
-            materialized = deepcopy(sample_spec)
+            materialized = deepcopy(ddl_sample_spec)
             materialized['table'] = table_name
             path = tmp_path / f'spec_{idx}.json'
             path.write_text(json.dumps(materialized), encoding='utf-8')

@@ -53,27 +53,9 @@ class TestLoadDatabaseUrlFromConfig:
     fixtures to keep tests DRY.
     """
 
-    @pytest.fixture
-    def patch_read_file(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> Callable[[Any], None]:
-        """
-        Return a helper that patches :meth:`read` to return a payload.
-        """
-
-        def _apply(payload: Any) -> None:
-            monkeypatch.setattr(
-                engine_mod.File,
-                'read',
-                lambda self: payload,
-            )
-
-        return _apply
-
     def test_loads_default_and_named_entries(
         self,
-        patch_read_file: Callable[[Any], None],
+        patch_file_read: Callable[[Any, Any], None],
     ) -> None:
         """
         Test extracting URLs from default and named entries, including nested
@@ -90,7 +72,7 @@ class TestLoadDatabaseUrlFromConfig:
             },
         }
 
-        patch_read_file(config)
+        patch_file_read(engine_mod.File, config)
 
         assert load_database_url_from_config('cfg.yml') == 'sqlite:///default.db'
         assert (
@@ -111,12 +93,12 @@ class TestLoadDatabaseUrlFromConfig:
     )
     def test_invalid_configs_raise(
         self,
-        patch_read_file: Callable[[Any], None],
+        patch_file_read: Callable[[Any, Any], None],
         payload: Any,
         expected_exc: type[Exception],
     ) -> None:
         """Test that invalid structures surface helpful errors."""
-        patch_read_file(payload)
+        patch_file_read(engine_mod.File, payload)
 
         with pytest.raises(expected_exc):
             load_database_url_from_config('bad.yml')
