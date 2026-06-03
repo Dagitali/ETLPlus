@@ -54,8 +54,8 @@ from etlplus.utils._types import JSONData
 from etlplus.utils._types import JSONList
 
 from .pytest_file_contract_utils import assert_single_dataset_rejects_non_default_key
-from .pytest_file_support import CaptureBytesUpload
 from .pytest_file_support import FakeHttpSession
+from .pytest_file_support import RemoteBytesBackendStub
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -424,33 +424,15 @@ class TestBaseAbcContracts:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that ``at(path)`` routes remote URI writes through storage."""
-        uploads: list[bytes] = []
-
-        class FakeBackend:
-            """Remote backend write test double."""
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Accept parent preparation for remote storage."""
-                del location
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> CaptureBytesUpload:
-                """Return one writable byte stream for the remote object."""
-                del location, kwargs
-                assert mode == 'wb'
-                return CaptureBytesUpload(uploads)
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = RemoteBytesBackendStub()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         handler = JsonFile()
         written = handler.at('s3://bucket/data.json').write({'name': 'Ada'})
 
         assert written == 1
-        assert uploads == [b'{\n  "name": "Ada"\n}\n']
+        assert backend.calls == ['ensure_parent_dir', 'wb']
+        assert backend.uploads == [b'{\n  "name": "Ada"\n}\n']
 
     @pytest.mark.parametrize(
         (
