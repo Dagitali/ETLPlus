@@ -200,22 +200,22 @@ class _RemoteCallRecorder:
         exists_result: bool = True,
         open_payload: bytes = b'payload',
     ) -> None:
-        self.calls: list[tuple[str, object]] = []
+        self.calls: list[str] = []
         self.exists_result = exists_result
-        self.open_calls: list[tuple[object, str, dict[str, object]]] = []
+        self.open_modes: list[str] = []
         self.open_payload = open_payload
 
     def delete(self, location: object) -> None:
         """Record one delete request."""
-        self.calls.append(('delete', location))
+        self.calls.append('delete')
 
     def ensure_parent_dir(self, location: object) -> None:
         """Record one parent-preparation request."""
-        self.calls.append(('ensure_parent_dir', location))
+        self.calls.append('ensure_parent_dir')
 
     def exists(self, location: object) -> bool:
         """Record one existence check and return the configured result."""
-        self.calls.append(('exists', location))
+        self.calls.append('exists')
         return self.exists_result
 
     def open(
@@ -225,7 +225,7 @@ class _RemoteCallRecorder:
         **kwargs: object,
     ) -> BytesIO:
         """Record one open request and return a binary stream."""
-        self.open_calls.append((location, mode, dict(kwargs)))
+        self.open_modes.append(mode)
         return BytesIO(self.open_payload)
 
 
@@ -385,8 +385,7 @@ class TestFile:
             result = file.read_bytes()
 
         assert result == b'payload'
-        assert len(backend.open_calls) == 1
-        assert backend.open_calls[0][1] == 'rb'
+        assert backend.open_modes == ['rb']
 
     def test_open_uses_local_backend_for_text_reads(
         self,
@@ -439,8 +438,7 @@ class TestFile:
             assert result is True
         else:
             assert result is None
-        assert len(backend.calls) == 1
-        assert backend.calls[0][0] == operation
+        assert backend.calls == [operation]
 
     def test_touch_creates_missing_local_file(
         self,
@@ -835,7 +833,7 @@ class TestFile:
         with pytest.raises(FileNotFoundError, match='s3://bucket/missing.json'):
             File('s3://bucket/missing.json', FileFormat.JSON).read()
 
-        assert backend.calls[0][0] == 'exists'
+        assert backend.calls == ['exists']
 
     @pytest.mark.parametrize(
         ('filename', 'contents', 'operation', 'error_pattern'),
