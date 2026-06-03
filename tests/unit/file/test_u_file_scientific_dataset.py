@@ -93,32 +93,28 @@ class TestScientificStubDatasetKeys:
     @pytest.mark.parametrize(
         ('operation', 'method_name', 'selector_mode'),
         [
-            pytest.param(
+            (
                 'read',
                 'read_dataset',
                 'dataset_kwarg',
-                id='read_dataset+dataset',
             ),
-            pytest.param(
+            (
                 'write',
                 'write_dataset',
                 'dataset_kwarg',
-                id='write_dataset+dataset',
             ),
-            pytest.param(
+            (
                 'read',
                 'read_dataset',
                 'options',
-                id='read_dataset+options',
             ),
-            pytest.param(
+            (
                 'write',
                 'write_dataset',
                 'options',
-                id='write_dataset+options',
             ),
-            pytest.param('read', 'read', 'options', id='read+options'),
-            pytest.param('write', 'write', 'options', id='write+options'),
+            ('read', 'read', 'options'),
+            ('write', 'write', 'options'),
         ],
     )
     def test_methods_reject_unknown_dataset_key_before_stub_io(
@@ -178,21 +174,19 @@ class TestScientificDatasetHelpers:
     @pytest.mark.parametrize(
         ('keys', 'dataset', 'expected'),
         [
-            pytest.param(['data', 'features'], None, 'data', id='default-key'),
-            pytest.param(
+            (['data', 'features'], None, 'data'),
+            (
                 ['data', 'features'],
                 'features',
                 'features',
-                id='explicit-key',
             ),
-            pytest.param(
+            (
                 ['data', 'features'],
                 '/features',
                 'features',
-                id='explicit-key-leading-slash',
             ),
-            pytest.param([], None, None, id='empty-key-set'),
-            pytest.param(['features'], None, 'features', id='single-key-fallback'),
+            ([], None, None),
+            (['features'], None, 'features'),
         ],
     )
     def test_resolve_store_dataset_key_success_cases(
