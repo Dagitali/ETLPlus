@@ -24,23 +24,6 @@ from .pytest_storage_support import FakeContentSettings
 class TestAbfsStorageBackend:
     """Unit tests for :class:`etlplus.storage.AbfsStorageBackend`."""
 
-    def test_import_datalake_types_returns_sdk_types(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that SDK types are returned from the Azure import helper."""
-
-        class FakeModule:
-            DataLakeServiceClient = object()
-            ContentSettings = object()
-
-        monkeypatch.setattr(abfs_mod, 'import_module', lambda _: FakeModule)
-
-        assert abfs_mod._import_datalake_types() == (
-            FakeModule.DataLakeServiceClient,
-            FakeModule.ContentSettings,
-        )
-
     def test_account_url_from_authority_uses_account_host(self) -> None:
         """Test that ABFS account URLs are derived from the authority host."""
         backend = AbfsStorageBackend()
@@ -50,6 +33,28 @@ class TestAbfsStorageBackend:
             )
             == 'https://example.dfs.core.windows.net'
         )
+
+    def test_delete_uses_file_client(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that ABFS delete delegates to the file client."""
+        backend = AbfsStorageBackend()
+        location = StorageLocation.from_value(
+            'abfs://filesystem@example.dfs.core.windows.net/blob.json',
+        )
+        deleted: list[bool] = []
+
+        class FakeFileClient:
+            """Data Lake file client delete test double."""
+
+            def delete_file(self) -> None:
+                """Record that delete_file was invoked."""
+                deleted.append(True)
+
+        monkeypatch.setattr(backend, '_file_client', lambda _location: FakeFileClient())
+        backend.delete(location)
+        assert deleted == [True]
 
     def test_exists_raises_import_error_without_sdk(self) -> None:
         """Test that ABFS runtime needs the optional SDK package."""
@@ -83,27 +88,22 @@ class TestAbfsStorageBackend:
         monkeypatch.setattr(backend, '_file_client', lambda _location: FakeFileClient())
         assert backend.exists(location) is True
 
-    def test_delete_uses_file_client(
+    def test_import_datalake_types_returns_sdk_types(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Test that ABFS delete delegates to the file client."""
-        backend = AbfsStorageBackend()
-        location = StorageLocation.from_value(
-            'abfs://filesystem@example.dfs.core.windows.net/blob.json',
+        """Test that SDK types are returned from the Azure import helper."""
+
+        class FakeModule:
+            DataLakeServiceClient = object()
+            ContentSettings = object()
+
+        monkeypatch.setattr(abfs_mod, 'import_module', lambda _: FakeModule)
+
+        assert abfs_mod._import_datalake_types() == (
+            FakeModule.DataLakeServiceClient,
+            FakeModule.ContentSettings,
         )
-        deleted: list[bool] = []
-
-        class FakeFileClient:
-            """Data Lake file client delete test double."""
-
-            def delete_file(self) -> None:
-                """Record that delete_file was invoked."""
-                deleted.append(True)
-
-        monkeypatch.setattr(backend, '_file_client', lambda _location: FakeFileClient())
-        backend.delete(location)
-        assert deleted == [True]
 
     def test_open_reads_text_payload(
         self,
