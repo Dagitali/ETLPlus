@@ -13,6 +13,7 @@ import pytest
 
 from etlplus.file import _io as mod
 
+from .pytest_file_support import RecordsFrameStub
 from .pytest_file_support import RemoteBytesBackendStub
 from .pytest_file_support import RemoteTextBackendStub
 
@@ -21,25 +22,6 @@ from .pytest_file_support import RemoteTextBackendStub
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 # SECTION: INTERNAL CLASSES ================================================= #
-
-
-class _TableStub:
-    """Minimal table-like stub with :meth:`to_dict` API."""
-
-    def __init__(
-        self,
-        records: list[dict[str, object]],
-    ) -> None:
-        self._records = records
-
-    def to_dict(
-        self,
-        *,
-        orient: str,
-    ) -> list[dict[str, object]]:
-        """Return records for the expected orient."""
-        assert orient == 'records'
-        return list(self._records)
 
 
 class _PandasReadSasStub:
@@ -246,7 +228,7 @@ class TestIoHelpers:
 
     def test_records_from_table(self) -> None:
         """Test conversion from dataframe-like objects."""
-        table = _TableStub([{'id': 1}, {'id': 2}])
+        table = RecordsFrameStub([{'id': 1}, {'id': 2}])
         assert mod.records_from_table(table) == [{'id': 1}, {'id': 2}]
 
     def test_stringify_value(self) -> None:
