@@ -311,9 +311,9 @@ class TestDat(RoundtripUnitModuleContract):
     @pytest.mark.parametrize(
         ('filename', 'content', 'delimiter'),
         [
-            pytest.param('tab.dat', 'a\tb\n1\t2\n', '\t', id='tab'),
-            pytest.param('pipe.dat', 'a|b\n1|2\n', '|', id='pipe'),
-            pytest.param('semi.dat', 'a;b\n1;2\n', ';', id='semicolon'),
+            ('tab.dat', 'a\tb\n1\t2\n', '\t'),
+            ('pipe.dat', 'a|b\n1|2\n', '|'),
+            ('semi.dat', 'a;b\n1;2\n', ';'),
         ],
     )
     def test_read_sniffs_common_delimiters(
