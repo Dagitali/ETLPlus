@@ -20,6 +20,13 @@ from .pytest_file_roundtrip_spec import RoundtripValueKind
 # SECTION: CONSTANTS ===================================================== #
 
 
+XML_NESTED_ATTRIBUTES: JSONData = {
+    'root': {
+        '@id': '42',
+        'item': {'@lang': 'en', 'text': 'Hello'},
+    },
+}
+
 ROUNDTRIP_CASES: dict[str, tuple[JSONData, JSONData]] = {
     'dat_records': (
         [{'id': 1, 'name': 'Alice'}, {'id': 2, 'name': 'Bob'}],
@@ -32,20 +39,7 @@ ROUNDTRIP_CASES: dict[str, tuple[JSONData, JSONData]] = {
             'alpha': {'value': '1'},
         },
     ),
-    'xml_nested_attributes': (
-        {
-            'root': {
-                '@id': '42',
-                'item': {'@lang': 'en', 'text': 'Hello'},
-            },
-        },
-        {
-            'root': {
-                '@id': '42',
-                'item': {'@lang': 'en', 'text': 'Hello'},
-            },
-        },
-    ),
+    'xml_nested_attributes': (XML_NESTED_ATTRIBUTES, XML_NESTED_ATTRIBUTES),
 }
 
 
