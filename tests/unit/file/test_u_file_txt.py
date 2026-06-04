@@ -107,18 +107,9 @@ class TestTxt(RoundtripUnitModuleContract):
     @pytest.mark.parametrize(
         ('payload', 'match'),
         [
-            (
-                {'nope': 'value'},
-                'TXT payload',
-            ),
-            (
-                {'text': 'alpha'},
-                'TXT payload',
-            ),
-            (
-                [{'text': 1}],
-                'TXT payload',
-            ),
+            ({'nope': 'value'}, 'TXT payload'),
+            ({'text': 'alpha'}, 'TXT payload'),
+            ([{'text': 1}], 'TXT payload'),
             (
                 [{'text': 'alpha'}, {'text': 'beta'}],
                 'TXT payload lists must contain',
