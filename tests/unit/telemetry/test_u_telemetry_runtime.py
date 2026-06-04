@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import os
 import sys
-from dataclasses import dataclass
-from types import ModuleType
 from types import SimpleNamespace
 from typing import Any
 from typing import cast
@@ -18,6 +16,10 @@ from unittest.mock import Mock
 import pytest
 
 import etlplus.telemetry.runtime as telemetry_runtime_mod
+
+from .pytest_telemetry_support import FakeStatus
+from .pytest_telemetry_support import FakeStatusCode
+from .pytest_telemetry_support import install_fake_opentelemetry
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -43,168 +45,6 @@ ENABLED_OTEL_SETTINGS = telemetry_runtime_mod.ResolvedTelemetryConfig(
     exporter='opentelemetry',
     service_name='etlplus-tests',
 )
-
-
-# SECTION: HELPERS ========================================================== #
-
-
-class _FakeCounter:
-    def __init__(self) -> None:
-        self.calls: list[tuple[int, dict[str, object]]] = []
-
-    def add(
-        self,
-        value: int,
-        attributes: dict[str, object],
-    ) -> None:
-        """Record one counter increment call."""
-        self.calls.append((value, dict(attributes)))
-
-
-class _FakeHistogram:
-    def __init__(self) -> None:
-        self.calls: list[tuple[int, dict[str, object]]] = []
-
-    def record(
-        self,
-        value: int,
-        attributes: dict[str, object],
-    ) -> None:
-        """Record one histogram sample call."""
-        self.calls.append((value, dict(attributes)))
-
-
-class _FakeSpan:
-    def __init__(self, name: str) -> None:
-        self.name = name
-        self.attributes: dict[str, object] = {}
-        self.events: list[tuple[str, dict[str, object]]] = []
-        self.exceptions: list[Exception] = []
-        self.status: object | None = None
-        self.ended = False
-
-    def add_event(
-        self,
-        name: str,
-        attributes: dict[str, object],
-    ) -> None:
-        """Record one span event."""
-        self.events.append((name, dict(attributes)))
-
-    def end(self) -> None:
-        """Mark the fake span as ended."""
-        self.ended = True
-
-    def record_exception(
-        self,
-        exc: Exception,
-    ) -> None:
-        """Record one exception attached to the span."""
-        self.exceptions.append(exc)
-
-    def set_attributes(
-        self,
-        attributes: dict[str, object],
-    ) -> None:
-        """Merge span attributes into the fake span."""
-        self.attributes.update(attributes)
-
-    def set_status(
-        self,
-        status: object,
-    ) -> None:
-        """Store one final span status value."""
-        self.status = status
-
-
-class _FakeTracer:
-    def __init__(self) -> None:
-        self.spans: list[_FakeSpan] = []
-
-    def start_span(
-        self,
-        name: str,
-    ) -> _FakeSpan:
-        """Create and return one fake span."""
-        span = _FakeSpan(name)
-        self.spans.append(span)
-        return span
-
-
-class _FakeMeter:
-    def __init__(self) -> None:
-        self.counters: list[_FakeCounter] = []
-        self.histograms: list[_FakeHistogram] = []
-
-    def create_counter(self, *_args: object, **_kwargs: object) -> _FakeCounter:
-        """Create and return one fake counter."""
-        counter = _FakeCounter()
-        self.counters.append(counter)
-        return counter
-
-    def create_histogram(self, *_args: object, **_kwargs: object) -> _FakeHistogram:
-        """Create and return one fake histogram."""
-        histogram = _FakeHistogram()
-        self.histograms.append(histogram)
-        return histogram
-
-
-@dataclass
-class _FakeStatus:
-    code: object
-    description: str | None = None
-
-
-@dataclass
-class _FakeStatusCode:
-    OK = 'ok'
-    ERROR = 'error'
-
-
-class _FakeTraceModule(ModuleType):
-    """Typed fake ``opentelemetry.trace`` module."""
-
-    get_tracer: object
-    Status: type[_FakeStatus]
-    StatusCode: type[_FakeStatusCode]
-
-
-class _FakeMetricsModule(ModuleType):
-    """Typed fake ``opentelemetry.metrics`` module."""
-
-    get_meter: object
-
-
-class _FakeOpenTelemetryModule(ModuleType):
-    """Typed fake ``opentelemetry`` root module."""
-
-    trace: _FakeTraceModule
-    metrics: _FakeMetricsModule
-
-
-def _install_fake_opentelemetry(
-    monkeypatch: pytest.MonkeyPatch,
-) -> tuple[_FakeTracer, _FakeMeter]:
-    """Install lightweight fake OpenTelemetry modules into ``sys.modules``."""
-    tracer = _FakeTracer()
-    meter = _FakeMeter()
-
-    trace_mod = _FakeTraceModule('opentelemetry.trace')
-    trace_mod.get_tracer = lambda *_args, **_kwargs: tracer
-    trace_mod.Status = _FakeStatus  # noqa: N815
-    trace_mod.StatusCode = _FakeStatusCode  # noqa: N815
-
-    metrics_mod = _FakeMetricsModule('opentelemetry.metrics')
-    metrics_mod.get_meter = lambda *_args, **_kwargs: meter
-
-    root_mod = _FakeOpenTelemetryModule('opentelemetry')
-    root_mod.trace = trace_mod
-    root_mod.metrics = metrics_mod
-
-    monkeypatch.setitem(sys.modules, 'opentelemetry', root_mod)
-    monkeypatch.setitem(sys.modules, 'opentelemetry.trace', trace_mod)
-    monkeypatch.setitem(sys.modules, 'opentelemetry.metrics', metrics_mod)
-    return tracer, meter
 
 
 # SECTION: TESTS ============================================================ #
@@ -297,7 +137,7 @@ class TestTelemetryRuntime:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Terminal events without a prior start span should create and close one."""
-        tracer, meter = _install_fake_opentelemetry(monkeypatch)
+        tracer, meter = install_fake_opentelemetry(monkeypatch)
         adapter = telemetry_runtime_mod._OpenTelemetryAdapter(ENABLED_OTEL_SETTINGS)
 
         adapter.emit_event(
@@ -317,7 +157,7 @@ class TestTelemetryRuntime:
         assert len(tracer.spans) == 1
         span = tracer.spans[0]
         assert span.ended is True
-        assert span.status == _FakeStatus(_FakeStatusCode.OK)
+        assert span.status == FakeStatus(FakeStatusCode.OK)
         assert span.attributes['etlplus.continue_on_fail'] is True
         assert span.attributes['etlplus.run_all'] is False
         assert span.attributes['etlplus.valid'] is True
@@ -328,7 +168,7 @@ class TestTelemetryRuntime:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Enabled telemetry should bridge runtime events into spans and metrics."""
-        tracer, meter = _install_fake_opentelemetry(monkeypatch)
+        tracer, meter = install_fake_opentelemetry(monkeypatch)
 
         telemetry_runtime_mod.RuntimeTelemetry.configure(
             ENABLED_OTEL_CONFIG,
@@ -384,7 +224,7 @@ class TestTelemetryRuntime:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Event export should ignore incomplete and non-terminal lifecycle rows."""
-        tracer, meter = _install_fake_opentelemetry(monkeypatch)
+        tracer, meter = install_fake_opentelemetry(monkeypatch)
         adapter = telemetry_runtime_mod._OpenTelemetryAdapter(ENABLED_OTEL_SETTINGS)
 
         adapter.emit_event({'command': 'run', 'event': 'run.started'})
@@ -405,7 +245,7 @@ class TestTelemetryRuntime:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Invalid schema versions should not prevent telemetry export."""
-        _tracer, meter = _install_fake_opentelemetry(monkeypatch)
+        _tracer, meter = install_fake_opentelemetry(monkeypatch)
         adapter = telemetry_runtime_mod._OpenTelemetryAdapter(ENABLED_OTEL_SETTINGS)
 
         adapter.emit_event(
@@ -456,7 +296,7 @@ class TestTelemetryRuntime:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """History-derived telemetry should emit counters and histograms."""
-        _tracer, meter = _install_fake_opentelemetry(monkeypatch)
+        _tracer, meter = install_fake_opentelemetry(monkeypatch)
 
         telemetry_runtime_mod.RuntimeTelemetry.configure(
             ENABLED_OTEL_CONFIG,
@@ -509,7 +349,7 @@ class TestTelemetryRuntime:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """History export should skip histogram writes for missing numeric fields."""
-        _tracer, meter = _install_fake_opentelemetry(monkeypatch)
+        _tracer, meter = install_fake_opentelemetry(monkeypatch)
         adapter = telemetry_runtime_mod._OpenTelemetryAdapter(ENABLED_OTEL_SETTINGS)
 
         adapter.emit_history_record({'run_id': 'run-123'}, record_level='run')
@@ -533,7 +373,7 @@ class TestTelemetryRuntime:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Boolean payload fields should not be exported as integer metrics."""
-        _tracer, meter = _install_fake_opentelemetry(monkeypatch)
+        _tracer, meter = install_fake_opentelemetry(monkeypatch)
         adapter = telemetry_runtime_mod._OpenTelemetryAdapter(ENABLED_OTEL_SETTINGS)
 
         adapter.emit_event(
