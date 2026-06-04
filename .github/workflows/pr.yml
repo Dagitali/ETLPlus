@@ -129,7 +129,7 @@ jobs:
     permissions: &permissions_read
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: ${{ matrix.python-version }}
@@ -149,7 +149,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: *permissions_read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
@@ -163,7 +163,7 @@ jobs:
     strategy: *python-matrix
     permissions: *permissions_read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: ${{ matrix.python-version }}
@@ -203,7 +203,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: *permissions_read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
@@ -224,7 +224,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: *permissions_read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
       - uses: ./.github/actions/python-bootstrap
         with:
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
@@ -242,7 +242,7 @@ jobs:
         builder: [html]
     permissions: *permissions_read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # Pinned v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
       - uses: ./.github/actions/build-docs-target
         with:
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
