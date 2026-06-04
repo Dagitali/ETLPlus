@@ -7,18 +7,55 @@ Guardrails for local Commitizen branch validation.
 from __future__ import annotations
 
 import pytest
+import yaml  # type: ignore[import]
 
 import tools.check_commitizen_branch as commitizen_branch
+from tests.pytest_shared_support import REPO_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: CONSTANTS ======================================================== #
+
+DEPENDABOT_CONFIG_PATH = REPO_ROOT / '.github' / 'dependabot.yml'
+COMMITIZEN_COMMIT_TYPES = frozenset(
+    {
+        'build',
+        'chore',
+        'ci',
+        'docs',
+        'feat',
+        'fix',
+        'perf',
+        'refactor',
+        'style',
+        'test',
+    },
+)
 
 # SECTION: TESTS ============================================================ #
 
 
 class TestCommitizenBranchCheck:
     """Test local Commitizen branch-check behavior."""
+
+    def test_dependabot_commit_prefixes_match_commitizen_types(self) -> None:
+        """
+        Test Dependabot update commits use Commitizen-compatible types.
+        """
+        dependabot_config = yaml.safe_load(
+            DEPENDABOT_CONFIG_PATH.read_text(encoding='utf-8'),
+        )
+
+        prefixes = {
+            update['commit-message']['prefix']
+            for update in dependabot_config['updates']
+            if 'commit-message' in update
+        }
+
+        assert prefixes <= COMMITIZEN_COMMIT_TYPES
+        assert 'deps' not in prefixes
 
     @pytest.mark.parametrize(
         'branch',
@@ -196,7 +233,7 @@ class TestCommitizenBranchCheck:
         """
         checked_messages: list[str] = []
         messages = {
-            'abc123': 'deps(github-actions): bump pinned actions',
+            'abc123': 'ci(github-actions): bump pinned actions',
             'def456': 'fix(ci): ignore merge commits in commitizen check',
         }
 
