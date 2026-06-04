@@ -53,8 +53,8 @@ from etlplus.storage import _http as http_storage_mod
 from etlplus.utils._types import JSONData
 from etlplus.utils._types import JSONList
 
+from ..pytest_http_support import FakeHttpSession
 from .pytest_file_contract_utils import assert_single_dataset_rejects_non_default_key
-from .pytest_file_support import FakeHttpSession
 from .pytest_file_support import RemoteBytesBackendStub
 
 # SECTION: PRAGMAS ========================================================== #
