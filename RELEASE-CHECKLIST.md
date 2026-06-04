@@ -155,6 +155,8 @@ release.
     commands: `extract`, `load`, `run`, `transform`, and `validate`
   - Local run-history persistence keyed by `run_id` for `etlplus run`, backed by SQLite by default
     with JSONL fallback support
+  - A read-only local run-history dashboard is now part of the stable CLI surface under `etlplus
+    ui`, backed by the same persisted history store and localhost-bound by default.
   - Portable schedule config plus `etlplus schedule` summary and `crontab`/`systemd` helper emission
     for external schedulers
   - A first local scheduler runtime slice via `etlplus schedule --run-pending`, reusing `etlplus
