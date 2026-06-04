@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.meta.pytest_meta_support import canonical_requirement_name
 from tests.pytest_shared_support import REPO_ROOT
 from tools.render_conda_recipe import render_recipe
 
@@ -122,15 +123,6 @@ CONDA_VALIDATED_STATUS_SNIPPETS = (
 )
 
 
-def _canonical_requirement_name(requirement: str) -> str:
-    """Return the normalized package name from one requirement string."""
-    match = re.match(r'\s*([A-Za-z0-9_.-]+)', requirement)
-    if match is None:
-        msg = f'Could not parse requirement name from {requirement!r}'
-        raise AssertionError(msg)
-    return match.group(1).lower().replace('_', '-')
-
-
 def _conda_run_requirement_specs(recipe_text: str) -> list[str]:
     """Return raw run dependency specs from the candidate conda recipe."""
     in_run_section = False
@@ -159,7 +151,7 @@ def _normalized_requirement_line(requirement: str) -> str:
 
 def _conda_runtime_requirement(requirement: str) -> str:
     """Return the expected conda-forge requirement for a PyPI dependency."""
-    name = _canonical_requirement_name(requirement)
+    name = canonical_requirement_name(requirement)
     conda_name = _CONDA_NAME_MAP.get(name, name)
     return _normalized_requirement_line(
         re.sub(
@@ -286,11 +278,11 @@ class TestCondaFeedstockGuardrails:
         pyproject_names = {
             _CONDA_NAME_MAP.get(name, name)
             for requirement in pyproject['project']['dependencies']
-            for name in [_canonical_requirement_name(requirement)]
+            for name in [canonical_requirement_name(requirement)]
         }
 
         recipe_names = {
-            _canonical_requirement_name(requirement)
+            canonical_requirement_name(requirement)
             for requirement in _conda_run_requirement_specs(recipe_text)
         }
 
