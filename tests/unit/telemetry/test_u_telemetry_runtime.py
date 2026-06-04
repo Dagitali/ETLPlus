@@ -21,6 +21,28 @@ import etlplus.telemetry.runtime as telemetry_runtime_mod
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: CONSTANTS ======================================================== #
+
+
+DISABLED_CONFIG = telemetry_runtime_mod.TelemetryConfig(enabled=False)
+DISABLED_SETTINGS = telemetry_runtime_mod.ResolvedTelemetryConfig(
+    enabled=False,
+    exporter='none',
+    service_name='etlplus',
+)
+
+ENABLED_OTEL_CONFIG = telemetry_runtime_mod.TelemetryConfig(
+    enabled=True,
+    exporter='opentelemetry',
+    service_name='etlplus-tests',
+)
+ENABLED_OTEL_SETTINGS = telemetry_runtime_mod.ResolvedTelemetryConfig(
+    enabled=True,
+    exporter='opentelemetry',
+    service_name='etlplus-tests',
+)
+
+
 # SECTION: HELPERS ========================================================== #
 
 
@@ -216,7 +238,7 @@ class TestTelemetryRuntime:
     ) -> None:
         """Repeated configure calls should reuse identical settings by default."""
         initial = telemetry_runtime_mod.RuntimeTelemetry.configure(
-            telemetry_runtime_mod.TelemetryConfig(enabled=False),
+            DISABLED_CONFIG,
             env={},
             force=True,
         )
@@ -228,7 +250,7 @@ class TestTelemetryRuntime:
         )
 
         resolved = telemetry_runtime_mod.RuntimeTelemetry.configure(
-            telemetry_runtime_mod.TelemetryConfig(enabled=False),
+            DISABLED_CONFIG,
             env={},
         )
 
@@ -273,11 +295,7 @@ class TestTelemetryRuntime:
         ) -> telemetry_runtime_mod.ResolvedTelemetryConfig:
             del config, enabled, exporter, service_name, force
             captured['env'] = env
-            cls._settings = telemetry_runtime_mod.ResolvedTelemetryConfig(
-                enabled=False,
-                exporter='none',
-                service_name='etlplus',
-            )
+            cls._settings = DISABLED_SETTINGS
             cls._adapter = None
             return cls._settings
 
@@ -291,13 +309,7 @@ class TestTelemetryRuntime:
         telemetry_runtime_mod.RuntimeTelemetry.emit_event({'event': 'run.started'})
 
         assert captured['env'] is os.environ
-        assert telemetry_runtime_mod.RuntimeTelemetry._settings == (
-            telemetry_runtime_mod.ResolvedTelemetryConfig(
-                enabled=False,
-                exporter='none',
-                service_name='etlplus',
-            )
-        )
+        assert telemetry_runtime_mod.RuntimeTelemetry._settings == DISABLED_SETTINGS
         assert telemetry_runtime_mod.RuntimeTelemetry._adapter is None
 
     def test_emit_event_completed_without_started_span_creates_ok_span(
@@ -306,13 +318,7 @@ class TestTelemetryRuntime:
     ) -> None:
         """Terminal events without a prior start span should create and close one."""
         tracer, meter = _FakeOpenTelemetryInstaller.install(monkeypatch)
-        adapter = telemetry_runtime_mod._OpenTelemetryAdapter(
-            telemetry_runtime_mod.ResolvedTelemetryConfig(
-                enabled=True,
-                exporter='opentelemetry',
-                service_name='etlplus-tests',
-            ),
-        )
+        adapter = telemetry_runtime_mod._OpenTelemetryAdapter(ENABLED_OTEL_SETTINGS)
 
         adapter.emit_event(
             {
@@ -345,11 +351,7 @@ class TestTelemetryRuntime:
         tracer, meter = _FakeOpenTelemetryInstaller.install(monkeypatch)
 
         telemetry_runtime_mod.RuntimeTelemetry.configure(
-            telemetry_runtime_mod.TelemetryConfig(
-                enabled=True,
-                exporter='opentelemetry',
-                service_name='etlplus-tests',
-            ),
+            ENABLED_OTEL_CONFIG,
             env={},
             force=True,
         )
@@ -403,13 +405,7 @@ class TestTelemetryRuntime:
     ) -> None:
         """Event export should ignore incomplete and non-terminal lifecycle rows."""
         tracer, meter = _FakeOpenTelemetryInstaller.install(monkeypatch)
-        adapter = telemetry_runtime_mod._OpenTelemetryAdapter(
-            telemetry_runtime_mod.ResolvedTelemetryConfig(
-                enabled=True,
-                exporter='opentelemetry',
-                service_name='etlplus-tests',
-            ),
-        )
+        adapter = telemetry_runtime_mod._OpenTelemetryAdapter(ENABLED_OTEL_SETTINGS)
 
         adapter.emit_event({'command': 'run', 'event': 'run.started'})
         adapter.emit_event(
@@ -430,13 +426,7 @@ class TestTelemetryRuntime:
     ) -> None:
         """Invalid schema versions should not prevent telemetry export."""
         _tracer, meter = _FakeOpenTelemetryInstaller.install(monkeypatch)
-        adapter = telemetry_runtime_mod._OpenTelemetryAdapter(
-            telemetry_runtime_mod.ResolvedTelemetryConfig(
-                enabled=True,
-                exporter='opentelemetry',
-                service_name='etlplus-tests',
-            ),
-        )
+        adapter = telemetry_runtime_mod._OpenTelemetryAdapter(ENABLED_OTEL_SETTINGS)
 
         adapter.emit_event(
             {
@@ -453,7 +443,7 @@ class TestTelemetryRuntime:
     def test_emit_event_is_noop_when_disabled(self) -> None:
         """Disabled telemetry should not create any runtime adapter."""
         settings = telemetry_runtime_mod.RuntimeTelemetry.configure(
-            telemetry_runtime_mod.TelemetryConfig(enabled=False),
+            DISABLED_CONFIG,
             env={},
             force=True,
         )
@@ -473,13 +463,7 @@ class TestTelemetryRuntime:
             def emit_event(self, *_args: object, **_kwargs: object) -> None:
                 raise TypeError('broken event exporter')
 
-        telemetry_runtime_mod.RuntimeTelemetry._settings = (
-            telemetry_runtime_mod.ResolvedTelemetryConfig(
-                enabled=True,
-                exporter='opentelemetry',
-                service_name='etlplus-tests',
-            )
-        )
+        telemetry_runtime_mod.RuntimeTelemetry._settings = ENABLED_OTEL_SETTINGS
         telemetry_runtime_mod.RuntimeTelemetry._adapter = cast(Any, _BrokenAdapter())
 
         with caplog.at_level('DEBUG'):
@@ -495,11 +479,7 @@ class TestTelemetryRuntime:
         _tracer, meter = _FakeOpenTelemetryInstaller.install(monkeypatch)
 
         telemetry_runtime_mod.RuntimeTelemetry.configure(
-            telemetry_runtime_mod.TelemetryConfig(
-                enabled=True,
-                exporter='opentelemetry',
-                service_name='etlplus-tests',
-            ),
+            ENABLED_OTEL_CONFIG,
             env={},
             force=True,
         )
@@ -550,13 +530,7 @@ class TestTelemetryRuntime:
     ) -> None:
         """History export should skip histogram writes for missing numeric fields."""
         _tracer, meter = _FakeOpenTelemetryInstaller.install(monkeypatch)
-        adapter = telemetry_runtime_mod._OpenTelemetryAdapter(
-            telemetry_runtime_mod.ResolvedTelemetryConfig(
-                enabled=True,
-                exporter='opentelemetry',
-                service_name='etlplus-tests',
-            ),
-        )
+        adapter = telemetry_runtime_mod._OpenTelemetryAdapter(ENABLED_OTEL_SETTINGS)
 
         adapter.emit_history_record({'run_id': 'run-123'}, record_level='run')
 
@@ -580,13 +554,7 @@ class TestTelemetryRuntime:
     ) -> None:
         """Boolean payload fields should not be exported as integer metrics."""
         _tracer, meter = _FakeOpenTelemetryInstaller.install(monkeypatch)
-        adapter = telemetry_runtime_mod._OpenTelemetryAdapter(
-            telemetry_runtime_mod.ResolvedTelemetryConfig(
-                enabled=True,
-                exporter='opentelemetry',
-                service_name='etlplus-tests',
-            ),
-        )
+        adapter = telemetry_runtime_mod._OpenTelemetryAdapter(ENABLED_OTEL_SETTINGS)
 
         adapter.emit_event(
             {
