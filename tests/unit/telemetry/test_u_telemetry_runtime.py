@@ -278,35 +278,18 @@ class TestTelemetryRuntime:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """First event export should lazily configure telemetry from ``os.environ``."""
-        captured: dict[str, object] = {}
-
-        def _configure(
-            cls,
-            config: object | None = None,
-            *,
-            env: object | None = None,
-            enabled: bool | None = None,
-            exporter: str | None = None,
-            service_name: str | None = None,
-            force: bool = False,
-        ) -> telemetry_runtime_mod.ResolvedTelemetryConfig:
-            del config, enabled, exporter, service_name, force
-            captured['env'] = env
-            cls._settings = DISABLED_SETTINGS
-            cls._adapter = None
-            return cls._settings
+        configure = Mock(return_value=DISABLED_SETTINGS)
 
         monkeypatch.setattr(
             telemetry_runtime_mod.RuntimeTelemetry,
             'configure',
-            classmethod(_configure),
+            configure,
         )
         telemetry_runtime_mod.RuntimeTelemetry.reset()
 
         telemetry_runtime_mod.RuntimeTelemetry.emit_event({'event': 'run.started'})
 
-        assert captured['env'] is os.environ
-        assert telemetry_runtime_mod.RuntimeTelemetry._settings == DISABLED_SETTINGS
+        configure.assert_called_once_with(env=os.environ)
         assert telemetry_runtime_mod.RuntimeTelemetry._adapter is None
 
     def test_emit_event_completed_without_started_span_creates_ok_span(
