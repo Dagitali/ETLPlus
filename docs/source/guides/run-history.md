@@ -145,6 +145,14 @@ Example:
 etlplus ui --port 8765 --limit 25
 ```
 
+Headless or scripted launch:
+
+```bash
+etlplus ui --no-browser --limit 25
+```
+
+The `/snapshot.json` endpoint exposes the same read-only run and job snapshot used by the HTML page.
+
 The UI is intentionally additive on the `v1.x` line: it does not introduce a new history backend,
 schema, or write path. It reads the same normalized run and job records already exposed by the
 stable CLI commands.
