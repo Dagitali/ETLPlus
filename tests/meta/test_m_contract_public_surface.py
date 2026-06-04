@@ -6,6 +6,7 @@ Contract tests for ETLPlus stable CLI and import surfaces.
 
 from __future__ import annotations
 
+import importlib.util
 from types import ModuleType
 
 import pytest
@@ -174,6 +175,15 @@ def _export_case_id(value: object) -> str:
 class TestStableCliSurface:
     """Contract tests for the documented stable CLI command surface."""
 
+    def test_cli_package_export_points_to_main_entrypoint(self) -> None:
+        """Test that the public CLI package export remains stable."""
+        assert cli_pkg.__all__ == ['main']
+        assert cli_pkg.main is main_mod
+
+    def test_history_view_shim_is_not_importable(self) -> None:
+        """Test that history view ownership stays under :mod:`etlplus.history`."""
+        assert importlib.util.find_spec('etlplus.cli._handlers._history_view') is None
+
     def test_typer_app_exposes_documented_root_commands(self) -> None:
         """Test that the Typer app keeps the documented command set."""
         command_names = {
@@ -182,11 +192,6 @@ class TestStableCliSurface:
             if command.name is not None
         }
         assert command_names == EXPECTED_CLI_COMMANDS
-
-    def test_cli_package_export_points_to_main_entrypoint(self) -> None:
-        """Test that the public CLI package export remains stable."""
-        assert cli_pkg.__all__ == ['main']
-        assert cli_pkg.main is main_mod
 
 
 class TestStableImportSurface:
