@@ -90,26 +90,10 @@ class TestScientificStubDatasetKeys:
     @pytest.mark.parametrize(
         ('operation', 'method_name', 'selector_mode'),
         [
-            (
-                'read',
-                'read_dataset',
-                'dataset_kwarg',
-            ),
-            (
-                'write',
-                'write_dataset',
-                'dataset_kwarg',
-            ),
-            (
-                'read',
-                'read_dataset',
-                'options',
-            ),
-            (
-                'write',
-                'write_dataset',
-                'options',
-            ),
+            ('read', 'read_dataset', 'dataset_kwarg'),
+            ('write', 'write_dataset', 'dataset_kwarg'),
+            ('read', 'read_dataset', 'options'),
+            ('write', 'write_dataset', 'options'),
             ('read', 'read', 'options'),
             ('write', 'write', 'options'),
         ],
@@ -172,16 +156,8 @@ class TestScientificDatasetHelpers:
         ('keys', 'dataset', 'expected'),
         [
             (['data', 'features'], None, 'data'),
-            (
-                ['data', 'features'],
-                'features',
-                'features',
-            ),
-            (
-                ['data', 'features'],
-                '/features',
-                'features',
-            ),
+            (['data', 'features'], 'features', 'features'),
+            (['data', 'features'], '/features', 'features'),
             ([], None, None),
             (['features'], None, 'features'),
         ],
