@@ -347,10 +347,7 @@ class TestRegistryStrictPolicy:
 
     fallback_format = FileFormat.GZ
 
-    @pytest.mark.parametrize(
-        'resolver',
-        [mod.get_handler_class, mod.get_handler],
-    )
+    @pytest.mark.parametrize('resolver', [mod.get_handler_class, mod.get_handler])
     def test_lookups_raise_without_explicit_mapping(
         self,
         monkeypatch: pytest.MonkeyPatch,
