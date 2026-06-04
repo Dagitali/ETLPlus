@@ -152,9 +152,7 @@ class TestHistoryUiHttpHandler:
             with urllib.request.urlopen(f'{base_url}/', timeout=5) as response:
                 html_body = response.read().decode('utf-8')
                 assert response.status == 200
-                assert response.headers['Content-Type'] == (
-                    'text/html; charset=utf-8'
-                )
+                assert response.headers['Content-Type'] == ('text/html; charset=utf-8')
                 assert 'ETLPlus local history UI' in html_body
                 assert 'run-1' in html_body
 
