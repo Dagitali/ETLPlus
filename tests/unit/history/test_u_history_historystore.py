@@ -56,8 +56,8 @@ class TestHistoryStore:
     @pytest.mark.parametrize(
         ('backend', 'path_name'),
         [
-            pytest.param('jsonl', 'history.jsonl', id='jsonl'),
-            pytest.param('sqlite', 'history.sqlite', id='sqlite'),
+            ('jsonl', 'history.jsonl'),
+            ('sqlite', 'history.sqlite'),
         ],
     )
     def test_backends_normalize_to_same_documented_run_and_job_shapes(
@@ -128,20 +128,8 @@ class TestHistoryStore:
     @pytest.mark.parametrize(
         ('backend', 'expected_type', 'path_attr', 'path_name'),
         [
-            pytest.param(
-                'jsonl',
-                store_mod.JsonlHistoryStore,
-                'log_path',
-                'history.jsonl',
-                id='jsonl-backend',
-            ),
-            pytest.param(
-                None,
-                store_mod.SQLiteHistoryStore,
-                'db_path',
-                'history.sqlite',
-                id='default-sqlite-backend',
-            ),
+            ('jsonl', store_mod.JsonlHistoryStore, 'log_path', 'history.jsonl'),
+            (None, store_mod.SQLiteHistoryStore, 'db_path', 'history.sqlite'),
         ],
     )
     def test_from_environment_selects_supported_backend(
@@ -242,10 +230,7 @@ class TestHistoryStore:
         )
 
         assert runs == [
-            normalized_run_payload(
-                run_id='run-123',
-                status='running',
-            ),
+            normalized_run_payload(run_id='run-123', status='running'),
         ]
 
     def test_iter_runs_skips_non_run_records(
@@ -273,8 +258,5 @@ class TestHistoryStore:
         )
 
         assert runs == [
-            normalized_run_payload(
-                run_id='run-123',
-                status='running',
-            ),
+            normalized_run_payload(run_id='run-123', status='running'),
         ]
