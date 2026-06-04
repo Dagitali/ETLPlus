@@ -50,10 +50,7 @@ class _StrictDatabaseModel(BaseModel):
     """
     Base model for database specs with strict field validation.
 
-    Class Attributes
-    ----------------
-    model_config : ConfigDict
-        Pydantic model configuration.
+    Uses Pydantic configuration that rejects unknown fields.
     """
 
     model_config = ConfigDict(extra='forbid')
