@@ -93,16 +93,8 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
         ('stem', 'entries', 'error_pattern'),
         [
             ('empty', {}, 'ZIP archive is empty'),
-            (
-                'nested',
-                {'data.csv.gz': b'ignored'},
-                'Unexpected compression',
-            ),
-            (
-                'payload',
-                {'payload.unknown': b'ignored'},
-                'Cannot infer file format',
-            ),
+            ('nested', {'data.csv.gz': b'ignored'}, 'Unexpected compression'),
+            ('payload', {'payload.unknown': b'ignored'}, 'Cannot infer file format'),
         ],
     )
     def test_read_invalid_archives_raise(
