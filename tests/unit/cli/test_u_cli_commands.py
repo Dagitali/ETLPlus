@@ -897,6 +897,20 @@ class TestCliInvokeParsing:
             },
         }
 
+    def test_ui_help_lists_local_dashboard_options(
+        self,
+        invoke_cli: InvokeCli,
+    ) -> None:
+        """The stable ``etlplus ui`` help should list its dashboard options."""
+        result = invoke_cli('ui', '--help')
+
+        assert result.exit_code == 0
+        assert '--host' in result.stdout
+        assert '--port' in result.stdout
+        assert '--limit' in result.stdout
+        assert '--refresh-seconds' in result.stdout
+        assert '--no-browser' in result.stdout
+
 
 class TestCommandsMissingInputs:
     """Unit tests for missing required args/options."""
