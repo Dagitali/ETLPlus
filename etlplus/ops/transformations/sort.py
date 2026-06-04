@@ -36,8 +36,9 @@ def _sort_key(
     """
     Coerce mixed-type values into a sortable tuple key.
 
-    Ordering policy
-    ---------------
+    Notes
+    -----
+    The ordering policy of sorted keys is as follows:
     1) Numbers
     2) Non-numeric values (stringified)
     3) ``None`` (last)
