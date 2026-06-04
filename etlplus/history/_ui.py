@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import json
+import sys
 import webbrowser
 from collections import Counter
 from collections.abc import Sequence
@@ -43,6 +44,7 @@ DEFAULT_UI_HOST = '127.0.0.1'
 DEFAULT_UI_LIMIT = 20
 DEFAULT_UI_PORT = 8765
 DEFAULT_UI_REFRESH_SECONDS = 5
+EXPOSED_UI_HOST = '0.0.0.0'
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -347,6 +349,13 @@ def serve_history_ui(
     server = ThreadingHTTPServer((host, port), handler)
     url = f'http://{host}:{port}/'
     print(f'ETLPlus History UI listening on {url}')
+    if host == EXPOSED_UI_HOST:
+        print(
+            'WARNING: etlplus ui is bound to 0.0.0.0. '
+            'The local history UI does not provide authentication or TLS; '
+            'this may expose local run-history data on the network.',
+            file=sys.stderr,
+        )
     if open_browser:
         webbrowser.open(url)
     try:
