@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.file._module_callables`.
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Literal
 
 import pytest
@@ -76,14 +77,8 @@ class TestModuleCallables:
 
     def test_call_module_method_success_path(self) -> None:
         """Test that required module method invocation with args and kwargs."""
-
-        class _Module:
-            def read_any(self, path: str, *, limit: int) -> tuple[str, int]:
-                """Simulate a module method that accepts args and kwargs."""
-                return path, limit
-
         result = mod.call_module_method(
-            _Module(),
+            SimpleNamespace(read_any=lambda path, *, limit: (path, limit)),
             format_name='XPT',
             method_name='read_any',
             operation='read',
