@@ -291,7 +291,7 @@ class TestSpreadsheetReadWriteFallbacks:
             (
                 'openpyxl',
                 [
-                    {'sheet_name': 'Sheet1', 'engine': 'openpyxl'},
+                    {'engine': 'openpyxl', 'sheet_name': 'Sheet1'},
                     {'engine': 'openpyxl'},
                 ],
             ),
@@ -335,26 +335,13 @@ class TestSpreadsheetReadWriteFallbacks:
             (
                 'openpyxl',
                 [
-                    {
-                        'index': False,
-                        'engine': 'openpyxl',
-                        'sheet_name': 'Sheet1',
-                    },
-                    {
-                        'index': False,
-                        'engine': 'openpyxl',
-                    },
+                    {'engine': 'openpyxl', 'index': False, 'sheet_name': 'Sheet1'},
+                    {'engine': 'openpyxl', 'index': False},
                 ],
             ),
             (
                 None,
-                [
-                    {
-                        'index': False,
-                        'sheet_name': 'Sheet1',
-                    },
-                    {'index': False},
-                ],
+                [{'index': False, 'sheet_name': 'Sheet1'}, {'index': False}],
             ),
         ],
     )
