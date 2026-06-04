@@ -28,11 +28,6 @@ class SqlDialect:
     """
     SQL identifier quoting and small dialect-aware helpers.
 
-    Methods
-    -------
-    quote_ident : str
-        Return identifier quoted with double quotes.
-
     Notes
     -----
     - Always quotes identifiers to avoid reserved word collisions.
