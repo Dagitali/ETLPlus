@@ -157,6 +157,26 @@ def endpoint_config_factory() -> Callable[[str], EndpointConfig]:
     return _make
 
 
+@pytest.fixture(
+    name='non_mapping_value',
+    params=[
+        pytest.param(None, id='none'),
+        pytest.param('abc', id='string'),
+        pytest.param('', id='empty-string'),
+        pytest.param([1, 2], id='list'),
+        pytest.param((1, 2), id='tuple'),
+        pytest.param(True, id='bool'),
+    ],
+)
+def non_mapping_value_fixture(
+    request: pytest.FixtureRequest,
+) -> Any:
+    """
+    Return representative non-mapping values used across unit tests.
+    """
+    return request.param
+
+
 @pytest.fixture
 def pagination_config_factory() -> Callable[..., PaginationConfig]:
     """
