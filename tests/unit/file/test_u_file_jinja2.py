@@ -196,6 +196,4 @@ class TestJinja2(TemplateFileContractMixin, RoundtripUnitModuleContract):
         assert result == "Hello {{ name }}|{'name': 'Ada'}"
         assert jinja2_stub.template_calls == ['Hello {{ name }}']
         assert jinja2_stub.template_instances
-        assert jinja2_stub.template_instances[0].render_calls == [
-            {'name': 'Ada'},
-        ]
+        assert jinja2_stub.template_instances[0].render_calls == [{'name': 'Ada'}]

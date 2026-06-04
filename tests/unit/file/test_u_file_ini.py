@@ -79,16 +79,8 @@ class TestIni(
     @pytest.mark.parametrize(
         ('payload', 'match'),
         [
-            pytest.param(
-                {'DEFAULT': 'nope'},
-                'INI DEFAULT section must be a dict',
-                id='default-section',
-            ),
-            pytest.param(
-                {'alpha': 'nope'},
-                'INI sections must map to dicts',
-                id='named-section',
-            ),
+            ({'DEFAULT': 'nope'}, 'INI DEFAULT section must be a dict'),
+            ({'alpha': 'nope'}, 'INI sections must map to dicts'),
         ],
     )
     def test_write_rejects_non_dict_sections(

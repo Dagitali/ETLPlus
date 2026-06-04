@@ -26,24 +26,9 @@ class TestImportsHelpers:
     @pytest.mark.parametrize(
         ('method_name', 'method_args', 'expected_call'),
         [
-            pytest.param(
-                'get_pandas',
-                ('CSV',),
-                ('pandas', 'CSV', None, True),
-                id='pandas',
-            ),
-            pytest.param(
-                'get_pyarrow',
-                ('PARQUET',),
-                ('pyarrow', 'PARQUET', None, True),
-                id='pyarrow',
-            ),
-            pytest.param(
-                'get_yaml',
-                (),
-                ('yaml', 'YAML', 'PyYAML', True),
-                id='yaml',
-            ),
+            ('get_pandas', ('CSV',), ('pandas', 'CSV', None, True)),
+            ('get_pyarrow', ('PARQUET',), ('pyarrow', 'PARQUET', None, True)),
+            ('get_yaml', (), ('yaml', 'YAML', 'PyYAML', True)),
         ],
     )
     def test_dependency_helpers_delegate_to_get_dependency(
@@ -92,20 +77,8 @@ class TestImportsHelpers:
     @pytest.mark.parametrize(
         ('module_name', 'format_name', 'pip_name', 'dependency_name'),
         [
-            pytest.param(
-                'pyarrow',
-                'PARQUET',
-                None,
-                'pyarrow',
-                id='default_pip_name',
-            ),
-            pytest.param(
-                'yaml',
-                'YAML',
-                'PyYAML',
-                'PyYAML',
-                id='explicit_pip_name',
-            ),
+            ('pyarrow', 'PARQUET', None, 'pyarrow'),
+            ('yaml', 'YAML', 'PyYAML', 'PyYAML'),
         ],
     )
     def test_error_message_uses_expected_dependency_name(
@@ -173,7 +146,7 @@ class TestImportsHelpers:
     @pytest.mark.parametrize(
         ('module_name', 'format_name', 'pip_name', 'required', 'expected'),
         [
-            pytest.param(
+            (
                 'xarray',
                 'NC',
                 None,
@@ -182,9 +155,8 @@ class TestImportsHelpers:
                     'NC support requires optional dependency "xarray".\n'
                     'Install with: pip install xarray'
                 ),
-                id='optional-default-pip-name',
             ),
-            pytest.param(
+            (
                 'bson',
                 'BSON',
                 'pymongo',
@@ -193,9 +165,8 @@ class TestImportsHelpers:
                     'BSON support requires dependency "pymongo".\n'
                     'Install with: pip install pymongo'
                 ),
-                id='required-explicit-pip-name',
             ),
-            pytest.param(
+            (
                 'missing_dep',
                 'CUSTOM',
                 None,
@@ -204,7 +175,6 @@ class TestImportsHelpers:
                     'CUSTOM support requires optional dependency "missing_dep".\n'
                     'Install with: pip install missing_dep'
                 ),
-                id='optional-custom-format',
             ),
         ],
     )
@@ -283,20 +253,8 @@ class TestImportsHelpers:
     @pytest.mark.parametrize(
         ('module_name', 'format_name', 'pip_name', 'dependency_name'),
         [
-            pytest.param(
-                'duckdb',
-                'DUCKDB',
-                None,
-                'duckdb',
-                id='default_pip_name',
-            ),
-            pytest.param(
-                'bson',
-                'BSON',
-                'pymongo',
-                'pymongo',
-                id='explicit_pip_name',
-            ),
+            ('duckdb', 'DUCKDB', None, 'duckdb'),
+            ('bson', 'BSON', 'pymongo', 'pymongo'),
         ],
     )
     def test_required_error_message_uses_expected_dependency_name(

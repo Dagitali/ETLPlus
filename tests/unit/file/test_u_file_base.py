@@ -9,9 +9,7 @@ from __future__ import annotations
 import inspect
 from dataclasses import FrozenInstanceError
 from dataclasses import dataclass
-from io import BytesIO
 from pathlib import Path
-from typing import Any
 from typing import NoReturn
 from typing import cast
 
@@ -56,6 +54,8 @@ from etlplus.utils._types import JSONData
 from etlplus.utils._types import JSONList
 
 from .pytest_file_contract_utils import assert_single_dataset_rejects_non_default_key
+from .pytest_file_support import FakeHttpSession
+from .pytest_file_support import RemoteBytesBackendStub
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -65,54 +65,6 @@ from .pytest_file_contract_utils import assert_single_dataset_rejects_non_defaul
 
 
 _NO_DEFAULT: object = object()
-
-
-class _FakeHttpResponse:
-    """Minimal HTTP response double for bound-handler tests."""
-
-    def __init__(
-        self,
-        *,
-        status_code: int,
-        payload: bytes = b'',
-    ) -> None:
-        self.status_code = status_code
-        self.content = payload
-
-    def close(self) -> None:
-        """Close the response without side effects."""
-
-    def raise_for_status(self) -> None:
-        """Raise one error for non-successful response codes."""
-        if self.status_code >= 400:
-            raise RuntimeError(f'HTTP {self.status_code}')
-
-
-class _FakeHttpSession:
-    """Minimal HTTP session double for bound-handler tests."""
-
-    def __init__(
-        self,
-        *,
-        payload: bytes = b'',
-    ) -> None:
-        self.calls: list[tuple[str, str, bool]] = []
-        self.payload = payload
-
-    def close(self) -> None:
-        """Close the fake session without side effects."""
-
-    def get(self, url: str, **kwargs: Any) -> _FakeHttpResponse:
-        """Return one fake GET response and capture call metadata."""
-        self.calls.append(('get', url, bool(kwargs.get('stream', False))))
-        return _FakeHttpResponse(status_code=200, payload=self.payload)
-
-    def head(self, url: str, **kwargs: Any) -> _FakeHttpResponse:
-        """Return one fake HEAD response and capture call metadata."""
-        self.calls.append(
-            ('head', url, bool(kwargs.get('allow_redirects', False))),
-        )
-        return _FakeHttpResponse(status_code=200)
 
 
 @dataclass(slots=True, frozen=True)
@@ -168,30 +120,10 @@ _SPREADSHEET_HANDLER_CLASSES = (
     OdsFile,
 )
 _NAMING_METHOD_CASES = (
-    pytest.param(
-        _DELIMITED_HANDLER_CLASSES,
-        'read_rows',
-        'write_rows',
-        id='delimited',
-    ),
-    pytest.param(
-        _EMBEDDED_DB_HANDLER_CLASSES,
-        'read_table',
-        'write_table',
-        id='embedded_db',
-    ),
-    pytest.param(
-        _SCIENTIFIC_HANDLER_CLASSES,
-        'read_dataset',
-        'write_dataset',
-        id='scientific',
-    ),
-    pytest.param(
-        _SPREADSHEET_HANDLER_CLASSES,
-        'read_sheet',
-        'write_sheet',
-        id='spreadsheet',
-    ),
+    (_DELIMITED_HANDLER_CLASSES, 'read_rows', 'write_rows'),
+    (_EMBEDDED_DB_HANDLER_CLASSES, 'read_table', 'write_table'),
+    (_SCIENTIFIC_HANDLER_CLASSES, 'read_dataset', 'write_dataset'),
+    (_SPREADSHEET_HANDLER_CLASSES, 'read_sheet', 'write_sheet'),
 )
 
 
@@ -357,73 +289,58 @@ class _ReadOnlySingleScientificStub(
 
 
 _OPTION_HELPER_CASES = (
-    pytest.param(
-        _OptionHelperCase(
-            handler_cls=_DelimitedStub,
-            method_name='delimiter_from_options',
-            read_options=ReadOptions(extras={'delimiter': '|'}),
-            write_options=WriteOptions(extras={'delimiter': '\t'}),
-            baseline=',',
-            read_expected='|',
-            write_expected='\t',
-            read_default=';',
-            write_default=':',
-        ),
-        id='delimiter',
+    _OptionHelperCase(
+        handler_cls=_DelimitedStub,
+        method_name='delimiter_from_options',
+        read_options=ReadOptions(extras={'delimiter': '|'}),
+        write_options=WriteOptions(extras={'delimiter': '\t'}),
+        baseline=',',
+        read_expected='|',
+        write_expected='\t',
+        read_default=';',
+        write_default=':',
     ),
-    pytest.param(
-        _OptionHelperCase(
-            handler_cls=XlsFile,
-            method_name='encoding_from_options',
-            read_options=ReadOptions(encoding='latin-1'),
-            write_options=WriteOptions(encoding='utf-16'),
-            baseline='utf-8',
-            read_expected='latin-1',
-            write_expected='utf-16',
-            read_default='utf-16',
-            write_default='ascii',
-        ),
-        id='encoding',
+    _OptionHelperCase(
+        handler_cls=XlsFile,
+        method_name='encoding_from_options',
+        read_options=ReadOptions(encoding='latin-1'),
+        write_options=WriteOptions(encoding='utf-16'),
+        baseline='utf-8',
+        read_expected='latin-1',
+        write_expected='utf-16',
+        read_default='utf-16',
+        write_default='ascii',
     ),
-    pytest.param(
-        _OptionHelperCase(
-            handler_cls=ZipFile,
-            method_name='inner_name_from_options',
-            read_options=ReadOptions(inner_name='data.json'),
-            write_options=WriteOptions(inner_name='payload.csv'),
-            baseline=None,
-            read_expected='data.json',
-            write_expected='payload.csv',
-        ),
-        id='inner_name',
+    _OptionHelperCase(
+        handler_cls=ZipFile,
+        method_name='inner_name_from_options',
+        read_options=ReadOptions(inner_name='data.json'),
+        write_options=WriteOptions(inner_name='payload.csv'),
+        baseline=None,
+        read_expected='data.json',
+        write_expected='payload.csv',
     ),
-    pytest.param(
-        _OptionHelperCase(
-            handler_cls=XlsxFile,
-            method_name='sheet_from_options',
-            read_options=ReadOptions(sheet='Sheet2'),
-            write_options=WriteOptions(sheet=3),
-            baseline=0,
-            read_expected='Sheet2',
-            write_expected=3,
-            read_default='fallback_sheet',
-            write_default=99,
-        ),
-        id='sheet',
+    _OptionHelperCase(
+        handler_cls=XlsxFile,
+        method_name='sheet_from_options',
+        read_options=ReadOptions(sheet='Sheet2'),
+        write_options=WriteOptions(sheet=3),
+        baseline=0,
+        read_expected='Sheet2',
+        write_expected=3,
+        read_default='fallback_sheet',
+        write_default=99,
     ),
-    pytest.param(
-        _OptionHelperCase(
-            handler_cls=SqliteFile,
-            method_name='table_from_options',
-            read_options=ReadOptions(table='events'),
-            write_options=WriteOptions(table='staging'),
-            baseline=None,
-            read_expected='events',
-            write_expected='staging',
-            read_default='fallback_table',
-            write_default='fallback_table',
-        ),
-        id='table',
+    _OptionHelperCase(
+        handler_cls=SqliteFile,
+        method_name='table_from_options',
+        read_options=ReadOptions(table='events'),
+        write_options=WriteOptions(table='staging'),
+        baseline=None,
+        read_expected='events',
+        write_expected='staging',
+        read_default='fallback_table',
+        write_default='fallback_table',
     ),
 )
 
@@ -452,7 +369,7 @@ class TestBaseAbcContracts:
     ) -> None:
         """Test that ``at(path)`` routes remote URI reads through storage."""
         uri = 'https://example.com/files/data.json?download=1'
-        session = _FakeHttpSession(payload=b'{"name": "Ada"}')
+        session = FakeHttpSession(payload=b'{"name": "Ada"}')
         handler = JsonFile()
 
         monkeypatch.setattr(http_storage_mod.requests, 'Session', lambda: session)
@@ -472,41 +389,15 @@ class TestBaseAbcContracts:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test that ``at(path)`` routes remote URI writes through storage."""
-        uploads: list[bytes] = []
-
-        class CaptureUpload(BytesIO):
-            """Writable upload stream test double."""
-
-            def close(self) -> None:
-                """Capture uploaded bytes before closing the stream."""
-                uploads.append(self.getvalue())
-                super().close()
-
-        class FakeBackend:
-            """Remote backend write test double."""
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Accept parent preparation for remote storage."""
-                del location
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> CaptureUpload:
-                """Return one writable byte stream for the remote object."""
-                del location, kwargs
-                assert mode == 'wb'
-                return CaptureUpload()
-
-        monkeypatch.setattr(core_mod, 'get_backend', lambda value: FakeBackend())
+        backend = RemoteBytesBackendStub()
+        monkeypatch.setattr(core_mod, 'get_backend', lambda value: backend)
 
         handler = JsonFile()
         written = handler.at('s3://bucket/data.json').write({'name': 'Ada'})
 
         assert written == 1
-        assert uploads == [b'{\n  "name": "Ada"\n}\n']
+        assert backend.calls == ['ensure_parent_dir', 'wb']
+        assert backend.uploads == [b'{\n  "name": "Ada"\n}\n']
 
     @pytest.mark.parametrize(
         (
@@ -518,23 +409,21 @@ class TestBaseAbcContracts:
             'expected_written',
         ),
         [
-            pytest.param(
+            (
                 _DelimitedStub,
                 'ignored.csv',
                 'tabular_delimited_text',
                 [{'id': 1}],
                 [{'id': 1}, {'id': 2}],
                 2,
-                id='delimited',
             ),
-            pytest.param(
+            (
                 _TextFixedWidthStub,
                 'ignored.txt',
                 'text_fixed_width',
                 [{'text': 'ok'}],
                 [{'text': 'ok'}],
                 1,
-                id='text_fixed_width',
             ),
         ],
     )
@@ -574,29 +463,26 @@ class TestBaseAbcContracts:
             'error_pattern',
         ),
         [
-            pytest.param(
+            (
                 _ReadOnlyScientificStub,
                 'ignored.hdf5',
                 'other',
                 RuntimeError,
                 'read-only',
-                id='scientific_read_only',
             ),
-            pytest.param(
+            (
                 _ReadOnlySingleScientificStub,
                 'ignored.sas7bdat',
                 'data',
                 RuntimeError,
                 'read-only',
-                id='single_default_dataset_write',
             ),
-            pytest.param(
+            (
                 _ReadOnlySingleScientificStub,
                 'ignored.sas7bdat',
                 'other',
                 ValueError,
                 'supports only dataset key',
-                id='single_invalid_dataset_key',
             ),
         ],
     )
@@ -620,12 +506,8 @@ class TestBaseAbcContracts:
     @pytest.mark.parametrize(
         ('operation', 'kwargs'),
         [
-            pytest.param('write', {'data': [{'a': 1}]}, id='module_write'),
-            pytest.param(
-                'write_sheet',
-                {'rows': [{'a': 1}], 'sheet': 0},
-                id='sheet_write',
-            ),
+            ('write', {'data': [{'a': 1}]}),
+            ('write_sheet', {'rows': [{'a': 1}], 'sheet': 0}),
         ],
     )
     def test_read_only_spreadsheet_handler_rejects_writes(
@@ -643,10 +525,7 @@ class TestBaseAbcContracts:
 
     @pytest.mark.parametrize(
         'incomplete_handler_cls',
-        [
-            pytest.param(_IncompleteDelimited, id='delimited'),
-            pytest.param(_IncompleteTextFixedWidth, id='text_fixed_width'),
-        ],
+        [_IncompleteDelimited, _IncompleteTextFixedWidth],
     )
     def test_row_abcs_require_row_methods(
         self,
@@ -807,14 +686,7 @@ class TestScientificDatasetContracts:
 class TestScientificStubConventions:
     """Unit tests for scientific placeholder handler conventions."""
 
-    @pytest.mark.parametrize(
-        'handler_cls',
-        [
-            pytest.param(MatFile, id='mat'),
-            pytest.param(SylkFile, id='sylk'),
-            pytest.param(ZsavFile, id='zsav'),
-        ],
-    )
+    @pytest.mark.parametrize('handler_cls', [MatFile, SylkFile, ZsavFile])
     def test_scientific_stubs_inherit_stub_single_dataset_abc(
         self,
         handler_cls: type[StubSingleDatasetScientificFileHandlerABC],

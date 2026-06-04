@@ -30,8 +30,8 @@ class TestStubReadWrite:
     @pytest.mark.parametrize(
         ('operation', 'args'),
         [
-            pytest.param('read', (), id='read'),
-            pytest.param('write', ([{'id': 1}],), id='write'),
+            ('read', ()),
+            ('write', ([{'id': 1}],)),
         ],
     )
     def test_operations_raise_not_implemented(

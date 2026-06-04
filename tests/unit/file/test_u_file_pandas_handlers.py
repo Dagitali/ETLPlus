@@ -14,15 +14,14 @@ import pytest
 from etlplus.file import _pandas_handlers as mod
 from etlplus.file._enums import FileFormat
 
+from .pytest_file_support import SpreadsheetSheetFrameStub
+from .pytest_file_support import SpreadsheetSheetPandasStub
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 # SECTION: HELPERS ========================================================== #
-
-
-class _Handler:
-    """Simple handler stub for dependency resolver tests."""
 
 
 class _SpreadsheetEngineHandler(mod._PandasSpreadsheetEngineMixin):
@@ -73,37 +72,6 @@ class _ColumnarNoPyarrowHandler(mod.PandasColumnarHandlerMixin):
         raise AssertionError('resolve_pyarrow should not be called')
 
 
-class _ReadExcelFallbackPandasStub:
-    """
-    Pandas stub that rejects ``sheet_name`` to exercise fallback behavior.
-    """
-
-    def __init__(self) -> None:
-        self.calls: list[dict[str, object]] = []
-
-    def read_excel(self, path: object, **kwargs: object) -> str:
-        """Record read_excel calls and reject ``sheet_name`` kwargs."""
-        call = {'path': path, **dict(kwargs)}
-        self.calls.append(call)
-        if 'sheet_name' in kwargs:
-            raise TypeError('sheet_name unsupported')
-        return 'frame'
-
-
-class _WriteExcelFallbackFrameStub:
-    """Frame stub that rejects ``sheet_name`` to exercise write fallback."""
-
-    def __init__(self) -> None:
-        self.calls: list[dict[str, object]] = []
-
-    def to_excel(self, path: object, **kwargs: object) -> None:
-        """Record to_excel calls and reject ``sheet_name`` kwargs."""
-        call = {'path': path, **dict(kwargs)}
-        self.calls.append(call)
-        if 'sheet_name' in kwargs:
-            raise TypeError('sheet_name unsupported')
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -137,7 +105,7 @@ class TestResolvePyarrowDependency:
         monkeypatch.setattr(mod, 'resolve_dependency', _resolve)
 
         result = mod._resolve_pyarrow_dependency(
-            _Handler(),
+            object(),
             format_name='PARQUET',
         )
 
@@ -171,7 +139,7 @@ class TestResolvePyarrowDependency:
         )
 
         result = mod._resolve_pyarrow_dependency(
-            _Handler(),
+            _SpreadsheetEngineHandler(),
             format_name='PARQUET',
         )
 
@@ -195,7 +163,7 @@ class TestResolveSpreadsheetEngineDependency:
             ),
         )
         mod._resolve_spreadsheet_engine_dependency(
-            _Handler(),
+            object(),
             engine='unknown',
             format_name='XLSX',
         )
@@ -223,7 +191,7 @@ class TestResolveSpreadsheetEngineDependency:
         monkeypatch.setattr(mod, 'resolve_dependency', _resolve)
 
         mod._resolve_spreadsheet_engine_dependency(
-            _Handler(),
+            object(),
             engine='odf',
             format_name='ODS',
         )
@@ -237,11 +205,11 @@ class TestSpreadsheetDependencySpec:
     @pytest.mark.parametrize(
         ('engine', 'expected'),
         [
-            pytest.param(None, None, id='none'),
-            pytest.param('openpyxl', ('openpyxl', None), id='openpyxl'),
-            pytest.param('xlrd', ('xlrd', None), id='xlrd'),
-            pytest.param('odf', ('odf', 'odfpy'), id='odf'),
-            pytest.param('unknown', None, id='unknown'),
+            (None, None),
+            ('openpyxl', ('openpyxl', None)),
+            ('xlrd', ('xlrd', None)),
+            ('odf', ('odf', 'odfpy')),
+            ('unknown', None),
         ],
     )
     def test_spreadsheet_dependency_spec(
@@ -256,39 +224,35 @@ class TestSpreadsheetDependencySpec:
 class TestSpreadsheetEngineResolverMixin:
     """Unit tests for shared spreadsheet engine resolver mixin behavior."""
 
-    def test_resolve_engine_uses_default_engine_when_not_overridden(
+    @pytest.mark.parametrize(
+        ('handler_cls', 'method_name', 'args', 'expected'),
+        [
+            (_SpreadsheetEngineHandler, 'resolve_engine', ('read',), 'openpyxl'),
+            (
+                _SpreadsheetEngineWriteOverrideHandler,
+                'resolve_engine',
+                ('write',),
+                'odf',
+            ),
+            (_SpreadsheetReadHandler, 'resolve_read_engine', (), 'openpyxl'),
+            (_SpreadsheetWriteHandler, 'resolve_write_engine', (), 'odf'),
+        ],
+        ids=(
+            'default-read-engine',
+            'write-engine-override',
+            'read-wrapper',
+            'write-wrapper',
+        ),
+    )
+    def test_engine_resolution_helpers_return_expected_engine(
         self,
+        handler_cls: type[object],
+        method_name: str,
+        args: tuple[str, ...],
+        expected: str,
     ) -> None:
-        """Test fallback engine behavior for read operations."""
-        handler = _SpreadsheetEngineHandler()
-        assert handler.resolve_engine('read') == 'openpyxl'
-
-    def test_resolve_engine_prefers_write_override_for_write_operations(
-        self,
-    ) -> None:
-        """
-        Test that write operation resolves explicit write-engine overrides.
-        """
-        handler = _SpreadsheetEngineWriteOverrideHandler()
-        assert handler.resolve_engine('write') == 'odf'
-
-    def test_resolve_read_engine_wrapper_uses_shared_engine_resolution(
-        self,
-    ) -> None:
-        """
-        Test that read-engine wrapper forwards to operation-aware resolver.
-        """
-        handler = _SpreadsheetReadHandler()
-        assert handler.resolve_read_engine() == 'openpyxl'
-
-    def test_resolve_write_engine_wrapper_uses_shared_engine_resolution(
-        self,
-    ) -> None:
-        """
-        Test that write-engine wrapper forwards to operation-aware resolver.
-        """
-        handler = _SpreadsheetWriteHandler()
-        assert handler.resolve_write_engine() == 'odf'
+        """Test direct and wrapper engine resolution helper behavior."""
+        assert getattr(handler_cls(), method_name)(*args) == expected
 
     def test_resolve_engine_dependency_delegates_with_format_context(
         self,
@@ -324,21 +288,19 @@ class TestSpreadsheetReadWriteFallbacks:
     @pytest.mark.parametrize(
         ('engine', 'expected_kwargs'),
         [
-            pytest.param(
+            (
                 'openpyxl',
                 [
-                    {'sheet_name': 'Sheet1', 'engine': 'openpyxl'},
+                    {'engine': 'openpyxl', 'sheet_name': 'Sheet1'},
                     {'engine': 'openpyxl'},
                 ],
-                id='engine',
             ),
-            pytest.param(
+            (
                 None,
                 [
                     {'sheet_name': 'Sheet1'},
                     {},
                 ],
-                id='no-engine',
             ),
         ],
     )
@@ -348,7 +310,11 @@ class TestSpreadsheetReadWriteFallbacks:
         expected_kwargs: list[dict[str, object]],
     ) -> None:
         """Test read helper retry behavior with optional engine kwargs."""
-        pandas = _ReadExcelFallbackPandasStub()
+        frame = SpreadsheetSheetFrameStub([{'id': 1}])
+        pandas = SpreadsheetSheetPandasStub(
+            frame,
+            read_supports_sheet_name=False,
+        )
         path = Path('sample.xlsx')
 
         result = mod._read_excel_frame(
@@ -358,37 +324,24 @@ class TestSpreadsheetReadWriteFallbacks:
             engine=engine,
         )
 
-        assert result == 'frame'
-        assert pandas.calls == [{'path': path, **kwargs} for kwargs in expected_kwargs]
+        assert result is frame
+        assert pandas.read_calls == [
+            {'path': path, **kwargs} for kwargs in expected_kwargs
+        ]
 
     @pytest.mark.parametrize(
         ('engine', 'expected_kwargs'),
         [
-            pytest.param(
+            (
                 'openpyxl',
                 [
-                    {
-                        'index': False,
-                        'engine': 'openpyxl',
-                        'sheet_name': 'Sheet1',
-                    },
-                    {
-                        'index': False,
-                        'engine': 'openpyxl',
-                    },
+                    {'engine': 'openpyxl', 'index': False, 'sheet_name': 'Sheet1'},
+                    {'engine': 'openpyxl', 'index': False},
                 ],
-                id='engine',
             ),
-            pytest.param(
+            (
                 None,
-                [
-                    {
-                        'index': False,
-                        'sheet_name': 'Sheet1',
-                    },
-                    {'index': False},
-                ],
-                id='no-engine',
+                [{'index': False, 'sheet_name': 'Sheet1'}, {'index': False}],
             ),
         ],
     )
@@ -398,7 +351,7 @@ class TestSpreadsheetReadWriteFallbacks:
         expected_kwargs: list[dict[str, object]],
     ) -> None:
         """Test write helper retry behavior with optional engine kwargs."""
-        frame = _WriteExcelFallbackFrameStub()
+        frame = SpreadsheetSheetFrameStub([], allow_sheet_name=False)
         path = Path('sample.xlsx')
 
         mod._write_excel_frame(
@@ -408,7 +361,9 @@ class TestSpreadsheetReadWriteFallbacks:
             engine=engine,
         )
 
-        assert frame.calls == [{'path': path, **kwargs} for kwargs in expected_kwargs]
+        assert frame.to_excel_calls == [
+            {'path': path, **kwargs} for kwargs in expected_kwargs
+        ]
 
 
 class TestColumnarRuntimeDependencyValidation:

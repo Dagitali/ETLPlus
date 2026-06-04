@@ -63,7 +63,7 @@ class TestXml(RoundtripUnitModuleContract):
     @pytest.mark.parametrize(
         ('payload', 'expected'),
         [
-            pytest.param(
+            (
                 (
                     '<root id="7">'
                     '<item code="A"><text>first</text></item>'
@@ -79,9 +79,8 @@ class TestXml(RoundtripUnitModuleContract):
                         ],
                     },
                 },
-                id='attributes-and-repeated-tags',
             ),
-            pytest.param(
+            (
                 (
                     '<root>'
                     '<item><text>first</text></item>'
@@ -98,7 +97,6 @@ class TestXml(RoundtripUnitModuleContract):
                         ],
                     },
                 },
-                id='append-to-existing-list',
             ),
         ],
     )

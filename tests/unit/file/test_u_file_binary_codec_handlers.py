@@ -80,8 +80,8 @@ class TestBinaryCodecHandlers:
     @pytest.mark.parametrize(
         ('data', 'expected_payload'),
         [
-            pytest.param([{'id': 1}], [{'id': 1}], id='list_payload'),
-            pytest.param({'id': 1}, {'id': 1}, id='dict_payload'),
+            ([{'id': 1}], [{'id': 1}]),
+            ({'id': 1}, {'id': 1}),
         ],
     )
     def test_dumps_bytes_encodes_expected_payload_shape(

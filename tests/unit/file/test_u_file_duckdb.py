@@ -166,8 +166,8 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     @pytest.mark.parametrize(
         ('description', 'pragma_info'),
         [
-            pytest.param(None, [(0, 'id'), (1, 'name')], id='pragma_columns_fallback'),
-            pytest.param([('id',), ('name',)], [], id='description_columns'),
+            (None, [(0, 'id'), (1, 'name')]),
+            ([('id',), ('name',)], []),
         ],
     )
     def test_read_maps_columns_from_description_or_pragma(
@@ -196,8 +196,8 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     @pytest.mark.parametrize(
         ('tables', 'table_option'),
         [
-            pytest.param(['a', 'b'], 'b', id='multiple_tables_explicit_selection'),
-            pytest.param(['my table'], 'my table', id='quoted_table_name'),
+            (['a', 'b'], 'b'),
+            (['my table'], 'my table'),
         ],
     )
     def test_read_uses_explicit_table_option(
@@ -233,13 +233,8 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
     @pytest.mark.parametrize(
         ('payload', 'options', 'expected_table'),
         [
-            pytest.param([{'id': 1}, {'id': 2}], None, 'data', id='default_table'),
-            pytest.param(
-                [{'id': 1}],
-                WriteOptions(table='events'),
-                'events',
-                id='explicit_table_option',
-            ),
+            ([{'id': 1}, {'id': 2}], None, 'data'),
+            ([{'id': 1}], WriteOptions(table='events'), 'events'),
         ],
     )
     def test_write_creates_table_inserts_records_and_closes_connection(

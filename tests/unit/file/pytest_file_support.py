@@ -6,6 +6,8 @@ Shared unit-test stubs and helper factories for :mod:`etlplus.file` tests.
 
 from __future__ import annotations
 
+from io import BytesIO
+from io import StringIO
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -63,6 +65,49 @@ def make_import_error_writer_mod() -> object:
 # SECTION: CLASSES ========================================================== #
 
 
+class CaptureBytesUpload(BytesIO):
+    """Writable byte stream that records its payload on close."""
+
+    def __init__(self, uploads: list[bytes]) -> None:
+        self._uploads = uploads
+        super().__init__()
+
+    def close(self) -> None:
+        """Capture written bytes before closing the stream."""
+        self._uploads.append(self.getvalue())
+        super().close()
+
+
+class CaptureTextUpload(StringIO):
+    """Writable text stream that records its payload on close."""
+
+    def __init__(self, uploads: list[str]) -> None:
+        self._uploads = uploads
+        super().__init__()
+
+    def close(self) -> None:
+        """Capture written text before closing the stream."""
+        self._uploads.append(self.getvalue())
+        super().close()
+
+
+class ContextManagerSelfMixin:
+    """
+    Tiny mixin for stubs that act as context managers returning ``self``.
+    """
+
+    def __enter__(self) -> ContextManagerSelfMixin:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: object,
+        exc: object,
+        tb: object,
+    ) -> None:
+        return None
+
+
 class DictRecordsFrameStub:
     """
     Minimal records-only frame stub shared by scientific format tests.
@@ -109,6 +154,61 @@ class DictRecordsFrameStub:
     ) -> DictRecordsFrameStub:
         """Construct a frame from row records."""
         return DictRecordsFrameStub(records)
+
+
+class FakeHttpResponse:
+    """Minimal HTTP response double for file storage tests."""
+
+    def __init__(
+        self,
+        *,
+        status_code: int,
+        payload: bytes = b'',
+    ) -> None:
+        self.status_code = status_code
+        self.content = payload
+
+    def close(self) -> None:
+        """Close the response without side effects."""
+
+    def raise_for_status(self) -> None:
+        """Raise one error for non-successful response codes."""
+        if self.status_code >= 400:
+            raise RuntimeError(f'HTTP {self.status_code}')
+
+
+class FakeHttpSession:
+    """Minimal HTTP session double recording HEAD and GET calls."""
+
+    def __init__(
+        self,
+        *,
+        head_status: int = 200,
+        get_status: int = 200,
+        payload: bytes = b'',
+    ) -> None:
+        self.calls: list[tuple[str, str, bool]] = []
+        self.head_status = head_status
+        self.get_status = get_status
+        self.payload = payload
+
+    def close(self) -> None:
+        """Close the fake session without side effects."""
+
+    def get(self, url: str, **kwargs: object) -> FakeHttpResponse:
+        """Return one fake GET response and capture call metadata."""
+        self.calls.append(('get', url, bool(kwargs.get('stream', False))))
+        return FakeHttpResponse(
+            status_code=self.get_status,
+            payload=self.payload,
+        )
+
+    def head(self, url: str, **kwargs: object) -> FakeHttpResponse:
+        """Return one fake HEAD response and capture call metadata."""
+        self.calls.append(
+            ('head', url, bool(kwargs.get('allow_redirects', False))),
+        )
+        return FakeHttpResponse(status_code=self.head_status)
 
 
 class PandasModuleStub:
@@ -325,21 +425,75 @@ class RDataPandasStub:
     DataFrame = DictRecordsFrameStub
 
 
-class ContextManagerSelfMixin:
-    """
-    Tiny mixin for stubs that act as context managers returning ``self``.
-    """
+class RemoteBytesBackendStub:
+    """Storage backend stub for byte-oriented remote file tests."""
 
-    def __enter__(self) -> ContextManagerSelfMixin:
-        return self
-
-    def __exit__(
+    def __init__(
         self,
-        exc_type: object,
-        exc: object,
-        tb: object,
+        *,
+        exists_result: bool = True,
+        open_error: Exception | None = None,
+        read_payload: bytes = b'',
     ) -> None:
-        return None
+        self.calls: list[str] = []
+        self.exists_result = exists_result
+        self.open_error = open_error
+        self.read_payload = read_payload
+        self.uploads: list[bytes] = []
+
+    def ensure_parent_dir(self, location: object) -> None:
+        """Record parent preparation for a remote object."""
+        self.calls.append('ensure_parent_dir')
+
+    def exists(self, location: object) -> bool:
+        """Record an existence check and return the configured result."""
+        self.calls.append('exists')
+        return self.exists_result
+
+    def open(
+        self,
+        location: object,
+        mode: str = 'r',
+        **kwargs: object,
+    ) -> BytesIO:
+        """Return a readable or writable byte stream for the requested mode."""
+        self.calls.append(mode)
+        if self.open_error is not None:
+            raise self.open_error
+        if mode == 'rb':
+            return BytesIO(self.read_payload)
+        assert mode == 'wb'
+        return CaptureBytesUpload(self.uploads)
+
+
+class RemoteTextBackendStub:
+    """Storage backend stub for text-oriented remote file tests."""
+
+    def __init__(
+        self,
+        *,
+        read_payload: str = '',
+    ) -> None:
+        self.calls: list[str] = []
+        self.read_payload = read_payload
+        self.uploads: list[str] = []
+
+    def ensure_parent_dir(self, location: object) -> None:
+        """Record parent preparation for a remote object."""
+        self.calls.append('ensure_parent_dir')
+
+    def open(
+        self,
+        location: object,
+        mode: str = 'r',
+        **kwargs: object,
+    ) -> StringIO:
+        """Return a readable or writable text stream for the requested mode."""
+        self.calls.append(mode)
+        if mode == 'r':
+            return StringIO(self.read_payload)
+        assert mode == 'w'
+        return CaptureTextUpload(self.uploads)
 
 
 class RDataNoWriterStub:
