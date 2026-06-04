@@ -13,6 +13,7 @@ import pytest
 from etlplus.history._ui import build_history_ui_handler
 from etlplus.history._ui import build_snapshot
 from etlplus.history._ui import render_html
+from etlplus.history._ui import serve_history_ui
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -175,3 +176,27 @@ class TestHistoryUiHttpHandler:
             server.shutdown()
             server.server_close()
             thread.join(timeout=5)
+
+    def test_serve_history_ui_warns_when_bound_to_all_interfaces(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Serving on ``0.0.0.0`` should warn about exposed local history."""
+
+        class _FakeServer:
+            def __init__(self, *_args: object, **_kwargs: object) -> None:
+                pass
+
+            def serve_forever(self) -> None:
+                raise KeyboardInterrupt
+
+            def server_close(self) -> None:
+                pass
+
+        monkeypatch.setattr('etlplus.history._ui.ThreadingHTTPServer', _FakeServer)
+
+        exit_code = serve_history_ui(host='0.0.0.0', open_browser=False)
+
+        assert exit_code == 0
+        assert 'bound to 0.0.0.0' in capsys.readouterr().err
