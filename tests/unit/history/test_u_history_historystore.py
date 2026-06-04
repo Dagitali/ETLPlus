@@ -111,19 +111,19 @@ class TestHistoryStore:
         tmp_path: Path,
     ) -> None:
         """Test that explicit store settings resolve supported backends."""
-        sqlite_store = store_mod.HistoryStore.from_settings(
-            backend='sqlite',
-            state_dir=tmp_path / 'sqlite-state',
-        )
-        jsonl_store = store_mod.HistoryStore.from_settings(
-            backend='jsonl',
-            state_dir=tmp_path / 'jsonl-state',
-        )
+        for backend, expected_type, path_attr, path_name in (
+            ('jsonl', store_mod.JsonlHistoryStore, 'log_path', 'history.jsonl'),
+            ('sqlite', store_mod.SQLiteHistoryStore, 'db_path', 'history.sqlite'),
+        ):
+            state_dir = tmp_path / f'{backend}-state'
 
-        assert isinstance(sqlite_store, store_mod.SQLiteHistoryStore)
-        assert sqlite_store.db_path == tmp_path / 'sqlite-state' / 'history.sqlite'
-        assert isinstance(jsonl_store, store_mod.JsonlHistoryStore)
-        assert jsonl_store.log_path == tmp_path / 'jsonl-state' / 'history.jsonl'
+            store = store_mod.HistoryStore.from_settings(
+                backend=backend,
+                state_dir=state_dir,
+            )
+
+            assert isinstance(store, expected_type)
+            assert getattr(store, path_attr) == state_dir / path_name
 
     @pytest.mark.parametrize(
         ('backend', 'expected_type', 'path_attr', 'path_name'),
