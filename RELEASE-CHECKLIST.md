@@ -274,12 +274,12 @@ stable package metadata contract.
   - Overlap-skipped due triggers now appear in `pending_runs` with `reason: overlap`, so operators
     can distinguish replayable overlap from consumed handled outcomes.
 - [x] Decide whether any local run-history UI ships in core or as an optional extra/package.
-  - The `v1.x` line keeps the stable local-history read/query surface CLI-only: `history`, `log`,
-    `status`, and `report` remain the supported interfaces.
-  - Any browser-based local history UI is deferred to `v2.0.0`, where packaging, test layout, and
-    shared-runtime boundary decisions can be revisited together.
+  - The `v1.x` line now ships the read-only local run-history dashboard in core as `etlplus ui`.
+  - The dashboard remains additive: it uses the same persisted history store, introduces no new
+    history schema or write path, and stays localhost-bound by default.
 - [x] Decide when the local run-history work becomes part of the documented stable CLI surface.
-  - `history`, `log`, `status`, and `report` are now documented as stable `v1.x` CLI commands.
+  - `history`, `log`, `status`, `report`, and `ui` are now documented as stable `v1.x` CLI
+    commands.
   - Contract coverage exists in the public-surface meta tests.
 - [x] Review the stable event-schema contract before the next minor release.
   - `RUNTIME-CONFIG-AND-LOGGING.md` now documents the `etlplus.event.v1` compatibility rules and
