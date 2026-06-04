@@ -89,6 +89,7 @@ EXPECTED_CLI_COMMANDS = {
     'schedule',
     'status',
     'transform',
+    'ui',
     'validate',
 }
 
