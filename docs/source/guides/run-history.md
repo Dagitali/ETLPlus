@@ -10,7 +10,7 @@ read/query commands in the CLI.
     - [`etlplus log`](#etlplus-log)
     - [`etlplus status`](#etlplus-status)
     - [`etlplus report`](#etlplus-report)
-    - [`etlplus-ui` (v2.x.x)](#etlplus-ui-v2xx)
+    - [`etlplus ui`](#etlplus-ui)
   - [Output Conventions](#output-conventions)
   - [Stable Normalized Fields](#stable-normalized-fields)
   - [Event-to-history mapping for `etlplus run`](#event-to-history-mapping-for-etlplus-run)
@@ -44,10 +44,8 @@ run-level history row.
 Today, the persisted history is written by `etlplus run`. The read/query commands below inspect that
 local store; they do not require external services.
 
-The stable `v1.x` read surface is the CLI query family documented here: `history`, `log`,
-`status`, and `report`. Browser-based local history UI work is deferred to the `v2.0.0` planning
-horizon so packaging and interface-boundary decisions can be revisited deliberately rather than
-expanding the stable `v1.x` command surface ad hoc.
+The stable `v1.x` read surface is the CLI query family documented here: `history`, `log`, `status`,
+`report`, and the read-only local dashboard exposed through `etlplus ui`.
 
 ## Commands
 
@@ -130,7 +128,7 @@ Aggregate per-job history by pipeline:
 etlplus report --level job --group-by pipeline --since 2026-03-01T00:00:00Z --table
 ```
 
-### `etlplus-ui` (v2.x.x)
+### `etlplus ui`
 
 Launch the optional local history UI.
 
@@ -144,7 +142,7 @@ Launch the optional local history UI.
 Example:
 
 ```bash
-etlplus-ui --port 8765 --limit 25
+etlplus ui --port 8765 --limit 25
 ```
 
 The UI is intentionally additive on the `v1.x` line: it does not introduce a new history backend,
