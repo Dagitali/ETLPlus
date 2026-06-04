@@ -191,8 +191,8 @@ stable package metadata contract.
 - [x] Keep installer parity explicit: `pip`, `pipx`, and `uv tool install` must install the same
   base PyPI artifact and expose the same `etlplus` CLI entrypoint.
 - [x] Centralize release-path installer smoke coverage for the built wheel artifact through `pip`,
-  `pipx`, and `uv tool install`, verifying `etlplus --version`, `etlplus --help`, and `etlplus check
-  --help`.
+  `pipx`, and `uv tool install`, verifying `etlplus --version`, `etlplus --help`, `etlplus check
+  --help`, and `etlplus ui --help`.
 - [x] Complete the conda-forge feedstock-preparation pass after installer smoke coverage stabilized.
   - Preparation details and the candidate recipe are captured in
     `packaging/conda/FEEDSTOCK-PREP.md`.
@@ -200,13 +200,13 @@ stable package metadata contract.
     maps to conda-forge `msgpack-python`.
   - A temporary conda prefix installed ETLPlus from local source with conda-resolved dependencies and
     `pip --no-deps --no-build-isolation`, then verified `etlplus --version`, `etlplus --help`,
-    `etlplus check --help`, and `import etlplus`.
+    `etlplus check --help`, `etlplus ui --help`, and `import etlplus`.
   - Feedstock preparation now includes `packaging/conda/meta.yaml.j2`,
     `tools/render_conda_recipe.py`, and meta tests checking the candidate recipe against
     `pyproject.toml` dependency names and the expected CLI entrypoint smoke commands.
   - A clean local source snapshot rendered with `--source-path` built a `.conda` artifact with
     `conda-build` on `osx-arm64` and passed the recipe smoke tests for `etlplus --version`, `etlplus
-    --help`, and `etlplus check --help`.
+    --help`, `etlplus check --help`, and `etlplus ui --help`.
   - A manual `Conda Recipe Validation` workflow now renders and builds the recipe with
     `conda-build`, defaulting to Linux first with an opt-in Linux/macOS/Windows matrix; the
     tagged-sdist support gate has passed on all three platforms.
