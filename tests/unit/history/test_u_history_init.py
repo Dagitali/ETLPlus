@@ -9,13 +9,7 @@ from __future__ import annotations
 import pytest
 
 import etlplus.history as history_pkg
-from etlplus.history._store import HISTORY_SCHEMA_VERSION
-from etlplus.history._store import HistoryStore
-from etlplus.history._store import JsonlHistoryStore
-from etlplus.history._store import RunCompletion
-from etlplus.history._store import RunRecord
-from etlplus.history._store import RunState
-from etlplus.history._store import SQLiteHistoryStore
+import etlplus.history._store as store_mod
 
 from ..pytest_export_contracts import assert_package_exports
 
@@ -23,17 +17,16 @@ from ..pytest_export_contracts import assert_package_exports
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-
 # SECTION: HELPERS ========================================================== #
 
 HISTORY_EXPORTS: tuple[tuple[str, object], ...] = (
-    ('HistoryStore', HistoryStore),
-    ('JsonlHistoryStore', JsonlHistoryStore),
-    ('RunCompletion', RunCompletion),
-    ('RunRecord', RunRecord),
-    ('RunState', RunState),
-    ('SQLiteHistoryStore', SQLiteHistoryStore),
-    ('HISTORY_SCHEMA_VERSION', HISTORY_SCHEMA_VERSION),
+    ('HistoryStore', store_mod.HistoryStore),
+    ('JsonlHistoryStore', store_mod.JsonlHistoryStore),
+    ('RunCompletion', store_mod.RunCompletion),
+    ('RunRecord', store_mod.RunRecord),
+    ('RunState', store_mod.RunState),
+    ('SQLiteHistoryStore', store_mod.SQLiteHistoryStore),
+    ('HISTORY_SCHEMA_VERSION', store_mod.HISTORY_SCHEMA_VERSION),
 )
 
 # SECTION: TESTS ============================================================ #
