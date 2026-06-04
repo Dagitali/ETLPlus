@@ -26,21 +26,9 @@ class TestImportsHelpers:
     @pytest.mark.parametrize(
         ('method_name', 'method_args', 'expected_call'),
         [
-            (
-                'get_pandas',
-                ('CSV',),
-                ('pandas', 'CSV', None, True),
-            ),
-            (
-                'get_pyarrow',
-                ('PARQUET',),
-                ('pyarrow', 'PARQUET', None, True),
-            ),
-            (
-                'get_yaml',
-                (),
-                ('yaml', 'YAML', 'PyYAML', True),
-            ),
+            ('get_pandas', ('CSV',), ('pandas', 'CSV', None, True)),
+            ('get_pyarrow', ('PARQUET',), ('pyarrow', 'PARQUET', None, True)),
+            ('get_yaml', (), ('yaml', 'YAML', 'PyYAML', True)),
         ],
     )
     def test_dependency_helpers_delegate_to_get_dependency(
@@ -89,18 +77,8 @@ class TestImportsHelpers:
     @pytest.mark.parametrize(
         ('module_name', 'format_name', 'pip_name', 'dependency_name'),
         [
-            (
-                'pyarrow',
-                'PARQUET',
-                None,
-                'pyarrow',
-            ),
-            (
-                'yaml',
-                'YAML',
-                'PyYAML',
-                'PyYAML',
-            ),
+            ('pyarrow', 'PARQUET', None, 'pyarrow'),
+            ('yaml', 'YAML', 'PyYAML', 'PyYAML'),
         ],
     )
     def test_error_message_uses_expected_dependency_name(
@@ -275,18 +253,8 @@ class TestImportsHelpers:
     @pytest.mark.parametrize(
         ('module_name', 'format_name', 'pip_name', 'dependency_name'),
         [
-            (
-                'duckdb',
-                'DUCKDB',
-                None,
-                'duckdb',
-            ),
-            (
-                'bson',
-                'BSON',
-                'pymongo',
-                'pymongo',
-            ),
+            ('duckdb', 'DUCKDB', None, 'duckdb'),
+            ('bson', 'BSON', 'pymongo', 'pymongo'),
         ],
     )
     def test_required_error_message_uses_expected_dependency_name(
