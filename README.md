@@ -206,7 +206,7 @@ Maintainer-facing policy and automation references are also available in
   - List normalized runs with filters and table output
   - Stream raw append events for backend-level troubleshooting
   - Inspect the latest run or aggregate success and duration metrics by job, status, or day
-  - Launch the optional read-only local history UI with `etlplus-ui`
+  - Launch the optional read-only local history UI with `etlplus ui`
 
 - **Schedule** configured runs without a resident ETLPlus daemon:
   - Inspect portable cron/interval schedule definitions from config
