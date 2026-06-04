@@ -63,16 +63,8 @@ class TestBsonHelpers:
     @pytest.mark.parametrize(
         ('func', 'args', 'match'),
         [
-            (
-                mod._decode_all,
-                (object(), b'payload'),
-                'decode_all',
-            ),
-            (
-                mod._encode_doc,
-                (object(), {'id': 1}),
-                'encode',
-            ),
+            (mod._decode_all, (object(), b'payload'), 'decode_all'),
+            (mod._encode_doc, (object(), {'id': 1}), 'encode'),
         ],
     )
     def test_codec_helpers_raise_without_support(
