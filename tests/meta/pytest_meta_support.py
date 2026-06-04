@@ -17,13 +17,46 @@ from pathlib import Path
 
 
 __all__ = [
+    # Functions
+    'canonical_requirement_name',
     'markdown_table_rows',
     'read_lines',
     'regex_matches',
 ]
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_REQUIREMENT_NAME_PATTERN = re.compile(r'^\s*([A-Za-z0-9_.-]+)')
+
+
 # SECTION: FUNCTIONS ======================================================== #
+
+
+def canonical_requirement_name(requirement: str) -> str:
+    """
+    Return the normalized package name from one requirement string.
+
+    Parameters
+    ----------
+    requirement : str
+        Dependency requirement string.
+
+    Returns
+    -------
+    str
+        Canonical package name with case folded and underscores normalized.
+
+    Raises
+    ------
+    ValueError
+        If no package name can be parsed from the requirement string.
+    """
+    match = _REQUIREMENT_NAME_PATTERN.match(requirement)
+    if match is None:
+        raise ValueError(f'Invalid requirement: {requirement!r}')
+    return match.group(1).casefold().replace('_', '-')
 
 
 def markdown_table_rows(
