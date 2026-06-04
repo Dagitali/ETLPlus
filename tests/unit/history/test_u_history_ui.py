@@ -106,6 +106,15 @@ class TestHistoryUiSnapshot:
         assert 'seed' in html_text
         assert 'http-equiv="refresh" content="3"' in html_text
 
+    def test_render_html_omits_refresh_meta_when_refresh_disabled(self) -> None:
+        """Rendered HTML should omit refresh metadata when refresh is disabled."""
+        html_text = render_html(
+            {'jobs': [], 'runs': [], 'summary': {}},
+            refresh_seconds=0,
+        )
+
+        assert 'http-equiv="refresh"' not in html_text
+
 
 class TestHistoryUiHttpHandler:
     """Unit tests for the local history UI HTTP endpoints."""
