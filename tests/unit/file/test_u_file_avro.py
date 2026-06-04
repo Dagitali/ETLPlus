@@ -127,20 +127,17 @@ class TestAvroHelpers:
     @pytest.mark.parametrize(
         ('operation', 'payload'),
         [
-            pytest.param(
+            (
                 mod._infer_value_type,
                 {'bad': 'value'},
-                id='infer_value_type_complex',
             ),
-            pytest.param(
+            (
                 mod._infer_schema,
                 [{'bad': {'nested': True}}],
-                id='infer_schema_nested',
             ),
-            pytest.param(
+            (
                 mod._infer_schema,
                 [{'bad': object()}],
-                id='infer_schema_non_primitive_scalar',
             ),
         ],
     )
