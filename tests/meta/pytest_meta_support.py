@@ -28,7 +28,7 @@ __all__ = [
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_REQUIREMENT_NAME_PATTERN = re.compile(r'^[A-Za-z0-9_.-]+')
+_REQUIREMENT_NAME_PATTERN = re.compile(r'^\s*([A-Za-z0-9_.-]+)')
 
 
 # SECTION: FUNCTIONS ======================================================== #
