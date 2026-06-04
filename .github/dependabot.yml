@@ -49,7 +49,7 @@ updates:
       - dependencies
       - github-actions
     commit-message:
-      prefix: deps
+      prefix: ci
       include: scope
     groups:
       github-actions:
@@ -68,7 +68,7 @@ updates:
       - dependencies
       - python
     commit-message:
-      prefix: deps
+      prefix: build
       include: scope
     groups:
       python-runtime-dependencies:
@@ -88,7 +88,7 @@ updates:
       - dependencies
       - pre-commit
     commit-message:
-      prefix: deps
+      prefix: build
       include: scope
     groups:
       pre-commit-hooks:
