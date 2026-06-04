@@ -138,6 +138,9 @@ Launch the optional local history UI.
   `/snapshot.json`
 - Refresh: `--refresh-seconds` controls simple page reload polling
 - Browser: `--no-browser` suppresses automatic browser launch
+- Security: the default host is `127.0.0.1`. The local UI does not provide authentication or TLS, so
+  avoid binding to `0.0.0.0` unless you understand that this exposes local run-history data on that
+  network interface.
 
 Example:
 
