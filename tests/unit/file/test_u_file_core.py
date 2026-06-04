@@ -877,16 +877,8 @@ class TestFileCoreDispatch:
     @pytest.mark.parametrize(
         ('uri', 'file_format', 'expected_name'),
         [
-            (
-                's3://bucket',
-                FileFormat.JSON,
-                'payload.json',
-            ),
-            (
-                's3://bucket',
-                None,
-                'payload.tmp',
-            ),
+            ('s3://bucket', FileFormat.JSON, 'payload.json'),
+            ('s3://bucket', None, 'payload.tmp'),
         ],
     )
     def test_dispatch_path_for_remote_writes_uploads_staged_payload(
@@ -981,21 +973,9 @@ class TestFileCoreDispatch:
     @pytest.mark.parametrize(
         ('root_tag', 'option_root_tag', 'same_object'),
         [
-            (
-                xml_file.DEFAULT_XML_ROOT,
-                'records',
-                True,
-            ),
-            (
-                'records',
-                'records',
-                True,
-            ),
-            (
-                'records',
-                'items',
-                False,
-            ),
+            (xml_file.DEFAULT_XML_ROOT, 'records', True),
+            ('records', 'records', True),
+            ('records', 'items', False),
         ],
     )
     def test_resolved_write_options_handles_existing_root_tags(
@@ -1038,16 +1018,8 @@ class TestFileCoreDispatch:
     @pytest.mark.parametrize(
         ('root_tag', 'expected_root_tag', 'write_result'),
         [
-            (
-                None,
-                xml_file.DEFAULT_XML_ROOT,
-                1,
-            ),
-            (
-                'records',
-                'records',
-                3,
-            ),
+            (None, xml_file.DEFAULT_XML_ROOT, 1),
+            ('records', 'records', 3),
         ],
     )
     def test_write_uses_class_based_handler_and_root_tag(
