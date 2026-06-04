@@ -56,8 +56,8 @@ class TestHistoryStore:
     @pytest.mark.parametrize(
         ('backend', 'path_name'),
         [
-            pytest.param('jsonl', 'history.jsonl', id='jsonl'),
-            pytest.param('sqlite', 'history.sqlite', id='sqlite'),
+            ('jsonl', 'history.jsonl'),
+            ('sqlite', 'history.sqlite'),
         ],
     )
     def test_backends_normalize_to_same_documented_run_and_job_shapes(
@@ -111,37 +111,25 @@ class TestHistoryStore:
         tmp_path: Path,
     ) -> None:
         """Test that explicit store settings resolve supported backends."""
-        sqlite_store = store_mod.HistoryStore.from_settings(
-            backend='sqlite',
-            state_dir=tmp_path / 'sqlite-state',
-        )
-        jsonl_store = store_mod.HistoryStore.from_settings(
-            backend='jsonl',
-            state_dir=tmp_path / 'jsonl-state',
-        )
+        for backend, expected_type, path_attr, path_name in (
+            ('jsonl', store_mod.JsonlHistoryStore, 'log_path', 'history.jsonl'),
+            ('sqlite', store_mod.SQLiteHistoryStore, 'db_path', 'history.sqlite'),
+        ):
+            state_dir = tmp_path / f'{backend}-state'
 
-        assert isinstance(sqlite_store, store_mod.SQLiteHistoryStore)
-        assert sqlite_store.db_path == tmp_path / 'sqlite-state' / 'history.sqlite'
-        assert isinstance(jsonl_store, store_mod.JsonlHistoryStore)
-        assert jsonl_store.log_path == tmp_path / 'jsonl-state' / 'history.jsonl'
+            store = store_mod.HistoryStore.from_settings(
+                backend=backend,
+                state_dir=state_dir,
+            )
+
+            assert isinstance(store, expected_type)
+            assert getattr(store, path_attr) == state_dir / path_name
 
     @pytest.mark.parametrize(
         ('backend', 'expected_type', 'path_attr', 'path_name'),
         [
-            pytest.param(
-                'jsonl',
-                store_mod.JsonlHistoryStore,
-                'log_path',
-                'history.jsonl',
-                id='jsonl-backend',
-            ),
-            pytest.param(
-                None,
-                store_mod.SQLiteHistoryStore,
-                'db_path',
-                'history.sqlite',
-                id='default-sqlite-backend',
-            ),
+            ('jsonl', store_mod.JsonlHistoryStore, 'log_path', 'history.jsonl'),
+            (None, store_mod.SQLiteHistoryStore, 'db_path', 'history.sqlite'),
         ],
     )
     def test_from_environment_selects_supported_backend(
@@ -242,10 +230,7 @@ class TestHistoryStore:
         )
 
         assert runs == [
-            normalized_run_payload(
-                run_id='run-123',
-                status='running',
-            ),
+            normalized_run_payload(run_id='run-123', status='running'),
         ]
 
     def test_iter_runs_skips_non_run_records(
@@ -273,8 +258,5 @@ class TestHistoryStore:
         )
 
         assert runs == [
-            normalized_run_payload(
-                run_id='run-123',
-                status='running',
-            ),
+            normalized_run_payload(run_id='run-123', status='running'),
         ]

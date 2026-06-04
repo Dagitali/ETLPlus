@@ -74,8 +74,8 @@ class TestHistoryStoreModuleHelpers:
     @pytest.mark.parametrize(
         ('payload', 'expected'),
         [
-            pytest.param(None, None, id='missing-result-summary'),
-            pytest.param('{"rows":10}', {'rows': 10}, id='json-result-summary'),
+            (None, None),
+            ('{"rows":10}', {'rows': 10}),
         ],
     )
     def test_deserialize_result_summary(
@@ -91,9 +91,9 @@ class TestHistoryStoreModuleHelpers:
     @pytest.mark.parametrize(
         ('payload', 'expected'),
         [
-            pytest.param(None, None, id='none'),
-            pytest.param('["seed", 1, "publish"]', ['seed', 'publish'], id='list'),
-            pytest.param('{"seed": true}', None, id='non-list-json'),
+            (None, None),
+            ('["seed", 1, "publish"]', ['seed', 'publish']),
+            ('{"seed": true}', None),
         ],
     )
     def test_string_list_serialization_helpers(
@@ -125,20 +125,17 @@ class TestHistoryStoreModuleHelpers:
     @pytest.mark.parametrize(
         ('columns', 'expected'),
         [
-            pytest.param(
+            (
                 {'result_summary': '{"rows": 10}'},
                 {'result_summary': {'rows': 10}},
-                id='run-result-summary',
             ),
-            pytest.param(
+            (
                 {'result_summary': None},
                 {'result_summary': None},
-                id='missing-result-summary',
             ),
-            pytest.param(
+            (
                 {'skipped_due_to': '["seed"]'},
                 {'skipped_due_to': ['seed']},
-                id='job-skipped-due-to',
             ),
         ],
     )
