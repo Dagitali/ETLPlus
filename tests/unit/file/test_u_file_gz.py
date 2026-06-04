@@ -68,18 +68,8 @@ class TestGz(ArchiveWrapperCoreDispatchModuleContract):
     @pytest.mark.parametrize(
         ('stem', 'suffix', 'text_content', 'error_pattern'),
         [
-            (
-                'payload',
-                None,
-                None,
-                'Cannot infer file format',
-            ),
-            (
-                'payload',
-                'json',
-                'irrelevant',
-                'Not a gzip file',
-            ),
+            ('payload', None, None, 'Cannot infer file format'),
+            ('payload', 'json', 'irrelevant', 'Not a gzip file'),
         ],
     )
     def test_read_invalid_inputs_raise(
