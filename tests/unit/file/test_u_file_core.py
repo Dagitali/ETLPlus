@@ -34,6 +34,7 @@ from etlplus.utils._types import JSONData
 
 from ...pytest_file_common import Operation
 from ...pytest_file_common import skip_on_known_file_io_error
+from ..pytest_http_support import FakeHttpSession
 from .pytest_file_core_cases import EMBEDDED_DB_MULTI_TABLE_CASE_IDS
 from .pytest_file_core_cases import EMBEDDED_DB_MULTI_TABLE_CASES
 from .pytest_file_core_cases import EXPLICIT_STRING_FORMAT_CASE_IDS
@@ -48,7 +49,6 @@ from .pytest_file_core_cases import UNKNOWN_FORMAT_CASE_IDS
 from .pytest_file_core_cases import UNKNOWN_FORMAT_CASES
 from .pytest_file_core_cases import XML_ROUNDTRIP_NORMALIZED_FORMATS
 from .pytest_file_core_cases import FormatPayload
-from .pytest_file_support import FakeHttpSession
 from .pytest_file_support import RemoteBytesBackendStub
 
 # SECTION: PRAGMAS ========================================================== #

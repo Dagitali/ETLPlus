@@ -20,7 +20,7 @@ from etlplus.api import CursorPaginationConfigDict
 from etlplus.api import EndpointClient
 from etlplus.api import PagePaginationConfigDict
 
-from .api.test_u_api_mocks import MockSession
+from .pytest_http_support import MockSession
 
 # SECTION: PRAGMAS ========================================================== #
 

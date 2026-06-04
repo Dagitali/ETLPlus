@@ -12,7 +12,7 @@ from etlplus.storage import HttpStorageBackend
 from etlplus.storage import StorageLocation
 from etlplus.storage import _http as http_mod
 
-from .pytest_storage_support import FakeHttpSession
+from ..pytest_http_support import FakeHttpSession
 
 # SECTION: PRAGMAS ========================================================== #
 

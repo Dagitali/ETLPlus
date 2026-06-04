@@ -1,12 +1,7 @@
 """
-`:mod:`tests.unit.api.test_u_api_mocks` module.
+:mod:`tests.unit.pytest_http_support` module.
 
-Reusable mocked objects for API client unit tests.
-
-Notes
------
-- Provides :class:`MockResponse` with a simplified ``json`` implementation.
-- Provides :class:`MockSession` capturing ``get`` calls and close state.
+Shared HTTP test doubles for unit tests.
 """
 
 from __future__ import annotations
@@ -21,36 +16,72 @@ from requests.structures import CaseInsensitiveDict  # type: ignore[import]
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: EXPORTS ========================================================== #
-
-
-__all__ = ['MockResponse', 'MockSession']
-
-
 # SECTION: CLASSES ========================================================== #
 
 
+class FakeHttpResponse:
+    """Minimal HTTP response test double."""
+
+    def __init__(
+        self,
+        *,
+        status_code: int,
+        payload: bytes = b'',
+    ) -> None:
+        self.status_code = status_code
+        self.content = payload
+
+    def close(self) -> None:
+        """Close the response without side effects."""
+
+    def raise_for_status(self) -> None:
+        """Raise one error for non-successful response codes."""
+        if self.status_code >= 400:
+            raise RuntimeError(f'HTTP {self.status_code}')
+
+
+class FakeHttpSession:
+    """Minimal HTTP session double recording HEAD and GET calls."""
+
+    def __init__(
+        self,
+        *,
+        head_status: int = 200,
+        get_status: int = 200,
+        payload: bytes = b'',
+    ) -> None:
+        self.calls: list[tuple[str, str, bool]] = []
+        self.head_status = head_status
+        self.get_status = get_status
+        self.payload = payload
+
+    def close(self) -> None:
+        """Close the fake session without side effects."""
+
+    def get(self, url: str, **kwargs: Any) -> FakeHttpResponse:
+        """Return one fake GET response and capture call metadata."""
+        self.calls.append(('get', url, bool(kwargs.get('stream', False))))
+        return FakeHttpResponse(
+            status_code=self.get_status,
+            payload=self.payload,
+        )
+
+    def head(self, url: str, **kwargs: Any) -> FakeHttpResponse:
+        """Return one fake HEAD response and capture call metadata."""
+        self.calls.append(
+            ('head', url, bool(kwargs.get('allow_redirects', False))),
+        )
+        return FakeHttpResponse(status_code=self.head_status)
+
+
 class MockResponse(Response):  # pragma: no cover - behavior trivial
-    """
-    Minimal ``Response`` subclass returning a provided JSON payload.
-
-    Subclassing ``Response`` keeps the return type compatible for test double
-    usage while overriding ``json`` for simplicity.
-    """
-
-    # -- Magic Methods (Object Lifecycle) -- #
+    """Minimal ``Response`` subclass returning a provided JSON payload."""
 
     def __init__(self, payload: Any) -> None:
         super().__init__()
         self._payload = payload
         self.status_code = 200
-        self.headers = CaseInsensitiveDict(
-            {
-                'content-type': 'application/json',
-            },
-        )
-
-    # -- Instance Methods -- #
+        self.headers = CaseInsensitiveDict({'content-type': 'application/json'})
 
     def json(
         self,
@@ -73,27 +104,12 @@ class MockResponse(Response):  # pragma: no cover - behavior trivial
 
 
 class MockSession(Session):  # pragma: no cover - exercised indirectly
-    """
-    ``Session`` test double capturing ``get`` calls and close state.
-
-    Notes
-    -----
-    Captures arguments to ``get`` and tracks close state for test assertions.
-
-    Methods
-    -------
-    __init__()
-        Initializes a MockSession.
-    """
-
-    # -- Magic Methods (Object Lifecycle) -- #
+    """``Session`` test double capturing ``get`` calls and close state."""
 
     def __init__(self) -> None:
         super().__init__()
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self.closed = False
-
-    # -- Instance Methods -- #
 
     def get(  # type: ignore[override]
         self,
@@ -118,11 +134,6 @@ class MockSession(Session):  # pragma: no cover - exercised indirectly
         """
         Capture ``get`` call arguments and return a simple JSON response.
 
-        Signature mirrors ``requests.Session.get`` to satisfy static type
-        checking while keeping implementation intentionally lightweight.
-        Unused parameters are accepted for compatibility and recorded only if
-        provided.
-
         Parameters
         ----------
         url : str | bytes
@@ -142,7 +153,7 @@ class MockSession(Session):  # pragma: no cover - exercised indirectly
         timeout : Any, optional
             Timeout for the request.
         allow_redirects : bool, optional
-            Whether to follow redirects (default: True).
+            Whether to follow redirects.
         proxies : Any, optional
             Proxy servers to use for the request.
         hooks : Any, optional
@@ -161,10 +172,9 @@ class MockSession(Session):  # pragma: no cover - exercised indirectly
         Returns
         -------
         Response
-            A MockResponse with a simple JSON payload.
+            A mock response with a simple JSON payload.
         """
         call_kwargs: dict[str, Any] = {}
-        # Persist only explicitly provided (non-None) values for readability.
         if params is not None:
             call_kwargs['params'] = params
         if data is not None:
@@ -179,7 +189,7 @@ class MockSession(Session):  # pragma: no cover - exercised indirectly
             call_kwargs['auth'] = auth
         if timeout is not None:
             call_kwargs['timeout'] = timeout
-        if allow_redirects is not True:  # only store if deviates default
+        if allow_redirects is not True:
             call_kwargs['allow_redirects'] = allow_redirects
         if proxies is not None:
             call_kwargs['proxies'] = proxies
@@ -193,10 +203,9 @@ class MockSession(Session):  # pragma: no cover - exercised indirectly
             call_kwargs['cert'] = cert
         if json is not None:
             call_kwargs['json'] = json
-        # Capture any remaining unexpected kwargs for completeness.
-        for k, v in kwargs.items():
-            if v is not None:
-                call_kwargs[k] = v
+        call_kwargs.update(
+            {key: value for key, value in kwargs.items() if value is not None},
+        )
         self.calls.append((str(url), call_kwargs))
         return MockResponse({'ok': True})
 
