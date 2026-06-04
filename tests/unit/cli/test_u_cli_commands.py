@@ -906,6 +906,7 @@ class TestCliInvokeParsing:
 
         assert result.exit_code == 0
         assert '--host' in result.stdout
+        assert '127.0.0.1' in result.stdout
         assert '--port' in result.stdout
         assert '--limit' in result.stdout
         assert '--refresh-seconds' in result.stdout
