@@ -543,7 +543,8 @@ class TestBaseAbcContracts:
             getattr(handler, operation)(path, **kwargs)
 
     @pytest.mark.parametrize(
-        'incomplete_handler_cls', [_IncompleteDelimited, _IncompleteTextFixedWidth],
+        'incomplete_handler_cls',
+        [_IncompleteDelimited, _IncompleteTextFixedWidth],
     )
     def test_row_abcs_require_row_methods(
         self,
