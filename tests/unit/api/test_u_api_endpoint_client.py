@@ -35,7 +35,7 @@ from etlplus.api import PaginationType
 from etlplus.api import RequestOptions
 from etlplus.api import RetryPolicyDict
 
-from .test_u_api_mocks import MockSession
+from ..pytest_http_support import MockSession
 
 # SECTION: PRAGMAS ========================================================== #
 
