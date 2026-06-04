@@ -128,10 +128,7 @@ class TestDatSniff:
         ),
         [
             pytest.param(
-                lambda: _StubSniffer(
-                    dialect=_make_dialect('\t'),
-                    has_header=False,
-                ),
+                lambda: _StubSniffer(dialect=_make_dialect('\t'), has_header=False),
                 '1\t2\n3\t4\n',
                 '\t',
                 False,
