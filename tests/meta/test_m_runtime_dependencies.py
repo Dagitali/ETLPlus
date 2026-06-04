@@ -7,18 +7,12 @@ Meta tests for runtime dependency declarations.
 from __future__ import annotations
 
 import ast
-import re
 import sys
 import tomllib
 from pathlib import Path
 
+from tests.meta.pytest_meta_support import canonical_requirement_name
 from tests.pytest_shared_support import REPO_ROOT
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_REQUIREMENT_NAME_PATTERN = re.compile(r'^[A-Za-z0-9_.-]+')
-
 
 # SECTION: CONSTANTS ======================================================== #
 
@@ -38,14 +32,6 @@ RUNTIME_IMPORT_DISTRIBUTIONS = {
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _canonical_requirement_name(requirement: str) -> str:
-    """Return the canonical package name from one dependency requirement."""
-    match = _REQUIREMENT_NAME_PATTERN.match(requirement)
-    if match is None:
-        raise ValueError(f'Invalid requirement: {requirement!r}')
-    return match.group(0).casefold().replace('_', '-')
 
 
 def _direct_external_imports(package_path: Path) -> set[str]:
@@ -71,7 +57,7 @@ def _pyproject_dependency_names() -> set[str]:
     """Return base dependency names declared by ``pyproject.toml``."""
     pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
     return {
-        _canonical_requirement_name(requirement)
+        canonical_requirement_name(requirement)
         for requirement in pyproject['project']['dependencies']
     }
 
