@@ -320,10 +320,7 @@ class TestFile:
 
         assert path.parent.exists()
 
-    @pytest.mark.parametrize(
-        'present',
-        [False, True],
-    )
+    @pytest.mark.parametrize('present', [False, True])
     def test_exists_reflects_local_file_state(
         self,
         tmp_path: Path,
