@@ -7,6 +7,8 @@ Unit tests for :mod:`etlplus.file._module_callables`.
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Literal
 
 import pytest
 
@@ -23,55 +25,60 @@ class TestModuleCallables:
     """Unit tests for optional module callable helpers."""
 
     @pytest.mark.parametrize(
-        ('module', 'kwargs', 'error_type', 'match'),
+        (
+            'module',
+            'format_name',
+            'method_name',
+            'operation',
+            'module_name',
+            'error_type',
+            'match',
+        ),
         [
-            pytest.param(
+            (
                 object(),
-                {
-                    'format_name': 'XPT',
-                    'method_name': 'read_xpt',
-                    'operation': 'read',
-                    'module_name': 'pyreadstat',
-                },
+                'XPT',
+                'read_xpt',
+                'read',
+                'pyreadstat',
                 ImportError,
                 'XPT read support requires "pyreadstat" with read_xpt\\(\\)\\.',
-                id='missing-method',
             ),
-            pytest.param(
+            (
                 None,
-                {
-                    'format_name': 'SAV',
-                    'method_name': 'write_sav',
-                    'operation': 'write',
-                    'module_name': 'pyreadstat',
-                },
+                'SAV',
+                'write_sav',
+                'write',
+                'pyreadstat',
                 RuntimeError,
                 'pyreadstat dependency is required for SAV write',
-                id='missing-module',
             ),
         ],
     )
     def test_call_module_method_error_cases(
         self,
         module: object | None,
-        kwargs: dict[str, str],
+        format_name: str,
+        method_name: str,
+        operation: Literal['read', 'write'],
+        module_name: str,
         error_type: type[Exception],
         match: str,
     ) -> None:
         """Test required module call errors for missing modules or methods."""
         with pytest.raises(error_type, match=match):
-            mod.call_module_method(module, **kwargs)
+            mod.call_module_method(
+                module,
+                format_name=format_name,
+                method_name=method_name,
+                operation=operation,
+                module_name=module_name,
+            )
 
     def test_call_module_method_success_path(self) -> None:
         """Test that required module method invocation with args and kwargs."""
-
-        class _Module:
-            def read_any(self, path: str, *, limit: int) -> tuple[str, int]:
-                """Simulate a module method that accepts args and kwargs."""
-                return path, limit
-
         result = mod.call_module_method(
-            _Module(),
+            SimpleNamespace(read_any=lambda path, *, limit: (path, limit)),
             format_name='XPT',
             method_name='read_any',
             operation='read',

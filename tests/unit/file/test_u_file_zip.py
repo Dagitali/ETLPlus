@@ -92,19 +92,9 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
     @pytest.mark.parametrize(
         ('stem', 'entries', 'error_pattern'),
         [
-            pytest.param('empty', {}, 'ZIP archive is empty', id='empty_archive'),
-            pytest.param(
-                'nested',
-                {'data.csv.gz': b'ignored'},
-                'Unexpected compression',
-                id='unexpected_compression',
-            ),
-            pytest.param(
-                'payload',
-                {'payload.unknown': b'ignored'},
-                'Cannot infer file format',
-                id='unknown_inner_format',
-            ),
+            ('empty', {}, 'ZIP archive is empty'),
+            ('nested', {'data.csv.gz': b'ignored'}, 'Unexpected compression'),
+            ('payload', {'payload.unknown': b'ignored'}, 'Cannot infer file format'),
         ],
     )
     def test_read_invalid_archives_raise(
@@ -144,8 +134,8 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
     @pytest.mark.parametrize(
         ('reader_method', 'needs_core_stub'),
         [
-            pytest.param('read_inner_bytes', False, id='inner_bytes'),
-            pytest.param('read', True, id='parsed_read'),
+            ('read_inner_bytes', False),
+            ('read', True),
         ],
     )
     def test_read_raises_on_unknown_inner_name(
@@ -170,19 +160,17 @@ class TestZip(ArchiveWrapperCoreDispatchModuleContract):
     @pytest.mark.parametrize(
         ('reader_method', 'needs_core_stub', 'entries', 'expected'),
         [
-            pytest.param(
+            (
                 'read_inner_bytes',
                 False,
                 {'a.json': b'first', 'b.json': b'second'},
                 b'second',
-                id='inner_bytes',
             ),
-            pytest.param(
+            (
                 'read',
                 True,
                 {'a.json': b'{}', 'b.json': b'{}'},
                 {'fmt': 'json', 'name': 'b.json'},
-                id='parsed_read',
             ),
         ],
     )

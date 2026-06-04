@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Literal
+from typing import Never
 
 import pytest
 
@@ -28,9 +29,9 @@ from etlplus.file.stub import StubFileHandlerABC
 
 
 _SCIENTIFIC_STUB_MODULES: tuple[object, ...] = (
-    pytest.param((mat_mod.MatFile, 'mat'), id='mat'),
-    pytest.param((sylk_mod.SylkFile, 'sylk'), id='sylk'),
-    pytest.param((zsav_mod.ZsavFile, 'zsav'), id='zsav'),
+    (mat_mod.MatFile, 'mat'),
+    (sylk_mod.SylkFile, 'sylk'),
+    (zsav_mod.ZsavFile, 'zsav'),
 )
 
 
@@ -42,13 +43,18 @@ type ScientificModuleCase = tuple[
 ]
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _raise_unexpected_stub_call(*_args: object, **_kwargs: object) -> Never:
+    """Raise when dataset validation fails to short-circuit stub I/O."""
+    raise AssertionError('stub operation should not be called')
+
+
 # SECTION: FIXTURES ========================================================= #
 
 
-@pytest.fixture(
-    name='scientific_module_case',
-    params=_SCIENTIFIC_STUB_MODULES,
-)
+@pytest.fixture(name='scientific_module_case', params=_SCIENTIFIC_STUB_MODULES)
 def scientific_module_case_fixture(
     request: pytest.FixtureRequest,
 ) -> ScientificModuleCase:
@@ -84,32 +90,12 @@ class TestScientificStubDatasetKeys:
     @pytest.mark.parametrize(
         ('operation', 'method_name', 'selector_mode'),
         [
-            pytest.param(
-                'read',
-                'read_dataset',
-                'dataset_kwarg',
-                id='read_dataset+dataset',
-            ),
-            pytest.param(
-                'write',
-                'write_dataset',
-                'dataset_kwarg',
-                id='write_dataset+dataset',
-            ),
-            pytest.param(
-                'read',
-                'read_dataset',
-                'options',
-                id='read_dataset+options',
-            ),
-            pytest.param(
-                'write',
-                'write_dataset',
-                'options',
-                id='write_dataset+options',
-            ),
-            pytest.param('read', 'read', 'options', id='read+options'),
-            pytest.param('write', 'write', 'options', id='write+options'),
+            ('read', 'read_dataset', 'dataset_kwarg'),
+            ('write', 'write_dataset', 'dataset_kwarg'),
+            ('read', 'read_dataset', 'options'),
+            ('write', 'write_dataset', 'options'),
+            ('read', 'read', 'options'),
+            ('write', 'write', 'options'),
         ],
     )
     def test_methods_reject_unknown_dataset_key_before_stub_io(
@@ -126,10 +112,7 @@ class TestScientificStubDatasetKeys:
         handler_cls, _ = scientific_module_case
         handler = handler_cls()
 
-        def _raise_stub_called(*_args: object, **_kwargs: object) -> object:
-            raise AssertionError('stub operation should not be called')
-
-        monkeypatch.setattr(StubFileHandlerABC, operation, _raise_stub_called)
+        monkeypatch.setattr(StubFileHandlerABC, operation, _raise_unexpected_stub_call)
         method = getattr(handler, method_name)
         args: tuple[object, ...] = (Path('ignored.file'),)
         if operation == 'write':
@@ -172,21 +155,11 @@ class TestScientificDatasetHelpers:
     @pytest.mark.parametrize(
         ('keys', 'dataset', 'expected'),
         [
-            pytest.param(['data', 'features'], None, 'data', id='default-key'),
-            pytest.param(
-                ['data', 'features'],
-                'features',
-                'features',
-                id='explicit-key',
-            ),
-            pytest.param(
-                ['data', 'features'],
-                '/features',
-                'features',
-                id='explicit-key-leading-slash',
-            ),
-            pytest.param([], None, None, id='empty-key-set'),
-            pytest.param(['features'], None, 'features', id='single-key-fallback'),
+            (['data', 'features'], None, 'data'),
+            (['data', 'features'], 'features', 'features'),
+            (['data', 'features'], '/features', 'features'),
+            ([], None, None),
+            (['features'], None, 'features'),
         ],
     )
     def test_resolve_store_dataset_key_success_cases(
@@ -209,17 +182,15 @@ class TestScientificDatasetHelpers:
     @pytest.mark.parametrize(
         ('keys', 'dataset', 'match'),
         [
-            pytest.param(
+            (
                 ['data', 'features'],
                 'missing',
                 "HDF5 dataset 'missing' not found",
-                id='missing-explicit-key',
             ),
-            pytest.param(
+            (
                 ['features', 'labels'],
                 None,
                 'Multiple datasets found',
-                id='ambiguous-key-set',
             ),
         ],
     )

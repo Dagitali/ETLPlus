@@ -277,10 +277,3 @@ def parse_json(
         return json.loads(raw)
     except json.JSONDecodeError as exc:
         raise AssertionError(f'Expected JSON output, got: {raw!r}') from exc
-
-
-def get_cloud_database_provider_case(
-    provider: str,
-) -> CloudDatabaseProviderCase:
-    """Return one canonical shared test-data case for *provider*."""
-    return CLOUD_DATABASE_PROVIDER_CASES[provider]

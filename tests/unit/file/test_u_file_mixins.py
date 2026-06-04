@@ -32,8 +32,8 @@ class TestSemiStructuredPayloadMixin:
     @pytest.mark.parametrize(
         ('error_message', 'match'),
         [
-            pytest.param(None, 'INI root must be a dict', id='default-message'),
-            pytest.param('custom message', 'custom message', id='custom-message'),
+            (None, 'INI root must be a dict'),
+            ('custom message', 'custom message'),
         ],
     )
     def test_coerce_dict_root_payload_error_messages(

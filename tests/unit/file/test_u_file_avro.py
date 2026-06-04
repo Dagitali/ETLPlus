@@ -127,21 +127,9 @@ class TestAvroHelpers:
     @pytest.mark.parametrize(
         ('operation', 'payload'),
         [
-            pytest.param(
-                mod._infer_value_type,
-                {'bad': 'value'},
-                id='infer_value_type_complex',
-            ),
-            pytest.param(
-                mod._infer_schema,
-                [{'bad': {'nested': True}}],
-                id='infer_schema_nested',
-            ),
-            pytest.param(
-                mod._infer_schema,
-                [{'bad': object()}],
-                id='infer_schema_non_primitive_scalar',
-            ),
+            (mod._infer_value_type, {'bad': 'value'}),
+            (mod._infer_schema, [{'bad': {'nested': True}}]),
+            (mod._infer_schema, [{'bad': object()}]),
         ],
     )
     def test_infer_helpers_reject_invalid_payloads(
@@ -172,13 +160,13 @@ class TestAvroHelpers:
     @pytest.mark.parametrize(
         ('value', 'expected'),
         [
-            pytest.param(None, 'null', id='null'),
-            pytest.param(True, 'boolean', id='bool'),
-            pytest.param(1, 'long', id='int'),
-            pytest.param(1.25, 'double', id='float'),
-            pytest.param('text', 'string', id='str'),
-            pytest.param(b'bytes', 'bytes', id='bytes'),
-            pytest.param(bytearray(b'data'), 'bytes', id='bytearray'),
+            (None, 'null'),
+            (True, 'boolean'),
+            (1, 'long'),
+            (1.25, 'double'),
+            ('text', 'string'),
+            (b'bytes', 'bytes'),
+            (bytearray(b'data'), 'bytes'),
         ],
     )
     def test_infer_value_type_supported(

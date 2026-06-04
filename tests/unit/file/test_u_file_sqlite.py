@@ -7,6 +7,7 @@ Unit tests for :mod:`etlplus.file.sqlite`.
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 from etlplus.file import sqlite as mod
@@ -46,7 +47,7 @@ class TestSqlite(
     ) -> Path:
         """Build an empty SQLite database file."""
         path = self.format_path(tmp_path)
-        with sqlite3.connect(path):
+        with closing(sqlite3.connect(path)):
             pass
         return path
 
@@ -88,7 +89,7 @@ class TestSqlite(
         Test that :meth:`write_table` short-circuits records with no columns.
         """
         handler = mod.SqliteFile()
-        with sqlite3.connect(':memory:') as conn:
+        with closing(sqlite3.connect(':memory:')) as conn:
             written = handler.write_table(conn, 'data', [{}])
 
             assert written == 0
@@ -112,7 +113,7 @@ class TestSqlite(
         )
 
         assert written == 1
-        with sqlite3.connect(path) as conn:
+        with closing(sqlite3.connect(path)) as conn:
             tables = [
                 row[0]
                 for row in conn.execute(
@@ -130,7 +131,7 @@ class TestSqlite(
         rows: dict[str, list[tuple[object, ...]]] | None = None,
     ) -> None:
         """Create a deterministic two-table SQLite fixture database."""
-        with sqlite3.connect(path) as conn:
+        with closing(sqlite3.connect(path)) as conn:
             conn.execute('CREATE TABLE alpha (id INTEGER)')
             conn.execute('CREATE TABLE beta (id INTEGER)')
             for table, values in (rows or {}).items():

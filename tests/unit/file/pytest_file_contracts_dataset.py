@@ -124,9 +124,7 @@ class RDataModuleContract(PathMixin):
             pyreadr_stub=self.build_pyreadr_stub({'data': frame}),
         )
 
-        assert self.module_handler.read(self.format_path(tmp_path)) == [
-            {'id': 1},
-        ]
+        assert self.module_handler.read(self.format_path(tmp_path)) == [{'id': 1}]
 
     def test_read_multiple_values_returns_mapping(
         self,

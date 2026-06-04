@@ -50,11 +50,11 @@ class TestRHelpers:
     @pytest.mark.parametrize(
         ('value', 'expected'),
         [
-            pytest.param(_DataFrameStub([{'id': 1}]), [{'id': 1}], id='dataframe'),
-            pytest.param({'a': 1}, {'a': 1}, id='dict'),
-            pytest.param([{'a': 1}], [{'a': 1}], id='record-list'),
-            pytest.param([1, 2], {'value': [1, 2]}, id='scalar-list'),
-            pytest.param('x', {'value': 'x'}, id='scalar'),
+            (_DataFrameStub([{'id': 1}]), [{'id': 1}]),
+            ({'a': 1}, {'a': 1}),
+            ([{'a': 1}], [{'a': 1}]),
+            ([1, 2], {'value': [1, 2]}),
+            ('x', {'value': 'x'}),
         ],
     )
     def test_coerce_r_object(
@@ -66,13 +66,7 @@ class TestRHelpers:
         """Test R object coercion for supported object categories."""
         assert mod.coerce_r_object(value, pandas_stub) == expected
 
-    @pytest.mark.parametrize(
-        'dataset',
-        [
-            pytest.param('only', id='explicit'),
-            pytest.param('data', id='default-alias'),
-        ],
-    )
+    @pytest.mark.parametrize('dataset', ['only', 'data'])
     def test_coerce_r_result_dataset_selection_and_alias(
         self,
         pandas_stub: SimpleNamespace,

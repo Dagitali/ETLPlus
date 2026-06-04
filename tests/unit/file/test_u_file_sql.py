@@ -77,9 +77,9 @@ class TestSqlHelpers:
     @pytest.mark.parametrize(
         ('tables', 'expected'),
         [
-            pytest.param([], None, id='no-tables'),
-            pytest.param(['data', 'other'], 'data', id='default-table'),
-            pytest.param(['single'], 'single', id='single-table'),
+            ([], None),
+            (['data', 'other'], 'data'),
+            (['single'], 'single'),
         ],
     )
     def test_resolve_table_success_cases(
@@ -107,22 +107,9 @@ class TestSqlHelpers:
         Test that :func:`write_table_rows` short-circuit when no rows are
         provided.
         """
-
-        class _Connection:
-            def execute(self, *_args: object, **_kwargs: object) -> None:
-                raise AssertionError('execute should not be called')
-
-            def executemany(
-                self,
-                *_args: object,
-                **_kwargs: object,
-            ) -> None:
-                raise AssertionError('executemany should not be called')
-
-        connection = _Connection()
         assert (
             mod.write_table_rows(
-                connection,
+                object(),
                 'data',
                 [],
                 dialect=mod.SQLITE_DIALECT,

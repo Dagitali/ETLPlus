@@ -24,10 +24,7 @@ class TestArchiveHelpers:
 
     @pytest.mark.parametrize(
         ('path', 'require_format', 'expected'),
-        [
-            pytest.param('data.unknown.gz', False, None, id='optional-unknown'),
-            pytest.param('data.csv.gz', True, FileFormat.CSV, id='known-required'),
-        ],
+        [('data.unknown.gz', False, None), ('data.csv.gz', True, FileFormat.CSV)],
     )
     def test_infer_archive_payload_format_success_cases(
         self,
@@ -55,21 +52,19 @@ class TestArchiveHelpers:
             'match',
         ),
         [
-            pytest.param(
+            (
                 'data.csv.gz',
                 (CompressionFormat.ZIP,),
                 'compression not allowed',
                 False,
                 'compression not allowed',
-                id='disallowed-compression',
             ),
-            pytest.param(
+            (
                 'data.unknown.gz',
                 (CompressionFormat.GZ,),
                 'bad compression',
                 True,
                 'Cannot infer file format',
-                id='required-payload-format',
             ),
         ],
     )

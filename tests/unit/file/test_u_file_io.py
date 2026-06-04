@@ -6,14 +6,15 @@ Unit tests for :mod:`etlplus.file._io`.
 
 from __future__ import annotations
 
-from io import BytesIO
-from io import StringIO
 from pathlib import Path
-from typing import Any
 
 import pytest
 
 from etlplus.file import _io as mod
+
+from .pytest_file_support import RecordsFrameStub
+from .pytest_file_support import RemoteBytesBackendStub
+from .pytest_file_support import RemoteTextBackendStub
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -22,67 +23,24 @@ from etlplus.file import _io as mod
 # SECTION: INTERNAL CLASSES ================================================= #
 
 
-class _TableStub:
-    """Minimal table-like stub with :meth:`to_dict` API."""
-
-    def __init__(
-        self,
-        records: list[dict[str, object]],
-    ) -> None:
-        self._records = records
-
-    def to_dict(
-        self,
-        *,
-        orient: str,
-    ) -> list[dict[str, object]]:
-        """Return records for the expected orient."""
-        assert orient == 'records'
-        return list(self._records)
-
-
 class _PandasReadSasStub:
     """Minimal pandas-like stub for ``read_sas`` helper tests."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        capture_payload: bool = False,
+    ) -> None:
         self.calls: list[dict[str, object]] = []
+        self.capture_payload = capture_payload
 
     def read_sas(self, path: Path, **kwargs: object) -> object:
         """Capture calls and return a sentinel object."""
-        self.calls.append({'path': path, **kwargs})
+        call = {'path': path, **kwargs}
+        if self.capture_payload:
+            call['payload'] = path.read_bytes()
+        self.calls.append(call)
         return {'ok': True}
-
-
-class _RemoteBinaryWriter(BytesIO):
-    """Capture binary payloads written through one storage-backed handle."""
-
-    def __init__(
-        self,
-        bucket: list[bytes],
-    ) -> None:
-        super().__init__()
-        self._bucket = bucket
-
-    def close(self) -> None:
-        """Persist captured bytes before closing the handle."""
-        self._bucket.append(self.getvalue())
-        super().close()
-
-
-class _RemoteTextWriter(StringIO):
-    """Capture text written through one storage-backed file handle."""
-
-    def __init__(
-        self,
-        bucket: list[str],
-    ) -> None:
-        super().__init__()
-        self._bucket = bucket
-
-    def close(self) -> None:
-        """Persist captured text before closing the handle."""
-        self._bucket.append(self.getvalue())
-        super().close()
 
 
 # SECTION: TESTS ============================================================ #
@@ -112,20 +70,15 @@ class TestIoHelpers:
             ({'a': 1}, {'a': 1}),
             ([{'a': 1}, {'a': 2}], [{'a': 1}, {'a': 2}]),
         ):
-            assert (
-                mod.coerce_record_payload(valid_payload, format_name='JSON') == expected
-            )
+            result = mod.coerce_record_payload(valid_payload, format_name='JSON')
+            assert result == expected
 
-        invalid_payload_cases: tuple[tuple[Any, str], ...] = (
+        for invalid_payload, pattern in (
             ([{'a': 1}, 2], 'array must contain only objects'),
             ('bad', 'root must be an object'),
-        )
-        for invalid_payload, pattern in invalid_payload_cases:
+        ):
             with pytest.raises(TypeError, match=pattern):
-                mod.coerce_record_payload(
-                    invalid_payload,
-                    format_name='JSON',
-                )
+                mod.coerce_record_payload(invalid_payload, format_name='JSON')
 
     def test_normalize_records_contract(self) -> None:
         """Test record normalization for valid and invalid payloads."""
@@ -135,11 +88,10 @@ class TestIoHelpers:
         ):
             assert mod.normalize_records(valid_payload, 'CSV') == expected
 
-        invalid_payload_cases: tuple[tuple[Any, str], ...] = (
+        for invalid_payload, pattern in (
             (1, 'must be an object or an array'),
             ([{'id': 1}, 'x'], 'contain only objects'),
-        )
-        for invalid_payload, pattern in invalid_payload_cases:
+        ):
             with pytest.raises(TypeError, match=pattern):
                 mod.normalize_records(invalid_payload, 'CSV')
 
@@ -148,35 +100,16 @@ class TestIoHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test binary helpers against one storage-backed remote location."""
-        writes: list[bytes] = []
-
-        class FakeBackend:
-            """Minimal remote backend for binary helper tests."""
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Accept parent preparation for remote writes."""
-                del location
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> BytesIO:
-                """Return one binary handle for the requested mode."""
-                del location, kwargs
-                if mode == 'rb':
-                    return BytesIO(b'payload')
-                assert mode == 'wb'
-                return _RemoteBinaryWriter(writes)
-
-        monkeypatch.setattr(mod, 'get_backend', lambda location: FakeBackend())
+        backend = RemoteBytesBackendStub(read_payload=b'payload')
+        monkeypatch.setattr(mod, 'get_backend', lambda location: backend)
 
         uri = 's3://bucket/data.bin'
         mod.write_bytes(uri, b'payload')
 
-        assert writes == [b'payload']
+        assert backend.calls == ['ensure_parent_dir', 'wb']
+        assert backend.uploads == [b'payload']
         assert mod.read_bytes(uri) == b'payload'
+        assert backend.calls == ['ensure_parent_dir', 'wb', 'rb']
 
     def test_read_and_write_delimited(
         self,
@@ -201,29 +134,8 @@ class TestIoHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test delimited helpers against one storage-backed remote location."""
-        writes: list[str] = []
-
-        class FakeBackend:
-            """Minimal remote backend for delimited helper tests."""
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Accept parent preparation for remote writes."""
-                del location
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> StringIO:
-                """Return one text-mode handle for the requested mode."""
-                del location, kwargs
-                if mode == 'r':
-                    return StringIO('a,b\n1,2\n')
-                assert mode == 'w'
-                return _RemoteTextWriter(writes)
-
-        monkeypatch.setattr(mod, 'get_backend', lambda location: FakeBackend())
+        backend = RemoteTextBackendStub(read_payload='a,b\n1,2\n')
+        monkeypatch.setattr(mod, 'get_backend', lambda location: backend)
 
         uri = 's3://bucket/rows.csv'
         count = mod.write_delimited(
@@ -234,8 +146,10 @@ class TestIoHelpers:
         )
 
         assert count == 1
-        assert writes == ['a,b\r\n1,2\r\n']
+        assert backend.calls == ['ensure_parent_dir', 'w']
+        assert backend.uploads == ['a,b\r\n1,2\r\n']
         assert mod.read_delimited(uri, delimiter=',') == [{'a': '1', 'b': '2'}]
+        assert backend.calls == ['ensure_parent_dir', 'w', 'r']
 
     def test_read_and_write_text(
         self,
@@ -252,35 +166,16 @@ class TestIoHelpers:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Test text helpers against one storage-backed remote location."""
-        writes: list[str] = []
-
-        class FakeBackend:
-            """Minimal remote backend for text helper tests."""
-
-            def ensure_parent_dir(self, location: object) -> None:
-                """Accept parent preparation for remote writes."""
-                del location
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> StringIO:
-                """Return one text-mode handle for the requested mode."""
-                del location, kwargs
-                if mode == 'r':
-                    return StringIO('line\n')
-                assert mode == 'w'
-                return _RemoteTextWriter(writes)
-
-        monkeypatch.setattr(mod, 'get_backend', lambda location: FakeBackend())
+        backend = RemoteTextBackendStub(read_payload='line\n')
+        monkeypatch.setattr(mod, 'get_backend', lambda location: backend)
 
         uri = 's3://bucket/data.txt'
         mod.write_text(uri, 'line', trailing_newline=True)
 
-        assert writes == ['line\n']
+        assert backend.calls == ['ensure_parent_dir', 'w']
+        assert backend.uploads == ['line\n']
         assert mod.read_text(uri) == 'line\n'
+        assert backend.calls == ['ensure_parent_dir', 'w', 'r']
 
     def test_read_sas_table_without_format_hint_omits_format_kwarg(
         self,
@@ -305,38 +200,9 @@ class TestIoHelpers:
     ) -> None:
         """Test SAS helper staging remote input before pandas reads it."""
         payload = b'remote-sas-payload'
-
-        class AssertingPandasReadSasStub(_PandasReadSasStub):
-            """Pandas-like stub that inspects the staged local file."""
-
-            def read_sas(self, path: Path, **kwargs: object) -> object:
-                """Capture the staged payload while the temp file exists."""
-                self.calls.append(
-                    {
-                        'path': path,
-                        'payload': path.read_bytes(),
-                        **kwargs,
-                    },
-                )
-                return {'ok': True}
-
-        pandas = AssertingPandasReadSasStub()
-
-        class FakeBackend:
-            """Minimal remote backend for staged SAS reads."""
-
-            def open(
-                self,
-                location: object,
-                mode: str = 'r',
-                **kwargs: object,
-            ) -> BytesIO:
-                """Return one readable binary payload for remote staging."""
-                del location, kwargs
-                assert mode == 'rb'
-                return BytesIO(payload)
-
-        monkeypatch.setattr(mod, 'get_backend', lambda location: FakeBackend())
+        pandas = _PandasReadSasStub(capture_payload=True)
+        backend = RemoteBytesBackendStub(read_payload=payload)
+        monkeypatch.setattr(mod, 'get_backend', lambda location: backend)
 
         result = mod.read_sas_table(
             pandas,
@@ -345,16 +211,17 @@ class TestIoHelpers:
         )
 
         assert result == {'ok': True}
-        assert len(pandas.calls) == 1
-        staged_path = pandas.calls[0]['path']
+        [call] = pandas.calls
+        staged_path = call['path']
         assert isinstance(staged_path, Path)
         assert staged_path.name == 'sample.sas7bdat'
-        assert pandas.calls[0]['payload'] == payload
-        assert pandas.calls[0]['format'] == 'sas7bdat'
+        assert call['payload'] == payload
+        assert call['format'] == 'sas7bdat'
+        assert backend.calls == ['rb']
 
     def test_records_from_table(self) -> None:
         """Test conversion from dataframe-like objects."""
-        table = _TableStub([{'id': 1}, {'id': 2}])
+        table = RecordsFrameStub([{'id': 1}, {'id': 2}])
         assert mod.records_from_table(table) == [{'id': 1}, {'id': 2}]
 
     def test_stringify_value(self) -> None:

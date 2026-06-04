@@ -48,15 +48,13 @@ class TestDictPayloadTextCodecHandlerMixin:
     @pytest.mark.parametrize(
         ('handler_cls', 'match'),
         [
-            pytest.param(
+            (
                 _BadRootDefaultHandler,
                 'INI root must be a dict',
-                id='default-message',
             ),
-            pytest.param(
+            (
                 _BadRootOverrideHandler,
                 'override root error',
-                id='override-message',
             ),
         ],
     )

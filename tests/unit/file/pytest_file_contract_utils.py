@@ -175,11 +175,4 @@ def patch_dependency_resolver_value(
     value: object,
 ) -> None:
     """Patch one dependency resolver to return a deterministic value."""
-
-    def _return_value(
-        *args: object,
-        **kwargs: object,
-    ) -> object:  # noqa: ARG001
-        return value
-
-    monkeypatch.setattr(module, resolver_name, _return_value)
+    monkeypatch.setattr(module, resolver_name, lambda *_args, **_kwargs: value)
