@@ -30,6 +30,7 @@ import etlplus.cli._commands.run as run_mod
 import etlplus.cli._commands.schedule as schedule_mod
 import etlplus.cli._commands.status as status_mod
 import etlplus.cli._commands.transform as transform_mod
+import etlplus.cli._commands.ui as ui_mod
 import etlplus.cli._handlers.schedule as schedule_handler_mod
 from etlplus.cli._commands._state import CliState
 from etlplus.file import FileFormat
@@ -771,6 +772,30 @@ class TestCliInvokeParsing:
                 {'target_type': 'api'},
                 id='transform-target-type',
             ),
+            pytest.param(
+                (
+                    'ui',
+                    '--host',
+                    '127.0.0.2',
+                    '--port',
+                    '8766',
+                    '--limit',
+                    '7',
+                    '--refresh-seconds',
+                    '0',
+                    '--no-browser',
+                ),
+                ui_mod,
+                'serve_history_ui',
+                {
+                    'host': '127.0.0.2',
+                    'limit': 7,
+                    'open_browser': False,
+                    'port': 8766,
+                    'refresh_seconds': 0,
+                },
+                id='ui-local-dashboard',
+            ),
         ],
     )
     def test_parsed_options_reach_handler(
@@ -871,6 +896,21 @@ class TestCliInvokeParsing:
                 },
             },
         }
+
+    def test_ui_help_lists_local_dashboard_options(
+        self,
+        invoke_cli: InvokeCli,
+    ) -> None:
+        """The stable ``etlplus ui`` help should list its dashboard options."""
+        result = invoke_cli('ui', '--help')
+
+        assert result.exit_code == 0
+        assert '--host' in result.stdout
+        assert '127.0.0.1' in result.stdout
+        assert '--port' in result.stdout
+        assert '--limit' in result.stdout
+        assert '--refresh-seconds' in result.stdout
+        assert '--no-browser' in result.stdout
 
 
 class TestCommandsMissingInputs:

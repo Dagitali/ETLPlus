@@ -104,6 +104,7 @@ commands. Before opening the pull request, confirm the test output includes:
 - `etlplus --version`
 - `etlplus --help`
 - `etlplus check --help`
+- `etlplus ui --help`
 
 Also confirm the ETLPlus manual `Conda Recipe Validation` workflow has passed with:
 

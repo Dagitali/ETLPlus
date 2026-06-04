@@ -20,6 +20,7 @@ from .run import run_cmd
 from .schedule import schedule_cmd
 from .status import status_cmd
 from .transform import transform_cmd
+from .ui import ui_cmd
 from .validate import validate_cmd
 
 # SECTION: EXPORTS ========================================================== #
@@ -39,6 +40,7 @@ __all__ = [
     'schedule_cmd',
     'status_cmd',
     'transform_cmd',
+    'ui_cmd',
     'validate_cmd',
     # Variables
     'app',

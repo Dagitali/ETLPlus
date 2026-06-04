@@ -102,6 +102,7 @@ jobs:
           etlplus --version
           etlplus --help
           etlplus check --help
+          etlplus ui --help
 
   build:
     name: Build distributions

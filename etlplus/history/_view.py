@@ -1,7 +1,7 @@
 """
-:mod:`etlplus.cli._handlers._history_view` module.
+:mod:`etlplus.history._view` module.
 
-History-query helpers shared by CLI history handlers.
+History-query helpers shared by local history readers.
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ from typing import Any
 from typing import Literal
 from typing import cast
 
-from ...history import HistoryStore
-from ...utils import JsonCodec
+from ..utils import JsonCodec
+from . import HistoryStore
 
 # SECTION: EXPORTS ========================================================== #
 
@@ -72,6 +72,84 @@ _TABLE_COLUMNS_BY_LEVEL: dict[HistoryLevel, tuple[str, ...]] = {
 class HistoryView:
     """Shared query helpers for persisted history records."""
 
+    # -- Internal Static Methods -- #
+
+    @staticmethod
+    def _matching_records(
+        *,
+        raw: bool,
+        level: HistoryLevel,
+        job: str | None,
+        pipeline: str | None,
+        run_id: str | None,
+        since: datetime | None,
+        until: datetime | None,
+        status: str | None,
+    ) -> list[dict[str, Any]]:
+        """
+        Return materialized history records that match the given filters.
+
+        Parameters
+        ----------
+        raw : bool
+            Whether to load raw history records.
+        level : HistoryLevel
+            Whether to load run-level or job-level records.
+        job : str | None, optional
+            Filter records by job name.
+        pipeline : str | None, optional
+            Filter records by pipeline name.
+        run_id : str | None, optional
+            Filter records by run ID.
+        since : datetime | None, optional
+            Filter records starting from this timestamp.
+        until : datetime | None, optional
+            Filter records up to this timestamp.
+        status : str | None, optional
+            Filter records by status.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            A list of filtered history records.
+        """
+        history_store = HistoryStore.from_environment()
+        matching: list[dict[str, Any]] = []
+        for record in HistoryView._records_iter(
+            history_store,
+            raw=raw,
+            level=level,
+        ):
+            payload = dict(record)
+            payload.setdefault('record_level', level if not raw else 'run')
+            if HistoryView.matches(
+                payload,
+                level=level,
+                job=job,
+                pipeline=pipeline,
+                run_id=run_id,
+                since=since,
+                until=until,
+                status=status,
+            ):
+                payload.pop('record_level', None)
+                matching.append(payload)
+        return matching
+
+    @staticmethod
+    def _records_iter(
+        history_store: HistoryStore,
+        *,
+        raw: bool,
+        level: HistoryLevel,
+    ) -> Iterator[dict[str, Any]]:
+        """Return the appropriate record iterator for the requested view mode."""
+        if raw:
+            return history_store.iter_records()
+        if level == 'job':
+            return history_store.iter_job_runs()
+        return history_store.iter_runs()
+
     # -- Static Methods -- #
 
     @staticmethod
@@ -88,6 +166,123 @@ class HistoryView:
         enough across unrelated runs to avoid collisions in practice.
         """
         return JsonCodec(sort_keys=True).serialize(record)
+
+    @staticmethod
+    def load_records(
+        *,
+        raw: bool,
+        level: HistoryLevel = 'run',
+        job: str | None = None,
+        limit: int | None = None,
+        pipeline: str | None = None,
+        run_id: str | None = None,
+        since: str | None = None,
+        until: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Load, filter, and sort history records for CLI read commands.
+
+        Parameters
+        ----------
+        raw : bool
+            Whether to load raw history records.
+        level : HistoryLevel, optional
+            Whether to load run-level or job-level history entries.
+        job : str | None, optional
+            Filter records by job name.
+        limit : int | None, optional
+            Limit the number of records returned.
+        pipeline : str | None, optional
+            Filter records by pipeline name.
+        run_id : str | None, optional
+            Filter records by run ID.
+        since : str | None, optional
+            Filter records starting from this timestamp.
+        until : str | None, optional
+            Filter records up to this timestamp.
+        status : str | None, optional
+            Filter records by status.
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            A list of filtered and sorted history records.
+        """
+        records = sorted(
+            HistoryView._matching_records(
+                raw=raw,
+                level=level,
+                job=job,
+                pipeline=pipeline,
+                run_id=run_id,
+                since=HistoryView.parse_timestamp(since),
+                until=HistoryView.parse_timestamp(until),
+                status=status,
+            ),
+            key=HistoryView.sort_key,
+            reverse=True,
+        )
+        if limit is None:
+            return records
+        return records[:limit]
+
+    @staticmethod
+    def matches(
+        record: HistoryRecord,
+        *,
+        level: HistoryLevel = 'run',
+        job: str | None = None,
+        pipeline: str | None = None,
+        run_id: str | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
+        status: str | None = None,
+    ) -> bool:
+        """
+        Return whether a history record matches CLI filter values.
+
+        Parameters
+        ----------
+        record : HistoryRecord
+            The history record to check.
+        level : HistoryLevel, optional
+            Filter by run-level or job-level record scope.
+        job : str | None, optional
+            Filter by job name.
+        pipeline : str | None, optional
+            Filter by pipeline name.
+        run_id : str | None, optional
+            Filter by run ID.
+        since : datetime | None, optional
+            Filter records starting from this timestamp.
+        until : datetime | None, optional
+            Filter records up to this timestamp.
+        status : str | None, optional
+            Filter by status.
+
+        Returns
+        -------
+        bool
+            True if the record matches the filters, False otherwise.
+        """
+        record_level = cast(str, record.get('record_level') or 'run')
+        if record_level != level:
+            return False
+        if job is not None and record.get('job_name') != job:
+            return False
+        if pipeline is not None and record.get('pipeline_name') != pipeline:
+            return False
+        if run_id is not None and record.get('run_id') != run_id:
+            return False
+        if status is not None and record.get('status') != status:
+            return False
+        record_timestamp = HistoryView.record_timestamp(record)
+        if since is not None and (record_timestamp is None or record_timestamp < since):
+            return False
+        if until is not None and (record_timestamp is None or record_timestamp > until):
+            return False
+        return True
 
     @staticmethod
     def parse_timestamp(
@@ -249,200 +444,3 @@ class HistoryView:
         """
         if json_output and table:
             raise ValueError('choose either json output or table output, not both')
-
-    # -- Internal Static Methods -- #
-
-    @staticmethod
-    def _matching_records(
-        *,
-        raw: bool,
-        level: HistoryLevel,
-        job: str | None,
-        pipeline: str | None,
-        run_id: str | None,
-        since: datetime | None,
-        until: datetime | None,
-        status: str | None,
-    ) -> list[dict[str, Any]]:
-        """
-        Return materialized history records that match the given filters.
-
-        Parameters
-        ----------
-        raw : bool
-            Whether to load raw history records.
-        level : HistoryLevel
-            Whether to load run-level or job-level records.
-        job : str | None, optional
-            Filter records by job name.
-        pipeline : str | None, optional
-            Filter records by pipeline name.
-        run_id : str | None, optional
-            Filter records by run ID.
-        since : datetime | None, optional
-            Filter records starting from this timestamp.
-        until : datetime | None, optional
-            Filter records up to this timestamp.
-        status : str | None, optional
-            Filter records by status.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            A list of filtered history records.
-        """
-        history_store = HistoryStore.from_environment()
-        matching: list[dict[str, Any]] = []
-        for record in HistoryView._records_iter(
-            history_store,
-            raw=raw,
-            level=level,
-        ):
-            payload = dict(record)
-            payload.setdefault('record_level', level if not raw else 'run')
-            if HistoryView.matches(
-                payload,
-                level=level,
-                job=job,
-                pipeline=pipeline,
-                run_id=run_id,
-                since=since,
-                until=until,
-                status=status,
-            ):
-                payload.pop('record_level', None)
-                matching.append(payload)
-        return matching
-
-    @staticmethod
-    def _records_iter(
-        history_store: HistoryStore,
-        *,
-        raw: bool,
-        level: HistoryLevel,
-    ) -> Iterator[dict[str, Any]]:
-        """Return the appropriate record iterator for the requested view mode."""
-        if raw:
-            return history_store.iter_records()
-        if level == 'job':
-            return history_store.iter_job_runs()
-        return history_store.iter_runs()
-
-    # -- Static Methods -- #
-
-    @staticmethod
-    def load_records(
-        *,
-        raw: bool,
-        level: HistoryLevel = 'run',
-        job: str | None = None,
-        limit: int | None = None,
-        pipeline: str | None = None,
-        run_id: str | None = None,
-        since: str | None = None,
-        until: str | None = None,
-        status: str | None = None,
-    ) -> list[dict[str, Any]]:
-        """
-        Load, filter, and sort history records for CLI read commands.
-
-        Parameters
-        ----------
-        raw : bool
-            Whether to load raw history records.
-        level : HistoryLevel, optional
-            Whether to load run-level or job-level history entries.
-        job : str | None, optional
-            Filter records by job name.
-        limit : int | None, optional
-            Limit the number of records returned.
-        pipeline : str | None, optional
-            Filter records by pipeline name.
-        run_id : str | None, optional
-            Filter records by run ID.
-        since : str | None, optional
-            Filter records starting from this timestamp.
-        until : str | None, optional
-            Filter records up to this timestamp.
-        status : str | None, optional
-            Filter records by status.
-
-        Returns
-        -------
-        list[dict[str, Any]]
-            A list of filtered and sorted history records.
-        """
-        records = sorted(
-            HistoryView._matching_records(
-                raw=raw,
-                level=level,
-                job=job,
-                pipeline=pipeline,
-                run_id=run_id,
-                since=HistoryView.parse_timestamp(since),
-                until=HistoryView.parse_timestamp(until),
-                status=status,
-            ),
-            key=HistoryView.sort_key,
-            reverse=True,
-        )
-        if limit is None:
-            return records
-        return records[:limit]
-
-    @staticmethod
-    def matches(
-        record: HistoryRecord,
-        *,
-        level: HistoryLevel = 'run',
-        job: str | None = None,
-        pipeline: str | None = None,
-        run_id: str | None = None,
-        since: datetime | None = None,
-        until: datetime | None = None,
-        status: str | None = None,
-    ) -> bool:
-        """
-        Return whether a history record matches CLI filter values.
-
-        Parameters
-        ----------
-        record : HistoryRecord
-            The history record to check.
-        level : HistoryLevel, optional
-            Filter by run-level or job-level record scope.
-        job : str | None, optional
-            Filter by job name.
-        pipeline : str | None, optional
-            Filter by pipeline name.
-        run_id : str | None, optional
-            Filter by run ID.
-        since : datetime | None, optional
-            Filter records starting from this timestamp.
-        until : datetime | None, optional
-            Filter records up to this timestamp.
-        status : str | None, optional
-            Filter by status.
-
-        Returns
-        -------
-        bool
-            True if the record matches the filters, False otherwise.
-        """
-        record_level = cast(str, record.get('record_level') or 'run')
-        if record_level != level:
-            return False
-        if job is not None and record.get('job_name') != job:
-            return False
-        if pipeline is not None and record.get('pipeline_name') != pipeline:
-            return False
-        if run_id is not None and record.get('run_id') != run_id:
-            return False
-        if status is not None and record.get('status') != status:
-            return False
-        record_timestamp = HistoryView.record_timestamp(record)
-        if since is not None and (record_timestamp is None or record_timestamp < since):
-            return False
-        if until is not None and (record_timestamp is None or record_timestamp > until):
-            return False
-        return True

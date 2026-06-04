@@ -527,4 +527,5 @@ out.json
 output.csv
 output.json
 result.json
+state-dir/
 temp/

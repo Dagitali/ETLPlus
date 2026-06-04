@@ -58,6 +58,7 @@ runs:
         "$etlplus_bin" --version
         "$etlplus_bin" --help
         "$etlplus_bin" check --help
+        "$etlplus_bin" ui --help
 
     - name: Smoke-test pipx wheel install
       shell: bash
@@ -75,6 +76,7 @@ runs:
         "$etlplus_bin" --version
         "$etlplus_bin" --help
         "$etlplus_bin" check --help
+        "$etlplus_bin" ui --help
         python -m pipx uninstall etlplus
 
     - name: Smoke-test uv tool wheel install
@@ -93,3 +95,4 @@ runs:
         "$etlplus_bin" --version
         "$etlplus_bin" --help
         "$etlplus_bin" check --help
+        "$etlplus_bin" ui --help

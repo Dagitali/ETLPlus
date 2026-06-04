@@ -13,8 +13,8 @@ from typing import cast
 
 import pytest
 
-from etlplus.cli._handlers import _history_view as history_view_mod
 from etlplus.cli._handlers import history as history_mod
+from etlplus.history import _view as history_view_mod
 
 from ..conftest import CaptureIo
 from ..conftest import assert_emit_json

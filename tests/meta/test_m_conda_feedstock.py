@@ -77,6 +77,7 @@ CONDA_TEXT_SNIPPET_CASES = tuple(
         (CONDA_RECIPE_PATH, 'etlplus --version'),
         (CONDA_RECIPE_PATH, 'etlplus --help'),
         (CONDA_RECIPE_PATH, 'etlplus check --help'),
+        (CONDA_RECIPE_PATH, 'etlplus ui --help'),
         (CONDA_WORKFLOW_PATH, 'workflow_dispatch:'),
         (CONDA_WORKFLOW_PATH, 'default: linux'),
         (CONDA_WORKFLOW_PATH, 'source_mode:'),
