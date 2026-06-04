@@ -11,20 +11,29 @@ from http.server import BaseHTTPRequestHandler
 from http.server import ThreadingHTTPServer
 from typing import Any
 
-from etlplus.cli._handlers._history_view import HistoryView
+from ._view import HistoryView
 
 # SECTION: EXPORTS ========================================================== #
 
 
 __all__ = [
+    # Constants
     'DEFAULT_UI_HOST',
     'DEFAULT_UI_LIMIT',
     'DEFAULT_UI_PORT',
     'DEFAULT_UI_REFRESH_SECONDS',
+    # Functions
+    'build_history_ui_handler',
     'build_snapshot',
     'render_html',
     'serve_history_ui',
 ]
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type HistoryUiHandler = type[BaseHTTPRequestHandler]
 
 
 # SECTION: CONSTANTS ======================================================== #
@@ -250,34 +259,25 @@ def render_html(
     return _html_document(body=body, refresh_seconds=refresh_seconds)
 
 
-def serve_history_ui(
+def build_history_ui_handler(
     *,
-    host: str = DEFAULT_UI_HOST,
-    port: int = DEFAULT_UI_PORT,
     limit: int = DEFAULT_UI_LIMIT,
     refresh_seconds: int = DEFAULT_UI_REFRESH_SECONDS,
-    open_browser: bool = True,
-) -> int:
+) -> HistoryUiHandler:
     """
-    Run the local ETLPlus history UI HTTP server.
+    Build one request handler class for the local history UI.
 
     Parameters
     ----------
-    host : str, optional
-        Host interface for the local web UI.
-    port : int, optional
-        TCP port for the local web UI.
     limit : int, optional
         Maximum number of run and job history rows to show.
     refresh_seconds : int, optional
         Page refresh interval in seconds. Use ``0`` to disable refresh.
-    open_browser : bool, optional
-        Whether to open the default browser automatically.
 
     Returns
     -------
-    int
-        A conventional POSIX exit code: zero on success, non-zero on error.
+    HistoryUiHandler
+        Request handler class configured for the supplied display settings.
     """
 
     class _Handler(BaseHTTPRequestHandler):
@@ -311,7 +311,40 @@ def serve_history_ui(
             self.end_headers()
             self.wfile.write(body)
 
-    server = ThreadingHTTPServer((host, port), _Handler)
+    return _Handler
+
+
+def serve_history_ui(
+    *,
+    host: str = DEFAULT_UI_HOST,
+    port: int = DEFAULT_UI_PORT,
+    limit: int = DEFAULT_UI_LIMIT,
+    refresh_seconds: int = DEFAULT_UI_REFRESH_SECONDS,
+    open_browser: bool = True,
+) -> int:
+    """
+    Run the local ETLPlus history UI HTTP server.
+
+    Parameters
+    ----------
+    host : str, optional
+        Host interface for the local web UI.
+    port : int, optional
+        TCP port for the local web UI.
+    limit : int, optional
+        Maximum number of run and job history rows to show.
+    refresh_seconds : int, optional
+        Page refresh interval in seconds. Use ``0`` to disable refresh.
+    open_browser : bool, optional
+        Whether to open the default browser automatically.
+
+    Returns
+    -------
+    int
+        A conventional POSIX exit code: zero on success, non-zero on error.
+    """
+    handler = build_history_ui_handler(limit=limit, refresh_seconds=refresh_seconds)
+    server = ThreadingHTTPServer((host, port), handler)
     url = f'http://{host}:{port}/'
     print(f'ETLPlus History UI listening on {url}')
     if open_browser:
