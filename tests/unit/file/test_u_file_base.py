@@ -543,8 +543,7 @@ class TestBaseAbcContracts:
             getattr(handler, operation)(path, **kwargs)
 
     @pytest.mark.parametrize(
-        'incomplete_handler_cls',
-        [_IncompleteDelimited, _IncompleteTextFixedWidth],
+        'incomplete_handler_cls', [_IncompleteDelimited, _IncompleteTextFixedWidth],
     )
     def test_row_abcs_require_row_methods(
         self,
@@ -705,10 +704,7 @@ class TestScientificDatasetContracts:
 class TestScientificStubConventions:
     """Unit tests for scientific placeholder handler conventions."""
 
-    @pytest.mark.parametrize(
-        'handler_cls',
-        [MatFile, SylkFile, ZsavFile],
-    )
+    @pytest.mark.parametrize('handler_cls', [MatFile, SylkFile, ZsavFile])
     def test_scientific_stubs_inherit_stub_single_dataset_abc(
         self,
         handler_cls: type[StubSingleDatasetScientificFileHandlerABC],
