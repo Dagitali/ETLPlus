@@ -234,11 +234,7 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         ('payload', 'options', 'expected_table'),
         [
             ([{'id': 1}, {'id': 2}], None, 'data'),
-            (
-                [{'id': 1}],
-                WriteOptions(table='events'),
-                'events',
-            ),
+            ([{'id': 1}], WriteOptions(table='events'), 'events'),
         ],
     )
     def test_write_creates_table_inserts_records_and_closes_connection(
