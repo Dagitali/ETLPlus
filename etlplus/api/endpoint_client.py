@@ -84,8 +84,6 @@ class EndpointClient:
     """
     Immutable registry of endpoint path templates rooted at a base URL.
 
-    Summary
-    -------
     Provides helpers for composing absolute URLs, paginating responses,
     applying client-wide rate limits, and performing jittered exponential
     backoff retries. The dataclass is frozen and uses ``slots`` for memory
@@ -578,8 +576,6 @@ class EndpointClient:
         """
         Stream records for a registered endpoint using pagination.
 
-        Summary
-        -------
         Generator variant of ``paginate`` that yields record dicts across
         pages instead of aggregating them into a list.
 
