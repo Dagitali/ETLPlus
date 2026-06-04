@@ -235,10 +235,7 @@ class TestRegistryInternalHelpers:
         ('symbol', 'error_pattern'),
         [
             (object(), 'must be a class'),
-            (
-                type('_NotAHandler', (), {}),
-                'must inherit FileHandlerABC',
-            ),
+            (type('_NotAHandler', (), {}), 'must inherit FileHandlerABC'),
         ],
     )
     def test_coerce_handler_class_rejects_invalid_symbols(
