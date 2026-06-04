@@ -89,13 +89,7 @@ class TestTxt(RoundtripUnitModuleContract):
         with pytest.raises(TypeError, match='TXT row payloads must contain'):
             mod.TxtFile().write_rows(path, cast(Any, ['alpha', 1]))
 
-    @pytest.mark.parametrize(
-        'payload',
-        [
-            '',
-            [],
-        ],
-    )
+    @pytest.mark.parametrize('payload', ['', []])
     def test_write_empty_payload_creates_empty_file(
         self,
         tmp_path: Path,
