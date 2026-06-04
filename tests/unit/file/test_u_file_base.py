@@ -120,26 +120,10 @@ _SPREADSHEET_HANDLER_CLASSES = (
     OdsFile,
 )
 _NAMING_METHOD_CASES = (
-    (
-        _DELIMITED_HANDLER_CLASSES,
-        'read_rows',
-        'write_rows',
-    ),
-    (
-        _EMBEDDED_DB_HANDLER_CLASSES,
-        'read_table',
-        'write_table',
-    ),
-    (
-        _SCIENTIFIC_HANDLER_CLASSES,
-        'read_dataset',
-        'write_dataset',
-    ),
-    (
-        _SPREADSHEET_HANDLER_CLASSES,
-        'read_sheet',
-        'write_sheet',
-    ),
+    (_DELIMITED_HANDLER_CLASSES, 'read_rows', 'write_rows'),
+    (_EMBEDDED_DB_HANDLER_CLASSES, 'read_table', 'write_table'),
+    (_SCIENTIFIC_HANDLER_CLASSES, 'read_dataset', 'write_dataset'),
+    (_SPREADSHEET_HANDLER_CLASSES, 'read_sheet', 'write_sheet'),
 )
 
 
@@ -523,10 +507,7 @@ class TestBaseAbcContracts:
         ('operation', 'kwargs'),
         [
             ('write', {'data': [{'a': 1}]}),
-            (
-                'write_sheet',
-                {'rows': [{'a': 1}], 'sheet': 0},
-            ),
+            ('write_sheet', {'rows': [{'a': 1}], 'sheet': 0}),
         ],
     )
     def test_read_only_spreadsheet_handler_rejects_writes(
