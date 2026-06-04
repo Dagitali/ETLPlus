@@ -9,9 +9,8 @@ from __future__ import annotations
 import pytest
 
 import etlplus.telemetry as telemetry_pkg
-from etlplus.telemetry import ResolvedTelemetryConfig
-from etlplus.telemetry import RuntimeTelemetry
-from etlplus.telemetry import TelemetryConfig
+import etlplus.telemetry.config as telemetry_config_mod
+import etlplus.telemetry.runtime as telemetry_runtime_mod
 
 from ..pytest_export_contracts import assert_package_exports
 
@@ -23,16 +22,16 @@ from ..pytest_export_contracts import assert_package_exports
 
 
 EXPECTED_EXPORTS: tuple[tuple[str, object], ...] = (
-    ('RuntimeTelemetry', RuntimeTelemetry),
-    ('ResolvedTelemetryConfig', ResolvedTelemetryConfig),
-    ('TelemetryConfig', TelemetryConfig),
+    ('RuntimeTelemetry', telemetry_runtime_mod.RuntimeTelemetry),
+    ('ResolvedTelemetryConfig', telemetry_config_mod.ResolvedTelemetryConfig),
+    ('TelemetryConfig', telemetry_config_mod.TelemetryConfig),
 )
 
 
 # SECTION: TESTS ============================================================ #
 
 
-class TestRuntimePackageExports:
+class TestTelemetryPackageExports:
     """Unit tests for package-level exports."""
 
     def test_expected_symbols(self) -> None:
