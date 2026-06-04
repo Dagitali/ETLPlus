@@ -60,10 +60,7 @@ class TestCoreDispatchHelpers:
         assert seen['path'].name == 'input.json'
         assert seen['payload'] == b'{"a": 1}'
 
-    @pytest.mark.parametrize(
-        'filename',
-        ['../escape.json', '/tmp/escape.json'],
-    )
+    @pytest.mark.parametrize('filename', ['../escape.json', '/tmp/escape.json'])
     def test_write_payload_with_core_rejects_unsafe_paths(
         self,
         monkeypatch,
