@@ -180,18 +180,9 @@ class TestProperties(
             ('path\t/srv/app', ('path', '/srv/app')),
             ('path   = /srv/app', ('path', '/srv/app')),
             ('path   : /srv/app', ('path', '/srv/app')),
-            (
-                r'escaped\ key=value',
-                (r'escaped\ key', 'value'),
-            ),
-            (
-                r'escaped\:key=value',
-                (r'escaped\:key', 'value'),
-            ),
-            (
-                r'escaped\=key:value',
-                (r'escaped\=key', 'value'),
-            ),
+            (r'escaped\ key=value', (r'escaped\ key', 'value')),
+            (r'escaped\:key=value', (r'escaped\:key', 'value')),
+            (r'escaped\=key:value', (r'escaped\=key', 'value')),
             ('flag', ('flag', '')),
         ],
     )
