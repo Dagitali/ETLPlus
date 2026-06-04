@@ -136,15 +136,13 @@ they are not part of the supported public contract unless they are explicitly do
 The stable surface for the current `v1.x` releases is:
 
 - The documented CLI commands: `check`, `extract`, `history`, `init`, `load`, `log`, `render`,
-  `report`, `run`, `status`, `transform`, and `validate`
+  `report`, `run`, `status`, `transform`, `ui`, and `validate`
 - The documented Python ETL primitives in `etlplus.ops`, including the advanced step modules under
   `etlplus.ops.transformations`
 - The implemented file handlers listed as `implemented` in the handler matrix
 - The documented API client and pagination helpers under `etlplus.api`
-
-Local browser-based history UI work is intentionally deferred from the stable `v1.x` line to a
-future `v2.0.0` design pass so packaging, test layout, and shared-runtime boundaries can be
-revisited together rather than introduced incrementally on the stable line.
+- The read-only local run-history dashboard exposed through `etlplus ui`, backed by the same
+  persisted history store used by the `history`, `log`, `status`, and `report` commands
 
 The following are not part of the stable execution surface unless explicitly promoted later:
 
