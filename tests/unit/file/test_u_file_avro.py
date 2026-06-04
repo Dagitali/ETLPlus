@@ -127,18 +127,9 @@ class TestAvroHelpers:
     @pytest.mark.parametrize(
         ('operation', 'payload'),
         [
-            (
-                mod._infer_value_type,
-                {'bad': 'value'},
-            ),
-            (
-                mod._infer_schema,
-                [{'bad': {'nested': True}}],
-            ),
-            (
-                mod._infer_schema,
-                [{'bad': object()}],
-            ),
+            (mod._infer_value_type, {'bad': 'value'}),
+            (mod._infer_schema, [{'bad': {'nested': True}}]),
+            (mod._infer_schema, [{'bad': object()}]),
         ],
     )
     def test_infer_helpers_reject_invalid_payloads(
