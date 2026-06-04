@@ -29,9 +29,9 @@ from etlplus.file.stub import StubFileHandlerABC
 
 
 _SCIENTIFIC_STUB_MODULES: tuple[object, ...] = (
-    pytest.param((mat_mod.MatFile, 'mat'), id='mat'),
-    pytest.param((sylk_mod.SylkFile, 'sylk'), id='sylk'),
-    pytest.param((zsav_mod.ZsavFile, 'zsav'), id='zsav'),
+    (mat_mod.MatFile, 'mat'),
+    (sylk_mod.SylkFile, 'sylk'),
+    (zsav_mod.ZsavFile, 'zsav'),
 )
 
 
@@ -54,10 +54,7 @@ def _raise_unexpected_stub_call(*_args: object, **_kwargs: object) -> Never:
 # SECTION: FIXTURES ========================================================= #
 
 
-@pytest.fixture(
-    name='scientific_module_case',
-    params=_SCIENTIFIC_STUB_MODULES,
-)
+@pytest.fixture(name='scientific_module_case', params=_SCIENTIFIC_STUB_MODULES)
 def scientific_module_case_fixture(
     request: pytest.FixtureRequest,
 ) -> ScientificModuleCase:
@@ -209,17 +206,15 @@ class TestScientificDatasetHelpers:
     @pytest.mark.parametrize(
         ('keys', 'dataset', 'match'),
         [
-            pytest.param(
+            (
                 ['data', 'features'],
                 'missing',
                 "HDF5 dataset 'missing' not found",
-                id='missing-explicit-key',
             ),
-            pytest.param(
+            (
                 ['features', 'labels'],
                 None,
                 'Multiple datasets found',
-                id='ambiguous-key-set',
             ),
         ],
     )
