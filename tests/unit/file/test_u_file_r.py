@@ -66,10 +66,7 @@ class TestRHelpers:
         """Test R object coercion for supported object categories."""
         assert mod.coerce_r_object(value, pandas_stub) == expected
 
-    @pytest.mark.parametrize(
-        'dataset',
-        ['only', 'data'],
-    )
+    @pytest.mark.parametrize('dataset', ['only', 'data'])
     def test_coerce_r_result_dataset_selection_and_alias(
         self,
         pandas_stub: SimpleNamespace,
