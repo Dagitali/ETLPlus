@@ -60,10 +60,7 @@ class TestHandlerAbcHelpers:
         assert result == [{'id': 1}]
         assert path.parent.exists()
 
-    @pytest.mark.parametrize(
-        'raises',
-        [False, True],
-    )
+    @pytest.mark.parametrize('raises', [False, True])
     def test_use_connection_always_closes(
         self,
         raises: bool,
