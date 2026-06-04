@@ -2,8 +2,23 @@
 
 from __future__ import annotations
 
+import json
+import threading
+import urllib.error
+import urllib.request
+from http.server import ThreadingHTTPServer
+
+import pytest
+
+from etlplus.history._ui import build_history_ui_handler
 from etlplus.history._ui import build_snapshot
 from etlplus.history._ui import render_html
+
+# SECTION: PRAGMAS ========================================================== #
+
+# pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: TESTS ============================================================ #
 
 
 class TestHistoryUiSnapshot:
@@ -90,3 +105,64 @@ class TestHistoryUiSnapshot:
         assert 'run-1' in html_text
         assert 'seed' in html_text
         assert 'http-equiv="refresh" content="3"' in html_text
+
+
+class TestHistoryUiHttpHandler:
+    """Unit tests for the local history UI HTTP endpoints."""
+
+    def test_handler_serves_html_json_and_not_found(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Configured handler should serve the documented read-only endpoints."""
+        monkeypatch.setattr(
+            'etlplus.history._ui.build_snapshot',
+            lambda *, limit: {
+                'jobs': [],
+                'runs': [{'run_id': 'run-1', 'status': 'succeeded'}],
+                'summary': {
+                    'failed_jobs': 0,
+                    'failed_runs': 0,
+                    'job_rows': 0,
+                    'run_rows': 1,
+                    'succeeded_jobs': 0,
+                    'succeeded_runs': 1,
+                },
+            },
+        )
+        handler = build_history_ui_handler(limit=5, refresh_seconds=0)
+        server = ThreadingHTTPServer(('127.0.0.1', 0), handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+
+        try:
+            host, port = server.server_address
+            base_url = f'http://{host}:{port}'
+
+            with urllib.request.urlopen(f'{base_url}/', timeout=5) as response:
+                html_body = response.read().decode('utf-8')
+                assert response.status == 200
+                assert response.headers['Content-Type'] == (
+                    'text/html; charset=utf-8'
+                )
+                assert 'ETLPlus local history UI' in html_body
+                assert 'run-1' in html_body
+
+            with urllib.request.urlopen(
+                f'{base_url}/snapshot.json',
+                timeout=5,
+            ) as response:
+                payload = json.loads(response.read().decode('utf-8'))
+                assert response.status == 200
+                assert response.headers['Content-Type'] == (
+                    'application/json; charset=utf-8'
+                )
+                assert payload['runs'][0]['run_id'] == 'run-1'
+
+            with pytest.raises(urllib.error.HTTPError) as exc_info:
+                urllib.request.urlopen(f'{base_url}/missing', timeout=5)
+            assert exc_info.value.code == 404
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
