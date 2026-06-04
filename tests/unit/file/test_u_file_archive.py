@@ -45,8 +45,11 @@ class TestArchiveHelpers:
 
     @pytest.mark.parametrize(
         (
-            'path', 'allowed_compressions', 'compression_error',
-            'require_format', 'match',
+            'path',
+            'allowed_compressions',
+            'compression_error',
+            'require_format',
+            'match',
         ),
         [
             (
