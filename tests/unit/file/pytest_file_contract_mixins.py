@@ -528,12 +528,7 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         frame = make_records_frame(rows)
         pandas = make_pandas_stub(frame)
         dependency_module_name, _ = self.spreadsheet_dependency_spec()
-        optional_module_stub(
-            {
-                'pandas': pandas,
-                dependency_module_name: object(),
-            },
-        )
+        optional_module_stub({'pandas': pandas, dependency_module_name: object()})
         path = self.format_path(tmp_path)
 
         result = self.module_handler.read(path)
@@ -560,12 +555,7 @@ class SpreadsheetWritableMixin(EmptyWriteReturnsZeroMixin):
         frame = make_records_frame(rows)
         pandas = make_pandas_stub(frame)
         dependency_module_name, _ = self.spreadsheet_dependency_spec()
-        optional_module_stub(
-            {
-                'pandas': pandas,
-                dependency_module_name: object(),
-            },
-        )
+        optional_module_stub({'pandas': pandas, dependency_module_name: object()})
         path = self.format_path(tmp_path)
 
         written = self.module_handler.write(path, rows)
@@ -743,14 +733,8 @@ class TemplateFileContractMixin(EmptyWriteReturnsZeroMixin):
     @pytest.mark.parametrize(
         ('payload', 'match'),
         [
-            (
-                [{'template': 'a'}, {'template': 'b'}],
-                'exactly one object',
-            ),
-            (
-                [{'name': 'missing'}],
-                '"template" string',
-            ),
+            ([{'template': 'a'}, {'template': 'b'}], 'exactly one object'),
+            ([{'name': 'missing'}], '"template" string'),
         ],
     )
     def test_write_requires_single_template_object(
