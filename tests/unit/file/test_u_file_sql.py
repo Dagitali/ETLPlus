@@ -107,22 +107,9 @@ class TestSqlHelpers:
         Test that :func:`write_table_rows` short-circuit when no rows are
         provided.
         """
-
-        class _Connection:
-            def execute(self, *_args: object, **_kwargs: object) -> None:
-                raise AssertionError('execute should not be called')
-
-            def executemany(
-                self,
-                *_args: object,
-                **_kwargs: object,
-            ) -> None:
-                raise AssertionError('executemany should not be called')
-
-        connection = _Connection()
         assert (
             mod.write_table_rows(
-                connection,
+                object(),
                 'data',
                 [],
                 dialect=mod.SQLITE_DIALECT,
