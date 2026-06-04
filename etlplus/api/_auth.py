@@ -145,8 +145,6 @@ class EndpointCredentialsBearer(AuthBase):
     """
     Bearer token authentication via the OAuth2 Client Credentials flow.
 
-    Summary
-    -------
     Implements ``requests`` ``AuthBase`` to lazily obtain and refresh an
     access token, adding ``Authorization: Bearer <token>`` to outgoing
     requests. A small clock skew avoids edge-of-expiry races.

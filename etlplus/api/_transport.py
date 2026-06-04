@@ -57,8 +57,6 @@ class HTTPAdapterRetryConfigDict(TypedDict, total=False):
 
     Used by requests' ``HTTPAdapter``.
 
-    Summary
-    -------
     Keys mirror the ``Retry`` constructor where relevant. All keys are
     optional; omit any you don't need. When converted downstream, collection-
     valued fields are normalized to tuples/frozensets.
@@ -114,8 +112,6 @@ class HTTPAdapterMountConfigDict(TypedDict, total=False):
     """
     Configuration mapping for mounting an ``HTTPAdapter`` on a ``Session``.
 
-    Summary
-    -------
     Provides connection pooling and optional retry behavior. Values are
     forwarded into ``HTTPAdapter`` and, when a retry dict is supplied,
     converted to a ``Retry`` instance where supported.
