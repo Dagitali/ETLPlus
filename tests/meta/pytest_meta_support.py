@@ -25,6 +25,12 @@ __all__ = [
 ]
 
 
+# SECTION: INTERNAL CONSTANTS =============================================== #
+
+
+_REQUIREMENT_NAME_PATTERN = re.compile(r'^[A-Za-z0-9_.-]+')
+
+
 # SECTION: FUNCTIONS ======================================================== #
 
 
@@ -47,7 +53,7 @@ def canonical_requirement_name(requirement: str) -> str:
     ValueError
         If no package name can be parsed from the requirement string.
     """
-    match = re.match(r'\s*([A-Za-z0-9_.-]+)', requirement)
+    match = _REQUIREMENT_NAME_PATTERN.match(requirement)
     if match is None:
         raise ValueError(f'Invalid requirement: {requirement!r}')
     return match.group(1).casefold().replace('_', '-')
