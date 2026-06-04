@@ -64,10 +64,7 @@ class TestJson(
     @pytest.mark.parametrize(
         ('content', 'match'),
         [
-            (
-                json.dumps([1, 2]),
-                'JSON array must contain',
-            ),
+            (json.dumps([1, 2]), 'JSON array must contain'),
             ('42', 'JSON root must be'),
         ],
     )
