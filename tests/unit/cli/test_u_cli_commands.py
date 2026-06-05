@@ -39,6 +39,7 @@ from .conftest import AssertCapturedText
 from .conftest import InvokeCli
 from .conftest import StubHandler
 from .conftest import TyperContextFactory
+from .conftest import strip_ansi
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -903,14 +904,15 @@ class TestCliInvokeParsing:
     ) -> None:
         """The stable ``etlplus ui`` help should list its dashboard options."""
         result = invoke_cli('ui', '--help')
+        stdout = strip_ansi(result.stdout)
 
         assert result.exit_code == 0
-        assert '--host' in result.stdout
-        assert '127.0.0.1' in result.stdout
-        assert '--port' in result.stdout
-        assert '--limit' in result.stdout
-        assert '--refresh-seconds' in result.stdout
-        assert '--no-browser' in result.stdout
+        assert '--host' in stdout
+        assert '127.0.0.1' in stdout
+        assert '--port' in stdout
+        assert '--limit' in stdout
+        assert '--refresh-seconds' in stdout
+        assert '--no-browser' in stdout
 
 
 class TestCommandsMissingInputs:
