@@ -151,6 +151,9 @@ make test-perf
 pytest -m perf
 ```
 
+See `tests/PERFORMANCE-SMOKE-BASELINES.md` for the current opt-in performance-smoke payloads,
+generous elapsed-time bounds, and update rules.
+
 ## Post-Move Validation Checklist
 
 Use these checks after moving/renaming test modules or changing test scope
