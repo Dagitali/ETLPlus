@@ -1,12 +1,29 @@
 # Release Checklist And Stable-Line Maintenance
 
-This file now serves two purposes:
+This file serves two purposes:
 
 1. Preserve the archived pre-`v1.0.0` release-readiness record
 2. Track the remaining maintenance work for the current stable `v1.x` line
 
 The pre-1.0 sections below are retained as release-history context. They are no longer the active
 checklist for ETLPlus now that the project is on the stable line.
+
+- [Release Checklist And Stable-Line Maintenance](#release-checklist-and-stable-line-maintenance)
+  - [Archived Pre-`v1.0.0` Readiness Record](#archived-pre-v100-readiness-record)
+  - [Must](#must)
+  - [Should](#should)
+  - [Nice-to-have](#nice-to-have)
+  - [Status Notes](#status-notes)
+  - [Current Stable-Line Maintenance Checklist](#current-stable-line-maintenance-checklist)
+  - [Next Minor Installer Expansion Checklist](#next-minor-installer-expansion-checklist)
+  - [Maintain In `v1.x`](#maintain-in-v1x)
+  - [Archived `v1.0.0` Readiness Closeout](#archived-v100-readiness-closeout)
+  - [Archived Post-`v1.0.0` Follow-Up Items](#archived-post-v100-follow-up-items)
+  - [Stable-Line Priorities](#stable-line-priorities)
+    - [Next Patch Releases](#next-patch-releases)
+    - [Protected-Branch Release Sequence](#protected-branch-release-sequence)
+    - [Next Minor Release](#next-minor-release)
+  - [Current Focus](#current-focus)
 
 ## Archived Pre-`v1.0.0` Readiness Record
 
@@ -219,6 +236,9 @@ stable package metadata contract.
   - Tagged PyPI sdist validation passed with a pinned SHA256 across Linux, macOS, and Windows.
   - Feedstock submission/publication remains the handoff point before user-facing install commands
     should claim conda-forge availability.
+  - Staged-recipes submission steps are documented in
+    `packaging/conda/STAGED-RECIPES-SUBMISSION.md`.
+  - Post-acceptance publication checks are documented in `packaging/conda/PUBLICATION-HANDOFF.md`.
   - Optional extras should stay mapped as separate follow-up outputs or variants rather than being
     folded into the first base recipe.
 
@@ -234,13 +254,15 @@ stable package metadata contract.
   - Move more dependencies into extras only if that does not break the documented stable surface.
   - Keep a smaller default install deferred to a future major release unless real stable-line usage
     shows the broad base install is causing more support load than it prevents.
-  - Use `DEPENDENCY-AND-PLUGIN-DESIGN-NOTES.md` to collect evidence before proposing any packaging
-    split or plugin-driven dependency model.
+  - Use `DEPENDENCY-AND-PLUGIN-DESIGN-NOTES.md` to collect dependency-footprint evidence before
+    proposing any packaging or extension split.
 - [ ] Expand performance-smoke and cross-platform confidence based on real `v1.x` usage.
   - Add coverage where support load or issue history shows weak spots.
   - Keep the release path proportionate rather than turning CI into a bottleneck.
   - Current cross-platform smoke coverage verifies the installed CLI entrypoint plus stable help
     surfaces on macOS and Windows; performance smoke remains opt-in through `make test-perf`.
+  - Current opt-in performance payloads and baseline guidance are documented in
+    `tests/PERFORMANCE-SMOKE-BASELINES.md`.
 - [x] Tighten config discovery and backing-service posture on the stable line.
   - Publish a user-facing environment-variable reference for runtime knobs plus common provider
     credentials.
