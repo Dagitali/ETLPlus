@@ -8,6 +8,7 @@ feedstock has been accepted and published.
   - [Files](#files)
   - [Current Status](#current-status)
   - [Beginner Workflow](#beginner-workflow)
+  - [Publication Handoff](#publication-handoff)
   - [Recipe Scope](#recipe-scope)
   - [Important Terms](#important-terms)
 
@@ -19,6 +20,8 @@ feedstock has been accepted and published.
 - `FEEDSTOCK-PREP.md`: the preparation record, dependency mapping, and validation rules.
 - `STAGED-RECIPES-SUBMISSION.md`: the step-by-step submission runbook for
   `conda-forge/staged-recipes`.
+- `PUBLICATION-HANDOFF.md`: the checks and repository updates to complete after the feedstock is
+  accepted and an installable conda-forge package exists.
 
 Keep detailed validation history in `FEEDSTOCK-PREP.md` and submission mechanics in
 `STAGED-RECIPES-SUBMISSION.md`. This README should stay short and act as the entry point.
@@ -52,6 +55,13 @@ conda build /tmp/etlplus-conda-recipe --channel conda-forge
 `conda build` reads the `meta.yaml` inside the directory you pass to it, creates a clean build/test
 environment, installs the conda-resolved dependencies, builds the package, and runs the commands
 listed in the recipe `test:` section.
+
+## Publication Handoff
+
+After staged-recipes acceptance, use `PUBLICATION-HANDOFF.md` before changing user-facing install
+docs. The handoff keeps the boundary explicit: support-gate validation is complete, but `conda
+install --channel conda-forge etlplus` should be documented only after a feedstock package is
+published and clean-environment smoke checks pass.
 
 ## Recipe Scope
 
