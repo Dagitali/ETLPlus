@@ -16,6 +16,7 @@ Recent stable-line additions reflected in the current docs include:
 - Portable schedule config inspection via ``etlplus schedule``
 - One-shot local due-run dispatch via ``etlplus schedule --run-pending``
 - Additive scheduler metadata carried through the existing ``run`` event and local-history contracts
+- Read-only local run-history dashboard exposed through ``etlplus ui``
 - ``pipx install etlplus`` and ``uv tool install etlplus`` documented as supported isolated CLI
   installation paths, with release-path smoke coverage for supported installers
 

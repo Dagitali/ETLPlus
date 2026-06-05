@@ -20,7 +20,8 @@ validated:
 - A local source install using conda-resolved dependencies and disabled pip build isolation.
 - A rendered local-source recipe build with `conda-build`.
 - A tagged PyPI sdist recipe build/test run with a pinned SHA256 across Linux, macOS, and Windows.
-- CLI smoke checks for `etlplus --version`, `etlplus --help`, and `etlplus check --help`.
+- CLI smoke checks for `etlplus --version`, `etlplus --help`, `etlplus check --help`, and `etlplus
+  ui --help`.
 
 Publication still requires maintainer ownership, staged-recipes acceptance, feedstock creation, and
 package availability from conda-forge.
@@ -116,6 +117,7 @@ The recipe test phase must verify:
 - `etlplus --version`
 - `etlplus --help`
 - `etlplus check --help`
+- `etlplus ui --help`
 - `python -c "import etlplus; print(etlplus.__version__)"`
 
 A passing local build produces a `.conda` package in your conda build output directory. The exact

@@ -11,9 +11,9 @@ from typing import Literal
 import pytest
 
 from etlplus.cli._handlers._history_report import HistoryReportBuilder
-from etlplus.cli._handlers._history_view import HISTORY_TABLE_COLUMNS
-from etlplus.cli._handlers._history_view import JOB_HISTORY_TABLE_COLUMNS
-from etlplus.cli._handlers._history_view import HistoryView
+from etlplus.history._view import HISTORY_TABLE_COLUMNS
+from etlplus.history._view import JOB_HISTORY_TABLE_COLUMNS
+from etlplus.history._view import HistoryView
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -93,7 +93,7 @@ class TestHistoryReportBuilder:
 
 
 class TestHistoryView:
-    """Unit tests for :class:`etlplus.cli._handlers._history_view.HistoryView`."""
+    """Unit tests for :class:`etlplus.history._view.HistoryView`."""
 
     @pytest.mark.parametrize(
         ('level', 'expected'),

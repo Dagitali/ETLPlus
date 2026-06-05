@@ -13,10 +13,10 @@ from typing import Any
 from typing import Literal
 from typing import cast
 
+from ...history._view import HistoryView
 from . import _output
 from ._history_report import REPORT_TABLE_COLUMNS
 from ._history_report import HistoryReportBuilder
-from ._history_view import HistoryView
 
 # SECTION: EXPORTS ========================================================== #
 

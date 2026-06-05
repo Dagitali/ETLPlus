@@ -155,6 +155,8 @@ release.
     commands: `extract`, `load`, `run`, `transform`, and `validate`
   - Local run-history persistence keyed by `run_id` for `etlplus run`, backed by SQLite by default
     with JSONL fallback support
+  - A read-only local run-history dashboard is now part of the stable CLI surface under `etlplus
+    ui`, backed by the same persisted history store and localhost-bound by default.
   - Portable schedule config plus `etlplus schedule` summary and `crontab`/`systemd` helper emission
     for external schedulers
   - A first local scheduler runtime slice via `etlplus schedule --run-pending`, reusing `etlplus
@@ -189,8 +191,8 @@ stable package metadata contract.
 - [x] Keep installer parity explicit: `pip`, `pipx`, and `uv tool install` must install the same
   base PyPI artifact and expose the same `etlplus` CLI entrypoint.
 - [x] Centralize release-path installer smoke coverage for the built wheel artifact through `pip`,
-  `pipx`, and `uv tool install`, verifying `etlplus --version`, `etlplus --help`, and `etlplus check
-  --help`.
+  `pipx`, and `uv tool install`, verifying `etlplus --version`, `etlplus --help`, `etlplus check
+  --help`, and `etlplus ui --help`.
 - [x] Complete the conda-forge feedstock-preparation pass after installer smoke coverage stabilized.
   - Preparation details and the candidate recipe are captured in
     `packaging/conda/FEEDSTOCK-PREP.md`.
@@ -198,13 +200,13 @@ stable package metadata contract.
     maps to conda-forge `msgpack-python`.
   - A temporary conda prefix installed ETLPlus from local source with conda-resolved dependencies and
     `pip --no-deps --no-build-isolation`, then verified `etlplus --version`, `etlplus --help`,
-    `etlplus check --help`, and `import etlplus`.
+    `etlplus check --help`, `etlplus ui --help`, and `import etlplus`.
   - Feedstock preparation now includes `packaging/conda/meta.yaml.j2`,
     `tools/render_conda_recipe.py`, and meta tests checking the candidate recipe against
     `pyproject.toml` dependency names and the expected CLI entrypoint smoke commands.
   - A clean local source snapshot rendered with `--source-path` built a `.conda` artifact with
     `conda-build` on `osx-arm64` and passed the recipe smoke tests for `etlplus --version`, `etlplus
-    --help`, and `etlplus check --help`.
+    --help`, `etlplus check --help`, and `etlplus ui --help`.
   - A manual `Conda Recipe Validation` workflow now renders and builds the recipe with
     `conda-build`, defaulting to Linux first with an opt-in Linux/macOS/Windows matrix; the
     tagged-sdist support gate has passed on all three platforms.
@@ -272,12 +274,12 @@ stable package metadata contract.
   - Overlap-skipped due triggers now appear in `pending_runs` with `reason: overlap`, so operators
     can distinguish replayable overlap from consumed handled outcomes.
 - [x] Decide whether any local run-history UI ships in core or as an optional extra/package.
-  - The `v1.x` line keeps the stable local-history read/query surface CLI-only: `history`, `log`,
-    `status`, and `report` remain the supported interfaces.
-  - Any browser-based local history UI is deferred to `v2.0.0`, where packaging, test layout, and
-    shared-runtime boundary decisions can be revisited together.
+  - The `v1.x` line now ships the read-only local run-history dashboard in core as `etlplus ui`.
+  - The dashboard remains additive: it uses the same persisted history store, introduces no new
+    history schema or write path, and stays localhost-bound by default.
 - [x] Decide when the local run-history work becomes part of the documented stable CLI surface.
-  - `history`, `log`, `status`, and `report` are now documented as stable `v1.x` CLI commands.
+  - `history`, `log`, `status`, `report`, and `ui` are now documented as stable `v1.x` CLI
+    commands.
   - Contract coverage exists in the public-surface meta tests.
 - [x] Review the stable event-schema contract before the next minor release.
   - `RUNTIME-CONFIG-AND-LOGGING.md` now documents the `etlplus.event.v1` compatibility rules and

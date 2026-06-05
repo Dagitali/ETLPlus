@@ -43,6 +43,7 @@ CROSS_PLATFORM_SMOKE_SNIPPETS = (
     'etlplus --version',
     'etlplus --help',
     'etlplus check --help',
+    'etlplus ui --help',
 )
 CONDA_STATUS_SNIPPETS = (
     'conda-forge',
@@ -165,6 +166,7 @@ def test_installer_smoke_checks_stable_cli_surfaces(
     assert f'{expected_bin} --version' in script
     assert f'{expected_bin} --help' in script
     assert f'{expected_bin} check --help' in script
+    assert f'{expected_bin} ui --help' in script
 
 
 def test_installer_smoke_keeps_expected_supported_installer_steps(
