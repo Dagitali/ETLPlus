@@ -210,6 +210,38 @@ class TestHistoryUiHttpHandler:
         assert captured.err == ''
         assert closed is True
 
+    def test_serve_history_ui_respects_no_browser_flag(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Serving with browser opening disabled should not launch a browser."""
+        opened_urls: list[str] = []
+
+        class _FakeServer:
+            def __init__(self, *_args: object, **_kwargs: object) -> None:
+                pass
+
+            def serve_forever(self) -> None:
+                raise KeyboardInterrupt
+
+            def server_close(self) -> None:
+                pass
+
+        monkeypatch.setattr('etlplus.history._ui.ThreadingHTTPServer', _FakeServer)
+        monkeypatch.setattr(
+            'etlplus.history._ui.webbrowser.open',
+            lambda url: opened_urls.append(url),
+        )
+
+        exit_code = serve_history_ui(open_browser=False, port=8767)
+
+        captured = capsys.readouterr()
+        assert exit_code == 0
+        assert opened_urls == []
+        assert 'ETLPlus History UI listening on http://127.0.0.1:8767/' in captured.out
+        assert captured.err == ''
+
     def test_serve_history_ui_warns_when_bound_to_all_interfaces(
         self,
         capsys: pytest.CaptureFixture[str],
