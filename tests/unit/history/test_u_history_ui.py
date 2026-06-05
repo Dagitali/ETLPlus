@@ -175,6 +175,41 @@ class TestHistoryUiHttpHandler:
             server.server_close()
             thread.join(timeout=5)
 
+    def test_serve_history_ui_opens_browser_for_loopback_host(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Serving on the default loopback host should open the local UI URL."""
+        closed = False
+        opened_urls: list[str] = []
+
+        class _FakeServer:
+            def __init__(self, address: tuple[str, int], _handler: object) -> None:
+                self.address = address
+
+            def serve_forever(self) -> None:
+                return None
+
+            def server_close(self) -> None:
+                nonlocal closed
+                closed = True
+
+        monkeypatch.setattr('etlplus.history._ui.ThreadingHTTPServer', _FakeServer)
+        monkeypatch.setattr(
+            'etlplus.history._ui.webbrowser.open',
+            lambda url: opened_urls.append(url),
+        )
+
+        exit_code = serve_history_ui(port=8766)
+
+        captured = capsys.readouterr()
+        assert exit_code == 0
+        assert opened_urls == ['http://127.0.0.1:8766/']
+        assert 'ETLPlus History UI listening on http://127.0.0.1:8766/' in captured.out
+        assert captured.err == ''
+        assert closed is True
+
     def test_serve_history_ui_warns_when_bound_to_all_interfaces(
         self,
         capsys: pytest.CaptureFixture[str],
