@@ -173,7 +173,7 @@ class PropertiesFile(DictPayloadTextCodecHandlerMixin):
         self,
         payload: JSONDict,
     ) -> str:
-        """Serialize dictionary *data* into PROPERTIES text."""
+        """Serialize dictionary *payload* into PROPERTIES text."""
         return ''.join(
             f'{key}={stringify_value(value)}\n'
             for key, value in sorted(payload.items())
