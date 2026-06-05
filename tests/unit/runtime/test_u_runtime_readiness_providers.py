@@ -165,6 +165,27 @@ class TestReadinessReportBuilderProviders:
                 'Provider environment warnings: 1.',
                 id='warn-rows',
             ),
+            pytest.param(
+                [
+                    _provider_gap(
+                        connector='blob-source',
+                        missing_env=['AZURE_STORAGE_CONNECTION_STRING'],
+                        provider='azure-storage',
+                        reason='missing Azure bootstrap',
+                        severity='error',
+                    ),
+                    _provider_gap(
+                        connector='s3-source',
+                        missing_env=['AWS_PROFILE'],
+                        provider='aws-s3',
+                        reason='missing AWS hints',
+                        severity='warn',
+                    ),
+                ],
+                'error',
+                'Provider environment gaps: 1 error(s), 1 warning(s).',
+                id='mixed-error-and-warning-rows',
+            ),
         ],
     )
     def test_provider_environment_checks_wrap_rows_by_severity(
@@ -520,6 +541,20 @@ class TestReadinessReportBuilderProviders:
                     'SNOWFLAKE_PASSWORD': 'secret',
                 },
                 id='snowflake-env-hint',
+            ),
+            pytest.param(
+                _cfg(
+                    targets=[
+                        SimpleNamespace(
+                            connection_string='bigquery://analytics/dataset',
+                            name='warehouse_bigquery',
+                            provider='bigquery',
+                            type='database',
+                        ),
+                    ],
+                ),
+                {},
+                id='bigquery-connection-string',
             ),
             pytest.param(
                 _cfg(
