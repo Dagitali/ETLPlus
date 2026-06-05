@@ -203,6 +203,7 @@ class TestRuntimeEvents:
         )
 
         captured = capsys.readouterr()
+        assert captured.out == ''
         assert captured.err == expected_err
 
     def test_utc_now_iso_returns_iso8601_text(self) -> None:
