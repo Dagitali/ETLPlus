@@ -334,6 +334,8 @@ stable package metadata contract.
   now includes the documented run-history surface at both run and job levels: local `job_runs`
   persistence plus the additive `history/status/report --level`, `--pipeline`, and raw `log --level`
   query affordances.
+- Use `RUNTIME-COMMAND-CONTRACTS.md` when adding or changing execution-oriented commands so stdout,
+  structured events, history, readiness, and exit-code behavior stay aligned.
 - Prefer low-risk follow-up that reduces support load without narrowing the stable surface by
   accident.
 
