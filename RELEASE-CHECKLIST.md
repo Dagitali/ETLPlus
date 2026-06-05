@@ -93,17 +93,17 @@ release.
 
 - Checked pre-`v1.0.0` items in this file are retained as release-audit history, not as active
   tracking work.
-- Active tracking in this file should now focus on stable-line follow-up, post-`v1.0.0`
-  maintenance, and execution-hygiene notes that affect the supported CLI/runtime surface.
-- The CI quality-bar item is now closed: lint, docstring lint, type-checking, tests, docs builds,
-  distribution validation, artifact audits, and clean-environment wheel smoke checks are enforced
-  or verified in the release path.
-- The Python Package Index (PyPI) trusted publisher must point at `.github/workflows/cd.yml`
-  with the `pypi` GitHub environment; pointing it at other GitHub Actions workflows will cause
-  trusted publishing to fail.
+- Active tracking in this file should now focus on stable-line follow-up, post-`v1.0.0` maintenance,
+  and execution-hygiene notes that affect the supported CLI/runtime surface.
+- The CI quality-bar item is closed: lint, docstring lint, type-checking, tests, docs builds,
+  distribution validation, artifact audits, and clean-environment wheel smoke checks are enforced or
+  verified in the release path.
+- The Python Package Index (PyPI) trusted publisher must point at `.github/workflows/cd.yml` with
+  the `pypi` GitHub environment; pointing it at other GitHub Actions workflows will cause trusted
+  publishing to fail.
 - Release expectations and versioning rules are documented in `RELEASE-POLICY.md`.
 - The workflow split and trigger model are documented in `CI-CD-WORKFLOWS.md`.
-- The shipped-files item is now closed for the release path because distribution builds and artifact
+- The shipped-files item is closed for the release path because distribution builds and artifact
   audits run in CI from a tracked checkout, so defunct, backup, and scratch files that are not part
   of the committed tree are not part of tagged release artifacts.
 - Regenerated demo/version snippets and GitHub Releases should be treated as the canonical source
@@ -114,52 +114,52 @@ release.
 - The completed items in the archived sections landed across the path to `v1.0.0` and the early
   stable releases; they are retained here as audit history rather than as pending work.
 - Protected branches change the release maintainer workflow: treat GitHub pull requests as the
-  authoritative path for landing `release/*` and `hotfix/*` branches on `main`, and then sync
-  `main` back into `develop` intentionally after the protected `main` update is complete.
-- The stable-surface trimming work now treats CLI support modules and command wiring, storage
+  authoritative path for landing `release/*` and `hotfix/*` branches on `main`, and then sync `main`
+  back into `develop` intentionally after the protected `main` update is complete.
+- The stable-surface trimming work treats CLI support modules and command wiring, storage
   registry/base plumbing, connector support modules, the file-handler registry, database typing
   helpers, API request manager plumbing, and the top-level `etlplus.api` support modules (`auth`,
   `config`, `enums`, `errors`, `retry_manager`, `transport`, and `types`) as protected
   underscore-prefixed implementation modules behind package-level facades.
 - Database DDL/engine/ORM/schema helpers and storage enum/location helpers plus concrete storage
-  backend implementations now follow the same package-facade pattern.
-- The stable database facade now treats BigQuery and Snowflake as database dialect identifiers for
+  backend implementations follow the same package-facade pattern.
+- The stable database facade treats BigQuery and Snowflake as database dialect identifiers for
   connection-scheme recognition, and exposes `DATABASE_SCHEMES` plus URL/DSN predicate helpers while
   keeping generated scheme construction internal.
-- Connector config/type/enum helpers now also live behind the `etlplus.connector` package facade.
+- Connector config/type/enum helpers also live behind the `etlplus.connector` package facade.
 - The top-level `__version__` module and the `etlplus.cli` entrypoint module, `etlplus.file`
-  core/enums helpers, and `etlplus.api` utility helpers now also follow the underscore-prefixed
+  core/enums helpers, and `etlplus.api` utility helpers also follow the underscore-prefixed
   implementation plus package-facade pattern.
-- `etlplus.ops` now exposes validation helpers and operation enums from its package facade while
-  keeping low-level ops type aliases on an internal underscore-prefixed module.
-- The documented stable ops surface now treats :mod:`etlplus.ops.transform` as the orchestration
-  facade and :mod:`etlplus.ops.transformations` as the advanced step-level transform module family.
-- The stable package facades now also re-export the public validation and request-shape symbols
-  already used at their boundaries: `etlplus.ops` exports validation TypedDicts, `etlplus.api`
-  exports `PaginationInput` and `RateLimitOverrides`, and `etlplus.history` exports
+- `etlplus.ops` exposes validation helpers and operation enums from its package facade while keeping
+  low-level ops type aliases on an internal underscore-prefixed module.
+- The documented stable ops surface treats :mod:`etlplus.ops.transform` as the orchestration facade
+  and :mod:`etlplus.ops.transformations` as the advanced step-level transform module family.
+- The stable package facades also re-export the public validation and request-shape symbols already
+  used at their boundaries: `etlplus.ops` exports validation TypedDicts, `etlplus.api` exports
+  `PaginationInput` and `RateLimitOverrides`, and `etlplus.history` exports
   `HISTORY_SCHEMA_VERSION`.
-- The documented stable validate surface now also includes schema-based validation through `etlplus
+- The documented stable validate surface also includes schema-based validation through `etlplus
   validate --schema ...`, with `--schema-format xsd` for XML, `--schema-format jsonschema` for
   JSON/YAML, and `--schema-format frictionless` for CSV Table Schema validation, and the
-  `etlplus.ops` facade now exports `validate_schema` alongside the existing field-rule validator.
+  `etlplus.ops` facade exports `validate_schema` alongside the existing field-rule validator.
 - The `etlplus.history` facade no longer exports the redundant `build_run_record` helper; the
-  supported constructor path is now `RunRecord.build(...)`.
+  supported constructor path is `RunRecord.build(...)`.
 - The stable package facades also expose adjacent public contract types and exceptions where the
   documented surface already depends on them: `etlplus.workflow` exports `DagError`,
-  `etlplus.api.rate_limiting` exports `RateLimitInput`, and `etlplus.file` now re-exports the
-  curated handler-authoring layer from `etlplus.file.base`, including `BoundFileHandler`,
-  `ReadOptions`, and `WriteOptions`.
-- `etlplus.utils` now follows the same package-facade pattern: user-facing helpers plus the shared
+  `etlplus.api.rate_limiting` exports `RateLimitInput`, and `etlplus.file` re-exports the curated
+  handler-authoring layer from `etlplus.file.base`, including `BoundFileHandler`, `ReadOptions`, and
+  `WriteOptions`.
+- `etlplus.utils` follows the same package-facade pattern: user-facing helpers plus the shared
   enum/mixin base abstractions are exported from `etlplus.utils`, while utility type aliases and
   thin compatibility facades stay internal or are removed in favor of their stateful parser/codec
   classes.
 - The runtime telemetry facade no longer exports the thin wrapper helpers `configure_telemetry`,
-  `emit_history_record`, or `resolve_telemetry_settings`; the supported public entrypoints are now
+  `emit_history_record`, or `resolve_telemetry_settings`; the supported public entrypoints are
   `RuntimeTelemetry.configure(...)`, `RuntimeTelemetry.emit_history_record(...)`, and
   `ResolvedTelemetryConfig.resolve(...)`.
 - The documented stable CLI surface keeps readiness under `check --readiness`.
-- The documented stable CLI surface now also includes the `init` starter-project scaffold command.
-- The documented stable CLI surface now also includes DAG validation under `check --graph` plus
+- The documented stable CLI surface also includes the `init` starter-project scaffold command.
+- The documented stable CLI surface also includes DAG validation under `check --graph` plus
   DAG-aware execution via `run --all` and dependency-aware `run --job`.
 - Runtime execution hygiene progress on the current branch includes:
   - Shared runtime logging policy and config precedence documentation
@@ -172,8 +172,8 @@ release.
     commands: `extract`, `load`, `run`, `transform`, and `validate`
   - Local run-history persistence keyed by `run_id` for `etlplus run`, backed by SQLite by default
     with JSONL fallback support
-  - A read-only local run-history dashboard is now part of the stable CLI surface under `etlplus
-    ui`, backed by the same persisted history store and localhost-bound by default.
+  - A read-only local run-history dashboard is part of the stable CLI surface under `etlplus ui`,
+    backed by the same persisted history store and localhost-bound by default.
   - Portable schedule config plus `etlplus schedule` summary and `crontab`/`systemd` helper emission
     for external schedulers
   - A first local scheduler runtime slice via `etlplus schedule --run-pending`, reusing `etlplus
@@ -184,7 +184,7 @@ release.
     `etlplus.queue` SQS metadata surface, optional queue dependency extras for AWS SQS, Azure
     Service Bus, Google Cloud Pub/Sub, AMQP/RabbitMQ, and Redis, an aggregate `queue`/`queue-all`
     extra, plus readiness diagnostics for missing queue provider dependencies.
-  - Connector diagnostics now share remediation wording between readiness and strict config checks.
+  - Connector diagnostics share remediation wording between readiness and strict config checks.
     Secret references are environment-first through `secret:NAME` or `secret:env:NAME`; explicit
     `secret:file:path.to.key` local files remain a development compatibility path while encrypted
     local files and cloud secret backends stay deferred until the provider interface is stable.
@@ -215,20 +215,20 @@ stable package metadata contract.
     `packaging/conda/FEEDSTOCK-PREP.md`.
   - A corrected conda-forge base solve succeeded for Python 3.13 on `osx-arm64`; PyPI `msgpack`
     maps to conda-forge `msgpack-python`.
-  - A temporary conda prefix installed ETLPlus from local source with conda-resolved dependencies and
-    `pip --no-deps --no-build-isolation`, then verified `etlplus --version`, `etlplus --help`,
+  - A temporary conda prefix installed ETLPlus from local source with conda-resolved dependencies
+    and `pip --no-deps --no-build-isolation`, then verified `etlplus --version`, `etlplus --help`,
     `etlplus check --help`, `etlplus ui --help`, and `import etlplus`.
-  - Feedstock preparation now includes `packaging/conda/meta.yaml.j2`,
-    `tools/render_conda_recipe.py`, and meta tests checking the candidate recipe against
-    `pyproject.toml` dependency names and the expected CLI entrypoint smoke commands.
+  - Feedstock preparation includes `packaging/conda/meta.yaml.j2`, `tools/render_conda_recipe.py`,
+    and meta tests checking the candidate recipe against `pyproject.toml` dependency names and the
+    expected CLI entrypoint smoke commands.
   - A clean local source snapshot rendered with `--source-path` built a `.conda` artifact with
     `conda-build` on `osx-arm64` and passed the recipe smoke tests for `etlplus --version`, `etlplus
     --help`, `etlplus check --help`, and `etlplus ui --help`.
-  - A manual `Conda Recipe Validation` workflow now renders and builds the recipe with
-    `conda-build`, defaulting to Linux first with an opt-in Linux/macOS/Windows matrix; the
-    tagged-sdist support gate has passed on all three platforms.
-  - The manual workflow now has an explicit tagged-sdist validation mode requiring the released
-    version and PyPI sdist SHA256 before maintainers submit a feedstock.
+  - A manual `Conda Recipe Validation` workflow renders and builds the recipe with `conda-build`,
+    defaulting to Linux first with an opt-in Linux/macOS/Windows matrix; the tagged-sdist support
+    gate has passed on all three platforms.
+  - The manual workflow has an explicit tagged-sdist validation mode requiring the released version
+    and PyPI sdist SHA256 before maintainers submit a feedstock.
   - Meta tests keep the base conda run requirements aligned with `pyproject.toml`, allowing only the
     documented conda-forge package-name mappings and keeping optional extras out of the first base
     recipe.
@@ -270,9 +270,9 @@ stable package metadata contract.
     remote storage backends.
   - Keep managed databases and remote object storage visible in docs/examples rather than treating
     localhost-only helpers as the default mental model.
-  - The README, pipeline guide, compatibility/environment docs, and example pipeline now frame
-    remote object storage and managed databases as first-class paths while keeping localhost,
-    SQLite, local files, and Docker-backed services as development fixtures.
+  - The README, pipeline guide, compatibility/environment docs, and example pipeline frame remote
+    object storage and managed databases as first-class paths while keeping localhost, SQLite, local
+    files, and Docker-backed services as development fixtures.
 - [x] Add opt-in OpenTelemetry adapters on top of the stable event/history contracts.
   - Reuse `etlplus.event.v1` plus the normalized local history shapes rather than introducing a
     second observability contract.
@@ -285,35 +285,33 @@ stable package metadata contract.
   - Keep serial execution as the default stable behavior.
   - Define deterministic ready-job ordering and failure semantics before enabling parallelism.
 - [x] Add portable schedule config and OS helper output.
-  - `etlplus schedule` now exposes the supported schedule summary surface and can emit
+  - `etlplus schedule` exposes the supported schedule summary surface and can emit
     `crontab`/`systemd` snippets from the portable config model.
 - [x] Add a first local scheduler runtime slice.
-  - `etlplus schedule --run-pending` now dispatches due schedules once, uses bounded catch-up plus
+  - `etlplus schedule --run-pending` dispatches due schedules once, uses bounded catch-up plus
     per-schedule overlap locks, and reuses the stable `run` event/history path.
 - [x] Harden the one-shot local scheduler model before revisiting resident scheduling.
   - Keep recurring invocation delegated to `cron`, `systemd`, or CI unless there is a clear
     stable-line need for a resident ETLPlus scheduler process.
   - Repeat-invocation behavior, overlap handling, bounded catch-up documentation, and scheduler
-    event/history metadata are now implemented and documented for the one-shot scheduler path.
-  - Overlap-skipped due triggers now appear in `pending_runs` with `reason: overlap`, so operators
+    event/history metadata are implemented and documented for the one-shot scheduler path.
+  - Overlap-skipped due triggers appear in `pending_runs` with `reason: overlap`, so operators
     can distinguish replayable overlap from consumed handled outcomes.
 - [x] Decide whether any local run-history UI ships in core or as an optional extra/package.
-  - The `v1.x` line now ships the read-only local run-history dashboard in core as `etlplus ui`.
+  - The `v1.x` line ships the read-only local run-history dashboard in core as `etlplus ui`.
   - The dashboard remains additive: it uses the same persisted history store, introduces no new
     history schema or write path, and stays localhost-bound by default.
 - [x] Decide when the local run-history work becomes part of the documented stable CLI surface.
-  - `history`, `log`, `status`, `report`, and `ui` are now documented as stable `v1.x` CLI
-    commands.
+  - `history`, `log`, `status`, `report`, and `ui` are documented as stable `v1.x` CLI commands.
   - Contract coverage exists in the public-surface meta tests.
 - [x] Review the stable event-schema contract before the next minor release.
-  - `RUNTIME-CONFIG-AND-LOGGING.md` now documents the `etlplus.event.v1` compatibility rules and
+  - `RUNTIME-CONFIG-AND-LOGGING.md` documents the `etlplus.event.v1` compatibility rules and
     clarifies how handled DAG execution failures surface as `run.failed` lifecycle events.
-  - `docs/run-history.md` now documents the persisted local-history compatibility posture for the
-    stable top-level run shape: compact aggregate DAG summaries in `runs.result_summary` plus
-    detailed per-job rows in `job_runs`, with additive summary growth allowed under
-    `result_summary`.
-  - Published docs now also include a dedicated structured-events guide and an explicit
-    event-to-history mapping for `etlplus run`.
+  - `docs/run-history.md` documents the persisted local-history compatibility posture for the stable
+    top-level run shape: compact aggregate DAG summaries in `runs.result_summary` plus detailed
+    per-job rows in `job_runs`, with additive summary growth allowed under `result_summary`.
+  - Published docs also include a dedicated structured-events guide and an explicit event-to-history
+    mapping for `etlplus run`.
 
 ## Archived `v1.0.0` Readiness Closeout
 
@@ -333,8 +331,8 @@ stable package metadata contract.
   - Assert the documented CLI commands, supported import surfaces, and key stable entrypoints remain
     available across releases.
 - [x] Tighten release workflow and release-doc wording drift.
-  - Keep release automation comments, README release steps, and docs pages consistent with the actual
-    `pr.yml` / `ci.yml` / `cd.yml` workflow split.
+  - Keep release automation comments, README release steps, and docs pages consistent with the
+    actual `pr.yml` / `ci.yml` / `cd.yml` workflow split.
 - [x] Clarify the `v1.x` maintenance promise beyond the initial support baseline.
   - Define the expected role of patch releases versus minor releases.
   - Clarify what kinds of fixes are expected to be backported, if any.
@@ -353,7 +351,7 @@ stable package metadata contract.
 
 - Keep release docs, release automation, and the published version snippets aligned.
 - Preserve the current supported CLI/runtime contract while tightening quality incrementally. This
-  now includes the documented run-history surface at both run and job levels: local `job_runs`
+  includes the documented run-history surface at both run and job levels: local `job_runs`
   persistence plus the additive `history/status/report --level`, `--pipeline`, and raw `log --level`
   query affordances.
 - Use `RUNTIME-COMMAND-CONTRACTS.md` when adding or changing execution-oriented commands so stdout,
@@ -368,13 +366,13 @@ finish command as the final source of truth:
 
 1. Stabilize the `release/*` branch locally.
 2. Open and merge a pull request from `release/*` into `main`.
-3. Create or move the release tag so it points at the merged `main` commit that GitHub now treats
-   as authoritative.
+3. Create or move the release tag so it points at the merged `main` commit that GitHub treats as
+   authoritative.
 4. Push the annotated tag so `.github/workflows/cd.yml` runs from the released `main` commit.
 5. Sync the resulting `main` state back into `develop` explicitly.
 
-That sequence keeps branch protection, PR checks, release tagging, and the tag-triggered CD
-workflow aligned.
+That sequence keeps branch protection, PR checks, release tagging, and the tag-triggered CD workflow
+aligned.
 
 See also `.github/MAINTAINER-RUNBOOKS.md` for the maintainer playbook covering feature, release,
 hotfix, and post-release sync flows.
