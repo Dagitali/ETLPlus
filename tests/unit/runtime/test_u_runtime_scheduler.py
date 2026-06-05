@@ -820,6 +820,79 @@ class TestRunPending:
             },
         ]
 
+    def test_run_pending_reports_overlap_as_replayable_pending_trigger(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        """Overlap-skipped triggers should remain visible as pending work."""
+        cfg = _scheduler_config(
+            jobs=[{'name': 'seed'}],
+            schedules=[
+                {
+                    'name': 'locked-seed',
+                    'interval': {'minutes': 15},
+                    'target': {'job': 'seed'},
+                    'backfill': {
+                        'enabled': True,
+                        'max_catchup_runs': 1,
+                        'start_at': '2026-05-12T00:00:00+00:00',
+                    },
+                },
+            ],
+        )
+        lock_dir = tmp_path / 'scheduler-locks'
+        lock_dir.mkdir(parents=True)
+        (lock_dir / 'locked-seed.lock').write_text(
+            json.dumps(
+                {
+                    'created_at': '2026-05-12T00:00:00+00:00',
+                    'pid': os.getpid(),
+                },
+            ),
+            encoding='utf-8',
+        )
+
+        monkeypatch.setattr(
+            scheduler_mod.LocalScheduler,
+            'utc_now',
+            staticmethod(_interval_due_now),
+        )
+
+        payload = scheduler_mod.LocalScheduler.run_pending(
+            cfg=cfg,
+            config_path='pipeline.yml',
+            event_format=None,
+            pretty=False,
+            run_callback=_fail_if_dispatched,
+            state_dir=tmp_path,
+        )
+
+        assert payload['completed_count'] == 0
+        assert payload['pending_count'] == 1
+        assert payload['runs'] == [
+            {
+                'catchup': True,
+                'job': 'seed',
+                'reason': 'overlap',
+                'schedule': 'locked-seed',
+                'status': 'skipped',
+                'trigger': 'interval',
+                'triggered_at': '2026-05-12T00:00:00+00:00',
+            },
+        ]
+        assert payload['pending_runs'] == [
+            {
+                'catchup': True,
+                'job': 'seed',
+                'reason': 'overlap',
+                'schedule': 'locked-seed',
+                'status': 'pending',
+                'trigger': 'interval',
+                'triggered_at': '2026-05-12T00:00:00+00:00',
+            },
+        ]
+
     def test_run_pending_success_clears_exception_metadata_after_recovery(
         self,
         monkeypatch: pytest.MonkeyPatch,
