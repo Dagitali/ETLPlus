@@ -234,6 +234,8 @@ stable package metadata contract.
   - Move more dependencies into extras only if that does not break the documented stable surface.
   - Keep a smaller default install deferred to a future major release unless real stable-line usage
     shows the broad base install is causing more support load than it prevents.
+  - Use `DEPENDENCY-AND-PLUGIN-DESIGN-NOTES.md` to collect evidence before proposing any packaging
+    split or plugin-driven dependency model.
 - [ ] Expand performance-smoke and cross-platform confidence based on real `v1.x` usage.
   - Add coverage where support load or issue history shows weak spots.
   - Keep the release path proportionate rather than turning CI into a bottleneck.
