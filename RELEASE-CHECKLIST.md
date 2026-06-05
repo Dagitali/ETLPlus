@@ -254,7 +254,7 @@ stable package metadata contract.
   - Move more dependencies into extras only if that does not break the documented stable surface.
   - Keep a smaller default install deferred to a future major release unless real stable-line usage
     shows the broad base install is causing more support load than it prevents.
-  - Use `DEPENDENCY-AND-PLUGIN-DESIGN-NOTES.md` to collect dependency-footprint evidence before
+  - Use `DEPENDENCY-AND-EXTENSION-POLICY-NOTES.md` to collect dependency-footprint evidence before
     proposing any packaging or extension split.
 - [ ] Expand performance-smoke and cross-platform confidence based on real `v1.x` usage.
   - Add coverage where support load or issue history shows weak spots.
