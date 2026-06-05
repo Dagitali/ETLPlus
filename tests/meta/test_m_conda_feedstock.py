@@ -29,6 +29,7 @@ PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
 CONDA_RECIPE_PATH = REPO_ROOT / 'packaging/conda/meta.yaml.j2'
 CONDA_README_PATH = REPO_ROOT / 'packaging/conda/README.md'
 CONDA_PREP_PATH = REPO_ROOT / 'packaging/conda/FEEDSTOCK-PREP.md'
+CONDA_PUBLICATION_PATH = REPO_ROOT / 'packaging/conda/PUBLICATION-HANDOFF.md'
 CONDA_SUBMISSION_PATH = REPO_ROOT / 'packaging/conda/STAGED-RECIPES-SUBMISSION.md'
 CONDA_WORKFLOW_PATH = REPO_ROOT / '.github/workflows/conda-recipe.yml'
 
@@ -56,8 +57,10 @@ CONDA_TEXT_SNIPPET_CASES = tuple(
         (CONDA_PREP_PATH, '`platform_scope: windows`'),
         (CONDA_PREP_PATH, '`platform_scope: all`'),
         (CONDA_README_PATH, 'STAGED-RECIPES-SUBMISSION.md'),
+        (CONDA_README_PATH, 'PUBLICATION-HANDOFF.md'),
         (CONDA_PREP_PATH, 'STAGED-RECIPES-SUBMISSION.md'),
         (CONDA_SUBMISSION_PATH, '`conda-forge/staged-recipes`'),
+        (CONDA_SUBMISSION_PATH, 'PUBLICATION-HANDOFF.md'),
         (CONDA_SUBMISSION_PATH, 'recipes/etlplus/meta.yaml'),
         (CONDA_SUBMISSION_PATH, 'released-version-without-leading-v'),
         (CONDA_README_PATH, 'meta.yaml.j2'),
@@ -111,6 +114,15 @@ CONDA_TEXT_SNIPPET_CASES = tuple(
             CONDA_SUBMISSION_PATH,
             'Preserve the dependency mappings documented in `FEEDSTOCK-PREP.md`',
         ),
+        (
+            CONDA_PUBLICATION_PATH,
+            'conda install --channel conda-forge etlplus',
+        ),
+        (CONDA_PUBLICATION_PATH, 'etlplus --version'),
+        (CONDA_PUBLICATION_PATH, 'etlplus --help'),
+        (CONDA_PUBLICATION_PATH, 'etlplus check --help'),
+        (CONDA_PUBLICATION_PATH, 'etlplus ui --help'),
+        (CONDA_PUBLICATION_PATH, 'support-gate validated but not yet installable'),
     )
 )
 CONDA_VALIDATED_STATUS_PATHS = tuple(
