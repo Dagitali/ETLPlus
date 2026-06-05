@@ -17,7 +17,7 @@ email, or any other method with the owners of this repository before making a ch
   - [Type Checking](#type-checking)
   - [Typing Philosophy](#typing-philosophy)
   - [Documentation Style](#documentation-style)
-  - [Linting And Formatting](#linting-and-formatting)
+  - [Local Quality Gates](#local-quality-gates)
   - [Testing](#testing)
     - [Scope and Intent](#scope-and-intent)
     - [Test Configuration](#test-configuration)
