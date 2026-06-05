@@ -142,5 +142,8 @@ After the staged-recipes pull request is accepted, conda-forge automation create
 feedstock repository. Future recipe updates should happen in the generated feedstock repository, not
 in `staged-recipes`.
 
+Use `PUBLICATION-HANDOFF.md` to verify package availability, run clean-environment conda smoke
+checks, and update ETLPlus repository docs after publication.
+
 Only after the feedstock publishes an installable package should ETLPlus user-facing installation
 docs claim conda-forge support.
