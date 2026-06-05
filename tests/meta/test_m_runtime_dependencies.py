@@ -21,6 +21,7 @@ CLI_PACKAGE_PATH = REPO_ROOT / 'etlplus' / 'cli'
 PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
 BRANCH_PROTECTION_PATH = REPO_ROOT / '.github' / 'BRANCH-PROTECTION.md'
 CI_CD_WORKFLOWS_PATH = REPO_ROOT / 'CI-CD-WORKFLOWS.md'
+DEPENDENCY_POLICY_NOTES_PATH = REPO_ROOT / 'DEPENDENCY-AND-EXTENSION-POLICY-NOTES.md'
 PR_WORKFLOW_PATH = REPO_ROOT / '.github' / 'workflows' / 'pr.yml'
 RELEASE_NOTES_TEMPLATE_PATH = REPO_ROOT / '.github' / 'RELEASE-NOTES-TEMPLATE.md'
 SBOM_WORKFLOW_PATH = REPO_ROOT / '.github' / 'workflows' / 'sbom.yml'
@@ -62,11 +63,24 @@ def _pyproject_dependency_names() -> set[str]:
     }
 
 
+def _snapshot_dependency_names() -> set[str]:
+    """Return base dependency names from the design-note snapshot block."""
+    text = DEPENDENCY_POLICY_NOTES_PATH.read_text(encoding='utf-8')
+    marker = '## Base Dependency Snapshot'
+    section = text.split(marker, maxsplit=1)[1].split('## ', maxsplit=1)[0]
+    block = section.split('```text', maxsplit=1)[1].split('```', maxsplit=1)[0]
+    return {line.strip() for line in block.splitlines() if line.strip()}
+
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestRuntimeDependencyDeclarations:
     """Meta tests for supported runtime import dependency declarations."""
+
+    def test_base_dependencies_match_design_note_snapshot(self) -> None:
+        """Test broad base dependency changes require an explicit design-note update."""
+        assert _pyproject_dependency_names() == _snapshot_dependency_names()
 
     def test_cli_direct_runtime_imports_are_declared_base_dependencies(self) -> None:
         """Test direct CLI imports are declared as base runtime dependencies."""
