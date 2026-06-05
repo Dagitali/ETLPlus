@@ -29,6 +29,7 @@ PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
 CONDA_RECIPE_PATH = REPO_ROOT / 'packaging/conda/meta.yaml.j2'
 CONDA_README_PATH = REPO_ROOT / 'packaging/conda/README.md'
 CONDA_PREP_PATH = REPO_ROOT / 'packaging/conda/FEEDSTOCK-PREP.md'
+CONDA_PUBLICATION_PATH = REPO_ROOT / 'packaging/conda/PUBLICATION-HANDOFF.md'
 CONDA_SUBMISSION_PATH = REPO_ROOT / 'packaging/conda/STAGED-RECIPES-SUBMISSION.md'
 CONDA_WORKFLOW_PATH = REPO_ROOT / '.github/workflows/conda-recipe.yml'
 
@@ -55,21 +56,26 @@ CONDA_TEXT_SNIPPET_CASES = tuple(
         (CONDA_PREP_PATH, '`platform_scope: macos`'),
         (CONDA_PREP_PATH, '`platform_scope: windows`'),
         (CONDA_PREP_PATH, '`platform_scope: all`'),
-        (CONDA_README_PATH, 'STAGED-RECIPES-SUBMISSION.md'),
         (CONDA_PREP_PATH, 'STAGED-RECIPES-SUBMISSION.md'),
-        (CONDA_SUBMISSION_PATH, '`conda-forge/staged-recipes`'),
-        (CONDA_SUBMISSION_PATH, 'recipes/etlplus/meta.yaml'),
-        (CONDA_SUBMISSION_PATH, 'released-version-without-leading-v'),
-        (CONDA_README_PATH, 'meta.yaml.j2'),
         (CONDA_PREP_PATH, 'meta.yaml.j2'),
-        (CONDA_SUBMISSION_PATH, 'meta.yaml.j2'),
-        (CONDA_README_PATH, 'tools/render_conda_recipe.py'),
         (CONDA_PREP_PATH, 'tools/render_conda_recipe.py'),
-        (CONDA_SUBMISSION_PATH, 'tools/render_conda_recipe.py'),
-        (CONDA_RECIPE_PATH, 'msgpack-python >=1.1.2'),
         (CONDA_PREP_PATH, '`msgpack>=1.1.2` | `msgpack-python >=1.1.2`'),
         (CONDA_PREP_PATH, '`PyYAML>=6.0.3` | `pyyaml >=6.0.3`'),
         (CONDA_PREP_PATH, '`SQLAlchemy>=2.0.49` | `sqlalchemy >=2.0.49`'),
+        (
+            CONDA_PUBLICATION_PATH,
+            'conda install --channel conda-forge etlplus',
+        ),
+        (CONDA_PUBLICATION_PATH, 'etlplus --version'),
+        (CONDA_PUBLICATION_PATH, 'etlplus --help'),
+        (CONDA_PUBLICATION_PATH, 'etlplus check --help'),
+        (CONDA_PUBLICATION_PATH, 'etlplus ui --help'),
+        (CONDA_PUBLICATION_PATH, 'support-gate validated but not yet installable'),
+        (CONDA_README_PATH, 'STAGED-RECIPES-SUBMISSION.md'),
+        (CONDA_README_PATH, 'PUBLICATION-HANDOFF.md'),
+        (CONDA_README_PATH, 'meta.yaml.j2'),
+        (CONDA_README_PATH, 'tools/render_conda_recipe.py'),
+        (CONDA_RECIPE_PATH, 'msgpack-python >=1.1.2'),
         (CONDA_RECIPE_PATH, '<release-version>'),
         (CONDA_RECIPE_PATH, '<sdist-sha256>'),
         (CONDA_RECIPE_PATH, '<maintainer-github-handle>'),
@@ -78,6 +84,18 @@ CONDA_TEXT_SNIPPET_CASES = tuple(
         (CONDA_RECIPE_PATH, 'etlplus --help'),
         (CONDA_RECIPE_PATH, 'etlplus check --help'),
         (CONDA_RECIPE_PATH, 'etlplus ui --help'),
+        (CONDA_SUBMISSION_PATH, '`conda-forge/staged-recipes`'),
+        (CONDA_SUBMISSION_PATH, 'PUBLICATION-HANDOFF.md'),
+        (CONDA_SUBMISSION_PATH, 'recipes/etlplus/meta.yaml'),
+        (CONDA_SUBMISSION_PATH, 'released-version-without-leading-v'),
+        (CONDA_SUBMISSION_PATH, 'meta.yaml.j2'),
+        (CONDA_SUBMISSION_PATH, 'tools/render_conda_recipe.py'),
+        (CONDA_SUBMISSION_PATH, 'broad base PyPI runtime contract'),
+        (CONDA_SUBMISSION_PATH, 'Do not add optional extras to the first recipe'),
+        (
+            CONDA_SUBMISSION_PATH,
+            'Preserve the dependency mappings documented in `FEEDSTOCK-PREP.md`',
+        ),
         (CONDA_WORKFLOW_PATH, 'workflow_dispatch:'),
         (CONDA_WORKFLOW_PATH, 'default: linux'),
         (CONDA_WORKFLOW_PATH, 'source_mode:'),
@@ -105,12 +123,6 @@ CONDA_TEXT_SNIPPET_CASES = tuple(
         (CONDA_WORKFLOW_PATH, 'conda info'),
         (CONDA_WORKFLOW_PATH, 'tools/render_conda_recipe.py'),
         (CONDA_WORKFLOW_PATH, 'conda-build "${RUNNER_TEMP}/etlplus-conda-recipe"'),
-        (CONDA_SUBMISSION_PATH, 'broad base PyPI runtime contract'),
-        (CONDA_SUBMISSION_PATH, 'Do not add optional extras to the first recipe'),
-        (
-            CONDA_SUBMISSION_PATH,
-            'Preserve the dependency mappings documented in `FEEDSTOCK-PREP.md`',
-        ),
     )
 )
 CONDA_VALIDATED_STATUS_PATHS = tuple(
