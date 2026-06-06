@@ -18,22 +18,21 @@ does not create SDK clients, manage credentials, poll messages, or publish messa
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [`etlplus.queue` Subpackage](#etlplusqueue-subpackage)
-  - [Relationship to `etlplus.connector`](#relationship-to-etlplusconnector)
-  - [Public API](#public-api)
-  - [Supported Queue Services](#supported-queue-services)
-  - [Provider Validation](#provider-validation)
-  - [AWS SQS Metadata](#aws-sqs-metadata)
-  - [Queue Locations](#queue-locations)
-  - [Dependency Extras](#dependency-extras)
-  - [Module Layout](#module-layout)
-  - [Examples](#examples)
-    - [AMQP/RabbitMQ](#amqprabbitmq)
-    - [AWS SQS](#aws-sqs)
-    - [Azure Service Bus](#azure-service-bus)
-    - [Google Cloud Pub/Sub](#google-cloud-pubsub)
-    - [Redis](#redis)
-  - [See Also](#see-also)
+- [Relationship to `etlplus.connector`](#relationship-to-etlplusconnector)
+- [Public API](#public-api)
+- [Supported Queue Services](#supported-queue-services)
+- [Provider Validation](#provider-validation)
+- [AWS SQS Metadata](#aws-sqs-metadata)
+- [Queue Locations](#queue-locations)
+- [Dependency Extras](#dependency-extras)
+- [Module Layout](#module-layout)
+- [Examples](#examples)
+  - [AMQP/RabbitMQ](#amqprabbitmq)
+  - [AWS SQS](#aws-sqs)
+  - [Azure Service Bus](#azure-service-bus)
+  - [Google Cloud Pub/Sub](#google-cloud-pubsub)
+  - [Redis](#redis)
+- [See Also](#see-also)
 
 ## Relationship to `etlplus.connector`
 
@@ -230,11 +229,7 @@ assert queue.to_connector_options()['service'] == 'redis'
 ## See Also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
-- Queue connector metadata in [`etlplus.connector._queue`](../connector/_queue.py)
-- AMQP/RabbitMQ metadata in [`_amqp.py`](_amqp.py)
-- Shared queue contracts in [`_base.py`](_base.py)
-- Queue enums in [`_enums.py`](_enums.py)
-- AWS SQS metadata in [`_aws.py`](_aws.py)
-- Azure Service Bus metadata in [`_azure.py`](_azure.py)
-- Google Cloud Pub/Sub metadata in [`_gcp.py`](_gcp.py)
-- Redis metadata in [`_redis.py`](_redis.py)
+- Queue metadata helpers exported from [`etlplus.queue`](__init__.py)
+- Connector-level queue metadata exported from [`etlplus.connector`](../connector/__init__.py)
+- Provider-specific examples in this README for AMQP/RabbitMQ, AWS SQS, Azure Service Bus, Google
+  Cloud Pub/Sub, and Redis

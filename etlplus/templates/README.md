@@ -9,11 +9,10 @@ helpers.
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [`etlplus.templates` Subpackage](#etlplus-templates-subpackage)
-    - [Available Templates](#available-templates)
-    - [Rendering Templates](#rendering-templates)
-    - [Example: Rendering a DDL Template](#example-rendering-a-ddl-template)
-    - [See Also](#see-also)
+- [Available Templates](#available-templates)
+- [Rendering Templates](#rendering-templates)
+- [Example: Rendering a DDL Template](#example-rendering-a-ddl-template)
+- [See Also](#see-also)
 
 ## Available Templates
 

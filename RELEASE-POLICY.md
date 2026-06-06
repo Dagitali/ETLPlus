@@ -3,16 +3,15 @@
 This document describes the public release policy for ETLPlus, including versioning expectations,
 release channels, deprecation posture, and release-note handling.
 
-- [Release Policy And Versioning](#release-policy-and-versioning)
-  - [Scope](#scope)
-  - [Supported Release Line](#supported-release-line)
-  - [Versioning Model](#versioning-model)
-  - [Patch Releases](#patch-releases)
-  - [Minor Releases](#minor-releases)
-  - [Major Releases](#major-releases)
-  - [Deprecation Policy](#deprecation-policy)
-  - [Release Artifacts](#release-artifacts)
-  - [Release Notes](#release-notes)
+- [Scope](#scope)
+- [Supported Release Line](#supported-release-line)
+- [Versioning Model](#versioning-model)
+- [Patch Releases](#patch-releases)
+- [Minor Releases](#minor-releases)
+- [Major Releases](#major-releases)
+- [Deprecation Policy](#deprecation-policy)
+- [Release Artifacts](#release-artifacts)
+- [Release Notes](#release-notes)
 
 ## Scope
 

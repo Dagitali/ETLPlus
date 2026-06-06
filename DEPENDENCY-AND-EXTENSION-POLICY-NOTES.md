@@ -7,10 +7,9 @@ This note records maintenance guidance for dependency and extension-related chan
 
 Neither item should narrow or expand the stable public surface accidentally.
 
-- [Dependency And Extension Policy Notes](#dependency-and-extension-policy-notes)
-  - [Dependency-Footprint Evidence](#dependency-footprint-evidence)
-  - [Base Dependency Snapshot](#base-dependency-snapshot)
-  - [Extension Compatibility Principles](#extension-compatibility-principles)
+- [Dependency-Footprint Evidence](#dependency-footprint-evidence)
+- [Base Dependency Snapshot](#base-dependency-snapshot)
+- [Extension Compatibility Principles](#extension-compatibility-principles)
 
 ## Dependency-Footprint Evidence
 

@@ -1,13 +1,30 @@
-**Run History Design and CLI Surface**
-- Status: the stable `v1.x` codebase persists local `etlplus run` metadata keyed by `run_id`, and
-  `etlplus history`, `etlplus log`, `etlplus status`, and `etlplus report` are now part of the
-  documented stable CLI surface.
-- Scope: local-first run history for the CLI with no external services; minimal
-  dependencies; safe to disable.
-- Goals: record start/end, status, and summary for each run; query via CLI; keep
-  storage portable.
+# Run History Design And CLI Surface
 
-**Storage Backend**
+This maintainer note records the stable local run-history design used by the `v1.x` CLI surface.
+ETLPlus persists `etlplus run` metadata keyed by `run_id`, and `etlplus history`, `etlplus log`,
+`etlplus status`, and `etlplus report` are part of the documented stable CLI surface.
+
+The scope is local-first run history for the CLI with no external services, minimal dependencies,
+and a safe disable path. The goals are to record start/end, status, and summary for each run; query
+that data through CLI commands; and keep storage portable.
+
+For user-facing guidance, see `docs/source/guides/run-history.md`.
+
+- [Storage Backend](#storage-backend)
+- [Data Model (SQLite)](#data-model-sqlite)
+- [JSONL Backend](#jsonl-backend)
+- [Write Flow (CLI)](#write-flow-cli)
+- [CLI Commands](#cli-commands)
+- [CLI Output Conventions](#cli-output-conventions)
+- [Stable Normalized History Fields](#stable-normalized-history-fields)
+- [Event-To-History Mapping For `etlplus run`](#event-to-history-mapping-for-etlplus-run)
+- [Compatibility Guidance](#compatibility-guidance)
+- [Config Integration](#config-integration)
+- [Implementation Touchpoints](#implementation-touchpoints)
+- [Non-Goals](#non-goals)
+
+## Storage Backend
+
 - Default: SQLite at `${ETLPLUS_STATE_DIR:-~/.etlplus}/history.sqlite`
 - Alternative: JSONL backend for ultra-lightweight setups
 - Pipeline config: optional top-level `history` block with `enabled`, `backend`, `state_dir`, and
@@ -18,7 +35,8 @@
   `ETLPLUS_STATE_DIR`), then pipeline config, then package defaults
 - Migrations: schema version stored in `meta` table; upgrades happen on open
 
-**Data Model (SQLite)**
+## Data Model (SQLite)
+
 - `runs` table (one row per CLI invocation)
   - `run_id` TEXT PRIMARY KEY (uuid4)
   - `pipeline_name` TEXT NULL
@@ -60,7 +78,8 @@
 - `meta` table
   - `schema_version` INTEGER NOT NULL
 
-**JSONL Backend**
+## JSONL Backend
+
 - Location: `${ETLPLUS_STATE_DIR}/history.jsonl`
 - Each line: one raw append event or partial update keyed by `run_id`
 - Raw records carry `record_level=run|job` so the same append-only stream can represent both
@@ -68,7 +87,8 @@
 - Normalized one-record-per-run and one-record-per-job views are rebuilt on read by merging records
   in order
 
-**Write Flow (CLI)**
+## Write Flow (CLI)
+
 - Current stable-line implementation:
   - On `etlplus run` start: write `runs` row with `status=running`.
   - On success: update `status=succeeded`, `finished_at`, `duration_ms`,
@@ -83,7 +103,8 @@
       each executed/succeeded/failed/skipped job, including plan order, timing, terminal status,
       and per-job `result_summary`
 
-**CLI Commands**
+## CLI Commands
+
 - `etlplus history`
   - Filters: `--level run|job`, `--job`, `--pipeline`, `--run-id`, `--status`, `--since`,
     `--until`, `--limit`
@@ -114,7 +135,8 @@
   - Metrics: grouped rows and the top-level summary include average, minimum,
     and maximum duration plus success-rate percentage
 
-**CLI Output Conventions**
+## CLI Output Conventions
+
 - `etlplus run` emits a `run_id` in the output envelope:
   - `{ "status": "ok", "run_id": "...", "result": {...} }`
 - DAG-style runs return a stable summary object in `result`, including `mode`, `ordered_jobs`,
@@ -134,7 +156,7 @@
   when you need per-job status, timing, skip reasons, or per-job result summaries.
 - All commands accept `--pretty` and respect `--quiet`.
 
-**Stable Normalized History Fields**
+## Stable Normalized History Fields
 
 - Normalized run records are the stable `v1.x` run-history shape and include:
   - `run_id`
@@ -178,7 +200,7 @@
     and `schema_version`
   - SQLite storage layout is an implementation detail behind the normalized read shape
 
-**Event-To-History Mapping For `etlplus run`**
+## Event-To-History Mapping For `etlplus run`
 
 | Event stream field | Persisted history field(s) | Notes |
 | --- | --- | --- |
@@ -213,7 +235,8 @@ Stable persisted fields with no direct event-stream counterpart today:
 DAG job detail is intentionally persisted in `job_runs`; ETLPlus does not currently promise a
 one-event-per-job stream contract.
 
-**Compatibility Guidance**
+## Compatibility Guidance
+
 - The normalized persisted fields in `runs` and `job_runs` are the stable local-history contract for
   `v1.x`.
 - `result_summary` is extensible at both run and job levels: DAG-aware run-level summaries stay
@@ -225,7 +248,8 @@ one-event-per-job stream contract.
 - Any breaking change to the top-level persisted run/job shapes or the meaning/type of existing
   stable fields should increment `HISTORY_SCHEMA_VERSION`.
 
-**Config Integration**
+## Config Integration
+
 - Implemented optional `history` block at the pipeline root:
   - `enabled` (default true)
   - `backend` (sqlite/jsonl)
@@ -239,7 +263,8 @@ one-event-per-job stream contract.
 - CLI flags override config defaults. Environment variables still override backend and state
   directory when CLI flags are not provided.
 
-**Implementation Touchpoints**
+## Implementation Touchpoints
+
 - New module: `etlplus/history` with `HistoryStore` interface and two backends.
 - `etlplus/cli/_handlers/run.py` and `etlplus/cli/_handlers/_lifecycle.py`: wrap `run()` execution
   to record history on start/end and emit lifecycle events.
@@ -247,6 +272,7 @@ one-event-per-job stream contract.
 - `etlplus/ops/run.py`: produce ordered per-job execution metadata that can be persisted directly
   into `job_runs`.
 
-**Non-Goals**
+## Non-Goals
+
 - No external services or cloud dependencies.
 - No daemon or scheduler integration in this phase.

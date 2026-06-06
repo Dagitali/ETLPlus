@@ -2,6 +2,11 @@
 
 Describe the user-visible change and the reason for it.
 
+- [Summary](#summary)
+- [Checklist](#checklist)
+- [Validation](#validation)
+- [Risks](#risks)
+
 ## Checklist
 
 - [ ] I updated user-facing docs when behavior, flags, config, or examples changed.

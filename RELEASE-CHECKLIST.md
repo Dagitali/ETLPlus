@@ -8,22 +8,21 @@ This file serves two purposes:
 The pre-1.0 sections below are retained as release-history context. They are no longer the active
 checklist for ETLPlus now that the project is on the stable line.
 
-- [Release Checklist And Stable-Line Maintenance](#release-checklist-and-stable-line-maintenance)
-  - [Archived Pre-`v1.0.0` Readiness Record](#archived-pre-v100-readiness-record)
-  - [Must](#must)
-  - [Should](#should)
-  - [Nice-to-have](#nice-to-have)
-  - [Status Notes](#status-notes)
-  - [Current Stable-Line Maintenance Checklist](#current-stable-line-maintenance-checklist)
-  - [Next Minor Installer Expansion Checklist](#next-minor-installer-expansion-checklist)
-  - [Maintain In `v1.x`](#maintain-in-v1x)
-  - [Archived `v1.0.0` Readiness Closeout](#archived-v100-readiness-closeout)
-  - [Archived Post-`v1.0.0` Follow-Up Items](#archived-post-v100-follow-up-items)
-  - [Stable-Line Priorities](#stable-line-priorities)
-    - [Next Patch Releases](#next-patch-releases)
-    - [Protected-Branch Release Sequence](#protected-branch-release-sequence)
-    - [Next Minor Release](#next-minor-release)
-  - [Current Focus](#current-focus)
+- [Archived Pre-`v1.0.0` Readiness Record](#archived-pre-v100-readiness-record)
+- [Must](#must)
+- [Should](#should)
+- [Nice-to-have](#nice-to-have)
+- [Status Notes](#status-notes)
+- [Current Stable-Line Maintenance Checklist](#current-stable-line-maintenance-checklist)
+- [Next Minor Installer Expansion Checklist](#next-minor-installer-expansion-checklist)
+- [Maintain In `v1.x`](#maintain-in-v1x)
+- [Archived `v1.0.0` Readiness Closeout](#archived-v100-readiness-closeout)
+- [Archived Post-`v1.0.0` Follow-Up Items](#archived-post-v100-follow-up-items)
+- [Stable-Line Priorities](#stable-line-priorities)
+  - [Next Patch Releases](#next-patch-releases)
+  - [Protected-Branch Release Sequence](#protected-branch-release-sequence)
+  - [Next Minor Release](#next-minor-release)
+- [Current Focus](#current-focus)
 
 ## Archived Pre-`v1.0.0` Readiness Record
 

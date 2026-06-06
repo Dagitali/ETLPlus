@@ -6,17 +6,16 @@ files.
 Use `profile.env` for documented defaults and placeholders, then override those values from the
 invoking shell, CI job, container runtime, or scheduler.
 
-- [Environment Reference](#environment-reference)
-  - [Precedence](#precedence)
-  - [Runtime Knobs](#runtime-knobs)
-  - [Secret References](#secret-references)
-  - [Storage and Provider Credentials](#storage-and-provider-credentials)
-    - [AWS S3](#aws-s3)
-    - [Azure Blob Storage and ADLS Gen2](#azure-blob-storage-and-adls-gen2)
-    - [BigQuery](#bigquery)
-    - [Snowflake](#snowflake)
-  - [Example Shell Setup](#example-shell-setup)
-  - [Related Docs](#related-docs)
+- [Precedence](#precedence)
+- [Runtime Knobs](#runtime-knobs)
+- [Secret References](#secret-references)
+- [Storage and Provider Credentials](#storage-and-provider-credentials)
+  - [AWS S3](#aws-s3)
+  - [Azure Blob Storage and ADLS Gen2](#azure-blob-storage-and-adls-gen2)
+  - [BigQuery](#bigquery)
+  - [Snowflake](#snowflake)
+- [Example Shell Setup](#example-shell-setup)
+- [Related Docs](#related-docs)
 
 ## Precedence
 
@@ -111,7 +110,7 @@ explicit credentials for non-public targets.
 Install support first:
 
 ```bash
-pip install -e ".[database-bigquery]"
+pip install "etlplus[database-bigquery]"
 ```
 
 Common Google Cloud credential hints checked by readiness:
@@ -131,7 +130,7 @@ Recommended posture:
 Install support first:
 
 ```bash
-pip install -e ".[database-snowflake]"
+pip install "etlplus[database-snowflake]"
 ```
 
 Common Snowflake credential hints checked by readiness:

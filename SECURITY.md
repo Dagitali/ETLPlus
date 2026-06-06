@@ -1,5 +1,7 @@
 # Security Policy
 
+- [Reporting a Vulnerability](#reporting-a-vulnerability)
+
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability in ETLPlus, please report it responsibly:

@@ -3,22 +3,21 @@
 This document defines the recommended GitHub branch protection configuration for the protected
 `main` and `develop` branches when ETLPlus is operated with GitFlow.
 
-- [Branch Protection](#branch-protection)
-  - [Purpose](#purpose)
-  - [Recommended Required Checks](#recommended-required-checks)
-    - [Pull Request Baseline](#pull-request-baseline)
-      - [Policy Categories](#policy-categories)
-      - [Current Resolved Check Names](#current-resolved-check-names)
-      - [Current Required Check Names To Select In GitHub](#current-required-check-names-to-select-in-github)
-    - [Advisory Categories](#advisory-categories)
-    - [Current Advisory Examples](#current-advisory-examples)
-  - [Shared Protection Baseline](#shared-protection-baseline)
-    - [Branch Protections](#branch-protections)
-  - [Branch Protection Checklist For `main`](#branch-protection-checklist-for-main)
-  - [Branch Protection Checklist For `develop`](#branch-protection-checklist-for-develop)
-  - [How To Disallow Direct Pushes](#how-to-disallow-direct-pushes)
-  - [How To Update Required Checks In GitHub](#how-to-update-required-checks-in-github)
-  - [Maintenance Notes](#maintenance-notes)
+- [Purpose](#purpose)
+- [Recommended Required Checks](#recommended-required-checks)
+  - [Pull Request Baseline](#pull-request-baseline)
+    - [Policy Categories](#policy-categories)
+    - [Current Resolved Check Names](#current-resolved-check-names)
+    - [Current Required Check Names To Select In GitHub](#current-required-check-names-to-select-in-github)
+  - [Advisory Categories](#advisory-categories)
+  - [Current Advisory Examples](#current-advisory-examples)
+- [Shared Protection Baseline](#shared-protection-baseline)
+  - [Branch Protections](#branch-protections)
+- [Branch Protection Checklist For `main`](#branch-protection-checklist-for-main)
+- [Branch Protection Checklist For `develop`](#branch-protection-checklist-for-develop)
+- [How To Disallow Direct Pushes](#how-to-disallow-direct-pushes)
+- [How To Update Required Checks In GitHub](#how-to-update-required-checks-in-github)
+- [Maintenance Notes](#maintenance-notes)
 
 ## Purpose
 

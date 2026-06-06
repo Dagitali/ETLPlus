@@ -10,9 +10,8 @@ pipelines, jobs, and profiles.
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [`etlplus.workflow` Subpackage](#etlplusworkflow-subpackage)
-  - [Supported Configuration Types](#supported-configuration-types)
-  - [See Also](#see-also)
+- [Supported Configuration Types](#supported-configuration-types)
+- [See Also](#see-also)
 
 ## Supported Configuration Types
 
@@ -24,5 +23,5 @@ Back to project overview: see the top-level [README](../../README.md).
 ## See Also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
-- Config type definitions in [types.py](types.py)
-- Config utilities in [utils.py](utils.py)
+- Public workflow configuration classes exported from the package facade in
+  [`__init__.py`](__init__.py)

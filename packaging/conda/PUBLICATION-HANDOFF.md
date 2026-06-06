@@ -4,11 +4,10 @@ Use this checklist after the `conda-forge/staged-recipes` pull request is accept
 feedstock exists. Until every publication check below passes, keep user-facing docs phrased as
 support-gate validated but not yet installable from conda-forge.
 
-- [Conda-Forge Publication Handoff](#conda-forge-publication-handoff)
-  - [Preconditions](#preconditions)
-  - [Publication Checks](#publication-checks)
-  - [Repository Updates After Publication](#repository-updates-after-publication)
-  - [Ongoing Feedstock Ownership](#ongoing-feedstock-ownership)
+- [Preconditions](#preconditions)
+- [Publication Checks](#publication-checks)
+- [Repository Updates After Publication](#repository-updates-after-publication)
+- [Ongoing Feedstock Ownership](#ongoing-feedstock-ownership)
 
 ## Preconditions
 

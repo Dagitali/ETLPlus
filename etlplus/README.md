@@ -9,6 +9,12 @@ validation, transformation, and loading of data from files, APIs, and databases.
 
 Back to project overview: see the top-level [README](../README.md).
 
+- [Subpackages](#subpackages)
+- [Quickstart](#quickstart)
+- [Loading and Validating Configs](#loading-and-validating-configs)
+- [Example: Loading a Pipeline Config](#example-loading-a-pipeline-config)
+- [See Also](#see-also)
+
 ## Subpackages
 
 - [etlplus.api](api/README.md): Lightweight HTTP client and paginated REST helpers

@@ -1,8 +1,7 @@
 # Documentation Notes
 
-- [Documentation Notes](#documentation-notes)
-  - [CLI Parser Status](#cli-parser-status)
-  - [Migration Hints](#migration-hints)
+- [CLI Parser Status](#cli-parser-status)
+- [Migration Hints](#migration-hints)
 
 ## CLI Parser Status
 

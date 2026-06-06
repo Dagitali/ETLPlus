@@ -6,12 +6,11 @@ separate from execution.
 Use `etlplus schedule` to inspect configured schedules, emit `crontab` or `systemd` helper
 snippets, or dispatch currently due schedules once with `--run-pending`.
 
-- [Scheduling](#scheduling)
-  - [Example Configuration](#example-configuration)
-  - [Inspect And Emit Helpers](#inspect-and-emit-helpers)
-  - [Run Due Schedules Once](#run-due-schedules-once)
-  - [Observability And State](#observability-and-state)
-  - [Backing-Service Posture](#backing-service-posture)
+- [Example Configuration](#example-configuration)
+- [Inspect And Emit Helpers](#inspect-and-emit-helpers)
+- [Run Due Schedules Once](#run-due-schedules-once)
+- [Observability And State](#observability-and-state)
+- [Backing-Service Posture](#backing-service-posture)
 
 ## Example Configuration
 

@@ -4,13 +4,12 @@ This directory contains the draft ETLPlus conda-forge recipe and maintainer note
 published on conda-forge yet; use the supported PyPI installation paths until a conda-forge
 feedstock has been accepted and published.
 
-- [Conda Packaging Notes](#conda-packaging-notes)
-  - [Files](#files)
-  - [Current Status](#current-status)
-  - [Beginner Workflow](#beginner-workflow)
-  - [Publication Handoff](#publication-handoff)
-  - [Recipe Scope](#recipe-scope)
-  - [Important Terms](#important-terms)
+- [Files](#files)
+- [Current Status](#current-status)
+- [Beginner Workflow](#beginner-workflow)
+- [Publication Handoff](#publication-handoff)
+- [Recipe Scope](#recipe-scope)
+- [Important Terms](#important-terms)
 
 ## Files
 
