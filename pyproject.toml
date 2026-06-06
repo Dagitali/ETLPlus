@@ -30,7 +30,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "etlplus"
 dynamic = ["version"]
-description = "A Swiss Army knife for simple ETL operations"
+description = "A Python package and CLI for practical data extraction, validation, transformation, and loading workflows"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.13,<3.15"
 license = "MIT"
