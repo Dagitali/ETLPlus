@@ -41,10 +41,10 @@ packaging and entrypoint regressions before release.
 | Isolated CLI with uv | `uv tool install etlplus` | Base ETLPlus CLI installed as an isolated command-line application through uv's tool installer. |
 | Development | `pip install -e ".[dev]"` | Local development, linting, type-checking, tests, and packaging work. |
 | Docs | `pip install -e ".[docs]"` | Sphinx and Read the Docs-compatible documentation builds. |
-| File extras | `pip install -e ".[file]"` | Remaining scientific and specialty format dependencies such as `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`. |
-| BigQuery connector extra | `pip install -e ".[database-bigquery]"` | Optional BigQuery connector metadata/readiness support via `provider: bigquery` plus `project` and `dataset` fields when no connection string is supplied. |
-| Snowflake connector extra | `pip install -e ".[database-snowflake]"` | Optional Snowflake connector metadata/readiness support via `provider: snowflake` plus `account`, `database`, and `schema` fields when no connection string is supplied. |
-| Storage extras | `pip install -e ".[storage]"` | Remote storage backends for `s3://`, `azure-blob://`, `abfs://`, and `hdfs://` locations through `etlplus.storage` and `etlplus.file.File`. |
+| File extras | `pip install "etlplus[file]"` | Remaining scientific and specialty format dependencies such as `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`. |
+| BigQuery connector extra | `pip install "etlplus[database-bigquery]"` | Optional BigQuery connector metadata/readiness support via `provider: bigquery` plus `project` and `dataset` fields when no connection string is supplied. |
+| Snowflake connector extra | `pip install "etlplus[database-snowflake]"` | Optional Snowflake connector metadata/readiness support via `provider: snowflake` plus `account`, `database`, and `schema` fields when no connection string is supplied. |
+| Storage extras | `pip install "etlplus[storage]"` | Remote storage backends for `s3://`, `azure-blob://`, `abfs://`, and `hdfs://` locations through `etlplus.storage` and `etlplus.file.File`. |
 
 Remote object storage and managed database metadata are first-class stable-line configuration paths.
 Local filesystem paths, SQLite files, localhost databases, and Docker Compose services are still

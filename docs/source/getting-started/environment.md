@@ -110,7 +110,7 @@ explicit credentials for non-public targets.
 Install support first:
 
 ```bash
-pip install -e ".[database-bigquery]"
+pip install "etlplus[database-bigquery]"
 ```
 
 Common Google Cloud credential hints checked by readiness:
@@ -130,7 +130,7 @@ Recommended posture:
 Install support first:
 
 ```bash
-pip install -e ".[database-snowflake]"
+pip install "etlplus[database-snowflake]"
 ```
 
 Common Snowflake credential hints checked by readiness:

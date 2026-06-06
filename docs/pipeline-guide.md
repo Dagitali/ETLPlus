@@ -254,7 +254,7 @@ orchestration that calls into DB clients.
 For BigQuery-oriented configs, install the optional extra first:
 
 ```bash
-pip install -e ".[database-bigquery]"
+pip install "etlplus[database-bigquery]"
 ```
 
 Then you can keep the normal `type: database` connector shape and add the provider-specific fields:
@@ -275,7 +275,7 @@ If you already have a SQLAlchemy-style BigQuery connection string, you can still
 For Snowflake-oriented configs, install the matching optional extra:
 
 ```bash
-pip install -e ".[database-snowflake]"
+pip install "etlplus[database-snowflake]"
 ```
 
 Then keep the same `type: database` connector shape and add the Snowflake-specific fields:

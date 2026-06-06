@@ -12,7 +12,7 @@ under the file-format layer.
 Install the cloud storage dependencies with:
 
 ```bash
-pip install -e ".[storage]"
+pip install "etlplus[storage]"
 ```
 
 Back to project overview: see the top-level [README](../../README.md).

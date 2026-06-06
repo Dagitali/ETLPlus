@@ -99,11 +99,11 @@ ETLPlus currently supports Python 3.13 and 3.14.
   built-in implemented file handlers.
 - Use `pipx install etlplus` or `uv tool install etlplus` when you want ETLPlus as an isolated CLI
   tool instead of a package installed into the current environment.
-- Use `pip install -e ".[dev]"` for contributor tooling and `pip install -e ".[file]"` when you need
-  the remaining scientific and specialty format dependencies.
+- Use `pip install -e ".[dev]"` for contributor tooling and `pip install "etlplus[file]"` when you
+  need the remaining scientific and specialty format dependencies.
 - Use `uv sync --locked --extra dev` when you want the committed `uv.lock` development snapshot
   instead of an unconstrained local resolver run.
-- Use `pip install -e ".[storage]"` when you want remote storage backends for `s3://`,
+- Use `pip install "etlplus[storage]"` when you want remote storage backends for `s3://`,
   `azure-blob://`, `abfs://`, or `hdfs://` URIs through `etlplus.storage` and `etlplus.file.File`.
 - Treat local paths, localhost databases, and Docker Compose helpers as development conveniences;
   the same config surface is designed to work with interchangeable remote backing services.
@@ -264,25 +264,25 @@ pip install -e ".[dev,file]"
 For runtime-only optional file-format support:
 
 ```bash
-pip install -e ".[file]"
+pip install "etlplus[file]"
 ```
 
 For runtime cloud-storage support:
 
 ```bash
-pip install -e ".[storage]"
+pip install "etlplus[storage]"
 ```
 
 For optional BigQuery connector metadata and readiness support:
 
 ```bash
-pip install -e ".[database-bigquery]"
+pip install "etlplus[database-bigquery]"
 ```
 
 For optional Snowflake connector metadata and readiness support:
 
 ```bash
-pip install -e ".[database-snowflake]"
+pip install "etlplus[database-snowflake]"
 ```
 
 The `file` extra is now reserved for the remaining scientific and specialty format dependencies such

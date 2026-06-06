@@ -14,7 +14,7 @@ spreadsheet, and embedded-database handlers. The `file` extra is reserved for th
 scientific and specialty handlers that still need extra packages. Install those with:
 
 ```bash
-pip install -e ".[file]"
+pip install "etlplus[file]"
 ```
 
 The `file` extra currently pulls in `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`.
