@@ -33,7 +33,7 @@ etlplus 1.28.11.dev3+g5c34bd916
 $ etlplus --help
 Usage: etlplus [OPTIONS] COMMAND [ARGS]...
 
-ETLPlus - A Swiss Army knife for enabling simple ETL operations
+ETLPlus - Practical data extraction, validation, transformation, and loading workflows
 # (Output abbreviated; run `etlplus --help` for the full command list.)
 ```
 

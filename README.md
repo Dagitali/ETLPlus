@@ -11,8 +11,8 @@
 [![PRs](https://img.shields.io/github/issues-pr/Dagitali/ETLPlus)][GitHub PRs]
 [![GitHub contributors](https://img.shields.io/github/contributors/Dagitali/ETLPlus)][GitHub contributors]
 
-ETLPlus is a veritable Swiss Army knife for enabling simple ETL operations, offering both a Python
-package and command-line interface for data extraction, validation, transformation, and loading.
+ETLPlus is a Python package and command-line interface for practical data extraction, validation,
+transformation, and loading workflows.
 
 - [Getting Started](#getting-started)
 - [At a Glance](#at-a-glance)

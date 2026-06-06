@@ -96,7 +96,7 @@ runtime-injected credentials are the expected production path.
 ### BigQuery
 
 ```bash
-pip install -e ".[database-bigquery]"
+pip install "etlplus[database-bigquery]"
 ```
 
 ```yaml
@@ -119,7 +119,7 @@ sources:
 ### Snowflake
 
 ```bash
-pip install -e ".[database-snowflake]"
+pip install "etlplus[database-snowflake]"
 ```
 
 ```yaml
