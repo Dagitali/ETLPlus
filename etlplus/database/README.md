@@ -43,5 +43,7 @@ print(sql)
 ## See Also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
-- Schema helpers in [`_schema.py`](_schema.py)
-- ORM utilities in [`_orm.py`](_orm.py)
+- Public schema helpers exported from [`__init__.py`](__init__.py), including `ColumnSpec`,
+  `TableSpec`, `load_table_spec`, and `load_table_specs`
+- Public ORM helpers exported from [`__init__.py`](__init__.py), including `Base`, `build_models`,
+  `load_and_build_models`, and `resolve_type`
