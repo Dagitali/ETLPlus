@@ -5,13 +5,12 @@ Use this runbook to submit the first ETLPlus recipe to the
 where conda-forge reviews new package recipes. The submitted recipe must stay limited to the broad
 base PyPI runtime contract for the first pass.
 
-- [Conda-Forge Staged-Recipes Submission](#conda-forge-staged-recipes-submission)
-  - [Submission Scope](#submission-scope)
-  - [Prerequisites](#prerequisites)
-  - [Prepare The Recipe](#prepare-the-recipe)
-  - [Validate With The Conda CLI](#validate-with-the-conda-cli)
-  - [Open The Pull Request](#open-the-pull-request)
-  - [After Acceptance](#after-acceptance)
+- [Submission Scope](#submission-scope)
+- [Prerequisites](#prerequisites)
+- [Prepare The Recipe](#prepare-the-recipe)
+- [Validate With The Conda CLI](#validate-with-the-conda-cli)
+- [Open The Pull Request](#open-the-pull-request)
+- [After Acceptance](#after-acceptance)
 
 ## Submission Scope
 

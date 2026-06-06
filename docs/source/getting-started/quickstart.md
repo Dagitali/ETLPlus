@@ -4,6 +4,10 @@ ETLPlus can be used from the command line or imported as a Python package.
 
 Get up and running in under a minute.
 
+- [Command line](#command-line)
+- [Python API](#python-api)
+- [Where to go next](#where-to-go-next)
+
 ## Command line
 
 ```{include} ../../../README.md

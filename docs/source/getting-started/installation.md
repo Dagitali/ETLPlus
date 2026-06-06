@@ -7,6 +7,8 @@ ETLPlus supports Python 3.13 and 3.14.
 :end-before: <!-- docs:getting-started-installation:end -->
 ```
 
+- [Documentation contributors](#documentation-contributors)
+
 ## Documentation contributors
 
 Install the docs toolchain used by local builds, CI, and Read the Docs:

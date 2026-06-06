@@ -14,23 +14,22 @@ spreadsheet, and embedded-database handlers. The `file` extra is reserved for th
 scientific and specialty handlers that still need extra packages. Install those with:
 
 ```bash
-pip install -e ".[file]"
+pip install "etlplus[file]"
 ```
 
 The `file` extra currently pulls in `netCDF4`, `pyreadr`, `pyreadstat`, and `xarray`.
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [`etlplus.file` Subpackage](#etlplusfile-subpackage)
-  - [Supported File Formats](#supported-file-formats)
-  - [Handler Architecture](#handler-architecture)
-  - [Inferring File Format and Compression](#inferring-file-format-and-compression)
-  - [Reading and Writing Files](#reading-and-writing-files)
-    - [Reading with a Handler](#reading-with-a-handler)
-    - [Writing with a Handler](#writing-with-a-handler)
-  - [Handler Instance Methods](#handler-instance-methods)
-  - [Example: Reading and Writing](#example-reading-and-writing)
-  - [See Also](#see-also)
+- [Supported File Formats](#supported-file-formats)
+- [Handler Architecture](#handler-architecture)
+- [Inferring File Format and Compression](#inferring-file-format-and-compression)
+- [Reading and Writing Files](#reading-and-writing-files)
+  - [Reading with a Handler](#reading-with-a-handler)
+  - [Writing with a Handler](#writing-with-a-handler)
+- [Handler Instance Methods](#handler-instance-methods)
+- [Example: Reading and Writing](#example-reading-and-writing)
+- [See Also](#see-also)
 
 ## Supported File Formats
 
@@ -167,5 +166,4 @@ JsonFile().write(Path("output.json"), rows)
 ## See Also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
-- File format enums in [enums.py](enums.py)
-- Compression format enums in [enums.py](enums.py)
+- File and compression format enums exported from the package facade in [`__init__.py`](__init__.py)

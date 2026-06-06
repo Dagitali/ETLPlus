@@ -3,28 +3,27 @@
 This guide explains how to author an ETLPlus pipeline YAML, using `examples/configs/pipeline.yml` as
 a reference.
 
-- [Pipeline Authoring Guide](#pipeline-authoring-guide)
-  - [Overview](#overview)
-  - [Running a Pipeline from YAML (CLI)](#running-a-pipeline-from-yaml-cli)
-  - [Top-Level Structure](#top-level-structure)
-  - [APIs](#apis)
-    - [Profiles, base\_path, and auth](#profiles-base_path-and-auth)
-    - [Runner behavior with `base_path` (sources and targets)](#runner-behavior-with-base_path-sources-and-targets)
-  - [Databases](#databases)
-  - [File Systems](#file-systems)
-  - [Sources](#sources)
-  - [Validations](#validations)
-  - [Transforms](#transforms)
-  - [Targets](#targets)
-  - [Connector Parsing and Extension](#connector-parsing-and-extension)
-  - [Jobs](#jobs)
-  - [Running Pipelines (CLI and Python)](#running-pipelines-cli-and-python)
-    - [CLI: `etlplus check` (Inspect) and `etlplus run` (Execute)](#cli-etlplus-check-inspect-and-etlplus-run-execute)
-    - [Python: `etlplus.ops.run.run`](#python-etlplusopsrunrun)
-  - [Tips](#tips)
-  - [Design notes: Mapping inputs, dict outputs](#design-notes-mapping-inputs-dict-outputs)
-    - [Merge Semantics (Python 3.13)](#merge-semantics-python-313)
-    - [Extending Config Shapes](#extending-config-shapes)
+- [Overview](#overview)
+- [Running a Pipeline from YAML (CLI)](#running-a-pipeline-from-yaml-cli)
+- [Top-Level Structure](#top-level-structure)
+- [APIs](#apis)
+  - [Profiles, base\_path, and auth](#profiles-base_path-and-auth)
+  - [Runner behavior with `base_path` (sources and targets)](#runner-behavior-with-base_path-sources-and-targets)
+- [Databases](#databases)
+- [File Systems](#file-systems)
+- [Sources](#sources)
+- [Validations](#validations)
+- [Transforms](#transforms)
+- [Targets](#targets)
+- [Connector Parsing and Extension](#connector-parsing-and-extension)
+- [Jobs](#jobs)
+- [Running Pipelines (CLI and Python)](#running-pipelines-cli-and-python)
+  - [CLI: `etlplus check` (Inspect) and `etlplus run` (Execute)](#cli-etlplus-check-inspect-and-etlplus-run-execute)
+  - [Python: `etlplus.ops.run.run`](#python-etlplusopsrunrun)
+- [Tips](#tips)
+- [Design notes: Mapping inputs, dict outputs](#design-notes-mapping-inputs-dict-outputs)
+  - [Merge Semantics (Python 3.13)](#merge-semantics-python-313)
+  - [Extending Config Shapes](#extending-config-shapes)
 
 ## Overview
 
@@ -255,7 +254,7 @@ orchestration that calls into DB clients.
 For BigQuery-oriented configs, install the optional extra first:
 
 ```bash
-pip install -e ".[database-bigquery]"
+pip install "etlplus[database-bigquery]"
 ```
 
 Then you can keep the normal `type: database` connector shape and add the provider-specific fields:
@@ -276,7 +275,7 @@ If you already have a SQLAlchemy-style BigQuery connection string, you can still
 For Snowflake-oriented configs, install the matching optional extra:
 
 ```bash
-pip install -e ".[database-snowflake]"
+pip install "etlplus[database-snowflake]"
 ```
 
 Then keep the same `type: database` connector shape and add the Snowflake-specific fields:

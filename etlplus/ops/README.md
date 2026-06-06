@@ -11,14 +11,13 @@ pipeline runner.
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [`etlplus.ops` Subpackage](#etlplusops-subpackage)
-  - [Public Entry Points](#public-entry-points)
-  - [Transform Architecture](#transform-architecture)
-  - [Example: Transforming Records](#example-transforming-records)
-  - [Validation Features](#validation-features)
-  - [Example: Validating Data](#example-validating-data)
-  - [Example: Running a Pipeline Job](#example-running-a-pipeline-job)
-  - [See Also](#see-also)
+- [Public Entry Points](#public-entry-points)
+- [Transform Architecture](#transform-architecture)
+- [Example: Transforming Records](#example-transforming-records)
+- [Validation Features](#validation-features)
+- [Example: Validating Data](#example-validating-data)
+- [Example: Running a Pipeline Job](#example-running-a-pipeline-job)
+- [See Also](#see-also)
 
 ## Public Entry Points
 

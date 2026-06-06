@@ -3,20 +3,19 @@
 This guide describes a recommended GitHub Discussions setup for ETLPlus so the project can actively
 support questions, documentation feedback, examples, and other codeless contributions.
 
-- [GitHub Discussions Guide](#github-discussions-guide)
-  - [Recommended Categories](#recommended-categories)
-    - [Q\&A](#qa)
-    - [Docs Feedback](#docs-feedback)
-    - [Examples and Showcases](#examples-and-showcases)
-    - [Ideas](#ideas)
-    - [Announcements](#announcements)
-  - [Routing Guidance](#routing-guidance)
-  - [Pinned Starter Discussions](#pinned-starter-discussions)
-    - [1. Ask ETLPlus Questions Here](#1-ask-etlplus-questions-here)
-    - [2. Docs Feedback and Missing Examples](#2-docs-feedback-and-missing-examples)
-    - [3. Share Your ETLPlus Pipelines and Examples](#3-share-your-etlplus-pipelines-and-examples)
-  - [Operating Routine](#operating-routine)
-  - [Suggested First Actions](#suggested-first-actions)
+- [Recommended Categories](#recommended-categories)
+  - [Q\&A](#qa)
+  - [Docs Feedback](#docs-feedback)
+  - [Examples and Showcases](#examples-and-showcases)
+  - [Ideas](#ideas)
+  - [Announcements](#announcements)
+- [Routing Guidance](#routing-guidance)
+- [Pinned Starter Discussions](#pinned-starter-discussions)
+  - [1. Ask ETLPlus Questions Here](#1-ask-etlplus-questions-here)
+  - [2. Docs Feedback and Missing Examples](#2-docs-feedback-and-missing-examples)
+  - [3. Share Your ETLPlus Pipelines and Examples](#3-share-your-etlplus-pipelines-and-examples)
+- [Operating Routine](#operating-routine)
+- [Suggested First Actions](#suggested-first-actions)
 
 ## Recommended Categories
 

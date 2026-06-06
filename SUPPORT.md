@@ -2,20 +2,19 @@
 
 Thank you for using ETLPlus.
 
-- [Support](#support)
-  - [Support Policy](#support-policy)
-  - [Supported Versions](#supported-versions)
-  - [Maintenance Expectations](#maintenance-expectations)
-  - [Where to Get Help](#where-to-get-help)
-  - [Response Targets](#response-targets)
-  - [Deprecation Policy](#deprecation-policy)
-  - [Support the Project](#support-the-project)
+- [Support Policy](#support-policy)
+- [Supported Versions](#supported-versions)
+- [Maintenance Expectations](#maintenance-expectations)
+- [Where to Get Help](#where-to-get-help)
+- [Response Targets](#response-targets)
+- [Deprecation Policy](#deprecation-policy)
+- [Support the Project](#support-the-project)
 
 ## Support Policy
 
 ETLPlus is maintained as an open source project with best-effort community support.
 
-The intended support baseline for the `v1.0.0` line is:
+The support baseline for the stable `v1.x` line is:
 
 - Supported Python versions: 3.13 and 3.14.
 - Supported install surfaces: the published PyPI package, the documented CLI, and the documented
@@ -29,10 +28,7 @@ treated as out of the stable support promise until explicitly promoted.
 
 ## Supported Versions
 
-Until `v1.0.0` is tagged, support is focused on the latest development line and the latest published
-pre-1.0 release.
-
-After `v1.0.0`, the maintenance target is:
+The maintenance target is:
 
 - The latest released minor line.
 - The immediately previous minor line for critical regressions and security fixes, when practical.

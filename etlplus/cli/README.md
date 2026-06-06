@@ -11,11 +11,10 @@ Documentation for the `etlplus.cli` subpackage: command-line interface for ETLPl
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [`etlplus.cli` Subpackage](#etlpluscli-subpackage)
-  - [Available Commands](#available-commands)
-  - [Command Options](#command-options)
-  - [Example: Running a Pipeline](#example-running-a-pipeline)
-  - [See Also](#see-also)
+- [Available Commands](#available-commands)
+- [Command Options](#command-options)
+- [Example: Running a Pipeline](#example-running-a-pipeline)
+- [See Also](#see-also)
 
 ## Available Commands
 

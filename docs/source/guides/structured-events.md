@@ -5,13 +5,12 @@ supported execution commands.
 
 The stable event schema for `v1.x` is `etlplus.event.v1`.
 
-- [Structured Runtime Events](#structured-runtime-events)
-  - [Stable Contract](#stable-contract)
-  - [Shared Lifecycle Fields](#shared-lifecycle-fields)
-  - [Stable Command-Context Fields](#stable-command-context-fields)
-  - [Compatibility Promise](#compatibility-promise)
-  - [Relationship to Run History](#relationship-to-run-history)
-  - [Optional Telemetry Bridge](#optional-telemetry-bridge)
+- [Stable Contract](#stable-contract)
+- [Shared Lifecycle Fields](#shared-lifecycle-fields)
+- [Stable Command-Context Fields](#stable-command-context-fields)
+- [Compatibility Promise](#compatibility-promise)
+- [Relationship to Run History](#relationship-to-run-history)
+- [Optional Telemetry Bridge](#optional-telemetry-bridge)
 
 ## Stable Contract
 

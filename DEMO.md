@@ -2,31 +2,30 @@
 
 This document demonstrates the ETLPlus package in action.
 
-- [ETLPlus Demo](#etlplus-demo)
-  - [Installation Verification](#installation-verification)
-  - [Demo 1: Extract Data from Different Sources](#demo-1-extract-data-from-different-sources)
-    - [Extract from JSON](#extract-from-json)
-    - [Extract from CSV](#extract-from-csv)
-  - [Demo 2: Validate Data](#demo-2-validate-data)
-  - [Demo 3: Transform Data](#demo-3-transform-data)
-    - [Filter and Select](#filter-and-select)
-    - [Sort Data](#sort-data)
-    - [Aggregate Data](#aggregate-data)
-  - [Demo 4: Load Data](#demo-4-load-data)
-    - [Load to JSON File](#load-to-json-file)
-    - [Load to CSV File](#load-to-csv-file)
-  - [Demo 5: Complete ETL Pipeline](#demo-5-complete-etl-pipeline)
-  - [Demo 6: Using Python API](#demo-6-using-python-api)
-  - [Key Features Demonstrated](#key-features-demonstrated)
-  - [Performance Notes](#performance-notes)
-  - [Next Steps](#next-steps)
+- [Installation Verification](#installation-verification)
+- [Demo 1: Extract Data from Different Sources](#demo-1-extract-data-from-different-sources)
+  - [Extract from JSON](#extract-from-json)
+  - [Extract from CSV](#extract-from-csv)
+- [Demo 2: Validate Data](#demo-2-validate-data)
+- [Demo 3: Transform Data](#demo-3-transform-data)
+  - [Filter and Select](#filter-and-select)
+  - [Sort Data](#sort-data)
+  - [Aggregate Data](#aggregate-data)
+- [Demo 4: Load Data](#demo-4-load-data)
+  - [Load to JSON File](#load-to-json-file)
+  - [Load to CSV File](#load-to-csv-file)
+- [Demo 5: Complete ETL Pipeline](#demo-5-complete-etl-pipeline)
+- [Demo 6: Using Python API](#demo-6-using-python-api)
+- [Key Features Demonstrated](#key-features-demonstrated)
+- [Performance Notes](#performance-notes)
+- [Next Steps](#next-steps)
 
 ## Installation Verification
 
 <!-- snippet:start installation_version -->
 ```bash
 $ etlplus --version
-etlplus 1.18.2.dev0+gf31fcb941.d20260513
+etlplus 1.28.11.dev3+g5c34bd916
 ```
 <!-- snippet:end installation_version -->
 
@@ -34,7 +33,7 @@ etlplus 1.18.2.dev0+gf31fcb941.d20260513
 $ etlplus --help
 Usage: etlplus [OPTIONS] COMMAND [ARGS]...
 
-ETLPlus - A Swiss Army knife for enabling simple ETL operations
+ETLPlus - Practical data extraction, validation, transformation, and loading workflows
 # (Output abbreviated; run `etlplus --help` for the full command list.)
 ```
 

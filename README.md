@@ -11,71 +11,70 @@
 [![PRs](https://img.shields.io/github/issues-pr/Dagitali/ETLPlus)][GitHub PRs]
 [![GitHub contributors](https://img.shields.io/github/contributors/Dagitali/ETLPlus)][GitHub contributors]
 
-ETLPlus is a veritable Swiss Army knife for enabling simple ETL operations, offering both a Python
-package and command-line interface for data extraction, validation, transformation, and loading.
+ETLPlus is a Python package and command-line interface for practical data extraction, validation,
+transformation, and loading workflows.
 
-- [ETLPlus](#etlplus)
-  - [Getting Started](#getting-started)
-  - [At a Glance](#at-a-glance)
-  - [Release Status](#release-status)
-  - [Features](#features)
-  - [Installation](#installation)
-  - [Quickstart](#quickstart)
-    - [Command-line interface](#command-line-interface)
-    - [Python API](#python-api)
-  - [Support ETLPlus](#support-etlplus)
-  - [Data Connectors](#data-connectors)
-    - [REST APIs (`api`)](#rest-apis-api)
-    - [Databases (`database`)](#databases-database)
-    - [Files (`file`)](#files-file)
-      - [Handler Matrix Guardrail](#handler-matrix-guardrail)
-      - [Stubbed / Placeholder](#stubbed--placeholder)
-      - [Tabular \& Delimited Text](#tabular--delimited-text)
-      - [Semi-Structured Text](#semi-structured-text)
-      - [Columnar / Analytics-Friendly](#columnar--analytics-friendly)
-      - [Binary Serialization and Interchange](#binary-serialization-and-interchange)
-      - [Databases and Embedded Storage](#databases-and-embedded-storage)
-      - [Spreadsheets](#spreadsheets)
-      - [Statistical / Scientific / Numeric Computing](#statistical--scientific--numeric-computing)
-      - [Logs and Event Streams](#logs-and-event-streams)
-      - [Data Archives](#data-archives)
-      - [Templates](#templates)
-  - [Usage](#usage)
-    - [Command Line Interface](#command-line-interface-1)
-      - [Command Shapes](#command-shapes)
-      - [Initialize A Starter Project](#initialize-a-starter-project)
-      - [Check Pipelines](#check-pipelines)
-      - [Render SQL DDL](#render-sql-ddl)
-      - [Extract Data](#extract-data)
-      - [Validate Data](#validate-data)
-      - [Transform Data](#transform-data)
-      - [Inspect Run History](#inspect-run-history)
-      - [Schedule Configured Runs](#schedule-configured-runs)
-      - [Load Data](#load-data)
-    - [Python API](#python-api-1)
-    - [Complete ETL Pipeline Example](#complete-etl-pipeline-example)
-    - [Format Overrides](#format-overrides)
-  - [Transformation Operations](#transformation-operations)
-    - [Filter Operations](#filter-operations)
-    - [Aggregation Functions](#aggregation-functions)
-  - [Validation Rules](#validation-rules)
-  - [Development](#development)
-    - [API Client Docs](#api-client-docs)
-    - [Runner Internals and Connectors](#runner-internals-and-connectors)
-    - [Running Tests](#running-tests)
-      - [Test Scope and Intent](#test-scope-and-intent)
-    - [Code Coverage](#code-coverage)
-    - [Linting](#linting)
-    - [Updating Demo Snippets](#updating-demo-snippets)
-    - [Releasing to the Python Package Index (PyPI)](#releasing-to-the-python-package-index-pypi)
-  - [License](#license)
-  - [Contributing](#contributing)
-  - [Documentation](#documentation)
-    - [Python Packages/Subpackage](#python-packagessubpackage)
-    - [Maintainer Docs](#maintainer-docs)
-    - [Community Health](#community-health)
-    - [Other](#other)
-  - [Acknowledgments](#acknowledgments)
+- [Getting Started](#getting-started)
+- [At a Glance](#at-a-glance)
+- [Release Status](#release-status)
+- [Features](#features)
+- [Installation](#installation)
+- [Quickstart](#quickstart)
+  - [Command-line interface](#command-line-interface)
+  - [Python API](#python-api)
+- [Support ETLPlus](#support-etlplus)
+- [Data Connectors](#data-connectors)
+  - [REST APIs (`api`)](#rest-apis-api)
+  - [Databases (`database`)](#databases-database)
+  - [Files (`file`)](#files-file)
+    - [Handler Matrix Guardrail](#handler-matrix-guardrail)
+    - [Stubbed / Placeholder](#stubbed--placeholder)
+    - [Tabular \& Delimited Text](#tabular--delimited-text)
+    - [Semi-Structured Text](#semi-structured-text)
+    - [Columnar / Analytics-Friendly](#columnar--analytics-friendly)
+    - [Binary Serialization and Interchange](#binary-serialization-and-interchange)
+    - [Databases and Embedded Storage](#databases-and-embedded-storage)
+    - [Spreadsheets](#spreadsheets)
+    - [Statistical / Scientific / Numeric Computing](#statistical--scientific--numeric-computing)
+    - [Logs and Event Streams](#logs-and-event-streams)
+    - [Data Archives](#data-archives)
+    - [Templates](#templates)
+- [Usage](#usage)
+  - [Command Line Interface](#command-line-interface-1)
+    - [Command Shapes](#command-shapes)
+    - [Initialize A Starter Project](#initialize-a-starter-project)
+    - [Check Pipelines](#check-pipelines)
+    - [Render SQL DDL](#render-sql-ddl)
+    - [Extract Data](#extract-data)
+    - [Validate Data](#validate-data)
+    - [Transform Data](#transform-data)
+    - [Inspect Run History](#inspect-run-history)
+    - [Schedule Configured Runs](#schedule-configured-runs)
+    - [Load Data](#load-data)
+  - [Python API](#python-api-1)
+  - [Complete ETL Pipeline Example](#complete-etl-pipeline-example)
+  - [Format Overrides](#format-overrides)
+- [Transformation Operations](#transformation-operations)
+  - [Filter Operations](#filter-operations)
+  - [Aggregation Functions](#aggregation-functions)
+- [Validation Rules](#validation-rules)
+- [Development](#development)
+  - [API Client Docs](#api-client-docs)
+  - [Runner Internals and Connectors](#runner-internals-and-connectors)
+  - [Running Tests](#running-tests)
+    - [Test Scope and Intent](#test-scope-and-intent)
+  - [Code Coverage](#code-coverage)
+  - [Linting](#linting)
+  - [Updating Demo Snippets](#updating-demo-snippets)
+  - [Releasing to the Python Package Index (PyPI)](#releasing-to-the-python-package-index-pypi)
+- [License](#license)
+- [Contributing](#contributing)
+- [Documentation](#documentation)
+  - [Python Packages/Subpackage](#python-packagessubpackage)
+  - [Maintainer Docs](#maintainer-docs)
+  - [Community Health](#community-health)
+  - [Other](#other)
+- [Acknowledgments](#acknowledgments)
 
 ## Getting Started
 
@@ -100,11 +99,11 @@ ETLPlus currently supports Python 3.13 and 3.14.
   built-in implemented file handlers.
 - Use `pipx install etlplus` or `uv tool install etlplus` when you want ETLPlus as an isolated CLI
   tool instead of a package installed into the current environment.
-- Use `pip install -e ".[dev]"` for contributor tooling and `pip install -e ".[file]"` when you need
-  the remaining scientific and specialty format dependencies.
+- Use `pip install -e ".[dev]"` for contributor tooling and `pip install "etlplus[file]"` when you
+  need the remaining scientific and specialty format dependencies.
 - Use `uv sync --locked --extra dev` when you want the committed `uv.lock` development snapshot
   instead of an unconstrained local resolver run.
-- Use `pip install -e ".[storage]"` when you want remote storage backends for `s3://`,
+- Use `pip install "etlplus[storage]"` when you want remote storage backends for `s3://`,
   `azure-blob://`, `abfs://`, or `hdfs://` URIs through `etlplus.storage` and `etlplus.file.File`.
 - Treat local paths, localhost databases, and Docker Compose helpers as development conveniences;
   the same config surface is designed to work with interchangeable remote backing services.
@@ -265,25 +264,25 @@ pip install -e ".[dev,file]"
 For runtime-only optional file-format support:
 
 ```bash
-pip install -e ".[file]"
+pip install "etlplus[file]"
 ```
 
 For runtime cloud-storage support:
 
 ```bash
-pip install -e ".[storage]"
+pip install "etlplus[storage]"
 ```
 
 For optional BigQuery connector metadata and readiness support:
 
 ```bash
-pip install -e ".[database-bigquery]"
+pip install "etlplus[database-bigquery]"
 ```
 
 For optional Snowflake connector metadata and readiness support:
 
 ```bash
-pip install -e ".[database-snowflake]"
+pip install "etlplus[database-snowflake]"
 ```
 
 The `file` extra is now reserved for the remaining scientific and specialty format dependencies such

@@ -36,7 +36,8 @@ DEFAULT_FILE_FORMAT: Final[str] = 'json'
 
 CLI_DESCRIPTION: Final[str] = dedent(
     """
-    ETLPlus - A Swiss Army knife for simple ETL operations.
+    ETLPlus - Practical data extraction, validation, transformation, and
+    loading workflows.
 
     Provide a subcommand and options. Examples:
 
@@ -45,7 +46,8 @@ CLI_DESCRIPTION: Final[str] = dedent(
         etlplus transform in.json --source-type file out.json
         --target-type file --operations "{"select": ["id"]}"
         etlplus extract in.csv | etlplus load out.json --target-type file
-        cat data.json | etlplus load https://example.com/data --target-type api
+        cat data.json | etlplus load https://example.com/data
+        --target-type api
 
     Override format inference when extensions are misleading:
 

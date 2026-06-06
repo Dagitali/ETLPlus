@@ -12,20 +12,19 @@ REST endpoints.
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [`etlplus.api` Subpackage](#etlplusapi-subpackage)
-  - [Installation](#installation)
-  - [Quickstart](#quickstart)
-    - [Overriding Rate Limits Per Call](#overriding-rate-limits-per-call)
-  - [Choosing `records_path` and `cursor_path`](#choosing-records_path-and-cursor_path)
-  - [Cursor-Based Pagination Example](#cursor-based-pagination-example)
-  - [Offset-based pagination example](#offset-based-pagination-example)
-  - [Authentication](#authentication)
-  - [Errors and Rate Limiting](#errors-and-rate-limiting)
-  - [Types and Transport](#types-and-transport)
-  - [Config Schemas](#config-schemas)
-  - [Supporting Modules](#supporting-modules)
-  - [Minimal Contract](#minimal-contract)
-  - [See also](#see-also)
+- [Installation](#installation)
+- [Quickstart](#quickstart)
+  - [Overriding Rate Limits Per Call](#overriding-rate-limits-per-call)
+- [Choosing `records_path` and `cursor_path`](#choosing-records_path-and-cursor_path)
+- [Cursor-Based Pagination Example](#cursor-based-pagination-example)
+- [Offset-based pagination example](#offset-based-pagination-example)
+- [Authentication](#authentication)
+- [Errors and Rate Limiting](#errors-and-rate-limiting)
+- [Types and Transport](#types-and-transport)
+- [Config Schemas](#config-schemas)
+- [Supporting Modules](#supporting-modules)
+- [Minimal Contract](#minimal-contract)
+- [See also](#see-also)
 
 ## Installation
 
@@ -208,42 +207,41 @@ providers can fall back to their own defaults. If you already possess a static t
 
 ## Errors and Rate Limiting
 
-- Errors: `ApiRequestError`, `ApiAuthError`, and `PaginationError` (in `etlplus/api/errors.py`)
-  include an `as_dict()` helper for structured logs.
-- Rate limiting: `RateLimiter` (in `etlplus/api/rate_limiting/rate_limiter.py`) derives fixed sleeps
-  or `max_per_sec` windows. The paginator now builds a `RateLimiter` whenever the effective delay
-  comes from `rate_limit`/`rate_limit_overrides`, so each page fetch sleeps before making another
-  HTTP call. Passing `rate_limit_overrides` to `paginate*` lets you momentarily speed up or slow
-  down a single request without mutating the client-wide defaults.
+- Errors: `ApiRequestError`, `ApiAuthError`, and `PaginationError` are exported from `etlplus.api`
+  and include an `as_dict()` helper for structured logs.
+- Rate limiting: `RateLimiter` is exported from `etlplus.api` and `etlplus.api.rate_limiting`. It
+  derives fixed sleeps or `max_per_sec` windows. The paginator builds a `RateLimiter` whenever the
+  effective delay comes from `rate_limit` or `rate_limit_overrides`, so each page fetch sleeps
+  before making another HTTP call. Passing `rate_limit_overrides` to `paginate*` lets you
+  momentarily speed up or slow down a single request without mutating the client-wide defaults.
 
 ## Types and Transport
 
-- Types: pagination config helpers live in `etlplus/api/pagination/_paginator.py`; retry helpers
-  (including `RetryPolicy`) live in `etlplus/api/_retry_manager.py`; rate-limit helpers live in
-  `etlplus/api/rate_limiting/_rate_limiter.py`.
-- Transport/session: `etlplus/api/_transport.py` contains the HTTP adapter helpers and the internal
-  `etlplus/api/_request_manager.py` module wraps `requests` sessions plus retry orchestration.
-  Advanced users may consult those internals to adapt behavior.
+- Types: pagination config helpers are exported from `etlplus.api.pagination`; retry helpers
+  including `RetryPolicyDict` are exported from `etlplus.api`; rate-limit helpers are exported from
+  `etlplus.api.rate_limiting`.
+- Transport/session: `build_http_adapter` and `build_session_with_adapters` are exported from
+  `etlplus.api` for callers that need custom `requests` adapter setup. Underscore-prefixed modules
+  remain implementation details behind the package facade.
 
 ## Config Schemas
 
-`etlplus.api._types` defines TypedDict-based configuration shapes for API profiles and endpoints.
-Runtime parsing remains permissive in `etlplus.api._config`, but these types improve IDE
-autocomplete and static analysis.
+`etlplus.api` exports TypedDict-based configuration shapes for API profiles and endpoints. Runtime
+parsing remains permissive, but these types improve IDE autocomplete and static analysis.
 
 Exported types:
 
-- `ApiConfigMap`: top-level API config shape
-- `ApiProfileConfigMap`: per-profile API config shape
-- `ApiProfileDefaultsMap`: defaults block within a profile
-- `EndpointMap`: endpoint config shape
+- `ApiConfigDict`: top-level API config shape
+- `ApiProfileConfigDict`: per-profile API config shape
+- `ApiProfileDefaultsDict`: defaults block within a profile
+- `EndpointConfigDict`: endpoint config shape
 
 Example:
 
 ```python
-from etlplus.api import ApiConfigMap
+from etlplus.api import ApiConfigDict
 
-api_cfg: ApiConfigMap = {
+api_cfg: ApiConfigDict = {
     "base_url": "https://example.test",
     "headers": {"Authorization": "Bearer token"},
     "endpoints": {
@@ -257,8 +255,8 @@ api_cfg: ApiConfigMap = {
 
 ## Supporting Modules
 
-- `etlplus.api._types` collects friendly aliases such as `Headers`, `Params`, `Url`, and
-  `RateLimitOverrides` (whose values accept numeric override inputs) so endpoint helpers share the
+- `etlplus.api` exports friendly aliases such as `Headers`, `Params`, `Url`, and
+  `RateLimitOverrides`, whose values accept numeric override inputs, so endpoint helpers share the
   same type vocabulary.
 - `etlplus.utils` exposes lightweight helpers used across the project, including `print_json` and
   numeric coercion utilities (`to_float`, `to_positive_int`, etc.).
@@ -272,11 +270,8 @@ api_cfg: ApiConfigMap = {
 - Outputs
   - `paginate(name, ...)` yields an iterator of JSON-like rows
 - Errors
-  - Network/HTTP errors raise exceptions; consult `errors.py`
+  - Network/HTTP errors raise `ApiRequestError`, `ApiAuthError`, or `PaginationError`
 
 ## See also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
-
-
-[def]: #installation

@@ -6,15 +6,14 @@ tag-triggered releases.
 This file is intentionally kept outside `docs/source/` so it lives with the repository without
 being published to [Read the Docs][Read the Docs].
 
-- [Maintainer Runbooks](#maintainer-runbooks)
-  - [Operating Model](#operating-model)
-  - [Feature Branch Runbook](#feature-branch-runbook)
-  - [Release Branch Runbook](#release-branch-runbook)
-  - [Hotfix Branch Runbook](#hotfix-branch-runbook)
-  - [Sync Main Back To Develop](#sync-main-back-to-develop)
-  - [Tagging And CD](#tagging-and-cd)
-  - [Solo-Maintainer Notes](#solo-maintainer-notes)
-  - [Keep Private Elsewhere](#keep-private-elsewhere)
+- [Operating Model](#operating-model)
+- [Feature Branch Runbook](#feature-branch-runbook)
+- [Release Branch Runbook](#release-branch-runbook)
+- [Hotfix Branch Runbook](#hotfix-branch-runbook)
+- [Sync Main Back To Develop](#sync-main-back-to-develop)
+- [Tagging And CD](#tagging-and-cd)
+- [Solo-Maintainer Notes](#solo-maintainer-notes)
+- [Keep Private Elsewhere](#keep-private-elsewhere)
 
 ## Operating Model
 

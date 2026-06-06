@@ -9,12 +9,11 @@ Documentation for the `etlplus.database` subpackage: database engine, schema, an
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [`etlplus.database` Subpackage](#etlplusdatabase-subpackage)
-  - [Database Engine and Connections](#database-engine-and-connections)
-  - [Schema and DDL Helpers](#schema-and-ddl-helpers)
-  - [ORM Utilities](#orm-utilities)
-  - [Example: Creating a Table](#example-creating-a-table)
-  - [See Also](#see-also)
+- [Database Engine and Connections](#database-engine-and-connections)
+- [Schema and DDL Helpers](#schema-and-ddl-helpers)
+- [ORM Utilities](#orm-utilities)
+- [Example: Rendering DDL From a Spec](#example-rendering-ddl-from-a-spec)
+- [See Also](#see-also)
 
 ## Database Engine and Connections
 
@@ -44,5 +43,7 @@ print(sql)
 ## See Also
 
 - Top-level CLI and library usage in the main [README](../../README.md)
-- Schema helpers in [`_schema.py`](_schema.py)
-- ORM utilities in [`_orm.py`](_orm.py)
+- Public schema helpers exported from [`__init__.py`](__init__.py), including `ColumnSpec`,
+  `TableSpec`, `load_table_spec`, and `load_table_specs`
+- Public ORM helpers exported from [`__init__.py`](__init__.py), including `Base`, `build_models`,
+  `load_and_build_models`, and `resolve_type`
