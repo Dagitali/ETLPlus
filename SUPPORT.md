@@ -2,14 +2,13 @@
 
 Thank you for using ETLPlus.
 
-- [Support](#support)
-  - [Support Policy](#support-policy)
-  - [Supported Versions](#supported-versions)
-  - [Maintenance Expectations](#maintenance-expectations)
-  - [Where to Get Help](#where-to-get-help)
-  - [Response Targets](#response-targets)
-  - [Deprecation Policy](#deprecation-policy)
-  - [Support the Project](#support-the-project)
+- [Support Policy](#support-policy)
+- [Supported Versions](#supported-versions)
+- [Maintenance Expectations](#maintenance-expectations)
+- [Where to Get Help](#where-to-get-help)
+- [Response Targets](#response-targets)
+- [Deprecation Policy](#deprecation-policy)
+- [Support the Project](#support-the-project)
 
 ## Support Policy
 

@@ -9,17 +9,16 @@ snippets also show the intended deployable posture: the same connector shapes ca
 object storage and managed databases with credentials injected by the shell, CI runner, container
 runtime, or scheduler.
 
-- [Examples](#examples)
-  - [Quickstarts](#quickstarts)
-    - [Python](#python)
-    - [CLI](#cli)
-  - [Pipelines](#pipelines)
-    - [Python](#python-1)
-    - [CLI](#cli-1)
-  - [Cloud Database Connector Snippets](#cloud-database-connector-snippets)
-    - [BigQuery](#bigquery)
-    - [Snowflake](#snowflake)
-  - [Remote Object Storage Snippets](#remote-object-storage-snippets)
+- [Quickstarts](#quickstarts)
+  - [Python](#python)
+  - [CLI](#cli)
+- [Pipelines](#pipelines)
+  - [Python](#python-1)
+  - [CLI](#cli-1)
+- [Cloud Database Connector Snippets](#cloud-database-connector-snippets)
+  - [BigQuery](#bigquery)
+  - [Snowflake](#snowflake)
+- [Remote Object Storage Snippets](#remote-object-storage-snippets)
 
 ## Quickstarts
 

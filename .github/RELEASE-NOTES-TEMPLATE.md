@@ -4,15 +4,14 @@ Use this template when drafting GitHub Release notes for tagged ETLPlus
 releases. GitHub Releases is the canonical release-history surface for the
 project.
 
-- [ETLPlus Release Notes Template](#etlplus-release-notes-template)
-  - [Highlights](#highlights)
-  - [Breaking Changes](#breaking-changes)
-  - [Deprecations](#deprecations)
-  - [Fixes](#fixes)
-  - [Documentation and Maintenance](#documentation-and-maintenance)
-  - [Upgrade Notes](#upgrade-notes)
-  - [Support Boundary](#support-boundary)
-  - [Notes for Maintainers](#notes-for-maintainers)
+- [Highlights](#highlights)
+- [Breaking Changes](#breaking-changes)
+- [Deprecations](#deprecations)
+- [Fixes](#fixes)
+- [Documentation and Maintenance](#documentation-and-maintenance)
+- [Upgrade Notes](#upgrade-notes)
+- [Support Boundary](#support-boundary)
+- [Notes for Maintainers](#notes-for-maintainers)
 
 ## Highlights
 

@@ -8,21 +8,20 @@ request, you acknowledge and agree to licensing your contribution to
 When contributing to this repository, please first discuss the change you wish to make via issue,
 email, or any other method with the owners of this repository before making a change.
 
-- [Contributing Guidelines](#contributing-guidelines)
-  - [Ways to Contribute](#ways-to-contribute)
-  - [Merge Request Process](#merge-request-process)
-  - [Protected-Branch GitFlow Workflow](#protected-branch-gitflow-workflow)
-  - [Maintainer Runbooks](#maintainer-runbooks)
-  - [Code of Conduct](#code-of-conduct)
-  - [Type Checking](#type-checking)
-  - [Typing Philosophy](#typing-philosophy)
-  - [Documentation Style](#documentation-style)
-  - [Local Quality Gates](#local-quality-gates)
-  - [Testing](#testing)
-    - [Scope and Intent](#scope-and-intent)
-    - [Test Configuration](#test-configuration)
-    - [Running Tests](#running-tests)
-    - [Common Patterns](#common-patterns)
+- [Ways to Contribute](#ways-to-contribute)
+- [Merge Request Process](#merge-request-process)
+- [Protected-Branch GitFlow Workflow](#protected-branch-gitflow-workflow)
+- [Maintainer Runbooks](#maintainer-runbooks)
+- [Code of Conduct](#code-of-conduct)
+- [Type Checking](#type-checking)
+- [Typing Philosophy](#typing-philosophy)
+- [Documentation Style](#documentation-style)
+- [Local Quality Gates](#local-quality-gates)
+- [Testing](#testing)
+  - [Scope and Intent](#scope-and-intent)
+  - [Test Configuration](#test-configuration)
+  - [Running Tests](#running-tests)
+  - [Common Patterns](#common-patterns)
 
 ## Ways to Contribute
 

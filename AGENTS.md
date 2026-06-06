@@ -1,5 +1,7 @@
 # AGENTS
 
+- [Release Readiness](#release-readiness)
+
 ## Release Readiness
 
 When a task affects release preparation, packaging, versioned docs, or CI, consult

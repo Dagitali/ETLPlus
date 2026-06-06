@@ -2,14 +2,13 @@
 
 This document explains the public role of each GitHub Actions workflow used by ETLPlus.
 
-- [CI/CD Workflow Map](#cicd-workflow-map)
-  - [Scope](#scope)
-  - [Workflow Overview](#workflow-overview)
-  - [PR Gates](#pr-gates)
-  - [CI](#ci)
-  - [Release](#release)
-  - [How They Interact](#how-they-interact)
-  - [Required Checks](#required-checks)
+- [Scope](#scope)
+- [Workflow Overview](#workflow-overview)
+- [PR Gates](#pr-gates)
+- [CI](#ci)
+- [Release](#release)
+- [How They Interact](#how-they-interact)
+- [Required Checks](#required-checks)
 
 ## Scope
 

@@ -3,18 +3,17 @@
 ETLPlus records local run history for `etlplus run` and exposes that history through stable
 read/query commands in the CLI.
 
-- [Run History](#run-history)
-  - [What Gets Recorded](#what-gets-recorded)
-  - [Commands](#commands)
-    - [`etlplus history`](#etlplus-history)
-    - [`etlplus log`](#etlplus-log)
-    - [`etlplus status`](#etlplus-status)
-    - [`etlplus report`](#etlplus-report)
-    - [`etlplus ui`](#etlplus-ui)
-  - [Output Conventions](#output-conventions)
-  - [Stable Normalized Fields](#stable-normalized-fields)
-  - [Event-to-history mapping for `etlplus run`](#event-to-history-mapping-for-etlplus-run)
-  - [Related Documentation](#related-documentation)
+- [What Gets Recorded](#what-gets-recorded)
+- [Commands](#commands)
+  - [`etlplus history`](#etlplus-history)
+  - [`etlplus log`](#etlplus-log)
+  - [`etlplus status`](#etlplus-status)
+  - [`etlplus report`](#etlplus-report)
+  - [`etlplus ui`](#etlplus-ui)
+- [Output Conventions](#output-conventions)
+- [Stable Normalized Fields](#stable-normalized-fields)
+- [Event-to-history mapping for `etlplus run`](#event-to-history-mapping-for-etlplus-run)
+- [Related Documentation](#related-documentation)
 
 ## What Gets Recorded
 

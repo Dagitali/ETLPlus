@@ -12,20 +12,19 @@ REST endpoints.
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [`etlplus.api` Subpackage](#etlplusapi-subpackage)
-  - [Installation](#installation)
-  - [Quickstart](#quickstart)
-    - [Overriding Rate Limits Per Call](#overriding-rate-limits-per-call)
-  - [Choosing `records_path` and `cursor_path`](#choosing-records_path-and-cursor_path)
-  - [Cursor-Based Pagination Example](#cursor-based-pagination-example)
-  - [Offset-based pagination example](#offset-based-pagination-example)
-  - [Authentication](#authentication)
-  - [Errors and Rate Limiting](#errors-and-rate-limiting)
-  - [Types and Transport](#types-and-transport)
-  - [Config Schemas](#config-schemas)
-  - [Supporting Modules](#supporting-modules)
-  - [Minimal Contract](#minimal-contract)
-  - [See also](#see-also)
+- [Installation](#installation)
+- [Quickstart](#quickstart)
+  - [Overriding Rate Limits Per Call](#overriding-rate-limits-per-call)
+- [Choosing `records_path` and `cursor_path`](#choosing-records_path-and-cursor_path)
+- [Cursor-Based Pagination Example](#cursor-based-pagination-example)
+- [Offset-based pagination example](#offset-based-pagination-example)
+- [Authentication](#authentication)
+- [Errors and Rate Limiting](#errors-and-rate-limiting)
+- [Types and Transport](#types-and-transport)
+- [Config Schemas](#config-schemas)
+- [Supporting Modules](#supporting-modules)
+- [Minimal Contract](#minimal-contract)
+- [See also](#see-also)
 
 ## Installation
 

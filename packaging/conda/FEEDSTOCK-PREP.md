@@ -3,13 +3,12 @@
 ETLPlus has prepared candidate conda-forge feedstock materials for maintainer review. The recipe is
 validated but not published on conda-forge yet.
 
-- [Conda-Forge Feedstock Preparation](#conda-forge-feedstock-preparation)
-  - [Current Result](#current-result)
-  - [Recipe Source](#recipe-source)
-  - [Dependency Mapping](#dependency-mapping)
-  - [Conda CLI Validation](#conda-cli-validation)
-  - [GitHub Actions Validation](#github-actions-validation)
-  - [Publication Gates](#publication-gates)
+- [Current Result](#current-result)
+- [Recipe Source](#recipe-source)
+- [Dependency Mapping](#dependency-mapping)
+- [Conda CLI Validation](#conda-cli-validation)
+- [GitHub Actions Validation](#github-actions-validation)
+- [Publication Gates](#publication-gates)
 
 ## Current Result
 

@@ -3,10 +3,9 @@
 `tests/integration/file/` uses `SmokeRoundtripModuleContract` as the default
 pattern for file-format smoke tests.
 
-- [Integration File Smoke Conventions](#integration-file-smoke-conventions)
-  - [Default Pattern](#default-pattern)
-  - [Documented Exceptions](#documented-exceptions)
-  - [Notes](#notes)
+- [Default Pattern](#default-pattern)
+- [Documented Exceptions](#documented-exceptions)
+- [Notes](#notes)
 
 ## Default Pattern
 

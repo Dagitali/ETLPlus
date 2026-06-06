@@ -17,11 +17,10 @@ pip install -e ".[storage]"
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [`etlplus.storage` Subpackage](#etlplusstorage-subpackage)
-  - [Relationship to `etlplus.file`](#relationship-to-etlplusfile)
-  - [Public API](#public-api)
-  - [Example](#example)
-  - [Supported Schemes](#supported-schemes)
+- [Relationship to `etlplus.file`](#relationship-to-etlplusfile)
+- [Public API](#public-api)
+- [Example](#example)
+- [Supported Schemes](#supported-schemes)
 
 ## Relationship to `etlplus.file`
 

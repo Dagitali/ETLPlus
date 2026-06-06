@@ -3,6 +3,12 @@
 ETLPlus documents a narrow, explicit support window. The statements on this page describe the
 supported release contract for the stable `v1.x` line.
 
+- [Python support](#python-support)
+- [Platform coverage](#platform-coverage)
+- [Dependency groups](#dependency-groups)
+- [Installer policy](#installer-policy)
+- [Release interpretation](#release-interpretation)
+
 ## Python support
 
 | Python | Status | Notes |

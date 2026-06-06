@@ -10,6 +10,9 @@ published docs or the API reference.
 :end-before: <!-- docs:guides-contributing:end -->
 ```
 
+- [Docs build parity](#docs-build-parity)
+- [Community and support](#community-and-support)
+
 ## Docs build parity
 
 ```bash

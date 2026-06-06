@@ -9,12 +9,11 @@ Documentation for the `etlplus.database` subpackage: database engine, schema, an
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [`etlplus.database` Subpackage](#etlplusdatabase-subpackage)
-  - [Database Engine and Connections](#database-engine-and-connections)
-  - [Schema and DDL Helpers](#schema-and-ddl-helpers)
-  - [ORM Utilities](#orm-utilities)
-  - [Example: Creating a Table](#example-creating-a-table)
-  - [See Also](#see-also)
+- [Database Engine and Connections](#database-engine-and-connections)
+- [Schema and DDL Helpers](#schema-and-ddl-helpers)
+- [ORM Utilities](#orm-utilities)
+- [Example: Rendering DDL From a Spec](#example-rendering-ddl-from-a-spec)
+- [See Also](#see-also)
 
 ## Database Engine and Connections
 

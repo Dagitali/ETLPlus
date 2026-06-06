@@ -18,22 +18,21 @@ does not create SDK clients, manage credentials, poll messages, or publish messa
 
 Back to project overview: see the top-level [README](../../README.md).
 
-- [`etlplus.queue` Subpackage](#etlplusqueue-subpackage)
-  - [Relationship to `etlplus.connector`](#relationship-to-etlplusconnector)
-  - [Public API](#public-api)
-  - [Supported Queue Services](#supported-queue-services)
-  - [Provider Validation](#provider-validation)
-  - [AWS SQS Metadata](#aws-sqs-metadata)
-  - [Queue Locations](#queue-locations)
-  - [Dependency Extras](#dependency-extras)
-  - [Module Layout](#module-layout)
-  - [Examples](#examples)
-    - [AMQP/RabbitMQ](#amqprabbitmq)
-    - [AWS SQS](#aws-sqs)
-    - [Azure Service Bus](#azure-service-bus)
-    - [Google Cloud Pub/Sub](#google-cloud-pubsub)
-    - [Redis](#redis)
-  - [See Also](#see-also)
+- [Relationship to `etlplus.connector`](#relationship-to-etlplusconnector)
+- [Public API](#public-api)
+- [Supported Queue Services](#supported-queue-services)
+- [Provider Validation](#provider-validation)
+- [AWS SQS Metadata](#aws-sqs-metadata)
+- [Queue Locations](#queue-locations)
+- [Dependency Extras](#dependency-extras)
+- [Module Layout](#module-layout)
+- [Examples](#examples)
+  - [AMQP/RabbitMQ](#amqprabbitmq)
+  - [AWS SQS](#aws-sqs)
+  - [Azure Service Bus](#azure-service-bus)
+  - [Google Cloud Pub/Sub](#google-cloud-pubsub)
+  - [Redis](#redis)
+- [See Also](#see-also)
 
 ## Relationship to `etlplus.connector`
 

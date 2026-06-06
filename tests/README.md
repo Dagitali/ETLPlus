@@ -3,15 +3,14 @@
 ETLPlus organizes tests by **scope** and labels cross-cutting test **intent**
 with pytest markers.
 
-- [Tests Overview](#tests-overview)
-  - [Scope Markers / Directory Layout](#scope-markers--directory-layout)
-  - [Intent Markers](#intent-markers)
-  - [Integration File Smoke Pattern](#integration-file-smoke-pattern)
-  - [Discovery and Selection](#discovery-and-selection)
-  - [Dependency Prerequisites](#dependency-prerequisites)
-  - [Cloud CLI Integration](#cloud-cli-integration)
-  - [Common Commands](#common-commands)
-  - [Post-Move Validation Checklist](#post-move-validation-checklist)
+- [Scope Markers / Directory Layout](#scope-markers--directory-layout)
+- [Intent Markers](#intent-markers)
+- [Integration File Smoke Pattern](#integration-file-smoke-pattern)
+- [Discovery and Selection](#discovery-and-selection)
+- [Dependency Prerequisites](#dependency-prerequisites)
+- [Cloud CLI Integration](#cloud-cli-integration)
+- [Common Commands](#common-commands)
+- [Post-Move Validation Checklist](#post-move-validation-checklist)
 
 ## Scope Markers / Directory Layout
 
