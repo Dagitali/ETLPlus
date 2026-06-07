@@ -149,9 +149,7 @@ class TestCliScheduleRunPending:
         first_payload = parse_json_output(first_out)
         second_payload = parse_json_output(second_out)
         assert first_payload['dispatched_count'] == 2
-        assert [
-            row['triggered_at'] for row in first_payload['runs']
-        ] == [
+        assert [row['triggered_at'] for row in first_payload['runs']] == [
             '2026-05-12T00:00:00+00:00',
             '2026-05-12T00:15:00+00:00',
         ]
