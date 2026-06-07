@@ -213,6 +213,131 @@ def _write_exception_run_config(
 class TestCliExecutionEvents:
     """Structured event coverage for execution-oriented commands."""
 
+    def test_data_operation_failure_without_event_format_keeps_stderr_human_only(
+        self,
+        cli_invoke: CliInvoke,
+    ) -> None:
+        """Structured events should stay disabled unless explicitly requested."""
+        code, out, err = cli_invoke(('extract', 'missing-contract.json'))
+
+        assert code == 1
+        assert out == ''
+        assert _parse_event_lines(err) == []
+        assert 'Error: File not found: missing-contract.json' in err
+
+    @pytest.mark.parametrize(
+        (
+            'command',
+            'args',
+            'stdin_payload',
+            'command_fields',
+            'error_type',
+            'error_message_contains',
+        ),
+        [
+            pytest.param(
+                'extract',
+                ('extract', '--event-format', 'jsonl', 'missing-contract.json'),
+                None,
+                {
+                    'source': 'missing-contract.json',
+                    'source_type': 'file',
+                },
+                'FileNotFoundError',
+                'File not found',
+                id='extract-missing-file',
+            ),
+            pytest.param(
+                'load',
+                (
+                    'load',
+                    '--event-format',
+                    'jsonl',
+                    '--target-type',
+                    'file',
+                    'output.unknownext',
+                ),
+                '{"id": 1}',
+                {
+                    'source': '-',
+                    'target': 'output.unknownext',
+                    'target_type': 'file',
+                },
+                'ValueError',
+                "Cannot infer file format from extension '.unknownext'",
+                id='load-unknown-target-format',
+            ),
+            pytest.param(
+                'transform',
+                (
+                    'transform',
+                    '--event-format',
+                    'jsonl',
+                    '--operations',
+                    '[]',
+                    '[{"id": 1}]',
+                    '-',
+                ),
+                None,
+                {
+                    'source': '[{"id": 1}]',
+                    'target': 'stdout',
+                    'target_type': 'file',
+                },
+                'ValueError',
+                'operations must resolve to a mapping of transforms',
+                id='transform-invalid-operations-shape',
+            ),
+            pytest.param(
+                'validate',
+                (
+                    'validate',
+                    '--event-format',
+                    'jsonl',
+                    '--rules',
+                    '[]',
+                    '[{"id": 1}]',
+                ),
+                None,
+                {
+                    'source': '[{"id": 1}]',
+                    'target': 'stdout',
+                },
+                'ValueError',
+                'rules must resolve to a mapping of field rules',
+                id='validate-invalid-rules-shape',
+            ),
+        ],
+    )
+    def test_data_operation_failures_keep_event_and_error_stream_contract(
+        self,
+        cli_invoke: CliInvoke,
+        stdin_text: StdinText,
+        command: str,
+        args: tuple[str, ...],
+        stdin_payload: str | None,
+        command_fields: dict[str, object],
+        error_type: str,
+        error_message_contains: str,
+    ) -> None:
+        """Data-op failures should emit events plus human errors on STDERR."""
+        if stdin_payload is not None:
+            stdin_text(stdin_payload)
+
+        code, out, err = cli_invoke(args)
+
+        assert code == 1
+        assert out == ''
+        lines = _parse_event_lines(err)
+        _assert_failed_lifecycle(
+            lines,
+            command=command,
+            command_fields=command_fields,
+            error_type=error_type,
+            error_message_contains=error_message_contains,
+        )
+        assert f'Error: {error_message_contains}' in err
+
     def test_extract_emits_jsonl_events(
         self,
         cli_invoke: CliInvoke,
