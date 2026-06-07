@@ -1,15 +1,22 @@
 # Dependency And Extension Policy Notes
 
-This note records maintenance guidance for dependency and extension-related changes:
+This note is intended for contributors evaluating dependency, packaging, or extension-surface
+changes. It records maintenance guidance for dependency and extension-related changes:
 
 - Review the broad `v1.x` dependency footprint with evidence before changing package defaults.
+- Define future extension/runtime boundaries before adding entry-point discovery or dynamic loading.
 - Keep extension-style integration work compatible with the stable runtime contracts.
 
 Neither item should narrow or expand the stable public surface accidentally.
 
 - [Dependency-Footprint Evidence](#dependency-footprint-evidence)
+- [Evidence Intake Template](#evidence-intake-template)
+- [Review Checklist](#review-checklist)
 - [Base Dependency Snapshot](#base-dependency-snapshot)
+- [Extension Boundary](#extension-boundary)
 - [Extension Compatibility Principles](#extension-compatibility-principles)
+- [Extension Design Questions](#extension-design-questions)
+- [Extension Implementation Guidance](#extension-implementation-guidance)
 
 ## Dependency-Footprint Evidence
 
@@ -35,16 +42,101 @@ Acceptable low-risk changes in `v1.x`:
 - Add readiness diagnostics for missing optional backends.
 - Mark a dependency as a candidate future-major split without changing installation behavior.
 
-Avoid in `v1.x` unless maintainers explicitly approve a stable-surface change:
+Avoid in `v1.x` unless a release decision explicitly accepts a stable-surface change:
 
 - Moving a dependency required by documented base CLI behavior into an extra.
 - Making `pip`, `pipx`, `uv tool install`, or conda-forge expose different base behavior.
 - Treating `uv.lock` or a development lockfile as canonical package metadata.
 
+## Evidence Intake Template
+
+Use this template before proposing a dependency split, optional-backend promotion, or package-default
+change. One evidence entry should describe one user-visible friction point, not a broad preference
+for a smaller or larger install.
+
+```markdown
+### Evidence: <short dependency or backend title>
+
+- Date recorded:
+- Reporter/source:
+- Affected dependency or dependency family:
+- Affected install path:
+  - pip:
+  - pipx:
+  - uv tool:
+  - conda-forge:
+- Affected platform/Python version:
+- Current base-install behavior:
+- Expected behavior:
+- Observed friction:
+- Reproduction notes:
+- User impact:
+- Support signal:
+  - issue/discussion/support link:
+  - repeat count:
+  - workaround:
+- Stable-surface risk if changed:
+- Candidate action:
+  - keep base dependency:
+  - improve docs/readiness diagnostics:
+  - move to optional extra in a future major:
+  - revisit after more reports:
+- Responsible reviewer:
+- Review target date:
+```
+
+For install-size or resolver evidence, include the measured command and artifact sizes rather than
+only the conclusion. Prefer comparing the same Python version, platform, installer, and cache state
+before and after a candidate change.
+
+```markdown
+### Install-Size Or Resolver Measurement
+
+- Date measured:
+- Command:
+- Platform/Python:
+- Cache state:
+- Wall-clock install time:
+- Download size:
+- Installed environment size:
+- Resolver/build failures:
+- Largest dependency contributors:
+- Notes:
+```
+
+For optional-backend friction, record whether the issue is a missing diagnostic, missing docs, an
+unexpected import-time failure, or a true packaging-boundary problem.
+
+```markdown
+### Optional-Backend Friction
+
+- Backend/extra:
+- Command or import path:
+- Did CLI startup still work from the base install:
+- Did `check --readiness` identify the missing dependency:
+- Did docs explain the required extra:
+- Error shown to user:
+- Proposed low-risk `v1.x` fix:
+```
+
+## Review Checklist
+
+Before changing dependency defaults, confirm all of the following:
+
+- The evidence is tied to real install/runtime/support friction, not only package-size preference.
+- The affected behavior is not part of the documented stable base CLI or import surface.
+- `pip`, `pipx`, `uv tool install`, and conda-forge would remain behaviorally aligned.
+- `pyproject.toml` remains the canonical package metadata source.
+- Release validation still builds sdist and wheel, runs `twine check`, and smoke-tests the built
+  wheel.
+- User-facing docs, readiness diagnostics, and extras guidance have been considered as lower-risk
+  alternatives.
+- If the change narrows or expands the stable public surface, `RELEASE-CHECKLIST.md` is updated.
+
 ## Base Dependency Snapshot
 
 This snapshot intentionally tracks the broad base dependency names declared in `pyproject.toml`.
-Update it only when maintainers have reviewed why the base install changed and whether the change
+Update it only when the project has reviewed why the base install changed and whether the change
 affects `pip`, `pipx`, `uv tool install`, and conda-forge parity.
 
 ```text
@@ -74,6 +166,27 @@ xlrd
 xlwt
 ```
 
+## Extension Boundary
+
+Extension-style work should begin with contracts, not dynamic loading. The first design slice should
+define what a third-party package or built-in extension point can add, how compatibility is checked,
+and how ETLPlus behaves when extension discovery or initialization fails.
+
+Initial extension scope candidates:
+
+- Connectors: provider-specific metadata parsers, readiness diagnostics, and optional dependency
+  requirements.
+- Operators: reusable execution steps that can be referenced from pipeline configuration.
+- File handlers: format handlers only if they can follow the existing `etlplus.file` handler
+  authoring contract without destabilizing built-in formats.
+
+Out of scope for the near-term extension contract:
+
+- A resident scheduler process.
+- Cloud secret backends.
+- Remote execution APIs.
+- Replacing core CLI command registration.
+
 ## Extension Compatibility Principles
 
 Extension-style integration work should follow the same compatibility expectations as built-in
@@ -88,3 +201,31 @@ runtime features:
 - Return actionable error messages and conventional exit behavior.
 - Promote any extension-facing surface to stable only with explicit documentation and public-surface
   contract tests.
+
+## Extension Design Questions
+
+Before implementing entry-point discovery, answer these questions in an architecture decision record
+or a dedicated extension design document:
+
+- Which entry-point groups are supported, and what object shape does each group expose?
+- How is extension API compatibility versioned and enforced?
+- Are extension failures warnings, readiness errors, or hard startup failures?
+- How are extension-provided optional dependencies represented in `check --readiness`?
+- How do extension diagnostics reuse `ConnectorDiagnosticPolicy` or any successor policy?
+- Which extension capabilities are stable in `v1.x`, and which are experimental until a future major
+  release?
+
+## Extension Implementation Guidance
+
+Treat dynamic extension loading as deferred until the project documents the extension surface for a
+later `v1.x` release or the `v2.0.0` release path.
+
+When implementation resumes:
+
+1. Add a non-loading extension contract module or protocol that defines connector contribution
+   shapes.
+2. Add tests for API-version validation and failure classification using in-memory fake
+   contributions.
+3. Document contributor guidance for extension authors only after the internal contract is stable.
+4. Add entry-point discovery behind an explicit experimental flag or documented feature switch.
+5. Promote any extension surface to stable only with public-surface contract tests and release notes.
