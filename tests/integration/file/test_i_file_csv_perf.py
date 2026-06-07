@@ -9,10 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from time import perf_counter
 
-from etlplus.file import csv as mod
 from etlplus.file.csv import CsvFile
-
-from .conftest import SmokeRoundtripModuleContract
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -37,12 +34,6 @@ def _large_csv_payload(
 
 
 # SECTION: TESTS ============================================================ #
-
-
-class TestCsvPerf(SmokeRoundtripModuleContract):
-    """CSV perf-smoke tests following the integration contract shape."""
-
-    module = mod
 
 
 def test_large_csv_roundtrip_perf_smoke(
