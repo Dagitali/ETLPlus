@@ -8,6 +8,8 @@ This note records maintenance guidance for dependency and extension-related chan
 Neither item should narrow or expand the stable public surface accidentally.
 
 - [Dependency-Footprint Evidence](#dependency-footprint-evidence)
+- [Evidence Intake Template](#evidence-intake-template)
+- [Review Checklist](#review-checklist)
 - [Base Dependency Snapshot](#base-dependency-snapshot)
 - [Extension Compatibility Principles](#extension-compatibility-principles)
 
@@ -40,6 +42,91 @@ Avoid in `v1.x` unless maintainers explicitly approve a stable-surface change:
 - Moving a dependency required by documented base CLI behavior into an extra.
 - Making `pip`, `pipx`, `uv tool install`, or conda-forge expose different base behavior.
 - Treating `uv.lock` or a development lockfile as canonical package metadata.
+
+## Evidence Intake Template
+
+Use this template before proposing a dependency split, optional-backend promotion, or package-default
+change. One evidence entry should describe one user-visible friction point, not a broad preference
+for a smaller or larger install.
+
+```markdown
+### Evidence: <short dependency or backend title>
+
+- Date recorded:
+- Reporter/source:
+- Affected dependency or dependency family:
+- Affected install path:
+  - pip:
+  - pipx:
+  - uv tool:
+  - conda-forge:
+- Affected platform/Python version:
+- Current base-install behavior:
+- Expected behavior:
+- Observed friction:
+- Reproduction notes:
+- User impact:
+- Support signal:
+  - issue/discussion/support link:
+  - repeat count:
+  - workaround:
+- Stable-surface risk if changed:
+- Candidate action:
+  - keep base dependency:
+  - improve docs/readiness diagnostics:
+  - move to optional extra in a future major:
+  - revisit after more reports:
+- Owner:
+- Follow-up by:
+```
+
+For install-size or resolver evidence, include the measured command and artifact sizes rather than
+only the conclusion. Prefer comparing the same Python version, platform, installer, and cache state
+before and after a candidate change.
+
+```markdown
+### Install-Size Or Resolver Measurement
+
+- Date measured:
+- Command:
+- Platform/Python:
+- Cache state:
+- Wall-clock install time:
+- Download size:
+- Installed environment size:
+- Resolver/build failures:
+- Largest dependency contributors:
+- Notes:
+```
+
+For optional-backend friction, record whether the issue is a missing diagnostic, missing docs, an
+unexpected import-time failure, or a true packaging-boundary problem.
+
+```markdown
+### Optional-Backend Friction
+
+- Backend/extra:
+- Command or import path:
+- Did CLI startup still work from the base install:
+- Did `check --readiness` identify the missing dependency:
+- Did docs explain the required extra:
+- Error shown to user:
+- Proposed low-risk `v1.x` fix:
+```
+
+## Review Checklist
+
+Before changing dependency defaults, confirm all of the following:
+
+- The evidence is tied to real install/runtime/support friction, not only package-size preference.
+- The affected behavior is not part of the documented stable base CLI or import surface.
+- `pip`, `pipx`, `uv tool install`, and conda-forge would remain behaviorally aligned.
+- `pyproject.toml` remains the canonical package metadata source.
+- Release validation still builds sdist and wheel, runs `twine check`, and smoke-tests the built
+  wheel.
+- User-facing docs, readiness diagnostics, and extras guidance have been considered as lower-risk
+  alternatives.
+- If the change narrows or expands the stable public surface, `RELEASE-CHECKLIST.md` is updated.
 
 ## Base Dependency Snapshot
 
