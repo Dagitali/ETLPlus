@@ -391,6 +391,149 @@ class TestCliCheck:
             },
         ]
 
+    def test_readiness_provider_error_exits_one(
+        self,
+        tmp_path: Path,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Provider bootstrap errors should keep readiness exit code non-zero."""
+        from etlplus.runtime import ReadinessReportBuilder
+
+        monkeypatch.setattr(
+            ReadinessReportBuilder,
+            'package_available',
+            lambda _module_name: True,
+        )
+        config_path = tmp_path / 'check_readiness_provider_error.yml'
+        config_path.write_text(
+            dedent(
+                """
+                name: Readiness Check
+                targets:
+                  - name: blob_target
+                    type: file
+                    format: json
+                    path: "azure-blob://container/out.json"
+                """,
+            ).strip(),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            ('check', '--readiness', '--config', str(config_path)),
+        )
+
+        assert code == 1
+        assert err == ''
+        payload = parse_json_output(out)
+        assert payload['status'] == 'error'
+        provider_check = next(
+            check
+            for check in payload['checks']
+            if check['name'] == 'provider-environment'
+        )
+        assert provider_check['status'] == 'error'
+        assert provider_check['environment_gaps'] == [
+            {
+                'connector': 'blob_target',
+                'guidance': (
+                    'Set AZURE_STORAGE_CONNECTION_STRING, set '
+                    'AZURE_STORAGE_ACCOUNT_URL, or include the account host in '
+                    'the path authority.'
+                ),
+                'missing_env': [
+                    'AZURE_STORAGE_CONNECTION_STRING',
+                    'AZURE_STORAGE_ACCOUNT_URL',
+                ],
+                'provider': 'azure-storage',
+                'reason': (
+                    'azure-blob path does not provide an account host and no '
+                    'Azure storage bootstrap settings were found.'
+                ),
+                'role': 'target',
+                'scheme': 'azure-blob',
+                'severity': 'error',
+            },
+        ]
+
+    def test_readiness_provider_warning_exits_zero(
+        self,
+        tmp_path: Path,
+        cli_invoke: CliInvoke,
+        parse_json_output: JsonOutputParser,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Provider warnings should remain advisory and keep exit code zero."""
+        from etlplus.runtime import ReadinessReportBuilder
+
+        monkeypatch.setattr(
+            ReadinessReportBuilder,
+            'package_available',
+            lambda _module_name: True,
+        )
+        config_path = tmp_path / 'check_readiness_provider_warning.yml'
+        config_path.write_text(
+            dedent(
+                """
+                name: Readiness Check
+                sources:
+                  - name: s3_source
+                    type: file
+                    format: json
+                    path: "s3://bucket/input.json"
+                """,
+            ).strip(),
+            encoding='utf-8',
+        )
+
+        code, out, err = cli_invoke(
+            ('check', '--readiness', '--config', str(config_path)),
+        )
+
+        assert code == 0
+        assert err == ''
+        payload = parse_json_output(out)
+        assert payload['status'] == 'warn'
+        provider_check = next(
+            check
+            for check in payload['checks']
+            if check['name'] == 'provider-environment'
+        )
+        assert provider_check['status'] == 'warn'
+        assert provider_check['environment_gaps'] == [
+            {
+                'connector': 's3_source',
+                'guidance': (
+                    'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY, '
+                    'or rely on shared config files, container credentials, or '
+                    'instance metadata.'
+                ),
+                'missing_env': [
+                    'AWS_ACCESS_KEY_ID',
+                    'AWS_SECRET_ACCESS_KEY',
+                    'AWS_SESSION_TOKEN',
+                    'AWS_PROFILE',
+                    'AWS_DEFAULT_PROFILE',
+                    'AWS_ROLE_ARN',
+                    'AWS_WEB_IDENTITY_TOKEN_FILE',
+                    'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI',
+                    'AWS_CONTAINER_CREDENTIALS_FULL_URI',
+                    'AWS_SHARED_CREDENTIALS_FILE',
+                    'AWS_CONFIG_FILE',
+                ],
+                'provider': 'aws-s3',
+                'reason': (
+                    'No common AWS credential-chain environment hints were '
+                    'detected for this S3 path.'
+                ),
+                'role': 'source',
+                'scheme': 's3',
+                'severity': 'warn',
+            },
+        ]
+
     def test_readiness_rejects_inspection_flags(
         self,
         cli_invoke: CliInvoke,
@@ -545,14 +688,14 @@ class TestCliCheck:
         ]
         assert 'ETLPLUS_READINESS_TOKEN' in substitution_check['unresolved_tokens']
 
-    def test_readiness_provider_error_exits_one(
+    def test_readiness_resolves_secret_paths_before_provider_env_checks(
         self,
         tmp_path: Path,
         cli_invoke: CliInvoke,
         parse_json_output: JsonOutputParser,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """Provider bootstrap errors should keep readiness exit code non-zero."""
+        """Secret-backed provider paths should feed provider env diagnostics."""
         from etlplus.runtime import ReadinessReportBuilder
 
         monkeypatch.setattr(
@@ -560,83 +703,21 @@ class TestCliCheck:
             'package_available',
             lambda _module_name: True,
         )
-        config_path = tmp_path / 'check_readiness_provider_error.yml'
+        monkeypatch.setenv('READINESS_SECRET_S3_PATH', 's3://bucket/out.json')
+        monkeypatch.setenv('AWS_PROFILE', 'dev-profile')
+        monkeypatch.delenv('AWS_ACCESS_KEY_ID', raising=False)
+        monkeypatch.delenv('AWS_SECRET_ACCESS_KEY', raising=False)
+        monkeypatch.delenv('AWS_SESSION_TOKEN', raising=False)
+        config_path = tmp_path / 'check_readiness_secret_provider_path.yml'
         config_path.write_text(
             dedent(
                 """
-                name: Readiness Check
+                name: Readiness Secret Provider Check
                 targets:
-                  - name: blob_target
+                  - name: secret_s3_target
                     type: file
                     format: json
-                    path: "azure-blob://container/out.json"
-                """,
-            ).strip(),
-            encoding='utf-8',
-        )
-
-        code, out, err = cli_invoke(
-            ('check', '--readiness', '--config', str(config_path)),
-        )
-
-        assert code == 1
-        assert err == ''
-        payload = parse_json_output(out)
-        assert payload['status'] == 'error'
-        provider_check = next(
-            check
-            for check in payload['checks']
-            if check['name'] == 'provider-environment'
-        )
-        assert provider_check['status'] == 'error'
-        assert provider_check['environment_gaps'] == [
-            {
-                'connector': 'blob_target',
-                'guidance': (
-                    'Set AZURE_STORAGE_CONNECTION_STRING, set '
-                    'AZURE_STORAGE_ACCOUNT_URL, or include the account host in '
-                    'the path authority.'
-                ),
-                'missing_env': [
-                    'AZURE_STORAGE_CONNECTION_STRING',
-                    'AZURE_STORAGE_ACCOUNT_URL',
-                ],
-                'provider': 'azure-storage',
-                'reason': (
-                    'azure-blob path does not provide an account host and no '
-                    'Azure storage bootstrap settings were found.'
-                ),
-                'role': 'target',
-                'scheme': 'azure-blob',
-                'severity': 'error',
-            },
-        ]
-
-    def test_readiness_provider_warning_exits_zero(
-        self,
-        tmp_path: Path,
-        cli_invoke: CliInvoke,
-        parse_json_output: JsonOutputParser,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Provider warnings should remain advisory and keep exit code zero."""
-        from etlplus.runtime import ReadinessReportBuilder
-
-        monkeypatch.setattr(
-            ReadinessReportBuilder,
-            'package_available',
-            lambda _module_name: True,
-        )
-        config_path = tmp_path / 'check_readiness_provider_warning.yml'
-        config_path.write_text(
-            dedent(
-                """
-                name: Readiness Check
-                sources:
-                  - name: s3_source
-                    type: file
-                    format: json
-                    path: "s3://bucket/input.json"
+                    path: "${secret:env:READINESS_SECRET_S3_PATH}"
                 """,
             ).strip(),
             encoding='utf-8',
@@ -649,44 +730,23 @@ class TestCliCheck:
         assert code == 0
         assert err == ''
         payload = parse_json_output(out)
-        assert payload['status'] == 'warn'
+        assert payload['status'] == 'ok'
+        substitution_check = next(
+            check
+            for check in payload['checks']
+            if check['name'] == 'config-substitution'
+        )
         provider_check = next(
             check
             for check in payload['checks']
             if check['name'] == 'provider-environment'
         )
-        assert provider_check['status'] == 'warn'
-        assert provider_check['environment_gaps'] == [
-            {
-                'connector': 's3_source',
-                'guidance': (
-                    'Set AWS_PROFILE or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY, '
-                    'or rely on shared config files, container credentials, or '
-                    'instance metadata.'
-                ),
-                'missing_env': [
-                    'AWS_ACCESS_KEY_ID',
-                    'AWS_SECRET_ACCESS_KEY',
-                    'AWS_SESSION_TOKEN',
-                    'AWS_PROFILE',
-                    'AWS_DEFAULT_PROFILE',
-                    'AWS_ROLE_ARN',
-                    'AWS_WEB_IDENTITY_TOKEN_FILE',
-                    'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI',
-                    'AWS_CONTAINER_CREDENTIALS_FULL_URI',
-                    'AWS_SHARED_CREDENTIALS_FILE',
-                    'AWS_CONFIG_FILE',
-                ],
-                'provider': 'aws-s3',
-                'reason': (
-                    'No common AWS credential-chain environment hints were '
-                    'detected for this S3 path.'
-                ),
-                'role': 'source',
-                'scheme': 's3',
-                'severity': 'warn',
-            },
-        ]
+        assert substitution_check['status'] == 'ok'
+        assert provider_check == {
+            'message': 'No provider-specific environment gaps were detected.',
+            'name': 'provider-environment',
+            'status': 'ok',
+        }
 
     def test_readiness_runtime_only(
         self,
