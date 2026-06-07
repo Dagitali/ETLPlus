@@ -25,6 +25,7 @@ import pytest
 
 from etlplus.file import File
 from etlplus.file import FileFormat
+from etlplus.history._ui import build_snapshot
 from etlplus.runtime import EVENT_SCHEMA
 from etlplus.runtime import EVENT_SCHEMA_VERSION
 from tests.integration.pytest_integration_support import REMOTE_STORAGE_ENV_CASES
@@ -51,6 +52,15 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 # SECTION: HELPERS ========================================================== #
+
+
+def _history_table_counts(history_db: Path) -> tuple[int, int]:
+    """Return run and job row counts from one SQLite history database."""
+    with sqlite3.connect(history_db) as conn:
+        return (
+            conn.execute('SELECT COUNT(*) FROM runs').fetchone()[0],
+            conn.execute('SELECT COUNT(*) FROM job_runs').fetchone()[0],
+        )
 
 
 def _write_dag_pipeline_config(
@@ -281,6 +291,62 @@ class TestRun:
         assert isinstance(payload.get('result'), dict)
         assert payload['result'].get('status') == 'success'
         assert payload['result'].get('message') == f'Data loaded to {target.uri}'
+
+    def test_history_read_commands_and_ui_snapshot_share_read_only_store(
+        self,
+        cli_invoke: CliInvoke,
+        monkeypatch: pytest.MonkeyPatch,
+        parse_json_output: JsonOutputParser,
+        pipeline_config_factory: PipelineConfigFactory,
+        sample_records: list[dict[str, object]],
+        tmp_path: Path,
+    ) -> None:
+        """
+        History, status, report, log, and UI snapshot reads should share the
+        same local store without adding rows.
+        """
+        state_dir = tmp_path / 'state'
+        monkeypatch.setenv('ETLPLUS_STATE_DIR', str(state_dir))
+        cfg = pipeline_config_factory(sample_records)
+
+        run_code, run_out, run_err = cli_invoke(
+            ('run', '--config', str(cfg.config_path), '--all'),
+        )
+
+        assert run_code == 0
+        assert run_err == ''
+        run_id = parse_json_output(run_out)['run_id']
+        history_db = state_dir / 'history.sqlite'
+        before_counts = _history_table_counts(history_db)
+
+        history_code, history_out, history_err = cli_invoke(
+            ('history', '--run-id', run_id),
+        )
+        status_code, status_out, status_err = cli_invoke(
+            ('status', '--run-id', run_id),
+        )
+        report_code, report_out, report_err = cli_invoke(
+            ('report', '--run-id', run_id, '--group-by', 'status'),
+        )
+        log_code, log_out, log_err = cli_invoke(('log', '--run-id', run_id))
+        snapshot = build_snapshot(limit=10)
+
+        assert history_code == status_code == report_code == log_code == 0
+        assert history_err == status_err == report_err == log_err == ''
+        assert _history_table_counts(history_db) == before_counts
+
+        history_payload = parse_json_output(history_out)
+        status_payload = parse_json_output(status_out)
+        report_payload = parse_json_output(report_out)
+        log_payload = parse_json_output(log_out)
+        assert history_payload[0]['run_id'] == run_id
+        assert status_payload['run_id'] == run_id
+        assert report_payload['summary']['runs'] == 1
+        assert {row['run_id'] for row in log_payload} == {run_id}
+        assert {row['run_id'] for row in snapshot['runs']} == {run_id}
+        assert {row['run_id'] for row in snapshot['jobs']} == {run_id}
+        assert snapshot['summary']['run_rows'] == 1
+        assert snapshot['summary']['job_rows'] == 1
 
     def test_run_all_accepts_max_concurrency_override(
         self,
