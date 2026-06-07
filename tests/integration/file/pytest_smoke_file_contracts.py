@@ -7,6 +7,8 @@ Reusable smoke-test contracts for :mod:`etlplus.file` modules.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
+from importlib import import_module
 from pathlib import Path
 from types import ModuleType
 
@@ -28,11 +30,12 @@ from ...pytest_file_common import skip_on_known_file_io_error
 
 __all__ = [
     # Classes
-    'SmokeRoundtripModuleContract',
+    'FileSmokeCase',
     # Constants
-    'SMOKE_ROUNDTRIP_EXCEPTION_MODULES',
-    'SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES',
-    'SMOKE_ROUNDTRIP_OVERRIDE_ATTRS',
+    'FILE_SMOKE_CASES',
+    'FILE_SMOKE_EXCEPTION_CASES',
+    'FILE_SMOKE_EXCEPTION_OVERRIDES',
+    'FILE_SMOKE_OVERRIDE_ATTRS',
     # Functions
     'run_file_smoke',
 ]
@@ -41,29 +44,39 @@ __all__ = [
 # SECTION: CONSTANTS ======================================================== #
 
 
-SMOKE_ROUNDTRIP_OVERRIDE_ATTRS = frozenset(
+FILE_SMOKE_OVERRIDE_ATTRS = frozenset(
     {
         'error_match',
         'expect_write_error',
         'file_name',
     },
 )
-SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES = {
-    'test_i_file_gz.py': frozenset({'file_name'}),
-    'test_i_file_xls.py': frozenset(
+FILE_SMOKE_EXCEPTION_OVERRIDES = {
+    'gz': frozenset({'file_name'}),
+    'hdf5': frozenset(
         {'expect_write_error', 'error_match'},
     ),
-    'test_i_file_zip.py': frozenset({'file_name'}),
+    'sas7bdat': frozenset(
+        {'expect_write_error', 'error_match'},
+    ),
+    'xls': frozenset(
+        {'expect_write_error', 'error_match'},
+    ),
+    'zip': frozenset({'file_name'}),
 }
-SMOKE_ROUNDTRIP_EXCEPTION_MODULES = frozenset(
-    SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES,
+FILE_SMOKE_EXCEPTION_CASES = frozenset(
+    FILE_SMOKE_EXCEPTION_OVERRIDES,
 )
 
 
-class SmokeRoundtripModuleContract:
-    """Reusable write/read smoke contract for file-format modules."""
+# SECTION: DATA CLASSES ===================================================== #
 
-    module: ModuleType
+
+@dataclass(frozen=True, slots=True)
+class FileSmokeCase:
+    """File-format smoke test case."""
+
+    module_name: str
     file_name: str | None = None
     payload: object | None = None
     use_sample_record: bool = False
@@ -71,33 +84,122 @@ class SmokeRoundtripModuleContract:
     expect_write_error: type[Exception] | None = None
     error_match: str | None = None
 
-    def test_roundtrip_smoke(
+    @property
+    def id(self) -> str:
+        """Return the pytest parameter id for this case."""
+        return self.module_name
+
+    def import_module(self) -> ModuleType:
+        """Import and return the ETLPlus file module for this case."""
+        return import_module(f'etlplus.file.{self.module_name}')
+
+    def path_for(self, tmp_path: Path) -> Path:
+        """Return the smoke-test path for this case."""
+        if self.file_name is not None:
+            return tmp_path / self.file_name
+        suffix = resolve_module_handler(self.import_module()).format.value
+        return tmp_path / f'data.{suffix}'
+
+    def payload_for(
         self,
-        tmp_path: Path,
+        *,
         sample_record: JSONDict,
         sample_records: JSONList,
-    ) -> None:
-        """Test that read/write can be invoked with minimal payloads."""
-        file_name = self.file_name
-        if file_name is None:
-            suffix = resolve_module_handler(self.module).format.value
-            file_name = f'data.{suffix}'
-        path = tmp_path / file_name
-        payload: object
+    ) -> object:
+        """Return the write payload for this case."""
         if self.payload is not None:
-            payload = self.payload
-        elif self.use_sample_record:
-            payload = sample_record
-        else:
-            payload = sample_records
-        run_file_smoke(
-            self.module,
-            path,
-            payload,
-            write_kwargs=self.write_kwargs,
-            expect_write_error=self.expect_write_error,
-            error_match=self.error_match,
+            return self.payload
+        if self.use_sample_record:
+            return sample_record
+        return sample_records
+
+    def override_attrs(self) -> frozenset[str]:
+        """Return structural override attributes configured for this case."""
+        return frozenset(
+            attr
+            for attr in FILE_SMOKE_OVERRIDE_ATTRS
+            if getattr(self, attr) is not None
         )
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+FILE_SMOKE_CASES = (
+    FileSmokeCase('arrow'),
+    FileSmokeCase('avro'),
+    FileSmokeCase('bson'),
+    FileSmokeCase('cbor'),
+    FileSmokeCase('csv'),
+    FileSmokeCase('dat'),
+    FileSmokeCase('dta'),
+    FileSmokeCase('duckdb'),
+    FileSmokeCase('feather'),
+    FileSmokeCase('fwf'),
+    FileSmokeCase('gz', file_name='data.json.gz'),
+    FileSmokeCase('hdf5', expect_write_error=RuntimeError, error_match='read-only'),
+    FileSmokeCase(
+        'hbs',
+        payload={'template': 'Hello {{ name }}', 'context': {'name': 'Ada'}},
+    ),
+    FileSmokeCase('ini', payload={'DEFAULT': {'name': 'Ada'}, 'main': {'age': '36'}}),
+    FileSmokeCase(
+        'jinja2',
+        payload={'template': 'Hello {{ name }}', 'context': {'name': 'Ada'}},
+    ),
+    FileSmokeCase('json'),
+    FileSmokeCase('log'),
+    FileSmokeCase('msgpack'),
+    FileSmokeCase(
+        'mustache',
+        payload={'template': 'Hello {{ name }}', 'context': {'name': 'Ada'}},
+    ),
+    FileSmokeCase('nc'),
+    FileSmokeCase('ndjson'),
+    FileSmokeCase('ods'),
+    FileSmokeCase('orc'),
+    FileSmokeCase('parquet'),
+    FileSmokeCase('pb', payload={'payload_base64': 'aGVsbG8='}),
+    FileSmokeCase('properties', payload={'id': '99', 'name': 'Grace'}),
+    FileSmokeCase(
+        'proto',
+        payload={
+            'schema': """syntax = "proto3"; message Test { string name = 1; } """,
+        },
+    ),
+    FileSmokeCase('psv'),
+    FileSmokeCase('rda'),
+    FileSmokeCase('rds'),
+    FileSmokeCase(
+        'sas7bdat',
+        expect_write_error=RuntimeError,
+        error_match='read-only',
+    ),
+    FileSmokeCase('sav'),
+    FileSmokeCase('sqlite'),
+    FileSmokeCase('tab'),
+    FileSmokeCase('toml', use_sample_record=True),
+    FileSmokeCase('tsv'),
+    FileSmokeCase('txt', payload='99\nGrace'),
+    FileSmokeCase(
+        'vm',
+        payload={'template': 'Hello $name', 'context': {'name': 'Ada'}},
+    ),
+    FileSmokeCase('xls', expect_write_error=RuntimeError, error_match='read-only'),
+    FileSmokeCase('xlsm'),
+    FileSmokeCase('xlsx'),
+    FileSmokeCase(
+        'xml',
+        payload={'root': {'text': 'hello'}},
+        write_kwargs={'root_tag': 'root'},
+    ),
+    FileSmokeCase('xpt'),
+    FileSmokeCase('yaml'),
+    FileSmokeCase('zip', file_name='data.json.zip'),
+)
+
+
+# SECTION: FUNCTIONS ======================================================== #
 
 
 def run_file_smoke(
