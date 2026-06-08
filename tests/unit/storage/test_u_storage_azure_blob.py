@@ -13,6 +13,7 @@ from etlplus.storage import StorageLocation
 from etlplus.storage import _azure_blob as azure_blob_mod
 
 from .pytest_storage_support import FakeContentSettings
+from .pytest_storage_support import FixedDownload
 from .pytest_storage_support import assert_upload_payload
 from .pytest_storage_support import clear_azure_storage_env
 
@@ -126,19 +127,12 @@ class TestAzureBlobStorageBackend:
             'azure-blob://container/blob.json',
         )
 
-        class FakeDownload:
-            """Blob download test double."""
-
-            def readall(self) -> bytes:
-                """Return a fixed payload."""
-                return b'{"ok": true}'
-
         class FakeBlobClient:
             """Blob client test double."""
 
-            def download_blob(self) -> FakeDownload:
+            def download_blob(self) -> FixedDownload:
                 """Return the fake download wrapper."""
-                return FakeDownload()
+                return FixedDownload()
 
         monkeypatch.setattr(backend, '_blob_client', lambda _location: FakeBlobClient())
         with backend.open(location, encoding='utf-8') as handle:
