@@ -14,10 +14,31 @@ import typer
 import etlplus.cli._commands._options as cli_option_pkg
 import etlplus.cli._commands._options.helpers as cli_options
 import etlplus.cli._commands._options.init as init_options_mod
+from tests.unit.pytest_export_contracts import assert_package_exports
+from tests.unit.pytest_export_contracts import export_names
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+HELPER_OPTION_EXPORTS: tuple[tuple[str, object], ...] = (
+    ('typer_connector_option_alias', cli_options.typer_connector_option_alias),
+    ('typer_flag_option_alias', cli_options.typer_flag_option_alias),
+    ('typer_flag_option_kwargs', cli_options.typer_flag_option_kwargs),
+    ('typer_format_option_alias', cli_options.typer_format_option_alias),
+    ('typer_option_alias', cli_options.typer_option_alias),
+    ('typer_resource_argument_alias', cli_options.typer_resource_argument_alias),
+    ('typer_timestamp_option_alias', cli_options.typer_timestamp_option_alias),
+    ('typer_value_option_alias', cli_options.typer_value_option_alias),
+)
+INIT_OPTION_EXPORTS: tuple[tuple[str, object], ...] = (
+    ('InitDirectoryArgument', init_options_mod.InitDirectoryArgument),
+    ('InitForceOption', init_options_mod.InitForceOption),
+)
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -105,16 +126,10 @@ class TestHelperOptionKwargs:
 
     def test_helper_module_exports_intended_public_api(self) -> None:
         """Option helper exports should reflect the public helper surface."""
-        assert cli_options.__all__ == [
-            'typer_connector_option_alias',
-            'typer_flag_option_alias',
-            'typer_flag_option_kwargs',
-            'typer_format_option_alias',
-            'typer_option_alias',
-            'typer_resource_argument_alias',
-            'typer_timestamp_option_alias',
-            'typer_value_option_alias',
-        ]
+        assert_package_exports(
+            package_module=cli_options,
+            expected_exports=HELPER_OPTION_EXPORTS,
+        )
 
     def test_resource_argument_alias_builds_typer_argument_metadata(self) -> None:
         """Resource argument aliases should wrap one Typer argument metadata object."""
@@ -203,25 +218,15 @@ class TestOptionPackageExports:
 
     def test_init_expected_aliases(self) -> None:
         """Test that the init option module exposes only the intended aliases."""
-        assert init_options_mod.__all__ == [
-            'InitDirectoryArgument',
-            'InitForceOption',
-        ]
+        assert_package_exports(
+            package_module=init_options_mod,
+            expected_exports=INIT_OPTION_EXPORTS,
+        )
 
     @pytest.mark.parametrize(
         ('name', 'expected'),
-        [
-            pytest.param(
-                'InitDirectoryArgument',
-                init_options_mod.InitDirectoryArgument,
-                id='directory-argument',
-            ),
-            pytest.param(
-                'InitForceOption',
-                init_options_mod.InitForceOption,
-                id='force-option',
-            ),
-        ],
+        INIT_OPTION_EXPORTS,
+        ids=export_names(INIT_OPTION_EXPORTS),
     )
     def test_reexports_init_aliases(
         self,
