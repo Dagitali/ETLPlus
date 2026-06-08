@@ -416,9 +416,7 @@ class TestCliExecutionEvents:
         if isinstance(expected_output, type):
             assert isinstance(payload, expected_output)
         elif isinstance(expected_output, dict):
-            assert {
-                key: payload[key] for key in expected_output
-            } == expected_output
+            assert {key: payload[key] for key in expected_output} == expected_output
         else:
             assert payload == expected_output
         _assert_success_lifecycle(

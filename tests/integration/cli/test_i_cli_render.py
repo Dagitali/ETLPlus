@@ -52,6 +52,7 @@ def render_input_case_fixture(
     render_input = request.getfixturevalue(fixture_name)
     return path_flag, getattr(render_input, path_attr), render_input.table_name
 
+
 # SECTION: TESTS ============================================================ #
 
 
