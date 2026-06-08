@@ -271,10 +271,8 @@ class TestExtractErrors:
         err_msg : str | None
             Expected error message substring, if applicable.
         """
-        with pytest.raises(exc_type) as exc:
+        with pytest.raises(exc_type, match=err_msg):
             call(*args)
-        if err_msg:
-            assert err_msg in str(exc.value)
 
 
 class TestExtractFromApi:
