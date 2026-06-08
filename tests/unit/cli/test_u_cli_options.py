@@ -106,13 +106,14 @@ OPTION_ALIAS_CASES = (
 # SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
-def _option_alias_metadata(
+def _alias_metadata[T](
     alias: object,
-) -> tuple[object, typer.models.OptionInfo]:
-    """Return the value type and Typer option metadata from one option alias."""
-    value_type, option_info = get_args(alias)
-    assert isinstance(option_info, typer.models.OptionInfo)
-    return value_type, option_info
+    metadata_type: type[T],
+) -> tuple[object, T]:
+    """Return the value type and Typer metadata from one annotated alias."""
+    value_type, metadata = get_args(alias)
+    assert isinstance(metadata, metadata_type)
+    return value_type, metadata
 
 
 # SECTION: TESTS ============================================================ #
@@ -194,8 +195,9 @@ class TestHelperOptionKwargs:
         """
         Test that context-specific option aliases preserve Typer metadata.
         """
-        _, option_info = _option_alias_metadata(
+        _, option_info = _alias_metadata(
             alias_factory(value_type, param_decl, **kwargs),
+            typer.models.OptionInfo,
         )
 
         assert option_info.metavar == expected_metavar
@@ -212,9 +214,11 @@ class TestHelperOptionKwargs:
             context='source',
         )
 
-        value_type, argument_info = get_args(alias)
+        value_type, argument_info = _alias_metadata(
+            alias,
+            typer.models.ArgumentInfo,
+        )
         assert value_type is str
-        assert isinstance(argument_info, typer.models.ArgumentInfo)
         assert 'Extract data from SOURCE' in str(argument_info.help)
 
     def test_value_option_alias_builds_typer_option_metadata(self) -> None:
@@ -227,7 +231,7 @@ class TestHelperOptionKwargs:
             show_default=None,
         )
 
-        value_type, option_info = _option_alias_metadata(alias)
+        value_type, option_info = _alias_metadata(alias, typer.models.OptionInfo)
         assert value_type is str
         assert option_info.help == 'Name of the job to run'
         assert option_info.metavar == 'JOB'
