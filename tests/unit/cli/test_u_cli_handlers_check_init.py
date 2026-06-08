@@ -46,6 +46,22 @@ def command_context_fixture() -> lifecycle_mod.CommandContext:
     )
 
 
+# SECTION: HELPERS ========================================================== #
+
+
+def _schedule_test_config(*schedules: dict[str, object]) -> Config:
+    """Return one minimal pipeline config containing schedule definitions."""
+    return Config.from_dict(
+        {
+            'name': 'Schedule Test Pipeline',
+            'sources': [],
+            'targets': [],
+            'jobs': [],
+            'schedules': list(schedules),
+        },
+    )
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -746,77 +762,44 @@ class TestScheduleHandler:
         """Schedule cron helper should map weekday numbers into systemd names."""
         assert schedule_mod._cron_to_on_calendar('5 6 * * 1') == ('Mon *-*-* 06:05:00')
 
-    def test_emits_crontab_helper_payload(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """Schedule handler should emit one crontab helper payload."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Schedule Test Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-                'schedules': [
+    @pytest.mark.parametrize(
+        'schedules',
+        [
+            pytest.param(
+                (
                     {
                         'name': 'nightly_all',
                         'cron': '0 2 * * *',
                         'target': {'run_all': True},
                     },
-                ],
-            },
-        )
-        patch_config_from_yaml(monkeypatch, cfg)
-        config_path = Path('cfg.yml').resolve()
-
-        assert (
-            handlers.schedule_handler(
-                config='cfg.yml',
-                emit='crontab',
-                schedule_name='nightly_all',
-            )
-            == 0
-        )
-        assert_emit_json(
-            capture_io,
-            {
-                'format': 'crontab',
-                'schedule': 'nightly_all',
-                'snippet': (
-                    f'0 2 * * * cd {config_path.parent} '
-                    f'&& etlplus run --config {config_path} --all'
                 ),
-            },
-            pretty=True,
-        )
-
-    def test_emits_helper_payload_for_later_matching_schedule(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        capture_io: CaptureIo,
-    ) -> None:
-        """Schedule helper selection should continue past earlier non-matches."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Schedule Test Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-                'schedules': [
-                    {
-                        'name': 'nightly_all',
-                        'cron': '0 2 * * *',
-                        'target': {'run_all': True},
-                    },
+                id='single-match',
+            ),
+            pytest.param(
+                (
                     {
                         'name': 'customers_every_30m',
                         'interval': {'minutes': 30},
                         'target': {'job': 'job-a'},
                     },
-                ],
-            },
-        )
+                    {
+                        'name': 'nightly_all',
+                        'cron': '0 2 * * *',
+                        'target': {'run_all': True},
+                    },
+                ),
+                id='later-match',
+            ),
+        ],
+    )
+    def test_emits_crontab_helper_payload(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capture_io: CaptureIo,
+        schedules: tuple[dict[str, object], ...],
+    ) -> None:
+        """Schedule handler should emit one crontab helper payload."""
+        cfg = _schedule_test_config(*schedules)
         patch_config_from_yaml(monkeypatch, cfg)
         config_path = Path('cfg.yml').resolve()
 
@@ -847,24 +830,16 @@ class TestScheduleHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Schedule resolution should keep scanning until a later name matches."""
-        cfg = Config.from_dict(
+        cfg = _schedule_test_config(
             {
-                'name': 'Schedule Test Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-                'schedules': [
-                    {
-                        'name': 'nightly_all',
-                        'cron': '0 2 * * *',
-                        'target': {'run_all': True},
-                    },
-                    {
-                        'name': 'customers_every_30m',
-                        'interval': {'minutes': 30},
-                        'target': {'job': 'job-a'},
-                    },
-                ],
+                'name': 'nightly_all',
+                'cron': '0 2 * * *',
+                'target': {'run_all': True},
+            },
+            {
+                'name': 'customers_every_30m',
+                'interval': {'minutes': 30},
+                'target': {'job': 'job-a'},
             },
         )
         patch_config_from_yaml(monkeypatch, cfg)
@@ -915,26 +890,18 @@ class TestScheduleHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Schedule handler should emit the configured schedule metadata."""
-        cfg = Config.from_dict(
+        cfg = _schedule_test_config(
             {
-                'name': 'Schedule Test Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-                'schedules': [
-                    {
-                        'name': 'nightly_all',
-                        'cron': '0 2 * * *',
-                        'timezone': 'UTC',
-                        'target': {'run_all': True},
-                    },
-                    {
-                        'name': 'customers_every_30m',
-                        'interval': {'minutes': 30},
-                        'paused': True,
-                        'target': {'job': 'job-a'},
-                    },
-                ],
+                'name': 'nightly_all',
+                'cron': '0 2 * * *',
+                'timezone': 'UTC',
+                'target': {'run_all': True},
+            },
+            {
+                'name': 'customers_every_30m',
+                'interval': {'minutes': 30},
+                'paused': True,
+                'target': {'job': 'job-a'},
             },
         )
         patch_config_from_yaml(monkeypatch, cfg)
@@ -970,24 +937,16 @@ class TestScheduleHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Schedule handler should optionally include persisted scheduler state."""
-        cfg = Config.from_dict(
+        cfg = _schedule_test_config(
             {
-                'name': 'Schedule Test Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-                'schedules': [
-                    {
-                        'name': 'nightly_all',
-                        'cron': '0 2 * * *',
-                        'target': {'run_all': True},
-                    },
-                    {
-                        'name': 'customers_every_30m',
-                        'interval': {'minutes': 30},
-                        'target': {'job': 'job-a'},
-                    },
-                ],
+                'name': 'nightly_all',
+                'cron': '0 2 * * *',
+                'target': {'run_all': True},
+            },
+            {
+                'name': 'customers_every_30m',
+                'interval': {'minutes': 30},
+                'target': {'job': 'job-a'},
             },
         )
         patch_config_from_yaml(monkeypatch, cfg)
@@ -1048,19 +1007,11 @@ class TestScheduleHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Schedule handler should emit one systemd helper payload."""
-        cfg = Config.from_dict(
+        cfg = _schedule_test_config(
             {
-                'name': 'Schedule Test Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-                'schedules': [
-                    {
-                        'name': 'customers_every_30m',
-                        'interval': {'minutes': 30},
-                        'target': {'job': 'job-a'},
-                    },
-                ],
+                'name': 'customers_every_30m',
+                'interval': {'minutes': 30},
+                'target': {'job': 'job-a'},
             },
         )
         patch_config_from_yaml(monkeypatch, cfg)
@@ -1130,15 +1081,7 @@ class TestScheduleHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Schedule handler should fail cleanly when the named schedule is missing."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Schedule Test Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-                'schedules': [],
-            },
-        )
+        cfg = _schedule_test_config()
         patch_config_from_yaml(monkeypatch, cfg)
 
         assert (
@@ -1183,63 +1126,54 @@ class TestScheduleHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Schedule handler should emit the scheduler's partial summary on failure."""
-        cfg = Config.from_dict(
+        cfg = _schedule_test_config(
             {
-                'name': 'Schedule Test Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-                'schedules': [
-                    {
-                        'name': 'nightly_all',
-                        'cron': '0 2 * * *',
-                        'target': {'run_all': True},
-                    },
-                ],
+                'name': 'nightly_all',
+                'cron': '0 2 * * *',
+                'target': {'run_all': True},
             },
         )
         patch_config_from_yaml(monkeypatch, cfg)
+        partial_summary = {
+            'attempted_count': 1,
+            'checked_at': '2026-05-12T02:00:00+00:00',
+            'completed_count': 0,
+            'dispatched_count': 0,
+            'due_count': 2,
+            'name': 'Schedule Test Pipeline',
+            'pending_count': 2,
+            'pending_runs': [
+                {
+                    'reason': 'exception',
+                    'schedule': 'nightly_all',
+                    'status': 'pending',
+                    'trigger': 'cron',
+                    'triggered_at': '2026-05-12T02:00:00+00:00',
+                },
+            ],
+            'run_count': 1,
+            'runs': [
+                {
+                    'error_message': 'dispatch failed',
+                    'error_type': 'RuntimeError',
+                    'reason': 'exception',
+                    'schedule': 'nightly_all',
+                    'status': 'error',
+                    'trigger': 'cron',
+                    'triggered_at': '2026-05-12T02:00:00+00:00',
+                },
+            ],
+            'schedule_count': 1,
+            'skipped_count': 0,
+            'stopped_early': True,
+        }
 
         monkeypatch.setattr(
             schedule_mod.LocalScheduler,
             'run_pending',
             classmethod(
                 lambda _cls, **_kwargs: (_ for _ in ()).throw(
-                    schedule_mod.SchedulerDispatchError(
-                        payload={
-                            'attempted_count': 1,
-                            'checked_at': '2026-05-12T02:00:00+00:00',
-                            'completed_count': 0,
-                            'dispatched_count': 0,
-                            'due_count': 2,
-                            'name': 'Schedule Test Pipeline',
-                            'pending_count': 2,
-                            'pending_runs': [
-                                {
-                                    'reason': 'exception',
-                                    'schedule': 'nightly_all',
-                                    'status': 'pending',
-                                    'trigger': 'cron',
-                                    'triggered_at': '2026-05-12T02:00:00+00:00',
-                                },
-                            ],
-                            'run_count': 1,
-                            'runs': [
-                                {
-                                    'error_message': 'dispatch failed',
-                                    'error_type': 'RuntimeError',
-                                    'reason': 'exception',
-                                    'schedule': 'nightly_all',
-                                    'status': 'error',
-                                    'trigger': 'cron',
-                                    'triggered_at': '2026-05-12T02:00:00+00:00',
-                                },
-                            ],
-                            'schedule_count': 1,
-                            'skipped_count': 0,
-                            'stopped_early': True,
-                        },
-                    ),
+                    schedule_mod.SchedulerDispatchError(payload=partial_summary),
                 ),
             ),
         )
@@ -1252,43 +1186,7 @@ class TestScheduleHandler:
             )
             == 1
         )
-        assert_emit_json(
-            capture_io,
-            {
-                'attempted_count': 1,
-                'checked_at': '2026-05-12T02:00:00+00:00',
-                'completed_count': 0,
-                'dispatched_count': 0,
-                'due_count': 2,
-                'name': 'Schedule Test Pipeline',
-                'pending_count': 2,
-                'pending_runs': [
-                    {
-                        'reason': 'exception',
-                        'schedule': 'nightly_all',
-                        'status': 'pending',
-                        'trigger': 'cron',
-                        'triggered_at': '2026-05-12T02:00:00+00:00',
-                    },
-                ],
-                'run_count': 1,
-                'runs': [
-                    {
-                        'error_message': 'dispatch failed',
-                        'error_type': 'RuntimeError',
-                        'reason': 'exception',
-                        'schedule': 'nightly_all',
-                        'status': 'error',
-                        'trigger': 'cron',
-                        'triggered_at': '2026-05-12T02:00:00+00:00',
-                    },
-                ],
-                'schedule_count': 1,
-                'skipped_count': 0,
-                'stopped_early': True,
-            },
-            pretty=False,
-        )
+        assert_emit_json(capture_io, partial_summary, pretty=False)
 
     def test_run_pending_emits_scheduler_summary(
         self,
@@ -1296,49 +1194,39 @@ class TestScheduleHandler:
         capture_io: CaptureIo,
     ) -> None:
         """Schedule handler should delegate due-run execution to the scheduler."""
-        cfg = Config.from_dict(
+        cfg = _schedule_test_config(
             {
-                'name': 'Schedule Test Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-                'schedules': [
-                    {
-                        'name': 'nightly_all',
-                        'cron': '0 2 * * *',
-                        'target': {'run_all': True},
-                    },
-                ],
+                'name': 'nightly_all',
+                'cron': '0 2 * * *',
+                'target': {'run_all': True},
             },
         )
         captured: dict[str, object] = {}
+        scheduler_summary = {
+            'checked_at': '2026-05-12T02:00:00+00:00',
+            'dispatched_count': 1,
+            'name': 'Schedule Test Pipeline',
+            'run_count': 1,
+            'runs': [
+                {
+                    'job': 'job-a',
+                    'run_id': 'run-1',
+                    'schedule': 'nightly_all',
+                    'status': 'ok',
+                    'trigger': 'cron',
+                    'triggered_at': '2026-05-12T02:00:00+00:00',
+                },
+            ],
+            'schedule_count': 1,
+            'skipped_count': 0,
+        }
         patch_config_from_yaml(monkeypatch, cfg)
 
         monkeypatch.setattr(
             schedule_mod.LocalScheduler,
             'run_pending',
             classmethod(
-                lambda _cls, **kwargs: (
-                    captured.update(kwargs)
-                    or {
-                        'checked_at': '2026-05-12T02:00:00+00:00',
-                        'dispatched_count': 1,
-                        'name': 'Schedule Test Pipeline',
-                        'run_count': 1,
-                        'runs': [
-                            {
-                                'job': 'job-a',
-                                'run_id': 'run-1',
-                                'schedule': 'nightly_all',
-                                'status': 'ok',
-                                'trigger': 'cron',
-                                'triggered_at': '2026-05-12T02:00:00+00:00',
-                            },
-                        ],
-                        'schedule_count': 1,
-                        'skipped_count': 0,
-                    }
-                ),
+                lambda _cls, **kwargs: captured.update(kwargs) or scheduler_summary,
             ),
         )
 
@@ -1357,28 +1245,7 @@ class TestScheduleHandler:
         assert captured['pretty'] is False
         assert captured['schedule_name'] == 'nightly_all'
         assert captured['run_callback'] is schedule_mod._run_handler
-        assert_emit_json(
-            capture_io,
-            {
-                'checked_at': '2026-05-12T02:00:00+00:00',
-                'dispatched_count': 1,
-                'name': 'Schedule Test Pipeline',
-                'run_count': 1,
-                'runs': [
-                    {
-                        'job': 'job-a',
-                        'run_id': 'run-1',
-                        'schedule': 'nightly_all',
-                        'status': 'ok',
-                        'trigger': 'cron',
-                        'triggered_at': '2026-05-12T02:00:00+00:00',
-                    },
-                ],
-                'schedule_count': 1,
-                'skipped_count': 0,
-            },
-            pretty=False,
-        )
+        assert_emit_json(capture_io, scheduler_summary, pretty=False)
 
     def test_scaffolds_starter_files(
         self,
@@ -1458,29 +1325,21 @@ class TestScheduleHandler:
 
     def test_schedule_payload_filters_and_includes_backfill_metadata(self) -> None:
         """Schedule summaries should filter by name and include backfill fields."""
-        cfg = Config.from_dict(
+        cfg = _schedule_test_config(
             {
-                'name': 'Schedule Test Pipeline',
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-                'schedules': [
-                    {
-                        'name': 'nightly_all',
-                        'cron': '0 2 * * *',
-                        'target': {'run_all': True},
-                    },
-                    {
-                        'name': 'backfill_customers',
-                        'interval': {'minutes': 30},
-                        'target': {'job': 'job-a'},
-                        'backfill': {
-                            'enabled': True,
-                            'max_catchup_runs': 3,
-                            'start_at': '2026-05-01T00:00:00Z',
-                        },
-                    },
-                ],
+                'name': 'nightly_all',
+                'cron': '0 2 * * *',
+                'target': {'run_all': True},
+            },
+            {
+                'name': 'backfill_customers',
+                'interval': {'minutes': 30},
+                'target': {'job': 'job-a'},
+                'backfill': {
+                    'enabled': True,
+                    'max_catchup_runs': 3,
+                    'start_at': '2026-05-01T00:00:00Z',
+                },
             },
         )
 
