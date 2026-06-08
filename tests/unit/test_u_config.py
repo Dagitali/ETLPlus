@@ -14,9 +14,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -33,25 +31,12 @@ from etlplus.connector import ConnectorFile
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: DATA CLASSES ===================================================== #
-
-
-@dataclass(frozen=True, slots=True)
-class ConnectorCase:
-    """Connector collection test case definition."""
-
-    collection: str
-    entries: list[Any]
-    expected_types: set[type]
-
-
 # SECTION: CONSTANTS ======================================================== #
 
 
-CONNECTOR_CASES: tuple[ConnectorCase, ...] = (
-    ConnectorCase(
-        collection='sources',
-        entries=[
+CONNECTOR_CASES = (
+    pytest.param(
+        [
             {'name': 'csv_in', 'type': 'file', 'path': '/tmp/in.csv'},
             {
                 'name': 'service_in',
@@ -64,11 +49,11 @@ CONNECTOR_CASES: tuple[ConnectorCase, ...] = (
             {'name': 'weird', 'type': 'unknown'},
             {'type': 'file'},
         ],
-        expected_types={ConnectorFile, ConnectorApi, ConnectorDb},
+        {ConnectorFile, ConnectorApi, ConnectorDb},
+        id='sources',
     ),
-    ConnectorCase(
-        collection='targets',
-        entries=[
+    pytest.param(
+        [
             {'name': 'csv_out', 'type': 'file', 'path': '/tmp/out.csv'},
             {'name': 'sink', 'type': 'database', 'table': 'events_out'},
             {
@@ -79,7 +64,8 @@ CONNECTOR_CASES: tuple[ConnectorCase, ...] = (
             },
             {'name': 'bad', 'type': 'unknown'},
         ],
-        expected_types={ConnectorFile, ConnectorDb, ConnectorApi},
+        {ConnectorFile, ConnectorDb, ConnectorApi},
+        id='targets',
     ),
 )
 
@@ -119,22 +105,22 @@ class TestCollectParsed:
     """
 
     @pytest.mark.parametrize(
-        'case',
+        ('entries', 'expected_types'),
         CONNECTOR_CASES,
-        ids=lambda c: c.collection,
     )
     def test_collect_parsed_filters_invalid_entries(
         self,
-        case: ConnectorCase,
+        entries: list[object],
+        expected_types: set[type[object]],
     ) -> None:
         """Test that :func:`_collect_parsed` filters malformed entries."""
         items = _collect_parsed(
-            case.entries,
+            entries,
             _parse_connector_entry,
         )
 
-        assert len(items) == len(case.expected_types)
-        assert {type(item) for item in items} == case.expected_types
+        assert len(items) == len(expected_types)
+        assert {type(item) for item in items} == expected_types
 
 
 class TestConfig:
