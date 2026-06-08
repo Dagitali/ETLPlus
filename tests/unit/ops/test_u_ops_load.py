@@ -16,9 +16,8 @@ from __future__ import annotations
 
 import csv
 import importlib
-import json as js
+import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -36,121 +35,19 @@ from etlplus.ops.load import load_to_database
 from etlplus.ops.load import load_to_file
 from etlplus.utils._types import JSONData
 from etlplus.utils._types import JSONDict
+from tests.unit.ops.pytest_ops_support import ApiCallRecord
+from tests.unit.ops.pytest_ops_support import ApiSession
+from tests.unit.ops.pytest_ops_support import JsonResponse
+from tests.unit.ops.pytest_ops_support import write_json_payload
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: IMPORTS ========================================================== #
 
 
 load_mod = importlib.import_module('etlplus.ops.load')
-
-
-def _write_json_payload(path: str, payload: Any) -> None:
-    """Write one JSON payload using UTF-8 encoding."""
-    Path(path).write_text(js.dumps(payload), encoding='utf-8')
-
-
-@dataclass(slots=True)
-class _CallRecord:
-    """Record of an HTTP method call in the stub session."""
-
-    method: str
-    url: str
-    json: object
-    timeout: float
-    kwargs: dict[str, Any]
-
-
-class _ApiEnvResponse:
-    """Configurable response stub for normalized API environment tests."""
-
-    def __init__(
-        self,
-        payload: object | None = None,
-        *,
-        status_code: int = 200,
-        text: str = 'fallback',
-        json_error: bool = False,
-    ) -> None:
-        self._payload = {'ok': True} if payload is None else payload
-        self.status_code = status_code
-        self.text = text
-        self._json_error = json_error
-
-    def json(self) -> object:
-        """Return JSON payload or simulate a JSON decoding failure."""
-        if self._json_error:
-            raise ValueError('bad json')
-        return self._payload
-
-    def raise_for_status(self) -> None:
-        """No-op for status raising in stub."""
-        return
-
-
-class _StubResponse:
-    """Minimal HTTP response stub for API load tests."""
-
-    def __init__(self, payload: object) -> None:
-        self._payload = payload
-        self.status_code = 200
-        self.text = 'ok'
-
-    def json(self) -> object:
-        """Return the stubbed JSON payload."""
-        return self._payload
-
-    def raise_for_status(self) -> None:
-        """No-op for status raising in stub."""
-        return
-
-
-class _StubSession:
-    """Capture HTTP method calls to assert ``load_to_api`` behavior."""
-
-    def __init__(self, payload: object | None = None) -> None:
-        self.calls: list[_CallRecord] = []
-        self.payload = payload or {'ok': True}
-
-    def post(
-        self,
-        url: str,
-        *,
-        json: object,
-        timeout: float,
-        **kwargs: Any,
-    ) -> _StubResponse:  # noqa: ANN001
-        """Capture POST call details."""
-        record = _CallRecord(
-            method='post',
-            url=url,
-            json=json,
-            timeout=timeout,
-            kwargs=dict(kwargs),
-        )
-        self.calls.append(record)
-        return _StubResponse(self.payload)
-
-    def put(
-        self,
-        url: str,
-        *,
-        json: object,
-        timeout: float,
-        **kwargs: Any,
-    ) -> _StubResponse:  # noqa: ANN001
-        """Capture PUT call details."""
-        record = _CallRecord(
-            method='put',
-            url=url,
-            json=json,
-            timeout=timeout,
-            kwargs=dict(kwargs),
-        )
-        self.calls.append(record)
-        return _StubResponse(self.payload)
 
 
 # SECTION: TESTS ============================================================ #
@@ -214,7 +111,7 @@ class TestLoad:
         [
             (
                 'json',
-                _write_json_payload,
+                write_json_payload,
                 {'test': 'data'},
             ),
         ],
@@ -511,7 +408,7 @@ class TestLoadToApi:
     def test_load_to_api_success(self) -> None:
         """Test that payload and metadata are returned through stub session."""
 
-        session = _StubSession({'ok': True})
+        session = ApiSession({'ok': True})
         data = [{'name': 'Ada'}]
 
         result = load_to_api(
@@ -525,9 +422,9 @@ class TestLoadToApi:
         assert result['status'] == 'success'
         assert result['records'] == 1
         assert result['method'] == 'POST'
-        api_calls: list[_CallRecord] = session.calls
+        api_calls: list[ApiCallRecord] = session.calls
         assert api_calls
-        first_call: _CallRecord = api_calls[0]
+        first_call: ApiCallRecord = api_calls[0]
         assert first_call.kwargs['headers'] == {'X-Test': '1'}
 
     def test_load_to_api_env_requires_url(self) -> None:
@@ -546,11 +443,11 @@ class TestLoadToApi:
         """
         captured: dict[str, Any] = {}
 
-        def _request(url: str, **kwargs: Any) -> _ApiEnvResponse:
+        def _request(url: str, **kwargs: Any) -> JsonResponse:
             """Stub request function that captures URL and kwargs."""
             captured['url'] = url
             captured['kwargs'] = kwargs
-            return _ApiEnvResponse(status_code=201)
+            return JsonResponse(status_code=201)
 
         def _build_request_call(
             env: dict[str, Any],
@@ -600,9 +497,9 @@ class TestLoadToApi:
     ) -> None:
         """Test that JSON decoding errors fall back to response text."""
 
-        def _request(url: str, **kwargs: Any) -> _ApiEnvResponse:  # noqa: ARG001
+        def _request(url: str, **kwargs: Any) -> JsonResponse:  # noqa: ARG001
             """Stub request function that returns a predefined response."""
-            return _ApiEnvResponse(text='text payload', json_error=True)
+            return JsonResponse(text='text payload', json_error=True)
 
         def _build_request_call(
             env: dict[str, Any],
@@ -698,7 +595,7 @@ class TestLoadApiOrchestrator:
         Test that :func:`load` defaults to POST when the API method is omitted.
         """
 
-        session = _StubSession()
+        session = ApiSession()
         result = load(
             {'name': 'api'},
             DataConnectorType.API,
@@ -708,15 +605,15 @@ class TestLoadApiOrchestrator:
 
         result_dict = cast(dict[str, Any], result)
         assert result_dict['status'] == 'success'
-        calls: list[_CallRecord] = session.calls
+        calls: list[ApiCallRecord] = session.calls
         assert calls
-        first_call: _CallRecord = calls[0]
+        first_call: ApiCallRecord = calls[0]
         assert first_call.method == 'post'
 
     def test_load_api_with_explicit_method(self) -> None:
         """Test that :func:`load` honors custom :class:`HttpMethod` values."""
 
-        session = _StubSession()
+        session = ApiSession()
         load(
             {'name': 'api'},
             DataConnectorType.API,
@@ -725,9 +622,9 @@ class TestLoadApiOrchestrator:
             session=session,
         )
 
-        calls: list[_CallRecord] = session.calls
+        calls: list[ApiCallRecord] = session.calls
         assert calls
-        first_call: _CallRecord = calls[0]
+        first_call: ApiCallRecord = calls[0]
         assert first_call.method == 'put'
 
     def test_load_defensive_default_branch(
@@ -943,7 +840,7 @@ class TestLoadToFile:
         assert result['records'] == 1
         assert output_path.exists()
         with open(output_path, encoding='utf-8') as f:
-            loaded_data = js.load(f)
+            loaded_data = json.load(f)
         assert loaded_data == payload
 
     def test_to_file_infers_format_and_forwards_coerced_options_when_none(

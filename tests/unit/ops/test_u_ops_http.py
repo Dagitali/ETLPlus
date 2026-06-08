@@ -12,40 +12,19 @@ from typing import Any
 import pytest
 
 from etlplus.api import HttpMethod
+from tests.unit.ops.pytest_ops_support import JsonResponse
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=protected-access
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: IMPORTS ========================================================== #
 
 
 http_mod = importlib.import_module('etlplus.ops._http')
 
 
-class _Response:
-    """Minimal response stub for payload parsing tests."""
-
-    def __init__(
-        self,
-        payload: object,
-        *,
-        text: str = 'fallback',
-        json_error: bool = False,
-    ) -> None:
-        self._payload = payload
-        self.text = text
-        self._json_error = json_error
-
-    def json(self) -> object:
-        """Return the preset payload or raise a decode error."""
-        if self._json_error:
-            raise ValueError('bad json')
-        return self._payload
-
-    def raise_for_status(self) -> None:
-        """No-op status check for request execution tests."""
-        return
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _noop_request(_url: str, **_kwargs: Any) -> None:
@@ -226,14 +205,14 @@ class TestResponseJsonOrText:
         """Test that JSON decode failures return raw response text."""
         assert (
             http_mod.response_json_or_text(
-                _Response({'ok': True}, text='fallback', json_error=True),
+                JsonResponse({'ok': True}, text='fallback', json_error=True),
             )
             == 'fallback'
         )
 
     def test_response_json_or_text_prefers_json_payload(self) -> None:
         """JSON-capable responses should return their parsed payload."""
-        assert http_mod.response_json_or_text(_Response({'ok': True})) == {
+        assert http_mod.response_json_or_text(JsonResponse({'ok': True})) == {
             'ok': True,
         }
 
@@ -245,10 +224,10 @@ class TestSendRequest:
         """Test that request execution preserves URL, timeout, and kwargs."""
         captured: dict[str, Any] = {}
 
-        def _request_callable(url: str, **kwargs: Any) -> _Response:
+        def _request_callable(url: str, **kwargs: Any) -> JsonResponse:
             captured['url'] = url
             captured['kwargs'] = kwargs
-            return _Response({'ok': True})
+            return JsonResponse({'ok': True})
 
         response = http_mod.send_request(
             http_mod.ResolvedRequest(

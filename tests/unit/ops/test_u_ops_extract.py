@@ -30,15 +30,21 @@ from etlplus.ops.extract import extract_from_api_source
 from etlplus.ops.extract import extract_from_database
 from etlplus.ops.extract import extract_from_file
 from etlplus.utils._types import JSONData
+from tests.unit.ops.pytest_ops_support import JsonResponse
+from tests.unit.ops.pytest_ops_support import MethodSession
+from tests.unit.ops.pytest_ops_support import write_json_payload
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: IMPORTS ========================================================== #
 
 
 extract_mod = importlib.import_module('etlplus.ops.extract')
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _write_csv_person_payload(path: str) -> None:
@@ -54,19 +60,14 @@ def _write_csv_person_payload(path: str) -> None:
         )
 
 
-def _write_json_payload(path: str, payload: dict[str, Any]) -> None:
-    """Write one JSON payload using UTF-8 encoding."""
-    Path(path).write_text(json.dumps(payload), encoding='utf-8')
-
-
 def _write_person_json_payload(path: str) -> None:
     """Write the standard person JSON payload."""
-    _write_json_payload(path, {'name': 'John', 'age': 30})
+    write_json_payload(path, {'name': 'John', 'age': 30})
 
 
 def _write_test_json_payload(path: str) -> None:
     """Write the standard wrapper-file JSON payload."""
-    _write_json_payload(path, {'test': 'data'})
+    write_json_payload(path, {'test': 'data'})
 
 
 def _write_xml_person_payload(path: str) -> None:
@@ -75,57 +76,6 @@ def _write_xml_person_payload(path: str) -> None:
         '<?xml version="1.0"?>\n<person><name>John</name><age>30</age></person>',
         encoding='utf-8',
     )
-
-
-class _StubResponse:
-    """Simple stand-in for :meth:`requests.Response`."""
-
-    def __init__(
-        self,
-        *,
-        headers: dict[str, str],
-        payload: Any | None = None,
-        text: str = '',
-        json_error: bool = False,
-    ) -> None:
-        self.headers = headers
-        self.text = text
-        self._payload = payload
-        self._json_error = json_error
-
-    def raise_for_status(self) -> None:
-        """Match the ``requests`` API."""
-
-        return
-
-    def json(self) -> Any:
-        """Return the pre-set payload or raise JSON error."""
-        if self._json_error:
-            raise ValueError('malformed payload')
-        return self._payload
-
-
-class _StubSession:
-    """Lightweight session that records outgoing calls."""
-
-    def __init__(
-        self,
-        response: _StubResponse,
-        *,
-        method_name: str = 'get',
-    ) -> None:
-        self._response = response
-        self.calls: list[dict[str, Any]] = []
-        setattr(self, method_name, self._make_call)
-
-    def _make_call(
-        self,
-        url: str,
-        **kwargs: Any,
-    ) -> _StubResponse:
-        """Record the call and return the pre-set response."""
-        self.calls.append({'url': url, 'kwargs': kwargs})
-        return self._response
 
 
 # SECTION: TESTS ============================================================ #
@@ -345,11 +295,11 @@ class TestExtractFromApi:
         Test that custom HTTP methods and kwargs pass through to the session.
         """
 
-        response = _StubResponse(
-            headers={'content-type': 'application/json'},
+        response = JsonResponse(
             payload={'status': 'ok'},
+            headers={'content-type': 'application/json'},
         )
-        session = _StubSession(response, method_name='post')
+        session = MethodSession(response, method_name='post')
         result = extract_from_api(
             f'{base_url}/hooks',
             method='POST',
@@ -416,12 +366,12 @@ class TestExtractFromApi:
     ) -> None:
         """Test that malformed JSON falls back to raw content payloads."""
 
-        response = _StubResponse(
+        response = JsonResponse(
             headers={'content-type': 'application/json'},
             text='{"bad": true}',
             json_error=True,
         )
-        session = _StubSession(response)
+        session = MethodSession(response)
         result = extract_from_api(f'{base_url}/bad', session=session)
         assert result == {
             'content': '{"bad": true}',
@@ -448,12 +398,12 @@ class TestExtractFromApi:
     ) -> None:
         """Test that supported JSON payload shapes are normalized correctly."""
 
-        response = _StubResponse(
-            headers={'content-type': 'application/json'},
+        response = JsonResponse(
             payload=payload,
+            headers={'content-type': 'application/json'},
             text=(json.dumps(payload) if not isinstance(payload, str) else payload),
         )
-        session = _StubSession(response)
+        session = MethodSession(response)
         result = extract_from_api(f'{base_url}/data', session=session)
         assert result == expected
         assert session.calls[0]['kwargs']['timeout'] == 10.0
@@ -481,11 +431,11 @@ class TestExtractFromApi:
     ) -> None:
         """Test that non-JSON content is returned as raw text payloads."""
 
-        response = _StubResponse(
+        response = JsonResponse(
             headers={'content-type': 'text/plain'},
             text='plain text response',
         )
-        session = _StubSession(response)
+        session = MethodSession(response)
         result = extract_from_api(f'{base_url}/text', session=session)
         assert result == {
             'content': 'plain text response',
