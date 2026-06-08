@@ -221,7 +221,19 @@ class TestHelperOptionKwargs:
         assert value_type is str
         assert 'Extract data from SOURCE' in str(argument_info.help)
 
-    def test_value_option_alias_builds_typer_option_metadata(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('value_type', str, id='value-type'),
+            pytest.param('help', 'Name of the job to run', id='help'),
+            pytest.param('metavar', 'JOB', id='metavar'),
+        ],
+    )
+    def test_value_option_alias_builds_typer_option_metadata(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Scalar option aliases should carry the requested metadata."""
         alias = cli_options.typer_value_option_alias(
             str,
@@ -232,9 +244,8 @@ class TestHelperOptionKwargs:
         )
 
         value_type, option_info = _alias_metadata(alias, typer.models.OptionInfo)
-        assert value_type is str
-        assert option_info.help == 'Name of the job to run'
-        assert option_info.metavar == 'JOB'
+        actual = value_type if field == 'value_type' else getattr(option_info, field)
+        assert actual is expected if field == 'value_type' else actual == expected
 
 
 class TestOptionPackageExports:

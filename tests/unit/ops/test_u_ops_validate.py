@@ -661,10 +661,23 @@ class TestValidate:
 class TestValidateField:
     """Unit tests for :func:`validate_field`."""
 
-    def test_boolean_type_branch(self) -> None:
-        """Test that explicit boolean type branch in type matches."""
-        assert validate_field(True, {'type': 'boolean'})['valid'] is True
-        assert validate_field(1, {'type': 'boolean'})['valid'] is False
+    @pytest.mark.parametrize(
+        ('value', 'field_type', 'expected'),
+        [
+            pytest.param(True, 'boolean', True, id='boolean-true'),
+            pytest.param(1, 'boolean', False, id='boolean-int'),
+            pytest.param(7, 'integer', True, id='integer-int'),
+            pytest.param(True, 'integer', False, id='integer-bool'),
+        ],
+    )
+    def test_scalar_type_branches(
+        self,
+        value: object,
+        field_type: str,
+        expected: bool,
+    ) -> None:
+        """Test explicit scalar type branches in type matches."""
+        assert validate_field(value, {'type': field_type})['valid'] is expected
 
     def test_enum_rule_requires_list(self) -> None:
         """Test that non-list enum rules add an error entry."""
@@ -673,11 +686,6 @@ class TestValidateField:
         result = validate_field('a', {'enum': 'abc'})  # type: ignore
         assert result['valid'] is False
         assert any('enum' in err for err in result['errors'])
-
-    def test_integer_type_branch(self) -> None:
-        """Test that integer type excludes booleans."""
-        assert validate_field(7, {'type': 'integer'})['valid'] is True
-        assert validate_field(True, {'type': 'integer'})['valid'] is False
 
     def test_pattern_rule_type_and_mismatch_paths(self) -> None:
         """Test pattern mismatch and non-string pattern validation paths."""
@@ -1086,23 +1094,47 @@ class TestValidateInternalHelpers:
 
         assert validate_mod._resolve_local_path_or_text(path) == (path, b'')
 
-    def test_schema_error_path_formatters_cover_nested_and_empty_paths(self) -> None:
+    @pytest.mark.parametrize(
+        ('formatter', 'args', 'kwargs', 'expected'),
+        [
+            pytest.param(
+                'jsonschema',
+                (('items', 0, 'name'),),
+                {},
+                'items[0].name',
+                id='jsonschema-nested',
+            ),
+            pytest.param('jsonschema', ((),), {}, None, id='jsonschema-empty'),
+            pytest.param(
+                'tabular',
+                (),
+                {'field_name': None, 'row_number': 3},
+                'row[3]',
+                id='tabular-row',
+            ),
+            pytest.param(
+                'tabular',
+                (),
+                {'field_name': None, 'row_number': None},
+                None,
+                id='tabular-empty',
+            ),
+        ],
+    )
+    def test_schema_error_path_formatters_cover_nested_and_empty_paths(
+        self,
+        formatter: str,
+        args: tuple[object, ...],
+        kwargs: dict[str, object],
+        expected: str | None,
+    ) -> None:
         """Schema error paths should format object, index, row, and empty paths."""
-        assert validate_mod._format_jsonschema_path(('items', 0, 'name')) == (
-            'items[0].name'
+        path_formatter = (
+            validate_mod._format_jsonschema_path
+            if formatter == 'jsonschema'
+            else validate_mod._format_tabular_error_path
         )
-        assert validate_mod._format_jsonschema_path(()) is None
-        assert (
-            validate_mod._format_tabular_error_path(field_name=None, row_number=3)
-            == 'row[3]'
-        )
-        assert (
-            validate_mod._format_tabular_error_path(
-                field_name=None,
-                row_number=None,
-            )
-            is None
-        )
+        assert path_formatter(*args, **kwargs) == expected
 
     @pytest.mark.parametrize(
         ('source', 'source_format', 'expected'),
