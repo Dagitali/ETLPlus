@@ -1020,12 +1020,27 @@ class TestFileCoreDispatch:
 
         assert file._staging_filename() == 'payload.json'
 
-    def test_staging_filename_uses_tmp_suffix_without_name_or_format(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('file_format', None, id='file-format'),
+            pytest.param('staging_filename', 'payload.tmp', id='staging-filename'),
+        ],
+    )
+    def test_staging_filename_uses_tmp_suffix_without_name_or_format(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Test staging filename fallback when neither name nor format exists."""
         file = File('s3://bucket')
 
-        assert file.file_format is None
-        assert file._staging_filename() == 'payload.tmp'
+        actual = (
+            file._staging_filename()
+            if field == 'staging_filename'
+            else file.file_format
+        )
+        assert actual == expected
 
     @pytest.mark.parametrize(
         ('root_tag', 'expected_root_tag', 'write_result'),

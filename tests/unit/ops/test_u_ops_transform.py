@@ -938,7 +938,18 @@ class TestTransformInternalHelpers:
         """Test compatibility sequence detection helper."""
         assert is_sequence_not_text(value) is expected
 
-    def test_normalize_operation_keys_accepts_enums(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('keys', {'filter', 'map'}, id='keys'),
+            pytest.param('filter-field', 'age', id='filter-field'),
+        ],
+    )
+    def test_normalize_operation_keys_accepts_enums(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """
         Test that :class:`PipelineStep` keys normalize to lowercase strings.
         """
@@ -948,8 +959,8 @@ class TestTransformInternalHelpers:
         }
 
         normalized = _normalize_operation_keys(operations)
-        assert set(normalized) == {'filter', 'map'}
-        assert normalized['filter']['field'] == 'age'
+        actual = set(normalized) if field == 'keys' else normalized['filter']['field']
+        assert actual == expected
 
     def test_normalize_operation_keys_fallback_paths(self) -> None:
         """

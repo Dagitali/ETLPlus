@@ -645,16 +645,30 @@ class TestOptionsContracts:
         if case.write_default is not _NO_DEFAULT:
             assert helper(None, default=case.write_default) == case.write_default
 
-    def test_read_options_use_independent_extras_dicts(self) -> None:
+    @pytest.mark.parametrize(
+        'check',
+        [
+            pytest.param('first-empty', id='first-empty'),
+            pytest.param('second-empty', id='second-empty'),
+            pytest.param('independent', id='independent'),
+        ],
+    )
+    def test_read_options_use_independent_extras_dicts(self, check: str) -> None:
         """
         Test that each :class:`ReadOptions` instance gets its own extras dict.
         """
         first = ReadOptions()
         second = ReadOptions()
 
-        assert not first.extras
-        assert not second.extras
-        assert first.extras is not second.extras
+        match check:
+            case 'first-empty':
+                assert not first.extras
+            case 'second-empty':
+                assert not second.extras
+            case 'independent':
+                assert first.extras is not second.extras
+            case _:
+                pytest.fail(f'Unsupported check: {check}')
 
     @pytest.mark.parametrize(
         ('options', 'kwargs', 'expected'),

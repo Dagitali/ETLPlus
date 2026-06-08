@@ -137,14 +137,23 @@ class TestRenderTableSql:
 
         assert sql == f'{ddl_sample_spec["table"]}\n'
 
+    @pytest.mark.parametrize(
+        'expected_sql',
+        [
+            pytest.param('CREATE TABLE', id='create-table'),
+            pytest.param('[id] INT', id='id-column'),
+        ],
+    )
     def test_default_template(
         self,
         ddl_sample_spec: dict[str, object],
+        expected_sql: str,
     ) -> None:
         """Test rendering SQL with the default template."""
         sql = ddl.render_table_sql(ddl_sample_spec)
-        assert f'CREATE TABLE [dbo].[{ddl_sample_spec["table"]}' in sql
-        assert '[id] INT' in sql
+        if expected_sql == 'CREATE TABLE':
+            expected_sql = f'CREATE TABLE [dbo].[{ddl_sample_spec["table"]}'
+        assert expected_sql in sql
 
     def test_env_override(
         self,
