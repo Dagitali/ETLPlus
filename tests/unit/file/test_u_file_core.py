@@ -11,6 +11,7 @@ import numbers
 import sqlite3
 import zipfile
 from io import BytesIO
+from operator import attrgetter
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -389,13 +390,27 @@ class TestFile:
             ('get', 'https://example.com/files/data.json?download=1', False),
         ]
 
-    def test_http_uri_infers_http_backend_and_csv_format(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_path', 'expected'),
+        [
+            pytest.param('file_format', FileFormat.CSV, id='file-format'),
+            pytest.param('location.scheme', StorageScheme.HTTP, id='scheme'),
+            pytest.param(
+                'path',
+                'https://example.com/files/my_file.csv?download=1',
+                id='path',
+            ),
+        ],
+    )
+    def test_http_uri_infers_http_backend_and_csv_format(
+        self,
+        field_path: str,
+        expected: object,
+    ) -> None:
         """Test that generic HTTPS URIs infer HTTP storage and CSV format."""
         file = File('https://example.com/files/my_file.csv?download=1')
 
-        assert file.file_format is FileFormat.CSV
-        assert file.location.scheme is StorageScheme.HTTP
-        assert file.path == 'https://example.com/files/my_file.csv?download=1'
+        assert attrgetter(field_path)(file) == expected
 
     @pytest.mark.parametrize(
         ('filename', 'expected_format'),
@@ -579,14 +594,24 @@ class TestFile:
         assert result == {'name': 'Ada'}
         assert backend.calls == ['exists', 'rb']
 
-    def test_remote_uri_infers_s3_backend_and_csv_format(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_path', 'expected'),
+        [
+            pytest.param('file_format', FileFormat.CSV, id='file-format'),
+            pytest.param('location.scheme', StorageScheme.S3, id='scheme'),
+            pytest.param('path', 's3://my-bucket/my_file.csv', id='path'),
+        ],
+    )
+    def test_remote_uri_infers_s3_backend_and_csv_format(
+        self,
+        field_path: str,
+        expected: object,
+    ) -> None:
         """Test that remote URI strings infer both storage scheme and format."""
         file = File('s3://my-bucket/my_file.csv')
 
-        assert file.file_format is FileFormat.CSV
-        assert file.location.scheme is StorageScheme.S3
+        assert attrgetter(field_path)(file) == expected
         assert isinstance(get_backend(file.location), S3StorageBackend)
-        assert file.path == 's3://my-bucket/my_file.csv'
 
     def test_remote_write_uploads_staged_payload_via_storage_backend(
         self,

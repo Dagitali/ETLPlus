@@ -90,7 +90,33 @@ class TestAzureServiceBusQueue:
         with pytest.raises(ValueError, match=match):
             AzureServiceBusQueue.from_obj(payload)
 
-    def test_from_obj_returns_connector_options(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param(
+                'service',
+                QueueService.AZURE_SERVICE_BUS,
+                id='service',
+            ),
+            pytest.param(
+                'connector_options',
+                {
+                    'prefetch_count': 20,
+                    'service': 'azure-service-bus',
+                    'namespace': 'example-bus',
+                    'queue_name': 'orders-in',
+                    'topic': 'orders-topic',
+                    'subscription': 'etlplus',
+                },
+                id='connector-options',
+            ),
+        ],
+    )
+    def test_from_obj_returns_connector_options(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Test Azure Service Bus metadata parsing and option serialization."""
         queue = AzureServiceBusQueue.from_obj(
             {
@@ -104,12 +130,9 @@ class TestAzureServiceBusQueue:
         )
 
         assert isinstance(queue, QueueConfigProtocol)
-        assert queue.service is QueueService.AZURE_SERVICE_BUS
-        assert queue.to_connector_options() == {
-            'prefetch_count': 20,
-            'service': 'azure-service-bus',
-            'namespace': 'example-bus',
-            'queue_name': 'orders-in',
-            'topic': 'orders-topic',
-            'subscription': 'etlplus',
-        }
+        actual = (
+            queue.to_connector_options()
+            if field_name == 'connector_options'
+            else getattr(queue, field_name)
+        )
+        assert actual == expected

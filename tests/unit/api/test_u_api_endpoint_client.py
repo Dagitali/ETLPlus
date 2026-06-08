@@ -1406,9 +1406,18 @@ class TestEndpointClientInternalBranches:
         assert seen['post'][0] == 'https://example.test/p'
         assert seen['request'][0] == 'PATCH'
 
+    @pytest.mark.parametrize(
+        'field_name',
+        [
+            pytest.param('session', id='session'),
+            pytest.param('session_factory', id='session-factory'),
+            pytest.param('session_adapters', id='session-adapters'),
+        ],
+    )
     def test_post_init_prefers_explicit_session_and_normalizes_adapters(
         self,
         mock_session: MockSession,
+        field_name: str,
     ) -> None:
         """
         Test that explicit session disables factory; adapters are tuple-
@@ -1421,9 +1430,15 @@ class TestEndpointClientInternalBranches:
             session_factory=lambda: cast(requests.Session, MockSession()),
             session_adapters=[{'prefix': 'https://'}],
         )
-        assert client.session is mock_session
-        assert client.session_factory is None
-        assert isinstance(client.session_adapters, tuple)
+        match field_name:
+            case 'session':
+                assert client.session is mock_session
+            case 'session_factory':
+                assert client.session_factory is None
+            case 'session_adapters':
+                assert isinstance(client.session_adapters, tuple)
+            case _:
+                pytest.fail(f'unhandled field: {field_name}')
 
     def test_post_init_requires_absolute_base_url(self) -> None:
         """Test that relative base_url values be rejected."""

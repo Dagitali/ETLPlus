@@ -83,7 +83,28 @@ class TestGcpPubSubQueue:
         with pytest.raises(ValueError, match=match):
             GcpPubSubQueue.from_obj(payload)
 
-    def test_from_obj_returns_connector_options(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('service', QueueService.GCP_PUBSUB, id='service'),
+            pytest.param(
+                'connector_options',
+                {
+                    'ack_deadline_seconds': 30,
+                    'service': 'gcp-pubsub',
+                    'project': 'example-project',
+                    'topic': 'orders-topic',
+                    'subscription': 'etlplus',
+                },
+                id='connector-options',
+            ),
+        ],
+    )
+    def test_from_obj_returns_connector_options(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Test Google Cloud Pub/Sub metadata parsing and option serialization."""
         queue = GcpPubSubQueue.from_obj(
             {
@@ -96,11 +117,9 @@ class TestGcpPubSubQueue:
         )
 
         assert isinstance(queue, QueueConfigProtocol)
-        assert queue.service is QueueService.GCP_PUBSUB
-        assert queue.to_connector_options() == {
-            'ack_deadline_seconds': 30,
-            'service': 'gcp-pubsub',
-            'project': 'example-project',
-            'topic': 'orders-topic',
-            'subscription': 'etlplus',
-        }
+        actual = (
+            queue.to_connector_options()
+            if field_name == 'connector_options'
+            else getattr(queue, field_name)
+        )
+        assert actual == expected

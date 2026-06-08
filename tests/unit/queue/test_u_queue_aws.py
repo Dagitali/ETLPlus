@@ -145,7 +145,33 @@ class TestAwsSqsQueue:
                 },
             )
 
-    def test_from_obj_returns_connector_options(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('service', QueueService.AWS_SQS, id='service'),
+            pytest.param(
+                'connector_options',
+                {
+                    'ContentBasedDeduplication': 'true',
+                    'service': 'aws-sqs',
+                    'queue_type': 'fifo',
+                    'queue_name': 'events.fifo',
+                    'url': 'https://sqs.us-east-1.amazonaws.com/123/events.fifo',
+                    'region': 'us-east-1',
+                    'visibility_timeout': 30,
+                    'wait_time_seconds': 20,
+                    'content_based_deduplication': True,
+                    'message_group_id': 'events',
+                },
+                id='connector-options',
+            ),
+        ],
+    )
+    def test_from_obj_returns_connector_options(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Test that queue metadata can be exposed as connector options."""
         queue = AwsSqsQueue.from_obj(
             {
@@ -161,19 +187,12 @@ class TestAwsSqsQueue:
         )
 
         assert isinstance(queue, QueueConfigProtocol)
-        assert queue.service is QueueService.AWS_SQS
-        assert queue.to_connector_options() == {
-            'ContentBasedDeduplication': 'true',
-            'service': 'aws-sqs',
-            'queue_type': 'fifo',
-            'queue_name': 'events.fifo',
-            'url': 'https://sqs.us-east-1.amazonaws.com/123/events.fifo',
-            'region': 'us-east-1',
-            'visibility_timeout': 30,
-            'wait_time_seconds': 20,
-            'content_based_deduplication': True,
-            'message_group_id': 'events',
-        }
+        actual = (
+            queue.to_connector_options()
+            if field_name == 'connector_options'
+            else getattr(queue, field_name)
+        )
+        assert actual == expected
 
     @pytest.mark.parametrize(
         ('payload', 'expected_fifo', 'expected_standard'),

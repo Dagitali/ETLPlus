@@ -299,22 +299,37 @@ class TestValidate:
         assert result['valid'] is True
         assert result['errors'] == []
 
-    def test_validate_schema_reports_unsupported_format(self) -> None:
-        """Schema validation should reject unsupported schema formats."""
-        result = validate_schema('<root />', '<schema />', schema_format='rng')
-        assert result['valid'] is False
-        assert any('Unsupported schema format' in err for err in result['errors'])
+    @pytest.mark.parametrize(
+        ('source', 'schema', 'kwargs', 'expected_error'),
+        [
+            pytest.param(
+                '<root />',
+                '<schema />',
+                {'schema_format': 'rng'},
+                'Unsupported schema format',
+                id='unsupported-schema-format',
+            ),
+            pytest.param(
+                '{"name": "Ada"}',
+                '{"type": "object"}',
+                {},
+                'Schema format could not be inferred',
+                id='ambiguous-schema-format',
+            ),
+        ],
+    )
+    def test_validate_schema_reports_format_errors(
+        self,
+        source: str,
+        schema: str,
+        kwargs: dict[str, object],
+        expected_error: str,
+    ) -> None:
+        """Schema validation should fail clearly for bad format selection."""
+        result = validate_schema(source, schema, **kwargs)
 
-    def test_validate_schema_requires_explicit_format_when_ambiguous(self) -> None:
-        """Schema validation should fail clearly when format inference is ambiguous."""
-        result = validate_schema(
-            '{"name": "Ada"}',
-            '{"type": "object"}',
-        )
         assert result['valid'] is False
-        assert any(
-            'Schema format could not be inferred' in err for err in result['errors']
-        )
+        assert any(expected_error in err for err in result['errors'])
 
     def test_validate_schema_reports_validation_errors(
         self,
@@ -748,27 +763,27 @@ class TestValidateField:
 class TestValidateInternalHelpers:
     """Unit tests for internal validation helper branches."""
 
-    def test_coerce_rule_invalid_value_appends_error(self) -> None:
-        """Test that rule coercion appends errors on bad casts."""
-        errors: list[str] = []
-        assert (
-            validate_mod._coerce_rule(
+    @pytest.mark.parametrize(
+        ('rule', 'expected_errors'),
+        [
+            pytest.param(
                 {'min': 'x'},
-                'min',
-                float,
-                'numeric',
-                errors,
-            )
-            is None
-        )
-        assert errors == ["Rule 'min' must be numeric"]
-
-    def test_coerce_rule_none_value_returns_none_without_errors(self) -> None:
-        """Test that rule coercion ignores explicit None values."""
+                ["Rule 'min' must be numeric"],
+                id='invalid-value',
+            ),
+            pytest.param({'min': None}, [], id='none-value'),
+        ],
+    )
+    def test_coerce_rule_returns_none_and_reports_expected_errors(
+        self,
+        rule: dict[str, object],
+        expected_errors: list[str],
+    ) -> None:
+        """Test that rule coercion reports bad casts and ignores None."""
         errors: list[str] = []
         assert (
             validate_mod._coerce_rule(
-                {'min': None},
+                rule,
                 'min',
                 float,
                 'numeric',
@@ -776,7 +791,7 @@ class TestValidateInternalHelpers:
             )
             is None
         )
-        assert not errors
+        assert errors == expected_errors
 
     def test_frictionless_cleans_up_existing_source_failures(
         self,

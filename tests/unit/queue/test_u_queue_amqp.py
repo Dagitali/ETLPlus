@@ -68,7 +68,28 @@ class TestAmqpQueue:
         with pytest.raises(ValueError, match='requires "url" or "host"'):
             AmqpQueue.from_obj(payload)
 
-    def test_from_obj_returns_connector_options(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('service', QueueService.AMQP, id='service'),
+            pytest.param(
+                'connector_options',
+                {
+                    'durable': True,
+                    'service': 'amqp',
+                    'url': 'amqp://guest:guest@localhost:5672/%2f',
+                    'exchange': 'etlplus',
+                    'routing_key': 'orders.created',
+                },
+                id='connector-options',
+            ),
+        ],
+    )
+    def test_from_obj_returns_connector_options(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Test AMQP queue metadata parsing and option serialization."""
         queue = AmqpQueue.from_obj(
             {
@@ -81,11 +102,9 @@ class TestAmqpQueue:
         )
 
         assert isinstance(queue, QueueConfigProtocol)
-        assert queue.service is QueueService.AMQP
-        assert queue.to_connector_options() == {
-            'durable': True,
-            'service': 'amqp',
-            'url': 'amqp://guest:guest@localhost:5672/%2f',
-            'exchange': 'etlplus',
-            'routing_key': 'orders.created',
-        }
+        actual = (
+            queue.to_connector_options()
+            if field_name == 'connector_options'
+            else getattr(queue, field_name)
+        )
+        assert actual == expected

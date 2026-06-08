@@ -85,7 +85,28 @@ class TestRedisQueue:
         with pytest.raises(expected_exc, match=match):
             RedisQueue.from_obj({'name': 'orders', 'database': database})
 
-    def test_from_obj_returns_connector_options(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('service', QueueService.REDIS, id='service'),
+            pytest.param(
+                'connector_options',
+                {
+                    'consumer_group': 'etlplus',
+                    'service': 'redis',
+                    'url': 'redis://localhost:6379/0',
+                    'key': 'orders',
+                    'database': 1,
+                },
+                id='connector-options',
+            ),
+        ],
+    )
+    def test_from_obj_returns_connector_options(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Test Redis queue metadata parsing and option serialization."""
         queue = RedisQueue.from_obj(
             {
@@ -98,11 +119,9 @@ class TestRedisQueue:
         )
 
         assert isinstance(queue, QueueConfigProtocol)
-        assert queue.service is QueueService.REDIS
-        assert queue.to_connector_options() == {
-            'consumer_group': 'etlplus',
-            'service': 'redis',
-            'url': 'redis://localhost:6379/0',
-            'key': 'orders',
-            'database': 1,
-        }
+        actual = (
+            queue.to_connector_options()
+            if field_name == 'connector_options'
+            else getattr(queue, field_name)
+        )
+        assert actual == expected

@@ -1871,7 +1871,19 @@ class TestRunInternals:
             == expected
         )
 
-    def test_job_retry_settings_accepts_mapping_retry_config(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('enabled', True, id='enabled'),
+            pytest.param('max_attempts', 3, id='max-attempts'),
+            pytest.param('backoff_seconds', pytest.approx(1.25), id='backoff'),
+        ],
+    )
+    def test_job_retry_settings_accepts_mapping_retry_config(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """
         Test that retry settings read mapping-style retry configuration values.
         """
@@ -1884,9 +1896,7 @@ class TestRunInternals:
             ),
         )
 
-        assert settings.enabled is True
-        assert settings.max_attempts == 3
-        assert settings.backoff_seconds == pytest.approx(1.25)
+        assert getattr(settings, field_name) == expected
 
     def test_maybe_sleep_for_retry_sleeps_for_positive_backoff(
         self,
