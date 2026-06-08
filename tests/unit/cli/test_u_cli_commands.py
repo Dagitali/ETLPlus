@@ -911,12 +911,15 @@ class TestCliInvokeParsing:
         stdout = strip_ansi(result.stdout)
 
         assert result.exit_code == 0
-        assert '--host' in stdout
-        assert '127.0.0.1' in stdout
-        assert '--port' in stdout
-        assert '--limit' in stdout
-        assert '--refresh-seconds' in stdout
-        assert '--no-browser' in stdout
+        for expected in (
+            '--host',
+            '127.0.0.1',
+            '--port',
+            '--limit',
+            '--refresh-seconds',
+            '--no-browser',
+        ):
+            assert expected in stdout
 
 
 class TestCommandsMissingInputs:
