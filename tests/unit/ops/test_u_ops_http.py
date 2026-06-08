@@ -45,12 +45,12 @@ class _Response:
 
     def raise_for_status(self) -> None:
         """No-op status check for request execution tests."""
-        return None
+        return
 
 
 def _noop_request(_url: str, **_kwargs: Any) -> None:
     """Accept request-call arguments without doing network work."""
-    return None
+    return
 
 
 def _resolve_post_request(

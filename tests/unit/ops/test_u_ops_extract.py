@@ -96,7 +96,7 @@ class _StubResponse:
     def raise_for_status(self) -> None:
         """Match the ``requests`` API."""
 
-        return None
+        return
 
     def json(self) -> Any:
         """Return the pre-set payload or raise JSON error."""

@@ -25,7 +25,7 @@ from etlplus.ops._validation import maybe_validate
 
 def _noop_print(_message: dict[str, object]) -> None:
     """Ignore structured validation log payloads."""
-    return None
+    return
 
 
 def _printer(messages: list[dict[str, object]]):

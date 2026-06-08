@@ -87,7 +87,7 @@ class _ApiEnvResponse:
 
     def raise_for_status(self) -> None:
         """No-op for status raising in stub."""
-        return None
+        return
 
 
 class _StubResponse:
@@ -104,7 +104,7 @@ class _StubResponse:
 
     def raise_for_status(self) -> None:
         """No-op for status raising in stub."""
-        return None
+        return
 
 
 class _StubSession:

@@ -66,8 +66,8 @@ class TestDatabaseSchemes:
 
     def test_database_schemes_are_generated_from_dialects(self) -> None:
         """Test database scheme constants come from dialect scheme metadata."""
-        assert DATABASE_SCHEMES == tuple(
+        assert tuple(
             prefix
             for dialect in DatabaseDialect
             for prefix in dialect.scheme_prefixes()
-        )
+        ) == DATABASE_SCHEMES
