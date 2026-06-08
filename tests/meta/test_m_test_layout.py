@@ -12,6 +12,8 @@ from tests.pytest_shared_support import TESTS_ROOT
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
+# SECTION: TESTS ============================================================ #
+
 
 def test_legacy_smoke_python_modules_not_present() -> None:
     """
