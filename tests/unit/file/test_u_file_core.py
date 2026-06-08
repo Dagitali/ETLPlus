@@ -825,9 +825,18 @@ class TestFile:
                 [{'name': 'John'}, invalid_entry],
             )
 
+    @pytest.mark.parametrize(
+        'check_name',
+        [
+            pytest.param('record-count', id='record-count'),
+            pytest.param('has-content', id='has-content'),
+            pytest.param('pretty-lines', id='pretty-lines'),
+        ],
+    )
     def test_write_json_returns_record_count(
         self,
         tmp_path: Path,
+        check_name: str,
     ) -> None:
         """
         Test that :meth:`write` returns the record count for lists.
@@ -837,10 +846,16 @@ class TestFile:
 
         written = File(path, FileFormat.JSON).write(records)
 
-        assert written == 2
         json_content = path.read_text(encoding='utf-8')
-        assert json_content
-        assert json_content.count('\n') >= 2
+        match check_name:
+            case 'record-count':
+                assert written == 2
+            case 'has-content':
+                assert json_content
+            case 'pretty-lines':
+                assert json_content.count('\n') >= 2
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_xls_write_not_supported(
         self,
@@ -952,10 +967,20 @@ class TestFileCoreDispatch:
 
         assert backend.calls == ['ensure_parent_dir', 'wb']
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', {'ok': True}, id='result'),
+            pytest.param('bound-path', 'path', id='bound-path'),
+            pytest.param('options', 'options', id='options'),
+        ],
+    )
     def test_read_forwards_options_to_bound_handler(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that ``File.read(options=...)`` forwards read options."""
         path = tmp_path / 'sample.json'
@@ -980,9 +1005,15 @@ class TestFileCoreDispatch:
 
         result = File(path, FileFormat.JSON).read(options=options)
 
-        assert result == {'ok': True}
-        assert calls['bound_path'] == path
-        assert calls['options'] is options
+        match check_name:
+            case 'result':
+                assert result == expected
+            case 'bound-path':
+                assert calls['bound_path'] == path
+            case 'options':
+                assert calls['options'] is options
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_read_uses_class_based_handler_dispatch(
         self,

@@ -77,16 +77,29 @@ def logging_setup_calls_fixture(
 class TestConfigureLogging:
     """Unit tests for process-wide logging configuration."""
 
+    @pytest.mark.parametrize(
+        'check_name',
+        [
+            pytest.param('type', id='type'),
+            pytest.param('stream', id='stream'),
+        ],
+    )
     def test_configure_logging_defaults_stream_to_stderr(
         self,
         logging_setup_calls: dict[str, object],
+        check_name: str,
     ) -> None:
         """Test that STDERR is used when no explicit stream is supplied."""
         logging_mod.RuntimeLoggingPolicy.configure(env={})
 
         basic_config = logging_setup_calls['basicConfig']
-        assert isinstance(basic_config, dict)
-        assert basic_config['stream'] is sys.stderr
+        match check_name:
+            case 'type':
+                assert isinstance(basic_config, dict)
+            case 'stream':
+                assert basic_config['stream'] is sys.stderr
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     @pytest.mark.parametrize(
         ('field', 'expected'),

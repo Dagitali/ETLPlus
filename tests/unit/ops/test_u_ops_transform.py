@@ -280,17 +280,37 @@ class TestApplyFilter:
 class TestApplyMap:
     """Unit tests for :func:`apply_map`."""
 
-    def test_map_renames_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('has-new-name', True, id='has-new-name'),
+            pytest.param('removed-old-name', True, id='removed-old-name'),
+            pytest.param('first-name', 'John', id='first-name'),
+            pytest.param('first-age', 30, id='first-age'),
+        ],
+    )
+    def test_map_renames_fields(
+        self,
+        check_name: str,
+        expected: object,
+    ) -> None:
         """Test mapping/renaming fields in each record."""
         data = [
             {'old_name': 'John', 'age': 30},
             {'old_name': 'Jane', 'age': 25},
         ]
         result = apply_map(data, {'old_name': 'new_name'})
-        assert all('new_name' in item for item in result)
-        assert all('old_name' not in item for item in result)
-        assert result[0]['new_name'] == 'John'
-        assert result[0]['age'] == 30
+        match check_name:
+            case 'has-new-name':
+                assert all('new_name' in item for item in result) is expected
+            case 'removed-old-name':
+                assert all('old_name' not in item for item in result) is expected
+            case 'first-name':
+                assert result[0]['new_name'] == expected
+            case 'first-age':
+                assert result[0]['age'] == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_map_missing_source_key_is_noop(self) -> None:
         """
