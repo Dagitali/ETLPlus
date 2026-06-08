@@ -47,6 +47,22 @@ from etlplus.history import HISTORY_SCHEMA_VERSION
 pytestmark = [pytest.mark.meta, pytest.mark.contract]
 
 
+# SECTION: IMPORTS ========================================================== #
+
+
+extract_mod = importlib.import_module('etlplus.ops.extract')
+load_mod = importlib.import_module('etlplus.ops.load')
+run_mod = importlib.import_module('etlplus.ops.run')
+transform_mod = importlib.import_module('etlplus.ops.transform')
+validate_mod = importlib.import_module('etlplus.ops.validate')
+
+
+# SECTION: TYPE ALIASES ===================================================== #
+
+
+type ExportCase = tuple[ModuleType, str, ModuleType]
+
+
 # SECTIONS: CONSTANTS ======================================================= #
 
 
@@ -67,6 +83,18 @@ EXPECTED_CLI_COMMANDS = {
     'validate',
 }
 
+EXPECTED_CLI_EXPORTS = [
+    'main',
+]
+EXPECTED_HISTORY_EXPORTS = [
+    'HistoryStore',
+    'JsonlHistoryStore',
+    'RunCompletion',
+    'RunRecord',
+    'RunState',
+    'SQLiteHistoryStore',
+    'HISTORY_SCHEMA_VERSION',
+]
 EXPECTED_OPS_EXPORTS = [
     'ValidationSettings',
     'AggregateName',
@@ -85,14 +113,12 @@ EXPECTED_OPS_EXPORTS = [
     'ValidationDict',
     'ValidationResultDict',
 ]
+EXPECTED_TOP_LEVEL_EXPORTS = [
+    '__author__',
+    '__version__',
+    'Config',
+]
 
-type ExportCase = tuple[ModuleType, str, ModuleType]
-
-extract_mod = importlib.import_module('etlplus.ops.extract')
-load_mod = importlib.import_module('etlplus.ops.load')
-run_mod = importlib.import_module('etlplus.ops.run')
-transform_mod = importlib.import_module('etlplus.ops.transform')
-validate_mod = importlib.import_module('etlplus.ops.validate')
 
 API_EXPORTS: tuple[ExportCase, ...] = (
     (api_pkg, 'EndpointClient', endpoint_client_mod),
@@ -154,6 +180,12 @@ DOCUMENTED_EXPORTS = tuple(
         *OPS_TRANSFORMATION_EXPORTS,
     )
 )
+PACKAGE_EXPORT_ORDER_CASES = (
+    pytest.param(etlplus, EXPECTED_TOP_LEVEL_EXPORTS, id='etlplus'),
+    pytest.param(cli_pkg, EXPECTED_CLI_EXPORTS, id='etlplus.cli'),
+    pytest.param(history_pkg, EXPECTED_HISTORY_EXPORTS, id='etlplus.history'),
+    pytest.param(ops_pkg, EXPECTED_OPS_EXPORTS, id='etlplus.ops'),
+)
 
 
 # SECTION: TESTS ============================================================ #
@@ -164,7 +196,6 @@ class TestStableCliSurface:
 
     def test_cli_package_export_points_to_main_entrypoint(self) -> None:
         """Test that the public CLI package export remains stable."""
-        assert cli_pkg.__all__ == ['main']
         assert cli_pkg.main is main_mod
 
     def test_history_view_shim_is_not_importable(self) -> None:
@@ -186,12 +217,19 @@ class TestStableImportSurface:
 
     def test_history_package_keeps_documented_runtime_metadata(self) -> None:
         """Test that :mod:`etlplus.history` keeps schema metadata exports."""
-        assert 'HISTORY_SCHEMA_VERSION' in history_pkg.__all__
         assert history_pkg.HISTORY_SCHEMA_VERSION == HISTORY_SCHEMA_VERSION
 
-    def test_ops_package_keeps_documented_export_order(self) -> None:
-        """Test that :mod:`etlplus.ops` keeps documented export ordering."""
-        assert ops_pkg.__all__ == EXPECTED_OPS_EXPORTS
+    @pytest.mark.parametrize(
+        ('module', 'expected_exports'),
+        PACKAGE_EXPORT_ORDER_CASES,
+    )
+    def test_packages_keep_documented_export_order(
+        self,
+        module: ModuleType,
+        expected_exports: list[str],
+    ) -> None:
+        """Test that public packages keep documented export ordering."""
+        assert module.__all__ == expected_exports
 
     @pytest.mark.parametrize(
         ('module', 'name', 'source_module'),
@@ -207,9 +245,8 @@ class TestStableImportSurface:
         assert name in module.__all__
         assert getattr(module, name) is getattr(source_module, name)
 
-    def test_top_level_package_keeps_documented_exports(self) -> None:
-        """Test that the top-level package keeps stable facade symbols."""
-        assert etlplus.__all__ == ['__author__', '__version__', 'Config']
+    def test_top_level_package_keeps_lazy_config_and_version_exports(self) -> None:
+        """Test that the top-level package keeps stable lazy facade symbols."""
         assert etlplus.Config is Config
         assert isinstance(etlplus.__version__, str)
         assert etlplus.__version__
