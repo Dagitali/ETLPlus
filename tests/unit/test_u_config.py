@@ -157,8 +157,8 @@ class TestConfig:
         cfg = Config.from_dict(raw)
 
         assert 'svc' in cfg.apis
-        assert len(cfg.table_schemas) == 1
-        assert cfg.table_schemas[0]['table'] == 'customers'
+        (spec,) = cfg.table_schemas
+        assert spec['table'] == 'customers'
 
     @pytest.mark.parametrize(
         ('section', 'payload'),
