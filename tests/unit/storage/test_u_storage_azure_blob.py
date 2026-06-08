@@ -14,6 +14,7 @@ from etlplus.storage import _azure_blob as azure_blob_mod
 
 from .pytest_storage_support import FakeContentSettings
 from .pytest_storage_support import FixedDownload
+from .pytest_storage_support import assert_azure_service_client_init
 from .pytest_storage_support import assert_upload_payload
 from .pytest_storage_support import clear_azure_storage_env
 
@@ -295,12 +296,11 @@ class TestAzureBlobStorageBackend:
 
         backend._service_client(location)
 
-        assert calls == [
-            {
-                'account_url': 'https://example.blob.core.windows.net',
-                'credential': explicit_credential or env_credential,
-            },
-        ]
+        assert_azure_service_client_init(
+            calls,
+            account_url='https://example.blob.core.windows.net',
+            credential=explicit_credential or env_credential,
+        )
 
     def test_service_client_uses_connection_string_env(
         self,
