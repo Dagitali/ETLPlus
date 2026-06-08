@@ -33,7 +33,7 @@ from etlplus.connector import ConnectorFile
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: DATA CLASSES ===================================================== #
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +43,9 @@ class ConnectorCase:
     collection: str
     entries: list[Any]
     expected_types: set[type]
+
+
+# SECTION: CONSTANTS ======================================================== #
 
 
 CONNECTOR_CASES: tuple[ConnectorCase, ...] = (
@@ -100,28 +103,6 @@ targets:
     path: "out-${A}.json"
 jobs: []
 """
-
-
-# SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture(name='pipeline_multi_cfg')
-def pipeline_multi_cfg_fixture(
-    pipeline_builder: Callable[..., Config],
-) -> Config:
-    """Build a :class:`Config` with multiple sources/targets.
-
-    Parameters
-    ----------
-    pipeline_builder : Callable[..., Config]
-        Fixture that converts inline YAML strings into pipeline configs.
-
-    Returns
-    -------
-    Config
-        Parsed configuration with substitution enabled.
-    """
-    return pipeline_builder(MULTI_SOURCE_YAML)
 
 
 # SECTION: TESTS ============================================================ #
@@ -526,13 +507,14 @@ schedules:
         collection: str,
         name: str,
         expected_path: str,
-        pipeline_multi_cfg: Config,
+        pipeline_builder: Callable[..., Config],
     ) -> None:
         """
         Test that :class:`Config` correctly handles multiple sources, targets,
         and missing variables during substitution.
         """
-        container = getattr(pipeline_multi_cfg, collection)
+        cfg = pipeline_builder(MULTI_SOURCE_YAML)
+        container = getattr(cfg, collection)
         connector = next(item for item in container if item.name == name)
         path = getattr(connector, 'path', None)
         assert path == expected_path
