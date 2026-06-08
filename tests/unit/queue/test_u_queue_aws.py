@@ -88,18 +88,23 @@ class TestAwsSqsQueue:
         assert queue.dead_letter_queue_arn == 'arn:aws:sqs:us-east-1:123:dead'
         assert queue.attributes == {'VisibilityTimeout': '30'}
 
-    def test_from_obj_rejects_boolean_integer_metadata(self) -> None:
-        """Test that boolean values are not accepted as integer metadata."""
-        with pytest.raises(TypeError, match='"visibility_timeout" must be an integer'):
-            AwsSqsQueue.from_obj({'name': 'events', 'visibility_timeout': True})
-
-    def test_from_obj_rejects_invalid_integer_metadata(self) -> None:
+    @pytest.mark.parametrize(
+        'visibility_timeout',
+        [
+            pytest.param(True, id='bool'),
+            pytest.param('not-an-int', id='text'),
+        ],
+    )
+    def test_from_obj_rejects_invalid_integer_metadata(
+        self,
+        visibility_timeout: object,
+    ) -> None:
         """Test that integer SQS metadata fields reject non-integer values."""
         with pytest.raises(TypeError, match='"visibility_timeout" must be an integer'):
             AwsSqsQueue.from_obj(
                 {
                     'name': 'events',
-                    'visibility_timeout': 'not-an-int',
+                    'visibility_timeout': visibility_timeout,
                 },
             )
 
