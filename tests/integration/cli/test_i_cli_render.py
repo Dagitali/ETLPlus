@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.integration.cli.pytest_cli_integration_support import assert_cli_success
+from tests.pytest_shared_support import assert_cli_success
 
 # SECTION: PRAGMAS ========================================================== #
 

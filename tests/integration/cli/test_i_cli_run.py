@@ -28,9 +28,9 @@ from etlplus.file import FileFormat
 from etlplus.history._ui import build_snapshot
 from etlplus.runtime import EVENT_SCHEMA
 from etlplus.runtime import EVENT_SCHEMA_VERSION
-from tests.integration.cli.pytest_cli_integration_support import assert_cli_success
 from tests.integration.cli.pytest_cli_integration_support import history_table_counts
 from tests.integration.pytest_integration_support import REMOTE_STORAGE_ENV_CASES
+from tests.pytest_shared_support import assert_cli_success
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.integration.cli.pytest_cli_integration_support import (

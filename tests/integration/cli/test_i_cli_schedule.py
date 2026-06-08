@@ -17,9 +17,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from etlplus.cli._handlers import schedule as schedule_handler_mod
-from tests.integration.cli.pytest_cli_integration_support import assert_cli_success
 from tests.integration.cli.pytest_cli_integration_support import history_table_counts
 from tests.integration.cli.pytest_cli_integration_support import parse_jsonl_event_lines
+from tests.pytest_shared_support import assert_cli_success
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.pytest_shared_support import CliInvoke
