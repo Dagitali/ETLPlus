@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 
+from tests.integration.cli.pytest_cli_integration_support import assert_cli_success
 from tests.integration.pytest_integration_support import REMOTE_STORAGE_ENV_CASES
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
@@ -48,8 +49,7 @@ class TestCliExtract:
         Test extracting JSON from a file and emitting the matching payload.
         """
         code, out, err = cli_invoke(('extract', str(json_payload_file)))
-        assert code == 0
-        assert err.strip() == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload == sample_records
 
@@ -75,8 +75,7 @@ class TestCliExtract:
 
         code, out, err = cli_invoke(('extract', source.uri))
 
-        assert code == 0
-        assert err.strip() == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload == sample_records
 
@@ -95,7 +94,6 @@ class TestCliExtract:
 
         code, out, err = cli_invoke(('extract', 's3://bucket/input.json'))
 
-        assert code == 0
-        assert err.strip() == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload == sample_records
