@@ -122,26 +122,32 @@ class TestHelperOptionKwargs:
     """Unit tests for shared Typer option helper functions."""
 
     @pytest.mark.parametrize(
-        ('help_text', 'show_default', 'expected'),
+        ('help_text', 'kwargs', 'expected'),
         [
             pytest.param(
                 'List data sources',
-                None,
+                {'show_default': None},
                 {'help': 'List data sources'},
                 id='implicit-show-default',
             ),
             pytest.param(
                 'Show the version and exit.',
-                False,
+                {'show_default': False},
                 {'help': 'Show the version and exit.', 'show_default': False},
                 id='explicit-show-default',
+            ),
+            pytest.param(
+                'Show the version and exit.',
+                {'is_eager': True},
+                {'help': 'Show the version and exit.', 'is_eager': True},
+                id='eager',
             ),
         ],
     )
     def test_flag_option_kwargs_include_requested_metadata(
         self,
         help_text: str,
-        show_default: bool | None,
+        kwargs: dict[str, object],
         expected: dict[str, object],
     ) -> None:
         """
@@ -151,23 +157,10 @@ class TestHelperOptionKwargs:
         assert (
             cli_options.typer_flag_option_kwargs(
                 help_text,
-                show_default=show_default,
+                **kwargs,
             )
             == expected
         )
-
-    def test_flag_option_kwargs_include_is_eager_when_requested(self) -> None:
-        """
-        Test that :func:`typer_flag_option_kwargs` preserves Typer
-        eager-evaluation metadata.
-        """
-        assert cli_options.typer_flag_option_kwargs(
-            'Show the version and exit.',
-            is_eager=True,
-        ) == {
-            'help': 'Show the version and exit.',
-            'is_eager': True,
-        }
 
     def test_helper_module_exports_intended_public_api(self) -> None:
         """Option helper exports should reflect the public helper surface."""
