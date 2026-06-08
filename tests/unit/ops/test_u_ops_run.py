@@ -196,8 +196,9 @@ class TestRun:
         assert DummyClient.instances
         assert paginate_calls[0]['endpoint_key'] == 'users'
         assert paginate_calls[0]['params'] == {'limit': 5}
-        assert load_calls[0][1]['url'] == 'https://sink.example.com'
-        assert load_calls[0][1]['method'] == 'put'
+        ((_, load_env),) = load_calls
+        assert load_env['url'] == 'https://sink.example.com'
+        assert load_env['method'] == 'put'
         assert result == {'ok': True}
 
     def test_database_source_branch(
@@ -508,12 +509,14 @@ class TestRun:
 
         result = run_mod.run('file_job')
 
-        assert extract_calls[0][0] == 'file'
-        assert extract_calls[0][1] == '/tmp/input.json'
+        ((source_type, extract_target, *_extract_options),) = extract_calls
+        assert source_type == 'file'
+        assert extract_target == '/tmp/input.json'
         assert transform_calls
         assert stages == ['before_transform', 'after_transform']
-        assert load_calls[0][1] == 'file'
-        assert load_calls[0][2] == '/tmp/output.json'
+        ((_data, connector, target, _options),) = load_calls
+        assert connector == 'file'
+        assert target == '/tmp/output.json'
         assert result == {'status': 'ok'}
 
     def test_run_all_executes_jobs_in_topological_order(
@@ -2241,8 +2244,7 @@ class TestRunInternals:
         assert call_order == ['seed']
         assert result['status'] == 'failed'
         assert result['failed_jobs'] == ['seed']
-        assert len(result['executed_jobs']) == 1
-        failed_job = result['executed_jobs'][0]
+        (failed_job,) = result['executed_jobs']
         assert failed_job['duration_ms'] == 5
         assert failed_job['error_message'] == 'boom'
         assert failed_job['error_type'] == 'ValueError'
