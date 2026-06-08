@@ -71,11 +71,11 @@ class ApiSession:
         self,
         url: str,
         *,
-        json_payload: object,
         timeout: float,
         **kwargs: Any,
-    ) -> JsonResponse:  # noqa: ANN001
+    ) -> JsonResponse:
         """Capture POST call details."""
+        json_payload = kwargs.pop('json')
         return self._record(
             'post', url, json_payload=json_payload, timeout=timeout, kwargs=kwargs,
         )
@@ -84,11 +84,11 @@ class ApiSession:
         self,
         url: str,
         *,
-        json_payload: object,
         timeout: float,
         **kwargs: Any,
-    ) -> JsonResponse:  # noqa: ANN001
+    ) -> JsonResponse:
         """Capture PUT call details."""
+        json_payload = kwargs.pop('json')
         return self._record(
             'put', url, json_payload=json_payload, timeout=timeout, kwargs=kwargs,
         )
