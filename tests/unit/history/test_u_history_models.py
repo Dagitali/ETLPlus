@@ -113,9 +113,12 @@ class TestRunRecord:
 
         match expected:
             case 'computed':
-                assert actual == hashlib.sha256(
-                    config_path.read_bytes(),
-                ).hexdigest()
+                assert (
+                    actual
+                    == hashlib.sha256(
+                        config_path.read_bytes(),
+                    ).hexdigest()
+                )
             case 'not-none':
                 assert actual is not None
             case _:

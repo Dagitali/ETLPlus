@@ -194,8 +194,6 @@ class TestScientificHandlers:
         resolved = handler._resolve_pyreadstat_for('read')
 
         actual = (
-            resolved
-            if check_name == 'resolved'
-            else handler.resolve_pyreadstat_calls
+            resolved if check_name == 'resolved' else handler.resolve_pyreadstat_calls
         )
         assert actual == expected

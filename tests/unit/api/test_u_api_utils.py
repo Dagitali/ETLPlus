@@ -394,9 +394,7 @@ class TestComposeApiTargetEnv:
 
         env = _utils.compose_api_target_env(cfg, target, overrides)
 
-        expected_value = (
-            f'{base_url}/v1/users' if field_path == 'url' else expected
-        )
+        expected_value = f'{base_url}/v1/users' if field_path == 'url' else expected
         actual = _mapping_path(env, field_path)
         if expected_value == 'not-none':
             assert actual is not None

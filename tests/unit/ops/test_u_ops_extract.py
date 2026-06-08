@@ -537,9 +537,7 @@ class TestExtractFromApi:
         )
 
         actual = (
-            result
-            if check_name == 'result'
-            else paginate_calls[0]['sleep_seconds']
+            result if check_name == 'result' else paginate_calls[0]['sleep_seconds']
         )
         assert actual == expected
 

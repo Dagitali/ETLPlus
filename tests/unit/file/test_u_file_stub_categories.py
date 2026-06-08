@@ -278,9 +278,14 @@ class TestStubCategoryHandlers:
             case 'read-result':
                 assert handler.read(path, options=read_options) == expected
             case 'write-result':
-                assert handler.write(
-                    path, RECORD_LIST, options=write_options,
-                ) == expected
+                assert (
+                    handler.write(
+                        path,
+                        RECORD_LIST,
+                        options=write_options,
+                    )
+                    == expected
+                )
             case 'read-calls':
                 handler.read(path, options=read_options)
                 assert read_calls == [(path, read_options)]
