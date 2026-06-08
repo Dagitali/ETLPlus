@@ -6,12 +6,33 @@ Shared support types for CLI integration tests.
 
 from __future__ import annotations
 
+import json
+import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from typing import Protocol
 
 from etlplus.storage import StorageLocation
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def history_table_counts(history_db: Path) -> tuple[int, int]:
+    """Return run and job row counts from one SQLite history database."""
+    with sqlite3.connect(history_db) as conn:
+        return (
+            conn.execute('SELECT COUNT(*) FROM runs').fetchone()[0],
+            conn.execute('SELECT COUNT(*) FROM job_runs').fetchone()[0],
+        )
+
+
+def parse_jsonl_event_lines(stderr: str) -> list[dict[str, Any]]:
+    """Parse structured JSONL event lines from STDERR text."""
+    return [
+        json.loads(line) for line in stderr.splitlines() if line.strip().startswith('{')
+    ]
+
 
 # SECTION: DATA CLASSES ===================================================== #
 
