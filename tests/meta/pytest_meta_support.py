@@ -21,6 +21,9 @@ import yaml
 
 
 __all__ = [
+    # Constants
+    'PYPROJECT_PATH',
+    'README_PATH',
     # Functions
     'canonical_requirement_name',
     'markdown_table_rows',
@@ -37,6 +40,13 @@ __all__ = [
 
 
 _REQUIREMENT_NAME_PATTERN = re.compile(r'^\s*([A-Za-z0-9_.-]+)')
+
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+PYPROJECT_PATH = Path(__file__).resolve().parents[2] / 'pyproject.toml'
+README_PATH = Path(__file__).resolve().parents[2] / 'README.md'
 
 
 # SECTION: FUNCTIONS ======================================================== #
