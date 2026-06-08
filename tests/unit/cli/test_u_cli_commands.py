@@ -870,7 +870,7 @@ class TestCliInvokeParsing:
         )
 
         assert (first_result.exit_code, second_result.exit_code) == (0, 0)
-        assert len(dispatch_calls) == 1
+        (_dispatch_call,) = dispatch_calls
 
         first_payload = json.loads(first_result.stdout)
         second_payload = json.loads(second_result.stdout)
