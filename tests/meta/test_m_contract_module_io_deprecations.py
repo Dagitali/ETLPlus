@@ -145,8 +145,7 @@ def file_format_modules_fixture() -> FileFormatModules:
 def internal_runtime_trees_fixture() -> RuntimeTrees:
     """Return parsed AST trees for non-file runtime modules."""
     return tuple(
-        (path, ast.parse(read_text(path)))
-        for path in _iter_internal_python_files()
+        (path, ast.parse(read_text(path))) for path in _iter_internal_python_files()
     )
 
 
