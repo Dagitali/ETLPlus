@@ -6,6 +6,7 @@ Unit tests for :mod:`etlplus.cli._commands._options.helpers`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import get_args
 
 import pytest
@@ -38,6 +39,68 @@ INIT_OPTION_EXPORTS: tuple[tuple[str, object], ...] = (
     ('InitDirectoryArgument', init_options_mod.InitDirectoryArgument),
     ('InitForceOption', init_options_mod.InitForceOption),
 )
+OPTION_ALIAS_CASES = (
+    pytest.param(
+        cli_options.typer_connector_option_alias,
+        str,
+        '--source-type',
+        {'context': 'source'},
+        'CONNECTOR',
+        'Override the inferred source type',
+        'I/O overrides',
+        id='connector-source',
+    ),
+    pytest.param(
+        cli_options.typer_connector_option_alias,
+        str,
+        '--target-type',
+        {'context': 'target'},
+        'CONNECTOR',
+        'Override the inferred target type',
+        'I/O overrides',
+        id='connector-target',
+    ),
+    pytest.param(
+        cli_options.typer_format_option_alias,
+        str | None,
+        '--source-format',
+        {'context': 'source'},
+        'FORMAT',
+        'source is STDIN/inline',
+        None,
+        id='format-source',
+    ),
+    pytest.param(
+        cli_options.typer_format_option_alias,
+        str | None,
+        '--target-format',
+        {'context': 'target'},
+        'FORMAT',
+        'target is STDIN/inline',
+        None,
+        id='format-target',
+    ),
+    pytest.param(
+        cli_options.typer_timestamp_option_alias,
+        str | None,
+        '--since',
+        {'bound': 'since'},
+        'ISO8601',
+        'at or after',
+        None,
+        id='timestamp-since',
+    ),
+    pytest.param(
+        cli_options.typer_timestamp_option_alias,
+        str | None,
+        '--until',
+        {'bound': 'until'},
+        'ISO8601',
+        'at or before',
+        None,
+        id='timestamp-until',
+    ),
+)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -57,35 +120,6 @@ def _option_alias_metadata(
 
 class TestHelperOptionKwargs:
     """Unit tests for shared Typer option helper functions."""
-
-    @pytest.mark.parametrize(
-        ('context', 'expected_help'),
-        [
-            pytest.param('source', 'Override the inferred source type', id='source'),
-            pytest.param('target', 'Override the inferred target type', id='target'),
-        ],
-    )
-    def test_connector_option_alias_context_specific_help(
-        self,
-        context: str,
-        expected_help: str,
-    ) -> None:
-        """
-        Test that :class:`Connector`-type helper preserve source and target
-        wording.
-        """
-        _, option_info = _option_alias_metadata(
-            cli_options.typer_connector_option_alias(
-                str,
-                f'--{context}-type',
-                context=context,  # type: ignore[arg-type]
-            ),
-        )
-
-        assert option_info.metavar == 'CONNECTOR'
-        assert option_info.show_default is False
-        assert option_info.rich_help_panel == 'I/O overrides'
-        assert expected_help in str(option_info.help)
 
     @pytest.mark.parametrize(
         ('help_text', 'show_default', 'expected'),
@@ -142,6 +176,41 @@ class TestHelperOptionKwargs:
             expected_exports=HELPER_OPTION_EXPORTS,
         )
 
+    @pytest.mark.parametrize(
+        (
+            'alias_factory',
+            'value_type',
+            'param_decl',
+            'kwargs',
+            'expected_metavar',
+            'expected_help',
+            'expected_panel',
+        ),
+        OPTION_ALIAS_CASES,
+    )
+    def test_option_aliases_preserve_context_specific_metadata(
+        self,
+        alias_factory: Callable[..., object],
+        value_type: object,
+        param_decl: str,
+        kwargs: dict[str, object],
+        expected_metavar: str,
+        expected_help: str,
+        expected_panel: str | None,
+    ) -> None:
+        """
+        Test that context-specific option aliases preserve Typer metadata.
+        """
+        _, option_info = _option_alias_metadata(
+            alias_factory(value_type, param_decl, **kwargs),
+        )
+
+        assert option_info.metavar == expected_metavar
+        assert option_info.show_default is False
+        assert expected_help in str(option_info.help)
+        if expected_panel is not None:
+            assert option_info.rich_help_panel == expected_panel
+
     def test_resource_argument_alias_builds_typer_argument_metadata(self) -> None:
         """Resource argument aliases should wrap one Typer argument metadata object."""
         alias = cli_options.typer_resource_argument_alias(
@@ -154,56 +223,6 @@ class TestHelperOptionKwargs:
         assert value_type is str
         assert isinstance(argument_info, typer.models.ArgumentInfo)
         assert 'Extract data from SOURCE' in str(argument_info.help)
-
-    @pytest.mark.parametrize(
-        ('bound', 'expected_fragment'),
-        [
-            pytest.param('since', 'at or after', id='since'),
-            pytest.param('until', 'at or before', id='until'),
-        ],
-    )
-    def test_timestamp_option_alias_bound_specific_help(
-        self,
-        bound: str,
-        expected_fragment: str,
-    ) -> None:
-        """Test that timestamp helpers preserve `since` and `until` wording."""
-        _, option_info = _option_alias_metadata(
-            cli_options.typer_timestamp_option_alias(
-                str | None,
-                f'--{bound}',
-                bound=bound,  # type: ignore[arg-type]
-            ),
-        )
-
-        assert option_info.metavar == 'ISO8601'
-        assert option_info.show_default is False
-        assert expected_fragment in str(option_info.help)
-
-    @pytest.mark.parametrize(
-        ('context', 'expected_fragment'),
-        [
-            pytest.param('source', 'source is STDIN/inline', id='source'),
-            pytest.param('target', 'target is STDIN/inline', id='target'),
-        ],
-    )
-    def test_typer_format_option_alias_context_specific_help(
-        self,
-        context: str,
-        expected_fragment: str,
-    ) -> None:
-        """Test that format helpers tailor help text by connector context."""
-        _, option_info = _option_alias_metadata(
-            cli_options.typer_format_option_alias(
-                str | None,
-                f'--{context}-format',
-                context=context,  # type: ignore[arg-type]
-            ),
-        )
-
-        assert option_info.metavar == 'FORMAT'
-        assert option_info.show_default is False
-        assert expected_fragment in str(option_info.help)
 
     def test_value_option_alias_builds_typer_option_metadata(self) -> None:
         """Scalar option aliases should carry the requested metadata."""
