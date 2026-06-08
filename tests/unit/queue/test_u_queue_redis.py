@@ -22,17 +22,39 @@ from etlplus.queue import RedisQueue
 class TestRedisQueue:
     """Unit tests for :class:`etlplus.queue.RedisQueue`."""
 
-    def test_from_obj_accepts_queue_name_and_db_aliases(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('name', 'orders', id='name'),
+            pytest.param('key', 'events', id='queue-name-alias'),
+            pytest.param('database', 2, id='db-alias'),
+        ],
+    )
+    def test_from_obj_accepts_queue_name_and_db_aliases(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Test Redis metadata accepts ``queue_name`` and ``db`` aliases."""
         queue = RedisQueue.from_obj(
             {'name': '  orders  ', 'queue_name': '  events  ', 'db': 2},
         )
 
-        assert queue.name == 'orders'
-        assert queue.key == 'events'
-        assert queue.database == 2
+        assert getattr(queue, field_name) == expected
 
-    def test_from_obj_normalizes_optional_string_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('name', 'orders', id='name'),
+            pytest.param('url', '123', id='url'),
+            pytest.param('key', 'events', id='key'),
+        ],
+    )
+    def test_from_obj_normalizes_optional_string_fields(
+        self,
+        field_name: str,
+        expected: str,
+    ) -> None:
         """Test Redis metadata trims optional string fields."""
         queue = RedisQueue.from_obj(
             {
@@ -42,9 +64,7 @@ class TestRedisQueue:
             },
         )
 
-        assert queue.name == 'orders'
-        assert queue.url == '123'
-        assert queue.key == 'events'
+        assert getattr(queue, field_name) == expected
 
     @pytest.mark.parametrize(
         ('database', 'expected_exc', 'match'),

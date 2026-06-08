@@ -67,15 +67,21 @@ class TestRequestOptions:
         """
         assert opts.as_kwargs() == expected
 
-    def test_request_options_defaults(self) -> None:
+    @pytest.mark.parametrize(
+        'field_name',
+        [
+            pytest.param('params', id='params'),
+            pytest.param('headers', id='headers'),
+            pytest.param('timeout', id='timeout'),
+        ],
+    )
+    def test_request_options_defaults(self, field_name: str) -> None:
         """
         Test that :class:`RequestOptions` defaults all fields to ``None``.
         """
         opts = RequestOptions()
 
-        assert opts.params is None
-        assert opts.headers is None
-        assert opts.timeout is None
+        assert getattr(opts, field_name) is None
 
     @pytest.mark.parametrize(
         ('kwargs', 'expected_params', 'expected_headers', 'expected_timeout'),

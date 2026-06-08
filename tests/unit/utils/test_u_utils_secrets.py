@@ -58,17 +58,27 @@ def yaml_secrets_path_fixture(
 class TestSecretProviders:
     """Unit tests for explicit secret provider classes."""
 
-    def test_environment_provider_resolves_non_empty_values(self) -> None:
+    @pytest.mark.parametrize(
+        ('key', 'expected'),
+        [
+            pytest.param('API_TOKEN', 'env-secret', id='non-empty'),
+            pytest.param('EMPTY', None, id='empty'),
+            pytest.param('BLANK', None, id='blank'),
+            pytest.param('MISSING', None, id='missing'),
+        ],
+    )
+    def test_environment_provider_resolves_non_empty_values(
+        self,
+        key: str,
+        expected: str | None,
+    ) -> None:
         """Environment provider should be the stable first provider."""
         provider = EnvironmentSecretProvider(
             {'API_TOKEN': 'env-secret', 'EMPTY': '', 'BLANK': '   '},
         )
 
         assert provider.name == 'env'
-        assert provider.resolve('API_TOKEN') == 'env-secret'
-        assert provider.resolve('EMPTY') is None
-        assert provider.resolve('BLANK') is None
-        assert provider.resolve('MISSING') is None
+        assert provider.resolve(key) == expected
 
     def test_local_file_provider_strips_configured_file_path(
         self,
