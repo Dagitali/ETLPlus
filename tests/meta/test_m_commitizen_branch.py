@@ -151,7 +151,7 @@ class TestCommitizenBranchCheck:
 
             def check_message(self, message: str) -> int:
                 """Raise when Commitizen validation should not run."""
-                return TestCommitizenBranchCheck._unexpected_check(message)
+                raise AssertionError(f'unexpected Commitizen check: {message}')
 
             def current_branch(self) -> str:
                 """Return a valid GitFlow branch name."""
@@ -213,7 +213,7 @@ class TestCommitizenBranchCheck:
 
             def check_message(self, message: str) -> int:
                 """Raise when Commitizen validation should not run."""
-                return TestCommitizenBranchCheck._unexpected_check(message)
+                raise AssertionError(f'unexpected Commitizen check: {message}')
 
             def current_branch(self) -> str:
                 """Return an invalid GitFlow branch name."""
@@ -262,10 +262,3 @@ class TestCommitizenBranchCheck:
         assert Checker().run() == 0
 
         assert checked_messages == list(messages.values())
-
-    @staticmethod
-    def _unexpected_check(message: str) -> int:
-        """
-        Raise when Commitizen validation should not run.
-        """
-        raise AssertionError(f'unexpected Commitizen check: {message}')
