@@ -23,6 +23,16 @@ from etlplus.storage import _remote_buffer as remote_buffer_mod
 class TestRemoteBufferHelpers:
     """Unit tests for the shared in-memory remote buffer helpers."""
 
+    def test_open_remote_buffer_requires_required_inputs(self) -> None:
+        """Test that remote buffers require mode-specific inputs."""
+        cases = (
+            ({'kind': 'read', 'text_mode': False}, 'payload is required'),
+            ({'kind': 'write', 'text_mode': False}, 'uploader is required'),
+        )
+        for kwargs, match in cases:
+            with pytest.raises(ValueError, match=match):
+                remote_buffer_mod.open_remote_buffer(**kwargs)
+
     def test_parse_remote_open_mode_rejects_invalid_mode(self) -> None:
         """Test that invalid remote open modes are rejected."""
         with pytest.raises(ValueError, match='support only'):
@@ -39,11 +49,6 @@ class TestRemoteBufferHelpers:
         assert isinstance(handle, BytesIO)
         assert handle.read() == b'payload'
 
-    def test_read_buffer_requires_payload(self) -> None:
-        """Test that read buffers require a payload."""
-        with pytest.raises(ValueError, match='payload is required'):
-            remote_buffer_mod.open_remote_buffer(kind='read', text_mode=False)
-
     def test_upload_buffer_uploads_only_once_on_double_close(self) -> None:
         """Test that upload-on-close buffers do not upload twice."""
         uploads: list[bytes] = []
@@ -58,11 +63,6 @@ class TestRemoteBufferHelpers:
         handle.close()
 
         assert uploads == [b'payload']
-
-    def test_write_buffer_requires_uploader(self) -> None:
-        """Test that write buffers require an upload callback."""
-        with pytest.raises(ValueError, match='uploader is required'):
-            remote_buffer_mod.open_remote_buffer(kind='write', text_mode=False)
 
     def test_write_buffer_text_mode_returns_text_wrapper(self) -> None:
         """Test that text write mode wraps the upload buffer in text I/O."""
