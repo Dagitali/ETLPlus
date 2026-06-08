@@ -13,6 +13,7 @@ from etlplus.storage import StorageLocation
 from etlplus.storage import _abfs as abfs_mod
 
 from .pytest_storage_support import FakeContentSettings
+from .pytest_storage_support import FixedDownload
 from .pytest_storage_support import assert_upload_payload
 from .pytest_storage_support import clear_azure_storage_env
 
@@ -119,19 +120,12 @@ class TestAbfsStorageBackend:
             'abfs://filesystem@example.dfs.core.windows.net/blob.json',
         )
 
-        class FakeDownload:
-            """Data Lake download test double."""
-
-            def readall(self) -> bytes:
-                """Return a fixed payload."""
-                return b'{"ok": true}'
-
         class FakeFileClient:
             """Data Lake file client test double."""
 
-            def download_file(self) -> FakeDownload:
+            def download_file(self) -> FixedDownload:
                 """Return the fake download wrapper."""
-                return FakeDownload()
+                return FixedDownload()
 
         monkeypatch.setattr(backend, '_file_client', lambda _location: FakeFileClient())
         with backend.open(location, encoding='utf-8') as handle:
