@@ -541,8 +541,19 @@ class TestRequestManagerInternalPaths:
         manager = RequestManager()
         assert manager._resolve_request_callable(None) is requests.request
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('method', 'POST', id='method'),
+            pytest.param('url', 'https://example.test/send', id='url'),
+            pytest.param('kwargs.timeout', 9, id='timeout'),
+            pytest.param('kwargs.headers', {'X-Test': '1'}, id='headers'),
+        ],
+    )
     def test_send_http_request_normalizes_method_and_passes_timeout(
         self,
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that low-level send helper uppercases method and forwards timeout.
@@ -567,7 +578,11 @@ class TestRequestManagerInternalPaths:
             timeout=9,
             headers={'X-Test': '1'},
         )
-        assert seen['method'] == 'POST'
-        assert seen['url'] == 'https://example.test/send'
-        assert seen['kwargs']['timeout'] == 9
-        assert seen['kwargs']['headers'] == {'X-Test': '1'}
+        match field.split('.'):
+            case ['kwargs', key]:
+                actual = seen['kwargs'][key]
+            case [key]:
+                actual = seen[key]
+            case _:
+                pytest.fail(f'Unsupported field path: {field}')
+        assert actual == expected

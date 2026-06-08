@@ -450,10 +450,19 @@ class TestApiProfileConfig:
                 prof.rate_limit_defaults,
             )
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('base_url', None, id='base-url'),
+            pytest.param('headers', {'A': '9', 'B': '2'}, id='headers'),
+        ],
+    )
     def test_merges_headers_defaults_low_precedence(
         self,
         base_url: str,
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that headers from defaults are merged with low precedence.
@@ -464,8 +473,7 @@ class TestApiProfileConfig:
             'defaults': {'headers': {'A': '1'}},
         }
         prof = profile_config_factory(obj)
-        assert prof.base_url == base_url
-        assert prof.headers == {'A': '9', 'B': '2'}
+        assert getattr(prof, field) == (base_url if field == 'base_url' else expected)
 
     @pytest.mark.parametrize(
         ('field', 'expected'),

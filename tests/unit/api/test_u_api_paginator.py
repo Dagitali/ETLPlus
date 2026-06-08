@@ -468,7 +468,19 @@ class TestPaginatorInternalBranches:
                 RequestOptions(),
             )
 
-    def test_from_config_accepts_pagination_config_instance(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('page_size', 3, id='page-size'),
+            pytest.param('start_page', 2, id='start-page'),
+            pytest.param('records_path', 'items', id='records-path'),
+        ],
+    )
+    def test_from_config_accepts_pagination_config_instance(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """
         Test that :meth:`from_config` handles :class:`PaginationConfig` objects
         directly.
@@ -480,19 +492,27 @@ class TestPaginatorInternalBranches:
             records_path='items',
         )
         paginator = Paginator.from_config(cfg, fetch=_dummy_fetch)
-        assert paginator.page_size == 3
-        assert paginator.start_page == 2
-        assert paginator.records_path == 'items'
+        assert getattr(paginator, field) == expected
 
-    def test_limit_batch_exhausted_branch(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('trimmed', [], id='trimmed'),
+            pytest.param('exhausted', True, id='exhausted'),
+        ],
+    )
+    def test_limit_batch_exhausted_branch(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """
         Test that :meth:`_limit_batch` exhausts when emitted reaches
         *max_records*.
         """
         paginator = Paginator(fetch=_dummy_fetch, max_records=2)
         trimmed, exhausted = paginator._limit_batch([{'id': 1}], emitted=2)
-        assert trimmed == []
-        assert exhausted is True
+        assert {'trimmed': trimmed, 'exhausted': exhausted}[field] == expected
 
     def test_next_cursor_from_invalid_paths(self) -> None:
         """

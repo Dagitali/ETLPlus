@@ -61,7 +61,15 @@ class TestPaginationConfig:
         assert cfg is not None
         assert getattr(cfg, field) == expected
 
-    def test_defaults_preserve_top_level_fallback_path(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [pytest.param('fallback_path', 'top.level.records', id='fallback-path')],
+    )
+    def test_defaults_preserve_top_level_fallback_path(
+        self,
+        field: str,
+        expected: str,
+    ) -> None:
         """
         Test that nested ``fallback_path`` does not override explicit top-level
         value.
@@ -75,7 +83,7 @@ class TestPaginationConfig:
         )
 
         assert cfg is not None
-        assert cfg.fallback_path == 'top.level.records'
+        assert getattr(cfg, field) == expected
 
     @pytest.mark.parametrize(
         ('field_name', 'expected'),
