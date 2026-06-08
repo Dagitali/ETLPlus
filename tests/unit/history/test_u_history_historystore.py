@@ -106,24 +106,31 @@ class TestHistoryStore:
         with pytest.raises(ValueError, match='sqlite, jsonl'):
             store_mod.HistoryStore.from_environment()
 
+    @pytest.mark.parametrize(
+        ('backend', 'expected_type', 'path_attr', 'path_name'),
+        [
+            ('jsonl', store_mod.JsonlHistoryStore, 'log_path', 'history.jsonl'),
+            ('sqlite', store_mod.SQLiteHistoryStore, 'db_path', 'history.sqlite'),
+        ],
+    )
     def test_from_settings_selects_supported_backend(
         self,
         tmp_path: Path,
+        backend: str,
+        expected_type: type[store_mod.HistoryStore],
+        path_attr: str,
+        path_name: str,
     ) -> None:
         """Test that explicit store settings resolve supported backends."""
-        for backend, expected_type, path_attr, path_name in (
-            ('jsonl', store_mod.JsonlHistoryStore, 'log_path', 'history.jsonl'),
-            ('sqlite', store_mod.SQLiteHistoryStore, 'db_path', 'history.sqlite'),
-        ):
-            state_dir = tmp_path / f'{backend}-state'
+        state_dir = tmp_path / f'{backend}-state'
 
-            store = store_mod.HistoryStore.from_settings(
-                backend=backend,
-                state_dir=state_dir,
-            )
+        store = store_mod.HistoryStore.from_settings(
+            backend=backend,
+            state_dir=state_dir,
+        )
 
-            assert isinstance(store, expected_type)
-            assert getattr(store, path_attr) == state_dir / path_name
+        assert isinstance(store, expected_type)
+        assert getattr(store, path_attr) == state_dir / path_name
 
     @pytest.mark.parametrize(
         ('backend', 'expected_type', 'path_attr', 'path_name'),
