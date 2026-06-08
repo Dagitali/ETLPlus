@@ -76,22 +76,34 @@ class TestHttpStorageBackend:
         with backend.open(location, encoding='utf-8') as handle:
             assert handle.read() == 'name\nAda\n'
 
-    def test_open_rejects_unexpected_kwargs(self) -> None:
-        """Test that HTTP open rejects unsupported keyword arguments."""
+    @pytest.mark.parametrize(
+        ('mode', 'kwargs', 'expected_error', 'match'),
+        [
+            pytest.param(
+                'r',
+                {'unsupported': True},
+                TypeError,
+                'Unsupported HTTP open',
+                id='unsupported-kwarg',
+            ),
+            pytest.param('w', {}, ValueError, 'read-only', id='write-text'),
+            pytest.param('wb', {}, ValueError, 'read-only', id='write-binary'),
+            pytest.param('wt', {}, ValueError, 'read-only', id='write-text-explicit'),
+        ],
+    )
+    def test_open_rejects_invalid_modes_and_kwargs(
+        self,
+        mode: str,
+        kwargs: dict[str, object],
+        expected_error: type[Exception],
+        match: str,
+    ) -> None:
+        """Test that HTTP open rejects unsupported kwargs and write modes."""
         backend = HttpStorageBackend(session=FakeHttpSession(get_status=200))
         location = StorageLocation.from_value('https://example.com/files/data.csv')
 
-        with pytest.raises(TypeError, match='Unsupported HTTP open'):
-            backend.open(location, unsupported=True)
-
-    @pytest.mark.parametrize('mode', ['w', 'wb', 'wt'])
-    def test_open_rejects_write_modes(self, mode: str) -> None:
-        """Test that HTTP backend is explicitly read-only."""
-        backend = HttpStorageBackend(session=FakeHttpSession(get_status=200))
-        location = StorageLocation.from_value('https://example.com/files/data.csv')
-
-        with pytest.raises(ValueError, match='read-only'):
-            backend.open(location, mode)
+        with pytest.raises(expected_error, match=match):
+            backend.open(location, mode, **kwargs)
 
     def test_session_scope_closes_owned_session(
         self,
