@@ -38,6 +38,17 @@ class FakeContentSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class FixedDownload:
+    """Minimal remote download test double."""
+
+    payload: bytes = b'{"ok": true}'
+
+    def readall(self) -> bytes:
+        """Return the configured payload bytes."""
+        return self.payload
+
+
+@dataclass(frozen=True, slots=True)
 class RemoteProviderCase:
     """Provider metadata used by shared remote-backend contract tests."""
 
