@@ -955,9 +955,21 @@ class TestCommandsMissingInputs:
                 "Missing required argument 'TARGET'",
                 id='load-missing-target',
             ),
+            pytest.param(
+                'extract_cmd',
+                {'source': '--oops'},
+                "must follow the 'SOURCE' argument",
+                id='extract-option-before-source',
+            ),
+            pytest.param(
+                'load_cmd',
+                {'target': '--oops'},
+                "must follow the 'TARGET' argument",
+                id='load-option-before-target',
+            ),
         ],
     )
-    def test_missing_required_inputs_exit_with_usage_error(
+    def test_invalid_required_inputs_exit_with_usage_error(
         self,
         typer_ctx_factory: TyperContextFactory,
         assert_stderr_contains: AssertCapturedText,
@@ -965,51 +977,7 @@ class TestCommandsMissingInputs:
         kwargs: dict[str, object],
         expected_message: str,
     ) -> None:
-        """
-        Test that commands emit friendly usage errors when required inputs are
-        missing.
-        """
-        command = getattr(commands_mod, command_name)
-        with pytest.raises(typer.Exit) as exc:
-            command(typer_ctx_factory(), **kwargs)
-        assert exc.value.exit_code == 2
-        assert_stderr_contains(expected_message)
-
-    @pytest.mark.parametrize(
-        (
-            'command_name',
-            'argument_name',
-            'argument_value',
-            'expected_message',
-        ),
-        [
-            pytest.param(
-                'extract_cmd',
-                'source',
-                '--oops',
-                "must follow the 'SOURCE' argument",
-                id='extract-option-before-source',
-            ),
-            pytest.param(
-                'load_cmd',
-                'target',
-                '--oops',
-                "must follow the 'TARGET' argument",
-                id='load-option-before-target',
-            ),
-        ],
-    )
-    def test_rejects_option_values_for_positional_arguments(
-        self,
-        typer_ctx_factory: TyperContextFactory,
-        assert_stderr_contains: AssertCapturedText,
-        command_name: str,
-        argument_name: str,
-        argument_value: str,
-        expected_message: str,
-    ) -> None:
-        """Test that positional arguments reject option-like values."""
-        kwargs = {argument_name: argument_value}
+        """Commands should emit friendly usage errors for invalid inputs."""
         command = getattr(commands_mod, command_name)
         with pytest.raises(typer.Exit) as exc:
             command(typer_ctx_factory(), **kwargs)
