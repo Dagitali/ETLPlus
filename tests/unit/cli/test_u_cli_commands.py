@@ -168,32 +168,24 @@ class TestCommandsInternalHelpers:
         )
 
     @pytest.mark.parametrize(
-        'value',
+        ('value', 'positional_name'),
         [
-            pytest.param(None, id='missing'),
-            pytest.param('', id='empty'),
+            pytest.param(None, None, id='missing'),
+            pytest.param('', None, id='empty'),
+            pytest.param('--target', 'SOURCE', id='option-like-positional'),
         ],
     )
-    def test_require_value_rejects_missing_values(
+    def test_require_value_rejects_invalid_values(
         self,
         value: str | None,
+        positional_name: str | None,
     ) -> None:
         """Required CLI values should fail through Typer usage errors."""
         with pytest.raises(typer.Exit) as exc_info:
             helpers_mod.CommandHelperPolicy.require_value(
                 value,
                 message="Missing required argument 'SOURCE'.",
-            )
-
-        assert exc_info.value.exit_code == 2
-
-    def test_require_value_rejects_option_like_positionals(self) -> None:
-        """Positionals should not silently consume option-looking values."""
-        with pytest.raises(typer.Exit) as exc_info:
-            helpers_mod.CommandHelperPolicy.require_value(
-                '--target',
-                message="Missing required argument 'SOURCE'.",
-                positional_name='SOURCE',
+                positional_name=positional_name,
             )
 
         assert exc_info.value.exit_code == 2
