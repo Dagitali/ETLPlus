@@ -570,7 +570,10 @@ class TestOptionsContracts:
         ('method_name', 'args', 'kwargs'),
         [
             pytest.param(
-                'dataset_from_options', (ReadOptions(dataset=''),), {}, id='option',
+                'dataset_from_options',
+                (ReadOptions(dataset=''),),
+                {},
+                id='option',
             ),
             pytest.param(
                 'resolve_dataset',

@@ -35,7 +35,18 @@ class TestPaginationConfig:
     pagination styles.
     """
 
-    def test_defaults_apply_response_fallback_path(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('records_path', 'data.items', id='records-path'),
+            pytest.param('fallback_path', 'payload.records', id='fallback-path'),
+        ],
+    )
+    def test_defaults_apply_response_fallback_path(
+        self,
+        field: str,
+        expected: str,
+    ) -> None:
         """Test that defaults mapping surfaces response ``fallback_path.``."""
         cfg = PaginationConfig.from_defaults(
             {
@@ -48,8 +59,7 @@ class TestPaginationConfig:
         )
 
         assert cfg is not None
-        assert cfg.records_path == 'data.items'
-        assert cfg.fallback_path == 'payload.records'
+        assert getattr(cfg, field) == expected
 
     def test_defaults_preserve_top_level_fallback_path(self) -> None:
         """

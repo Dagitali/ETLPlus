@@ -215,10 +215,23 @@ class TestApiConfig:
 
         assert actual == expected
 
+    @pytest.mark.parametrize(
+        ('accessor', 'expected'),
+        [
+            pytest.param('effective_base_path', '/v1', id='base-path'),
+            pytest.param(
+                'effective_pagination_defaults',
+                True,
+                id='pagination-defaults',
+            ),
+        ],
+    )
     def test_profile_attr_with_default(
         self,
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        accessor: str,
+        expected: object,
     ) -> None:
         """
         Test that profile attributes with defaults are handled correctly.
@@ -239,9 +252,8 @@ class TestApiConfig:
         }
         cfg = api_config_factory(obj)
 
-        # Effective getters rely on the internal helper; verify behavior.
-        assert cfg.effective_base_path() == '/v1'
-        assert cfg.effective_pagination_defaults() is not None
+        actual = getattr(cfg, accessor)()
+        assert actual is not None if expected is True else actual == expected
 
     @pytest.mark.parametrize(
         'accessor',
@@ -742,10 +754,16 @@ class TestConfigInternalBranches:
         with pytest.raises(TypeError, match='expected str or mapping'):
             EndpointConfig.from_obj(cast(Any, [1, 2, 3]))
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [pytest.param('sleep_seconds', 0.25, id='sleep-seconds')],
+    )
     def test_effective_rate_limit_defaults_returns_selected_profile_value(
         self,
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """Test that rate-limit defaults come from selected profile."""
         cfg = api_config_factory(
@@ -763,14 +781,27 @@ class TestConfigInternalBranches:
         )
         rate_limit = cfg.effective_rate_limit_defaults()
         assert rate_limit is not None
-        assert rate_limit.sleep_seconds == 0.25
+        assert getattr(rate_limit, field) == expected
 
-    def test_normalize_method_branches(self) -> None:
+    @pytest.mark.parametrize(
+        ('method', 'expected'),
+        [
+            pytest.param(HttpMethod.GET, 'GET', id='enum'),
+            pytest.param('   ', None, id='blank'),
+        ],
+    )
+    def test_normalize_method_branches(
+        self,
+        method: HttpMethod | str,
+        expected: str | None,
+    ) -> None:
         """
         Test that method normalizer handles enum, blank, and invalid values.
         """
-        assert config_mod._normalize_method(HttpMethod.GET) == 'GET'
-        assert config_mod._normalize_method('   ') is None
+        assert config_mod._normalize_method(method) == expected
+
+    def test_normalize_method_rejects_invalid_value(self) -> None:
+        """Unsupported method values should raise a clear validation error."""
         with pytest.raises(ValueError, match='Unsupported HTTP method'):
             config_mod._normalize_method('tracee')
 

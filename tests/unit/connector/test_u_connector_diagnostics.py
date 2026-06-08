@@ -139,12 +139,28 @@ class TestConnectorDiagnosticPolicy:
             == expected
         )
 
-    def test_static_entry_shape_guidance_helpers(self) -> None:
+    @pytest.mark.parametrize(
+        ('helper_name', 'expected'),
+        [
+            pytest.param(
+                'invalid_entry_guidance',
+                (
+                    'Define each connector as a mapping with at least "name" and '
+                    '"type" fields.'
+                ),
+                id='invalid-entry',
+            ),
+            pytest.param(
+                'missing_name_guidance',
+                'Set "name" to a non-empty string.',
+                id='missing-name',
+            ),
+        ],
+    )
+    def test_static_entry_shape_guidance_helpers(
+        self,
+        helper_name: str,
+        expected: str,
+    ) -> None:
         """Static entry-shape helpers should keep concise remediation wording."""
-        assert ConnectorDiagnosticPolicy.invalid_entry_guidance() == (
-            'Define each connector as a mapping with at least "name" and "type" fields.'
-        )
-        assert (
-            ConnectorDiagnosticPolicy.missing_name_guidance()
-            == 'Set "name" to a non-empty string.'
-        )
+        assert getattr(ConnectorDiagnosticPolicy, helper_name)() == expected
