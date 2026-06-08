@@ -815,7 +815,7 @@ class TestReadinessReportBuilderConnectors:
         monkeypatch.setattr(
             readiness_builder_mod.ReadinessReportBuilder,
             'package_available',
-            lambda module_name: False if module_name == 'boto3' else True,
+            lambda module_name: module_name != 'boto3',
         )
         cfg = _cfg(
             sources=[

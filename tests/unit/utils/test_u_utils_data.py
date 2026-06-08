@@ -267,14 +267,33 @@ class TestDataHelpers:
         self,
         json_record_parser: RecordPayloadParser,
     ) -> None:
-        """Test dict/string key payload validators."""
+        """Test dict/string key payload validators accept valid payloads."""
         payload = json_record_parser.require_dict({'key': 'value'})
         assert payload == {'key': 'value'}
         assert json_record_parser.require_str_key(payload, 'key') == 'value'
-        with pytest.raises(TypeError, match='must be a dict'):
-            json_record_parser.require_dict([])
-        with pytest.raises(TypeError, match='must include a "key" string'):
-            json_record_parser.require_str_key({'key': 1}, 'key')
+
+    @pytest.mark.parametrize(
+        ('method_name', 'args', 'match'),
+        [
+            pytest.param('require_dict', ([],), 'must be a dict', id='dict'),
+            pytest.param(
+                'require_str_key',
+                ({'key': 1}, 'key'),
+                'must include a "key" string',
+                id='str-key',
+            ),
+        ],
+    )
+    def test_require_dict_payload_and_require_str_key_reject_invalid_values(
+        self,
+        json_record_parser: RecordPayloadParser,
+        method_name: str,
+        args: tuple[object, ...],
+        match: str,
+    ) -> None:
+        """Test dict/string key payload validators reject invalid values."""
+        with pytest.raises(TypeError, match=match):
+            getattr(json_record_parser, method_name)(*args)
 
     @pytest.mark.parametrize(
         ('codec', 'payload', 'expected'),

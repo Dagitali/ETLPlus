@@ -41,6 +41,7 @@ from etlplus.utils._types import NonEmptyStr
 from etlplus.utils._types import NonEmptyStrList
 
 from ..pytest_export_contracts import assert_package_exports
+from ..pytest_export_contracts import export_names
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -106,18 +107,18 @@ class TestUtilsPackageExports:
 
     def test_stable_symbols_lead_public_export_order(self) -> None:
         """Test stable exports stay grouped first in the package facade."""
-        assert utils_pkg.__all__[: len(STABLE_UTILS_EXPORTS)] == [
-            name for name, _value in STABLE_UTILS_EXPORTS
-        ]
+        assert utils_pkg.__all__[: len(STABLE_UTILS_EXPORTS)] == export_names(
+            STABLE_UTILS_EXPORTS,
+        )
 
     def test_transitional_symbols_remain_public_for_now(self) -> None:
         """
         Test transitional exports remain available until a feature release
         narrows them.
         """
-        assert utils_pkg.__all__[len(STABLE_UTILS_EXPORTS):] == [
-            name for name, _value in TRANSITIONAL_UTILS_EXPORTS
-        ]
+        assert utils_pkg.__all__[len(STABLE_UTILS_EXPORTS):] == export_names(
+            TRANSITIONAL_UTILS_EXPORTS,
+        )
 
     @pytest.mark.parametrize(('name', 'expected'), UTILS_EXPORTS)
     def test_expected_symbol_bindings(

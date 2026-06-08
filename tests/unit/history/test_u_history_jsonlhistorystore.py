@@ -37,10 +37,9 @@ class TestJsonlHistoryStore:
 
         store.record_run_finished(sample_completion)
 
-        lines = path.read_text(encoding='utf-8').splitlines()
+        (line,) = path.read_text(encoding='utf-8').splitlines()
 
-        assert len(lines) == 1
-        assert json.loads(lines[0]) == {
+        assert json.loads(line) == {
             'duration_ms': 5000,
             'error_message': None,
             'error_traceback': None,
@@ -64,10 +63,9 @@ class TestJsonlHistoryStore:
 
         store.record_job_run(sample_job_run_record)
 
-        lines = path.read_text(encoding='utf-8').splitlines()
+        (line,) = path.read_text(encoding='utf-8').splitlines()
 
-        assert len(lines) == 1
-        assert json.loads(lines[0]) == {
+        assert json.loads(line) == {
             'duration_ms': 5000,
             'error_message': None,
             'error_type': None,
@@ -98,7 +96,8 @@ class TestJsonlHistoryStore:
         store = store_mod.JsonlHistoryStore(tmp_path / 'history.jsonl')
         store.record_job_run(sample_job_run_record)
 
-        assert list(store.iter_job_runs()) == [sample_job_run_record.to_payload()]
+        (job_run,) = store.iter_job_runs()
+        assert job_run == sample_job_run_record.to_payload()
 
     def test_iter_runs_merges_append_events_into_one_run(
         self,
@@ -112,15 +111,13 @@ class TestJsonlHistoryStore:
         store.record_run_started(sample_record)
         store.record_run_finished(sample_completion)
 
-        assert list(store.iter_runs()) == [
-            sample_record.to_payload()
-            | {
-                'finished_at': '2026-03-23T00:00:05Z',
-                'duration_ms': 5000,
-                'result_summary': {'rows': 10},
-                'status': 'succeeded',
-            },
-        ]
+        (run_record,) = store.iter_runs()
+        assert run_record == sample_record.to_payload() | {
+            'finished_at': '2026-03-23T00:00:05Z',
+            'duration_ms': 5000,
+            'result_summary': {'rows': 10},
+            'status': 'succeeded',
+        }
 
     def test_iter_records_returns_empty_when_missing(
         self,

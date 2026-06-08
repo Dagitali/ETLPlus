@@ -28,7 +28,18 @@ class TestAwsSqsQueue:
         with pytest.raises(ValueError, match='must end with ".fifo"'):
             AwsSqsQueue.from_obj({'name': 'events', 'queue_type': 'fifo'})
 
-    def test_from_obj_normalizes_fifo_string_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('deduplication_id', 'dedupe-1', id='deduplication-id'),
+            pytest.param('message_group_id', 'events', id='message-group-id'),
+        ],
+    )
+    def test_from_obj_normalizes_fifo_string_fields(
+        self,
+        field_name: str,
+        expected: str,
+    ) -> None:
         """Test SQS FIFO-only string metadata trims optional fields."""
         queue = AwsSqsQueue.from_obj(
             {
@@ -38,8 +49,7 @@ class TestAwsSqsQueue:
             },
         )
 
-        assert queue.deduplication_id == 'dedupe-1'
-        assert queue.message_group_id == 'events'
+        assert getattr(queue, field_name) == expected
 
     @pytest.mark.parametrize(
         ('payload', 'expected_type'),
@@ -88,18 +98,23 @@ class TestAwsSqsQueue:
         assert queue.dead_letter_queue_arn == 'arn:aws:sqs:us-east-1:123:dead'
         assert queue.attributes == {'VisibilityTimeout': '30'}
 
-    def test_from_obj_rejects_boolean_integer_metadata(self) -> None:
-        """Test that boolean values are not accepted as integer metadata."""
-        with pytest.raises(TypeError, match='"visibility_timeout" must be an integer'):
-            AwsSqsQueue.from_obj({'name': 'events', 'visibility_timeout': True})
-
-    def test_from_obj_rejects_invalid_integer_metadata(self) -> None:
+    @pytest.mark.parametrize(
+        'visibility_timeout',
+        [
+            pytest.param(True, id='bool'),
+            pytest.param('not-an-int', id='text'),
+        ],
+    )
+    def test_from_obj_rejects_invalid_integer_metadata(
+        self,
+        visibility_timeout: object,
+    ) -> None:
         """Test that integer SQS metadata fields reject non-integer values."""
         with pytest.raises(TypeError, match='"visibility_timeout" must be an integer'):
             AwsSqsQueue.from_obj(
                 {
                     'name': 'events',
-                    'visibility_timeout': 'not-an-int',
+                    'visibility_timeout': visibility_timeout,
                 },
             )
 
@@ -130,7 +145,33 @@ class TestAwsSqsQueue:
                 },
             )
 
-    def test_from_obj_returns_connector_options(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('service', QueueService.AWS_SQS, id='service'),
+            pytest.param(
+                'connector_options',
+                {
+                    'ContentBasedDeduplication': 'true',
+                    'service': 'aws-sqs',
+                    'queue_type': 'fifo',
+                    'queue_name': 'events.fifo',
+                    'url': 'https://sqs.us-east-1.amazonaws.com/123/events.fifo',
+                    'region': 'us-east-1',
+                    'visibility_timeout': 30,
+                    'wait_time_seconds': 20,
+                    'content_based_deduplication': True,
+                    'message_group_id': 'events',
+                },
+                id='connector-options',
+            ),
+        ],
+    )
+    def test_from_obj_returns_connector_options(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Test that queue metadata can be exposed as connector options."""
         queue = AwsSqsQueue.from_obj(
             {
@@ -146,19 +187,12 @@ class TestAwsSqsQueue:
         )
 
         assert isinstance(queue, QueueConfigProtocol)
-        assert queue.service is QueueService.AWS_SQS
-        assert queue.to_connector_options() == {
-            'ContentBasedDeduplication': 'true',
-            'service': 'aws-sqs',
-            'queue_type': 'fifo',
-            'queue_name': 'events.fifo',
-            'url': 'https://sqs.us-east-1.amazonaws.com/123/events.fifo',
-            'region': 'us-east-1',
-            'visibility_timeout': 30,
-            'wait_time_seconds': 20,
-            'content_based_deduplication': True,
-            'message_group_id': 'events',
-        }
+        actual = (
+            queue.to_connector_options()
+            if field_name == 'connector_options'
+            else getattr(queue, field_name)
+        )
+        assert actual == expected
 
     @pytest.mark.parametrize(
         ('payload', 'expected_fifo', 'expected_standard'),

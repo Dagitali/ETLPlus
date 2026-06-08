@@ -51,13 +51,22 @@ class TestConnectorProtocol:
 class TestConnectorBaseContracts:
     """Shared contract tests for concrete connector base subclasses."""
 
-    def test_dict_field_copies_mapping_values(self) -> None:
+    @pytest.mark.parametrize(
+        'check',
+        [
+            pytest.param('value', id='value'),
+            pytest.param('copy', id='copy'),
+        ],
+    )
+    def test_dict_field_copies_mapping_values(self, check: str) -> None:
         """Mapping-like fields should be returned as plain mutable dicts."""
         options = {'encoding': 'utf-8'}
         parsed = ConnectorFile._dict_field({'options': options}, 'options')
 
-        assert parsed == {'encoding': 'utf-8'}
-        assert parsed is not options
+        if check == 'copy':
+            assert parsed is not options
+        else:
+            assert parsed == {'encoding': 'utf-8'}
 
     def test_dict_field_defaults_non_mapping_values(self) -> None:
         """Non-mapping optional fields should normalize to an empty dict."""

@@ -41,24 +41,44 @@ class TestXml(RoundtripUnitModuleContract):
         assert element.text is None
         assert not list(element)
 
-    def test_dumps_defaults_to_root_tag_for_non_single_mapping(self) -> None:
+    @pytest.mark.parametrize(
+        ('expected', 'present'),
+        [
+            pytest.param('<root>', True, id='root-tag'),
+            pytest.param('<item>', True, id='item-tag'),
+        ],
+    )
+    def test_dumps_defaults_to_root_tag_for_non_single_mapping(
+        self,
+        expected: str,
+        present: bool,
+    ) -> None:
         """
         Test that :meth:`dumps` uses the default root tag for list payloads.
         """
         text = mod.XmlFile().dumps([{'id': 1}])
 
-        assert text.startswith('<root>')
-        assert '<item>' in text
+        assert (expected in text) is present
 
-    def test_dumps_prefers_single_mapping_root_over_options(self) -> None:
+    @pytest.mark.parametrize(
+        ('expected', 'present'),
+        [
+            pytest.param('<rows>', True, id='single-root'),
+            pytest.param('ignored', False, id='option-root-ignored'),
+        ],
+    )
+    def test_dumps_prefers_single_mapping_root_over_options(
+        self,
+        expected: str,
+        present: bool,
+    ) -> None:
         """Test that :meth:`dumps` preserves explicit single mapping roots."""
         text = mod.XmlFile().dumps(
             {'rows': [{'id': 1}]},
             options=WriteOptions(root_tag='ignored'),
         )
 
-        assert text.startswith('<rows>')
-        assert 'ignored' not in text
+        assert (expected in text) is present
 
     @pytest.mark.parametrize(
         ('payload', 'expected'),

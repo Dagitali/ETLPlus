@@ -119,11 +119,20 @@ _SPREADSHEET_HANDLER_CLASSES = (
     XlsmFile,
     OdsFile,
 )
-_NAMING_METHOD_CASES = (
-    (_DELIMITED_HANDLER_CLASSES, 'read_rows', 'write_rows'),
-    (_EMBEDDED_DB_HANDLER_CLASSES, 'read_table', 'write_table'),
-    (_SCIENTIFIC_HANDLER_CLASSES, 'read_dataset', 'write_dataset'),
-    (_SPREADSHEET_HANDLER_CLASSES, 'read_sheet', 'write_sheet'),
+_NAMING_METHOD_CASES = tuple(
+    pytest.param(
+        handler_cls,
+        method_name,
+        id=f'{handler_cls.__name__}-{method_name}',
+    )
+    for handlers, read_method, write_method in (
+        (_DELIMITED_HANDLER_CLASSES, 'read_rows', 'write_rows'),
+        (_EMBEDDED_DB_HANDLER_CLASSES, 'read_table', 'write_table'),
+        (_SCIENTIFIC_HANDLER_CLASSES, 'read_dataset', 'write_dataset'),
+        (_SPREADSHEET_HANDLER_CLASSES, 'read_sheet', 'write_sheet'),
+    )
+    for handler_cls in handlers
+    for method_name in ('read', 'write', read_method, write_method)
 )
 
 
@@ -351,17 +360,39 @@ _OPTION_HELPER_CASES = (
 class TestBaseAbcContracts:
     """Unit tests for abstract base class contracts."""
 
-    def test_at_returns_path_bound_facade(self) -> None:
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('type', BoundFileHandler, id='type'),
+            pytest.param('handler', 'handler', id='handler'),
+            pytest.param('path', Path('ignored.csv'), id='path'),
+            pytest.param('read', [{'id': 1}], id='read'),
+            pytest.param('write', 2, id='write'),
+        ],
+    )
+    def test_at_returns_path_bound_facade(
+        self,
+        check_name: str,
+        expected: object,
+    ) -> None:
         """Test that ``at(path)`` returns a bound callable handler facade."""
         handler = _DelimitedStub()
 
         bound = handler.at('ignored.csv')
 
-        assert isinstance(bound, BoundFileHandler)
-        assert bound.handler is handler
-        assert bound.path == Path('ignored.csv')
-        assert bound.read() == [{'id': 1}]
-        assert bound.write([{'id': 1}, {'id': 2}]) == 2
+        match check_name:
+            case 'type':
+                assert isinstance(bound, expected)
+            case 'handler':
+                assert bound.handler is handler
+            case 'path':
+                assert bound.path == expected
+            case 'read':
+                assert bound.read() == expected
+            case 'write':
+                assert bound.write([{'id': 1}, {'id': 2}]) == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_at_supports_remote_uri_reads(
         self,
@@ -542,57 +573,79 @@ class TestNamingConventions:
     """Unit tests for category-level internal naming conventions."""
 
     @pytest.mark.parametrize(
-        ('handlers', 'read_method', 'write_method'),
+        ('handler_cls', 'method_name'),
         _NAMING_METHOD_CASES,
     )
     def test_handlers_expose_category_methods(
         self,
-        handlers: tuple[type[FileHandlerABC], ...],
-        read_method: str,
-        write_method: str,
+        handler_cls: type[FileHandlerABC],
+        method_name: str,
     ) -> None:
         """Test that handlers expose category-level read/write methods."""
-        for handler_cls in handlers:
-            for method_name in ('read', 'write', read_method, write_method):
-                assert callable(getattr(handler_cls, method_name, None))
+        assert callable(getattr(handler_cls, method_name, None))
 
 
 class TestOptionsContracts:
     """Unit tests for base option data classes."""
 
-    def test_dataset_option_helpers_preserve_empty_string_values(self) -> None:
+    @pytest.mark.parametrize(
+        ('method_name', 'args', 'kwargs'),
+        [
+            pytest.param(
+                'dataset_from_options',
+                (ReadOptions(dataset=''),),
+                {},
+                id='option',
+            ),
+            pytest.param(
+                'resolve_dataset',
+                (None,),
+                {'options': ReadOptions(dataset='')},
+                id='option-default',
+            ),
+            pytest.param(
+                'resolve_dataset',
+                ('',),
+                {'options': ReadOptions(dataset='other')},
+                id='explicit',
+            ),
+        ],
+    )
+    def test_dataset_option_helpers_preserve_empty_string_values(
+        self,
+        method_name: str,
+        args: tuple[object, ...],
+        kwargs: dict[str, object],
+    ) -> None:
         """
         Test that dataset helpers preserving empty-string explicit/option
         values.
         """
         handler = DtaFile()
-        options = ReadOptions(dataset='')
 
-        assert handler.dataset_from_options(options) == ''
-        assert handler.resolve_dataset(None, options=options) == ''
-        assert (
-            handler.resolve_dataset(
-                '',
-                options=ReadOptions(dataset='other'),
-            )
-            == ''
-        )
+        assert getattr(handler, method_name)(*args, **kwargs) == ''
 
-    def test_dataset_option_helpers_use_override_then_default(self) -> None:
+    @pytest.mark.parametrize(
+        ('options', 'expected'),
+        [
+            pytest.param(ReadOptions(dataset='features'), 'features', id='read'),
+            pytest.param(WriteOptions(dataset='labels'), 'labels', id='write'),
+        ],
+    )
+    def test_dataset_option_helpers_use_override_then_default(
+        self,
+        options: ReadOptions | WriteOptions,
+        expected: str,
+    ) -> None:
         """
         Test that scientific dataset helpers using explicit then default data.
         """
         handler = DtaFile()
-        option_expectations = (
-            (ReadOptions(dataset='features'), 'features'),
-            (WriteOptions(dataset='labels'), 'labels'),
-        )
 
         assert handler.dataset_from_options(None) is None
-        for options, expected in option_expectations:
-            assert handler.dataset_from_options(options) == expected
-            assert handler.resolve_dataset(None, options=options) == expected
-            assert handler.resolve_dataset('explicit', options=options) == ('explicit')
+        assert handler.dataset_from_options(options) == expected
+        assert handler.resolve_dataset(None, options=options) == expected
+        assert handler.resolve_dataset('explicit', options=options) == 'explicit'
         assert handler.resolve_dataset(None, default='fallback') == 'fallback'
 
     @pytest.mark.parametrize(
@@ -614,29 +667,51 @@ class TestOptionsContracts:
         if case.write_default is not _NO_DEFAULT:
             assert helper(None, default=case.write_default) == case.write_default
 
-    def test_read_options_use_independent_extras_dicts(self) -> None:
+    @pytest.mark.parametrize(
+        'check',
+        [
+            pytest.param('first-empty', id='first-empty'),
+            pytest.param('second-empty', id='second-empty'),
+            pytest.param('independent', id='independent'),
+        ],
+    )
+    def test_read_options_use_independent_extras_dicts(self, check: str) -> None:
         """
         Test that each :class:`ReadOptions` instance gets its own extras dict.
         """
         first = ReadOptions()
         second = ReadOptions()
 
-        assert not first.extras
-        assert not second.extras
-        assert first.extras is not second.extras
+        match check:
+            case 'first-empty':
+                assert not first.extras
+            case 'second-empty':
+                assert not second.extras
+            case 'independent':
+                assert first.extras is not second.extras
+            case _:
+                pytest.fail(f'Unsupported check: {check}')
 
-    def test_root_tag_option_helper_use_override_then_default(self) -> None:
+    @pytest.mark.parametrize(
+        ('options', 'kwargs', 'expected'),
+        [
+            pytest.param(None, {}, 'root', id='default'),
+            pytest.param(WriteOptions(root_tag='items'), {}, 'items', id='override'),
+            pytest.param(None, {'default': 'dataset'}, 'dataset', id='custom-default'),
+        ],
+    )
+    def test_root_tag_option_helper_use_override_then_default(
+        self,
+        options: WriteOptions | None,
+        kwargs: dict[str, str],
+        expected: str,
+    ) -> None:
         """
         Test that :class:`XlsFile` root-tag helper uses explicit values, then
         defaults.
         """
         handler = XlsFile()
-        assert handler.root_tag_from_write_options(None) == 'root'
-        assert (
-            handler.root_tag_from_write_options(WriteOptions(root_tag='items'))
-            == 'items'
-        )
-        assert handler.root_tag_from_write_options(None, default='dataset') == 'dataset'
+        assert handler.root_tag_from_write_options(options, **kwargs) == expected
 
     def test_write_options_are_frozen(self) -> None:
         """Test :class:`WriteOptions` immutability contract."""

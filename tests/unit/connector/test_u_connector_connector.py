@@ -11,12 +11,19 @@ import pytest
 import etlplus.connector._connector as connector_mod
 from etlplus.connector._connector import Connector
 
+from ..pytest_export_contracts import assert_package_exports
 from .pytest_connector_support import CONNECTOR_CLASS_PARAMS
 from .pytest_connector_support import ConnectorClass
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+CONNECTOR_ALIAS_EXPORTS: tuple[tuple[str, object], ...] = (('Connector', Connector),)
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -43,4 +50,7 @@ class TestConnectorAlias:
         """
         Test that the module only exports the :class:`Connector` alias.
         """
-        assert tuple(connector_mod.__all__) == ('Connector',)
+        assert_package_exports(
+            package_module=connector_mod,
+            expected_exports=CONNECTOR_ALIAS_EXPORTS,
+        )

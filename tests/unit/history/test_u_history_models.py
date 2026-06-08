@@ -75,9 +75,23 @@ class TestRunCompletion:
 class TestRunRecord:
     """Unit tests for :class:`RunRecord`."""
 
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('run_id', 'run-123', id='run-id'),
+            pytest.param('pipeline_name', 'pipeline-a', id='pipeline-name'),
+            pytest.param('job_name', 'job-a', id='job-name'),
+            pytest.param('state.status', 'running', id='state-status'),
+            pytest.param('config_sha256', 'computed', id='config-sha256'),
+            pytest.param('host', 'not-none', id='host'),
+            pytest.param('pid', 'not-none', id='pid'),
+        ],
+    )
     def test_build_populates_runtime_metadata(
         self,
         tmp_path: Path,
+        field_name: str,
+        expected: object,
     ) -> None:
         """
         Test that :meth:`RunRecord.build` populates derived runtime metadata.
@@ -93,18 +107,22 @@ class TestRunRecord:
             job_name='job-a',
         )
 
-        assert record.run_id == 'run-123'
-        assert record.pipeline_name == 'pipeline-a'
-        assert record.job_name == 'job-a'
-        assert record.state.status == 'running'
-        assert (
-            record.config_sha256
-            == hashlib.sha256(
-                config_path.read_bytes(),
-            ).hexdigest()
-        )
-        assert record.host is not None
-        assert record.pid is not None
+        actual = record
+        for part in field_name.split('.'):
+            actual = getattr(actual, part)
+
+        match expected:
+            case 'computed':
+                assert (
+                    actual
+                    == hashlib.sha256(
+                        config_path.read_bytes(),
+                    ).hexdigest()
+                )
+            case 'not-none':
+                assert actual is not None
+            case _:
+                assert actual == expected
 
 
 class TestRunState:

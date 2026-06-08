@@ -37,10 +37,10 @@ class TestReadinessReportBuilderProviders:
         self,
     ) -> None:
         """Azure umbrella hints should remain derived from the split constants."""
-        assert AZURE_ENV_HINTS == (
+        assert (
             *AZURE_STORAGE_BOOTSTRAP_ENV,
             AZURE_STORAGE_CREDENTIAL_ENV,
-        )
+        ) == AZURE_ENV_HINTS
 
     @pytest.mark.parametrize(
         ('env', 'expected'),

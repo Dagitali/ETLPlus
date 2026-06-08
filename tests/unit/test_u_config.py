@@ -14,9 +14,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -33,22 +31,12 @@ from etlplus.connector import ConnectorFile
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: CONSTANTS ======================================================== #
 
 
-@dataclass(frozen=True, slots=True)
-class ConnectorCase:
-    """Connector collection test case definition."""
-
-    collection: str
-    entries: list[Any]
-    expected_types: set[type]
-
-
-CONNECTOR_CASES: tuple[ConnectorCase, ...] = (
-    ConnectorCase(
-        collection='sources',
-        entries=[
+CONNECTOR_CASES = (
+    pytest.param(
+        [
             {'name': 'csv_in', 'type': 'file', 'path': '/tmp/in.csv'},
             {
                 'name': 'service_in',
@@ -61,11 +49,11 @@ CONNECTOR_CASES: tuple[ConnectorCase, ...] = (
             {'name': 'weird', 'type': 'unknown'},
             {'type': 'file'},
         ],
-        expected_types={ConnectorFile, ConnectorApi, ConnectorDb},
+        {ConnectorFile, ConnectorApi, ConnectorDb},
+        id='sources',
     ),
-    ConnectorCase(
-        collection='targets',
-        entries=[
+    pytest.param(
+        [
             {'name': 'csv_out', 'type': 'file', 'path': '/tmp/out.csv'},
             {'name': 'sink', 'type': 'database', 'table': 'events_out'},
             {
@@ -76,7 +64,8 @@ CONNECTOR_CASES: tuple[ConnectorCase, ...] = (
             },
             {'name': 'bad', 'type': 'unknown'},
         ],
-        expected_types={ConnectorFile, ConnectorDb, ConnectorApi},
+        {ConnectorFile, ConnectorDb, ConnectorApi},
+        id='targets',
     ),
 )
 
@@ -102,82 +91,6 @@ jobs: []
 """
 
 
-# SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture(name='connector_path_lookup')
-def connector_path_lookup_fixture(
-    pipeline_multi_cfg: Config,
-) -> Callable[[str, str], str | None]:
-    """Provide a helper to fetch connector paths by collection/name."""
-
-    def _lookup(collection: str, name: str) -> str | None:
-        container = getattr(pipeline_multi_cfg, collection)
-        connector = next(item for item in container if item.name == name)
-        return getattr(connector, 'path', None)
-
-    return _lookup
-
-
-@pytest.fixture(name='pipeline_builder')
-def pipeline_builder_fixture(
-    tmp_path: Path,
-    pipeline_yaml_factory: Callable[[str, Path], Path],
-    pipeline_from_yaml_factory: Callable[..., Config],
-) -> Callable[..., Config]:
-    """
-    Build :class:`Config` instances from inline YAML strings.
-
-    Parameters
-    ----------
-    tmp_path : Path
-        Temporary directory managed by pytest.
-    pipeline_yaml_factory : Callable[[str, Path], Path]
-        Helper that writes YAML text to disk.
-    pipeline_from_yaml_factory : Callable[..., Config]
-        Factory that parses YAML into a :class:`Config`.
-
-    Returns
-    -------
-    Callable[..., Config]
-        Function that renders YAML text to a config with optional overrides.
-    """
-
-    def _build(
-        yaml_text: str,
-        *,
-        substitute: bool = True,
-        env: dict[str, str] | None = None,
-    ) -> Config:
-        path = pipeline_yaml_factory(yaml_text.strip(), tmp_path)
-        return pipeline_from_yaml_factory(
-            path,
-            substitute=substitute,
-            env=env or {},
-        )
-
-    return _build
-
-
-@pytest.fixture(name='pipeline_multi_cfg')
-def pipeline_multi_cfg_fixture(
-    pipeline_builder: Callable[..., Config],
-) -> Config:
-    """Build a :class:`Config` with multiple sources/targets.
-
-    Parameters
-    ----------
-    pipeline_builder : Callable[..., Config]
-        Fixture that converts inline YAML strings into pipeline configs.
-
-    Returns
-    -------
-    Config
-        Parsed configuration with substitution enabled.
-    """
-    return pipeline_builder(MULTI_SOURCE_YAML)
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -192,23 +105,22 @@ class TestCollectParsed:
     """
 
     @pytest.mark.parametrize(
-        'case',
+        ('entries', 'expected_types'),
         CONNECTOR_CASES,
-        ids=lambda c: c.collection,
     )
     def test_collect_parsed_filters_invalid_entries(
         self,
-        case: ConnectorCase,
+        entries: list[object],
+        expected_types: set[type[object]],
     ) -> None:
         """Test that :func:`_collect_parsed` filters malformed entries."""
-        payload = {case.collection: case.entries}
         items = _collect_parsed(
-            payload.get(case.collection, []),
+            entries,
             _parse_connector_entry,
         )
 
-        assert len(items) == len(case.expected_types)
-        assert {type(item) for item in items} == case.expected_types
+        assert len(items) == len(expected_types)
+        assert {type(item) for item in items} == expected_types
 
 
 class TestConfig:
@@ -216,8 +128,17 @@ class TestConfig:
     Unit tests for :class:`Config`.
     """
 
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('api-name', 'svc', id='api-name'),
+            pytest.param('table-name', 'customers', id='table-name'),
+        ],
+    )
     def test_from_dict_parses_apis_and_filters_non_mapping_table_specs(
         self,
+        field_name: str,
+        expected: str,
     ) -> None:
         """
         Test that parsing non-empty APIs and tolerant table_schemas filtering.
@@ -244,33 +165,57 @@ class TestConfig:
 
         cfg = Config.from_dict(raw)
 
-        assert 'svc' in cfg.apis
-        assert len(cfg.table_schemas) == 1
-        assert cfg.table_schemas[0]['table'] == 'customers'
+        match field_name:
+            case 'api-name':
+                assert expected in cfg.apis
+            case 'table-name':
+                (spec,) = cfg.table_schemas
+                assert spec['table'] == expected
+            case _:
+                pytest.fail(f'unhandled field: {field_name}')
 
-    def test_from_dict_parses_history_defaults(
-        self,
-    ) -> None:
-        """Test that :class:`Config` parses one optional history block."""
-        cfg = Config.from_dict(
-            {
-                'name': 'History Config Test',
-                'history': {
+    @pytest.mark.parametrize(
+        ('section', 'payload'),
+        [
+            pytest.param(
+                'history',
+                {
                     'enabled': False,
                     'backend': 'jsonl',
                     'state_dir': './.etlplus-state',
                     'capture_tracebacks': True,
                 },
+                id='history',
+            ),
+            pytest.param(
+                'telemetry',
+                {
+                    'enabled': True,
+                    'exporter': 'opentelemetry',
+                    'service_name': 'etlplus-tests',
+                },
+                id='telemetry',
+            ),
+        ],
+    )
+    def test_from_dict_parses_optional_runtime_blocks(
+        self,
+        section: str,
+        payload: dict[str, object],
+    ) -> None:
+        """Test that :class:`Config` parses optional runtime config blocks."""
+        cfg = Config.from_dict(
+            {
+                'name': f'{section.title()} Config Test',
+                section: payload,
                 'sources': [],
                 'targets': [],
                 'jobs': [],
             },
         )
 
-        assert cfg.history.enabled is False
-        assert cfg.history.backend == 'jsonl'
-        assert cfg.history.state_dir == './.etlplus-state'
-        assert cfg.history.capture_tracebacks is True
+        parsed = getattr(cfg, section)
+        assert {name: getattr(parsed, name) for name in payload} == payload
 
     def test_from_dict_parses_schedules(
         self,
@@ -310,50 +255,27 @@ class TestConfig:
             },
         )
 
-        assert len(cfg.schedules) == 2
-        assert cfg.schedules[0].name == 'nightly_all'
-        assert cfg.schedules[0].cron == '0 2 * * *'
-        assert cfg.schedules[0].target is not None
-        assert cfg.schedules[0].target.run_all is True
-        assert cfg.schedules[0].backfill is not None
-        assert cfg.schedules[0].backfill.max_catchup_runs == 3
-        assert cfg.schedules[1].interval is not None
-        assert cfg.schedules[1].interval.minutes == 30
-        assert cfg.schedules[1].target is not None
-        assert cfg.schedules[1].target.job == 'job-a'
-
-    def test_from_dict_parses_telemetry_defaults(
-        self,
-    ) -> None:
-        """Test that :class:`Config` parses one optional telemetry block."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Telemetry Config Test',
-                'telemetry': {
-                    'enabled': True,
-                    'exporter': 'opentelemetry',
-                    'service_name': 'etlplus-tests',
-                },
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-            },
-        )
-
-        assert cfg.telemetry.enabled is True
-        assert cfg.telemetry.exporter == 'opentelemetry'
-        assert cfg.telemetry.service_name == 'etlplus-tests'
+        nightly, interval = cfg.schedules
+        assert nightly.name == 'nightly_all'
+        assert nightly.cron == '0 2 * * *'
+        assert nightly.target is not None
+        assert nightly.target.run_all is True
+        assert nightly.backfill is not None
+        assert nightly.backfill.max_catchup_runs == 3
+        assert interval.interval is not None
+        assert interval.interval.minutes == 30
+        assert interval.target is not None
+        assert interval.target.job == 'job-a'
 
     def test_from_yaml_includes_profile_env_in_substitution(
         self,
         pipeline_builder: Callable[..., Config],
-    ) -> None:  # noqa: D401
+    ) -> None:
         """
         Test that :class:`Config` includes profile environment variables in
         substitution when loaded from YAML.
         """
-        yml = (
-            """
+        yml = """
 name: Test
 profile:
   env:
@@ -368,7 +290,6 @@ sources:
 targets: []
 jobs: []
 """
-        ).strip()
 
         cfg = pipeline_builder(yml)
 
@@ -400,8 +321,7 @@ jobs: []
             json.dumps({'service': {'password': 'file-secret'}}),
             encoding='utf-8',
         )
-        yml = (
-            """
+        yml = """
 name: Test
 sources:
   - name: source
@@ -417,7 +337,6 @@ targets:
       Authorization: "Bearer ${secret:file:service.password}"
 jobs: []
 """
-        ).strip()
 
         cfg = pipeline_builder(
             yml,
@@ -439,8 +358,7 @@ jobs: []
         pipeline_builder: Callable[..., Config],
     ) -> None:
         """Test secret-resolved backing-service paths feed readiness checks."""
-        yml = (
-            """
+        yml = """
 name: Env First Runtime Test
 vars:
   SCHEDULE_NAME: nightly_all
@@ -463,7 +381,6 @@ schedules:
     target:
       run_all: true
 """
-        ).strip()
 
         cfg = pipeline_builder(
             yml,
@@ -479,7 +396,8 @@ schedules:
         )
         assert getattr(source, 'path', None) == 's3://etlplus-test/raw/customers.csv'
         assert getattr(target, 'schema', None) == 'PUBLIC'
-        assert cfg.schedules[0].name == 'nightly_all'
+        (schedule,) = cfg.schedules
+        assert schedule.name == 'nightly_all'
 
         rows = readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows(
             cfg=cfg,
@@ -580,13 +498,16 @@ schedules:
         collection: str,
         name: str,
         expected_path: str,
-        connector_path_lookup: Callable[[str, str], str | None],
+        pipeline_builder: Callable[..., Config],
     ) -> None:
         """
         Test that :class:`Config` correctly handles multiple sources, targets,
         and missing variables during substitution.
         """
-        path = connector_path_lookup(collection, name)
+        cfg = pipeline_builder(MULTI_SOURCE_YAML)
+        container = getattr(cfg, collection)
+        connector = next(item for item in container if item.name == name)
+        path = getattr(connector, 'path', None)
         assert path == expected_path
 
     def test_table_schemas_are_parsed(
@@ -596,8 +517,7 @@ schedules:
         """
         Test that table_schemas entries are preserved when loading YAML.
         """
-        yml = (
-            """
+        yml = """
 name: TablesOnly
 table_schemas:
   - schema: dbo
@@ -609,12 +529,10 @@ table_schemas:
 sources: []
 targets: []
 jobs: []
-            """
-        ).strip()
+"""
 
         cfg = pipeline_builder(yml)
 
-        assert len(cfg.table_schemas) == 1
-        spec = cfg.table_schemas[0]
+        (spec,) = cfg.table_schemas
         assert spec['table'] == 'Customers'
         assert spec['columns'][0]['name'] == 'CustomerId'

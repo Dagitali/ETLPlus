@@ -881,8 +881,8 @@ class TestTelemetryConfiguration:
         )
 
         assert run_mod.run_handler(config='pipeline.yml') == 0
-        assert len(configure_calls) == 1
-        assert getattr(configure_calls[0], 'service_name', None) == 'etlplus-run-tests'
+        (configure_call,) = configure_calls
+        assert getattr(configure_call, 'service_name', None) == 'etlplus-run-tests'
 
     def test_run_handler_passes_max_concurrency_to_run_executor(
         self,

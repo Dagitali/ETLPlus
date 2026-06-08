@@ -804,21 +804,25 @@ class TestRunPending:
                 'triggered_at': '2026-05-11T02:00:00+00:00',
             },
         ]
-        assert dispatch_calls == [
-            {
-                'config': 'pipeline.yml',
-                'emit_output': False,
-                'event_format': 'jsonl',
-                'job': None,
-                'pretty': True,
-                'result_recorder': dispatch_calls[0]['result_recorder'],
-                'run_all': True,
-                'schedule_catchup': False,
-                'schedule_name': 'nightly-all',
-                'schedule_trigger': 'cron',
-                'schedule_triggered_at': '2026-05-11T02:00:00+00:00',
-            },
-        ]
+        (dispatch_call,) = dispatch_calls
+        result_recorder = dispatch_call['result_recorder']
+        assert callable(result_recorder)
+        assert {
+            key: value
+            for key, value in dispatch_call.items()
+            if key != 'result_recorder'
+        } == {
+            'config': 'pipeline.yml',
+            'emit_output': False,
+            'event_format': 'jsonl',
+            'job': None,
+            'pretty': True,
+            'run_all': True,
+            'schedule_catchup': False,
+            'schedule_name': 'nightly-all',
+            'schedule_trigger': 'cron',
+            'schedule_triggered_at': '2026-05-11T02:00:00+00:00',
+        }
 
     def test_run_pending_reports_overlap_as_replayable_pending_trigger(
         self,

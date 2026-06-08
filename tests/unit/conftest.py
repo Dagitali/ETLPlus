@@ -261,6 +261,46 @@ def pipeline_from_yaml_factory() -> Callable[..., Config]:
     return _make
 
 
+@pytest.fixture(name='pipeline_builder')
+def pipeline_builder_fixture(
+    tmp_path: Path,
+    pipeline_yaml_factory: Callable[[str, Path], Path],
+    pipeline_from_yaml_factory: Callable[..., Config],
+) -> Callable[..., Config]:
+    """
+    Build :class:`Config` instances from inline YAML strings.
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Temporary directory managed by pytest.
+    pipeline_yaml_factory : Callable[[str, Path], Path]
+        Helper that writes YAML text to disk.
+    pipeline_from_yaml_factory : Callable[..., Config]
+        Factory that parses YAML into a :class:`Config`.
+
+    Returns
+    -------
+    Callable[..., Config]
+        Function that renders YAML text to a config with optional overrides.
+    """
+
+    def _build(
+        yaml_text: str,
+        *,
+        substitute: bool = True,
+        env: dict[str, str] | None = None,
+    ) -> Config:
+        path = pipeline_yaml_factory(yaml_text.strip(), tmp_path)
+        return pipeline_from_yaml_factory(
+            path,
+            substitute=substitute,
+            env=env or {},
+        )
+
+    return _build
+
+
 @pytest.fixture
 def profile_config_factory() -> Callable[[dict[str, Any]], ApiProfileConfig]:
     """

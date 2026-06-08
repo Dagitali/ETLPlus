@@ -291,9 +291,20 @@ class TestTelemetryRuntime:
 
         assert 'failed to export event' in caplog.text
 
+    @pytest.mark.parametrize(
+        ('metric_name', 'expected_value'),
+        [
+            pytest.param('counter', 1, id='counter'),
+            pytest.param('duration', 125, id='duration'),
+            pytest.param('records-in', 20, id='records-in'),
+            pytest.param('records-out', 18, id='records-out'),
+        ],
+    )
     def test_emit_history_record_exports_metrics_from_normalized_fields(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        metric_name: str,
+        expected_value: int,
     ) -> None:
         """History-derived telemetry should emit counters and histograms."""
         _tracer, meter = install_fake_opentelemetry(monkeypatch)
@@ -319,30 +330,35 @@ class TestTelemetryRuntime:
             record_level='job',
         )
 
-        assert meter.counters[2].calls == [
-            (
-                1,
-                {
-                    'etlplus.history.job_name': 'publish',
-                    'etlplus.history.level': 'job',
-                    'etlplus.history.pipeline_name': 'customer-sync',
-                    'etlplus.history.result_status': 'success',
-                    'etlplus.history.sequence_index': 2,
-                    'etlplus.history.status': 'succeeded',
-                    'etlplus.run_id': 'run-123',
-                    'etlplus.service_name': 'etlplus-tests',
-                },
-            ),
-        ]
-        assert meter.histograms[1].calls == [
-            (125, meter.counters[2].calls[0][1]),
-        ]
-        assert meter.histograms[2].calls == [
-            (20, meter.counters[2].calls[0][1]),
-        ]
-        assert meter.histograms[3].calls == [
-            (18, meter.counters[2].calls[0][1]),
-        ]
+        expected_attributes = {
+            'etlplus.history.job_name': 'publish',
+            'etlplus.history.level': 'job',
+            'etlplus.history.pipeline_name': 'customer-sync',
+            'etlplus.history.result_status': 'success',
+            'etlplus.history.sequence_index': 2,
+            'etlplus.history.status': 'succeeded',
+            'etlplus.run_id': 'run-123',
+            'etlplus.service_name': 'etlplus-tests',
+        }
+        match metric_name:
+            case 'counter':
+                assert meter.counters[2].calls == [
+                    (expected_value, expected_attributes),
+                ]
+            case 'duration':
+                assert meter.histograms[1].calls == [
+                    (expected_value, meter.counters[2].calls[0][1]),
+                ]
+            case 'records-in':
+                assert meter.histograms[2].calls == [
+                    (expected_value, meter.counters[2].calls[0][1]),
+                ]
+            case 'records-out':
+                assert meter.histograms[3].calls == [
+                    (expected_value, meter.counters[2].calls[0][1]),
+                ]
+            case _:
+                pytest.fail(f'unhandled metric: {metric_name}')
 
     def test_emit_history_record_skips_missing_numeric_metrics(
         self,
@@ -368,9 +384,20 @@ class TestTelemetryRuntime:
         assert meter.histograms[2].calls == []
         assert meter.histograms[3].calls == []
 
+    @pytest.mark.parametrize(
+        'metric_name',
+        [
+            pytest.param('sequence-index-attribute', id='sequence-index-attribute'),
+            pytest.param('duration', id='duration'),
+            pytest.param('records-in', id='records-in'),
+            pytest.param('records-out', id='records-out'),
+            pytest.param('history-duration', id='history-duration'),
+        ],
+    )
     def test_numeric_telemetry_fields_ignore_booleans(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        metric_name: str,
     ) -> None:
         """Boolean payload fields should not be exported as integer metrics."""
         _tracer, meter = install_fake_opentelemetry(monkeypatch)
@@ -396,8 +423,19 @@ class TestTelemetryRuntime:
             record_level='job',
         )
 
-        assert 'etlplus.history.sequence_index' not in meter.counters[2].calls[0][1]
-        assert meter.histograms[0].calls == []
-        assert meter.histograms[1].calls == []
-        assert meter.histograms[2].calls == []
-        assert meter.histograms[3].calls == []
+        match metric_name:
+            case 'sequence-index-attribute':
+                assert (
+                    'etlplus.history.sequence_index'
+                    not in meter.counters[2].calls[0][1]
+                )
+            case 'duration':
+                assert meter.histograms[0].calls == []
+            case 'history-duration':
+                assert meter.histograms[1].calls == []
+            case 'records-in':
+                assert meter.histograms[2].calls == []
+            case 'records-out':
+                assert meter.histograms[3].calls == []
+            case _:
+                pytest.fail(f'unhandled metric: {metric_name}')

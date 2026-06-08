@@ -28,10 +28,10 @@ from etlplus import Config
 
 @pytest.mark.parametrize(
     'substitute',
-    (
+    [
         pytest.param(False, id='raw-env-placeholders'),
         pytest.param(True, id='resolved-env-placeholders'),
-    ),
+    ],
 )
 def test_load_repo_pipeline_yaml(
     substitute: bool,

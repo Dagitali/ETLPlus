@@ -11,6 +11,7 @@ import numbers
 import sqlite3
 import zipfile
 from io import BytesIO
+from operator import attrgetter
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -389,13 +390,27 @@ class TestFile:
             ('get', 'https://example.com/files/data.json?download=1', False),
         ]
 
-    def test_http_uri_infers_http_backend_and_csv_format(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_path', 'expected'),
+        [
+            pytest.param('file_format', FileFormat.CSV, id='file-format'),
+            pytest.param('location.scheme', StorageScheme.HTTP, id='scheme'),
+            pytest.param(
+                'path',
+                'https://example.com/files/my_file.csv?download=1',
+                id='path',
+            ),
+        ],
+    )
+    def test_http_uri_infers_http_backend_and_csv_format(
+        self,
+        field_path: str,
+        expected: object,
+    ) -> None:
         """Test that generic HTTPS URIs infer HTTP storage and CSV format."""
         file = File('https://example.com/files/my_file.csv?download=1')
 
-        assert file.file_format is FileFormat.CSV
-        assert file.location.scheme is StorageScheme.HTTP
-        assert file.path == 'https://example.com/files/my_file.csv?download=1'
+        assert attrgetter(field_path)(file) == expected
 
     @pytest.mark.parametrize(
         ('filename', 'expected_format'),
@@ -447,41 +462,50 @@ class TestFile:
         assert not file.location.is_local
         assert file.path == uri
 
-    def test_path_support_for_module_helpers(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that module helpers accept ``Path`` inputs."""
-        cases: tuple[
-            tuple[Any, str, JSONData, JSONData, dict[str, object]],
-            ...,
-        ] = (
-            (
+    @pytest.mark.parametrize(
+        ('handler', 'filename', 'payload', 'expected', 'write_kwargs'),
+        [
+            pytest.param(
                 csv_file.CsvFile(),
                 'data.csv',
                 [{'name': 'Ada'}],
                 [{'name': 'Ada'}],
                 {},
+                id='csv',
             ),
-            (
+            pytest.param(
                 json_file.JsonFile(),
                 'data.json',
                 {'name': 'Ada'},
                 {'name': 'Ada'},
                 {},
+                id='json',
             ),
-            (
+            pytest.param(
                 xml_file.XmlFile(),
                 'data.xml',
                 {'root': {'text': 'hello'}},
                 {'root': {'text': 'hello'}},
                 {'options': WriteOptions(root_tag='root')},
+                id='xml',
             ),
-        )
-        for handler, filename, payload, expected, write_kwargs in cases:
-            path = tmp_path / filename
-            handler.write(path, payload, **write_kwargs)
-            assert handler.read(path) == expected
+        ],
+    )
+    def test_path_support_for_module_helpers(
+        self,
+        tmp_path: Path,
+        handler: Any,
+        filename: str,
+        payload: JSONData,
+        expected: JSONData,
+        write_kwargs: dict[str, object],
+    ) -> None:
+        """Test that module helpers accept ``Path`` inputs."""
+        path = tmp_path / filename
+
+        handler.write(path, payload, **write_kwargs)
+
+        assert handler.read(path) == expected
 
     def test_read_bytes_uses_local_backend(
         self,
@@ -570,14 +594,24 @@ class TestFile:
         assert result == {'name': 'Ada'}
         assert backend.calls == ['exists', 'rb']
 
-    def test_remote_uri_infers_s3_backend_and_csv_format(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_path', 'expected'),
+        [
+            pytest.param('file_format', FileFormat.CSV, id='file-format'),
+            pytest.param('location.scheme', StorageScheme.S3, id='scheme'),
+            pytest.param('path', 's3://my-bucket/my_file.csv', id='path'),
+        ],
+    )
+    def test_remote_uri_infers_s3_backend_and_csv_format(
+        self,
+        field_path: str,
+        expected: object,
+    ) -> None:
         """Test that remote URI strings infer both storage scheme and format."""
         file = File('s3://my-bucket/my_file.csv')
 
-        assert file.file_format is FileFormat.CSV
-        assert file.location.scheme is StorageScheme.S3
+        assert attrgetter(field_path)(file) == expected
         assert isinstance(get_backend(file.location), S3StorageBackend)
-        assert file.path == 's3://my-bucket/my_file.csv'
 
     def test_remote_write_uploads_staged_payload_via_storage_backend(
         self,
@@ -791,9 +825,18 @@ class TestFile:
                 [{'name': 'John'}, invalid_entry],
             )
 
+    @pytest.mark.parametrize(
+        'check_name',
+        [
+            pytest.param('record-count', id='record-count'),
+            pytest.param('has-content', id='has-content'),
+            pytest.param('pretty-lines', id='pretty-lines'),
+        ],
+    )
     def test_write_json_returns_record_count(
         self,
         tmp_path: Path,
+        check_name: str,
     ) -> None:
         """
         Test that :meth:`write` returns the record count for lists.
@@ -803,10 +846,16 @@ class TestFile:
 
         written = File(path, FileFormat.JSON).write(records)
 
-        assert written == 2
         json_content = path.read_text(encoding='utf-8')
-        assert json_content
-        assert json_content.count('\n') >= 2
+        match check_name:
+            case 'record-count':
+                assert written == 2
+            case 'has-content':
+                assert json_content
+            case 'pretty-lines':
+                assert json_content.count('\n') >= 2
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_xls_write_not_supported(
         self,
@@ -907,18 +956,31 @@ class TestFileCoreDispatch:
         backend = RemoteBytesBackendStub(open_error=RuntimeError('upload failed'))
         _install_storage_backend(monkeypatch, backend)
 
-        with pytest.raises(RuntimeError, match='upload failed'):
-            with File('s3://bucket', FileFormat.JSON)._dispatch_path(
-                for_write=True,
-            ) as dispatch_path:
-                dispatch_path.write_bytes(b'payload')
+        with (
+            pytest.raises(RuntimeError, match='upload failed'),
+            File(
+                's3://bucket',
+                FileFormat.JSON,
+            )._dispatch_path(for_write=True) as dispatch_path,
+        ):
+            dispatch_path.write_bytes(b'payload')
 
         assert backend.calls == ['ensure_parent_dir', 'wb']
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', {'ok': True}, id='result'),
+            pytest.param('bound-path', 'path', id='bound-path'),
+            pytest.param('options', 'options', id='options'),
+        ],
+    )
     def test_read_forwards_options_to_bound_handler(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that ``File.read(options=...)`` forwards read options."""
         path = tmp_path / 'sample.json'
@@ -943,9 +1005,15 @@ class TestFileCoreDispatch:
 
         result = File(path, FileFormat.JSON).read(options=options)
 
-        assert result == {'ok': True}
-        assert calls['bound_path'] == path
-        assert calls['options'] is options
+        match check_name:
+            case 'result':
+                assert result == expected
+            case 'bound-path':
+                assert calls['bound_path'] == path
+            case 'options':
+                assert calls['options'] is options
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_read_uses_class_based_handler_dispatch(
         self,
@@ -1008,12 +1076,27 @@ class TestFileCoreDispatch:
 
         assert file._staging_filename() == 'payload.json'
 
-    def test_staging_filename_uses_tmp_suffix_without_name_or_format(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('file_format', None, id='file-format'),
+            pytest.param('staging_filename', 'payload.tmp', id='staging-filename'),
+        ],
+    )
+    def test_staging_filename_uses_tmp_suffix_without_name_or_format(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Test staging filename fallback when neither name nor format exists."""
         file = File('s3://bucket')
 
-        assert file.file_format is None
-        assert file._staging_filename() == 'payload.tmp'
+        actual = (
+            file._staging_filename()
+            if field == 'staging_filename'
+            else file.file_format
+        )
+        assert actual == expected
 
     @pytest.mark.parametrize(
         ('root_tag', 'expected_root_tag', 'write_result'),

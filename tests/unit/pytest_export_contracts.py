@@ -19,6 +19,23 @@ type ExportCase = tuple[str, object]
 # SECTION: FUNCTIONS ======================================================== #
 
 
+def export_names(expected_exports: tuple[ExportCase, ...]) -> list[str]:
+    """
+    Return export names from ordered export contract cases.
+
+    Parameters
+    ----------
+    expected_exports : tuple[ExportCase, ...]
+        Export-name and canonical-object pairs used by package facade tests.
+
+    Returns
+    -------
+    list[str]
+        Export names in contract order.
+    """
+    return [name for name, _value in expected_exports]
+
+
 def referenced_alias_attributes(
     *,
     module_path: Path,
@@ -78,4 +95,4 @@ def assert_package_exports(
     expected_exports : tuple[ExportCase, ...]
         Export-name and canonical-object pairs used by binding tests.
     """
-    assert package_module.__all__ == [name for name, _value in expected_exports]
+    assert package_module.__all__ == export_names(expected_exports)

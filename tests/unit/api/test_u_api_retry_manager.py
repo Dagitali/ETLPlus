@@ -26,14 +26,40 @@ from etlplus.api._retry_manager import RetryStrategy
 class TestRetryStrategy:
     """Tests for :class:`RetryStrategy`."""
 
-    def test_defaults_when_policy_empty(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('max_attempts', 3, id='max-attempts'),
+            pytest.param('backoff', pytest.approx(0.5), id='backoff'),
+            pytest.param(
+                'retry_on_codes',
+                frozenset({429, 502, 503, 504}),
+                id='retry-on-codes',
+            ),
+        ],
+    )
+    def test_defaults_when_policy_empty(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Test that fallback to baked-in defaults when policy is empty."""
         strategy = RetryStrategy.from_policy({})
-        assert strategy.max_attempts == 3
-        assert strategy.backoff == pytest.approx(0.5)
-        assert strategy.retry_on_codes == frozenset({429, 502, 503, 504})
+        assert getattr(strategy, field_name) == expected
 
-    def test_policy_values_override_defaults(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('max_attempts', 5, id='max-attempts'),
+            pytest.param('backoff', pytest.approx(0.1), id='backoff'),
+            pytest.param('retry_on_codes', frozenset({429, 500}), id='retry-on'),
+        ],
+    )
+    def test_policy_values_override_defaults(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Test that provided policy values be normalized and honored."""
         strategy = RetryStrategy.from_policy(
             cast(
@@ -45,9 +71,7 @@ class TestRetryStrategy:
                 },
             ),
         )
-        assert strategy.max_attempts == 5
-        assert strategy.backoff == pytest.approx(0.1)
-        assert strategy.retry_on_codes == frozenset({429, 500})
+        assert getattr(strategy, field_name) == expected
 
 
 class TestRetryManager:

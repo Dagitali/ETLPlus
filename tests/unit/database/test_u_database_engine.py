@@ -53,9 +53,18 @@ class TestLoadDatabaseUrlFromConfig:
     fixtures to keep tests DRY.
     """
 
+    @pytest.mark.parametrize(
+        ('name', 'expected'),
+        [
+            pytest.param(None, 'sqlite:///default.db', id='default'),
+            pytest.param('reporting', 'postgresql://reporting', id='named'),
+        ],
+    )
     def test_loads_default_and_named_entries(
         self,
         patch_file_read: Callable[[Any, Any], None],
+        name: str | None,
+        expected: str,
     ) -> None:
         """
         Test extracting URLs from default and named entries, including nested
@@ -74,11 +83,7 @@ class TestLoadDatabaseUrlFromConfig:
 
         patch_file_read(engine_mod.File, config)
 
-        assert load_database_url_from_config('cfg.yml') == 'sqlite:///default.db'
-        assert (
-            load_database_url_from_config('cfg.yml', name='reporting')
-            == 'postgresql://reporting'
-        )
+        assert load_database_url_from_config('cfg.yml', name=name) == expected
 
     @pytest.mark.parametrize(
         ('payload', 'expected_exc'),

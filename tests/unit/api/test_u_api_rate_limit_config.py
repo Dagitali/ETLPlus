@@ -36,23 +36,48 @@ class TestRateLimitConfig:
     Tests equality semantics and type coercion for rate limit configuration.
     """
 
-    def test_config_honors_overrides(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('sleep_seconds', 0.1, id='sleep-seconds'),
+            pytest.param('max_per_sec', 10.0, id='max-per-sec'),
+        ],
+    )
+    def test_config_honors_overrides(
+        self,
+        field: str,
+        expected: float,
+    ) -> None:
         """Test that overrides replace base config values."""
         config = RateLimitConfig.from_inputs(
             rate_limit={'max_per_sec': 2},
             overrides={'sleep_seconds': 0.1},
         )
-        assert config.sleep_seconds == pytest.approx(0.1)
-        assert config.max_per_sec == pytest.approx(10.0)
+        assert getattr(config, field) == pytest.approx(expected)
 
-    def test_config_prefers_sleep_seconds(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('enabled', True, id='enabled'),
+            pytest.param('sleep_seconds', 0.2, id='sleep-seconds'),
+            pytest.param('max_per_sec', 5.0, id='max-per-sec'),
+        ],
+    )
+    def test_config_prefers_sleep_seconds(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Test that sleep seconds take precedence over max_per_sec."""
         config = RateLimitConfig.from_inputs(
             rate_limit={'sleep_seconds': 0.2, 'max_per_sec': 1},
         )
-        assert config.enabled is True
-        assert config.sleep_seconds == pytest.approx(0.2)
-        assert config.max_per_sec == pytest.approx(5.0)
+        actual = getattr(config, field)
+        assert (
+            actual is expected
+            if field == 'enabled'
+            else actual == pytest.approx(expected)
+        )
 
     def test_equality_semantics(
         self,
@@ -71,22 +96,40 @@ class TestRateLimitConfig:
         """
         assert RateLimitConfig.from_defaults({'other': 1}) is None
 
-    def test_from_inputs_handles_empty_config_instance(self) -> None:
+    @pytest.mark.parametrize(
+        'field',
+        [
+            pytest.param('sleep_seconds', id='sleep-seconds'),
+            pytest.param('max_per_sec', id='max-per-sec'),
+        ],
+    )
+    def test_from_inputs_handles_empty_config_instance(
+        self,
+        field: str,
+    ) -> None:
         """
         Test that :meth:`from_inputs` handles empty RateLimitConfig inputs.
         """
         cfg = RateLimitConfig.from_inputs(rate_limit=RateLimitConfig())
-        assert cfg.sleep_seconds is None
-        assert cfg.max_per_sec is None
+        assert getattr(cfg, field) is None
 
-    def test_from_inputs_non_mapping_rate_limit_is_ignored(self) -> None:
+    @pytest.mark.parametrize(
+        'field',
+        [
+            pytest.param('sleep_seconds', id='sleep-seconds'),
+            pytest.param('max_per_sec', id='max-per-sec'),
+        ],
+    )
+    def test_from_inputs_non_mapping_rate_limit_is_ignored(
+        self,
+        field: str,
+    ) -> None:
         """
         Test that :meth:`from_inputs` ignores unsupported rate_limit input
         types.
         """
         cfg = RateLimitConfig.from_inputs(rate_limit=cast(Any, 'bad'))
-        assert cfg.sleep_seconds is None
-        assert cfg.max_per_sec is None
+        assert getattr(cfg, field) is None
 
     @pytest.mark.parametrize(
         ('obj', 'expect'),
@@ -157,18 +200,25 @@ class TestRateLimitConfig:
         # Original mapping should remain unchanged (defensive copy behavior).
         assert obj == {'sleep_seconds': '1', 'max_per_sec': '3'}
 
+    @pytest.mark.parametrize(
+        'fragment',
+        [
+            pytest.param('sleep_seconds', id='sleep-field'),
+            pytest.param('max_per_sec', id='max-field'),
+            pytest.param('0.5', id='sleep-value'),
+            pytest.param('2.0', id='max-value'),
+        ],
+    )
     def test_repr_roundtrip(
         self,
         rate_limit_config_factory: Callable[..., RateLimitConfig],
+        fragment: str,
     ) -> None:
         """
         Test that ``repr`` output includes field names and values.
         """
         rl = rate_limit_config_factory(sleep_seconds=0.5, max_per_sec=2.0)
-        # Best-effort: repr should mention field names & values.
-        r = repr(rl)
-        for frag in ('sleep_seconds', 'max_per_sec', '0.5', '2.0'):
-            assert frag in r
+        assert fragment in repr(rl)
 
     def test_unhashable_dataclass(
         self,

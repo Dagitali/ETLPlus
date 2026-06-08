@@ -16,9 +16,8 @@ from __future__ import annotations
 
 import csv
 import importlib
-import json as js
+import json
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -36,121 +35,18 @@ from etlplus.ops.load import load_to_database
 from etlplus.ops.load import load_to_file
 from etlplus.utils._types import JSONData
 from etlplus.utils._types import JSONDict
+from tests.unit.ops.pytest_ops_support import ApiSession
+from tests.unit.ops.pytest_ops_support import JsonResponse
+from tests.unit.ops.pytest_ops_support import write_json_payload
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: IMPORTS ========================================================== #
 
 
 load_mod = importlib.import_module('etlplus.ops.load')
-
-
-def _write_json_payload(path: str, payload: Any) -> None:
-    """Write one JSON payload using UTF-8 encoding."""
-    Path(path).write_text(js.dumps(payload), encoding='utf-8')
-
-
-@dataclass(slots=True)
-class _CallRecord:
-    """Record of an HTTP method call in the stub session."""
-
-    method: str
-    url: str
-    json: object
-    timeout: float
-    kwargs: dict[str, Any]
-
-
-class _ApiEnvResponse:
-    """Configurable response stub for normalized API environment tests."""
-
-    def __init__(
-        self,
-        payload: object | None = None,
-        *,
-        status_code: int = 200,
-        text: str = 'fallback',
-        json_error: bool = False,
-    ) -> None:
-        self._payload = {'ok': True} if payload is None else payload
-        self.status_code = status_code
-        self.text = text
-        self._json_error = json_error
-
-    def json(self) -> object:
-        """Return JSON payload or simulate a JSON decoding failure."""
-        if self._json_error:
-            raise ValueError('bad json')
-        return self._payload
-
-    def raise_for_status(self) -> None:
-        """No-op for status raising in stub."""
-        return None
-
-
-class _StubResponse:
-    """Minimal HTTP response stub for API load tests."""
-
-    def __init__(self, payload: object) -> None:
-        self._payload = payload
-        self.status_code = 200
-        self.text = 'ok'
-
-    def json(self) -> object:
-        """Return the stubbed JSON payload."""
-        return self._payload
-
-    def raise_for_status(self) -> None:
-        """No-op for status raising in stub."""
-        return None
-
-
-class _StubSession:
-    """Capture HTTP method calls to assert ``load_to_api`` behavior."""
-
-    def __init__(self, payload: object | None = None) -> None:
-        self.calls: list[_CallRecord] = []
-        self.payload = payload or {'ok': True}
-
-    def post(
-        self,
-        url: str,
-        *,
-        json: object,
-        timeout: float,
-        **kwargs: Any,
-    ) -> _StubResponse:  # noqa: ANN001
-        """Capture POST call details."""
-        record = _CallRecord(
-            method='post',
-            url=url,
-            json=json,
-            timeout=timeout,
-            kwargs=dict(kwargs),
-        )
-        self.calls.append(record)
-        return _StubResponse(self.payload)
-
-    def put(
-        self,
-        url: str,
-        *,
-        json: object,
-        timeout: float,
-        **kwargs: Any,
-    ) -> _StubResponse:  # noqa: ANN001
-        """Capture PUT call details."""
-        record = _CallRecord(
-            method='put',
-            url=url,
-            json=json,
-            timeout=timeout,
-            kwargs=dict(kwargs),
-        )
-        self.calls.append(record)
-        return _StubResponse(self.payload)
 
 
 # SECTION: TESTS ============================================================ #
@@ -214,7 +110,7 @@ class TestLoad:
         [
             (
                 'json',
-                _write_json_payload,
+                write_json_payload,
                 {'test': 'data'},
             ),
         ],
@@ -258,46 +154,12 @@ class TestLoad:
         assert result['status'] == 'success'
         assert path.exists()
 
-    @pytest.mark.parametrize(
-        ('exc_type', 'call', 'args', 'err_msg'),
-        [
-            (
-                ValueError,
-                load,
-                [
-                    {'test': 'data'},
-                    'file',
-                    'output.unsupported',
-                    'unsupported',
-                ],
-                'Invalid FileFormat',
-            ),
-        ],
-    )
-    def test_wrapper_file_unsupported_format(
-        self,
-        exc_type: type[Exception],
-        call: Callable,
-        args: list[Any],
-        err_msg: str,
-    ) -> None:
+    def test_wrapper_file_unsupported_format(self) -> None:
         """
         Test error raised for unsupported file format.
-
-        Parameters
-        ----------
-        exc_type : type[Exception]
-            Expected exception type.
-        call : Callable
-            Function to call.
-        args : list[Any]
-            Arguments to pass to the function.
-        err_msg : str
-            Expected error message substring.
         """
-        with pytest.raises(exc_type) as e:
-            call(*args)
-        assert err_msg in str(e.value)
+        with pytest.raises(ValueError, match='Invalid FileFormat'):
+            load({'test': 'data'}, 'file', 'output.unsupported', 'unsupported')
 
 
 class TestLoadData:
@@ -462,16 +324,14 @@ class TestLoadErrors:
     """
 
     @pytest.mark.parametrize(
-        ('exc_type', 'call', 'args', 'err_msg'),
+        ('call', 'args', 'err_msg'),
         [
             (
-                ValueError,
                 load_data,
                 ['/nonexistent/file.json'],
                 'Invalid data source',
             ),
             (
-                ValueError,
                 load,
                 ['/nonexistent/file.json', 'invalid', 'source', 'json'],
                 'Invalid data source',
@@ -480,29 +340,24 @@ class TestLoadErrors:
     )
     def test_error_cases(
         self,
-        exc_type: type[Exception],
         call: Callable[..., Any],
         args: list[Any],
-        err_msg: str | None,
+        err_msg: str,
     ) -> None:
         """
         Test parametrized error case tests for load/load_data.
 
         Parameters
         ----------
-        exc_type : type[Exception]
-            Expected exception type.
         call : Callable[..., Any]
             Function to call.
         args : list[Any]
             Arguments to pass to the function.
-        err_msg : str | None
-            Expected error message substring, if applicable.
+        err_msg : str
+            Expected error message substring.
         """
-        with pytest.raises(exc_type) as exc:
+        with pytest.raises(ValueError, match=err_msg):
             call(*args)
-        if err_msg:
-            assert err_msg in str(exc.value)
 
 
 class TestLoadToApi:
@@ -511,7 +366,7 @@ class TestLoadToApi:
     def test_load_to_api_success(self) -> None:
         """Test that payload and metadata are returned through stub session."""
 
-        session = _StubSession({'ok': True})
+        session = ApiSession({'ok': True})
         data = [{'name': 'Ada'}]
 
         result = load_to_api(
@@ -525,9 +380,7 @@ class TestLoadToApi:
         assert result['status'] == 'success'
         assert result['records'] == 1
         assert result['method'] == 'POST'
-        api_calls: list[_CallRecord] = session.calls
-        assert api_calls
-        first_call: _CallRecord = api_calls[0]
+        (first_call,) = session.calls
         assert first_call.kwargs['headers'] == {'X-Test': '1'}
 
     def test_load_to_api_env_requires_url(self) -> None:
@@ -546,11 +399,11 @@ class TestLoadToApi:
         """
         captured: dict[str, Any] = {}
 
-        def _request(url: str, **kwargs: Any) -> _ApiEnvResponse:
+        def _request(url: str, **kwargs: Any) -> JsonResponse:
             """Stub request function that captures URL and kwargs."""
             captured['url'] = url
             captured['kwargs'] = kwargs
-            return _ApiEnvResponse(status_code=201)
+            return JsonResponse(status_code=201)
 
         def _build_request_call(
             env: dict[str, Any],
@@ -600,9 +453,9 @@ class TestLoadToApi:
     ) -> None:
         """Test that JSON decoding errors fall back to response text."""
 
-        def _request(url: str, **kwargs: Any) -> _ApiEnvResponse:  # noqa: ARG001
+        def _request(url: str, **kwargs: Any) -> JsonResponse:  # noqa: ARG001
             """Stub request function that returns a predefined response."""
-            return _ApiEnvResponse(text='text payload', json_error=True)
+            return JsonResponse(text='text payload', json_error=True)
 
         def _build_request_call(
             env: dict[str, Any],
@@ -652,7 +505,19 @@ class TestLoadToDatabase:
                 session=_BrokenSession(),
             )
 
-    def test_load_to_database_returns_note(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('status', 'not_implemented', id='status'),
+            pytest.param('records', 1, id='records'),
+            pytest.param('connection_string', 'sqlite', id='connection-string'),
+        ],
+    )
+    def test_load_to_database_returns_note(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """
         Test that placeholder implementation echoes the connection string.
         """
@@ -660,9 +525,10 @@ class TestLoadToDatabase:
         data = [{'name': 'Ada'}]
         result = load_to_database(data, 'sqlite:///tmp.db')
 
-        assert result['status'] == 'not_implemented'
-        assert result['records'] == 1
-        assert 'sqlite' in result['connection_string']
+        if field_name == 'connection_string':
+            assert expected in result[field_name]
+        else:
+            assert result[field_name] == expected
 
 
 class TestParseJsonString:
@@ -693,12 +559,23 @@ class TestLoadApiOrchestrator:
     loader.
     """
 
-    def test_load_api_with_default_method(self) -> None:
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('status', 'success', id='status'),
+            pytest.param('method', 'post', id='method'),
+        ],
+    )
+    def test_load_api_with_default_method(
+        self,
+        check_name: str,
+        expected: object,
+    ) -> None:
         """
         Test that :func:`load` defaults to POST when the API method is omitted.
         """
 
-        session = _StubSession()
+        session = ApiSession()
         result = load(
             {'name': 'api'},
             DataConnectorType.API,
@@ -707,16 +584,14 @@ class TestLoadApiOrchestrator:
         )
 
         result_dict = cast(dict[str, Any], result)
-        assert result_dict['status'] == 'success'
-        calls: list[_CallRecord] = session.calls
-        assert calls
-        first_call: _CallRecord = calls[0]
-        assert first_call.method == 'post'
+        (first_call,) = session.calls
+        actual = result_dict['status'] if check_name == 'status' else first_call.method
+        assert actual == expected
 
     def test_load_api_with_explicit_method(self) -> None:
         """Test that :func:`load` honors custom :class:`HttpMethod` values."""
 
-        session = _StubSession()
+        session = ApiSession()
         load(
             {'name': 'api'},
             DataConnectorType.API,
@@ -725,9 +600,7 @@ class TestLoadApiOrchestrator:
             session=session,
         )
 
-        calls: list[_CallRecord] = session.calls
-        assert calls
-        first_call: _CallRecord = calls[0]
+        (first_call,) = session.calls
         assert first_call.method == 'put'
 
     def test_load_defensive_default_branch(
@@ -746,9 +619,28 @@ class TestLoadApiOrchestrator:
         with pytest.raises(ValueError, match='Invalid target type'):
             load({'ok': True}, 'file', 'ignored')
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', {'status': 'success'}, id='result'),
+            pytest.param('call-count', 1, id='call-count'),
+            pytest.param(
+                'target',
+                'https://example.com/files/data.csv?download=1',
+                id='target',
+            ),
+            pytest.param(
+                'options',
+                {'encoding': 'utf-8', 'delimiter': ';'},
+                id='options',
+            ),
+        ],
+    )
     def test_load_file_dispatch_forwards_write_options(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that file dispatch forwards kwargs as write options."""
         calls: list[tuple[Any, Any, Any, Any]] = []
@@ -773,12 +665,17 @@ class TestLoadApiOrchestrator:
             delimiter=';',
         )
 
-        assert result == {'status': 'success'}
-        assert len(calls) == 1
-        assert calls[0][1] == 'https://example.com/files/data.csv?download=1'
-        options = calls[0][3]
-        assert options is not None
-        assert options == {'encoding': 'utf-8', 'delimiter': ';'}
+        match check_name:
+            case 'result':
+                assert result == expected
+            case 'call-count':
+                assert len(calls) == expected
+            case 'target':
+                assert calls[0][1] == expected
+            case 'options':
+                assert calls[0][3] == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
 
 class TestLoadToFile:
@@ -791,9 +688,26 @@ class TestLoadToFile:
         directory creation, and error handling.
     """
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('status', 'success', id='status'),
+            pytest.param(
+                'message',
+                'Data loaded to s3://bucket/output.csv',
+                id='message',
+            ),
+            pytest.param('path', 's3://bucket/output.csv', id='path'),
+            pytest.param('file_format', load_mod.FileFormat.CSV, id='file-format'),
+            pytest.param('encoding', 'utf-16', id='encoding'),
+            pytest.param('extras', {'delimiter': '|'}, id='extras'),
+        ],
+    )
     def test_remote_uri_preserves_path_and_coerces_write_options(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that remote file loads keep the URI and forward write options."""
         captured: dict[str, Any] = {}
@@ -828,14 +742,17 @@ class TestLoadToFile:
             {'encoding': 'utf-16', 'delimiter': '|'},
         )
 
-        assert result['status'] == 'success'
-        assert result['message'] == 'Data loaded to s3://bucket/output.csv'
-        assert captured['path'] == 's3://bucket/output.csv'
-        assert captured['file_format'] == load_mod.FileFormat.CSV
         options = captured['options']
-        assert options is not None
-        assert options.encoding == 'utf-16'
-        assert options.extras == {'delimiter': '|'}
+        match check_name:
+            case 'status' | 'message':
+                assert result[check_name] == expected
+            case 'path' | 'file_format':
+                assert captured[check_name] == expected
+            case 'encoding' | 'extras':
+                assert options is not None
+                assert getattr(options, check_name) == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_to_csv_file(
         self,
@@ -927,9 +844,20 @@ class TestLoadToFile:
         assert result['status'] == 'success'
         assert output_path.exists()
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('status', 'success', id='status'),
+            pytest.param('records', 1, id='records'),
+            pytest.param('exists', True, id='exists'),
+            pytest.param('loaded-data', {'status': 'ok'}, id='loaded-data'),
+        ],
+    )
     def test_to_file_infers_format_when_none(
         self,
         tmp_path: Path,
+        check_name: str,
+        expected: object,
     ) -> None:
         """
         Test that omitting file_format infers from the output extension.
@@ -939,16 +867,36 @@ class TestLoadToFile:
 
         result = load_to_file(payload, str(output_path), None)
 
-        assert result['status'] == 'success'
-        assert result['records'] == 1
-        assert output_path.exists()
-        with open(output_path, encoding='utf-8') as f:
-            loaded_data = js.load(f)
-        assert loaded_data == payload
+        match check_name:
+            case 'status' | 'records':
+                assert result[check_name] == expected
+            case 'exists':
+                assert output_path.exists() is expected
+            case 'loaded-data':
+                with open(output_path, encoding='utf-8') as f:
+                    assert json.load(f) == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('status', 'success', id='status'),
+            pytest.param('message', 'Data loaded to auto.json', id='message'),
+            pytest.param('path', 'auto.json', id='path'),
+            pytest.param('file_format', None, id='file-format'),
+            pytest.param('root_tag', '99', id='root-tag'),
+            pytest.param('table', '123', id='table'),
+            pytest.param('dataset', '456', id='dataset'),
+            pytest.param('inner_name', '789', id='inner-name'),
+            pytest.param('extras', {'indent': 2}, id='extras'),
+        ],
+    )
     def test_to_file_infers_format_and_forwards_coerced_options_when_none(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test inferred format path when optional write options are supplied."""
         captured: dict[str, Any] = {}
@@ -989,17 +937,19 @@ class TestLoadToFile:
             },
         )
 
-        assert result['status'] == 'success'
-        assert result['message'] == 'Data loaded to auto.json'
-        assert captured['path'] == 'auto.json'
-        assert captured['file_format'] is None
         options = captured['options']
-        assert options is not None
-        assert options.root_tag == '99'
-        assert options.table == '123'
-        assert options.dataset == '456'
-        assert options.inner_name == '789'
-        assert options.extras == {'indent': 2}
+        match check_name:
+            case 'status' | 'message':
+                assert result[check_name] == expected
+            case 'path':
+                assert captured['path'] == expected
+            case 'file_format':
+                assert captured['file_format'] is expected
+            case 'root_tag' | 'table' | 'dataset' | 'inner_name' | 'extras':
+                assert options is not None
+                assert getattr(options, check_name) == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_to_file_unsupported_format(
         self,

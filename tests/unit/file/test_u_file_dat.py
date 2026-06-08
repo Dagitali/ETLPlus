@@ -254,10 +254,23 @@ class TestDat(RoundtripUnitModuleContract):
 
         assert mod.DatFile().read(path) == expected
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', [{'a': '1', 'b': '2'}], id='result'),
+            pytest.param(
+                'captured-delimiters',
+                [mod._DEFAULT_DELIMITERS],
+                id='captured-delimiters',
+            ),
+        ],
+    )
     def test_read_none_delimiters_extra_keeps_default_delimiters(
         self,
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that ``delimiters=None`` preserves default sniff delimiters."""
         captured_delimiters: list[str] = []
@@ -283,8 +296,8 @@ class TestDat(RoundtripUnitModuleContract):
             options=ReadOptions(extras={'delimiters': None}),
         )
 
-        assert result == [{'a': '1', 'b': '2'}]
-        assert captured_delimiters == [mod._DEFAULT_DELIMITERS]
+        actual = result if check_name == 'result' else captured_delimiters
+        assert actual == expected
 
     def test_read_ragged_rows_fill_missing_with_none_and_ignore_extras(
         self,
@@ -335,9 +348,19 @@ class TestDat(RoundtripUnitModuleContract):
 
         assert mod.DatFile().read(path) == [{'a': '1', 'b': '2'}]
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('written', 1, id='written'),
+            pytest.param('header', 'id|name', id='header'),
+            pytest.param('row', '1|Ada', id='row'),
+        ],
+    )
     def test_write_uses_delimiter_override_from_write_options(
         self,
         tmp_path: Path,
+        check_name: str,
+        expected: object,
     ) -> None:
         """
         Test that DAT writes honor delimiter overrides from option extras.
@@ -351,7 +374,13 @@ class TestDat(RoundtripUnitModuleContract):
             options=WriteOptions(extras={'delimiter': '|'}),
         )
 
-        assert written == 1
         lines = path.read_text(encoding='utf-8').splitlines()
-        assert lines[0] == 'id|name'
-        assert lines[1] == '1|Ada'
+        match check_name:
+            case 'written':
+                assert written == expected
+            case 'header':
+                assert lines[0] == expected
+            case 'row':
+                assert lines[1] == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')

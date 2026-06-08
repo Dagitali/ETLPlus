@@ -137,14 +137,23 @@ class TestRenderTableSql:
 
         assert sql == f'{ddl_sample_spec["table"]}\n'
 
+    @pytest.mark.parametrize(
+        'expected_sql',
+        [
+            pytest.param('CREATE TABLE', id='create-table'),
+            pytest.param('[id] INT', id='id-column'),
+        ],
+    )
     def test_default_template(
         self,
         ddl_sample_spec: dict[str, object],
+        expected_sql: str,
     ) -> None:
         """Test rendering SQL with the default template."""
         sql = ddl.render_table_sql(ddl_sample_spec)
-        assert f'CREATE TABLE [dbo].[{ddl_sample_spec["table"]}' in sql
-        assert '[id] INT' in sql
+        if expected_sql == 'CREATE TABLE':
+            expected_sql = f'CREATE TABLE [dbo].[{ddl_sample_spec["table"]}'
+        assert expected_sql in sql
 
     def test_env_override(
         self,
@@ -345,15 +354,16 @@ class TestRenderTablesToString:
         """
         Test rendering multiple table specs from file paths to one SQL string.
         """
-        spec_paths: list[Path] = []
-        for idx, table_name in enumerate(('widgets', 'widgets_history')):
-            materialized = deepcopy(ddl_sample_spec)
-            materialized['table'] = table_name
-            path = tmp_path / f'spec_{idx}.json'
-            path.write_text(json.dumps(materialized), encoding='utf-8')
-            spec_paths.append(path)
+        widgets_spec = deepcopy(ddl_sample_spec)
+        widgets_spec['table'] = 'widgets'
+        widgets_path = tmp_path / 'spec_0.json'
+        widgets_path.write_text(json.dumps(widgets_spec), encoding='utf-8')
+        history_spec = deepcopy(ddl_sample_spec)
+        history_spec['table'] = 'widgets_history'
+        history_path = tmp_path / 'spec_1.json'
+        history_path.write_text(json.dumps(history_spec), encoding='utf-8')
 
-        sql = ddl.render_tables_to_string(spec_paths)
+        sql = ddl.render_tables_to_string([widgets_path, history_path])
 
         assert 'widgets' in sql
         assert 'widgets_history' in sql

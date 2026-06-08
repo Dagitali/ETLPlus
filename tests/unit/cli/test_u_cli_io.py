@@ -278,9 +278,18 @@ class TestMaterializeFilePayload:
 
         assert payload == {'beta': 2}
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('type', list, id='type'),
+            pytest.param('first-row', {'a': '1', 'b': '2'}, id='first-row'),
+        ],
+    )
     def test_inferring_csv(
         self,
         tmp_path: Path,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that CSV files are parsed when no explicit hint is provided."""
         file_path = tmp_path / 'file.csv'
@@ -292,8 +301,13 @@ class TestMaterializeFilePayload:
             format_explicit=False,
         )
 
-        assert isinstance(rows, list)
-        assert rows[0] == {'a': '1', 'b': '2'}
+        match check_name:
+            case 'type':
+                assert isinstance(rows, expected)
+            case 'first-row':
+                assert rows[0] == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_reads_existing_structured_sources_via_explicit_format(
         self,
@@ -537,9 +551,22 @@ class TestReadStdinText:
 class TestResolveCliPayload:
     """Unit tests for :func:`resolve_cli_payload`."""
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', {'ok': True}, id='result'),
+            pytest.param(
+                'captured',
+                [('payload.json', 'json', True)],
+                id='captured',
+            ),
+        ],
+    )
     def test_hydrates_file_sources_by_default(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """
         Test that default behavior delegates to ``materialize_file_payload``.
@@ -563,8 +590,8 @@ class TestResolveCliPayload:
             format_explicit=True,
         )
 
-        assert result == {'ok': True}
-        assert captured == [('payload.json', 'json', True)]
+        actual = result if check_name == 'result' else captured
+        assert actual == expected
 
     @pytest.mark.parametrize(
         ('source', 'expected'),

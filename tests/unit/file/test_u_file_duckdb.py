@@ -258,7 +258,18 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
         assert conn.executemany_calls
         assert conn.closed is True
 
-    def test_write_table_returns_zero_for_rows_with_no_columns(self) -> None:
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('written', 0, id='written'),
+            pytest.param('executemany-calls', [], id='executemany-calls'),
+        ],
+    )
+    def test_write_table_returns_zero_for_rows_with_no_columns(
+        self,
+        check_name: str,
+        expected: object,
+    ) -> None:
         """
         Test that :meth:`write_table` short-circuits rows that provide no
         columns.
@@ -272,8 +283,8 @@ class TestDuckdb(EmbeddedDatabaseModuleContract):
             [{}],
         )
 
-        assert written == 0
-        assert not conn.executemany_calls
+        actual = written if check_name == 'written' else conn.executemany_calls
+        assert actual == expected
 
     @staticmethod
     def _install_connection(

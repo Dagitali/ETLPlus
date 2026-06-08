@@ -141,7 +141,26 @@ class TestAvroHelpers:
         with pytest.raises(TypeError, match=_TYPE_ERROR_PATTERN):
             operation(payload)
 
-    def test_infer_schema_builds_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('type', 'record', id='type'),
+            pytest.param('name', 'etlplus_record', id='name'),
+            pytest.param(
+                'fields',
+                [
+                    {'name': 'a', 'type': ['null', 'long']},
+                    {'name': 'b', 'type': ['null', 'string']},
+                ],
+                id='fields',
+            ),
+        ],
+    )
+    def test_infer_schema_builds_fields(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Test that :func:`_infer_schema` builds expected fields."""
         records: list[dict[str, object]] = [
             {'b': 'text', 'a': 1},
@@ -150,12 +169,7 @@ class TestAvroHelpers:
 
         schema = mod._infer_schema(records)
 
-        assert schema['type'] == 'record'
-        assert schema['name'] == 'etlplus_record'
-        assert schema['fields'] == [
-            {'name': 'a', 'type': ['null', 'long']},
-            {'name': 'b', 'type': ['null', 'string']},
-        ]
+        assert schema[field_name] == expected
 
     @pytest.mark.parametrize(
         ('value', 'expected'),
