@@ -27,10 +27,10 @@ pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 @pytest.mark.parametrize(
     'via_session',
-    (
+    [
         pytest.param(False, id='connection'),
         pytest.param(True, id='session'),
-    ),
+    ],
 )
 def test_in_memory_sqlite_executes_trivial_query(
     via_session: bool,

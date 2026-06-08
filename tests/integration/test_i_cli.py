@@ -50,7 +50,7 @@ class TestCliEndToEnd:
     """Integration tests for :mod:`etlplus.cli`."""
 
     @pytest.mark.parametrize(
-        'args,should_pass',
+        ('args', 'should_pass'),
         [
             pytest.param(
                 (
