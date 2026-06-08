@@ -10,13 +10,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.integration.cli.pytest_cli_integration_support import assert_cli_success
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
-    from tests.integration.cli.pytest_cli_integration_support import PipelineSchema
-    from tests.integration.cli.pytest_cli_integration_support import TableSpec
     from tests.pytest_shared_support import CliInvoke
 
 # SECTION: MARKS ============================================================ #
@@ -30,40 +30,36 @@ pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 class TestCliRender:
     """Smoke tests for the ``etlplus render`` CLI command."""
 
-    def test_config_emits_sql(
-        self,
-        cli_invoke: CliInvoke,
-        pipeline_table_schemas_config: PipelineSchema,
-    ) -> None:
-        """
-        Test that rendering SQL from a pipeline config containing table_schemas
-        works.
-        """
-        cfg = pipeline_table_schemas_config
-        code, out, err = cli_invoke(
-            ('render', '--config', str(cfg.config_path), '--template', 'ddl'),
-        )
-        assert code == 0
-        assert err.strip() == ''
-        assert 'CREATE TABLE' in out
-        assert cfg.table_name in out
-
-    def test_spec_emits_sql(
-        self,
-        cli_invoke: CliInvoke,
-        table_spec: TableSpec,
-    ) -> None:
-        """Test rendering SQL from a minimal table spec."""
-        code, out, err = cli_invoke(
-            (
-                'render',
-                '--spec',
-                str(table_spec.spec_path),
-                '--template',
-                'ddl',
+    @pytest.mark.parametrize(
+        ('fixture_name', 'path_flag'),
+        [
+            pytest.param(
+                'pipeline_table_schemas_config',
+                '--config',
+                id='config',
             ),
+            pytest.param('table_spec', '--spec', id='spec'),
+        ],
+    )
+    def test_input_emits_sql(
+        self,
+        cli_invoke: CliInvoke,
+        request: pytest.FixtureRequest,
+        fixture_name: str,
+        path_flag: str,
+    ) -> None:
+        """Test rendering SQL from supported render input shapes."""
+        render_input = request.getfixturevalue(
+            fixture_name,
         )
-        assert code == 0
-        assert err.strip() == ''
+        input_path = (
+            render_input.config_path
+            if hasattr(render_input, 'config_path')
+            else render_input.spec_path
+        )
+        code, out, err = cli_invoke(
+            ('render', path_flag, str(input_path), '--template', 'ddl'),
+        )
+        assert_cli_success(code, err)
         assert 'CREATE TABLE' in out
-        assert table_spec.table_name in out
+        assert render_input.table_name in out
