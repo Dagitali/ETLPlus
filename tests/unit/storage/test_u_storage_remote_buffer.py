@@ -23,15 +23,29 @@ from etlplus.storage import _remote_buffer as remote_buffer_mod
 class TestRemoteBufferHelpers:
     """Unit tests for the shared in-memory remote buffer helpers."""
 
-    def test_open_remote_buffer_requires_required_inputs(self) -> None:
+    @pytest.mark.parametrize(
+        ('kwargs', 'match'),
+        [
+            pytest.param(
+                {'kind': 'read', 'text_mode': False},
+                'payload is required',
+                id='read-requires-payload',
+            ),
+            pytest.param(
+                {'kind': 'write', 'text_mode': False},
+                'uploader is required',
+                id='write-requires-uploader',
+            ),
+        ],
+    )
+    def test_open_remote_buffer_requires_required_inputs(
+        self,
+        kwargs: dict[str, object],
+        match: str,
+    ) -> None:
         """Test that remote buffers require mode-specific inputs."""
-        cases = (
-            ({'kind': 'read', 'text_mode': False}, 'payload is required'),
-            ({'kind': 'write', 'text_mode': False}, 'uploader is required'),
-        )
-        for kwargs, match in cases:
-            with pytest.raises(ValueError, match=match):
-                remote_buffer_mod.open_remote_buffer(**kwargs)
+        with pytest.raises(ValueError, match=match):
+            remote_buffer_mod.open_remote_buffer(**kwargs)
 
     def test_parse_remote_open_mode_rejects_invalid_mode(self) -> None:
         """Test that invalid remote open modes are rejected."""
