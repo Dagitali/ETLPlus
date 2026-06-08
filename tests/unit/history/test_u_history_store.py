@@ -59,13 +59,12 @@ class TestHistoryStoreMergeHelpers:
             ],
         )
 
-        assert list(store.iter_job_runs()) == [
-            normalized_job_run_payload(
-                run_id='run-123',
-                job_name='job-a',
-                status='succeeded',
-            ),
-        ]
+        (job_run,) = store.iter_job_runs()
+        assert job_run == normalized_job_run_payload(
+            run_id='run-123',
+            job_name='job-a',
+            status='succeeded',
+        )
 
 
 class TestHistoryStoreModuleHelpers:
