@@ -22,9 +22,7 @@ from .pytest_connector_support import ConnectorClass
 # SECTION: CONSTANTS ======================================================== #
 
 
-CONNECTOR_ALIAS_EXPORTS: tuple[tuple[str, object], ...] = (
-    ('Connector', Connector),
-)
+CONNECTOR_ALIAS_EXPORTS: tuple[tuple[str, object], ...] = (('Connector', Connector),)
 
 
 # SECTION: TESTS ============================================================ #
