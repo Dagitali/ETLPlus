@@ -20,6 +20,7 @@ from etlplus.runtime import EVENT_SCHEMA
 from etlplus.runtime import EVENT_SCHEMA_VERSION
 from tests.integration.cli.pytest_cli_integration_support import parse_jsonl_event_lines
 from tests.pytest_shared_support import STRUCTURED_EVENT_BASE_FIELDS
+from tests.pytest_shared_support import STRUCTURED_EVENT_LIFECYCLES
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -47,6 +48,7 @@ def _assert_base_event_fields(
 ) -> None:
     """Assert one emitted event keeps the stable base envelope."""
     assert STRUCTURED_EVENT_BASE_FIELDS.issubset(line)
+    assert lifecycle in STRUCTURED_EVENT_LIFECYCLES
     assert line['command'] == command
     assert line['event'] == f'{command}.{lifecycle}'
     assert line['lifecycle'] == lifecycle
