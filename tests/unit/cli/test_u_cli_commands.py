@@ -884,12 +884,16 @@ class TestCliInvokeParsing:
         first_payload = json.loads(first_result.stdout)
         second_payload = json.loads(second_result.stdout)
 
-        assert first_payload['dispatched_count'] == 1
-        assert first_payload['run_count'] == 1
+        assert (
+            first_payload['dispatched_count'],
+            first_payload['run_count'],
+        ) == (1, 1)
         assert first_payload['runs'][0]['run_id'] == 'run-1'
-        assert second_payload['dispatched_count'] == 0
-        assert second_payload['run_count'] == 0
-        assert second_payload['schedule_count'] == 1
+        assert (
+            second_payload['dispatched_count'],
+            second_payload['run_count'],
+            second_payload['schedule_count'],
+        ) == (0, 0, 1)
         assert json.loads((state_dir / 'scheduler-state.json').read_text()) == {
             'schedules': {
                 'nightly_all': {
