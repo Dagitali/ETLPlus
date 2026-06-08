@@ -49,7 +49,8 @@ class TestSQLiteHistoryStore:
         assert {'meta', 'runs'} <= tables
         assert 'job_runs' in tables
         assert schema_version is not None
-        assert schema_version[0] == str(store_mod.HISTORY_SCHEMA_VERSION)
+        (schema_version_value,) = schema_version
+        assert schema_version_value == str(store_mod.HISTORY_SCHEMA_VERSION)
 
     def test_persists_job_run_records(
         self,
