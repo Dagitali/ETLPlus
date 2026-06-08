@@ -19,6 +19,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.integration.cli.pytest_cli_integration_support import assert_cli_success
+
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.integration.pytest_integration_support import StdinText
     from tests.pytest_shared_support import CliInvoke
@@ -207,8 +209,7 @@ class TestCliEndToEnd:
         code, out, err = cli_invoke(
             ('extract', str(source), '--source-format', 'csv'),
         )
-        assert code == 0
-        assert err.strip() == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload[0] == {'a': '1', 'b': '2'}
 
@@ -226,8 +227,7 @@ class TestCliEndToEnd:
         code, _out, err = cli_invoke(
             ('load', str(output_path), '--target-format', 'csv'),
         )
-        assert code == 0
-        assert err.strip() == ''
+        assert_cli_success(code, err)
         contents = output_path.read_text().splitlines()
         assert contents[0] == 'name'
         assert contents[1] == 'John'
@@ -246,8 +246,7 @@ class TestCliEndToEnd:
         code, out, err = cli_invoke(
             ('validate', str(source), '--source-format', 'csv'),
         )
-        assert code == 0
-        assert err.strip() == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload['valid'] is True
 
