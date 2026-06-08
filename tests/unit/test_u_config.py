@@ -128,9 +128,8 @@ class TestCollectParsed:
         case: ConnectorCase,
     ) -> None:
         """Test that :func:`_collect_parsed` filters malformed entries."""
-        payload = {case.collection: case.entries}
         items = _collect_parsed(
-            payload.get(case.collection, []),
+            case.entries,
             _parse_connector_entry,
         )
 
@@ -259,17 +258,17 @@ class TestConfig:
             },
         )
 
-        assert len(cfg.schedules) == 2
-        assert cfg.schedules[0].name == 'nightly_all'
-        assert cfg.schedules[0].cron == '0 2 * * *'
-        assert cfg.schedules[0].target is not None
-        assert cfg.schedules[0].target.run_all is True
-        assert cfg.schedules[0].backfill is not None
-        assert cfg.schedules[0].backfill.max_catchup_runs == 3
-        assert cfg.schedules[1].interval is not None
-        assert cfg.schedules[1].interval.minutes == 30
-        assert cfg.schedules[1].target is not None
-        assert cfg.schedules[1].target.job == 'job-a'
+        nightly, interval = cfg.schedules
+        assert nightly.name == 'nightly_all'
+        assert nightly.cron == '0 2 * * *'
+        assert nightly.target is not None
+        assert nightly.target.run_all is True
+        assert nightly.backfill is not None
+        assert nightly.backfill.max_catchup_runs == 3
+        assert interval.interval is not None
+        assert interval.interval.minutes == 30
+        assert interval.target is not None
+        assert interval.target.job == 'job-a'
 
     def test_from_yaml_includes_profile_env_in_substitution(
         self,
@@ -532,11 +531,10 @@ table_schemas:
 sources: []
 targets: []
 jobs: []
-            """
+"""
 
         cfg = pipeline_builder(yml)
 
-        assert len(cfg.table_schemas) == 1
-        spec = cfg.table_schemas[0]
+        (spec,) = cfg.table_schemas
         assert spec['table'] == 'Customers'
         assert spec['columns'][0]['name'] == 'CustomerId'
