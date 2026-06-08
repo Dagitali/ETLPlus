@@ -385,7 +385,8 @@ schedules:
         )
         assert getattr(source, 'path', None) == 's3://etlplus-test/raw/customers.csv'
         assert getattr(target, 'schema', None) == 'PUBLIC'
-        assert cfg.schedules[0].name == 'nightly_all'
+        (schedule,) = cfg.schedules
+        assert schedule.name == 'nightly_all'
 
         rows = readiness_providers_mod.ProviderEnvironmentPolicy.environment_rows(
             cfg=cfg,
