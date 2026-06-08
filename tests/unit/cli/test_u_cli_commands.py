@@ -12,7 +12,6 @@ from datetime import UTC
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from typing import Never
 from typing import cast
 
 import pytest
@@ -52,14 +51,6 @@ from .conftest import strip_ansi
 HELPER_EXPORTS: tuple[tuple[str, object], ...] = (
     ('CommandHelperPolicy', helpers_mod.CommandHelperPolicy),
 )
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _raise_bad_parameter(message: str) -> Never:
-    """Raise a Typer bad-parameter error with the supplied message."""
-    raise typer.BadParameter(message)
 
 
 # SECTION: TESTS ============================================================ #
@@ -597,7 +588,10 @@ class TestDelegatingCommands:
         expected_message: str,
     ) -> None:
         """Invalid command option combinations should fail through usage errors."""
-        monkeypatch.setattr(policy, 'fail_usage', _raise_bad_parameter)
+        def _fail_usage(message: str) -> None:
+            raise typer.BadParameter(message)
+
+        monkeypatch.setattr(policy, 'fail_usage', _fail_usage)
 
         with pytest.raises(typer.BadParameter, match=expected_message):
             command(typer_ctx_factory(), **kwargs)
