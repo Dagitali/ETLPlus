@@ -163,75 +163,67 @@ class TestHistoryStore:
         """
         Test that job-run iteration ignores malformed or non-job persisted rows.
         """
-        job_runs = list(
-            history_store_factory(
-                [
-                    {
-                        'record_level': 'run',
-                        'run_id': 'run-parent',
-                        'job_name': 'seed',
-                        'status': 'ignored',
-                    },
-                    {
-                        'record_level': 'job',
-                        'run_id': None,
-                        'job_name': 'seed',
-                        'status': 'ignored',
-                    },
-                    {
-                        'record_level': 'job',
-                        'run_id': 'run-parent',
-                        'job_name': '',
-                        'status': 'ignored',
-                    },
-                    {
-                        'record_level': 'job',
-                        'run_id': 'run-parent',
-                        'job_name': 'seed',
-                        'status': 'running',
-                        'sequence_index': 0,
-                    },
-                    {
-                        'record_level': 'job',
-                        'run_id': 'run-parent',
-                        'job_name': 'seed',
-                        'status': 'succeeded',
-                        'sequence_index': 0,
-                        'result_status': 'ok',
-                    },
-                ],
-            ).iter_job_runs(),
-        )
+        (job_run,) = history_store_factory(
+            [
+                {
+                    'record_level': 'run',
+                    'run_id': 'run-parent',
+                    'job_name': 'seed',
+                    'status': 'ignored',
+                },
+                {
+                    'record_level': 'job',
+                    'run_id': None,
+                    'job_name': 'seed',
+                    'status': 'ignored',
+                },
+                {
+                    'record_level': 'job',
+                    'run_id': 'run-parent',
+                    'job_name': '',
+                    'status': 'ignored',
+                },
+                {
+                    'record_level': 'job',
+                    'run_id': 'run-parent',
+                    'job_name': 'seed',
+                    'status': 'running',
+                    'sequence_index': 0,
+                },
+                {
+                    'record_level': 'job',
+                    'run_id': 'run-parent',
+                    'job_name': 'seed',
+                    'status': 'succeeded',
+                    'sequence_index': 0,
+                    'result_status': 'ok',
+                },
+            ],
+        ).iter_job_runs()
 
-        assert job_runs == [
-            normalized_job_run_payload(
-                run_id='run-parent',
-                job_name='seed',
-                sequence_index=0,
-                status='succeeded',
-                result_status='ok',
-            ),
-        ]
+        assert job_run == normalized_job_run_payload(
+            run_id='run-parent',
+            job_name='seed',
+            sequence_index=0,
+            status='succeeded',
+            result_status='ok',
+        )
 
     def test_iter_runs_skips_missing_run_ids(
         self,
         history_store_factory: Callable[[list[dict[str, object]]], MemoryHistoryStore],
     ) -> None:
         """Test that run iteration ignores records without valid run identifiers."""
-        runs = list(
-            history_store_factory(
-                [
-                    {'run_id': None, 'status': 'ignored'},
-                    {'run_id': '', 'status': 'ignored'},
-                    {'run_id': 'run-123', 'status': 'running'},
-                    {'run_id': 'run-123', 'finished_at': None},
-                ],
-            ).iter_runs(),
-        )
+        (run,) = history_store_factory(
+            [
+                {'run_id': None, 'status': 'ignored'},
+                {'run_id': '', 'status': 'ignored'},
+                {'run_id': 'run-123', 'status': 'running'},
+                {'run_id': 'run-123', 'finished_at': None},
+            ],
+        ).iter_runs()
 
-        assert runs == [
-            normalized_run_payload(run_id='run-123', status='running'),
-        ]
+        assert run == normalized_run_payload(run_id='run-123', status='running')
 
     def test_iter_runs_skips_non_run_records(
         self,
@@ -240,23 +232,19 @@ class TestHistoryStore:
         """
         Test that run iteration ignores persisted job-level records entirely.
         """
-        runs = list(
-            history_store_factory(
-                [
-                    {
-                        'record_level': 'job',
-                        'run_id': 'run-ignored',
-                        'status': 'succeeded',
-                    },
-                    {
-                        'record_level': 'run',
-                        'run_id': 'run-123',
-                        'status': 'running',
-                    },
-                ],
-            ).iter_runs(),
-        )
+        (run,) = history_store_factory(
+            [
+                {
+                    'record_level': 'job',
+                    'run_id': 'run-ignored',
+                    'status': 'succeeded',
+                },
+                {
+                    'record_level': 'run',
+                    'run_id': 'run-123',
+                    'status': 'running',
+                },
+            ],
+        ).iter_runs()
 
-        assert runs == [
-            normalized_run_payload(run_id='run-123', status='running'),
-        ]
+        assert run == normalized_run_payload(run_id='run-123', status='running')
