@@ -14,6 +14,7 @@ from etlplus.storage import _abfs as abfs_mod
 
 from .pytest_storage_support import FakeContentSettings
 from .pytest_storage_support import FixedDownload
+from .pytest_storage_support import assert_azure_service_client_init
 from .pytest_storage_support import assert_upload_payload
 from .pytest_storage_support import clear_azure_storage_env
 
@@ -216,12 +217,11 @@ class TestAbfsStorageBackend:
 
         backend._service_client(location)
 
-        assert calls == [
-            {
-                'account_url': 'https://example.dfs.core.windows.net',
-                'credential': None,
-            },
-        ]
+        assert_azure_service_client_init(
+            calls,
+            account_url='https://example.dfs.core.windows.net',
+            credential=None,
+        )
 
     def test_service_client_requires_resolvable_account_url(
         self,
@@ -331,12 +331,11 @@ class TestAbfsStorageBackend:
 
         backend._service_client(location)
 
-        assert calls == [
-            {
-                'account_url': 'https://example.dfs.core.windows.net',
-                'credential': explicit_credential or env_credential,
-            },
-        ]
+        assert_azure_service_client_init(
+            calls,
+            account_url='https://example.dfs.core.windows.net',
+            credential=explicit_credential or env_credential,
+        )
 
     @pytest.mark.parametrize(
         'authority',
