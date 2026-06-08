@@ -431,13 +431,21 @@ class TestModuleAvailable:
         )
         assert calls == [module_name.strip()]
 
+    @pytest.mark.parametrize(
+        'module_name',
+        [
+            pytest.param('', id='empty'),
+            pytest.param(' ', id='blank'),
+        ],
+    )
     def test_module_available_returns_false_for_invalid_module_names(
         self,
+        module_name: str,
     ) -> None:
         """Test invalid module names return false without spec lookup."""
         calls: list[str] = []
 
-        assert module_available(' ', spec_finder=calls.append) is False
+        assert module_available(module_name, spec_finder=calls.append) is False
         assert not calls
 
     @pytest.mark.parametrize(

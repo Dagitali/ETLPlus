@@ -2264,8 +2264,24 @@ class TestRunInternals:
         assert isinstance(failed_job['started_at'], str)
         assert isinstance(failed_job['finished_at'], str)
 
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('final_job', 'seed', id='final-job'),
+            pytest.param('final_result', {'rows': 1}, id='final-result'),
+            pytest.param(
+                'final_result_status',
+                'success',
+                id='final-result-status',
+            ),
+            pytest.param('retried_job_count', 'absent', id='retried-job-count'),
+            pytest.param('total_retry_count', 'absent', id='total-retry-count'),
+        ],
+    )
     def test_run_plan_tracker_result_collects_final_fields_across_rows(
         self,
+        field_name: str,
+        expected: object,
     ) -> None:
         """
         Test that final job and status can be discovered from distinct rows.
@@ -2293,13 +2309,30 @@ class TestRunInternals:
 
         result = tracker.result()
 
-        assert result['final_job'] == 'seed'
-        assert result['final_result'] == {'rows': 1}
-        assert result['final_result_status'] == 'success'
-        assert 'retried_job_count' not in result
-        assert 'total_retry_count' not in result
+        if expected == 'absent':
+            assert field_name not in result
+        else:
+            assert result[field_name] == expected
 
-    def test_run_plan_tracker_result_ignores_non_mapping_rows(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('status', 'success', id='status'),
+            pytest.param('final_job', 'seed', id='final-job'),
+            pytest.param(
+                'final_result_status',
+                'success',
+                id='final-result-status',
+            ),
+            pytest.param('retried_job_count', 1, id='retried-job-count'),
+            pytest.param('total_retry_count', 1, id='total-retry-count'),
+        ],
+    )
+    def test_run_plan_tracker_result_ignores_non_mapping_rows(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """
         Test that summary generation skips any non-mapping executed rows
         defensively.
@@ -2329,11 +2362,7 @@ class TestRunInternals:
 
         result = tracker.result()
 
-        assert result['status'] == 'success'
-        assert result['final_job'] == 'seed'
-        assert result['final_result_status'] == 'success'
-        assert result['retried_job_count'] == 1
-        assert result['total_retry_count'] == 1
+        assert result[field_name] == expected
 
     def test_run_treats_missing_transform_registry_as_noop(
         self,

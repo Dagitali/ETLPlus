@@ -128,8 +128,17 @@ class TestConfig:
     Unit tests for :class:`Config`.
     """
 
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('api-name', 'svc', id='api-name'),
+            pytest.param('table-name', 'customers', id='table-name'),
+        ],
+    )
     def test_from_dict_parses_apis_and_filters_non_mapping_table_specs(
         self,
+        field_name: str,
+        expected: str,
     ) -> None:
         """
         Test that parsing non-empty APIs and tolerant table_schemas filtering.
@@ -156,9 +165,14 @@ class TestConfig:
 
         cfg = Config.from_dict(raw)
 
-        assert 'svc' in cfg.apis
-        (spec,) = cfg.table_schemas
-        assert spec['table'] == 'customers'
+        match field_name:
+            case 'api-name':
+                assert expected in cfg.apis
+            case 'table-name':
+                (spec,) = cfg.table_schemas
+                assert spec['table'] == expected
+            case _:
+                pytest.fail(f'unhandled field: {field_name}')
 
     @pytest.mark.parametrize(
         ('section', 'payload'),
