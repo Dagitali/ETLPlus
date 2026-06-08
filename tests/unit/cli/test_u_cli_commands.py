@@ -66,7 +66,22 @@ class TestCommandsInternalHelpers:
             expected_exports=HELPER_EXPORTS,
         )
 
-    def test_call_handler_injects_requested_state_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('result', 7, id='result'),
+            pytest.param(
+                'captured',
+                {'pretty': False, 'quiet': True, 'value': 'payload'},
+                id='captured',
+            ),
+        ],
+    )
+    def test_call_handler_injects_requested_state_fields(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Shared handler dispatch should merge selected CLI state fields."""
         captured: dict[str, object] = {}
 
@@ -82,12 +97,8 @@ class TestCommandsInternalHelpers:
             value='payload',
         )
 
-        assert result == 7
-        assert captured == {
-            'pretty': False,
-            'quiet': True,
-            'value': 'payload',
-        }
+        actual = result if field_name == 'result' else captured
+        assert actual == expected
 
     def test_from_context_uses_shared_cli_state(
         self,
@@ -191,7 +202,19 @@ class TestCommandsInternalHelpers:
                 positional_name=positional_name,
             )
 
-    def test_resolve_resource_normalizes_type_and_format(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('value', 'payload.json', id='value'),
+            pytest.param('resource_type', 'api', id='resource-type'),
+            pytest.param('format_hint', FileFormat.JSON, id='format-hint'),
+        ],
+    )
+    def test_resolve_resource_normalizes_type_and_format(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Shared resource resolution should normalize type and format hints."""
         resolved = helpers_mod.CommandHelperPolicy(CliState()).resolve_resource(
             role='source',
@@ -200,9 +223,7 @@ class TestCommandsInternalHelpers:
             format_value='json',
         )
 
-        assert resolved.value == 'payload.json'
-        assert resolved.resource_type == 'api'
-        assert resolved.format_hint is FileFormat.JSON
+        assert getattr(resolved, field_name) == expected
 
     @pytest.mark.parametrize(
         ('value', 'expected_message'),

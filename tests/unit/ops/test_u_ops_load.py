@@ -595,9 +595,28 @@ class TestLoadApiOrchestrator:
         with pytest.raises(ValueError, match='Invalid target type'):
             load({'ok': True}, 'file', 'ignored')
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', {'status': 'success'}, id='result'),
+            pytest.param('call-count', 1, id='call-count'),
+            pytest.param(
+                'target',
+                'https://example.com/files/data.csv?download=1',
+                id='target',
+            ),
+            pytest.param(
+                'options',
+                {'encoding': 'utf-8', 'delimiter': ';'},
+                id='options',
+            ),
+        ],
+    )
     def test_load_file_dispatch_forwards_write_options(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that file dispatch forwards kwargs as write options."""
         calls: list[tuple[Any, Any, Any, Any]] = []
@@ -622,12 +641,17 @@ class TestLoadApiOrchestrator:
             delimiter=';',
         )
 
-        assert result == {'status': 'success'}
-        assert len(calls) == 1
-        assert calls[0][1] == 'https://example.com/files/data.csv?download=1'
-        options = calls[0][3]
-        assert options is not None
-        assert options == {'encoding': 'utf-8', 'delimiter': ';'}
+        match check_name:
+            case 'result':
+                assert result == expected
+            case 'call-count':
+                assert len(calls) == expected
+            case 'target':
+                assert calls[0][1] == expected
+            case 'options':
+                assert calls[0][3] == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
 
 class TestLoadToFile:
@@ -640,9 +664,26 @@ class TestLoadToFile:
         directory creation, and error handling.
     """
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('status', 'success', id='status'),
+            pytest.param(
+                'message',
+                'Data loaded to s3://bucket/output.csv',
+                id='message',
+            ),
+            pytest.param('path', 's3://bucket/output.csv', id='path'),
+            pytest.param('file_format', load_mod.FileFormat.CSV, id='file-format'),
+            pytest.param('encoding', 'utf-16', id='encoding'),
+            pytest.param('extras', {'delimiter': '|'}, id='extras'),
+        ],
+    )
     def test_remote_uri_preserves_path_and_coerces_write_options(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that remote file loads keep the URI and forward write options."""
         captured: dict[str, Any] = {}
@@ -677,14 +718,17 @@ class TestLoadToFile:
             {'encoding': 'utf-16', 'delimiter': '|'},
         )
 
-        assert result['status'] == 'success'
-        assert result['message'] == 'Data loaded to s3://bucket/output.csv'
-        assert captured['path'] == 's3://bucket/output.csv'
-        assert captured['file_format'] == load_mod.FileFormat.CSV
         options = captured['options']
-        assert options is not None
-        assert options.encoding == 'utf-16'
-        assert options.extras == {'delimiter': '|'}
+        match check_name:
+            case 'status' | 'message':
+                assert result[check_name] == expected
+            case 'path' | 'file_format':
+                assert captured[check_name] == expected
+            case 'encoding' | 'extras':
+                assert options is not None
+                assert getattr(options, check_name) == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_to_csv_file(
         self,

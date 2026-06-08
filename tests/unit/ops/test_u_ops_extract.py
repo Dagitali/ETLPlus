@@ -696,9 +696,28 @@ class TestExtractFromFile:
     - Tests supported and unsupported file formats.
     """
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', {'ok': True}, id='result'),
+            pytest.param('call-count', 1, id='call-count'),
+            pytest.param(
+                'source',
+                'https://example.com/files/data.csv?download=1',
+                id='source',
+            ),
+            pytest.param(
+                'options',
+                {'encoding': 'utf-8', 'delimiter': ';'},
+                id='options',
+            ),
+        ],
+    )
     def test_extract_file_dispatch_forwards_remote_uri_and_options(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that file dispatch forwards kwargs as read options."""
         calls: list[tuple[str, object, object]] = []
@@ -721,12 +740,17 @@ class TestExtractFromFile:
             delimiter=';',
         )
 
-        assert result == {'ok': True}
-        assert len(calls) == 1
-        assert calls[0][0] == 'https://example.com/files/data.csv?download=1'
-        options = calls[0][2]
-        assert options is not None
-        assert options == {'encoding': 'utf-8', 'delimiter': ';'}
+        match check_name:
+            case 'result':
+                assert result == expected
+            case 'call-count':
+                assert len(calls) == expected
+            case 'source':
+                assert calls[0][0] == expected
+            case 'options':
+                assert calls[0][2] == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_infers_format_when_file_format_is_none(
         self,
@@ -782,9 +806,25 @@ class TestExtractFromFile:
             {},
         ]
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', {'ok': True}, id='result'),
+            pytest.param('path', 's3://bucket/data.csv', id='path'),
+            pytest.param(
+                'file_format',
+                extract_mod.FileFormat.CSV,
+                id='file-format',
+            ),
+            pytest.param('encoding', 'latin-1', id='encoding'),
+            pytest.param('extras', {'delimiter': '|'}, id='extras'),
+        ],
+    )
     def test_remote_uri_preserves_path_and_coerces_read_options(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that remote file extraction uses the original URI plus options."""
         captured: dict[str, Any] = {}
@@ -814,13 +854,17 @@ class TestExtractFromFile:
             {'encoding': 'latin-1', 'delimiter': '|'},
         )
 
-        assert result == {'ok': True}
-        assert captured['path'] == 's3://bucket/data.csv'
-        assert captured['file_format'] == extract_mod.FileFormat.CSV
         options = captured['options']
-        assert options is not None
-        assert options.encoding == 'latin-1'
-        assert options.extras == {'delimiter': '|'}
+        match check_name:
+            case 'result':
+                assert result == expected
+            case 'path' | 'file_format':
+                assert captured[check_name] == expected
+            case 'encoding' | 'extras':
+                assert options is not None
+                assert getattr(options, check_name) == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     @pytest.mark.parametrize(
         ('file_format', 'write', 'expected_extracts'),

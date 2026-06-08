@@ -314,7 +314,17 @@ class TestRegistryMappedResolution:
         """Test that mapped formats resolving to concrete handler classes."""
         assert mod.get_handler_class(file_format).format == file_format
 
-    def test_get_handler_returns_singleton_instance(self) -> None:
+    @pytest.mark.parametrize(
+        'check_name',
+        [
+            pytest.param('identity', id='identity'),
+            pytest.param('class', id='class'),
+        ],
+    )
+    def test_get_handler_returns_singleton_instance(
+        self,
+        check_name: str,
+    ) -> None:
         """
         Test that :func:`get_handler` returns a cached singleton for mapped
         formats.
@@ -323,8 +333,13 @@ class TestRegistryMappedResolution:
         first = mod.get_handler(self.singleton_format)
         second = mod.get_handler(self.singleton_format)
 
-        assert first is second
-        assert first.__class__ is expected_class
+        match check_name:
+            case 'identity':
+                assert first is second
+            case 'class':
+                assert first.__class__ is expected_class
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     @pytest.mark.parametrize(
         ('file_format', 'expected_spec'),
