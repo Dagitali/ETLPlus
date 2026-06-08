@@ -104,11 +104,21 @@ class TestApiConfig:
         url = cfg.build_endpoint_url(cfg.endpoints['users'])
         assert url == f'{expected_base}/users'
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('base_url', None, id='base-url'),
+            pytest.param('headers.X-Token', 'abc', id='header'),
+            pytest.param('endpoints.ping', True, id='endpoint'),
+        ],
+    )
     def test_flat_shape_supported(
         self,
         base_url: str,
         api_obj_factory: Callable[..., dict[str, Any]],
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that flat API config shape is supported and headers/endpoints are
@@ -121,9 +131,18 @@ class TestApiConfig:
             endpoints={'ping': '/ping'},
         )
         cfg = api_config_factory(obj)
-        assert cfg.base_url == base_url
-        assert cfg.headers.get('X-Token') == 'abc'
-        assert 'ping' in cfg.endpoints
+        match field.split('.'):
+            case ['base_url']:
+                actual = cfg.base_url
+                expected = base_url
+            case ['headers', header]:
+                actual = cfg.headers.get(header)
+            case ['endpoints', endpoint]:
+                actual = endpoint in cfg.endpoints
+            case _:
+                pytest.fail(f'Unsupported field path: {field}')
+
+        assert actual == expected
 
     def test_invalid_profile_base_path_does_not_break_effective_url(
         self,
@@ -147,10 +166,22 @@ class TestApiConfig:
         assert cfg.effective_base_path() is None
         assert cfg.effective_base_url() == base_url
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('base_url', None, id='base-url'),
+            pytest.param('headers.Accept', 'application/json', id='default-header'),
+            pytest.param('profiles.default', True, id='default-profile'),
+            pytest.param('profiles.prod', True, id='prod-profile'),
+            pytest.param('endpoints.list', True, id='endpoint'),
+        ],
+    )
     def test_parses_profiles_and_sets_defaults(
         self,
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that profiles are parsed and default values are set correctly.
@@ -169,18 +200,20 @@ class TestApiConfig:
             'endpoints': {'list': {'path': '/items'}},
         }
         cfg = api_config_factory(obj)
+        match field.split('.'):
+            case ['base_url']:
+                actual = cfg.base_url
+                expected = f'{base_url}/v1'
+            case ['headers', header]:
+                actual = cfg.headers.get(header)
+            case ['profiles', profile]:
+                actual = profile in cfg.profiles
+            case ['endpoints', endpoint]:
+                actual = endpoint in cfg.endpoints
+            case _:
+                pytest.fail(f'Unsupported field path: {field}')
 
-        # Default base_url/headers should be derived from the 'default'
-        # profile.
-
-        assert cfg.base_url == f'{base_url}/v1'
-        assert cfg.headers.get('Accept') == 'application/json'
-
-        # Profiles should be preserved.
-        assert {'default', 'prod'} <= set(cfg.profiles.keys())
-
-        # Endpoint should parse.
-        assert 'list' in cfg.endpoints
+        assert actual == expected
 
     def test_profile_attr_with_default(
         self,
@@ -210,10 +243,19 @@ class TestApiConfig:
         assert cfg.effective_base_path() == '/v1'
         assert cfg.effective_pagination_defaults() is not None
 
+    @pytest.mark.parametrize(
+        'accessor',
+        [
+            pytest.param('effective_base_path', id='base-path'),
+            pytest.param('effective_pagination_defaults', id='pagination-defaults'),
+            pytest.param('effective_rate_limit_defaults', id='rate-limit-defaults'),
+        ],
+    )
     def test_profile_attr_without_profiles_returns_none(
         self,
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        accessor: str,
     ) -> None:
         """
         Test that profile attribute access returns None when profiles are
@@ -221,9 +263,7 @@ class TestApiConfig:
         """
         obj = {'base_url': base_url, 'endpoints': {}}
         cfg = api_config_factory(obj)
-        assert cfg.effective_base_path() is None
-        assert cfg.effective_pagination_defaults() is None
-        assert cfg.effective_rate_limit_defaults() is None
+        assert getattr(cfg, accessor)() is None
 
     @pytest.mark.parametrize(
         ('field', 'expected'),
@@ -231,7 +271,9 @@ class TestApiConfig:
             pytest.param('headers.Accept', 'application/json', id='default-header'),
             pytest.param('headers.Authorization', 'Bearer token', id='profile-header'),
             pytest.param(
-                'headers.X-From-Defaults', '2', id='profile-overrides-default',
+                'headers.X-From-Defaults',
+                '2',
+                id='profile-overrides-default',
             ),
             pytest.param('headers.X-Top', 't', id='top-level-header'),
             pytest.param('profile.base_path', '/v1', id='base-path'),
@@ -525,9 +567,20 @@ class TestEndpointConfig:
     handling.
     """
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('method', 'POST', id='method'),
+            pytest.param('path_params', {'id': 'int'}, id='path-params'),
+            pytest.param('body.type', 'file', id='body-type'),
+            pytest.param('query_params', {'size': 'large'}, id='query-params'),
+        ],
+    )
     def test_captures_path_params_and_body(
         self,
         endpoint_config_factory: Callable[[dict[str, Any]], EndpointConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that path_params, query_params, and body are captured correctly.
@@ -541,11 +594,9 @@ class TestEndpointConfig:
                 'body': {'type': 'file', 'file_path': './x.png'},
             },
         )
-        assert ep.method == 'POST'
-        assert ep.path_params == {'id': 'int'}
         assert isinstance(ep.body, dict)
-        assert ep.body['type'] == 'file'
-        assert ep.query_params == {'size': 'large'}
+        actual = ep.body['type'] if field == 'body.type' else getattr(ep, field)
+        assert actual == expected
 
     def test_from_str_sets_no_method(
         self,
@@ -612,9 +663,19 @@ class TestEndpointConfig:
         """
         assert getattr(endpoint_config_factory(payload), field) == expected
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('path', '/users', id='path'),
+            pytest.param('method', 'GET', id='method'),
+            pytest.param('query_params.active', True, id='query-param'),
+        ],
+    )
     def test_parses_method(
         self,
         endpoint_config_factory: Callable[[dict[str, Any]], EndpointConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that method and query_params are parsed correctly in
@@ -627,9 +688,12 @@ class TestEndpointConfig:
                 'query_params': {'active': True},
             },
         )
-        assert ep.path == '/users'
-        assert ep.method == 'GET'
-        assert ep.query_params.get('active') is True
+        actual = (
+            ep.query_params.get('active')
+            if field == 'query_params.active'
+            else getattr(ep, field)
+        )
+        assert actual == expected
 
     def test_strips_mapping_path(
         self,

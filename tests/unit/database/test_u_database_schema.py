@@ -291,7 +291,9 @@ class TestModels:
             pytest.param('columns.1.unique', True, id='column-unique'),
             pytest.param('primary_key', True, id='primary-key'),
             pytest.param(
-                'foreign_keys.0.ondelete', 'CASCADE', id='foreign-key-ondelete',
+                'foreign_keys.0.ondelete',
+                'CASCADE',
+                id='foreign-key-ondelete',
             ),
         ],
     )

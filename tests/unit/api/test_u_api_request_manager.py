@@ -271,19 +271,25 @@ class TestRequestManager:
         assert kwargs['timeout'] == manager.default_timeout
         assert kwargs['request_callable'] is cb
 
-    def test_default_init_values(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('retry', None, id='retry'),
+            pytest.param('retry_network_errors', False, id='retry-network-errors'),
+            pytest.param('default_timeout', 10.0, id='default-timeout'),
+            pytest.param('session', None, id='session'),
+            pytest.param('session_factory', None, id='session-factory'),
+            pytest.param('retry_cap', 30.0, id='retry-cap'),
+            pytest.param('session_adapters', None, id='session-adapters'),
+        ],
+    )
+    def test_default_init_values(self, field: str, expected: object) -> None:
         """
         Test that :class:`RequestManager` default initialization values are
         stable and explicit.
         """
         manager = RequestManager()
-        assert manager.retry is None
-        assert manager.retry_network_errors is False
-        assert manager.default_timeout == 10.0
-        assert manager.session is None
-        assert manager.session_factory is None
-        assert manager.retry_cap == 30.0
-        assert manager.session_adapters is None
+        assert getattr(manager, field) == expected
 
     def test_context_manager_handles_exceptions(self) -> None:
         """

@@ -566,23 +566,39 @@ class TestNamingConventions:
 class TestOptionsContracts:
     """Unit tests for base option data classes."""
 
-    def test_dataset_option_helpers_preserve_empty_string_values(self) -> None:
+    @pytest.mark.parametrize(
+        ('method_name', 'args', 'kwargs'),
+        [
+            pytest.param(
+                'dataset_from_options', (ReadOptions(dataset=''),), {}, id='option',
+            ),
+            pytest.param(
+                'resolve_dataset',
+                (None,),
+                {'options': ReadOptions(dataset='')},
+                id='option-default',
+            ),
+            pytest.param(
+                'resolve_dataset',
+                ('',),
+                {'options': ReadOptions(dataset='other')},
+                id='explicit',
+            ),
+        ],
+    )
+    def test_dataset_option_helpers_preserve_empty_string_values(
+        self,
+        method_name: str,
+        args: tuple[object, ...],
+        kwargs: dict[str, object],
+    ) -> None:
         """
         Test that dataset helpers preserving empty-string explicit/option
         values.
         """
         handler = DtaFile()
-        options = ReadOptions(dataset='')
 
-        assert handler.dataset_from_options(options) == ''
-        assert handler.resolve_dataset(None, options=options) == ''
-        assert (
-            handler.resolve_dataset(
-                '',
-                options=ReadOptions(dataset='other'),
-            )
-            == ''
-        )
+        assert getattr(handler, method_name)(*args, **kwargs) == ''
 
     @pytest.mark.parametrize(
         ('options', 'expected'),
@@ -637,18 +653,26 @@ class TestOptionsContracts:
         assert not second.extras
         assert first.extras is not second.extras
 
-    def test_root_tag_option_helper_use_override_then_default(self) -> None:
+    @pytest.mark.parametrize(
+        ('options', 'kwargs', 'expected'),
+        [
+            pytest.param(None, {}, 'root', id='default'),
+            pytest.param(WriteOptions(root_tag='items'), {}, 'items', id='override'),
+            pytest.param(None, {'default': 'dataset'}, 'dataset', id='custom-default'),
+        ],
+    )
+    def test_root_tag_option_helper_use_override_then_default(
+        self,
+        options: WriteOptions | None,
+        kwargs: dict[str, str],
+        expected: str,
+    ) -> None:
         """
         Test that :class:`XlsFile` root-tag helper uses explicit values, then
         defaults.
         """
         handler = XlsFile()
-        assert handler.root_tag_from_write_options(None) == 'root'
-        assert (
-            handler.root_tag_from_write_options(WriteOptions(root_tag='items'))
-            == 'items'
-        )
-        assert handler.root_tag_from_write_options(None, default='dataset') == 'dataset'
+        assert handler.root_tag_from_write_options(options, **kwargs) == expected
 
     def test_write_options_are_frozen(self) -> None:
         """Test :class:`WriteOptions` immutability contract."""

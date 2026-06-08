@@ -985,16 +985,28 @@ class TestTransformInternalHelpers:
         normalized = _normalize_operation_keys({_Step('filter'): {'x': 1}})
         assert normalized == {'filter': {'x': 1}}
 
-    def test_normalize_specs_handles_scalar_and_sequence(self) -> None:
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(None, [], id='none'),
+            pytest.param({'field': 'age'}, [{'field': 'age'}], id='scalar'),
+            pytest.param(
+                [{'field': 'age'}, {'field': 'age'}],
+                [{'field': 'age'}, {'field': 'age'}],
+                id='sequence',
+            ),
+        ],
+    )
+    def test_normalize_specs_handles_scalar_and_sequence(
+        self,
+        value: object,
+        expected: list[object],
+    ) -> None:
         """
         Test that :func:`_normalize_specs` coerces scalars to list and keeps
         sequences.
         """
-
-        single = {'field': 'age'}
-        assert not _normalize_specs(None)
-        assert _normalize_specs(single) == [single]
-        assert _normalize_specs([single, single]) == [single, single]
+        assert _normalize_specs(value) == expected
 
     def test_resolve_aggregator(self) -> None:
         """

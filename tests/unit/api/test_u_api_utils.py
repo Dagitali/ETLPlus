@@ -126,21 +126,47 @@ class TestBuildPaginationCfg:
         """Test that missing pagination type returns ``None``."""
         assert _utils.build_pagination_cfg(None, None) is None
 
-    def test_page_config_defaults_invalid_integer_overrides(self) -> None:
+    @pytest.mark.parametrize(
+        ('overrides', 'field', 'expected'),
+        [
+            pytest.param(
+                {'type': 'page', 'start_page': 'invalid', 'page_size': True},
+                'start_page',
+                1,
+                id='invalid-start-page',
+            ),
+            pytest.param(
+                {'type': 'page', 'start_page': 'invalid', 'page_size': True},
+                'page_size',
+                100,
+                id='invalid-page-size-bool',
+            ),
+            pytest.param(
+                {'type': 'page', 'start_page': 0, 'page_size': 0},
+                'start_page',
+                1,
+                id='zero-start-page',
+            ),
+            pytest.param(
+                {'type': 'page', 'start_page': 0, 'page_size': 0},
+                'page_size',
+                100,
+                id='zero-page-size',
+            ),
+        ],
+    )
+    def test_page_config_defaults_invalid_integer_overrides(
+        self,
+        overrides: Mapping[str, object],
+        field: str,
+        expected: int,
+    ) -> None:
         """Invalid page integer overrides should fall back without raising."""
-        cfg_map = _utils.build_pagination_cfg(
-            None,
-            {
-                'type': 'page',
-                'start_page': 'invalid',
-                'page_size': True,
-            },
-        )
+        cfg_map = _utils.build_pagination_cfg(None, overrides)
 
         assert cfg_map is not None
         page_cfg = cast(PagePaginationConfigDict, cfg_map)
-        assert page_cfg['start_page'] == 1
-        assert page_cfg['page_size'] == 100
+        assert page_cfg[field] == expected
 
     def test_cursor_config_defaults_invalid_page_size_override(self) -> None:
         """Invalid cursor page-size overrides should fall back without raising."""
@@ -155,22 +181,6 @@ class TestBuildPaginationCfg:
         assert cfg_map is not None
         cursor_cfg = cast(CursorPaginationConfigDict, cfg_map)
         assert cursor_cfg['page_size'] == 100
-
-    def test_page_config_defaults_non_positive_page_size(self) -> None:
-        """Non-positive page-size overrides should fall back without raising."""
-        cfg_map = _utils.build_pagination_cfg(
-            None,
-            {
-                'type': 'page',
-                'start_page': 0,
-                'page_size': 0,
-            },
-        )
-
-        assert cfg_map is not None
-        page_cfg = cast(PagePaginationConfigDict, cfg_map)
-        assert page_cfg['start_page'] == 1
-        assert page_cfg['page_size'] == 100
 
     def test_page_config_with_overrides(self) -> None:
         """Test building page-based pagination config with overrides."""
