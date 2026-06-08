@@ -154,46 +154,12 @@ class TestLoad:
         assert result['status'] == 'success'
         assert path.exists()
 
-    @pytest.mark.parametrize(
-        ('exc_type', 'call', 'args', 'err_msg'),
-        [
-            (
-                ValueError,
-                load,
-                [
-                    {'test': 'data'},
-                    'file',
-                    'output.unsupported',
-                    'unsupported',
-                ],
-                'Invalid FileFormat',
-            ),
-        ],
-    )
-    def test_wrapper_file_unsupported_format(
-        self,
-        exc_type: type[Exception],
-        call: Callable,
-        args: list[Any],
-        err_msg: str,
-    ) -> None:
+    def test_wrapper_file_unsupported_format(self) -> None:
         """
         Test error raised for unsupported file format.
-
-        Parameters
-        ----------
-        exc_type : type[Exception]
-            Expected exception type.
-        call : Callable
-            Function to call.
-        args : list[Any]
-            Arguments to pass to the function.
-        err_msg : str
-            Expected error message substring.
         """
-        with pytest.raises(exc_type) as e:
-            call(*args)
-        assert err_msg in str(e.value)
+        with pytest.raises(ValueError, match='Invalid FileFormat'):
+            load({'test': 'data'}, 'file', 'output.unsupported', 'unsupported')
 
 
 class TestLoadData:
@@ -358,16 +324,14 @@ class TestLoadErrors:
     """
 
     @pytest.mark.parametrize(
-        ('exc_type', 'call', 'args', 'err_msg'),
+        ('call', 'args', 'err_msg'),
         [
             (
-                ValueError,
                 load_data,
                 ['/nonexistent/file.json'],
                 'Invalid data source',
             ),
             (
-                ValueError,
                 load,
                 ['/nonexistent/file.json', 'invalid', 'source', 'json'],
                 'Invalid data source',
@@ -376,29 +340,24 @@ class TestLoadErrors:
     )
     def test_error_cases(
         self,
-        exc_type: type[Exception],
         call: Callable[..., Any],
         args: list[Any],
-        err_msg: str | None,
+        err_msg: str,
     ) -> None:
         """
         Test parametrized error case tests for load/load_data.
 
         Parameters
         ----------
-        exc_type : type[Exception]
-            Expected exception type.
         call : Callable[..., Any]
             Function to call.
         args : list[Any]
             Arguments to pass to the function.
-        err_msg : str | None
-            Expected error message substring, if applicable.
+        err_msg : str
+            Expected error message substring.
         """
-        with pytest.raises(exc_type) as exc:
+        with pytest.raises(ValueError, match=err_msg):
             call(*args)
-        if err_msg:
-            assert err_msg in str(exc.value)
 
 
 class TestLoadToApi:
