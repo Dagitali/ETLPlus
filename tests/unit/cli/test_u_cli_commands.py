@@ -11,6 +11,7 @@ from collections.abc import Callable
 from datetime import UTC
 from datetime import datetime
 from pathlib import Path
+from textwrap import dedent
 from typing import Any
 from typing import cast
 
@@ -829,20 +830,19 @@ class TestCliInvokeParsing:
         """Repeated CLI schedule dispatch should not re-run the same due trigger."""
         config_path = tmp_path / 'pipeline.yml'
         config_path.write_text(
-            '\n'.join(
-                (
-                    'name: CLI Scheduler Test',
-                    'sources: []',
-                    'targets: []',
-                    'jobs: []',
-                    'schedules:',
-                    '  - name: nightly_all',
-                    '    cron: "0 2 11 5 1"',
-                    '    timezone: UTC',
-                    '    target:',
-                    '      run_all: true',
-                    '',
-                ),
+            dedent(
+                """
+                name: CLI Scheduler Test
+                sources: []
+                targets: []
+                jobs: []
+                schedules:
+                  - name: nightly_all
+                    cron: "0 2 11 5 1"
+                    timezone: UTC
+                    target:
+                      run_all: true
+                """,
             ),
             encoding='utf-8',
         )
@@ -878,8 +878,7 @@ class TestCliInvokeParsing:
             '--run-pending',
         )
 
-        assert first_result.exit_code == 0
-        assert second_result.exit_code == 0
+        assert (first_result.exit_code, second_result.exit_code) == (0, 0)
         assert len(dispatch_calls) == 1
 
         first_payload = json.loads(first_result.stdout)
