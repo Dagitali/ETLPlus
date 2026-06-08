@@ -56,13 +56,25 @@ class TestIoHelpers:
         connection = type('_Conn', (), {'close': 1})()
         mod.EmbeddedDatabaseTableOption().close_connection(connection)
 
-    def test_coerce_path_accepts_str_and_path(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize(
+        'as_string',
+        [
+            pytest.param(True, id='str'),
+            pytest.param(False, id='path'),
+        ],
+    )
+    def test_coerce_path_accepts_str_and_path(
+        self,
+        tmp_path: Path,
+        as_string: bool,
+    ) -> None:
         """
         Test path coercion from strings and existing :class:`Path` objects.
         """
         value = tmp_path / 'file.txt'
-        assert mod.coerce_path(str(value)) == value
-        assert mod.coerce_path(value) == value
+        input_value = str(value) if as_string else value
+
+        assert mod.coerce_path(input_value) == value
 
     @pytest.mark.parametrize(
         ('payload', 'expected'),

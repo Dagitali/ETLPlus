@@ -22,14 +22,24 @@ from etlplus.queue import QueueService
 class TestAzureServiceBusQueue:
     """Unit tests for :class:`etlplus.queue.AzureServiceBusQueue`."""
 
-    def test_from_obj_accepts_queue_alias(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('name', 'orders', id='name'),
+            pytest.param('queue_name', 'orders-in', id='queue-alias'),
+        ],
+    )
+    def test_from_obj_accepts_queue_alias(
+        self,
+        field_name: str,
+        expected: str,
+    ) -> None:
         """Test Azure queue alias parsing."""
         queue = AzureServiceBusQueue.from_obj(
             {'name': '  orders  ', 'queue': '  orders-in  '},
         )
 
-        assert queue.name == 'orders'
-        assert queue.queue_name == 'orders-in'
+        assert getattr(queue, field_name) == expected
 
     @pytest.mark.parametrize(
         ('field_name', 'expected'),

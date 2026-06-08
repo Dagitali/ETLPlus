@@ -519,7 +519,23 @@ class TestPaginatorInternalBranches:
         with pytest.raises(ValueError, match='fetch must be provided'):
             list(paginator.paginate_iter('https://example.test/items'))
 
-    def test_post_init_normalizes_invalid_values(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('type', PaginationType.PAGE, id='type'),
+            pytest.param('start_page', 1, id='start-page'),
+            pytest.param('page_size', 1, id='page-size'),
+            pytest.param('page_param', 'page', id='page-param'),
+            pytest.param('size_param', 'per_page', id='size-param'),
+            pytest.param('cursor_param', PaginationType.CURSOR, id='cursor-param'),
+            pytest.param('limit_param', 'limit', id='limit-param'),
+        ],
+    )
+    def test_post_init_normalizes_invalid_values(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """
         Test that direct construction normalizes type/start/page_size/params.
         """
@@ -533,13 +549,7 @@ class TestPaginatorInternalBranches:
             limit_param='',
             fetch=_dummy_fetch,
         )
-        assert paginator.type == PaginationType.PAGE
-        assert paginator.start_page == 1
-        assert paginator.page_size == 1
-        assert paginator.page_param == 'page'
-        assert paginator.size_param == 'per_page'
-        assert paginator.cursor_param == PaginationType.CURSOR
-        assert paginator.limit_param == 'limit'
+        assert getattr(paginator, field_name) == expected
 
     def test_post_init_normalizes_zero_start_page_and_keeps_limit_param(
         self,

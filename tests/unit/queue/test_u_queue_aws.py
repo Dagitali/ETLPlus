@@ -28,7 +28,18 @@ class TestAwsSqsQueue:
         with pytest.raises(ValueError, match='must end with ".fifo"'):
             AwsSqsQueue.from_obj({'name': 'events', 'queue_type': 'fifo'})
 
-    def test_from_obj_normalizes_fifo_string_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('deduplication_id', 'dedupe-1', id='deduplication-id'),
+            pytest.param('message_group_id', 'events', id='message-group-id'),
+        ],
+    )
+    def test_from_obj_normalizes_fifo_string_fields(
+        self,
+        field_name: str,
+        expected: str,
+    ) -> None:
         """Test SQS FIFO-only string metadata trims optional fields."""
         queue = AwsSqsQueue.from_obj(
             {
@@ -38,8 +49,7 @@ class TestAwsSqsQueue:
             },
         )
 
-        assert queue.deduplication_id == 'dedupe-1'
-        assert queue.message_group_id == 'events'
+        assert getattr(queue, field_name) == expected
 
     @pytest.mark.parametrize(
         ('payload', 'expected_type'),
