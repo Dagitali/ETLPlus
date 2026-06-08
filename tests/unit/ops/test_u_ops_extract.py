@@ -778,9 +778,29 @@ class TestExtractFromFile:
 
         assert result == {'ok': True}
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', {'ok': True}, id='result'),
+            pytest.param(
+                'calls',
+                [
+                    {
+                        'file_cls': extract_mod.File,
+                        'file_format': 'json',
+                        'file_path': '/tmp/data.json',
+                    },
+                    {},
+                ],
+                id='calls',
+            ),
+        ],
+    )
     def test_read_without_options_uses_plain_file_read(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """File extraction without options should not pass read options."""
         calls: list[dict[str, object]] = []
@@ -807,15 +827,9 @@ class TestExtractFromFile:
 
         monkeypatch.setattr(extract_mod, 'resolve_file', _resolve_file)
 
-        assert extract_from_file('/tmp/data.json', 'json') == {'ok': True}
-        assert calls == [
-            {
-                'file_cls': extract_mod.File,
-                'file_format': 'json',
-                'file_path': '/tmp/data.json',
-            },
-            {},
-        ]
+        result = extract_from_file('/tmp/data.json', 'json')
+        actual = result if check_name == 'result' else calls
+        assert actual == expected
 
     @pytest.mark.parametrize(
         ('check_name', 'expected'),

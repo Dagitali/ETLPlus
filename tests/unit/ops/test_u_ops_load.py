@@ -844,9 +844,20 @@ class TestLoadToFile:
         assert result['status'] == 'success'
         assert output_path.exists()
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('status', 'success', id='status'),
+            pytest.param('records', 1, id='records'),
+            pytest.param('exists', True, id='exists'),
+            pytest.param('loaded-data', {'status': 'ok'}, id='loaded-data'),
+        ],
+    )
     def test_to_file_infers_format_when_none(
         self,
         tmp_path: Path,
+        check_name: str,
+        expected: object,
     ) -> None:
         """
         Test that omitting file_format infers from the output extension.
@@ -856,16 +867,36 @@ class TestLoadToFile:
 
         result = load_to_file(payload, str(output_path), None)
 
-        assert result['status'] == 'success'
-        assert result['records'] == 1
-        assert output_path.exists()
-        with open(output_path, encoding='utf-8') as f:
-            loaded_data = json.load(f)
-        assert loaded_data == payload
+        match check_name:
+            case 'status' | 'records':
+                assert result[check_name] == expected
+            case 'exists':
+                assert output_path.exists() is expected
+            case 'loaded-data':
+                with open(output_path, encoding='utf-8') as f:
+                    assert json.load(f) == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('status', 'success', id='status'),
+            pytest.param('message', 'Data loaded to auto.json', id='message'),
+            pytest.param('path', 'auto.json', id='path'),
+            pytest.param('file_format', None, id='file-format'),
+            pytest.param('root_tag', '99', id='root-tag'),
+            pytest.param('table', '123', id='table'),
+            pytest.param('dataset', '456', id='dataset'),
+            pytest.param('inner_name', '789', id='inner-name'),
+            pytest.param('extras', {'indent': 2}, id='extras'),
+        ],
+    )
     def test_to_file_infers_format_and_forwards_coerced_options_when_none(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test inferred format path when optional write options are supplied."""
         captured: dict[str, Any] = {}
@@ -906,17 +937,19 @@ class TestLoadToFile:
             },
         )
 
-        assert result['status'] == 'success'
-        assert result['message'] == 'Data loaded to auto.json'
-        assert captured['path'] == 'auto.json'
-        assert captured['file_format'] is None
         options = captured['options']
-        assert options is not None
-        assert options.root_tag == '99'
-        assert options.table == '123'
-        assert options.dataset == '456'
-        assert options.inner_name == '789'
-        assert options.extras == {'indent': 2}
+        match check_name:
+            case 'status' | 'message':
+                assert result[check_name] == expected
+            case 'path':
+                assert captured['path'] == expected
+            case 'file_format':
+                assert captured['file_format'] is expected
+            case 'root_tag' | 'table' | 'dataset' | 'inner_name' | 'extras':
+                assert options is not None
+                assert getattr(options, check_name) == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_to_file_unsupported_format(
         self,

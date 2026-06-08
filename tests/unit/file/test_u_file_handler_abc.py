@@ -22,9 +22,18 @@ from etlplus.file import _handler_abc as mod
 class TestHandlerAbcHelpers:
     """Unit tests for internal helper functions in ``_handler_abc``."""
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', None, id='result'),
+            pytest.param('parent-exists', False, id='parent-exists'),
+        ],
+    )
     def test_prepare_rows_for_write_returns_none_for_empty_rows(
         self,
         tmp_path: Path,
+        check_name: str,
+        expected: object,
     ) -> None:
         """
         Test that empty payload writes short-circuit without creating
@@ -38,8 +47,8 @@ class TestHandlerAbcHelpers:
             format_name='CSV',
         )
 
-        assert result is None
-        assert not path.parent.exists()
+        actual = result if check_name == 'result' else path.parent.exists()
+        assert actual is expected
 
     @pytest.mark.parametrize(
         ('check_name', 'expected'),
