@@ -879,7 +879,17 @@ class TestCliInvokeParsing:
             first_payload['dispatched_count'],
             first_payload['run_count'],
         ) == (1, 1)
-        assert first_payload['runs'][0]['run_id'] == 'run-1'
+        assert first_payload['runs'] == [
+            {
+                'catchup': False,
+                'run_all': True,
+                'run_id': 'run-1',
+                'schedule': 'nightly_all',
+                'status': 'ok',
+                'trigger': 'cron',
+                'triggered_at': '2026-05-11T02:00:00+00:00',
+            },
+        ]
         assert (
             second_payload['dispatched_count'],
             second_payload['run_count'],
