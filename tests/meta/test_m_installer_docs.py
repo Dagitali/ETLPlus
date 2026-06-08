@@ -51,6 +51,21 @@ CONDA_STATUS_SNIPPETS = (
     'tagged',
     'published',
 )
+PIP_VENV_PATH_SNIPPETS = (
+    'if [[ "${RUNNER_OS}" == "Windows" ]]; then',
+    'venv_python="${{ inputs.venv-path }}/Scripts/python.exe"',
+    'etlplus_bin="${{ inputs.venv-path }}/Scripts/etlplus.exe"',
+    'venv_python="${{ inputs.venv-path }}/bin/python"',
+    'etlplus_bin="${{ inputs.venv-path }}/bin/etlplus"',
+)
+TOOL_INSTALLER_BIN_SNIPPETS = (
+    'PIPX_BIN_DIR="${RUNNER_TEMP}/etlplus-pipx-bin"',
+    'UV_TOOL_BIN_DIR="${RUNNER_TEMP}/etlplus-uv-bin"',
+    'etlplus_bin="${PIPX_BIN_DIR}/etlplus"',
+    'etlplus_bin="${PIPX_BIN_DIR}/etlplus.exe"',
+    'etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus"',
+    'etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus.exe"',
+)
 
 
 INSTALLER_CONTRACTS = (
@@ -181,39 +196,26 @@ def test_installer_smoke_keeps_expected_supported_installer_steps(
     ]
 
 
+@pytest.mark.parametrize('snippet', PIP_VENV_PATH_SNIPPETS)
 def test_installer_smoke_resolves_pip_venv_paths_per_runner_os(
     installer_smoke_action_text: str,
+    snippet: str,
 ) -> None:
     """Test pip wheel smoke uses OS-aware venv script paths."""
-    expected_snippets = (
-        'if [[ "${RUNNER_OS}" == "Windows" ]]; then',
-        'venv_python="${{ inputs.venv-path }}/Scripts/python.exe"',
-        'etlplus_bin="${{ inputs.venv-path }}/Scripts/etlplus.exe"',
-        'venv_python="${{ inputs.venv-path }}/bin/python"',
-        'etlplus_bin="${{ inputs.venv-path }}/bin/etlplus"',
-    )
-
-    assert all(snippet in installer_smoke_action_text for snippet in expected_snippets)
+    assert snippet in installer_smoke_action_text
 
 
+@pytest.mark.parametrize('snippet', TOOL_INSTALLER_BIN_SNIPPETS)
 def test_installer_smoke_uses_explicit_tool_installer_entrypoint_paths(
     installer_smoke_action_text: str,
+    snippet: str,
 ) -> None:
     """
     Test that tool-installer smoke checks do not rely on ambient PATH state.
     """
-    expected_snippets = (
-        'PIPX_BIN_DIR="${RUNNER_TEMP}/etlplus-pipx-bin"',
-        'UV_TOOL_BIN_DIR="${RUNNER_TEMP}/etlplus-uv-bin"',
-        'etlplus_bin="${PIPX_BIN_DIR}/etlplus"',
-        'etlplus_bin="${PIPX_BIN_DIR}/etlplus.exe"',
-        'etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus"',
-        'etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus.exe"',
-    )
-
     assert '$HOME/.local/bin/etlplus' not in installer_smoke_action_text
     assert 'command -v etlplus' not in installer_smoke_action_text
-    assert all(snippet in installer_smoke_action_text for snippet in expected_snippets)
+    assert snippet in installer_smoke_action_text
 
 
 @pytest.mark.parametrize(
