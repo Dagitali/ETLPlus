@@ -79,14 +79,23 @@ class TestRateLimitConfig:
         assert cfg.sleep_seconds is None
         assert cfg.max_per_sec is None
 
-    def test_from_inputs_non_mapping_rate_limit_is_ignored(self) -> None:
+    @pytest.mark.parametrize(
+        'field',
+        [
+            pytest.param('sleep_seconds', id='sleep-seconds'),
+            pytest.param('max_per_sec', id='max-per-sec'),
+        ],
+    )
+    def test_from_inputs_non_mapping_rate_limit_is_ignored(
+        self,
+        field: str,
+    ) -> None:
         """
         Test that :meth:`from_inputs` ignores unsupported rate_limit input
         types.
         """
         cfg = RateLimitConfig.from_inputs(rate_limit=cast(Any, 'bad'))
-        assert cfg.sleep_seconds is None
-        assert cfg.max_per_sec is None
+        assert getattr(cfg, field) is None
 
     @pytest.mark.parametrize(
         ('obj', 'expect'),

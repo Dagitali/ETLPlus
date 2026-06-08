@@ -464,7 +464,20 @@ class TestPaginateWithClient:
 class TestUtilsInternalBranches:
     """Branch-focused tests for internal API utility helpers."""
 
-    def test_build_endpoint_client_helper(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('base_url', 'https://example.test', id='base-url'),
+            pytest.param('base_path', '/v1', id='base-path'),
+            pytest.param('endpoints.users', '/users', id='endpoint'),
+            pytest.param('retry_network_errors', True, id='retry-network-errors'),
+        ],
+    )
+    def test_build_endpoint_client_helper(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """
         Test that :func:`build_endpoint_client` wires env options into
         :class:`EndpointClient`.
@@ -475,10 +488,12 @@ class TestUtilsInternalBranches:
             endpoints={'users': '/users'},
             env={'retry_network_errors': True},
         )
-        assert client.base_url == 'https://example.test'
-        assert client.base_path == '/v1'
-        assert client.endpoints['users'] == '/users'
-        assert client.retry_network_errors is True
+        actual = (
+            client.endpoints['users']
+            if field == 'endpoints.users'
+            else getattr(client, field)
+        )
+        assert actual == expected
 
     def test_build_pagination_cfg_page_cursor_and_unknown_variants(
         self,

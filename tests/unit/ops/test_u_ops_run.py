@@ -2461,7 +2461,20 @@ class TestRunInternals:
             'rules': {'id': {'required': True}},
         }
 
-    def test_validation_config_ignores_non_mapping_rulesets(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('enabled', True, id='enabled'),
+            pytest.param('rules', {}, id='rules'),
+            pytest.param('severity', 'error', id='severity'),
+            pytest.param('phase', 'before_transform', id='phase'),
+        ],
+    )
+    def test_validation_config_ignores_non_mapping_rulesets(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Job validation config should degrade cleanly for invalid ruleset shapes."""
         job = SimpleNamespace(
             validate=SimpleNamespace(
@@ -2474,10 +2487,7 @@ class TestRunInternals:
 
         settings = run_mod._JobValidationConfig.from_job(job, cfg)
 
-        assert settings.enabled is True
-        assert settings.rules == {}
-        assert settings.severity == 'error'
-        assert settings.phase == 'before_transform'
+        assert getattr(settings, field) == expected
 
 
 class TestRunPipeline:

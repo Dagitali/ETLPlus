@@ -467,11 +467,23 @@ class TestApiProfileConfig:
         assert prof.base_url == base_url
         assert prof.headers == {'A': '9', 'B': '2'}
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('pagination_defaults.type', 'page', id='pagination-type'),
+            pytest.param('pagination_defaults.page_param', 'p', id='page-param'),
+            pytest.param('pagination_defaults.size_param', 's', id='size-param'),
+            pytest.param('rate_limit_defaults.sleep_seconds', 0.1, id='sleep-seconds'),
+            pytest.param('rate_limit_defaults.max_per_sec', 5, id='max-per-sec'),
+        ],
+    )
     def test_parses_defaults_blocks(
         self,
         base_url: str,
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
         api_profile_defaults_factory: Callable[..., dict[str, Any]],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that defaults blocks are parsed and types are correct.
@@ -489,24 +501,15 @@ class TestApiProfileConfig:
         }
         prof = profile_config_factory(obj)
 
-        # Ensure types are parsed.
-        assert isinstance(
-            prof.pagination_defaults,
-            (PaginationConfig, type(None)),
+        section_name, attr = field.split('.', maxsplit=1)
+        section = getattr(prof, section_name)
+        expected_type = (
+            PaginationConfig
+            if section_name == 'pagination_defaults'
+            else RateLimitConfig
         )
-        assert isinstance(
-            prof.rate_limit_defaults,
-            (RateLimitConfig, type(None)),
-        )
-
-        # Spot-check key fields.
-        if prof.pagination_defaults is not None:
-            assert prof.pagination_defaults.type == 'page'
-            assert prof.pagination_defaults.page_param == 'p'
-            assert prof.pagination_defaults.size_param == 's'
-        if prof.rate_limit_defaults is not None:
-            assert prof.rate_limit_defaults.sleep_seconds == 0.1
-            assert prof.rate_limit_defaults.max_per_sec == 5
+        assert isinstance(section, expected_type)
+        assert getattr(section, attr) == expected
 
     @pytest.mark.parametrize(
         ('field', 'expected'),
