@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import ast
 import sys
-import tomllib
 from pathlib import Path
 
 from tests.meta.pytest_meta_support import canonical_requirement_name
+from tests.meta.pytest_meta_support import normalized_text
+from tests.meta.pytest_meta_support import read_text
+from tests.meta.pytest_meta_support import read_toml
 from tests.pytest_shared_support import REPO_ROOT
 
 # SECTION: CONSTANTS ======================================================== #
@@ -39,7 +41,7 @@ def _direct_external_imports(package_path: Path) -> set[str]:
     """Return direct external top-level imports used by Python files."""
     imports: set[str] = set()
     for path in package_path.rglob('*.py'):
-        tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+        tree = ast.parse(read_text(path), filename=str(path))
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 imports.update(alias.name.partition('.')[0] for alias in node.names)
@@ -49,14 +51,9 @@ def _direct_external_imports(package_path: Path) -> set[str]:
     return imports - sys.stdlib_module_names - {'etlplus'}
 
 
-def _normalized_text(value: str) -> str:
-    """Return case-folded text with Markdown line wrapping normalized."""
-    return ' '.join(value.casefold().split())
-
-
 def _pyproject_dependency_names() -> set[str]:
     """Return base dependency names declared by ``pyproject.toml``."""
-    pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
+    pyproject = read_toml(PYPROJECT_PATH)
     return {
         canonical_requirement_name(requirement)
         for requirement in pyproject['project']['dependencies']
@@ -65,7 +62,7 @@ def _pyproject_dependency_names() -> set[str]:
 
 def _snapshot_dependency_names() -> set[str]:
     """Return base dependency names from the design-note snapshot block."""
-    text = DEPENDENCY_POLICY_NOTES_PATH.read_text(encoding='utf-8')
+    text = read_text(DEPENDENCY_POLICY_NOTES_PATH)
     marker = '## Base Dependency Snapshot'
     section = text.split(marker, maxsplit=1)[1].split('## ', maxsplit=1)[0]
     block = section.split('```text', maxsplit=1)[1].split('```', maxsplit=1)[0]
@@ -97,7 +94,7 @@ class TestToolDependencyDeclarations:
 
     def test_sbom_workflow_installs_pinned_isolated_tool(self) -> None:
         """Test SBOM generation isolates the pinned tool from runtime deps."""
-        workflow_text = SBOM_WORKFLOW_PATH.read_text(encoding='utf-8')
+        workflow_text = read_text(SBOM_WORKFLOW_PATH)
 
         assert 'python-bootstrap: "."' in workflow_text
         assert "CYCLONEDX_BOM_VERSION: '7.2.2'" in workflow_text
@@ -115,9 +112,7 @@ class TestToolDependencyDeclarations:
         self,
     ) -> None:
         """Test release notes keep lockfile changes framed as maintenance."""
-        release_notes_text = _normalized_text(
-            RELEASE_NOTES_TEMPLATE_PATH.read_text(encoding='utf-8'),
-        )
+        release_notes_text = normalized_text(read_text(RELEASE_NOTES_TEMPLATE_PATH))
 
         assert '`pyproject.toml`' in release_notes_text
         assert 'canonical package metadata source' in release_notes_text
@@ -125,9 +120,7 @@ class TestToolDependencyDeclarations:
 
     def test_release_workflow_docs_preserve_artifact_validation_path(self) -> None:
         """Test workflow docs keep release validation responsibilities explicit."""
-        ci_cd_text = _normalized_text(
-            CI_CD_WORKFLOWS_PATH.read_text(encoding='utf-8'),
-        )
+        ci_cd_text = normalized_text(read_text(CI_CD_WORKFLOWS_PATH))
 
         expected_snippets = (
             'build source and wheel distributions with `python -m build`',
@@ -141,11 +134,9 @@ class TestToolDependencyDeclarations:
 
     def test_uv_lockfile_gate_is_documented_for_required_checks(self) -> None:
         """Test PR lockfile gate stays reflected in workflow and branch docs."""
-        pr_workflow_text = PR_WORKFLOW_PATH.read_text(encoding='utf-8')
-        ci_cd_text = _normalized_text(
-            CI_CD_WORKFLOWS_PATH.read_text(encoding='utf-8'),
-        )
-        branch_protection_text = BRANCH_PROTECTION_PATH.read_text(encoding='utf-8')
+        pr_workflow_text = read_text(PR_WORKFLOW_PATH)
+        ci_cd_text = normalized_text(read_text(CI_CD_WORKFLOWS_PATH))
+        branch_protection_text = read_text(BRANCH_PROTECTION_PATH)
 
         assert 'name: Check uv lockfile' in pr_workflow_text
         assert 'run: uv lock --check' in pr_workflow_text

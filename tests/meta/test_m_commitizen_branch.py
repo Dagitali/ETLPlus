@@ -7,9 +7,9 @@ Guardrails for local Commitizen branch validation.
 from __future__ import annotations
 
 import pytest
-import yaml  # type: ignore[import]
 
 import tools.check_commitizen_branch as commitizen_branch
+from tests.meta.pytest_meta_support import read_yaml
 from tests.pytest_shared_support import REPO_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
@@ -44,9 +44,7 @@ class TestCommitizenBranchCheck:
         """
         Test Dependabot update commits use Commitizen-compatible types.
         """
-        dependabot_config = yaml.safe_load(
-            DEPENDABOT_CONFIG_PATH.read_text(encoding='utf-8'),
-        )
+        dependabot_config = read_yaml(DEPENDABOT_CONFIG_PATH)
 
         prefixes = {
             update['commit-message']['prefix']

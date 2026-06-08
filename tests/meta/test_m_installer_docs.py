@@ -11,8 +11,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-import yaml
 
+from tests.meta.pytest_meta_support import read_text
+from tests.meta.pytest_meta_support import read_yaml
 from tests.pytest_shared_support import REPO_ROOT
 
 # SECTION: TYPES ============================================================ #
@@ -89,15 +90,13 @@ CONDA_STATUS_CASES = tuple(
 @pytest.fixture(name='installer_smoke_action_text', scope='module')
 def installer_smoke_action_text_fixture() -> str:
     """Return the supported installer smoke action source."""
-    return INSTALLER_SMOKE_ACTION_PATH.read_text(encoding='utf-8')
+    return read_text(INSTALLER_SMOKE_ACTION_PATH)
 
 
 @pytest.fixture(name='installer_smoke_steps', scope='module')
 def installer_smoke_steps_fixture() -> tuple[InstallerStep, ...]:
     """Return installer smoke step names and scripts from the composite action."""
-    action_data: dict[str, Any] = yaml.safe_load(
-        INSTALLER_SMOKE_ACTION_PATH.read_text(encoding='utf-8'),
-    )
+    action_data: dict[str, Any] = read_yaml(INSTALLER_SMOKE_ACTION_PATH)
     steps = action_data['runs']['steps']
     return tuple(
         (step['name'], step['run'])
@@ -121,7 +120,7 @@ def test_conda_status_is_documented_as_validated_but_unpublished(
     Test that conda packaging is documented as support-gate validated without
     claiming user-facing install availability before feedstock publication.
     """
-    normalized_text = path.read_text(encoding='utf-8').lower()
+    normalized_text = read_text(path).lower()
 
     assert snippet in normalized_text
 
@@ -129,7 +128,7 @@ def test_conda_status_is_documented_as_validated_but_unpublished(
 @pytest.mark.parametrize('snippet', CROSS_PLATFORM_SMOKE_SNIPPETS)
 def test_cross_platform_smoke_checks_cli_help_surfaces(snippet: str) -> None:
     """Test macOS/Windows smoke coverage checks stable CLI help surfaces."""
-    workflow_text = CI_WORKFLOW_PATH.read_text(encoding='utf-8')
+    workflow_text = read_text(CI_WORKFLOW_PATH)
 
     assert snippet in workflow_text
 
@@ -229,8 +228,8 @@ def test_supported_installer_commands_are_documented_and_smoke_tested(
     Test that supported installer commands stay aligned with release smoke
     coverage.
     """
-    readme_text = README_PATH.read_text(encoding='utf-8')
-    compatibility_text = COMPATIBILITY_PATH.read_text(encoding='utf-8')
+    readme_text = read_text(README_PATH)
+    compatibility_text = read_text(COMPATIBILITY_PATH)
     docs_command, smoke_pattern = contract
 
     assert docs_command in readme_text

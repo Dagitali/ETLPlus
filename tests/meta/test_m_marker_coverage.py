@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import pytest
 
+from tests.meta.pytest_meta_support import read_text
 from tests.pytest_shared_support import REPO_ROOT
 from tests.pytest_shared_support import TESTS_ROOT
 
@@ -31,7 +32,7 @@ _SCOPE_MARKERS = (
 def test_integration_file_conftest_includes_smoke_marker() -> None:
     """Test that file-integration scope preserves the smoke intent marker."""
     conftest_path = TESTS_ROOT / 'integration' / 'file' / 'conftest.py'
-    assert 'pytest.mark.smoke' in conftest_path.read_text(encoding='utf-8')
+    assert 'pytest.mark.smoke' in read_text(conftest_path)
 
 
 @pytest.mark.parametrize(
@@ -50,10 +51,7 @@ def test_scope_conftests_declare_expected_scope_markers(
     missing = sorted(
         path.relative_to(REPO_ROOT).as_posix()
         for path in conftests
-        if f'pytest.mark.{marker_name}'
-        not in path.read_text(
-            encoding='utf-8',
-        )
+        if f'pytest.mark.{marker_name}' not in read_text(path)
     )
     assert not missing, f'Missing pytest.mark.{marker_name} in:\n- ' + '\n- '.join(
         missing,
