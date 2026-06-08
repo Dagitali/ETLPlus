@@ -156,6 +156,16 @@ REMOTE_PROVIDER_CASES: tuple[RemoteProviderCase, ...] = (
 # SECTION: FUNCTIONS ======================================================== #
 
 
+def assert_azure_service_client_init(
+    calls: list[dict[str, object]],
+    *,
+    account_url: str,
+    credential: object | None,
+) -> None:
+    """Assert one Azure service-client initialization call."""
+    assert calls == [{'account_url': account_url, 'credential': credential}]
+
+
 def clear_azure_storage_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Clear Azure storage configuration environment variables."""
     for name in (
