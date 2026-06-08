@@ -206,7 +206,18 @@ class TestHelperOptionKwargs:
         if expected_panel is not None:
             assert option_info.rich_help_panel == expected_panel
 
-    def test_resource_argument_alias_builds_typer_argument_metadata(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('value_type', str, id='value-type'),
+            pytest.param('help', 'Extract data from SOURCE', id='help'),
+        ],
+    )
+    def test_resource_argument_alias_builds_typer_argument_metadata(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Resource argument aliases should wrap one Typer argument metadata object."""
         alias = cli_options.typer_resource_argument_alias(
             str,
@@ -218,8 +229,13 @@ class TestHelperOptionKwargs:
             alias,
             typer.models.ArgumentInfo,
         )
-        assert value_type is str
-        assert 'Extract data from SOURCE' in str(argument_info.help)
+        match field_name:
+            case 'value_type':
+                assert value_type is expected
+            case 'help':
+                assert expected in str(argument_info.help)
+            case _:
+                pytest.fail(f'unhandled field: {field_name}')
 
     @pytest.mark.parametrize(
         ('field', 'expected'),

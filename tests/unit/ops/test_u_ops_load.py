@@ -505,7 +505,19 @@ class TestLoadToDatabase:
                 session=_BrokenSession(),
             )
 
-    def test_load_to_database_returns_note(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('status', 'not_implemented', id='status'),
+            pytest.param('records', 1, id='records'),
+            pytest.param('connection_string', 'sqlite', id='connection-string'),
+        ],
+    )
+    def test_load_to_database_returns_note(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """
         Test that placeholder implementation echoes the connection string.
         """
@@ -513,9 +525,10 @@ class TestLoadToDatabase:
         data = [{'name': 'Ada'}]
         result = load_to_database(data, 'sqlite:///tmp.db')
 
-        assert result['status'] == 'not_implemented'
-        assert result['records'] == 1
-        assert 'sqlite' in result['connection_string']
+        if field_name == 'connection_string':
+            assert expected in result[field_name]
+        else:
+            assert result[field_name] == expected
 
 
 class TestParseJsonString:
@@ -546,7 +559,18 @@ class TestLoadApiOrchestrator:
     loader.
     """
 
-    def test_load_api_with_default_method(self) -> None:
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('status', 'success', id='status'),
+            pytest.param('method', 'post', id='method'),
+        ],
+    )
+    def test_load_api_with_default_method(
+        self,
+        check_name: str,
+        expected: object,
+    ) -> None:
         """
         Test that :func:`load` defaults to POST when the API method is omitted.
         """
@@ -560,9 +584,9 @@ class TestLoadApiOrchestrator:
         )
 
         result_dict = cast(dict[str, Any], result)
-        assert result_dict['status'] == 'success'
         (first_call,) = session.calls
-        assert first_call.method == 'post'
+        actual = result_dict['status'] if check_name == 'status' else first_call.method
+        assert actual == expected
 
     def test_load_api_with_explicit_method(self) -> None:
         """Test that :func:`load` honors custom :class:`HttpMethod` values."""
