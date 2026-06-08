@@ -35,6 +35,6 @@ def test_topological_sort_jobs_from_jobconfig_payloads() -> None:
     ]
 
     jobs = [JobConfig.from_obj(obj) for obj in raw_jobs]
-    assert all(job is not None for job in jobs)
-    ordered = topological_sort_jobs([job for job in jobs if job is not None])
+    assert None not in jobs
+    ordered = topological_sort_jobs(jobs)
     assert [job.name for job in ordered] == ['extract', 'transform', 'publish']

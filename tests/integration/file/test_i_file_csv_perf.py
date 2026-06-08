@@ -15,24 +15,6 @@ from etlplus.file.csv import CsvFile
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
-
-
-def _large_csv_payload(
-    rows: int = 50_000,
-) -> list[dict[str, object]]:
-    """Build a moderately large tabular payload for CSV perf smoke tests."""
-    return [
-        {
-            'id': row,
-            'name': f'user-{row:05d}',
-            'active': row % 2 == 0,
-            'score': row / 10,
-        }
-        for row in range(rows)
-    ]
-
-
 # SECTION: TESTS ============================================================ #
 
 
@@ -41,7 +23,15 @@ def test_large_csv_roundtrip_perf_smoke(
 ) -> None:
     """Exercise a larger CSV roundtrip with a generous elapsed-time bound."""
     path = tmp_path / 'large.csv'
-    payload = _large_csv_payload()
+    payload = [
+        {
+            'id': row,
+            'name': f'user-{row:05d}',
+            'active': row % 2 == 0,
+            'score': row / 10,
+        }
+        for row in range(50_000)
+    ]
     handler = CsvFile()
 
     start = perf_counter()
