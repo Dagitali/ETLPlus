@@ -282,23 +282,59 @@ class TestModels:
         with pytest.raises(ValidationError):
             IdentitySpec.model_validate(payload)
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('table', 'users', id='table-alias'),
+            pytest.param('schema_name', 'public', id='schema-alias'),
+            pytest.param('columns.0.identity', True, id='column-identity'),
+            pytest.param('columns.1.unique', True, id='column-unique'),
+            pytest.param('primary_key', True, id='primary-key'),
+            pytest.param(
+                'foreign_keys.0.ondelete', 'CASCADE', id='foreign-key-ondelete',
+            ),
+        ],
+    )
     def test_table_spec_aliases_name_and_schema(
         self,
         schema_sample_spec: dict[str, object],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that incoming aliases map to attributes with expected defaults.
         """
         spec = TableSpec.model_validate(deepcopy(schema_sample_spec))
 
-        assert spec.table == 'users'
-        assert spec.schema_name == 'public'
-        assert spec.columns[0].identity is not None
-        assert spec.columns[1].unique is True
-        assert spec.primary_key is not None
-        assert spec.foreign_keys[0].ondelete == 'CASCADE'
+        match field:
+            case 'columns.0.identity':
+                actual = spec.columns[0].identity is not None
+            case 'columns.1.unique':
+                actual = spec.columns[1].unique
+            case 'primary_key':
+                actual = spec.primary_key is not None
+            case 'foreign_keys.0.ondelete':
+                actual = spec.foreign_keys[0].ondelete
+            case _:
+                actual = getattr(spec, field)
 
-    def test_table_spec_defaults_populate_lists(self) -> None:
+        assert actual == expected
+
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('create_schema', False, id='create-schema'),
+            pytest.param('unique_constraints', [], id='unique-constraints'),
+            pytest.param('indexes', [], id='indexes'),
+            pytest.param('foreign_keys', [], id='foreign-keys'),
+            pytest.param('primary_key', None, id='primary-key'),
+        ],
+    )
+    def test_table_spec_defaults_populate_lists(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """
         Test that optional collections default to empty lists and flags to
         ``False``.
@@ -310,11 +346,7 @@ class TestModels:
             },
         )
 
-        assert minimal.create_schema is False
-        assert minimal.unique_constraints == []
-        assert minimal.indexes == []
-        assert minimal.foreign_keys == []
-        assert minimal.primary_key is None
+        assert getattr(minimal, field) == expected
 
     @pytest.mark.parametrize(
         ('schema_name', 'expected'),

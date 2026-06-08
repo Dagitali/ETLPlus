@@ -225,10 +225,25 @@ class TestApiConfig:
         assert cfg.effective_pagination_defaults() is None
         assert cfg.effective_rate_limit_defaults() is None
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('headers.Accept', 'application/json', id='default-header'),
+            pytest.param('headers.Authorization', 'Bearer token', id='profile-header'),
+            pytest.param(
+                'headers.X-From-Defaults', '2', id='profile-overrides-default',
+            ),
+            pytest.param('headers.X-Top', 't', id='top-level-header'),
+            pytest.param('profile.base_path', '/v1', id='base-path'),
+            pytest.param('profile.auth.type', 'bearer', id='auth-type'),
+        ],
+    )
     def test_profile_defaults_headers_and_fields(
         self,
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        field: str,
+        expected: str,
     ) -> None:
         """
         Test that header precedence and profile fields are handled correctly.
@@ -255,26 +270,39 @@ class TestApiConfig:
             'endpoints': {},
         }
         cfg = api_config_factory(obj)
-
-        # Headers: defaults.headers < profile.headers < top-level.
-        assert cfg.headers['Accept'] == 'application/json'
-        assert cfg.headers['Authorization'] == 'Bearer token'
-
-        # Profile.headers overrides defaults.
-        assert cfg.headers['X-From-Defaults'] == '2'
-
-        # Top-level overrides/augments.
-        assert cfg.headers['X-Top'] == 't'
-
-        # Profile extras captured.
         prof = cfg.profiles['default']
-        assert prof.base_path == '/v1'
-        assert prof.auth.get('type') == 'bearer'
 
+        match field.split('.'):
+            case ['headers', header]:
+                actual = cfg.headers[header]
+            case ['profile', 'auth', 'type']:
+                actual = prof.auth.get('type')
+            case ['profile', attr]:
+                actual = getattr(prof, attr)
+            case _:
+                pytest.fail(f'Unsupported field path: {field}')
+
+        assert actual == expected
+
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('type', 'page', id='type'),
+            pytest.param('page_param', 'page', id='page-param'),
+            pytest.param('size_param', 'per_page', id='size-param'),
+            pytest.param('cursor_param', 'cursor', id='cursor-param'),
+            pytest.param('cursor_path', 'meta.next_cursor', id='cursor-path'),
+            pytest.param('records_path', 'data.items', id='records-path'),
+            pytest.param('page_size', 25, id='page-size'),
+            pytest.param('max_pages', 10, id='max-pages'),
+        ],
+    )
     def test_profile_defaults_pagination_mapped(
         self,
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that pagination defaults are mapped correctly in profiles.
@@ -309,14 +337,7 @@ class TestApiConfig:
         prof = cfg.profiles['default']
         pdef = getattr(prof, 'pagination_defaults', None)
         assert pdef is not None
-        assert pdef.type == 'page'
-        assert pdef.page_param == 'page'
-        assert pdef.size_param == 'per_page'
-        assert pdef.cursor_param == 'cursor'
-        assert pdef.cursor_path == 'meta.next_cursor'
-        assert pdef.records_path == 'data.items'
-        assert pdef.page_size == 25
-        assert pdef.max_pages == 10
+        assert getattr(pdef, field) == expected
 
     def test_strips_flat_base_url(self) -> None:
         """Flat API base URLs should trim accidental outer whitespace."""
@@ -433,10 +454,20 @@ class TestApiProfileConfig:
             assert prof.rate_limit_defaults.sleep_seconds == 0.1
             assert prof.rate_limit_defaults.max_per_sec == 5
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('base_url', None, id='base-url'),
+            pytest.param('base_path', '/v1', id='base-path'),
+            pytest.param('auth', {'token': 'abc'}, id='auth'),
+        ],
+    )
     def test_passthrough_fields(
         self,
         base_url: str,
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that passthrough fields (base_path, auth) are preserved.
@@ -447,14 +478,21 @@ class TestApiProfileConfig:
             'auth': {'token': 'abc'},
         }
         prof = profile_config_factory(obj)
-        assert prof.base_url == base_url
-        assert prof.base_path == '/v1'
-        assert prof.auth == {'token': 'abc'}
+        assert getattr(prof, field) == (base_url if field == 'base_url' else expected)
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('base_url', None, id='base-url'),
+            pytest.param('base_path', '/v1', id='base-path'),
+        ],
+    )
     def test_strips_url_fields(
         self,
         base_url: str,
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
+        field: str,
+        expected: str | None,
     ) -> None:
         """Profile URL fields should trim accidental outer whitespace."""
         prof = profile_config_factory(
@@ -464,8 +502,7 @@ class TestApiProfileConfig:
             },
         )
 
-        assert prof.base_url == base_url
-        assert prof.base_path == '/v1'
+        assert getattr(prof, field) == (base_url if field == 'base_url' else expected)
 
     def test_requires_base_url(
         self,
@@ -550,19 +587,30 @@ class TestEndpointConfig:
         with pytest.raises(expected_exception):
             endpoint_config_factory(payload)  # type: ignore[arg-type]
 
+    @pytest.mark.parametrize(
+        ('payload', 'field', 'expected'),
+        [
+            pytest.param(
+                {'method': 200, 'path': '/x'},
+                'method',
+                200,
+                id='method',
+            ),
+            pytest.param({'path': '/x', 'body': 'json'}, 'body', 'json', id='body'),
+        ],
+    )
     def test_lenient_fields_do_not_raise(
         self,
         endpoint_config_factory: Callable[[dict[str, Any]], EndpointConfig],
+        payload: dict[str, object],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that lenient fields (method/body) do not raise errors and are
         permissive.
         """
-        # Lenient fields (method/body) accept any type and pass through.
-        ep_method = endpoint_config_factory({'method': 200, 'path': '/x'})
-        assert ep_method.method == 200  # library currently permissive
-        ep_body = endpoint_config_factory({'path': '/x', 'body': 'json'})
-        assert ep_body.body == 'json'
+        assert getattr(endpoint_config_factory(payload), field) == expected
 
     def test_parses_method(
         self,

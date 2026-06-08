@@ -201,10 +201,7 @@ class TestConfig:
         )
 
         parsed = getattr(cfg, section)
-        assert {
-            name: getattr(parsed, name)
-            for name in payload
-        } == payload
+        assert {name: getattr(parsed, name) for name in payload} == payload
 
     def test_from_dict_parses_schedules(
         self,

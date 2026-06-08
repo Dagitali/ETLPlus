@@ -551,8 +551,17 @@ class TestPaginatorInternalBranches:
         )
         assert getattr(paginator, field_name) == expected
 
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('start_page', 1, id='start-page'),
+            pytest.param('limit_param', 'lim', id='limit-param'),
+        ],
+    )
     def test_post_init_normalizes_zero_start_page_and_keeps_limit_param(
         self,
+        field_name: str,
+        expected: object,
     ) -> None:
         """
         Test that page ``start_page=0`` normalizes to 1 and non-empty
@@ -564,8 +573,7 @@ class TestPaginatorInternalBranches:
             limit_param='lim',
             fetch=_dummy_fetch,
         )
-        assert paginator.start_page == 1
-        assert paginator.limit_param == 'lim'
+        assert getattr(paginator, field_name) == expected
 
     def test_resolve_start_page_invalid_and_negative_offset(self) -> None:
         """

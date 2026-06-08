@@ -151,7 +151,18 @@ class TestHistoryStoreModuleHelpers:
         with sqlite_row_factory(columns) as row:
             assert store_mod._sqlite_row_payload(row) == expected
 
-    def test_sqlite_job_run_payload_serializes_nested_optional_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('skipped_due_to', '["seed"]', id='skipped-due-to'),
+            pytest.param('result_summary', '{"rows":0}', id='result-summary'),
+        ],
+    )
+    def test_sqlite_job_run_payload_serializes_nested_optional_fields(
+        self,
+        field: str,
+        expected: str,
+    ) -> None:
         """Test that SQLite job payloads JSON-encode nested summary and skip fields."""
         payload = store_mod._sqlite_job_run_payload(
             store_mod.JobRunRecord(
@@ -170,8 +181,7 @@ class TestHistoryStoreModuleHelpers:
             ),
         )
 
-        assert payload['skipped_due_to'] == '["seed"]'
-        assert payload['result_summary'] == '{"rows":0}'
+        assert payload[field] == expected
 
 
 class TestResolvedHistoryStore:

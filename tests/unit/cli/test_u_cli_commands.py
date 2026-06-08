@@ -581,6 +581,7 @@ class TestDelegatingCommands:
         expected_message: str,
     ) -> None:
         """Invalid command option combinations should fail through usage errors."""
+
         def _fail_usage(message: str) -> None:
             raise typer.BadParameter(message)
 

@@ -732,12 +732,32 @@ class TestUtilsInternalBranches:
         assert env['url'] == 'https://override.test/u'
         assert env['headers'] == {'T': '1'}
 
-    def test_compute_rl_sleep_seconds_variants(self) -> None:
+    @pytest.mark.parametrize(
+        ('rate_limit', 'options', 'expected'),
+        [
+            pytest.param(
+                RateLimitConfig(sleep_seconds=0.5, max_per_sec=None),
+                {'max_per_sec': 4},
+                0.5,
+                id='object-sleep-seconds-wins',
+            ),
+            pytest.param(None, {'max_per_sec': 4}, 0.25, id='options-max-per-sec'),
+            pytest.param(
+                {'sleep_seconds': 0.2},
+                {'x': 1},
+                0.2,
+                id='mapping-sleep-seconds',
+            ),
+        ],
+    )
+    def test_compute_rl_sleep_seconds_variants(
+        self,
+        rate_limit: RateLimitConfig | Mapping[str, object] | None,
+        options: Mapping[str, object],
+        expected: float,
+    ) -> None:
         """Test that rate-limit sleep helper filters overrides correctly."""
-        rl_obj = RateLimitConfig(sleep_seconds=0.5, max_per_sec=None)
-        assert _utils.compute_rl_sleep_seconds(rl_obj, {'max_per_sec': 4}) == 0.5
-        assert _utils.compute_rl_sleep_seconds(None, {'max_per_sec': 4}) == 0.25
-        assert _utils.compute_rl_sleep_seconds({'sleep_seconds': 0.2}, {'x': 1}) == 0.2
+        assert _utils.compute_rl_sleep_seconds(rate_limit, options) == expected
 
     def test_internal_helpers_handle_non_mapping_inputs(
         self,
