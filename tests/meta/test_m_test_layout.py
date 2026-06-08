@@ -6,17 +6,15 @@ Guardrails for repository test-layout conventions.
 
 from __future__ import annotations
 
-from tests.pytest_shared_support import REPO_ROOT
+from tests.pytest_shared_support import TESTS_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-_LEGACY_SMOKE_ROOT = REPO_ROOT / 'tests' / 'smoke'
 
 
 def test_legacy_smoke_python_modules_not_present() -> None:
     """
     Test that legacy smoke-path Python modules are fully migrated.
     """
-    assert not list(_LEGACY_SMOKE_ROOT.rglob('*.py'))
+    assert not list((TESTS_ROOT / 'smoke').rglob('*.py'))
