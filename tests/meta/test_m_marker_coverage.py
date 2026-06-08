@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import pytest
 
+from tests.meta.pytest_meta_support import read_text
 from tests.pytest_shared_support import REPO_ROOT
 from tests.pytest_shared_support import TESTS_ROOT
 
@@ -18,42 +19,34 @@ from tests.pytest_shared_support import TESTS_ROOT
 # SECTION: INTERNAL CONSTANTS =============================================== #
 
 
-_SCOPE_MARKERS = (
+_CONFTEST_MARKER_CASES = (
     pytest.param('meta', 'meta', id='meta'),
     pytest.param('unit', 'unit', id='unit'),
     pytest.param('integration', 'integration', id='integration'),
+    pytest.param('integration/file', 'smoke', id='integration-file-smoke'),
 )
 
 
 # SECTION: TESTS ============================================================ #
 
 
-def test_integration_file_conftest_includes_smoke_marker() -> None:
-    """Test that file-integration scope preserves the smoke intent marker."""
-    conftest_path = TESTS_ROOT / 'integration' / 'file' / 'conftest.py'
-    assert 'pytest.mark.smoke' in conftest_path.read_text(encoding='utf-8')
-
-
 @pytest.mark.parametrize(
-    ('scope_name', 'marker_name'),
-    _SCOPE_MARKERS,
+    ('scope_path', 'marker_name'),
+    _CONFTEST_MARKER_CASES,
 )
 def test_scope_conftests_declare_expected_scope_markers(
-    scope_name: str,
+    scope_path: str,
     marker_name: str,
 ) -> None:
     """
-    Test that each scope ``conftest.py`` includes the expected scope marker.
+    Test that each scope ``conftest.py`` includes its expected marker.
     """
-    conftests = sorted((TESTS_ROOT / scope_name).rglob('conftest.py'))
-    assert conftests, f'No conftest.py files found under tests/{scope_name}'
+    conftests = sorted((TESTS_ROOT / scope_path).rglob('conftest.py'))
+    assert conftests, f'No conftest.py files found under tests/{scope_path}'
     missing = sorted(
         path.relative_to(REPO_ROOT).as_posix()
         for path in conftests
-        if f'pytest.mark.{marker_name}'
-        not in path.read_text(
-            encoding='utf-8',
-        )
+        if f'pytest.mark.{marker_name}' not in read_text(path)
     )
     assert not missing, f'Missing pytest.mark.{marker_name} in:\n- ' + '\n- '.join(
         missing,

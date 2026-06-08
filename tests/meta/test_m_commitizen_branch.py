@@ -7,9 +7,9 @@ Guardrails for local Commitizen branch validation.
 from __future__ import annotations
 
 import pytest
-import yaml  # type: ignore[import]
 
 import tools.check_commitizen_branch as commitizen_branch
+from tests.meta.pytest_meta_support import read_yaml
 from tests.pytest_shared_support import REPO_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
@@ -44,9 +44,7 @@ class TestCommitizenBranchCheck:
         """
         Test Dependabot update commits use Commitizen-compatible types.
         """
-        dependabot_config = yaml.safe_load(
-            DEPENDABOT_CONFIG_PATH.read_text(encoding='utf-8'),
-        )
+        dependabot_config = read_yaml(DEPENDABOT_CONFIG_PATH)
 
         prefixes = {
             update['commit-message']['prefix']
@@ -153,7 +151,7 @@ class TestCommitizenBranchCheck:
 
             def check_message(self, message: str) -> int:
                 """Raise when Commitizen validation should not run."""
-                return TestCommitizenBranchCheck._unexpected_check(message)
+                raise AssertionError(f'unexpected Commitizen check: {message}')
 
             def current_branch(self) -> str:
                 """Return a valid GitFlow branch name."""
@@ -215,7 +213,7 @@ class TestCommitizenBranchCheck:
 
             def check_message(self, message: str) -> int:
                 """Raise when Commitizen validation should not run."""
-                return TestCommitizenBranchCheck._unexpected_check(message)
+                raise AssertionError(f'unexpected Commitizen check: {message}')
 
             def current_branch(self) -> str:
                 """Return an invalid GitFlow branch name."""
@@ -264,10 +262,3 @@ class TestCommitizenBranchCheck:
         assert Checker().run() == 0
 
         assert checked_messages == list(messages.values())
-
-    @staticmethod
-    def _unexpected_check(message: str) -> int:
-        """
-        Raise when Commitizen validation should not run.
-        """
-        raise AssertionError(f'unexpected Commitizen check: {message}')
