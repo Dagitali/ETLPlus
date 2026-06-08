@@ -16,6 +16,7 @@ import yaml
 
 from tests.pytest_shared_support import BIGQUERY_CASE
 from tests.pytest_shared_support import SNOWFLAKE_CASE
+from tests.pytest_shared_support import assert_cli_success
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.integration.cli.pytest_cli_integration_support import (
@@ -85,8 +86,7 @@ class TestCliCheck:
             ('check', '--config', str(config_path), '--graph'),
         )
 
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload['status'] == 'ok'
         assert payload['ordered_jobs'] == ['seed', 'publish']
@@ -159,8 +159,7 @@ class TestCliCheck:
         code, out, err = cli_invoke(
             ('check', '--config', str(cfg.config_path), '--jobs'),
         )
-        assert code == 0
-        assert err.strip() == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert cfg.job_name in payload.get('jobs', [])
 
@@ -196,8 +195,7 @@ class TestCliCheck:
         code, out, err = cli_invoke(
             ('check', '--readiness', '--config', str(config_path)),
         )
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload['status'] == 'ok'
         substitution_check = next(
@@ -312,8 +310,7 @@ class TestCliCheck:
             ('check', '--readiness', '--config', str(config_path)),
         )
 
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload['status'] == 'warn'
         provider_check = next(
@@ -492,8 +489,7 @@ class TestCliCheck:
             ('check', '--readiness', '--config', str(config_path)),
         )
 
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload['status'] == 'warn'
         provider_check = next(
@@ -727,8 +723,7 @@ class TestCliCheck:
             ('check', '--readiness', '--config', str(config_path)),
         )
 
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload['status'] == 'ok'
         substitution_check = next(
@@ -755,8 +750,7 @@ class TestCliCheck:
     ) -> None:
         """Test that ``check --readiness`` succeeds without a config file."""
         code, out, err = cli_invoke(('check', '--readiness'))
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload['status'] == 'ok'
         assert any(check['name'] == 'python-version' for check in payload['checks'])

@@ -73,34 +73,30 @@ PROFILE_PAGINATION_CASES = (
 # SECTION: TESTS ============================================================ #
 
 
-class TestRunProfilePaginationDefaults:
-    """Integration tests for profile-level pagination defaults."""
-
-    @pytest.mark.parametrize(
-        ('pagination_defaults', 'extract_options', 'expected_pagination'),
-        PROFILE_PAGINATION_CASES,
+@pytest.mark.parametrize(
+    ('pagination_defaults', 'extract_options', 'expected_pagination'),
+    PROFILE_PAGINATION_CASES,
+)
+def test_profile_pagination_resolution(
+    pipeline_cfg_factory: PipelineCfgFactory,
+    fake_endpoint_client: FakeEndpointClients,
+    run_patched: RunPatched,
+    pagination_defaults: PaginationConfig,
+    extract_options: dict[str, object] | None,
+    expected_pagination: dict[str, object],
+) -> None:
+    """Test profile pagination defaults and job-level overrides."""
+    cfg = pipeline_cfg_factory(
+        pagination_defaults=pagination_defaults,
+        extract_options=extract_options,
     )
-    def test_profile_pagination_resolution(
-        self,
-        pipeline_cfg_factory: PipelineCfgFactory,
-        fake_endpoint_client: FakeEndpointClients,
-        run_patched: RunPatched,
-        pagination_defaults: PaginationConfig,
-        extract_options: dict[str, object] | None,
-        expected_pagination: dict[str, object],
-    ) -> None:
-        """Test profile pagination defaults and job-level overrides."""
-        cfg = pipeline_cfg_factory(
-            pagination_defaults=pagination_defaults,
-            extract_options=extract_options,
-        )
 
-        fake_client, created = fake_endpoint_client
-        result = run_patched(cfg, fake_client)
+    fake_client, created = fake_endpoint_client
+    result = run_patched(cfg, fake_client)
 
-        assert result.get('status') == 'ok'
-        assert created, 'Expected client to be constructed'
+    assert result.get('status') == 'ok'
+    assert created, 'Expected client to be constructed'
 
-        seen_pag = created[0].seen.get('pagination')
-        assert isinstance(seen_pag, dict)
-        assert expected_pagination.items() <= seen_pag.items()
+    seen_pag = created[0].seen.get('pagination')
+    assert isinstance(seen_pag, dict)
+    assert expected_pagination.items() <= seen_pag.items()

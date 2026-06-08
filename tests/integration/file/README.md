@@ -1,7 +1,8 @@
 # Integration File Smoke Conventions
 
-`tests/integration/file/` uses `SmokeRoundtripModuleContract` as the default
-pattern for file-format smoke tests.
+`tests/integration/file/test_i_file_smoke.py` uses a single parameterized smoke
+matrix for file-format read/write coverage. Cases live in
+`tests/integration/file/pytest_smoke_file_contracts.py` as `FILE_SMOKE_CASES`.
 
 - [Default Pattern](#default-pattern)
 - [Documented Exceptions](#documented-exceptions)
@@ -9,11 +10,10 @@ pattern for file-format smoke tests.
 
 ## Default Pattern
 
-For most file formats, keep the test class minimal:
+For most file formats, add one `FileSmokeCase` using the file-format module name:
 
 ```python
-class TestCsv(SmokeRoundtripModuleContract):
-    module = mod
+FileSmokeCase("csv")
 ```
 
 The default smoke path is derived from the handler format:
@@ -28,17 +28,19 @@ Examples:
 
 ## Documented Exceptions
 
-Only the following modules should override the default path/error behavior:
+Only the following cases should override the default path/error behavior:
 
-| Module | Override | Reason |
+| Case | Override | Reason |
 | --- | --- | --- |
-| `test_i_file_gz.py` | `file_name = "data.json.gz"` | `.gz` requires an inner format extension so the wrapped payload format can be inferred. |
-| `test_i_file_zip.py` | `file_name = "data.json.zip"` | `.zip` requires an inner format extension so the wrapped payload format can be inferred. |
-| `test_i_file_xls.py` | `expect_write_error = RuntimeError`, `error_match = "read-only"` | `xls` handler is intentionally read-only. |
+| `gz` | `file_name = "data.json.gz"` | `.gz` requires an inner format extension so the wrapped payload format can be inferred. |
+| `hdf5` | `expect_write_error = RuntimeError`, `error_match = "read-only"` | `hdf5` handler is intentionally read-only. |
+| `sas7bdat` | `expect_write_error = RuntimeError`, `error_match = "read-only"` | `sas7bdat` handler is intentionally read-only. |
+| `zip` | `file_name = "data.json.zip"` | `.zip` requires an inner format extension so the wrapped payload format can be inferred. |
+| `xls` | `expect_write_error = RuntimeError`, `error_match = "read-only"` | `xls` handler is intentionally read-only. |
 
 ## Notes
 
-- Format-specific payload overrides (for example, `proto`, `pb`, `xml`, `ini`)
-  are acceptable and are not part of path symmetry.
-- New integration file smoke tests should use the default contract path unless
-  they fall into one of the exceptions above.
+- Format-specific payload overrides, for example `proto`, `pb`, `xml`, and
+  `ini`, are acceptable and are not part of path symmetry.
+- New integration file smoke coverage should use the default case shape unless the format falls into
+  one of the documented exceptions above.

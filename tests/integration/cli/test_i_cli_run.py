@@ -28,7 +28,9 @@ from etlplus.file import FileFormat
 from etlplus.history._ui import build_snapshot
 from etlplus.runtime import EVENT_SCHEMA
 from etlplus.runtime import EVENT_SCHEMA_VERSION
+from tests.integration.cli.pytest_cli_integration_support import history_table_counts
 from tests.integration.pytest_integration_support import REMOTE_STORAGE_ENV_CASES
+from tests.pytest_shared_support import assert_cli_success
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.integration.cli.pytest_cli_integration_support import (
@@ -52,15 +54,6 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 # SECTION: HELPERS ========================================================== #
-
-
-def _history_table_counts(history_db: Path) -> tuple[int, int]:
-    """Return run and job row counts from one SQLite history database."""
-    with sqlite3.connect(history_db) as conn:
-        return (
-            conn.execute('SELECT COUNT(*) FROM runs').fetchone()[0],
-            conn.execute('SELECT COUNT(*) FROM job_runs').fetchone()[0],
-        )
 
 
 def _write_dag_pipeline_config(
@@ -140,8 +133,7 @@ class TestRun:
                 cfg.job_name,
             ),
         )
-        assert err == ''
-        assert code == 0
+        assert_cli_success(code, err)
 
         payload = parse_json_output(out)
 
@@ -211,8 +203,7 @@ class TestRun:
             ('run', '--config', str(cfg_path), '--job', job_name),
         )
 
-        assert err == ''
-        assert code == 0
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload.get('status') == 'ok'
         assert isinstance(payload.get('run_id'), str)
@@ -283,8 +274,7 @@ class TestRun:
             ('run', '--config', str(cfg_path), '--job', job_name),
         )
 
-        assert err == ''
-        assert code == 0
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload.get('status') == 'ok'
         assert isinstance(payload.get('run_id'), str)
@@ -313,11 +303,10 @@ class TestRun:
             ('run', '--config', str(cfg.config_path), '--all'),
         )
 
-        assert run_code == 0
-        assert run_err == ''
+        assert_cli_success(run_code, run_err)
         run_id = parse_json_output(run_out)['run_id']
         history_db = state_dir / 'history.sqlite'
-        before_counts = _history_table_counts(history_db)
+        before_counts = history_table_counts(history_db)
 
         history_code, history_out, history_err = cli_invoke(
             ('history', '--run-id', run_id),
@@ -331,9 +320,14 @@ class TestRun:
         log_code, log_out, log_err = cli_invoke(('log', '--run-id', run_id))
         snapshot = build_snapshot(limit=10)
 
-        assert history_code == status_code == report_code == log_code == 0
-        assert history_err == status_err == report_err == log_err == ''
-        assert _history_table_counts(history_db) == before_counts
+        for read_code, read_err in (
+            (history_code, history_err),
+            (status_code, status_err),
+            (report_code, report_err),
+            (log_code, log_err),
+        ):
+            assert_cli_success(read_code, read_err)
+        assert history_table_counts(history_db) == before_counts
 
         history_payload = parse_json_output(history_out)
         status_payload = parse_json_output(status_out)
@@ -362,8 +356,7 @@ class TestRun:
             ('run', '--config', str(config_path), '--all', '--max-concurrency', '2'),
         )
 
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload['status'] == 'ok'
         assert payload['result']['status'] == 'success'
@@ -387,8 +380,7 @@ class TestRun:
             ('run', '--config', str(config_path), '--all'),
         )
 
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload['status'] == 'ok'
         assert payload['result']['status'] == 'success'
@@ -420,8 +412,7 @@ class TestRun:
             ('run', '--config', str(config_path), '--all'),
         )
 
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         run_id = payload['run_id']
         expected_summary = {
@@ -475,8 +466,7 @@ class TestRun:
         history_code, history_out, history_err = cli_invoke(
             ('history', '--run-id', run_id),
         )
-        assert history_code == 0
-        assert history_err == ''
+        assert_cli_success(history_code, history_err)
         history_payload = parse_json_output(history_out)
         assert len(history_payload) == 1
         assert history_payload[0]['run_id'] == run_id
@@ -487,8 +477,7 @@ class TestRun:
         job_history_code, job_history_out, job_history_err = cli_invoke(
             ('history', '--level', 'job', '--run-id', run_id),
         )
-        assert job_history_code == 0
-        assert job_history_err == ''
+        assert_cli_success(job_history_code, job_history_err)
         job_history_payload = sorted(
             parse_json_output(job_history_out),
             key=lambda row: row['sequence_index'],
@@ -505,8 +494,7 @@ class TestRun:
         status_code, status_out, status_err = cli_invoke(
             ('status', '--run-id', run_id),
         )
-        assert status_code == 0
-        assert status_err == ''
+        assert_cli_success(status_code, status_err)
         status_payload = parse_json_output(status_out)
         assert status_payload['run_id'] == run_id
         assert status_payload['result_summary'] == expected_summary
@@ -514,8 +502,7 @@ class TestRun:
         report_code, report_out, report_err = cli_invoke(
             ('report', '--level', 'job', '--run-id', run_id, '--group-by', 'status'),
         )
-        assert report_code == 0
-        assert report_err == ''
+        assert_cli_success(report_code, report_err)
         report_payload = parse_json_output(report_out)
         assert report_payload['group_by'] == 'status'
         assert report_payload['summary']['runs'] == 2
@@ -602,8 +589,7 @@ class TestRun:
             ('run', '--config', str(config_path), '--all'),
         )
 
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         run_id = payload['run_id']
         assert payload['result']['retried_job_count'] == 1
@@ -788,8 +774,7 @@ class TestRun:
             ),
         )
 
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         history_db = tmp_path / 'state' / 'history.sqlite'
         assert history_db.exists()
@@ -846,8 +831,7 @@ class TestRun:
             ),
         )
 
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         history_log = history_state_dir / 'history.jsonl'
         assert history_log.exists()
