@@ -40,6 +40,18 @@ INIT_OPTION_EXPORTS: tuple[tuple[str, object], ...] = (
 )
 
 
+# SECTION: INTERNAL FUNCTIONS =============================================== #
+
+
+def _option_alias_metadata(
+    alias: object,
+) -> tuple[object, typer.models.OptionInfo]:
+    """Return the value type and Typer option metadata from one option alias."""
+    value_type, option_info = get_args(alias)
+    assert isinstance(option_info, typer.models.OptionInfo)
+    return value_type, option_info
+
+
 # SECTION: TESTS ============================================================ #
 
 
@@ -62,7 +74,7 @@ class TestHelperOptionKwargs:
         Test that :class:`Connector`-type helper preserve source and target
         wording.
         """
-        _, option_info = get_args(
+        _, option_info = _option_alias_metadata(
             cli_options.typer_connector_option_alias(
                 str,
                 f'--{context}-type',
@@ -70,7 +82,6 @@ class TestHelperOptionKwargs:
             ),
         )
 
-        assert isinstance(option_info, typer.models.OptionInfo)
         assert option_info.metavar == 'CONNECTOR'
         assert option_info.show_default is False
         assert option_info.rich_help_panel == 'I/O overrides'
@@ -157,7 +168,7 @@ class TestHelperOptionKwargs:
         expected_fragment: str,
     ) -> None:
         """Test that timestamp helpers preserve `since` and `until` wording."""
-        _, option_info = get_args(
+        _, option_info = _option_alias_metadata(
             cli_options.typer_timestamp_option_alias(
                 str | None,
                 f'--{bound}',
@@ -165,7 +176,6 @@ class TestHelperOptionKwargs:
             ),
         )
 
-        assert isinstance(option_info, typer.models.OptionInfo)
         assert option_info.metavar == 'ISO8601'
         assert option_info.show_default is False
         assert expected_fragment in str(option_info.help)
@@ -183,7 +193,7 @@ class TestHelperOptionKwargs:
         expected_fragment: str,
     ) -> None:
         """Test that format helpers tailor help text by connector context."""
-        _, option_info = get_args(
+        _, option_info = _option_alias_metadata(
             cli_options.typer_format_option_alias(
                 str | None,
                 f'--{context}-format',
@@ -191,7 +201,6 @@ class TestHelperOptionKwargs:
             ),
         )
 
-        assert isinstance(option_info, typer.models.OptionInfo)
         assert option_info.metavar == 'FORMAT'
         assert option_info.show_default is False
         assert expected_fragment in str(option_info.help)
@@ -206,9 +215,8 @@ class TestHelperOptionKwargs:
             show_default=None,
         )
 
-        value_type, option_info = get_args(alias)
+        value_type, option_info = _option_alias_metadata(alias)
         assert value_type is str
-        assert isinstance(option_info, typer.models.OptionInfo)
         assert option_info.help == 'Name of the job to run'
         assert option_info.metavar == 'JOB'
 
