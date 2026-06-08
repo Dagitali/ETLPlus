@@ -799,7 +799,6 @@ class TestCliInvokeParsing:
     def test_parsed_options_reach_handler(
         self,
         invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
         stub_handler: StubHandler,
         argv: tuple[str, ...],
         module: object,
