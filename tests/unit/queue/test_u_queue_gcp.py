@@ -22,7 +22,20 @@ from etlplus.queue import QueueService
 class TestGcpPubSubQueue:
     """Unit tests for :class:`etlplus.queue.GcpPubSubQueue`."""
 
-    def test_from_obj_normalizes_optional_string_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('name', 'orders', id='name'),
+            pytest.param('project', '123', id='project'),
+            pytest.param('topic', 'orders-topic', id='topic'),
+            pytest.param('subscription', 'False', id='subscription'),
+        ],
+    )
+    def test_from_obj_normalizes_optional_string_fields(
+        self,
+        field_name: str,
+        expected: str,
+    ) -> None:
         """Test Google Cloud Pub/Sub metadata trims optional target fields."""
         queue = GcpPubSubQueue.from_obj(
             {
@@ -33,10 +46,7 @@ class TestGcpPubSubQueue:
             },
         )
 
-        assert queue.name == 'orders'
-        assert queue.project == '123'
-        assert queue.topic == 'orders-topic'
-        assert queue.subscription == 'False'
+        assert getattr(queue, field_name) == expected
 
     @pytest.mark.parametrize(
         ('payload', 'match'),

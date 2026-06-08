@@ -31,7 +31,21 @@ class TestAzureServiceBusQueue:
         assert queue.name == 'orders'
         assert queue.queue_name == 'orders-in'
 
-    def test_from_obj_normalizes_optional_string_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('name', 'orders', id='name'),
+            pytest.param('namespace', '123', id='namespace'),
+            pytest.param('queue_name', 'orders-in', id='queue-name'),
+            pytest.param('topic', 'orders-topic', id='topic'),
+            pytest.param('subscription', 'False', id='subscription'),
+        ],
+    )
+    def test_from_obj_normalizes_optional_string_fields(
+        self,
+        field_name: str,
+        expected: str,
+    ) -> None:
         """Test Azure Service Bus metadata trims optional target fields."""
         queue = AzureServiceBusQueue.from_obj(
             {
@@ -43,11 +57,7 @@ class TestAzureServiceBusQueue:
             },
         )
 
-        assert queue.name == 'orders'
-        assert queue.namespace == '123'
-        assert queue.queue_name == 'orders-in'
-        assert queue.topic == 'orders-topic'
-        assert queue.subscription == 'False'
+        assert getattr(queue, field_name) == expected
 
     @pytest.mark.parametrize(
         ('payload', 'match'),

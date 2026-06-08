@@ -22,7 +22,22 @@ from etlplus.queue import QueueService
 class TestAmqpQueue:
     """Unit tests for :class:`etlplus.queue.AmqpQueue`."""
 
-    def test_from_obj_normalizes_optional_string_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('name', 'orders', id='name'),
+            pytest.param('url', '123', id='url'),
+            pytest.param('host', 'localhost', id='host'),
+            pytest.param('virtual_host', '/', id='virtual-host'),
+            pytest.param('exchange', 'etlplus', id='exchange'),
+            pytest.param('routing_key', 'False', id='routing-key'),
+        ],
+    )
+    def test_from_obj_normalizes_optional_string_fields(
+        self,
+        field_name: str,
+        expected: str,
+    ) -> None:
         """Test AMQP metadata trims optional string fields."""
         queue = AmqpQueue.from_obj(
             {
@@ -35,12 +50,7 @@ class TestAmqpQueue:
             },
         )
 
-        assert queue.name == 'orders'
-        assert queue.url == '123'
-        assert queue.host == 'localhost'
-        assert queue.virtual_host == '/'
-        assert queue.exchange == 'etlplus'
-        assert queue.routing_key == 'False'
+        assert getattr(queue, field_name) == expected
 
     @pytest.mark.parametrize(
         'payload',

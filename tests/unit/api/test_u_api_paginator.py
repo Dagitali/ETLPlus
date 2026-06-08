@@ -142,7 +142,33 @@ class TestPaginator:
 
         assert records == [{'id': 99}]
 
-    def test_defaults_when_missing_keys(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param(
+                'page_param',
+                Paginator.PAGE_PARAMS[PaginationType.PAGE],
+                id='page-param',
+            ),
+            pytest.param(
+                'size_param',
+                Paginator.SIZE_PARAMS[PaginationType.PAGE],
+                id='size-param',
+            ),
+            pytest.param('limit_param', Paginator.LIMIT_PARAM, id='limit-param'),
+            pytest.param('cursor_param', Paginator.CURSOR_PARAM, id='cursor-param'),
+            pytest.param('records_path', None, id='records-path'),
+            pytest.param('cursor_path', None, id='cursor-path'),
+            pytest.param('max_pages', None, id='max-pages'),
+            pytest.param('max_records', None, id='max-records'),
+            pytest.param('start_cursor', None, id='start-cursor'),
+        ],
+    )
+    def test_defaults_when_missing_keys(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """
         Test that default parameter names and limits are preserved.
 
@@ -155,15 +181,7 @@ class TestPaginator:
 
         paginator = Paginator.from_config(cfg, fetch=_dummy_fetch)
 
-        assert paginator.page_param == Paginator.PAGE_PARAMS[PaginationType.PAGE]
-        assert paginator.size_param == Paginator.SIZE_PARAMS[PaginationType.PAGE]
-        assert paginator.limit_param == Paginator.LIMIT_PARAM
-        assert paginator.cursor_param == Paginator.CURSOR_PARAM
-        assert paginator.records_path is None
-        assert paginator.cursor_path is None
-        assert paginator.max_pages is None
-        assert paginator.max_records is None
-        assert paginator.start_cursor is None
+        assert getattr(paginator, field_name) == expected
 
     def test_page_integration(self) -> None:
         """
