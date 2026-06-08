@@ -279,8 +279,7 @@ class TestConfig:
         Test that :class:`Config` includes profile environment variables in
         substitution when loaded from YAML.
         """
-        yml = (
-            """
+        yml = """
 name: Test
 profile:
   env:
@@ -295,7 +294,6 @@ sources:
 targets: []
 jobs: []
 """
-        ).strip()
 
         cfg = pipeline_builder(yml)
 
@@ -327,8 +325,7 @@ jobs: []
             json.dumps({'service': {'password': 'file-secret'}}),
             encoding='utf-8',
         )
-        yml = (
-            """
+        yml = """
 name: Test
 sources:
   - name: source
@@ -344,7 +341,6 @@ targets:
       Authorization: "Bearer ${secret:file:service.password}"
 jobs: []
 """
-        ).strip()
 
         cfg = pipeline_builder(
             yml,
@@ -366,8 +362,7 @@ jobs: []
         pipeline_builder: Callable[..., Config],
     ) -> None:
         """Test secret-resolved backing-service paths feed readiness checks."""
-        yml = (
-            """
+        yml = """
 name: Env First Runtime Test
 vars:
   SCHEDULE_NAME: nightly_all
@@ -390,7 +385,6 @@ schedules:
     target:
       run_all: true
 """
-        ).strip()
 
         cfg = pipeline_builder(
             yml,
@@ -526,8 +520,7 @@ schedules:
         """
         Test that table_schemas entries are preserved when loading YAML.
         """
-        yml = (
-            """
+        yml = """
 name: TablesOnly
 table_schemas:
   - schema: dbo
@@ -540,7 +533,6 @@ sources: []
 targets: []
 jobs: []
             """
-        ).strip()
 
         cfg = pipeline_builder(yml)
 
