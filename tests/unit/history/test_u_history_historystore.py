@@ -32,26 +32,42 @@ pytestmark = pytest.mark.unit
 class TestHistoryStore:
     """Unit tests for :class:`HistoryStore`."""
 
+    @pytest.mark.parametrize(
+        ('method_name', 'arg_names'),
+        [
+            pytest.param('iter_records', (), id='iter-records'),
+            pytest.param('record_run_started', ('sample_record',), id='run-started'),
+            pytest.param(
+                'record_run_finished',
+                ('sample_completion',),
+                id='run-finished',
+            ),
+            pytest.param(
+                'record_job_run',
+                ('sample_job_run_record',),
+                id='job-run',
+            ),
+        ],
+    )
     def test_abstract_methods_raise_not_implemented(
         self,
         sample_job_run_record: store_mod.JobRunRecord,
         sample_record: store_mod.RunRecord,
         sample_completion: store_mod.RunCompletion,
+        method_name: str,
+        arg_names: tuple[str, ...],
     ) -> None:
         """Test that abstract base-method bodies raise `NotImplementedError`."""
         history_store = cast(store_mod.HistoryStore, object())
+        fixtures = {
+            'sample_completion': sample_completion,
+            'sample_job_run_record': sample_job_run_record,
+            'sample_record': sample_record,
+        }
+        args = tuple(fixtures[name] for name in arg_names)
 
         with pytest.raises(NotImplementedError):
-            store_mod.HistoryStore.iter_records(history_store)
-        with pytest.raises(NotImplementedError):
-            store_mod.HistoryStore.record_run_started(history_store, sample_record)
-        with pytest.raises(NotImplementedError):
-            store_mod.HistoryStore.record_run_finished(
-                history_store,
-                sample_completion,
-            )
-        with pytest.raises(NotImplementedError):
-            store_mod.HistoryStore.record_job_run(history_store, sample_job_run_record)
+            getattr(store_mod.HistoryStore, method_name)(history_store, *args)
 
     @pytest.mark.parametrize(
         ('backend', 'path_name'),

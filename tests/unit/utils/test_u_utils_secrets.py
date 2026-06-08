@@ -93,13 +93,20 @@ class TestSecretProviders:
         assert provider.name == 'file'
         assert provider.resolve('service.password') == 'json-secret'
 
-    def test_provider_protocol_default_members_raise(self) -> None:
+    @pytest.mark.parametrize(
+        'member',
+        [
+            pytest.param('name', id='name'),
+            pytest.param('resolve', id='resolve'),
+        ],
+    )
+    def test_provider_protocol_default_members_raise(self, member: str) -> None:
         """Protocol default members should fail loudly when called directly."""
         with pytest.raises(NotImplementedError):
-            cast(Any, SecretProvider.name).fget(None)
-
-        with pytest.raises(NotImplementedError):
-            SecretProvider.resolve(None, 'API_TOKEN')  # type: ignore[arg-type]
+            if member == 'name':
+                cast(Any, SecretProvider.name).fget(None)
+            else:
+                SecretProvider.resolve(None, 'API_TOKEN')  # type: ignore[arg-type]
 
     @pytest.mark.parametrize(
         ('provider', 'key'),

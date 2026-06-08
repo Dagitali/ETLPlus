@@ -191,10 +191,7 @@ class TestPaginator:
             list(client.paginate('items', pagination=pg)),
         )
 
-        expected = [1, 2, 3]
-        for i, r in enumerate(records):
-            assert r.get('id') in expected
-            assert r.get('id') == expected[i]
+        assert [record.get('id') for record in records] == [1, 2, 3]
 
     @pytest.mark.parametrize(
         ('actual', 'expected_page_size'),

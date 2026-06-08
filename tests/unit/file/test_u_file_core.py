@@ -447,41 +447,50 @@ class TestFile:
         assert not file.location.is_local
         assert file.path == uri
 
-    def test_path_support_for_module_helpers(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        """Test that module helpers accept ``Path`` inputs."""
-        cases: tuple[
-            tuple[Any, str, JSONData, JSONData, dict[str, object]],
-            ...,
-        ] = (
-            (
+    @pytest.mark.parametrize(
+        ('handler', 'filename', 'payload', 'expected', 'write_kwargs'),
+        [
+            pytest.param(
                 csv_file.CsvFile(),
                 'data.csv',
                 [{'name': 'Ada'}],
                 [{'name': 'Ada'}],
                 {},
+                id='csv',
             ),
-            (
+            pytest.param(
                 json_file.JsonFile(),
                 'data.json',
                 {'name': 'Ada'},
                 {'name': 'Ada'},
                 {},
+                id='json',
             ),
-            (
+            pytest.param(
                 xml_file.XmlFile(),
                 'data.xml',
                 {'root': {'text': 'hello'}},
                 {'root': {'text': 'hello'}},
                 {'options': WriteOptions(root_tag='root')},
+                id='xml',
             ),
-        )
-        for handler, filename, payload, expected, write_kwargs in cases:
-            path = tmp_path / filename
-            handler.write(path, payload, **write_kwargs)
-            assert handler.read(path) == expected
+        ],
+    )
+    def test_path_support_for_module_helpers(
+        self,
+        tmp_path: Path,
+        handler: Any,
+        filename: str,
+        payload: JSONData,
+        expected: JSONData,
+        write_kwargs: dict[str, object],
+    ) -> None:
+        """Test that module helpers accept ``Path`` inputs."""
+        path = tmp_path / filename
+
+        handler.write(path, payload, **write_kwargs)
+
+        assert handler.read(path) == expected
 
     def test_read_bytes_uses_local_backend(
         self,

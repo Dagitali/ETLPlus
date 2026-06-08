@@ -584,21 +584,27 @@ class TestOptionsContracts:
             == ''
         )
 
-    def test_dataset_option_helpers_use_override_then_default(self) -> None:
+    @pytest.mark.parametrize(
+        ('options', 'expected'),
+        [
+            pytest.param(ReadOptions(dataset='features'), 'features', id='read'),
+            pytest.param(WriteOptions(dataset='labels'), 'labels', id='write'),
+        ],
+    )
+    def test_dataset_option_helpers_use_override_then_default(
+        self,
+        options: ReadOptions | WriteOptions,
+        expected: str,
+    ) -> None:
         """
         Test that scientific dataset helpers using explicit then default data.
         """
         handler = DtaFile()
-        option_expectations = (
-            (ReadOptions(dataset='features'), 'features'),
-            (WriteOptions(dataset='labels'), 'labels'),
-        )
 
         assert handler.dataset_from_options(None) is None
-        for options, expected in option_expectations:
-            assert handler.dataset_from_options(options) == expected
-            assert handler.resolve_dataset(None, options=options) == expected
-            assert handler.resolve_dataset('explicit', options=options) == ('explicit')
+        assert handler.dataset_from_options(options) == expected
+        assert handler.resolve_dataset(None, options=options) == expected
+        assert handler.resolve_dataset('explicit', options=options) == 'explicit'
         assert handler.resolve_dataset(None, default='fallback') == 'fallback'
 
     @pytest.mark.parametrize(

@@ -8,6 +8,7 @@ Unit tests for config-check, init, and shared helper entry points in
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from collections.abc import Mapping
 from pathlib import Path
 from types import SimpleNamespace
@@ -1101,23 +1102,29 @@ class TestScheduleHandler:
             pretty=True,
         )
 
-    def test_run_command_requires_target_and_target_mode(self) -> None:
+    @pytest.mark.parametrize(
+        ('target', 'match'),
+        [
+            pytest.param(None, 'must define a target', id='missing-target'),
+            pytest.param(
+                SimpleNamespace(job=None, run_all=False),
+                'must target one job or run_all',
+                id='missing-target-mode',
+            ),
+        ],
+    )
+    def test_run_command_requires_target_and_target_mode(
+        self,
+        target: SimpleNamespace | None,
+        match: str,
+    ) -> None:
         """Schedule helper should require a target and one run mode."""
         config_path = Path('cfg.yml').resolve()
 
-        with pytest.raises(ValueError, match='must define a target'):
+        with pytest.raises(ValueError, match=match):
             schedule_mod._run_command(
                 config_path=config_path,
-                schedule=SimpleNamespace(name='nightly', target=None),
-            )
-
-        with pytest.raises(ValueError, match='must target one job or run_all'):
-            schedule_mod._run_command(
-                config_path=config_path,
-                schedule=SimpleNamespace(
-                    name='nightly',
-                    target=SimpleNamespace(job=None, run_all=False),
-                ),
+                schedule=SimpleNamespace(name='nightly', target=target),
             )
 
     def test_run_pending_emits_partial_summary_when_scheduler_stops_early(
@@ -1264,29 +1271,41 @@ class TestScheduleHandler:
         assert payload['status'] == 'ok'
         assert payload['job'] == 'file_to_file_customers'
 
-    def test_schedule_emit_helpers_require_compatible_schedule_shapes(self) -> None:
-        """Schedule helper emitters should reject missing cron and trigger data."""
-        config_path = Path('cfg.yml').resolve()
-
-        with pytest.raises(ValueError, match='must define cron for crontab emission'):
-            schedule_mod._crontab_payload(
-                config_path=config_path,
-                schedule=SimpleNamespace(name='nightly', cron=None),
-                working_directory=config_path.parent,
-            )
-
-        with pytest.raises(
-            ValueError,
-            match='must define cron or interval for systemd emission',
-        ):
-            schedule_mod._systemd_payload(
-                config_path=config_path,
-                schedule=SimpleNamespace(
+    @pytest.mark.parametrize(
+        ('payload_factory', 'schedule', 'match'),
+        [
+            pytest.param(
+                schedule_mod._crontab_payload,
+                SimpleNamespace(name='nightly', cron=None),
+                'must define cron for crontab emission',
+                id='crontab-missing-cron',
+            ),
+            pytest.param(
+                schedule_mod._systemd_payload,
+                SimpleNamespace(
                     name='nightly',
                     cron=None,
                     interval=None,
                     target=SimpleNamespace(run_all=True),
                 ),
+                'must define cron or interval for systemd emission',
+                id='systemd-missing-trigger',
+            ),
+        ],
+    )
+    def test_schedule_emit_helpers_require_compatible_schedule_shapes(
+        self,
+        payload_factory: Callable[..., object],
+        schedule: SimpleNamespace,
+        match: str,
+    ) -> None:
+        """Schedule helper emitters should reject missing cron and trigger data."""
+        config_path = Path('cfg.yml').resolve()
+
+        with pytest.raises(ValueError, match=match):
+            payload_factory(
+                config_path=config_path,
+                schedule=schedule,
                 working_directory=config_path.parent,
             )
 

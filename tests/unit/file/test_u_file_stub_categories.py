@@ -228,16 +228,23 @@ class TestStubCategoryHandlers:
             (Path('ignored.conf'), OK_DICT),
         ]
 
+    @pytest.mark.parametrize(
+        ('operation', 'args'),
+        [
+            pytest.param('read_dataset', (), id='read'),
+            pytest.param('write_dataset', ([],), id='write'),
+        ],
+    )
     def test_single_dataset_stub_validates_dataset_key(
         self,
+        operation: str,
+        args: tuple[object, ...],
     ) -> None:
         """Test that single-dataset stub rejects non-default dataset keys."""
         handler = _SingleScientificStub()
         path = Path('data.mat')
         with pytest.raises(ValueError, match='supports only dataset key'):
-            handler.read_dataset(path, dataset='other')
-        with pytest.raises(ValueError, match='supports only dataset key'):
-            handler.write_dataset(path, [], dataset='other')
+            getattr(handler, operation)(path, *args, dataset='other')
 
     def test_single_dataset_stub_read_write_delegate_for_default_dataset(
         self,
