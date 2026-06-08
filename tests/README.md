@@ -42,16 +42,18 @@ See `pytest.ini` for the complete marker registry.
 
 ## Integration File Smoke Pattern
 
-Integration file smoke tests default to
-`SmokeRoundtripModuleContract` with convention-based paths:
+Integration file smoke tests use `FILE_SMOKE_CASES` in
+`tests/integration/file/pytest_smoke_file_contracts.py` with convention-based paths:
 
 - `data.<format>`
 
 Structural exceptions are intentionally limited to:
 
-- `test_i_file_gz.py` (`file_name = "data.json.gz"`)
-- `test_i_file_zip.py` (`file_name = "data.json.zip"`)
-- `test_i_file_xls.py` (`expect_write_error` / `error_match` for read-only write)
+- `gz` (`file_name = "data.json.gz"`)
+- `hdf5` (`expect_write_error` / `error_match` for read-only write)
+- `sas7bdat` (`expect_write_error` / `error_match` for read-only write)
+- `zip` (`file_name = "data.json.zip"`)
+- `xls` (`expect_write_error` / `error_match` for read-only write)
 
 ## Discovery and Selection
 
