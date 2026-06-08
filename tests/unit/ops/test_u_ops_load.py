@@ -35,7 +35,6 @@ from etlplus.ops.load import load_to_database
 from etlplus.ops.load import load_to_file
 from etlplus.utils._types import JSONData
 from etlplus.utils._types import JSONDict
-from tests.unit.ops.pytest_ops_support import ApiCallRecord
 from tests.unit.ops.pytest_ops_support import ApiSession
 from tests.unit.ops.pytest_ops_support import JsonResponse
 from tests.unit.ops.pytest_ops_support import write_json_payload
@@ -422,9 +421,7 @@ class TestLoadToApi:
         assert result['status'] == 'success'
         assert result['records'] == 1
         assert result['method'] == 'POST'
-        api_calls: list[ApiCallRecord] = session.calls
-        assert api_calls
-        first_call: ApiCallRecord = api_calls[0]
+        (first_call,) = session.calls
         assert first_call.kwargs['headers'] == {'X-Test': '1'}
 
     def test_load_to_api_env_requires_url(self) -> None:
@@ -605,9 +602,7 @@ class TestLoadApiOrchestrator:
 
         result_dict = cast(dict[str, Any], result)
         assert result_dict['status'] == 'success'
-        calls: list[ApiCallRecord] = session.calls
-        assert calls
-        first_call: ApiCallRecord = calls[0]
+        (first_call,) = session.calls
         assert first_call.method == 'post'
 
     def test_load_api_with_explicit_method(self) -> None:
@@ -622,9 +617,7 @@ class TestLoadApiOrchestrator:
             session=session,
         )
 
-        calls: list[ApiCallRecord] = session.calls
-        assert calls
-        first_call: ApiCallRecord = calls[0]
+        (first_call,) = session.calls
         assert first_call.method == 'put'
 
     def test_load_defensive_default_branch(
