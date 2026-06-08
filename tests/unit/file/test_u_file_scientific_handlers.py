@@ -170,8 +170,17 @@ class TestScientificHandlers:
         assert resolved is sentinel
         assert handler.resolve_pyreadstat_calls == 1
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('resolved', None, id='resolved'),
+            pytest.param('resolve-calls', 0, id='resolve-calls'),
+        ],
+    )
     def test_resolve_pyreadstat_for_returns_none_when_not_required(
         self,
+        check_name: str,
+        expected: object,
     ) -> None:
         """
         Test that optional :mod:`pyreadstat` branch when dependency is not
@@ -184,5 +193,9 @@ class TestScientificHandlers:
 
         resolved = handler._resolve_pyreadstat_for('read')
 
-        assert resolved is None
-        assert handler.resolve_pyreadstat_calls == 0
+        actual = (
+            resolved
+            if check_name == 'resolved'
+            else handler.resolve_pyreadstat_calls
+        )
+        assert actual == expected

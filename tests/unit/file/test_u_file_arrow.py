@@ -226,14 +226,25 @@ class TestArrow(PyarrowMissingDependencyMixin):
             {'id': 2},
         ]
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('written', 0, id='written'),
+            pytest.param('exists', False, id='exists'),
+        ],
+    )
     def test_write_returns_zero_for_empty_payload(
         self,
         tmp_path: Path,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that empty writes short-circuit without file creation."""
         path = self.format_path(tmp_path)
-        assert self.module_handler.write(path, []) == 0
-        assert not path.exists()
+        written = self.module_handler.write(path, [])
+
+        actual = written if check_name == 'written' else path.exists()
+        assert actual == expected
 
     def test_write_table_uses_osfile_and_ipc_writer(
         self,

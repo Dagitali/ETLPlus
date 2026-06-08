@@ -144,7 +144,18 @@ class TestRHandlers:
             ('data.rda', frame, {}),
         ]
 
-    def test_coerce_r_dataset_delegates_to_read_and_coercion(self) -> None:
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', [{'id': 1}], id='result'),
+            pytest.param('read-calls', ['sample.rda'], id='read-calls'),
+        ],
+    )
+    def test_coerce_r_dataset_delegates_to_read_and_coercion(
+        self,
+        check_name: str,
+        expected: object,
+    ) -> None:
         """Test dataset coercion path with deterministic pyreadr payloads."""
         pyreadr = _PyreadrStub({'data': [{'id': 1}]})
         handler = _RDataHandler(pyreadr)
@@ -154,5 +165,5 @@ class TestRHandlers:
             dataset=None,
         )
 
-        assert result == [{'id': 1}]
-        assert pyreadr.read_calls == ['sample.rda']
+        actual = result if check_name == 'result' else pyreadr.read_calls
+        assert actual == expected
