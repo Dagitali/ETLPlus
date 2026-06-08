@@ -6,7 +6,6 @@ Integration coverage for structured execution events across CLI commands.
 
 from __future__ import annotations
 
-import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +18,7 @@ import pytest
 from etlplus import __version__
 from etlplus.runtime import EVENT_SCHEMA
 from etlplus.runtime import EVENT_SCHEMA_VERSION
+from tests.integration.cli.pytest_cli_integration_support import parse_jsonl_event_lines
 from tests.pytest_shared_support import STRUCTURED_EVENT_BASE_FIELDS
 
 # SECTION: PRAGMAS ========================================================== #
@@ -54,13 +54,6 @@ def _assert_base_event_fields(
     assert line['schema_version'] == EVENT_SCHEMA_VERSION
     assert isinstance(line['run_id'], str)
     assert datetime.fromisoformat(line['timestamp'])
-
-
-def _parse_event_lines(stderr: str) -> list[dict[str, Any]]:
-    """Parse JSONL event output from STDERR."""
-    return [
-        json.loads(line) for line in stderr.splitlines() if line.strip().startswith('{')
-    ]
 
 
 def _assert_success_lifecycle(
@@ -222,7 +215,7 @@ class TestCliExecutionEvents:
 
         assert code == 1
         assert out == ''
-        assert _parse_event_lines(err) == []
+        assert parse_jsonl_event_lines(err) == []
         assert 'Error: File not found: missing-contract.json' in err
 
     @pytest.mark.parametrize(
@@ -328,7 +321,7 @@ class TestCliExecutionEvents:
 
         assert code == 1
         assert out == ''
-        lines = _parse_event_lines(err)
+        lines = parse_jsonl_event_lines(err)
         _assert_failed_lifecycle(
             lines,
             command=command,
@@ -338,130 +331,98 @@ class TestCliExecutionEvents:
         )
         assert f'Error: {error_message_contains}' in err
 
-    def test_extract_emits_jsonl_events(
+    @pytest.mark.parametrize(
+        'command',
+        [
+            pytest.param('extract', id='extract'),
+            pytest.param('load', id='load'),
+            pytest.param('transform', id='transform'),
+            pytest.param('validate', id='validate'),
+        ],
+    )
+    def test_data_operations_emit_jsonl_events(
         self,
         cli_invoke: CliInvoke,
-        parse_json_output: JsonOutputParser,
         json_payload_file: Path,
-        sample_records: list[dict[str, Any]],
-    ) -> None:
-        """Test that ``extract --event-format jsonl`` emits stable events."""
-        code, out, err = cli_invoke(
-            ('extract', '--event-format', 'jsonl', str(json_payload_file)),
-        )
-
-        assert code == 0
-        assert parse_json_output(out) == sample_records
-        _assert_success_lifecycle(
-            _parse_event_lines(err),
-            command='extract',
-            command_fields={
-                'source': str(json_payload_file),
-                'source_type': 'file',
-            },
-        )
-
-    def test_load_emits_jsonl_events(
-        self,
-        cli_invoke: CliInvoke,
+        operations_json: str,
         parse_json_output: JsonOutputParser,
+        rules_json: str,
+        sample_records: list[dict[str, Any]],
         sample_records_json: str,
         stdin_text: StdinText,
         tmp_path: Path,
+        command: str,
     ) -> None:
-        """Test that ``load --event-format jsonl`` emits stable events."""
-        stdin_text(sample_records_json)
+        """Test that data operations emit stable ``etlplus.event.v1`` JSONL."""
         out_path = tmp_path / 'load-events.json'
-
-        code, out, err = cli_invoke(
-            (
-                'load',
-                '--event-format',
-                'jsonl',
-                '--target-type',
-                'file',
-                str(out_path),
+        operation_cases = {
+            'extract': (
+                ('extract', '--event-format', 'jsonl', str(json_payload_file)),
+                None,
+                sample_records,
+                {'source': str(json_payload_file), 'source_type': 'file'},
             ),
-        )
+            'load': (
+                (
+                    'load',
+                    '--event-format',
+                    'jsonl',
+                    '--target-type',
+                    'file',
+                    str(out_path),
+                ),
+                sample_records_json,
+                {'status': 'success'},
+                {'source': '-', 'target': str(out_path), 'target_type': 'file'},
+            ),
+            'transform': (
+                (
+                    'transform',
+                    '--event-format',
+                    'jsonl',
+                    '--operations',
+                    operations_json,
+                    '-',
+                    '-',
+                ),
+                sample_records_json,
+                list,
+                {'source': '-', 'target': 'stdout', 'target_type': 'file'},
+            ),
+            'validate': (
+                (
+                    'validate',
+                    '--event-format',
+                    'jsonl',
+                    '--rules',
+                    rules_json,
+                    '-',
+                ),
+                sample_records_json,
+                {'valid': True},
+                {'source': '-', 'target': 'stdout'},
+            ),
+        }
+        args, stdin_payload, expected_output, command_fields = operation_cases[command]
+        if stdin_payload is not None:
+            stdin_text(stdin_payload)
+
+        code, out, err = cli_invoke(args)
 
         assert code == 0
-        assert parse_json_output(out)['status'] == 'success'
+        payload = parse_json_output(out)
+        if isinstance(expected_output, type):
+            assert isinstance(payload, expected_output)
+        elif isinstance(expected_output, dict):
+            assert {
+                key: payload[key] for key in expected_output
+            } == expected_output
+        else:
+            assert payload == expected_output
         _assert_success_lifecycle(
-            _parse_event_lines(err),
-            command='load',
-            command_fields={
-                'source': '-',
-                'target': str(out_path),
-                'target_type': 'file',
-            },
-        )
-
-    def test_transform_emits_jsonl_events(
-        self,
-        cli_invoke: CliInvoke,
-        parse_json_output: JsonOutputParser,
-        operations_json: str,
-        sample_records_json: str,
-        stdin_text: StdinText,
-    ) -> None:
-        """Test that ``transform --event-format jsonl`` emits stable events."""
-        stdin_text(sample_records_json)
-
-        code, out, err = cli_invoke(
-            (
-                'transform',
-                '--event-format',
-                'jsonl',
-                '--operations',
-                operations_json,
-                '-',
-                '-',
-            ),
-        )
-
-        assert code == 0
-        assert isinstance(parse_json_output(out), list)
-        _assert_success_lifecycle(
-            _parse_event_lines(err),
-            command='transform',
-            command_fields={
-                'source': '-',
-                'target': 'stdout',
-                'target_type': 'file',
-            },
-        )
-
-    def test_validate_emits_jsonl_events(
-        self,
-        cli_invoke: CliInvoke,
-        parse_json_output: JsonOutputParser,
-        rules_json: str,
-        sample_records_json: str,
-        stdin_text: StdinText,
-    ) -> None:
-        """Test that ``validate --event-format jsonl`` emits stable events."""
-        stdin_text(sample_records_json)
-
-        code, out, err = cli_invoke(
-            (
-                'validate',
-                '--event-format',
-                'jsonl',
-                '--rules',
-                rules_json,
-                '-',
-            ),
-        )
-
-        assert code == 0
-        assert parse_json_output(out)['valid'] is True
-        _assert_success_lifecycle(
-            _parse_event_lines(err),
-            command='validate',
-            command_fields={
-                'source': '-',
-                'target': 'stdout',
-            },
+            parse_jsonl_event_lines(err),
+            command=command,
+            command_fields=command_fields,
         )
 
     def test_run_emits_jsonl_events_and_correlates_with_history_on_success(
@@ -495,7 +456,7 @@ class TestCliExecutionEvents:
 
         assert code == 0
         payload = parse_json_output(out)
-        lines = _parse_event_lines(err)
+        lines = parse_jsonl_event_lines(err)
 
         _assert_success_lifecycle(
             lines,
@@ -544,7 +505,7 @@ class TestCliExecutionEvents:
 
         assert code == 1
         payload = parse_json_output(out)
-        lines = _parse_event_lines(err)
+        lines = parse_jsonl_event_lines(err)
 
         _assert_failed_lifecycle(
             lines,
@@ -613,7 +574,7 @@ class TestCliExecutionEvents:
 
         assert code == 1
         assert out == ''
-        lines = _parse_event_lines(err)
+        lines = parse_jsonl_event_lines(err)
 
         _assert_failed_lifecycle(
             lines,
