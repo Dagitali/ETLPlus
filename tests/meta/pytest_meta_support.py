@@ -13,6 +13,8 @@ from typing import Any
 
 import yaml
 
+from tests.pytest_shared_support import REPO_ROOT
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
@@ -45,8 +47,8 @@ _REQUIREMENT_NAME_PATTERN = re.compile(r'^\s*([A-Za-z0-9_.-]+)')
 # SECTION: CONSTANTS ======================================================== #
 
 
-PYPROJECT_PATH = Path(__file__).resolve().parents[2] / 'pyproject.toml'
-README_PATH = Path(__file__).resolve().parents[2] / 'README.md'
+PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
+README_PATH = REPO_ROOT / 'README.md'
 
 
 # SECTION: FUNCTIONS ======================================================== #
