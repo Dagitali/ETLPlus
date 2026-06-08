@@ -28,6 +28,7 @@ from etlplus.file import FileFormat
 from etlplus.history._ui import build_snapshot
 from etlplus.runtime import EVENT_SCHEMA
 from etlplus.runtime import EVENT_SCHEMA_VERSION
+from tests.integration.cli.pytest_cli_integration_support import history_table_counts
 from tests.integration.pytest_integration_support import REMOTE_STORAGE_ENV_CASES
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
@@ -52,15 +53,6 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 pytestmark = [pytest.mark.integration, pytest.mark.smoke]
 
 # SECTION: HELPERS ========================================================== #
-
-
-def _history_table_counts(history_db: Path) -> tuple[int, int]:
-    """Return run and job row counts from one SQLite history database."""
-    with sqlite3.connect(history_db) as conn:
-        return (
-            conn.execute('SELECT COUNT(*) FROM runs').fetchone()[0],
-            conn.execute('SELECT COUNT(*) FROM job_runs').fetchone()[0],
-        )
 
 
 def _write_dag_pipeline_config(
@@ -317,7 +309,7 @@ class TestRun:
         assert run_err == ''
         run_id = parse_json_output(run_out)['run_id']
         history_db = state_dir / 'history.sqlite'
-        before_counts = _history_table_counts(history_db)
+        before_counts = history_table_counts(history_db)
 
         history_code, history_out, history_err = cli_invoke(
             ('history', '--run-id', run_id),
@@ -333,7 +325,7 @@ class TestRun:
 
         assert history_code == status_code == report_code == log_code == 0
         assert history_err == status_err == report_err == log_err == ''
-        assert _history_table_counts(history_db) == before_counts
+        assert history_table_counts(history_db) == before_counts
 
         history_payload = parse_json_output(history_out)
         status_payload = parse_json_output(status_out)
