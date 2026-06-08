@@ -175,29 +175,51 @@ class TestConfig:
         assert len(cfg.table_schemas) == 1
         assert cfg.table_schemas[0]['table'] == 'customers'
 
-    def test_from_dict_parses_history_defaults(
-        self,
-    ) -> None:
-        """Test that :class:`Config` parses one optional history block."""
-        cfg = Config.from_dict(
-            {
-                'name': 'History Config Test',
-                'history': {
+    @pytest.mark.parametrize(
+        ('section', 'payload'),
+        [
+            pytest.param(
+                'history',
+                {
                     'enabled': False,
                     'backend': 'jsonl',
                     'state_dir': './.etlplus-state',
                     'capture_tracebacks': True,
                 },
+                id='history',
+            ),
+            pytest.param(
+                'telemetry',
+                {
+                    'enabled': True,
+                    'exporter': 'opentelemetry',
+                    'service_name': 'etlplus-tests',
+                },
+                id='telemetry',
+            ),
+        ],
+    )
+    def test_from_dict_parses_optional_runtime_blocks(
+        self,
+        section: str,
+        payload: dict[str, object],
+    ) -> None:
+        """Test that :class:`Config` parses optional runtime config blocks."""
+        cfg = Config.from_dict(
+            {
+                'name': f'{section.title()} Config Test',
+                section: payload,
                 'sources': [],
                 'targets': [],
                 'jobs': [],
             },
         )
 
-        assert cfg.history.enabled is False
-        assert cfg.history.backend == 'jsonl'
-        assert cfg.history.state_dir == './.etlplus-state'
-        assert cfg.history.capture_tracebacks is True
+        parsed = getattr(cfg, section)
+        assert {
+            name: getattr(parsed, name)
+            for name in payload
+        } == payload
 
     def test_from_dict_parses_schedules(
         self,
@@ -249,32 +271,10 @@ class TestConfig:
         assert cfg.schedules[1].target is not None
         assert cfg.schedules[1].target.job == 'job-a'
 
-    def test_from_dict_parses_telemetry_defaults(
-        self,
-    ) -> None:
-        """Test that :class:`Config` parses one optional telemetry block."""
-        cfg = Config.from_dict(
-            {
-                'name': 'Telemetry Config Test',
-                'telemetry': {
-                    'enabled': True,
-                    'exporter': 'opentelemetry',
-                    'service_name': 'etlplus-tests',
-                },
-                'sources': [],
-                'targets': [],
-                'jobs': [],
-            },
-        )
-
-        assert cfg.telemetry.enabled is True
-        assert cfg.telemetry.exporter == 'opentelemetry'
-        assert cfg.telemetry.service_name == 'etlplus-tests'
-
     def test_from_yaml_includes_profile_env_in_substitution(
         self,
         pipeline_builder: Callable[..., Config],
-    ) -> None:  # noqa: D401
+    ) -> None:
         """
         Test that :class:`Config` includes profile environment variables in
         substitution when loaded from YAML.
