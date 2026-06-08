@@ -77,7 +77,11 @@ class ApiSession:
         """Capture POST call details."""
         json_payload = kwargs.pop('json')
         return self._record(
-            'post', url, json_payload=json_payload, timeout=timeout, kwargs=kwargs,
+            'post',
+            url,
+            json_payload=json_payload,
+            timeout=timeout,
+            kwargs=kwargs,
         )
 
     def put(
@@ -90,7 +94,11 @@ class ApiSession:
         """Capture PUT call details."""
         json_payload = kwargs.pop('json')
         return self._record(
-            'put', url, json_payload=json_payload, timeout=timeout, kwargs=kwargs,
+            'put',
+            url,
+            json_payload=json_payload,
+            timeout=timeout,
+            kwargs=kwargs,
         )
 
 
