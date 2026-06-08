@@ -13,11 +13,12 @@ from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
 from typing import TYPE_CHECKING
-from typing import Any
 
 import pytest
 
 from etlplus.cli._handlers import schedule as schedule_handler_mod
+from tests.integration.cli.pytest_cli_integration_support import history_table_counts
+from tests.integration.cli.pytest_cli_integration_support import parse_jsonl_event_lines
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.pytest_shared_support import CliInvoke
@@ -28,22 +29,6 @@ if TYPE_CHECKING:  # pragma: no cover - typing helpers only
 # pylint: disable=protected-access
 
 # SECTION: HELPERS ========================================================== #
-
-
-def _event_lines(stderr: str) -> list[dict[str, Any]]:
-    """Parse structured JSONL event lines from STDERR."""
-    return [
-        json.loads(line) for line in stderr.splitlines() if line.strip().startswith('{')
-    ]
-
-
-def _history_counts(history_db: Path) -> tuple[int, int]:
-    """Return run and job row counts from one SQLite history store."""
-    with sqlite3.connect(history_db) as conn:
-        return (
-            conn.execute('SELECT COUNT(*) FROM runs').fetchone()[0],
-            conn.execute('SELECT COUNT(*) FROM job_runs').fetchone()[0],
-        )
 
 
 def _write_scheduled_file_pipeline(
@@ -157,7 +142,7 @@ class TestCliScheduleRunPending:
         assert second_payload['dispatched_count'] == 0
         assert second_payload['pending_runs'] == []
 
-        events = _event_lines(first_err)
+        events = parse_jsonl_event_lines(first_err)
         assert [event['event'] for event in events] == [
             'run.started',
             'run.completed',
@@ -207,7 +192,7 @@ class TestCliScheduleRunPending:
             },
         ]
         assert job_rows == [('seed', 'succeeded'), ('seed', 'succeeded')]
-        assert _history_counts(history_db) == (2, 2)
+        assert history_table_counts(history_db) == (2, 2)
 
     def test_run_pending_overlap_remains_pending_without_history_writes(
         self,
