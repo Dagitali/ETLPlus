@@ -10,6 +10,7 @@ import ast
 import sys
 from pathlib import Path
 
+from tests.meta.pytest_meta_support import PYPROJECT_PATH
 from tests.meta.pytest_meta_support import canonical_requirement_name
 from tests.meta.pytest_meta_support import normalized_text
 from tests.meta.pytest_meta_support import read_text
@@ -20,7 +21,6 @@ from tests.pytest_shared_support import REPO_ROOT
 
 
 CLI_PACKAGE_PATH = REPO_ROOT / 'etlplus' / 'cli'
-PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
 BRANCH_PROTECTION_PATH = REPO_ROOT / '.github' / 'BRANCH-PROTECTION.md'
 CI_CD_WORKFLOWS_PATH = REPO_ROOT / 'CI-CD-WORKFLOWS.md'
 DEPENDENCY_POLICY_NOTES_PATH = REPO_ROOT / 'DEPENDENCY-AND-EXTENSION-POLICY-NOTES.md'

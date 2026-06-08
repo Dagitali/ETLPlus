@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 
+from tests.meta.pytest_meta_support import README_PATH
 from tests.meta.pytest_meta_support import read_text
 from tests.meta.pytest_meta_support import read_yaml
 from tests.pytest_shared_support import REPO_ROOT
@@ -26,7 +27,6 @@ type InstallerStep = tuple[str, str]
 # SECTION: CONSTANTS ======================================================== #
 
 
-README_PATH = REPO_ROOT / 'README.md'
 RELEASE_CHECKLIST_PATH = REPO_ROOT / 'RELEASE-CHECKLIST.md'
 COMPATIBILITY_PATH = REPO_ROOT / 'docs/source/getting-started/compatibility.md'
 

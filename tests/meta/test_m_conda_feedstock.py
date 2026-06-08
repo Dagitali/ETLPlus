@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.meta.pytest_meta_support import PYPROJECT_PATH
 from tests.meta.pytest_meta_support import canonical_requirement_name
 from tests.meta.pytest_meta_support import read_text
 from tests.meta.pytest_meta_support import read_toml
@@ -26,7 +27,6 @@ _CONDA_NAME_MAP = {
     'sqlalchemy': 'sqlalchemy',
 }
 
-PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
 CONDA_RECIPE_PATH = REPO_ROOT / 'packaging/conda/meta.yaml.j2'
 CONDA_README_PATH = REPO_ROOT / 'packaging/conda/README.md'
 CONDA_PREP_PATH = REPO_ROOT / 'packaging/conda/FEEDSTOCK-PREP.md'

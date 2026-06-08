@@ -24,6 +24,7 @@ from tests.integration.file.pytest_smoke_file_contracts import (
     FILE_SMOKE_EXCEPTION_OVERRIDES,
 )
 from tests.integration.file.pytest_smoke_file_contracts import FILE_SMOKE_OVERRIDE_ATTRS
+from tests.meta.pytest_meta_support import README_PATH
 from tests.meta.pytest_meta_support import markdown_table_rows
 from tests.meta.pytest_meta_support import read_lines
 from tests.meta.pytest_meta_support import regex_matches
@@ -48,9 +49,8 @@ _FILE_PACKAGE_README_PATH = REPO_ROOT / 'etlplus' / 'file' / 'README.md'
 _INTEGRATION_FILE_README_PATH = (
     REPO_ROOT / 'tests' / 'integration' / 'file' / 'README.md'
 )
-_README_MATRIX_PATH = REPO_ROOT / 'README.md'
 _MATRIX_PATHS = (
-    pytest.param(_README_MATRIX_PATH, id=_README_MATRIX_PATH.name),
+    pytest.param(README_PATH, id=README_PATH.name),
     pytest.param(_DOCS_MATRIX_PATH, id=_DOCS_MATRIX_PATH.name),
 )
 _SUPPORTED_FORMATS_SECTION = '## Supported File Formats'
