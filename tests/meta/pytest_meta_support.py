@@ -7,7 +7,11 @@ Shared helpers for meta-level repository guardrail tests.
 from __future__ import annotations
 
 import re
+import tomllib
 from pathlib import Path
+from typing import Any
+
+import yaml
 
 # SECTION: PRAGMAS ========================================================== #
 
@@ -20,7 +24,11 @@ __all__ = [
     # Functions
     'canonical_requirement_name',
     'markdown_table_rows',
+    'normalized_text',
     'read_lines',
+    'read_text',
+    'read_toml',
+    'read_yaml',
     'regex_matches',
 ]
 
@@ -83,6 +91,25 @@ def markdown_table_rows(
     ]
 
 
+def normalized_text(
+    value: str,
+) -> str:
+    """
+    Return case-folded text with Markdown line wrapping normalized.
+
+    Parameters
+    ----------
+    value : str
+        Text to normalize.
+
+    Returns
+    -------
+    str
+        Case-folded text with contiguous whitespace collapsed.
+    """
+    return ' '.join(value.casefold().split())
+
+
 def read_lines(
     path: Path,
 ) -> list[str]:
@@ -97,10 +124,70 @@ def read_lines(
     Returns
     -------
     list[str]
-        List of lines from the file, with leading and trailing whitespace
-        removed.
+        List of lines from the file.
     """
-    return path.read_text(encoding='utf-8').splitlines()
+    return read_text(path).splitlines()
+
+
+def read_text(
+    path: Path,
+    *,
+    errors: str = 'strict',
+) -> str:
+    """
+    Return UTF-8 text content from one file.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the text file.
+    errors : str
+        Error handling strategy passed to :meth:`Path.read_text`.
+
+    Returns
+    -------
+    str
+        File content decoded as UTF-8.
+    """
+    return path.read_text(encoding='utf-8', errors=errors)
+
+
+def read_toml(
+    path: Path,
+) -> dict[str, Any]:
+    """
+    Return parsed TOML data from one file.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the TOML file.
+
+    Returns
+    -------
+    dict[str, Any]
+        Parsed TOML content.
+    """
+    return tomllib.loads(read_text(path))
+
+
+def read_yaml(
+    path: Path,
+) -> Any:
+    """
+    Return parsed YAML data from one file.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the YAML file.
+
+    Returns
+    -------
+    Any
+        Parsed YAML content.
+    """
+    return yaml.safe_load(read_text(path))
 
 
 def regex_matches(
