@@ -178,7 +178,22 @@ class TestBuildPaginationCfg:
         page_cfg = cast(PagePaginationConfigDict, cfg_map)
         assert page_cfg[field] == expected
 
-    def test_page_config_with_overrides(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('type', 'page', id='type'),
+            pytest.param('records_path', 'records', id='records-path'),
+            pytest.param('page_param', 'page', id='page-param'),
+            pytest.param('size_param', 'sz', id='size-param'),
+            pytest.param('max_pages', 5, id='max-pages'),
+            pytest.param('page_size', 10, id='page-size'),
+        ],
+    )
+    def test_page_config_with_overrides(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Test building page-based pagination config with overrides."""
         pagination = PaginationConfig(
             type=PaginationType.PAGE,
@@ -196,18 +211,29 @@ class TestBuildPaginationCfg:
         assert cfg_map is not None
         page_cfg = cast(PagePaginationConfigDict, cfg_map)
 
-        assert page_cfg['type'] == 'page'
-        assert page_cfg['records_path'] == 'records'
-        assert page_cfg['page_param'] == 'page'
-        assert page_cfg['size_param'] == 'sz'
-        assert page_cfg['max_pages'] == 5
-        assert page_cfg['page_size'] == 10
+        assert page_cfg[field] == expected
 
 
 class TestBuildSession:
     """Unit tests for :func:`build_session`."""
 
-    def test_applies_configuration(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('headers.X', '1', id='header'),
+            pytest.param('params', {'debug': '1'}, id='params'),
+            pytest.param('auth', ('user', 'pass'), id='auth'),
+            pytest.param('verify', False, id='verify'),
+            pytest.param('cert', 'cert.pem', id='cert'),
+            pytest.param('proxies.https', 'proxy', id='proxy'),
+            pytest.param('cookies.a', 'b', id='cookie'),
+        ],
+    )
+    def test_applies_configuration(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Test that session is built with given configuration."""
         sess = _utils.build_session(
             {
@@ -222,13 +248,18 @@ class TestBuildSession:
             },
         )
 
-        assert sess.headers['X'] == '1'
-        assert sess.params == {'debug': '1'}
-        assert sess.auth == ('user', 'pass')
-        assert sess.verify is False
-        assert sess.cert == 'cert.pem'
-        assert sess.proxies['https'] == 'proxy'
-        assert sess.cookies.get('a') == 'b'
+        match field.split('.'):
+            case ['headers', key]:
+                actual = sess.headers[key]
+            case ['proxies', key]:
+                actual = sess.proxies[key]
+            case ['cookies', key]:
+                actual = sess.cookies.get(key)
+            case [attr]:
+                actual = getattr(sess, attr)
+            case _:
+                pytest.fail(f'Unsupported field path: {field}')
+        assert actual == expected
 
 
 class TestComposeApiRequestEnv:

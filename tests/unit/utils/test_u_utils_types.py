@@ -35,16 +35,31 @@ class _NonEmptyModel(BaseModel):
 class TestTypesModule:
     """Unit tests for exported aliases in :mod:`etlplus.utils._types`."""
 
-    def test_aliases_are_usable_in_annotations(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('record-id', 1, id='record-id'),
+            pytest.param('path-suffix', '.json', id='path-suffix'),
+            pytest.param('template', 'ddl', id='template'),
+        ],
+    )
+    def test_aliases_are_usable_in_annotations(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Test that aliases are importable and usable in typed values."""
         record: core_types.Record = {'id': 1}
         records: core_types.Records = [record]
         path: core_types.StrPath = Path('in/data.json')
         template: core_types.TemplateKey = 'ddl'
 
-        assert records[0]['id'] == 1
-        assert Path(path).suffix == '.json'
-        assert template == 'ddl'
+        actual = {
+            'record-id': records[0]['id'],
+            'path-suffix': Path(path).suffix,
+            'template': template,
+        }[field]
+        assert actual == expected
 
     def test_exports_include_expected_aliases(self) -> None:
         """Test that ``__all__`` includes the documented public aliases."""
@@ -81,12 +96,22 @@ class TestTypesModule:
         typed = cast(dict[str, object], value)
         assert typed['c'] is None
 
-    def test_non_empty_validation_aliases_work_with_pydantic(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('name', 'users', id='name'),
+            pytest.param('columns', ['id'], id='columns'),
+        ],
+    )
+    def test_non_empty_validation_aliases_work_with_pydantic(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Test shared non-empty aliases enforce Pydantic constraints."""
         model = _NonEmptyModel.model_validate({'name': 'users', 'columns': ['id']})
 
-        assert model.name == 'users'
-        assert model.columns == ['id']
+        assert getattr(model, field) == expected
 
     @pytest.mark.parametrize(
         'payload',

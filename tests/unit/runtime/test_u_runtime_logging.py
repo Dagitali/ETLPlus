@@ -88,9 +88,26 @@ class TestConfigureLogging:
         assert isinstance(basic_config, dict)
         assert basic_config['stream'] is sys.stderr
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('level', logging.ERROR, id='level'),
+            pytest.param('basicConfig.force', True, id='force'),
+            pytest.param(
+                'basicConfig.format',
+                '%(levelname)s %(name)s: %(message)s',
+                id='format',
+            ),
+            pytest.param('basicConfig.level', logging.ERROR, id='basic-level'),
+            pytest.param('basicConfig.stream', None, id='stream'),
+            pytest.param('captureWarnings', True, id='capture-warnings'),
+        ],
+    )
     def test_configure_logging_passes_expected_arguments(
         self,
         logging_setup_calls: dict[str, object],
+        field: str,
+        expected: object,
     ) -> None:
         """Test that configuration forwards the resolved level and options."""
         stream = StringIO()
@@ -101,16 +118,21 @@ class TestConfigureLogging:
             env={'ETLPLUS_LOG_LEVEL': 'error'},
         )
 
-        assert level == logging.ERROR
-        assert logging_setup_calls == {
-            'basicConfig': {
-                'force': True,
-                'format': '%(levelname)s %(name)s: %(message)s',
-                'level': logging.ERROR,
-                'stream': stream,
-            },
-            'captureWarnings': True,
-        }
+        basic_config = logging_setup_calls['basicConfig']
+        assert isinstance(basic_config, dict)
+        match field.split('.'):
+            case ['level']:
+                actual = level
+            case ['basicConfig', 'stream']:
+                actual = basic_config['stream']
+                expected = stream
+            case ['basicConfig', key]:
+                actual = basic_config[key]
+            case ['captureWarnings']:
+                actual = logging_setup_calls['captureWarnings']
+            case _:
+                pytest.fail(f'Unsupported field path: {field}')
+        assert actual == expected
 
 
 class TestResolveLogLevel:
