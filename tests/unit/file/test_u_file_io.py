@@ -64,36 +64,75 @@ class TestIoHelpers:
         assert mod.coerce_path(str(value)) == value
         assert mod.coerce_path(value) == value
 
-    def test_coerce_record_payload_contract(self) -> None:
-        """Test record payload coercion for supported and invalid shapes."""
-        for valid_payload, expected in (
-            ({'a': 1}, {'a': 1}),
-            ([{'a': 1}, {'a': 2}], [{'a': 1}, {'a': 2}]),
-        ):
-            result = mod.coerce_record_payload(valid_payload, format_name='JSON')
-            assert result == expected
+    @pytest.mark.parametrize(
+        ('payload', 'expected'),
+        [
+            pytest.param({'a': 1}, {'a': 1}, id='object'),
+            pytest.param([{'a': 1}, {'a': 2}], [{'a': 1}, {'a': 2}], id='array'),
+        ],
+    )
+    def test_coerce_record_payload_accepts_supported_shapes(
+        self,
+        payload: object,
+        expected: object,
+    ) -> None:
+        """Test record payload coercion for supported shapes."""
+        assert mod.coerce_record_payload(payload, format_name='JSON') == expected
 
-        for invalid_payload, pattern in (
-            ([{'a': 1}, 2], 'array must contain only objects'),
-            ('bad', 'root must be an object'),
-        ):
-            with pytest.raises(TypeError, match=pattern):
-                mod.coerce_record_payload(invalid_payload, format_name='JSON')
+    @pytest.mark.parametrize(
+        ('payload', 'pattern'),
+        [
+            pytest.param(
+                [{'a': 1}, 2],
+                'array must contain only objects',
+                id='mixed-array',
+            ),
+            pytest.param('bad', 'root must be an object', id='scalar'),
+        ],
+    )
+    def test_coerce_record_payload_rejects_invalid_shapes(
+        self,
+        payload: object,
+        pattern: str,
+    ) -> None:
+        """Test record payload coercion rejects invalid shapes."""
+        with pytest.raises(TypeError, match=pattern):
+            mod.coerce_record_payload(payload, format_name='JSON')
 
-    def test_normalize_records_contract(self) -> None:
-        """Test record normalization for valid and invalid payloads."""
-        for valid_payload, expected in (
-            ({'id': 1}, [{'id': 1}]),
-            ([{'id': 1}, {'id': 2}], [{'id': 1}, {'id': 2}]),
-        ):
-            assert mod.normalize_records(valid_payload, 'CSV') == expected
+    @pytest.mark.parametrize(
+        ('payload', 'expected'),
+        [
+            pytest.param({'id': 1}, [{'id': 1}], id='object'),
+            pytest.param(
+                [{'id': 1}, {'id': 2}],
+                [{'id': 1}, {'id': 2}],
+                id='array',
+            ),
+        ],
+    )
+    def test_normalize_records_accepts_supported_payloads(
+        self,
+        payload: object,
+        expected: list[dict[str, object]],
+    ) -> None:
+        """Test record normalization for valid payloads."""
+        assert mod.normalize_records(payload, 'CSV') == expected
 
-        for invalid_payload, pattern in (
-            (1, 'must be an object or an array'),
-            ([{'id': 1}, 'x'], 'contain only objects'),
-        ):
-            with pytest.raises(TypeError, match=pattern):
-                mod.normalize_records(invalid_payload, 'CSV')
+    @pytest.mark.parametrize(
+        ('payload', 'pattern'),
+        [
+            pytest.param(1, 'must be an object or an array', id='scalar'),
+            pytest.param([{'id': 1}, 'x'], 'contain only objects', id='mixed-array'),
+        ],
+    )
+    def test_normalize_records_rejects_invalid_payloads(
+        self,
+        payload: object,
+        pattern: str,
+    ) -> None:
+        """Test record normalization rejects invalid payloads."""
+        with pytest.raises(TypeError, match=pattern):
+            mod.normalize_records(payload, 'CSV')
 
     def test_read_and_write_bytes_support_remote_locations(
         self,

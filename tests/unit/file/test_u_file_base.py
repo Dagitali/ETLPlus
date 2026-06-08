@@ -119,11 +119,20 @@ _SPREADSHEET_HANDLER_CLASSES = (
     XlsmFile,
     OdsFile,
 )
-_NAMING_METHOD_CASES = (
-    (_DELIMITED_HANDLER_CLASSES, 'read_rows', 'write_rows'),
-    (_EMBEDDED_DB_HANDLER_CLASSES, 'read_table', 'write_table'),
-    (_SCIENTIFIC_HANDLER_CLASSES, 'read_dataset', 'write_dataset'),
-    (_SPREADSHEET_HANDLER_CLASSES, 'read_sheet', 'write_sheet'),
+_NAMING_METHOD_CASES = tuple(
+    pytest.param(
+        handler_cls,
+        method_name,
+        id=f'{handler_cls.__name__}-{method_name}',
+    )
+    for handlers, read_method, write_method in (
+        (_DELIMITED_HANDLER_CLASSES, 'read_rows', 'write_rows'),
+        (_EMBEDDED_DB_HANDLER_CLASSES, 'read_table', 'write_table'),
+        (_SCIENTIFIC_HANDLER_CLASSES, 'read_dataset', 'write_dataset'),
+        (_SPREADSHEET_HANDLER_CLASSES, 'read_sheet', 'write_sheet'),
+    )
+    for handler_cls in handlers
+    for method_name in ('read', 'write', read_method, write_method)
 )
 
 
@@ -542,19 +551,16 @@ class TestNamingConventions:
     """Unit tests for category-level internal naming conventions."""
 
     @pytest.mark.parametrize(
-        ('handlers', 'read_method', 'write_method'),
+        ('handler_cls', 'method_name'),
         _NAMING_METHOD_CASES,
     )
     def test_handlers_expose_category_methods(
         self,
-        handlers: tuple[type[FileHandlerABC], ...],
-        read_method: str,
-        write_method: str,
+        handler_cls: type[FileHandlerABC],
+        method_name: str,
     ) -> None:
         """Test that handlers expose category-level read/write methods."""
-        for handler_cls in handlers:
-            for method_name in ('read', 'write', read_method, write_method):
-                assert callable(getattr(handler_cls, method_name, None))
+        assert callable(getattr(handler_cls, method_name, None))
 
 
 class TestOptionsContracts:

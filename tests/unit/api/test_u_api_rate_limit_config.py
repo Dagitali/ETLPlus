@@ -157,18 +157,25 @@ class TestRateLimitConfig:
         # Original mapping should remain unchanged (defensive copy behavior).
         assert obj == {'sleep_seconds': '1', 'max_per_sec': '3'}
 
+    @pytest.mark.parametrize(
+        'fragment',
+        [
+            pytest.param('sleep_seconds', id='sleep-field'),
+            pytest.param('max_per_sec', id='max-field'),
+            pytest.param('0.5', id='sleep-value'),
+            pytest.param('2.0', id='max-value'),
+        ],
+    )
     def test_repr_roundtrip(
         self,
         rate_limit_config_factory: Callable[..., RateLimitConfig],
+        fragment: str,
     ) -> None:
         """
         Test that ``repr`` output includes field names and values.
         """
         rl = rate_limit_config_factory(sleep_seconds=0.5, max_per_sec=2.0)
-        # Best-effort: repr should mention field names & values.
-        r = repr(rl)
-        for frag in ('sleep_seconds', 'max_per_sec', '0.5', '2.0'):
-            assert frag in r
+        assert fragment in repr(rl)
 
     def test_unhashable_dataclass(
         self,

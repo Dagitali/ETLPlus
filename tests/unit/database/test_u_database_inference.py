@@ -133,14 +133,21 @@ class TestSqlDialect:
         """Test dialect-aware table quoting."""
         assert SqlDialect(dialect).quote_table(table_name) == expected
 
-    def test_quote_table_rejects_empty_reference(self) -> None:
+    @pytest.mark.parametrize(
+        ('table_name', 'match'),
+        [
+            pytest.param('...', 'Invalid table reference', id='empty-dotted'),
+            pytest.param('   ', 'Invalid identifier', id='blank'),
+        ],
+    )
+    def test_quote_table_rejects_empty_reference(
+        self,
+        table_name: str,
+        match: str,
+    ) -> None:
         """Test dotted empty table references are rejected."""
-        for table_name, match in [
-            ('...', 'Invalid table reference'),
-            ('   ', 'Invalid identifier'),
-        ]:
-            with pytest.raises(ValueError, match=match):
-                SqlDialect().quote_table(table_name)
+        with pytest.raises(ValueError, match=match):
+            SqlDialect().quote_table(table_name)
 
 
 class TestValueCodec:

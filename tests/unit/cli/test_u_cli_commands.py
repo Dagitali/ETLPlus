@@ -906,24 +906,28 @@ class TestCliInvokeParsing:
             },
         }
 
+    @pytest.mark.parametrize(
+        'expected',
+        [
+            pytest.param('--host', id='host-option'),
+            pytest.param('127.0.0.1', id='default-host'),
+            pytest.param('--port', id='port-option'),
+            pytest.param('--limit', id='limit-option'),
+            pytest.param('--refresh-seconds', id='refresh-option'),
+            pytest.param('--no-browser', id='browser-option'),
+        ],
+    )
     def test_ui_help_lists_local_dashboard_options(
         self,
         invoke_cli: InvokeCli,
+        expected: str,
     ) -> None:
         """The stable ``etlplus ui`` help should list its dashboard options."""
         result = invoke_cli('ui', '--help')
         stdout = strip_ansi(result.stdout)
 
         assert result.exit_code == 0
-        for expected in (
-            '--host',
-            '127.0.0.1',
-            '--port',
-            '--limit',
-            '--refresh-seconds',
-            '--no-browser',
-        ):
-            assert expected in stdout
+        assert expected in stdout
 
 
 class TestCommandsMissingInputs:
