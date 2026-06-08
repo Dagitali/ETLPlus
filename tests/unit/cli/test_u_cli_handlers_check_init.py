@@ -630,13 +630,15 @@ class TestCliHandlersInternalHelpers:
 
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(lifecycle_mod, 'fail_command', fake_fail_command)
-            with pytest.raises(RuntimeError, match='boom'):
-                with handlers._failure_boundary(
+            with (
+                pytest.raises(RuntimeError, match='boom'),
+                handlers._failure_boundary(
                     context,
                     on_error=on_error,
                     step='extract',
-                ):
-                    raise RuntimeError('boom')
+                ),
+            ):
+                raise RuntimeError('boom')
 
         assert isinstance(captured['exc'], RuntimeError)
         failed_exc, failed_fields = cast(

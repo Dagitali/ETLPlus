@@ -907,11 +907,14 @@ class TestFileCoreDispatch:
         backend = RemoteBytesBackendStub(open_error=RuntimeError('upload failed'))
         _install_storage_backend(monkeypatch, backend)
 
-        with pytest.raises(RuntimeError, match='upload failed'):
-            with File('s3://bucket', FileFormat.JSON)._dispatch_path(
-                for_write=True,
-            ) as dispatch_path:
-                dispatch_path.write_bytes(b'payload')
+        with (
+            pytest.raises(RuntimeError, match='upload failed'),
+            File(
+                's3://bucket',
+                FileFormat.JSON,
+            )._dispatch_path(for_write=True) as dispatch_path,
+        ):
+            dispatch_path.write_bytes(b'payload')
 
         assert backend.calls == ['ensure_parent_dir', 'wb']
 

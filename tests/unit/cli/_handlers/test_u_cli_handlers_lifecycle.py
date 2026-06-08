@@ -314,13 +314,15 @@ class TestFailureBoundary:
 
         monkeypatch.setattr(lifecycle_mod, 'fail_command', fake_fail_command)
 
-        with pytest.raises(RuntimeError, match='boom'):
-            with lifecycle_mod.failure_boundary(
+        with (
+            pytest.raises(RuntimeError, match='boom'),
+            lifecycle_mod.failure_boundary(
                 context,
                 on_error=on_error,
                 step='load',
-            ):
-                raise RuntimeError('boom')
+            ),
+        ):
+            raise RuntimeError('boom')
 
         assert calls[0][0] == 'on_error'
         assert isinstance(calls[0][1], RuntimeError)
@@ -356,12 +358,14 @@ class TestFailureBoundary:
 
         monkeypatch.setattr(lifecycle_mod, 'fail_command', fake_fail_command)
 
-        with pytest.raises(ValueError, match='bad input'):
-            with lifecycle_mod.failure_boundary(
+        with (
+            pytest.raises(ValueError, match='bad input'),
+            lifecycle_mod.failure_boundary(
                 context,
                 step='run',
-            ):
-                raise ValueError('bad input')
+            ),
+        ):
+            raise ValueError('bad input')
 
         assert len(captured) == 1
         context_arg, exc, fields = captured[0]
