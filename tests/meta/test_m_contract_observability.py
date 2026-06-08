@@ -155,7 +155,7 @@ class TestStructuredEventContract:
             timestamp='2026-04-06T00:00:00+00:00',
         )
 
-        assert STRUCTURED_EVENT_BASE_FIELDS == set(event)
+        assert set(event) == STRUCTURED_EVENT_BASE_FIELDS
         assert event['schema'] == EXPECTED_EVENT_SCHEMA
         assert event['schema_version'] == EXPECTED_EVENT_SCHEMA_VERSION
         assert event['event'] == f'run.{lifecycle}'
