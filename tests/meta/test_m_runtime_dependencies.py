@@ -8,17 +8,21 @@ from __future__ import annotations
 
 import ast
 import sys
-import tomllib
 from pathlib import Path
 
+import pytest
+
+from tests.meta.pytest_meta_support import PYPROJECT_PATH
 from tests.meta.pytest_meta_support import canonical_requirement_name
+from tests.meta.pytest_meta_support import normalized_text
+from tests.meta.pytest_meta_support import read_text
+from tests.meta.pytest_meta_support import read_toml
 from tests.pytest_shared_support import REPO_ROOT
 
 # SECTION: CONSTANTS ======================================================== #
 
 
 CLI_PACKAGE_PATH = REPO_ROOT / 'etlplus' / 'cli'
-PYPROJECT_PATH = REPO_ROOT / 'pyproject.toml'
 BRANCH_PROTECTION_PATH = REPO_ROOT / '.github' / 'BRANCH-PROTECTION.md'
 CI_CD_WORKFLOWS_PATH = REPO_ROOT / 'CI-CD-WORKFLOWS.md'
 DEPENDENCY_POLICY_NOTES_PATH = REPO_ROOT / 'DEPENDENCY-AND-EXTENSION-POLICY-NOTES.md'
@@ -30,6 +34,18 @@ RUNTIME_IMPORT_DISTRIBUTIONS = {
     'click': 'click',
     'typer': 'typer',
 }
+RELEASE_NOTES_TEMPLATE_SNIPPETS = (
+    '`pyproject.toml`',
+    'canonical package metadata source',
+    'built distribution artifacts',
+)
+RELEASE_WORKFLOW_DOC_SNIPPETS = (
+    'build source and wheel distributions with `python -m build`',
+    'audit release artifacts and validate them with `twine check`',
+    'smoke-test supported installer paths against the built wheel',
+    'smoke-test packaged behavior against the built wheel',
+    'publish to pypi through trusted publishing',
+)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -39,7 +55,7 @@ def _direct_external_imports(package_path: Path) -> set[str]:
     """Return direct external top-level imports used by Python files."""
     imports: set[str] = set()
     for path in package_path.rglob('*.py'):
-        tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+        tree = ast.parse(read_text(path), filename=str(path))
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 imports.update(alias.name.partition('.')[0] for alias in node.names)
@@ -49,14 +65,9 @@ def _direct_external_imports(package_path: Path) -> set[str]:
     return imports - sys.stdlib_module_names - {'etlplus'}
 
 
-def _normalized_text(value: str) -> str:
-    """Return case-folded text with Markdown line wrapping normalized."""
-    return ' '.join(value.casefold().split())
-
-
 def _pyproject_dependency_names() -> set[str]:
     """Return base dependency names declared by ``pyproject.toml``."""
-    pyproject = tomllib.loads(PYPROJECT_PATH.read_text(encoding='utf-8'))
+    pyproject = read_toml(PYPROJECT_PATH)
     return {
         canonical_requirement_name(requirement)
         for requirement in pyproject['project']['dependencies']
@@ -65,11 +76,26 @@ def _pyproject_dependency_names() -> set[str]:
 
 def _snapshot_dependency_names() -> set[str]:
     """Return base dependency names from the design-note snapshot block."""
-    text = DEPENDENCY_POLICY_NOTES_PATH.read_text(encoding='utf-8')
+    text = read_text(DEPENDENCY_POLICY_NOTES_PATH)
     marker = '## Base Dependency Snapshot'
     section = text.split(marker, maxsplit=1)[1].split('## ', maxsplit=1)[0]
     block = section.split('```text', maxsplit=1)[1].split('```', maxsplit=1)[0]
     return {line.strip() for line in block.splitlines() if line.strip()}
+
+
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='ci_cd_workflows_text', scope='module')
+def ci_cd_workflows_text_fixture() -> str:
+    """Return normalized CI/CD workflow documentation text."""
+    return normalized_text(read_text(CI_CD_WORKFLOWS_PATH))
+
+
+@pytest.fixture(name='release_notes_template_text', scope='module')
+def release_notes_template_text_fixture() -> str:
+    """Return normalized release-notes template text."""
+    return normalized_text(read_text(RELEASE_NOTES_TEMPLATE_PATH))
 
 
 # SECTION: TESTS ============================================================ #
@@ -97,7 +123,7 @@ class TestToolDependencyDeclarations:
 
     def test_sbom_workflow_installs_pinned_isolated_tool(self) -> None:
         """Test SBOM generation isolates the pinned tool from runtime deps."""
-        workflow_text = SBOM_WORKFLOW_PATH.read_text(encoding='utf-8')
+        workflow_text = read_text(SBOM_WORKFLOW_PATH)
 
         assert 'python-bootstrap: "."' in workflow_text
         assert "CYCLONEDX_BOM_VERSION: '7.2.2'" in workflow_text
@@ -111,44 +137,37 @@ class TestToolDependencyDeclarations:
         assert 'python-bootstrap: ".[sbom]"' not in workflow_text
         assert 'python -m pip install cyclonedx-bom' not in workflow_text
 
+    @pytest.mark.parametrize('snippet', RELEASE_NOTES_TEMPLATE_SNIPPETS)
     def test_release_notes_template_calls_out_lockfile_release_boundary(
         self,
+        release_notes_template_text: str,
+        snippet: str,
     ) -> None:
         """Test release notes keep lockfile changes framed as maintenance."""
-        release_notes_text = _normalized_text(
-            RELEASE_NOTES_TEMPLATE_PATH.read_text(encoding='utf-8'),
-        )
+        assert snippet in release_notes_template_text
 
-        assert '`pyproject.toml`' in release_notes_text
-        assert 'canonical package metadata source' in release_notes_text
-        assert 'built distribution artifacts' in release_notes_text
-
-    def test_release_workflow_docs_preserve_artifact_validation_path(self) -> None:
+    @pytest.mark.parametrize('snippet', RELEASE_WORKFLOW_DOC_SNIPPETS)
+    def test_release_workflow_docs_preserve_artifact_validation_path(
+        self,
+        ci_cd_workflows_text: str,
+        snippet: str,
+    ) -> None:
         """Test workflow docs keep release validation responsibilities explicit."""
-        ci_cd_text = _normalized_text(
-            CI_CD_WORKFLOWS_PATH.read_text(encoding='utf-8'),
-        )
+        assert snippet in ci_cd_workflows_text
 
-        expected_snippets = (
-            'build source and wheel distributions with `python -m build`',
-            'audit release artifacts and validate them with `twine check`',
-            'smoke-test supported installer paths against the built wheel',
-            'smoke-test packaged behavior against the built wheel',
-            'publish to pypi through trusted publishing',
-        )
-
-        assert all(snippet in ci_cd_text for snippet in expected_snippets)
-
-    def test_uv_lockfile_gate_is_documented_for_required_checks(self) -> None:
+    def test_uv_lockfile_gate_is_documented_for_required_checks(
+        self,
+        ci_cd_workflows_text: str,
+    ) -> None:
         """Test PR lockfile gate stays reflected in workflow and branch docs."""
-        pr_workflow_text = PR_WORKFLOW_PATH.read_text(encoding='utf-8')
-        ci_cd_text = _normalized_text(
-            CI_CD_WORKFLOWS_PATH.read_text(encoding='utf-8'),
-        )
-        branch_protection_text = BRANCH_PROTECTION_PATH.read_text(encoding='utf-8')
+        pr_workflow_text = read_text(PR_WORKFLOW_PATH)
+        branch_protection_text = read_text(BRANCH_PROTECTION_PATH)
 
         assert 'name: Check uv lockfile' in pr_workflow_text
         assert 'run: uv lock --check' in pr_workflow_text
-        assert 'committed `uv.lock` freshness against `pyproject.toml`' in ci_cd_text
-        assert '- `check uv lockfile`' in ci_cd_text
+        assert (
+            'committed `uv.lock` freshness against `pyproject.toml`'
+            in ci_cd_workflows_text
+        )
+        assert '- `check uv lockfile`' in ci_cd_workflows_text
         assert '- `Check uv lockfile`' in branch_protection_text

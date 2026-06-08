@@ -10,6 +10,7 @@ import re
 
 import pytest
 
+from tests.meta.pytest_meta_support import read_text
 from tests.pytest_shared_support import REPO_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
@@ -98,7 +99,7 @@ def test_repository_maintenance_headers_use_standard_sections(
     """
     Test that repository-maintenance files use the standard header sections.
     """
-    text = (REPO_ROOT / relative_path).read_text(encoding='utf-8')
+    text = read_text(REPO_ROOT / relative_path)
 
     missing = [
         section for section in _REQUIRED_HEADER_SECTIONS if f'# {section}' not in text
@@ -117,10 +118,7 @@ def test_repository_maintenance_references_are_labeled(
     offenders = [
         line
         for match in _REFERENCE_SECTION_PATTERN.finditer(
-            (REPO_ROOT / relative_path).read_text(
-                encoding='utf-8',
-                errors='ignore',
-            ),
+            read_text(REPO_ROOT / relative_path, errors='ignore'),
         )
         for line in match.group('section').splitlines()
         if line

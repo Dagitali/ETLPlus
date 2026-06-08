@@ -14,6 +14,7 @@ from types import ModuleType
 import pytest
 
 from etlplus.file import _registry as file_registry
+from tests.meta.pytest_meta_support import read_text
 from tests.pytest_shared_support import REPO_ROOT
 
 # SECTION: PRAGMAS ========================================================== #
@@ -144,8 +145,7 @@ def file_format_modules_fixture() -> FileFormatModules:
 def internal_runtime_trees_fixture() -> RuntimeTrees:
     """Return parsed AST trees for non-file runtime modules."""
     return tuple(
-        (path, ast.parse(path.read_text(encoding='utf-8')))
-        for path in _iter_internal_python_files()
+        (path, ast.parse(read_text(path))) for path in _iter_internal_python_files()
     )
 
 
