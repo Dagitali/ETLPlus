@@ -160,13 +160,15 @@ OPS_TRANSFORMATION_EXPORTS: tuple[ExportCase, ...] = (
     (sort_tx_mod, 'apply_sort_step', apply_sort_step),
 )
 
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _export_case_id(value: object) -> str:
-    """Return stable pytest IDs for export contract cases."""
-    return getattr(value, '__name__', str(value))
+DOCUMENTED_EXPORTS = tuple(
+    pytest.param(module, name, expected, id=f'{module.__name__}.{name}')
+    for module, name, expected in (
+        *API_EXPORTS,
+        *FILE_EXPORTS,
+        *OPS_EXPORTS,
+        *OPS_TRANSFORMATION_EXPORTS,
+    )
+)
 
 
 # SECTION: TESTS ============================================================ #
@@ -197,36 +199,6 @@ class TestStableCliSurface:
 class TestStableImportSurface:
     """Contract tests for the documented stable Python import surface."""
 
-    @pytest.mark.parametrize(
-        ('module', 'name', 'expected'),
-        API_EXPORTS,
-        ids=_export_case_id,
-    )
-    def test_api_package_keeps_documented_core_exports(
-        self,
-        module: ModuleType,
-        name: str,
-        expected: object,
-    ) -> None:
-        """Test that :mod:`etlplus.api` keeps core documented imports."""
-        assert name in module.__all__
-        assert getattr(module, name) is expected
-
-    @pytest.mark.parametrize(
-        ('module', 'name', 'expected'),
-        FILE_EXPORTS,
-        ids=_export_case_id,
-    )
-    def test_file_package_keeps_handler_authoring_facade(
-        self,
-        module: ModuleType,
-        name: str,
-        expected: object,
-    ) -> None:
-        """Test that :mod:`etlplus.file` exposes the handler authoring layer."""
-        assert name in module.__all__
-        assert getattr(module, name) is expected
-
     def test_history_package_keeps_documented_runtime_metadata(self) -> None:
         """Test that :mod:`etlplus.history` keeps schema metadata exports."""
         assert 'HISTORY_SCHEMA_VERSION' in history_pkg.__all__
@@ -238,31 +210,15 @@ class TestStableImportSurface:
 
     @pytest.mark.parametrize(
         ('module', 'name', 'expected'),
-        OPS_EXPORTS,
-        ids=_export_case_id,
+        DOCUMENTED_EXPORTS,
     )
-    def test_ops_package_keeps_documented_exports(
+    def test_packages_keep_documented_exports(
         self,
         module: ModuleType,
         name: str,
         expected: object,
     ) -> None:
-        """Test that :mod:`etlplus.ops` keeps documented re-exports."""
-        assert name in module.__all__
-        assert getattr(module, name) is expected
-
-    @pytest.mark.parametrize(
-        ('module', 'name', 'expected'),
-        OPS_TRANSFORMATION_EXPORTS,
-        ids=_export_case_id,
-    )
-    def test_ops_transformations_modules_keep_documented_helpers(
-        self,
-        module: ModuleType,
-        name: str,
-        expected: object,
-    ) -> None:
-        """Test that step-level transform modules keep documented helpers."""
+        """Test that public packages keep documented exports."""
         assert name in module.__all__
         assert getattr(module, name) is expected
 
