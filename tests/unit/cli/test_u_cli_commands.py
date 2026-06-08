@@ -12,7 +12,6 @@ from datetime import UTC
 from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
-from typing import Any
 from typing import cast
 
 import pytest
@@ -132,7 +131,7 @@ class TestCommandsInternalHelpers:
         Test that invalid JSON payloads raise :class:`typer.BadParameter`.
         """
 
-        def _parse_json(_value: str) -> Any:
+        def _parse_json(_value: str) -> object:
             raise ValueError('bad json')
 
         monkeypatch.setattr(
