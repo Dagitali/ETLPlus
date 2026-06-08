@@ -65,16 +65,26 @@ class TestNormalizeText:
         """
         assert TextNormalizer.normalize(value) == expected
 
-    def test_normalize_choice_with_default_normalizer(self) -> None:
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param('  FILE  ', 'file', id='mapped'),
+            pytest.param('unknown', 'file', id='unknown'),
+            pytest.param(None, 'file', id='none'),
+        ],
+    )
+    def test_normalize_choice_with_default_normalizer(
+        self,
+        value: str | None,
+        expected: str,
+    ) -> None:
         """
         Test that :meth:`TextChoiceResolver.resolve` resolves choices and
         falls back to defaults.
         """
         resolver = TextChoiceResolver(CHOICE_MAPPING, 'file')
 
-        assert resolver.resolve('  FILE  ') == 'file'
-        assert resolver.resolve('unknown') == 'file'
-        assert resolver.resolve(None) == 'file'
+        assert resolver.resolve(value) == expected
 
     def test_normalize_choice_supports_custom_normalizer(self) -> None:
         """

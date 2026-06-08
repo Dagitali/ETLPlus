@@ -23,29 +23,25 @@ from etlplus.storage import StorageLocation
 class TestLocalStorageBackend:
     """Unit tests for :class:`etlplus.storage.LocalStorageBackend`."""
 
-    def test_delete_existing_directory(self, tmp_path: Path) -> None:
-        """Test that delete removes empty directories."""
-        target = tmp_path / 'folder'
-        target.mkdir()
-        backend = LocalStorageBackend()
-
-        backend.delete(StorageLocation.from_value(target))
-
-        assert target.exists() is False
-
-    def test_delete_existing_file(self, tmp_path: Path) -> None:
-        """Test that delete removes existing local files."""
-        target = tmp_path / 'delete.txt'
-        target.write_text('hello', encoding='utf-8')
-        backend = LocalStorageBackend()
-
-        backend.delete(StorageLocation.from_value(target))
-
-        assert target.exists() is False
-
-    def test_delete_missing_is_noop(self, tmp_path: Path) -> None:
-        """Test that deleting a missing local file is a no-op."""
-        target = tmp_path / 'missing.txt'
+    @pytest.mark.parametrize(
+        'target_kind',
+        [
+            pytest.param('directory', id='existing-directory'),
+            pytest.param('file', id='existing-file'),
+            pytest.param('missing', id='missing-path'),
+        ],
+    )
+    def test_delete_removes_existing_targets_and_ignores_missing(
+        self,
+        tmp_path: Path,
+        target_kind: str,
+    ) -> None:
+        """Test that delete removes local targets and ignores missing paths."""
+        target = tmp_path / target_kind
+        if target_kind == 'directory':
+            target.mkdir()
+        elif target_kind == 'file':
+            target.write_text('hello', encoding='utf-8')
         backend = LocalStorageBackend()
 
         backend.delete(StorageLocation.from_value(target))

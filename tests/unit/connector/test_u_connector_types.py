@@ -11,9 +11,19 @@ import pytest
 import etlplus.connector._types as connector_types
 from etlplus.connector._enums import DataConnectorType
 
+from ..pytest_export_contracts import assert_package_exports
+
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
+
+# SECTION: CONSTANTS ======================================================== #
+
+
+CONNECTOR_TYPE_EXPORTS: tuple[tuple[str, object], ...] = (
+    ('ConnectorType', connector_types.ConnectorType),
+)
+
 
 # SECTION: TESTS ============================================================ #
 
@@ -40,4 +50,7 @@ class TestConnectorTypes:
 
     def test_exports_include_connector_type(self) -> None:
         """Test that the module exports the :class:`ConnectorType` alias."""
-        assert tuple(connector_types.__all__) == ('ConnectorType',)
+        assert_package_exports(
+            package_module=connector_types,
+            expected_exports=CONNECTOR_TYPE_EXPORTS,
+        )

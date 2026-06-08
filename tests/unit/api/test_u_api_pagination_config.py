@@ -35,7 +35,18 @@ class TestPaginationConfig:
     pagination styles.
     """
 
-    def test_defaults_apply_response_fallback_path(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('records_path', 'data.items', id='records-path'),
+            pytest.param('fallback_path', 'payload.records', id='fallback-path'),
+        ],
+    )
+    def test_defaults_apply_response_fallback_path(
+        self,
+        field: str,
+        expected: str,
+    ) -> None:
         """Test that defaults mapping surfaces response ``fallback_path.``."""
         cfg = PaginationConfig.from_defaults(
             {
@@ -48,10 +59,17 @@ class TestPaginationConfig:
         )
 
         assert cfg is not None
-        assert cfg.records_path == 'data.items'
-        assert cfg.fallback_path == 'payload.records'
+        assert getattr(cfg, field) == expected
 
-    def test_defaults_preserve_top_level_fallback_path(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [pytest.param('fallback_path', 'top.level.records', id='fallback-path')],
+    )
+    def test_defaults_preserve_top_level_fallback_path(
+        self,
+        field: str,
+        expected: str,
+    ) -> None:
         """
         Test that nested ``fallback_path`` does not override explicit top-level
         value.
@@ -65,11 +83,22 @@ class TestPaginationConfig:
         )
 
         assert cfg is not None
-        assert cfg.fallback_path == 'top.level.records'
+        assert getattr(cfg, field) == expected
 
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('start_page', 1, id='start-page'),
+            pytest.param('page_size', 50, id='page-size'),
+            pytest.param('max_pages', 10, id='max-pages'),
+            pytest.param('max_records', 1000, id='max-records'),
+        ],
+    )
     def test_from_obj_coerces_numeric_fields(
         self,
         pagination_from_obj_factory: Callable[[Any], PaginationConfig],
+        field_name: str,
+        expected: int,
     ) -> None:
         """
         Test that :meth:`from_obj` coerces numeric fields correctly.
@@ -87,14 +116,21 @@ class TestPaginationConfig:
         pc = pagination_from_obj_factory(obj)
         assert pc is not None
         assert pc.type == 'page'
-        assert pc.start_page == 1
-        assert pc.page_size == 50
-        assert pc.max_pages == 10
-        assert pc.max_records == 1000
+        assert getattr(pc, field_name) == expected
 
+    @pytest.mark.parametrize(
+        'field_name',
+        [
+            pytest.param('start_page', id='start-page'),
+            pytest.param('page_size', id='page-size'),
+            pytest.param('max_pages', id='max-pages'),
+            pytest.param('max_records', id='max-records'),
+        ],
+    )
     def test_from_obj_ignores_bad_numeric_values(
         self,
         pagination_from_obj_factory: Callable[[Any], PaginationConfig],
+        field_name: str,
     ) -> None:
         """
         Test that :meth:`from_obj` ignores bad numeric values.
@@ -108,10 +144,7 @@ class TestPaginationConfig:
         }
         pc = pagination_from_obj_factory(obj)
         assert pc is not None
-        assert pc.start_page is None
-        assert pc.page_size is None
-        assert pc.max_pages is None
-        assert pc.max_records is None
+        assert getattr(pc, field_name) is None
 
     def test_offset_mode_warnings(
         self,

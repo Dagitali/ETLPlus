@@ -165,7 +165,8 @@ class TestHistoryUiHttpHandler:
                 assert response.headers['Content-Type'] == (
                     'application/json; charset=utf-8'
                 )
-                assert payload['runs'][0]['run_id'] == 'run-1'
+                (run_payload,) = payload['runs']
+                assert run_payload['run_id'] == 'run-1'
 
             with pytest.raises(urllib.error.HTTPError) as exc_info:
                 urllib.request.urlopen(f'{base_url}/missing', timeout=5)

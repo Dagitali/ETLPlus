@@ -6,6 +6,8 @@ Unit tests for :mod:`etlplus.api._errors`.
 
 from __future__ import annotations
 
+import pytest
+
 from etlplus.api._errors import ApiRequestError
 from etlplus.api._errors import PaginationError
 
@@ -17,7 +19,22 @@ from etlplus.api._errors import PaginationError
 class TestApiErrors:
     """Unit tests for API error payload helpers."""
 
-    def test_api_request_error_as_dict_includes_cause_repr(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('url', 'https://example.test/u', id='url'),
+            pytest.param('status', 500, id='status'),
+            pytest.param('attempts', 2, id='attempts'),
+            pytest.param('retried', True, id='retried'),
+            pytest.param('retry_policy', {'max_attempts': 3}, id='retry-policy'),
+            pytest.param('cause_contains', 'ValueError', id='cause'),
+        ],
+    )
+    def test_api_request_error_as_dict_includes_cause_repr(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Test that structured payload includes serialized cause context."""
         err = ApiRequestError(
             url='https://example.test/u',
@@ -28,12 +45,10 @@ class TestApiErrors:
             cause=ValueError('boom'),
         )
         payload = err.as_dict()
-        assert payload['url'] == 'https://example.test/u'
-        assert payload['status'] == 500
-        assert payload['attempts'] == 2
-        assert payload['retried'] is True
-        assert payload['retry_policy'] == {'max_attempts': 3}
-        assert 'ValueError' in str(payload['cause'])
+        if field == 'cause_contains':
+            assert str(expected) in str(payload['cause'])
+        else:
+            assert payload[field] == expected
 
     def test_pagination_error_as_dict_adds_page(self) -> None:
         """

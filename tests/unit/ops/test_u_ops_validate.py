@@ -299,22 +299,37 @@ class TestValidate:
         assert result['valid'] is True
         assert result['errors'] == []
 
-    def test_validate_schema_reports_unsupported_format(self) -> None:
-        """Schema validation should reject unsupported schema formats."""
-        result = validate_schema('<root />', '<schema />', schema_format='rng')
-        assert result['valid'] is False
-        assert any('Unsupported schema format' in err for err in result['errors'])
+    @pytest.mark.parametrize(
+        ('source', 'schema', 'kwargs', 'expected_error'),
+        [
+            pytest.param(
+                '<root />',
+                '<schema />',
+                {'schema_format': 'rng'},
+                'Unsupported schema format',
+                id='unsupported-schema-format',
+            ),
+            pytest.param(
+                '{"name": "Ada"}',
+                '{"type": "object"}',
+                {},
+                'Schema format could not be inferred',
+                id='ambiguous-schema-format',
+            ),
+        ],
+    )
+    def test_validate_schema_reports_format_errors(
+        self,
+        source: str,
+        schema: str,
+        kwargs: dict[str, object],
+        expected_error: str,
+    ) -> None:
+        """Schema validation should fail clearly for bad format selection."""
+        result = validate_schema(source, schema, **kwargs)
 
-    def test_validate_schema_requires_explicit_format_when_ambiguous(self) -> None:
-        """Schema validation should fail clearly when format inference is ambiguous."""
-        result = validate_schema(
-            '{"name": "Ada"}',
-            '{"type": "object"}',
-        )
         assert result['valid'] is False
-        assert any(
-            'Schema format could not be inferred' in err for err in result['errors']
-        )
+        assert any(expected_error in err for err in result['errors'])
 
     def test_validate_schema_reports_validation_errors(
         self,
@@ -661,10 +676,23 @@ class TestValidate:
 class TestValidateField:
     """Unit tests for :func:`validate_field`."""
 
-    def test_boolean_type_branch(self) -> None:
-        """Test that explicit boolean type branch in type matches."""
-        assert validate_field(True, {'type': 'boolean'})['valid'] is True
-        assert validate_field(1, {'type': 'boolean'})['valid'] is False
+    @pytest.mark.parametrize(
+        ('value', 'field_type', 'expected'),
+        [
+            pytest.param(True, 'boolean', True, id='boolean-true'),
+            pytest.param(1, 'boolean', False, id='boolean-int'),
+            pytest.param(7, 'integer', True, id='integer-int'),
+            pytest.param(True, 'integer', False, id='integer-bool'),
+        ],
+    )
+    def test_scalar_type_branches(
+        self,
+        value: object,
+        field_type: str,
+        expected: bool,
+    ) -> None:
+        """Test explicit scalar type branches in type matches."""
+        assert validate_field(value, {'type': field_type})['valid'] is expected
 
     def test_enum_rule_requires_list(self) -> None:
         """Test that non-list enum rules add an error entry."""
@@ -673,11 +701,6 @@ class TestValidateField:
         result = validate_field('a', {'enum': 'abc'})  # type: ignore
         assert result['valid'] is False
         assert any('enum' in err for err in result['errors'])
-
-    def test_integer_type_branch(self) -> None:
-        """Test that integer type excludes booleans."""
-        assert validate_field(7, {'type': 'integer'})['valid'] is True
-        assert validate_field(True, {'type': 'integer'})['valid'] is False
 
     def test_pattern_rule_type_and_mismatch_paths(self) -> None:
         """Test pattern mismatch and non-string pattern validation paths."""
@@ -740,27 +763,27 @@ class TestValidateField:
 class TestValidateInternalHelpers:
     """Unit tests for internal validation helper branches."""
 
-    def test_coerce_rule_invalid_value_appends_error(self) -> None:
-        """Test that rule coercion appends errors on bad casts."""
-        errors: list[str] = []
-        assert (
-            validate_mod._coerce_rule(
+    @pytest.mark.parametrize(
+        ('rule', 'expected_errors'),
+        [
+            pytest.param(
                 {'min': 'x'},
-                'min',
-                float,
-                'numeric',
-                errors,
-            )
-            is None
-        )
-        assert errors == ["Rule 'min' must be numeric"]
-
-    def test_coerce_rule_none_value_returns_none_without_errors(self) -> None:
-        """Test that rule coercion ignores explicit None values."""
+                ["Rule 'min' must be numeric"],
+                id='invalid-value',
+            ),
+            pytest.param({'min': None}, [], id='none-value'),
+        ],
+    )
+    def test_coerce_rule_returns_none_and_reports_expected_errors(
+        self,
+        rule: dict[str, object],
+        expected_errors: list[str],
+    ) -> None:
+        """Test that rule coercion reports bad casts and ignores None."""
         errors: list[str] = []
         assert (
             validate_mod._coerce_rule(
-                {'min': None},
+                rule,
                 'min',
                 float,
                 'numeric',
@@ -768,7 +791,7 @@ class TestValidateInternalHelpers:
             )
             is None
         )
-        assert not errors
+        assert errors == expected_errors
 
     def test_frictionless_cleans_up_existing_source_failures(
         self,
@@ -1086,23 +1109,47 @@ class TestValidateInternalHelpers:
 
         assert validate_mod._resolve_local_path_or_text(path) == (path, b'')
 
-    def test_schema_error_path_formatters_cover_nested_and_empty_paths(self) -> None:
+    @pytest.mark.parametrize(
+        ('formatter', 'args', 'kwargs', 'expected'),
+        [
+            pytest.param(
+                'jsonschema',
+                (('items', 0, 'name'),),
+                {},
+                'items[0].name',
+                id='jsonschema-nested',
+            ),
+            pytest.param('jsonschema', ((),), {}, None, id='jsonschema-empty'),
+            pytest.param(
+                'tabular',
+                (),
+                {'field_name': None, 'row_number': 3},
+                'row[3]',
+                id='tabular-row',
+            ),
+            pytest.param(
+                'tabular',
+                (),
+                {'field_name': None, 'row_number': None},
+                None,
+                id='tabular-empty',
+            ),
+        ],
+    )
+    def test_schema_error_path_formatters_cover_nested_and_empty_paths(
+        self,
+        formatter: str,
+        args: tuple[object, ...],
+        kwargs: dict[str, object],
+        expected: str | None,
+    ) -> None:
         """Schema error paths should format object, index, row, and empty paths."""
-        assert validate_mod._format_jsonschema_path(('items', 0, 'name')) == (
-            'items[0].name'
+        path_formatter = (
+            validate_mod._format_jsonschema_path
+            if formatter == 'jsonschema'
+            else validate_mod._format_tabular_error_path
         )
-        assert validate_mod._format_jsonschema_path(()) is None
-        assert (
-            validate_mod._format_tabular_error_path(field_name=None, row_number=3)
-            == 'row[3]'
-        )
-        assert (
-            validate_mod._format_tabular_error_path(
-                field_name=None,
-                row_number=None,
-            )
-            is None
-        )
+        assert path_formatter(*args, **kwargs) == expected
 
     @pytest.mark.parametrize(
         ('source', 'source_format', 'expected'),

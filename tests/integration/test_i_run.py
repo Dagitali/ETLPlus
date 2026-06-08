@@ -20,7 +20,6 @@ from io import StringIO
 from typing import Any
 
 import pytest
-from pytest import MonkeyPatch
 
 from etlplus import Config
 from etlplus.connector import ConnectorFile
@@ -53,7 +52,7 @@ class TestRunOrchestration:
 
     def test_remote_file_pipeline_reads_and_writes_via_storage_backend(
         self,
-        monkeypatch: MonkeyPatch,
+        monkeypatch: pytest.MonkeyPatch,
         remote_storage_harness: RemoteStorageHarness,
     ) -> None:
         """Test a full remote file pipeline run with option forwarding."""
@@ -120,7 +119,7 @@ class TestRunOrchestration:
     )
     def test_target_service_endpoint_uses_base_path(
         self,
-        monkeypatch: MonkeyPatch,
+        monkeypatch: pytest.MonkeyPatch,
         capture_load_to_api: dict[str, Any],
         file_to_api_pipeline_factory: Callable[..., Config],
         base_url: str,

@@ -13,6 +13,9 @@ from etlplus.storage import StorageLocation
 from etlplus.storage import _abfs as abfs_mod
 
 from .pytest_storage_support import FakeContentSettings
+from .pytest_storage_support import FixedDownload
+from .pytest_storage_support import assert_azure_service_client_init
+from .pytest_storage_support import assert_upload_payload
 from .pytest_storage_support import clear_azure_storage_env
 
 # SECTION: PRAGMAS ========================================================== #
@@ -118,19 +121,12 @@ class TestAbfsStorageBackend:
             'abfs://filesystem@example.dfs.core.windows.net/blob.json',
         )
 
-        class FakeDownload:
-            """Data Lake download test double."""
-
-            def readall(self) -> bytes:
-                """Return a fixed payload."""
-                return b'{"ok": true}'
-
         class FakeFileClient:
             """Data Lake file client test double."""
 
-            def download_file(self) -> FakeDownload:
+            def download_file(self) -> FixedDownload:
                 """Return the fake download wrapper."""
-                return FakeDownload()
+                return FixedDownload()
 
         monkeypatch.setattr(backend, '_file_client', lambda _location: FakeFileClient())
         with backend.open(location, encoding='utf-8') as handle:
@@ -185,13 +181,7 @@ class TestAbfsStorageBackend:
         with backend.open(location, 'wb', **kwargs) as handle:
             handle.write(b'payload')
 
-        assert uploads[0]['data'] == b'payload'
-        assert uploads[0]['overwrite'] is True
-        if content_type:
-            assert isinstance(uploads[0]['content_settings'], FakeContentSettings)
-            assert uploads[0]['content_settings'].content_type == content_type
-        else:
-            assert 'content_settings' not in uploads[0]
+        assert_upload_payload(uploads, content_type=content_type)
 
     def test_service_client_derives_account_url_from_location(
         self,
@@ -227,12 +217,11 @@ class TestAbfsStorageBackend:
 
         backend._service_client(location)
 
-        assert calls == [
-            {
-                'account_url': 'https://example.dfs.core.windows.net',
-                'credential': None,
-            },
-        ]
+        assert_azure_service_client_init(
+            calls,
+            account_url='https://example.dfs.core.windows.net',
+            credential=None,
+        )
 
     def test_service_client_requires_resolvable_account_url(
         self,
@@ -342,12 +331,11 @@ class TestAbfsStorageBackend:
 
         backend._service_client(location)
 
-        assert calls == [
-            {
-                'account_url': 'https://example.dfs.core.windows.net',
-                'credential': explicit_credential or env_credential,
-            },
-        ]
+        assert_azure_service_client_init(
+            calls,
+            account_url='https://example.dfs.core.windows.net',
+            credential=explicit_credential or env_credential,
+        )
 
     @pytest.mark.parametrize(
         'authority',

@@ -9,6 +9,8 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
+import pytest
+
 from etlplus.file import FileFormat
 
 # SECTION: PRAGMAS ========================================================== #
@@ -40,26 +42,28 @@ class CapturingFile:
 class TestResolveFile:
     """Unit tests for shared file resolution helpers."""
 
-    def test_infers_format_without_default(self, tmp_path: Path) -> None:
-        """Inference should preserve ``None`` when no format is detected."""
-        resolved = files_mod.resolve_file(tmp_path / 'payload', None)
-
-        assert resolved.file.path == tmp_path / 'payload'
-        assert resolved.file_format is None
-
-    def test_infers_format_with_default_fallback(
+    @pytest.mark.parametrize(
+        ('inferred_default', 'expected_format'),
+        [
+            pytest.param(None, None, id='no-default'),
+            pytest.param(FileFormat.JSON, FileFormat.JSON, id='default-fallback'),
+        ],
+    )
+    def test_infers_format_with_optional_default(
         self,
         tmp_path: Path,
+        inferred_default: FileFormat | None,
+        expected_format: FileFormat | None,
     ) -> None:
-        """Inference should fall back to the supplied default format."""
+        """Inference should preserve ``None`` or use the supplied default format."""
         resolved = files_mod.resolve_file(
             tmp_path / 'payload',
             None,
-            inferred_default=FileFormat.JSON,
+            inferred_default=inferred_default,
         )
 
         assert resolved.file.path == tmp_path / 'payload'
-        assert resolved.file_format is FileFormat.JSON
+        assert resolved.file_format is expected_format
 
     def test_uses_explicit_format_and_custom_file_class(self) -> None:
         """Explicit formats should be coerced and passed to the file class."""

@@ -30,15 +30,21 @@ from etlplus.ops.extract import extract_from_api_source
 from etlplus.ops.extract import extract_from_database
 from etlplus.ops.extract import extract_from_file
 from etlplus.utils._types import JSONData
+from tests.unit.ops.pytest_ops_support import JsonResponse
+from tests.unit.ops.pytest_ops_support import MethodSession
+from tests.unit.ops.pytest_ops_support import write_json_payload
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: IMPORTS ========================================================== #
 
 
 extract_mod = importlib.import_module('etlplus.ops.extract')
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _write_csv_person_payload(path: str) -> None:
@@ -54,19 +60,14 @@ def _write_csv_person_payload(path: str) -> None:
         )
 
 
-def _write_json_payload(path: str, payload: dict[str, Any]) -> None:
-    """Write one JSON payload using UTF-8 encoding."""
-    Path(path).write_text(json.dumps(payload), encoding='utf-8')
-
-
 def _write_person_json_payload(path: str) -> None:
     """Write the standard person JSON payload."""
-    _write_json_payload(path, {'name': 'John', 'age': 30})
+    write_json_payload(path, {'name': 'John', 'age': 30})
 
 
 def _write_test_json_payload(path: str) -> None:
     """Write the standard wrapper-file JSON payload."""
-    _write_json_payload(path, {'test': 'data'})
+    write_json_payload(path, {'test': 'data'})
 
 
 def _write_xml_person_payload(path: str) -> None:
@@ -75,57 +76,6 @@ def _write_xml_person_payload(path: str) -> None:
         '<?xml version="1.0"?>\n<person><name>John</name><age>30</age></person>',
         encoding='utf-8',
     )
-
-
-class _StubResponse:
-    """Simple stand-in for :meth:`requests.Response`."""
-
-    def __init__(
-        self,
-        *,
-        headers: dict[str, str],
-        payload: Any | None = None,
-        text: str = '',
-        json_error: bool = False,
-    ) -> None:
-        self.headers = headers
-        self.text = text
-        self._payload = payload
-        self._json_error = json_error
-
-    def raise_for_status(self) -> None:
-        """Match the ``requests`` API."""
-
-        return None
-
-    def json(self) -> Any:
-        """Return the pre-set payload or raise JSON error."""
-        if self._json_error:
-            raise ValueError('malformed payload')
-        return self._payload
-
-
-class _StubSession:
-    """Lightweight session that records outgoing calls."""
-
-    def __init__(
-        self,
-        response: _StubResponse,
-        *,
-        method_name: str = 'get',
-    ) -> None:
-        self._response = response
-        self.calls: list[dict[str, Any]] = []
-        setattr(self, method_name, self._make_call)
-
-    def _make_call(
-        self,
-        url: str,
-        **kwargs: Any,
-    ) -> _StubResponse:
-        """Record the call and return the pre-set response."""
-        self.calls.append({'url': url, 'kwargs': kwargs})
-        return self._response
 
 
 # SECTION: TESTS ============================================================ #
@@ -321,10 +271,8 @@ class TestExtractErrors:
         err_msg : str | None
             Expected error message substring, if applicable.
         """
-        with pytest.raises(exc_type) as exc:
+        with pytest.raises(exc_type, match=err_msg):
             call(*args)
-        if err_msg:
-            assert err_msg in str(exc.value)
 
 
 class TestExtractFromApi:
@@ -345,11 +293,11 @@ class TestExtractFromApi:
         Test that custom HTTP methods and kwargs pass through to the session.
         """
 
-        response = _StubResponse(
-            headers={'content-type': 'application/json'},
+        response = JsonResponse(
             payload={'status': 'ok'},
+            headers={'content-type': 'application/json'},
         )
-        session = _StubSession(response, method_name='post')
+        session = MethodSession(response, method_name='post')
         result = extract_from_api(
             f'{base_url}/hooks',
             method='POST',
@@ -416,12 +364,12 @@ class TestExtractFromApi:
     ) -> None:
         """Test that malformed JSON falls back to raw content payloads."""
 
-        response = _StubResponse(
+        response = JsonResponse(
             headers={'content-type': 'application/json'},
             text='{"bad": true}',
             json_error=True,
         )
-        session = _StubSession(response)
+        session = MethodSession(response)
         result = extract_from_api(f'{base_url}/bad', session=session)
         assert result == {
             'content': '{"bad": true}',
@@ -448,12 +396,12 @@ class TestExtractFromApi:
     ) -> None:
         """Test that supported JSON payload shapes are normalized correctly."""
 
-        response = _StubResponse(
-            headers={'content-type': 'application/json'},
+        response = JsonResponse(
             payload=payload,
+            headers={'content-type': 'application/json'},
             text=(json.dumps(payload) if not isinstance(payload, str) else payload),
         )
-        session = _StubSession(response)
+        session = MethodSession(response)
         result = extract_from_api(f'{base_url}/data', session=session)
         assert result == expected
         assert session.calls[0]['kwargs']['timeout'] == 10.0
@@ -481,11 +429,11 @@ class TestExtractFromApi:
     ) -> None:
         """Test that non-JSON content is returned as raw text payloads."""
 
-        response = _StubResponse(
+        response = JsonResponse(
             headers={'content-type': 'text/plain'},
             text='plain text response',
         )
-        session = _StubSession(response)
+        session = MethodSession(response)
         result = extract_from_api(f'{base_url}/text', session=session)
         assert result == {
             'content': 'plain text response',
@@ -539,9 +487,18 @@ class TestExtractFromApi:
         assert result == [{'id': 1}]
         assert paginate_calls[0]['sleep_seconds'] == 0.0
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', [{'id': 1}], id='result'),
+            pytest.param('sleep-seconds', 0.0, id='sleep-seconds'),
+        ],
+    )
     def test_use_client_defaults_parser_none_sleep_seconds(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Client extraction should defensively default parser ``None`` results."""
         paginate_calls: list[dict[str, Any]] = []
@@ -579,8 +536,10 @@ class TestExtractFromApi:
             use_client=True,
         )
 
-        assert result == [{'id': 1}]
-        assert paginate_calls[0]['sleep_seconds'] == 0.0
+        actual = (
+            result if check_name == 'result' else paginate_calls[0]['sleep_seconds']
+        )
+        assert actual == expected
 
     def test_use_client_with_direct_url_path(
         self,
@@ -748,9 +707,28 @@ class TestExtractFromFile:
     - Tests supported and unsupported file formats.
     """
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', {'ok': True}, id='result'),
+            pytest.param('call-count', 1, id='call-count'),
+            pytest.param(
+                'source',
+                'https://example.com/files/data.csv?download=1',
+                id='source',
+            ),
+            pytest.param(
+                'options',
+                {'encoding': 'utf-8', 'delimiter': ';'},
+                id='options',
+            ),
+        ],
+    )
     def test_extract_file_dispatch_forwards_remote_uri_and_options(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that file dispatch forwards kwargs as read options."""
         calls: list[tuple[str, object, object]] = []
@@ -773,12 +751,17 @@ class TestExtractFromFile:
             delimiter=';',
         )
 
-        assert result == {'ok': True}
-        assert len(calls) == 1
-        assert calls[0][0] == 'https://example.com/files/data.csv?download=1'
-        options = calls[0][2]
-        assert options is not None
-        assert options == {'encoding': 'utf-8', 'delimiter': ';'}
+        match check_name:
+            case 'result':
+                assert result == expected
+            case 'call-count':
+                assert len(calls) == expected
+            case 'source':
+                assert calls[0][0] == expected
+            case 'options':
+                assert calls[0][2] == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_infers_format_when_file_format_is_none(
         self,
@@ -795,9 +778,29 @@ class TestExtractFromFile:
 
         assert result == {'ok': True}
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', {'ok': True}, id='result'),
+            pytest.param(
+                'calls',
+                [
+                    {
+                        'file_cls': extract_mod.File,
+                        'file_format': 'json',
+                        'file_path': '/tmp/data.json',
+                    },
+                    {},
+                ],
+                id='calls',
+            ),
+        ],
+    )
     def test_read_without_options_uses_plain_file_read(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """File extraction without options should not pass read options."""
         calls: list[dict[str, object]] = []
@@ -824,19 +827,29 @@ class TestExtractFromFile:
 
         monkeypatch.setattr(extract_mod, 'resolve_file', _resolve_file)
 
-        assert extract_from_file('/tmp/data.json', 'json') == {'ok': True}
-        assert calls == [
-            {
-                'file_cls': extract_mod.File,
-                'file_format': 'json',
-                'file_path': '/tmp/data.json',
-            },
-            {},
-        ]
+        result = extract_from_file('/tmp/data.json', 'json')
+        actual = result if check_name == 'result' else calls
+        assert actual == expected
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', {'ok': True}, id='result'),
+            pytest.param('path', 's3://bucket/data.csv', id='path'),
+            pytest.param(
+                'file_format',
+                extract_mod.FileFormat.CSV,
+                id='file-format',
+            ),
+            pytest.param('encoding', 'latin-1', id='encoding'),
+            pytest.param('extras', {'delimiter': '|'}, id='extras'),
+        ],
+    )
     def test_remote_uri_preserves_path_and_coerces_read_options(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that remote file extraction uses the original URI plus options."""
         captured: dict[str, Any] = {}
@@ -866,13 +879,17 @@ class TestExtractFromFile:
             {'encoding': 'latin-1', 'delimiter': '|'},
         )
 
-        assert result == {'ok': True}
-        assert captured['path'] == 's3://bucket/data.csv'
-        assert captured['file_format'] == extract_mod.FileFormat.CSV
         options = captured['options']
-        assert options is not None
-        assert options.encoding == 'latin-1'
-        assert options.extras == {'delimiter': '|'}
+        match check_name:
+            case 'result':
+                assert result == expected
+            case 'path' | 'file_format':
+                assert captured[check_name] == expected
+            case 'encoding' | 'extras':
+                assert options is not None
+                assert getattr(options, check_name) == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     @pytest.mark.parametrize(
         ('file_format', 'write', 'expected_extracts'),
@@ -981,7 +998,21 @@ class TestExtractFromFile:
 class TestExtractHelpers:
     """Unit tests for internal extract option coercion helpers."""
 
-    def test_coerce_read_options_stringifies_optional_identifiers(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('encoding', 'utf-16', id='encoding'),
+            pytest.param('table', '123', id='table'),
+            pytest.param('dataset', '456', id='dataset'),
+            pytest.param('inner_name', '789', id='inner-name'),
+            pytest.param('extras', {'delimiter': '|'}, id='extras'),
+        ],
+    )
+    def test_coerce_read_options_stringifies_optional_identifiers(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Test that read-option identifiers are coerced to strings."""
         options = extract_mod._coerce_read_options(
             {
@@ -994,8 +1025,4 @@ class TestExtractHelpers:
         )
 
         assert options is not None
-        assert options.encoding == 'utf-16'
-        assert options.table == '123'
-        assert options.dataset == '456'
-        assert options.inner_name == '789'
-        assert options.extras == {'delimiter': '|'}
+        assert getattr(options, field_name) == expected

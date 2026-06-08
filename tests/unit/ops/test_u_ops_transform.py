@@ -280,17 +280,37 @@ class TestApplyFilter:
 class TestApplyMap:
     """Unit tests for :func:`apply_map`."""
 
-    def test_map_renames_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('has-new-name', True, id='has-new-name'),
+            pytest.param('removed-old-name', True, id='removed-old-name'),
+            pytest.param('first-name', 'John', id='first-name'),
+            pytest.param('first-age', 30, id='first-age'),
+        ],
+    )
+    def test_map_renames_fields(
+        self,
+        check_name: str,
+        expected: object,
+    ) -> None:
         """Test mapping/renaming fields in each record."""
         data = [
             {'old_name': 'John', 'age': 30},
             {'old_name': 'Jane', 'age': 25},
         ]
         result = apply_map(data, {'old_name': 'new_name'})
-        assert all('new_name' in item for item in result)
-        assert all('old_name' not in item for item in result)
-        assert result[0]['new_name'] == 'John'
-        assert result[0]['age'] == 30
+        match check_name:
+            case 'has-new-name':
+                assert all('new_name' in item for item in result) is expected
+            case 'removed-old-name':
+                assert all('old_name' not in item for item in result) is expected
+            case 'first-name':
+                assert result[0]['new_name'] == expected
+            case 'first-age':
+                assert result[0]['age'] == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_map_missing_source_key_is_noop(self) -> None:
         """
@@ -938,7 +958,18 @@ class TestTransformInternalHelpers:
         """Test compatibility sequence detection helper."""
         assert is_sequence_not_text(value) is expected
 
-    def test_normalize_operation_keys_accepts_enums(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('keys', {'filter', 'map'}, id='keys'),
+            pytest.param('filter-field', 'age', id='filter-field'),
+        ],
+    )
+    def test_normalize_operation_keys_accepts_enums(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """
         Test that :class:`PipelineStep` keys normalize to lowercase strings.
         """
@@ -948,8 +979,8 @@ class TestTransformInternalHelpers:
         }
 
         normalized = _normalize_operation_keys(operations)
-        assert set(normalized) == {'filter', 'map'}
-        assert normalized['filter']['field'] == 'age'
+        actual = set(normalized) if field == 'keys' else normalized['filter']['field']
+        assert actual == expected
 
     def test_normalize_operation_keys_fallback_paths(self) -> None:
         """
@@ -985,16 +1016,28 @@ class TestTransformInternalHelpers:
         normalized = _normalize_operation_keys({_Step('filter'): {'x': 1}})
         assert normalized == {'filter': {'x': 1}}
 
-    def test_normalize_specs_handles_scalar_and_sequence(self) -> None:
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(None, [], id='none'),
+            pytest.param({'field': 'age'}, [{'field': 'age'}], id='scalar'),
+            pytest.param(
+                [{'field': 'age'}, {'field': 'age'}],
+                [{'field': 'age'}, {'field': 'age'}],
+                id='sequence',
+            ),
+        ],
+    )
+    def test_normalize_specs_handles_scalar_and_sequence(
+        self,
+        value: object,
+        expected: list[object],
+    ) -> None:
         """
         Test that :func:`_normalize_specs` coerces scalars to list and keeps
         sequences.
         """
-
-        single = {'field': 'age'}
-        assert not _normalize_specs(None)
-        assert _normalize_specs(single) == [single]
-        assert _normalize_specs([single, single]) == [single, single]
+        assert _normalize_specs(value) == expected
 
     def test_resolve_aggregator(self) -> None:
         """

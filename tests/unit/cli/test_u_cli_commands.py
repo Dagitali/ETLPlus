@@ -11,8 +11,7 @@ from collections.abc import Callable
 from datetime import UTC
 from datetime import datetime
 from pathlib import Path
-from typing import Any
-from typing import Never
+from textwrap import dedent
 from typing import cast
 
 import pytest
@@ -35,6 +34,7 @@ import etlplus.cli._handlers.schedule as schedule_handler_mod
 from etlplus.cli._commands._state import CliState
 from etlplus.file import FileFormat
 
+from ..pytest_export_contracts import assert_package_exports
 from .conftest import AssertCapturedText
 from .conftest import InvokeCli
 from .conftest import StubHandler
@@ -45,12 +45,12 @@ from .conftest import strip_ansi
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: CONSTANTS ======================================================== #
 
 
-def _raise_bad_parameter(message: str) -> Never:
-    """Raise a Typer bad-parameter error with the supplied message."""
-    raise typer.BadParameter(message)
+HELPER_EXPORTS: tuple[tuple[str, object], ...] = (
+    ('CommandHelperPolicy', helpers_mod.CommandHelperPolicy),
+)
 
 
 # SECTION: TESTS ============================================================ #
@@ -61,11 +61,27 @@ class TestCommandsInternalHelpers:
 
     def test_helpers_export_intentional_public_api(self) -> None:
         """Command helpers should expose only the intended public surface."""
-        assert helpers_mod.__all__ == [
-            'CommandHelperPolicy',
-        ]
+        assert_package_exports(
+            package_module=helpers_mod,
+            expected_exports=HELPER_EXPORTS,
+        )
 
-    def test_call_handler_injects_requested_state_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('result', 7, id='result'),
+            pytest.param(
+                'captured',
+                {'pretty': False, 'quiet': True, 'value': 'payload'},
+                id='captured',
+            ),
+        ],
+    )
+    def test_call_handler_injects_requested_state_fields(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Shared handler dispatch should merge selected CLI state fields."""
         captured: dict[str, object] = {}
 
@@ -81,12 +97,8 @@ class TestCommandsInternalHelpers:
             value='payload',
         )
 
-        assert result == 7
-        assert captured == {
-            'pretty': False,
-            'quiet': True,
-            'value': 'payload',
-        }
+        actual = result if field_name == 'result' else captured
+        assert actual == expected
 
     def test_from_context_uses_shared_cli_state(
         self,
@@ -130,7 +142,7 @@ class TestCommandsInternalHelpers:
         Test that invalid JSON payloads raise :class:`typer.BadParameter`.
         """
 
-        def _parse_json(_value: str) -> Any:
+        def _parse_json(_value: str) -> object:
             raise ValueError('bad json')
 
         monkeypatch.setattr(
@@ -167,37 +179,42 @@ class TestCommandsInternalHelpers:
         )
 
     @pytest.mark.parametrize(
-        'value',
+        ('value', 'positional_name'),
         [
-            pytest.param(None, id='missing'),
-            pytest.param('', id='empty'),
+            pytest.param(None, None, id='missing'),
+            pytest.param('', None, id='empty'),
+            pytest.param('--target', 'SOURCE', id='option-like-positional'),
         ],
     )
-    def test_require_value_rejects_missing_values(
+    def test_require_value_rejects_invalid_values(
         self,
         value: str | None,
+        positional_name: str | None,
     ) -> None:
         """Required CLI values should fail through Typer usage errors."""
-        with pytest.raises(typer.Exit) as exc_info:
+        with pytest.raises(
+            typer.Exit,
+            check=lambda exc: exc.exit_code == 2,
+        ):
             helpers_mod.CommandHelperPolicy.require_value(
                 value,
                 message="Missing required argument 'SOURCE'.",
+                positional_name=positional_name,
             )
 
-        assert exc_info.value.exit_code == 2
-
-    def test_require_value_rejects_option_like_positionals(self) -> None:
-        """Positionals should not silently consume option-looking values."""
-        with pytest.raises(typer.Exit) as exc_info:
-            helpers_mod.CommandHelperPolicy.require_value(
-                '--target',
-                message="Missing required argument 'SOURCE'.",
-                positional_name='SOURCE',
-            )
-
-        assert exc_info.value.exit_code == 2
-
-    def test_resolve_resource_normalizes_type_and_format(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('value', 'payload.json', id='value'),
+            pytest.param('resource_type', 'api', id='resource-type'),
+            pytest.param('format_hint', FileFormat.JSON, id='format-hint'),
+        ],
+    )
+    def test_resolve_resource_normalizes_type_and_format(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Shared resource resolution should normalize type and format hints."""
         resolved = helpers_mod.CommandHelperPolicy(CliState()).resolve_resource(
             role='source',
@@ -206,9 +223,7 @@ class TestCommandsInternalHelpers:
             format_value='json',
         )
 
-        assert resolved.value == 'payload.json'
-        assert resolved.resource_type == 'api'
-        assert resolved.format_hint is FileFormat.JSON
+        assert getattr(resolved, field_name) == expected
 
     @pytest.mark.parametrize(
         ('value', 'expected_message'),
@@ -587,7 +602,11 @@ class TestDelegatingCommands:
         expected_message: str,
     ) -> None:
         """Invalid command option combinations should fail through usage errors."""
-        monkeypatch.setattr(policy, 'fail_usage', _raise_bad_parameter)
+
+        def _fail_usage(message: str) -> None:
+            raise typer.BadParameter(message)
+
+        monkeypatch.setattr(policy, 'fail_usage', _fail_usage)
 
         with pytest.raises(typer.BadParameter, match=expected_message):
             command(typer_ctx_factory(), **kwargs)
@@ -802,7 +821,6 @@ class TestCliInvokeParsing:
     def test_parsed_options_reach_handler(
         self,
         invoke_cli: InvokeCli,
-        monkeypatch: pytest.MonkeyPatch,
         stub_handler: StubHandler,
         argv: tuple[str, ...],
         module: object,
@@ -825,20 +843,19 @@ class TestCliInvokeParsing:
         """Repeated CLI schedule dispatch should not re-run the same due trigger."""
         config_path = tmp_path / 'pipeline.yml'
         config_path.write_text(
-            '\n'.join(
-                (
-                    'name: CLI Scheduler Test',
-                    'sources: []',
-                    'targets: []',
-                    'jobs: []',
-                    'schedules:',
-                    '  - name: nightly_all',
-                    '    cron: "0 2 11 5 1"',
-                    '    timezone: UTC',
-                    '    target:',
-                    '      run_all: true',
-                    '',
-                ),
+            dedent(
+                """
+                name: CLI Scheduler Test
+                sources: []
+                targets: []
+                jobs: []
+                schedules:
+                  - name: nightly_all
+                    cron: "0 2 11 5 1"
+                    timezone: UTC
+                    target:
+                      run_all: true
+                """,
             ),
             encoding='utf-8',
         )
@@ -874,19 +891,32 @@ class TestCliInvokeParsing:
             '--run-pending',
         )
 
-        assert first_result.exit_code == 0
-        assert second_result.exit_code == 0
-        assert len(dispatch_calls) == 1
+        assert (first_result.exit_code, second_result.exit_code) == (0, 0)
+        (_dispatch_call,) = dispatch_calls
 
         first_payload = json.loads(first_result.stdout)
         second_payload = json.loads(second_result.stdout)
 
-        assert first_payload['dispatched_count'] == 1
-        assert first_payload['run_count'] == 1
-        assert first_payload['runs'][0]['run_id'] == 'run-1'
-        assert second_payload['dispatched_count'] == 0
-        assert second_payload['run_count'] == 0
-        assert second_payload['schedule_count'] == 1
+        assert (
+            first_payload['dispatched_count'],
+            first_payload['run_count'],
+        ) == (1, 1)
+        assert first_payload['runs'] == [
+            {
+                'catchup': False,
+                'run_all': True,
+                'run_id': 'run-1',
+                'schedule': 'nightly_all',
+                'status': 'ok',
+                'trigger': 'cron',
+                'triggered_at': '2026-05-11T02:00:00+00:00',
+            },
+        ]
+        assert (
+            second_payload['dispatched_count'],
+            second_payload['run_count'],
+            second_payload['schedule_count'],
+        ) == (0, 0, 1)
         assert json.loads((state_dir / 'scheduler-state.json').read_text()) == {
             'schedules': {
                 'nightly_all': {
@@ -898,21 +928,28 @@ class TestCliInvokeParsing:
             },
         }
 
+    @pytest.mark.parametrize(
+        'expected',
+        [
+            pytest.param('--host', id='host-option'),
+            pytest.param('127.0.0.1', id='default-host'),
+            pytest.param('--port', id='port-option'),
+            pytest.param('--limit', id='limit-option'),
+            pytest.param('--refresh-seconds', id='refresh-option'),
+            pytest.param('--no-browser', id='browser-option'),
+        ],
+    )
     def test_ui_help_lists_local_dashboard_options(
         self,
         invoke_cli: InvokeCli,
+        expected: str,
     ) -> None:
         """The stable ``etlplus ui`` help should list its dashboard options."""
         result = invoke_cli('ui', '--help')
         stdout = strip_ansi(result.stdout)
 
         assert result.exit_code == 0
-        assert '--host' in stdout
-        assert '127.0.0.1' in stdout
-        assert '--port' in stdout
-        assert '--limit' in stdout
-        assert '--refresh-seconds' in stdout
-        assert '--no-browser' in stdout
+        assert expected in stdout
 
 
 class TestCommandsMissingInputs:
@@ -951,9 +988,21 @@ class TestCommandsMissingInputs:
                 "Missing required argument 'TARGET'",
                 id='load-missing-target',
             ),
+            pytest.param(
+                'extract_cmd',
+                {'source': '--oops'},
+                "must follow the 'SOURCE' argument",
+                id='extract-option-before-source',
+            ),
+            pytest.param(
+                'load_cmd',
+                {'target': '--oops'},
+                "must follow the 'TARGET' argument",
+                id='load-option-before-target',
+            ),
         ],
     )
-    def test_missing_required_inputs_exit_with_usage_error(
+    def test_invalid_required_inputs_exit_with_usage_error(
         self,
         typer_ctx_factory: TyperContextFactory,
         assert_stderr_contains: AssertCapturedText,
@@ -961,55 +1010,13 @@ class TestCommandsMissingInputs:
         kwargs: dict[str, object],
         expected_message: str,
     ) -> None:
-        """
-        Test that commands emit friendly usage errors when required inputs are
-        missing.
-        """
+        """Commands should emit friendly usage errors for invalid inputs."""
         command = getattr(commands_mod, command_name)
-        with pytest.raises(typer.Exit) as exc:
+        with pytest.raises(
+            typer.Exit,
+            check=lambda exc: exc.exit_code == 2,
+        ):
             command(typer_ctx_factory(), **kwargs)
-        assert exc.value.exit_code == 2
-        assert_stderr_contains(expected_message)
-
-    @pytest.mark.parametrize(
-        (
-            'command_name',
-            'argument_name',
-            'argument_value',
-            'expected_message',
-        ),
-        [
-            pytest.param(
-                'extract_cmd',
-                'source',
-                '--oops',
-                "must follow the 'SOURCE' argument",
-                id='extract-option-before-source',
-            ),
-            pytest.param(
-                'load_cmd',
-                'target',
-                '--oops',
-                "must follow the 'TARGET' argument",
-                id='load-option-before-target',
-            ),
-        ],
-    )
-    def test_rejects_option_values_for_positional_arguments(
-        self,
-        typer_ctx_factory: TyperContextFactory,
-        assert_stderr_contains: AssertCapturedText,
-        command_name: str,
-        argument_name: str,
-        argument_value: str,
-        expected_message: str,
-    ) -> None:
-        """Test that positional arguments reject option-like values."""
-        kwargs = {argument_name: argument_value}
-        command = getattr(commands_mod, command_name)
-        with pytest.raises(typer.Exit) as exc:
-            command(typer_ctx_factory(), **kwargs)
-        assert exc.value.exit_code == 2
         assert_stderr_contains(expected_message)
 
 

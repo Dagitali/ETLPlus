@@ -32,13 +32,24 @@ class TestAggregateName:
             pytest.param([1.0, 2.0, 3.0], id='floats'),
         ],
     )
-    def test_funcs(self, nums: list[int | float]) -> None:
+    @pytest.mark.parametrize(
+        ('aggregate', 'expected'),
+        [
+            pytest.param(AggregateName.SUM, 6, id='sum'),
+            pytest.param(AggregateName.MAX, 3, id='max'),
+            pytest.param(AggregateName.MIN, 1, id='min'),
+            pytest.param(AggregateName.COUNT, 3, id='count'),
+            pytest.param(AggregateName.AVG, pytest.approx(2.0), id='avg'),
+        ],
+    )
+    def test_funcs(
+        self,
+        nums: list[int | float],
+        aggregate: AggregateName,
+        expected: object,
+    ) -> None:
         """Test the aggregate functions across numeric inputs."""
-        assert AggregateName.SUM.func(nums, len(nums)) == 6
-        assert AggregateName.MAX.func(nums, len(nums)) == 3
-        assert AggregateName.MIN.func(nums, len(nums)) == 1
-        assert AggregateName.COUNT.func(nums, len(nums)) == 3
-        assert AggregateName.AVG.func(nums, len(nums)) == pytest.approx(2.0)
+        assert aggregate.func(nums, len(nums)) == expected
 
 
 class TestOperatorName:
@@ -51,21 +62,38 @@ class TestOperatorName:
         assert raw_func is not None
         assert raw_func(cast(Any, object())) is None
 
-    def test_funcs(self) -> None:
+    @pytest.mark.parametrize(
+        ('operator', 'left', 'right'),
+        [
+            pytest.param(OperatorName.EQ, 5, 5, id='eq'),
+            pytest.param(OperatorName.NE, 5, 6, id='ne'),
+            pytest.param(OperatorName.GT, 5, 2, id='gt'),
+            pytest.param(OperatorName.LT, 2, 5, id='lt'),
+            pytest.param(OperatorName.LTE, 5, 5, id='lte'),
+            pytest.param(OperatorName.IN, 'a', 'abc', id='in'),
+            pytest.param(OperatorName.CONTAINS, 'alphabet', 'bet', id='contains'),
+        ],
+    )
+    def test_funcs(
+        self,
+        operator: OperatorName,
+        left: object,
+        right: object,
+    ) -> None:
         """Test the operator functions."""
-        assert OperatorName.EQ.func(5, 5) is True
-        assert OperatorName.NE.func(5, 6) is True
-        assert OperatorName.GT.func(5, 2) is True
-        assert OperatorName.LT.func(2, 5) is True
-        assert OperatorName.LTE.func(5, 5) is True
-        assert OperatorName.IN.func('a', 'abc') is True
-        assert OperatorName.CONTAINS.func('alphabet', 'bet') is True
+        assert operator.func(left, right) is True
 
 
 class TestPipelineStep:
     """Unit tests for :class:`etlplus.ops._enums.PipelineStep`."""
 
-    def test_order(self) -> None:
+    @pytest.mark.parametrize(
+        ('step', 'expected'),
+        [
+            pytest.param(PipelineStep.FILTER, 0, id='filter'),
+            pytest.param(PipelineStep.AGGREGATE, 4, id='aggregate'),
+        ],
+    )
+    def test_order(self, step: PipelineStep, expected: int) -> None:
         """Test the order values."""
-        assert PipelineStep.FILTER.order == 0
-        assert PipelineStep.AGGREGATE.order == 4
+        assert step.order == expected

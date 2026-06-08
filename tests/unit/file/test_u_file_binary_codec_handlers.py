@@ -100,7 +100,22 @@ class TestBinaryCodecHandlers:
         assert payload == b'encoded'
         assert codec.encode_calls == [(expected_payload, {'encode_opt': 1})]
 
-    def test_loads_bytes_decodes_and_coerces_records(self) -> None:
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', [{'id': 1}], id='result'),
+            pytest.param(
+                'decode-calls',
+                [(b'payload', {'decode_opt': 2})],
+                id='decode-calls',
+            ),
+        ],
+    )
+    def test_loads_bytes_decodes_and_coerces_records(
+        self,
+        check_name: str,
+        expected: object,
+    ) -> None:
         """
         Test that the loads path forwards decode kwargs and coerces records.
         """
@@ -109,8 +124,8 @@ class TestBinaryCodecHandlers:
 
         result = handler.loads_bytes(b'payload')
 
-        assert result == [{'id': 1}]
-        assert codec.decode_calls == [(b'payload', {'decode_opt': 2})]
+        actual = result if check_name == 'result' else codec.decode_calls
+        assert actual == expected
 
     def test_read_and_write_file_paths_use_binary_base_flow(
         self,

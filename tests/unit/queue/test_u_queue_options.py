@@ -58,16 +58,23 @@ class TestQueueOptions:
             ),
         ],
     )
+    @pytest.mark.parametrize(
+        'name_payload',
+        [
+            pytest.param({}, id='missing-name'),
+            pytest.param({'name': '   '}, id='blank-name'),
+        ],
+    )
     def test_from_obj_requires_name(
         self,
         factory: Callable[[StrAnyMap], QueueConfig],
         target_payload: StrAnyMap,
         match: str,
+        name_payload: StrAnyMap,
     ) -> None:
         """Test that provider queue metadata requires a nonblank name."""
-        for payload in (target_payload, {'name': '   ', **target_payload}):
-            with pytest.raises(TypeError, match=match):
-                factory(payload)
+        with pytest.raises(TypeError, match=match):
+            factory(name_payload | target_payload)
 
     @pytest.mark.parametrize(
         ('factory', 'payload', 'expected'),

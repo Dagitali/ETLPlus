@@ -228,20 +228,38 @@ class TestStubCategoryHandlers:
             (Path('ignored.conf'), OK_DICT),
         ]
 
+    @pytest.mark.parametrize(
+        ('operation', 'args'),
+        [
+            pytest.param('read_dataset', (), id='read'),
+            pytest.param('write_dataset', ([],), id='write'),
+        ],
+    )
     def test_single_dataset_stub_validates_dataset_key(
         self,
+        operation: str,
+        args: tuple[object, ...],
     ) -> None:
         """Test that single-dataset stub rejects non-default dataset keys."""
         handler = _SingleScientificStub()
         path = Path('data.mat')
         with pytest.raises(ValueError, match='supports only dataset key'):
-            handler.read_dataset(path, dataset='other')
-        with pytest.raises(ValueError, match='supports only dataset key'):
-            handler.write_dataset(path, [], dataset='other')
+            getattr(handler, operation)(path, *args, dataset='other')
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('read-result', RECORD_LIST, id='read-result'),
+            pytest.param('write-result', 1, id='write-result'),
+            pytest.param('read-calls', 'read-calls', id='read-calls'),
+            pytest.param('write-calls', 'write-calls', id='write-calls'),
+        ],
+    )
     def test_single_dataset_stub_read_write_delegate_for_default_dataset(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """
         Test that single-dataset stub read/write delegation for valid dataset.
@@ -256,10 +274,26 @@ class TestStubCategoryHandlers:
         read_options = ReadOptions(dataset='data')
         write_options = WriteOptions(dataset='data')
 
-        assert handler.read(path, options=read_options) == RECORD_LIST
-        assert handler.write(path, RECORD_LIST, options=write_options) == 1
-        assert read_calls == [(path, read_options)]
-        assert write_calls == [(path, RECORD_LIST, write_options)]
+        match check_name:
+            case 'read-result':
+                assert handler.read(path, options=read_options) == expected
+            case 'write-result':
+                assert (
+                    handler.write(
+                        path,
+                        RECORD_LIST,
+                        options=write_options,
+                    )
+                    == expected
+                )
+            case 'read-calls':
+                handler.read(path, options=read_options)
+                assert read_calls == [(path, read_options)]
+            case 'write-calls':
+                handler.write(path, RECORD_LIST, options=write_options)
+                assert write_calls == [(path, RECORD_LIST, write_options)]
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_spreadsheet_stub_methods_delegate_to_stub_io(
         self,

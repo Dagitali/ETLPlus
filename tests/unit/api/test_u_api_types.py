@@ -9,8 +9,6 @@ from __future__ import annotations
 import pytest
 
 from etlplus.api._types import FetchPageCallable
-from etlplus.api._types import Headers
-from etlplus.api._types import Params
 from etlplus.api._types import RequestOptions
 from etlplus.api._types import Url
 
@@ -67,15 +65,21 @@ class TestRequestOptions:
         """
         assert opts.as_kwargs() == expected
 
-    def test_request_options_defaults(self) -> None:
+    @pytest.mark.parametrize(
+        'field_name',
+        [
+            pytest.param('params', id='params'),
+            pytest.param('headers', id='headers'),
+            pytest.param('timeout', id='timeout'),
+        ],
+    )
+    def test_request_options_defaults(self, field_name: str) -> None:
         """
         Test that :class:`RequestOptions` defaults all fields to ``None``.
         """
         opts = RequestOptions()
 
-        assert opts.params is None
-        assert opts.headers is None
-        assert opts.timeout is None
+        assert getattr(opts, field_name) is None
 
     @pytest.mark.parametrize(
         ('kwargs', 'expected_params', 'expected_headers', 'expected_timeout'),
@@ -124,7 +128,18 @@ class TestRequestOptions:
         assert evolved.headers == expected_headers
         assert evolved.timeout == expected_timeout
 
-    def test_request_options_invalid_params_headers(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('params', {'a': 1}, id='params'),
+            pytest.param('headers', {'X': 'y'}, id='headers'),
+        ],
+    )
+    def test_request_options_invalid_params_headers(
+        self,
+        field: str,
+        expected: dict[str, object],
+    ) -> None:
         """
         Test that :class:`RequestOptions` coerces mapping-like params and
         headers to dicts.
@@ -135,19 +150,38 @@ class TestRequestOptions:
             """Dummy mapping-like class for testing."""
 
         opts = RequestOptions(params=DummyMap(a=1), headers=DummyMap(X='y'))
-        assert isinstance(opts.params, dict)
-        assert isinstance(opts.headers, dict)
+        assert getattr(opts, field) == expected
 
+    @pytest.mark.parametrize(
+        'field',
+        [
+            pytest.param('params', id='params'),
+            pytest.param('headers', id='headers'),
+        ],
+    )
+    def test_request_options_allows_none_params_headers(self, field: str) -> None:
+        """Test that explicit ``None`` params and headers are preserved."""
         cleared = RequestOptions(params=None, headers=None)
-        assert cleared.params is None
-        assert cleared.headers is None
+        assert getattr(cleared, field) is None
 
-    def test_request_options_rejects_non_mapping_params_headers(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'value'),
+        [
+            pytest.param('params', 'bad', id='params'),
+            pytest.param('headers', object(), id='headers'),
+        ],
+    )
+    def test_request_options_rejects_non_mapping_params_headers(
+        self,
+        field: str,
+        value: object,
+    ) -> None:
         """Test that non-mapping params and headers normalize to empty dicts."""
-        opts = RequestOptions(params='bad', headers=object())  # type: ignore[arg-type]
+        kwargs = {'params': None, 'headers': None}
+        kwargs[field] = value
+        opts = RequestOptions(**kwargs)  # type: ignore[arg-type]
 
-        assert opts.params == {}
-        assert opts.headers == {}
+        assert getattr(opts, field) == {}
 
 
 class TestApiTypes:
@@ -161,17 +195,26 @@ class TestApiTypes:
         cb: FetchPageCallable = _fetch_page
         assert callable(cb)
 
-    def test_type_aliases_edge_cases(self) -> None:
+    @pytest.mark.parametrize(
+        ('value', 'expected_type'),
+        [
+            pytest.param('http://test/', str, id='url'),
+            pytest.param({'A': 'B'}, dict, id='headers'),
+            pytest.param({'A': 1, 'B': [1, 2]}, dict, id='params'),
+        ],
+    )
+    def test_type_aliases_edge_cases(
+        self,
+        value: object,
+        expected_type: type[object],
+    ) -> None:
         """
         Test that type alias examples remain valid for typical edge case
         values.
         """
-        url: Url = 'http://test/'
-        headers: Headers = {'A': 'B'}
-        params: Params = {'A': 1, 'B': [1, 2]}
-        cb: FetchPageCallable = _fetch_page
+        assert isinstance(value, expected_type)
 
-        assert isinstance(url, str)
-        assert isinstance(headers, dict)
-        assert isinstance(params, dict)
+    def test_type_alias_callback_edge_case(self) -> None:
+        """Test that callback aliases remain callable at runtime."""
+        cb: FetchPageCallable = _fetch_page
         assert callable(cb)

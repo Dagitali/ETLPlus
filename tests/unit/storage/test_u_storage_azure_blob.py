@@ -13,6 +13,9 @@ from etlplus.storage import StorageLocation
 from etlplus.storage import _azure_blob as azure_blob_mod
 
 from .pytest_storage_support import FakeContentSettings
+from .pytest_storage_support import FixedDownload
+from .pytest_storage_support import assert_azure_service_client_init
+from .pytest_storage_support import assert_upload_payload
 from .pytest_storage_support import clear_azure_storage_env
 
 # SECTION: PRAGMAS ========================================================== #
@@ -125,19 +128,12 @@ class TestAzureBlobStorageBackend:
             'azure-blob://container/blob.json',
         )
 
-        class FakeDownload:
-            """Blob download test double."""
-
-            def readall(self) -> bytes:
-                """Return a fixed payload."""
-                return b'{"ok": true}'
-
         class FakeBlobClient:
             """Blob client test double."""
 
-            def download_blob(self) -> FakeDownload:
+            def download_blob(self) -> FixedDownload:
                 """Return the fake download wrapper."""
-                return FakeDownload()
+                return FixedDownload()
 
         monkeypatch.setattr(backend, '_blob_client', lambda _location: FakeBlobClient())
         with backend.open(location, encoding='utf-8') as handle:
@@ -190,13 +186,7 @@ class TestAzureBlobStorageBackend:
         with backend.open(location, 'wb', **kwargs) as handle:
             handle.write(b'payload')
 
-        assert uploads[0]['data'] == b'payload'
-        assert uploads[0]['overwrite'] is True
-        if content_type:
-            assert isinstance(uploads[0]['content_settings'], FakeContentSettings)
-            assert uploads[0]['content_settings'].content_type == content_type
-        else:
-            assert 'content_settings' not in uploads[0]
+        assert_upload_payload(uploads, content_type=content_type)
 
     def test_service_client_derives_account_url_from_https_authority(
         self,
@@ -306,12 +296,11 @@ class TestAzureBlobStorageBackend:
 
         backend._service_client(location)
 
-        assert calls == [
-            {
-                'account_url': 'https://example.blob.core.windows.net',
-                'credential': explicit_credential or env_credential,
-            },
-        ]
+        assert_azure_service_client_init(
+            calls,
+            account_url='https://example.blob.core.windows.net',
+            credential=explicit_credential or env_credential,
+        )
 
     def test_service_client_uses_connection_string_env(
         self,

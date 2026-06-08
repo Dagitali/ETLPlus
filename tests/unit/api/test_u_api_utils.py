@@ -78,19 +78,37 @@ class _Endpoint:
         self.headers = {'Endpoint': '1'}
 
 
+def _mapping_path(mapping: Mapping[str, Any], path: str) -> Any:
+    """Return a nested mapping value from a dotted path."""
+    current: Any = mapping
+    for part in path.split('.'):
+        current = current[part]
+    return current
+
+
 # SECTION: TESTS ============================================================ #
 
 
 class TestBuildPaginationCfg:
     """Unit tests for :func:`build_pagination_cfg`."""
 
-    def test_cursor_config_defaults_non_positive_page_size(self) -> None:
-        """Non-positive cursor page-size overrides should fall back without raising."""
+    @pytest.mark.parametrize(
+        'page_size',
+        [
+            pytest.param(0, id='zero'),
+            pytest.param('invalid', id='invalid'),
+        ],
+    )
+    def test_cursor_config_defaults_invalid_page_size_override(
+        self,
+        page_size: object,
+    ) -> None:
+        """Invalid cursor page-size overrides should fall back without raising."""
         cfg_map = _utils.build_pagination_cfg(
             None,
             {
                 'type': 'cursor',
-                'page_size': 0,
+                'page_size': page_size,
             },
         )
 
@@ -126,53 +144,64 @@ class TestBuildPaginationCfg:
         """Test that missing pagination type returns ``None``."""
         assert _utils.build_pagination_cfg(None, None) is None
 
-    def test_page_config_defaults_invalid_integer_overrides(self) -> None:
+    @pytest.mark.parametrize(
+        ('overrides', 'field', 'expected'),
+        [
+            pytest.param(
+                {'type': 'page', 'start_page': 'invalid', 'page_size': True},
+                'start_page',
+                1,
+                id='invalid-start-page',
+            ),
+            pytest.param(
+                {'type': 'page', 'start_page': 'invalid', 'page_size': True},
+                'page_size',
+                100,
+                id='invalid-page-size-bool',
+            ),
+            pytest.param(
+                {'type': 'page', 'start_page': 0, 'page_size': 0},
+                'start_page',
+                1,
+                id='zero-start-page',
+            ),
+            pytest.param(
+                {'type': 'page', 'start_page': 0, 'page_size': 0},
+                'page_size',
+                100,
+                id='zero-page-size',
+            ),
+        ],
+    )
+    def test_page_config_defaults_invalid_integer_overrides(
+        self,
+        overrides: Mapping[str, object],
+        field: str,
+        expected: int,
+    ) -> None:
         """Invalid page integer overrides should fall back without raising."""
-        cfg_map = _utils.build_pagination_cfg(
-            None,
-            {
-                'type': 'page',
-                'start_page': 'invalid',
-                'page_size': True,
-            },
-        )
+        cfg_map = _utils.build_pagination_cfg(None, overrides)
 
         assert cfg_map is not None
         page_cfg = cast(PagePaginationConfigDict, cfg_map)
-        assert page_cfg['start_page'] == 1
-        assert page_cfg['page_size'] == 100
+        assert page_cfg[field] == expected
 
-    def test_cursor_config_defaults_invalid_page_size_override(self) -> None:
-        """Invalid cursor page-size overrides should fall back without raising."""
-        cfg_map = _utils.build_pagination_cfg(
-            None,
-            {
-                'type': 'cursor',
-                'page_size': 'invalid',
-            },
-        )
-
-        assert cfg_map is not None
-        cursor_cfg = cast(CursorPaginationConfigDict, cfg_map)
-        assert cursor_cfg['page_size'] == 100
-
-    def test_page_config_defaults_non_positive_page_size(self) -> None:
-        """Non-positive page-size overrides should fall back without raising."""
-        cfg_map = _utils.build_pagination_cfg(
-            None,
-            {
-                'type': 'page',
-                'start_page': 0,
-                'page_size': 0,
-            },
-        )
-
-        assert cfg_map is not None
-        page_cfg = cast(PagePaginationConfigDict, cfg_map)
-        assert page_cfg['start_page'] == 1
-        assert page_cfg['page_size'] == 100
-
-    def test_page_config_with_overrides(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('type', 'page', id='type'),
+            pytest.param('records_path', 'records', id='records-path'),
+            pytest.param('page_param', 'page', id='page-param'),
+            pytest.param('size_param', 'sz', id='size-param'),
+            pytest.param('max_pages', 5, id='max-pages'),
+            pytest.param('page_size', 10, id='page-size'),
+        ],
+    )
+    def test_page_config_with_overrides(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Test building page-based pagination config with overrides."""
         pagination = PaginationConfig(
             type=PaginationType.PAGE,
@@ -190,18 +219,29 @@ class TestBuildPaginationCfg:
         assert cfg_map is not None
         page_cfg = cast(PagePaginationConfigDict, cfg_map)
 
-        assert page_cfg['type'] == 'page'
-        assert page_cfg['records_path'] == 'records'
-        assert page_cfg['page_param'] == 'page'
-        assert page_cfg['size_param'] == 'sz'
-        assert page_cfg['max_pages'] == 5
-        assert page_cfg['page_size'] == 10
+        assert page_cfg[field] == expected
 
 
 class TestBuildSession:
     """Unit tests for :func:`build_session`."""
 
-    def test_applies_configuration(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('headers.X', '1', id='header'),
+            pytest.param('params', {'debug': '1'}, id='params'),
+            pytest.param('auth', ('user', 'pass'), id='auth'),
+            pytest.param('verify', False, id='verify'),
+            pytest.param('cert', 'cert.pem', id='cert'),
+            pytest.param('proxies.https', 'proxy', id='proxy'),
+            pytest.param('cookies.a', 'b', id='cookie'),
+        ],
+    )
+    def test_applies_configuration(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Test that session is built with given configuration."""
         sess = _utils.build_session(
             {
@@ -216,21 +256,54 @@ class TestBuildSession:
             },
         )
 
-        assert sess.headers['X'] == '1'
-        assert sess.params == {'debug': '1'}
-        assert sess.auth == ('user', 'pass')
-        assert sess.verify is False
-        assert sess.cert == 'cert.pem'
-        assert sess.proxies['https'] == 'proxy'
-        assert sess.cookies.get('a') == 'b'
+        match field.split('.'):
+            case ['headers', key]:
+                actual = sess.headers[key]
+            case ['proxies', key]:
+                actual = sess.proxies[key]
+            case ['cookies', key]:
+                actual = sess.cookies.get(key)
+            case [attr]:
+                actual = getattr(sess, attr)
+            case _:
+                pytest.fail(f'Unsupported field path: {field}')
+        assert actual == expected
 
 
 class TestComposeApiRequestEnv:
     """Unit tests for :func:`compose_api_request_env`."""
 
+    @pytest.mark.parametrize(
+        ('field_path', 'expected'),
+        [
+            pytest.param('use_endpoints', True, id='use-endpoints'),
+            pytest.param('base_url', None, id='base-url'),
+            pytest.param('endpoint_key', 'users', id='endpoint-key'),
+            pytest.param(
+                'params',
+                {'fields': 'id,name', 'limit': 5, 'search': 'ada'},
+                id='params',
+            ),
+            pytest.param(
+                'headers.Accept',
+                'application/json',
+                id='header-accept',
+            ),
+            pytest.param('headers.User-Agent', 'pytest', id='header-user-agent'),
+            pytest.param('headers.X-Test', '1', id='header-override'),
+            pytest.param('timeout', 7.5, id='timeout'),
+            pytest.param('pagination.type', 'page', id='pagination-type'),
+            pytest.param('sleep_seconds', 0.05, id='sleep-seconds'),
+            pytest.param('retry', {'max_attempts': 4}, id='retry'),
+            pytest.param('retry_network_errors', True, id='retry-network'),
+            pytest.param('session', 'not-none', id='session'),
+        ],
+    )
     def test_merges_endpoint_defaults_and_overrides(
         self,
         base_url: str,
+        field_path: str,
+        expected: object,
     ) -> None:
         """Test that merging endpoint defaults with overrides."""
         cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
@@ -258,25 +331,12 @@ class TestComposeApiRequestEnv:
 
         env = _utils.compose_api_request_env(cfg, source, overrides)
 
-        assert env['use_endpoints'] is True
-        assert env['base_url'] == base_url
-        assert env['endpoint_key'] == 'users'
-        assert env['params'] == {
-            'fields': 'id,name',
-            'limit': 5,
-            'search': 'ada',
-        }
-        assert env['headers']['Accept'] == 'application/json'
-        assert env['headers']['User-Agent'] == 'pytest'
-        assert env['headers']['X-Test'] == '1'
-        assert env['timeout'] == 7.5
-        assert env['pagination'] is not None
-        pagination_cfg = cast(PagePaginationConfigDict, env['pagination'])
-        assert pagination_cfg['type'] == 'page'
-        assert env['sleep_seconds'] == 0.05
-        assert env['retry'] == {'max_attempts': 4}
-        assert env['retry_network_errors'] is True
-        assert env['session'] is not None
+        expected_value = base_url if field_path == 'base_url' else expected
+        actual = _mapping_path(env, field_path)
+        if expected_value == 'not-none':
+            assert actual is not None
+        else:
+            assert actual == expected_value
 
     def test_missing_api_raises(self) -> None:
         """Test that missing API raises a ValueError."""
@@ -296,9 +356,27 @@ class TestComposeApiRequestEnv:
 class TestComposeApiTargetEnv:
     """Unit tests for :func:`compose_api_target_env`."""
 
+    @pytest.mark.parametrize(
+        ('field_path', 'expected'),
+        [
+            pytest.param('url', None, id='url'),
+            pytest.param('method', 'put', id='method'),
+            pytest.param(
+                'headers.Accept',
+                'application/json',
+                id='header-accept',
+            ),
+            pytest.param('headers.Target', '1', id='header-target'),
+            pytest.param('headers.X-Override', '1', id='header-override'),
+            pytest.param('timeout', 3.5, id='timeout'),
+            pytest.param('session', 'not-none', id='session'),
+        ],
+    )
     def test_inherits_api_defaults_when_url_missing(
         self,
         base_url: str,
+        field_path: str,
+        expected: object,
     ) -> None:
         """Test that API defaults are inherited when URL is missing."""
         cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
@@ -316,13 +394,12 @@ class TestComposeApiTargetEnv:
 
         env = _utils.compose_api_target_env(cfg, target, overrides)
 
-        assert env['url'] == f'{base_url}/v1/users'
-        assert env['method'] == 'put'
-        assert env['headers']['Accept'] == 'application/json'
-        assert env['headers']['Target'] == '1'
-        assert env['headers']['X-Override'] == '1'
-        assert env['timeout'] == 3.5
-        assert env['session'] is not None
+        expected_value = f'{base_url}/v1/users' if field_path == 'url' else expected
+        actual = _mapping_path(env, field_path)
+        if expected_value == 'not-none':
+            assert actual is not None
+        else:
+            assert actual == expected_value
 
 
 class TestComputeRlSleepSeconds:
@@ -458,7 +535,20 @@ class TestPaginateWithClient:
 class TestUtilsInternalBranches:
     """Branch-focused tests for internal API utility helpers."""
 
-    def test_build_endpoint_client_helper(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('base_url', 'https://example.test', id='base-url'),
+            pytest.param('base_path', '/v1', id='base-path'),
+            pytest.param('endpoints.users', '/users', id='endpoint'),
+            pytest.param('retry_network_errors', True, id='retry-network-errors'),
+        ],
+    )
+    def test_build_endpoint_client_helper(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """
         Test that :func:`build_endpoint_client` wires env options into
         :class:`EndpointClient`.
@@ -469,10 +559,12 @@ class TestUtilsInternalBranches:
             endpoints={'users': '/users'},
             env={'retry_network_errors': True},
         )
-        assert client.base_url == 'https://example.test'
-        assert client.base_path == '/v1'
-        assert client.endpoints['users'] == '/users'
-        assert client.retry_network_errors is True
+        actual = (
+            client.endpoints['users']
+            if field == 'endpoints.users'
+            else getattr(client, field)
+        )
+        assert actual == expected
 
     def test_build_pagination_cfg_page_cursor_and_unknown_variants(
         self,
@@ -594,9 +686,20 @@ class TestUtilsInternalBranches:
         default_session = _utils.build_session(None)
         assert isinstance(default_session, _TinySession)
 
+    @pytest.mark.parametrize(
+        ('field_path', 'expected'),
+        [
+            pytest.param('pagination', None, id='pagination'),
+            pytest.param('sleep_seconds', 0.25, id='sleep-seconds'),
+            pytest.param('retry', {'max_attempts': 1}, id='retry'),
+            pytest.param('retry_network_errors', False, id='retry-network'),
+        ],
+    )
     def test_compose_api_request_env_falls_back_to_api_level_defaults(
         self,
         base_url: str,
+        field_path: str,
+        expected: object,
     ) -> None:
         """Test that request composition falls back from endpoint to API defaults."""
         cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
@@ -620,14 +723,23 @@ class TestUtilsInternalBranches:
 
         env = _utils.compose_api_request_env(cfg, source, {})
 
-        assert env['pagination'] is None
-        assert env['sleep_seconds'] == 0.25
-        assert env['retry'] == {'max_attempts': 1}
-        assert env['retry_network_errors'] is False
+        assert _mapping_path(env, field_path) == expected
 
+    @pytest.mark.parametrize(
+        ('field_path', 'expected'),
+        [
+            pytest.param('pagination', 'not-none', id='pagination'),
+            pytest.param('pagination.type', 'page', id='pagination-type'),
+            pytest.param('pagination.page_param', 'page', id='page-param'),
+            pytest.param('pagination.page_size', 10, id='page-size'),
+            pytest.param('sleep_seconds', 0.1, id='sleep-seconds'),
+        ],
+    )
     def test_compose_api_request_env_preserves_source_pagination_and_rate_limit(
         self,
         base_url: str,
+        field_path: str,
+        expected: object,
     ) -> None:
         """Test that source pagination and rate-limit values take precedence."""
         cfg = SimpleNamespace(apis={'core': _ApiCfg(base_url)})
@@ -649,12 +761,11 @@ class TestUtilsInternalBranches:
 
         env = _utils.compose_api_request_env(cfg, source, {})
 
-        assert env['pagination'] is not None
-        pagination_cfg = cast(PagePaginationConfigDict, env['pagination'])
-        assert pagination_cfg['type'] == 'page'
-        assert pagination_cfg['page_param'] == 'page'
-        assert pagination_cfg['page_size'] == 10
-        assert env['sleep_seconds'] == 0.1
+        actual = _mapping_path(env, field_path)
+        if expected == 'not-none':
+            assert actual is not None
+        else:
+            assert actual == expected
 
     def test_compose_api_request_env_without_api_reference(self) -> None:
         """
@@ -732,12 +843,32 @@ class TestUtilsInternalBranches:
         assert env['url'] == 'https://override.test/u'
         assert env['headers'] == {'T': '1'}
 
-    def test_compute_rl_sleep_seconds_variants(self) -> None:
+    @pytest.mark.parametrize(
+        ('rate_limit', 'options', 'expected'),
+        [
+            pytest.param(
+                RateLimitConfig(sleep_seconds=0.5, max_per_sec=None),
+                {'max_per_sec': 4},
+                0.5,
+                id='object-sleep-seconds-wins',
+            ),
+            pytest.param(None, {'max_per_sec': 4}, 0.25, id='options-max-per-sec'),
+            pytest.param(
+                {'sleep_seconds': 0.2},
+                {'x': 1},
+                0.2,
+                id='mapping-sleep-seconds',
+            ),
+        ],
+    )
+    def test_compute_rl_sleep_seconds_variants(
+        self,
+        rate_limit: RateLimitConfig | Mapping[str, object] | None,
+        options: Mapping[str, object],
+        expected: float,
+    ) -> None:
         """Test that rate-limit sleep helper filters overrides correctly."""
-        rl_obj = RateLimitConfig(sleep_seconds=0.5, max_per_sec=None)
-        assert _utils.compute_rl_sleep_seconds(rl_obj, {'max_per_sec': 4}) == 0.5
-        assert _utils.compute_rl_sleep_seconds(None, {'max_per_sec': 4}) == 0.25
-        assert _utils.compute_rl_sleep_seconds({'sleep_seconds': 0.2}, {'x': 1}) == 0.2
+        assert _utils.compute_rl_sleep_seconds(rate_limit, options) == expected
 
     def test_internal_helpers_handle_non_mapping_inputs(
         self,

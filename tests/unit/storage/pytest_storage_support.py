@@ -27,19 +27,6 @@ RemoteBackendType = type[RemoteStorageBackend]
 RemoteValidationKind = Literal['missing_authority', 'missing_path']
 
 
-# SECTION: FUNCTIONS ======================================================== #
-
-
-def clear_azure_storage_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Clear Azure storage configuration environment variables."""
-    for name in (
-        'AZURE_STORAGE_CONNECTION_STRING',
-        'AZURE_STORAGE_ACCOUNT_URL',
-        'AZURE_STORAGE_CREDENTIAL',
-    ):
-        monkeypatch.delenv(name, raising=False)
-
-
 # SECTION: DATA CLASSES ===================================================== #
 
 
@@ -48,6 +35,17 @@ class FakeContentSettings:
     """Minimal content-settings test double."""
 
     content_type: str
+
+
+@dataclass(frozen=True, slots=True)
+class FixedDownload:
+    """Minimal remote download test double."""
+
+    payload: bytes = b'{"ok": true}'
+
+    def readall(self) -> bytes:
+        """Return the configured payload bytes."""
+        return self.payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,3 +151,43 @@ REMOTE_PROVIDER_CASES: tuple[RemoteProviderCase, ...] = (
         valid_raw='s3://bucket/data.csv',
     ),
 )
+
+
+# SECTION: FUNCTIONS ======================================================== #
+
+
+def assert_azure_service_client_init(
+    calls: list[dict[str, object]],
+    *,
+    account_url: str,
+    credential: object | None,
+) -> None:
+    """Assert one Azure service-client initialization call."""
+    assert calls == [{'account_url': account_url, 'credential': credential}]
+
+
+def clear_azure_storage_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Clear Azure storage configuration environment variables."""
+    for name in (
+        'AZURE_STORAGE_CONNECTION_STRING',
+        'AZURE_STORAGE_ACCOUNT_URL',
+        'AZURE_STORAGE_CREDENTIAL',
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+
+def assert_upload_payload(
+    uploads: list[dict[str, object]],
+    *,
+    content_type: str | None,
+) -> None:
+    """Assert one buffered upload payload and optional content settings."""
+    (upload,) = uploads
+    assert upload['data'] == b'payload'
+    assert upload['overwrite'] is True
+    if content_type:
+        content_settings = upload['content_settings']
+        assert isinstance(content_settings, FakeContentSettings)
+        assert content_settings.content_type == content_type
+    else:
+        assert 'content_settings' not in upload

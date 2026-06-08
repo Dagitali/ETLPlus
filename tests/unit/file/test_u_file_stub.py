@@ -44,11 +44,14 @@ class TestStubReadWrite:
         with pytest.raises(NotImplementedError, match=f'STUB {operation}'):
             getattr(mod.StubFile(), operation)(tmp_path / 'data.stub', *args)
 
-    def test_raise_not_implemented_supports_custom_format_name(self) -> None:
+    @pytest.mark.parametrize('operation', ['read', 'write'])
+    def test_raise_not_implemented_supports_custom_format_name(
+        self,
+        operation: str,
+    ) -> None:
         """Test custom format names in placeholder error messages."""
-        for operation in ('read', 'write'):
-            with pytest.raises(NotImplementedError, match=f'MAT {operation}'):
-                mod._raise_not_implemented(operation, format_name='MAT')
+        with pytest.raises(NotImplementedError, match=f'MAT {operation}'):
+            mod._raise_not_implemented(operation, format_name='MAT')
 
     def test_stub_path_uses_format_suffix(self) -> None:
         """Test helper path construction for stub handlers."""

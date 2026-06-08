@@ -80,7 +80,21 @@ class TestCommandContext:
     Unit tests for :class:`etlplus.cli._handlers._lifecycle.CommandContext`.
     """
 
-    def test_stores_supplied_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('command', 'run', id='command'),
+            pytest.param('event_format', 'jsonl', id='event-format'),
+            pytest.param('run_id', 'run-123', id='run-id'),
+            pytest.param('started_at', '2026-04-01T12:00:00Z', id='started-at'),
+            pytest.param('started_perf', 12.5, id='started-perf'),
+        ],
+    )
+    def test_stores_supplied_fields(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Test that the dataclass preserves the supplied runtime values."""
         context = _command_context(
             command='run',
@@ -90,11 +104,7 @@ class TestCommandContext:
             started_perf=12.5,
         )
 
-        assert context.command == 'run'
-        assert context.event_format == 'jsonl'
-        assert context.run_id == 'run-123'
-        assert context.started_at == '2026-04-01T12:00:00Z'
-        assert context.started_perf == 12.5
+        assert getattr(context, field) == expected
 
 
 class TestCompleteCommand:
@@ -314,13 +324,15 @@ class TestFailureBoundary:
 
         monkeypatch.setattr(lifecycle_mod, 'fail_command', fake_fail_command)
 
-        with pytest.raises(RuntimeError, match='boom'):
-            with lifecycle_mod.failure_boundary(
+        with (
+            pytest.raises(RuntimeError, match='boom'),
+            lifecycle_mod.failure_boundary(
                 context,
                 on_error=on_error,
                 step='load',
-            ):
-                raise RuntimeError('boom')
+            ),
+        ):
+            raise RuntimeError('boom')
 
         assert calls[0][0] == 'on_error'
         assert isinstance(calls[0][1], RuntimeError)
@@ -356,12 +368,14 @@ class TestFailureBoundary:
 
         monkeypatch.setattr(lifecycle_mod, 'fail_command', fake_fail_command)
 
-        with pytest.raises(ValueError, match='bad input'):
-            with lifecycle_mod.failure_boundary(
+        with (
+            pytest.raises(ValueError, match='bad input'),
+            lifecycle_mod.failure_boundary(
                 context,
                 step='run',
-            ):
-                raise ValueError('bad input')
+            ),
+        ):
+            raise ValueError('bad input')
 
         assert len(captured) == 1
         context_arg, exc, fields = captured[0]

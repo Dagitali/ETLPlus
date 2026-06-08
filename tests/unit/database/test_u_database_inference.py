@@ -74,17 +74,32 @@ class TestTypeResolver:
 class TestSchemaBuilder:
     """Unit tests for :class:`etlplus.database._schema_builder.SchemaBuilder`."""
 
-    def test_infer_columns_returns_inferred_columns(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param(
+                'columns',
+                [
+                    InferredColumn('id', SqlTypeAffinity.INTEGER, nullable=False),
+                    InferredColumn('name', SqlTypeAffinity.TEXT, nullable=True),
+                ],
+                id='columns',
+            ),
+            pytest.param('odbc_type', 'INTEGER', id='odbc-type'),
+        ],
+    )
+    def test_infer_columns_returns_inferred_columns(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Test that records produce ordered inferred columns."""
         columns = SchemaBuilder().infer_columns(
             [{'id': 1, 'name': 'Ada'}, {'id': 2, 'name': None}],
         )
 
-        assert columns == [
-            InferredColumn('id', SqlTypeAffinity.INTEGER, nullable=False),
-            InferredColumn('name', SqlTypeAffinity.TEXT, nullable=True),
-        ]
-        assert columns[0].odbc_type == 'INTEGER'
+        actual = columns if field == 'columns' else columns[0].odbc_type
+        assert actual == expected
 
     def test_infer_columns_honors_type_hints(self) -> None:
         """Test type hints override inferred affinities."""
@@ -133,14 +148,21 @@ class TestSqlDialect:
         """Test dialect-aware table quoting."""
         assert SqlDialect(dialect).quote_table(table_name) == expected
 
-    def test_quote_table_rejects_empty_reference(self) -> None:
+    @pytest.mark.parametrize(
+        ('table_name', 'match'),
+        [
+            pytest.param('...', 'Invalid table reference', id='empty-dotted'),
+            pytest.param('   ', 'Invalid identifier', id='blank'),
+        ],
+    )
+    def test_quote_table_rejects_empty_reference(
+        self,
+        table_name: str,
+        match: str,
+    ) -> None:
         """Test dotted empty table references are rejected."""
-        for table_name, match in [
-            ('...', 'Invalid table reference'),
-            ('   ', 'Invalid identifier'),
-        ]:
-            with pytest.raises(ValueError, match=match):
-                SqlDialect().quote_table(table_name)
+        with pytest.raises(ValueError, match=match):
+            SqlDialect().quote_table(table_name)
 
 
 class TestValueCodec:

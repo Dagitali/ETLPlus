@@ -104,11 +104,21 @@ class TestApiConfig:
         url = cfg.build_endpoint_url(cfg.endpoints['users'])
         assert url == f'{expected_base}/users'
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('base_url', None, id='base-url'),
+            pytest.param('headers.X-Token', 'abc', id='header'),
+            pytest.param('endpoints.ping', True, id='endpoint'),
+        ],
+    )
     def test_flat_shape_supported(
         self,
         base_url: str,
         api_obj_factory: Callable[..., dict[str, Any]],
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that flat API config shape is supported and headers/endpoints are
@@ -121,9 +131,18 @@ class TestApiConfig:
             endpoints={'ping': '/ping'},
         )
         cfg = api_config_factory(obj)
-        assert cfg.base_url == base_url
-        assert cfg.headers.get('X-Token') == 'abc'
-        assert 'ping' in cfg.endpoints
+        match field.split('.'):
+            case ['base_url']:
+                actual = cfg.base_url
+                expected = base_url
+            case ['headers', header]:
+                actual = cfg.headers.get(header)
+            case ['endpoints', endpoint]:
+                actual = endpoint in cfg.endpoints
+            case _:
+                pytest.fail(f'Unsupported field path: {field}')
+
+        assert actual == expected
 
     def test_invalid_profile_base_path_does_not_break_effective_url(
         self,
@@ -147,10 +166,22 @@ class TestApiConfig:
         assert cfg.effective_base_path() is None
         assert cfg.effective_base_url() == base_url
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('base_url', None, id='base-url'),
+            pytest.param('headers.Accept', 'application/json', id='default-header'),
+            pytest.param('profiles.default', True, id='default-profile'),
+            pytest.param('profiles.prod', True, id='prod-profile'),
+            pytest.param('endpoints.list', True, id='endpoint'),
+        ],
+    )
     def test_parses_profiles_and_sets_defaults(
         self,
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that profiles are parsed and default values are set correctly.
@@ -169,23 +200,38 @@ class TestApiConfig:
             'endpoints': {'list': {'path': '/items'}},
         }
         cfg = api_config_factory(obj)
+        match field.split('.'):
+            case ['base_url']:
+                actual = cfg.base_url
+                expected = f'{base_url}/v1'
+            case ['headers', header]:
+                actual = cfg.headers.get(header)
+            case ['profiles', profile]:
+                actual = profile in cfg.profiles
+            case ['endpoints', endpoint]:
+                actual = endpoint in cfg.endpoints
+            case _:
+                pytest.fail(f'Unsupported field path: {field}')
 
-        # Default base_url/headers should be derived from the 'default'
-        # profile.
+        assert actual == expected
 
-        assert cfg.base_url == f'{base_url}/v1'
-        assert cfg.headers.get('Accept') == 'application/json'
-
-        # Profiles should be preserved.
-        assert {'default', 'prod'} <= set(cfg.profiles.keys())
-
-        # Endpoint should parse.
-        assert 'list' in cfg.endpoints
-
+    @pytest.mark.parametrize(
+        ('accessor', 'expected'),
+        [
+            pytest.param('effective_base_path', '/v1', id='base-path'),
+            pytest.param(
+                'effective_pagination_defaults',
+                True,
+                id='pagination-defaults',
+            ),
+        ],
+    )
     def test_profile_attr_with_default(
         self,
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        accessor: str,
+        expected: object,
     ) -> None:
         """
         Test that profile attributes with defaults are handled correctly.
@@ -206,14 +252,22 @@ class TestApiConfig:
         }
         cfg = api_config_factory(obj)
 
-        # Effective getters rely on the internal helper; verify behavior.
-        assert cfg.effective_base_path() == '/v1'
-        assert cfg.effective_pagination_defaults() is not None
+        actual = getattr(cfg, accessor)()
+        assert actual is not None if expected is True else actual == expected
 
+    @pytest.mark.parametrize(
+        'accessor',
+        [
+            pytest.param('effective_base_path', id='base-path'),
+            pytest.param('effective_pagination_defaults', id='pagination-defaults'),
+            pytest.param('effective_rate_limit_defaults', id='rate-limit-defaults'),
+        ],
+    )
     def test_profile_attr_without_profiles_returns_none(
         self,
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        accessor: str,
     ) -> None:
         """
         Test that profile attribute access returns None when profiles are
@@ -221,14 +275,29 @@ class TestApiConfig:
         """
         obj = {'base_url': base_url, 'endpoints': {}}
         cfg = api_config_factory(obj)
-        assert cfg.effective_base_path() is None
-        assert cfg.effective_pagination_defaults() is None
-        assert cfg.effective_rate_limit_defaults() is None
+        assert getattr(cfg, accessor)() is None
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('headers.Accept', 'application/json', id='default-header'),
+            pytest.param('headers.Authorization', 'Bearer token', id='profile-header'),
+            pytest.param(
+                'headers.X-From-Defaults',
+                '2',
+                id='profile-overrides-default',
+            ),
+            pytest.param('headers.X-Top', 't', id='top-level-header'),
+            pytest.param('profile.base_path', '/v1', id='base-path'),
+            pytest.param('profile.auth.type', 'bearer', id='auth-type'),
+        ],
+    )
     def test_profile_defaults_headers_and_fields(
         self,
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        field: str,
+        expected: str,
     ) -> None:
         """
         Test that header precedence and profile fields are handled correctly.
@@ -255,26 +324,39 @@ class TestApiConfig:
             'endpoints': {},
         }
         cfg = api_config_factory(obj)
-
-        # Headers: defaults.headers < profile.headers < top-level.
-        assert cfg.headers['Accept'] == 'application/json'
-        assert cfg.headers['Authorization'] == 'Bearer token'
-
-        # Profile.headers overrides defaults.
-        assert cfg.headers['X-From-Defaults'] == '2'
-
-        # Top-level overrides/augments.
-        assert cfg.headers['X-Top'] == 't'
-
-        # Profile extras captured.
         prof = cfg.profiles['default']
-        assert prof.base_path == '/v1'
-        assert prof.auth.get('type') == 'bearer'
 
+        match field.split('.'):
+            case ['headers', header]:
+                actual = cfg.headers[header]
+            case ['profile', 'auth', 'type']:
+                actual = prof.auth.get('type')
+            case ['profile', attr]:
+                actual = getattr(prof, attr)
+            case _:
+                pytest.fail(f'Unsupported field path: {field}')
+
+        assert actual == expected
+
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('type', 'page', id='type'),
+            pytest.param('page_param', 'page', id='page-param'),
+            pytest.param('size_param', 'per_page', id='size-param'),
+            pytest.param('cursor_param', 'cursor', id='cursor-param'),
+            pytest.param('cursor_path', 'meta.next_cursor', id='cursor-path'),
+            pytest.param('records_path', 'data.items', id='records-path'),
+            pytest.param('page_size', 25, id='page-size'),
+            pytest.param('max_pages', 10, id='max-pages'),
+        ],
+    )
     def test_profile_defaults_pagination_mapped(
         self,
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that pagination defaults are mapped correctly in profiles.
@@ -309,14 +391,7 @@ class TestApiConfig:
         prof = cfg.profiles['default']
         pdef = getattr(prof, 'pagination_defaults', None)
         assert pdef is not None
-        assert pdef.type == 'page'
-        assert pdef.page_param == 'page'
-        assert pdef.size_param == 'per_page'
-        assert pdef.cursor_param == 'cursor'
-        assert pdef.cursor_path == 'meta.next_cursor'
-        assert pdef.records_path == 'data.items'
-        assert pdef.page_size == 25
-        assert pdef.max_pages == 10
+        assert getattr(pdef, field) == expected
 
     def test_strips_flat_base_url(self) -> None:
         """Flat API base URLs should trim accidental outer whitespace."""
@@ -375,10 +450,19 @@ class TestApiProfileConfig:
                 prof.rate_limit_defaults,
             )
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('base_url', None, id='base-url'),
+            pytest.param('headers', {'A': '9', 'B': '2'}, id='headers'),
+        ],
+    )
     def test_merges_headers_defaults_low_precedence(
         self,
         base_url: str,
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that headers from defaults are merged with low precedence.
@@ -389,14 +473,25 @@ class TestApiProfileConfig:
             'defaults': {'headers': {'A': '1'}},
         }
         prof = profile_config_factory(obj)
-        assert prof.base_url == base_url
-        assert prof.headers == {'A': '9', 'B': '2'}
+        assert getattr(prof, field) == (base_url if field == 'base_url' else expected)
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('pagination_defaults.type', 'page', id='pagination-type'),
+            pytest.param('pagination_defaults.page_param', 'p', id='page-param'),
+            pytest.param('pagination_defaults.size_param', 's', id='size-param'),
+            pytest.param('rate_limit_defaults.sleep_seconds', 0.1, id='sleep-seconds'),
+            pytest.param('rate_limit_defaults.max_per_sec', 5, id='max-per-sec'),
+        ],
+    )
     def test_parses_defaults_blocks(
         self,
         base_url: str,
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
         api_profile_defaults_factory: Callable[..., dict[str, Any]],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that defaults blocks are parsed and types are correct.
@@ -414,29 +509,30 @@ class TestApiProfileConfig:
         }
         prof = profile_config_factory(obj)
 
-        # Ensure types are parsed.
-        assert isinstance(
-            prof.pagination_defaults,
-            (PaginationConfig, type(None)),
+        section_name, attr = field.split('.', maxsplit=1)
+        section = getattr(prof, section_name)
+        expected_type = (
+            PaginationConfig
+            if section_name == 'pagination_defaults'
+            else RateLimitConfig
         )
-        assert isinstance(
-            prof.rate_limit_defaults,
-            (RateLimitConfig, type(None)),
-        )
+        assert isinstance(section, expected_type)
+        assert getattr(section, attr) == expected
 
-        # Spot-check key fields.
-        if prof.pagination_defaults is not None:
-            assert prof.pagination_defaults.type == 'page'
-            assert prof.pagination_defaults.page_param == 'p'
-            assert prof.pagination_defaults.size_param == 's'
-        if prof.rate_limit_defaults is not None:
-            assert prof.rate_limit_defaults.sleep_seconds == 0.1
-            assert prof.rate_limit_defaults.max_per_sec == 5
-
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('base_url', None, id='base-url'),
+            pytest.param('base_path', '/v1', id='base-path'),
+            pytest.param('auth', {'token': 'abc'}, id='auth'),
+        ],
+    )
     def test_passthrough_fields(
         self,
         base_url: str,
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that passthrough fields (base_path, auth) are preserved.
@@ -447,14 +543,21 @@ class TestApiProfileConfig:
             'auth': {'token': 'abc'},
         }
         prof = profile_config_factory(obj)
-        assert prof.base_url == base_url
-        assert prof.base_path == '/v1'
-        assert prof.auth == {'token': 'abc'}
+        assert getattr(prof, field) == (base_url if field == 'base_url' else expected)
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('base_url', None, id='base-url'),
+            pytest.param('base_path', '/v1', id='base-path'),
+        ],
+    )
     def test_strips_url_fields(
         self,
         base_url: str,
         profile_config_factory: Callable[[dict[str, Any]], ApiProfileConfig],
+        field: str,
+        expected: str | None,
     ) -> None:
         """Profile URL fields should trim accidental outer whitespace."""
         prof = profile_config_factory(
@@ -464,8 +567,7 @@ class TestApiProfileConfig:
             },
         )
 
-        assert prof.base_url == base_url
-        assert prof.base_path == '/v1'
+        assert getattr(prof, field) == (base_url if field == 'base_url' else expected)
 
     def test_requires_base_url(
         self,
@@ -488,9 +590,20 @@ class TestEndpointConfig:
     handling.
     """
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('method', 'POST', id='method'),
+            pytest.param('path_params', {'id': 'int'}, id='path-params'),
+            pytest.param('body.type', 'file', id='body-type'),
+            pytest.param('query_params', {'size': 'large'}, id='query-params'),
+        ],
+    )
     def test_captures_path_params_and_body(
         self,
         endpoint_config_factory: Callable[[dict[str, Any]], EndpointConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that path_params, query_params, and body are captured correctly.
@@ -504,11 +617,9 @@ class TestEndpointConfig:
                 'body': {'type': 'file', 'file_path': './x.png'},
             },
         )
-        assert ep.method == 'POST'
-        assert ep.path_params == {'id': 'int'}
         assert isinstance(ep.body, dict)
-        assert ep.body['type'] == 'file'
-        assert ep.query_params == {'size': 'large'}
+        actual = ep.body['type'] if field == 'body.type' else getattr(ep, field)
+        assert actual == expected
 
     def test_from_str_sets_no_method(
         self,
@@ -550,23 +661,44 @@ class TestEndpointConfig:
         with pytest.raises(expected_exception):
             endpoint_config_factory(payload)  # type: ignore[arg-type]
 
+    @pytest.mark.parametrize(
+        ('payload', 'field', 'expected'),
+        [
+            pytest.param(
+                {'method': 200, 'path': '/x'},
+                'method',
+                200,
+                id='method',
+            ),
+            pytest.param({'path': '/x', 'body': 'json'}, 'body', 'json', id='body'),
+        ],
+    )
     def test_lenient_fields_do_not_raise(
         self,
         endpoint_config_factory: Callable[[dict[str, Any]], EndpointConfig],
+        payload: dict[str, object],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that lenient fields (method/body) do not raise errors and are
         permissive.
         """
-        # Lenient fields (method/body) accept any type and pass through.
-        ep_method = endpoint_config_factory({'method': 200, 'path': '/x'})
-        assert ep_method.method == 200  # library currently permissive
-        ep_body = endpoint_config_factory({'path': '/x', 'body': 'json'})
-        assert ep_body.body == 'json'
+        assert getattr(endpoint_config_factory(payload), field) == expected
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('path', '/users', id='path'),
+            pytest.param('method', 'GET', id='method'),
+            pytest.param('query_params.active', True, id='query-param'),
+        ],
+    )
     def test_parses_method(
         self,
         endpoint_config_factory: Callable[[dict[str, Any]], EndpointConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """
         Test that method and query_params are parsed correctly in
@@ -579,9 +711,12 @@ class TestEndpointConfig:
                 'query_params': {'active': True},
             },
         )
-        assert ep.path == '/users'
-        assert ep.method == 'GET'
-        assert ep.query_params.get('active') is True
+        actual = (
+            ep.query_params.get('active')
+            if field == 'query_params.active'
+            else getattr(ep, field)
+        )
+        assert actual == expected
 
     def test_strips_mapping_path(
         self,
@@ -630,10 +765,16 @@ class TestConfigInternalBranches:
         with pytest.raises(TypeError, match='expected str or mapping'):
             EndpointConfig.from_obj(cast(Any, [1, 2, 3]))
 
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [pytest.param('sleep_seconds', 0.25, id='sleep-seconds')],
+    )
     def test_effective_rate_limit_defaults_returns_selected_profile_value(
         self,
         base_url: str,
         api_config_factory: Callable[[dict[str, Any]], ApiConfig],
+        field: str,
+        expected: object,
     ) -> None:
         """Test that rate-limit defaults come from selected profile."""
         cfg = api_config_factory(
@@ -651,14 +792,27 @@ class TestConfigInternalBranches:
         )
         rate_limit = cfg.effective_rate_limit_defaults()
         assert rate_limit is not None
-        assert rate_limit.sleep_seconds == 0.25
+        assert getattr(rate_limit, field) == expected
 
-    def test_normalize_method_branches(self) -> None:
+    @pytest.mark.parametrize(
+        ('method', 'expected'),
+        [
+            pytest.param(HttpMethod.GET, 'GET', id='enum'),
+            pytest.param('   ', None, id='blank'),
+        ],
+    )
+    def test_normalize_method_branches(
+        self,
+        method: HttpMethod | str,
+        expected: str | None,
+    ) -> None:
         """
         Test that method normalizer handles enum, blank, and invalid values.
         """
-        assert config_mod._normalize_method(HttpMethod.GET) == 'GET'
-        assert config_mod._normalize_method('   ') is None
+        assert config_mod._normalize_method(method) == expected
+
+    def test_normalize_method_rejects_invalid_value(self) -> None:
+        """Unsupported method values should raise a clear validation error."""
         with pytest.raises(ValueError, match='Unsupported HTTP method'):
             config_mod._normalize_method('tracee')
 

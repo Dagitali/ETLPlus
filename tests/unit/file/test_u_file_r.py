@@ -116,9 +116,22 @@ class TestRHelpers:
                 pandas=pandas_stub,
             )
 
+    @pytest.mark.parametrize(
+        ('case_name', 'expected'),
+        [
+            pytest.param('single', {'a': 1}, id='single'),
+            pytest.param(
+                'many',
+                {'a': {'x': 1}, 'b': {'value': [1, 2, 3]}},
+                id='many',
+            ),
+        ],
+    )
     def test_coerce_r_result_without_dataset(
         self,
         pandas_stub: SimpleNamespace,
+        case_name: str,
+        expected: object,
     ) -> None:
         """Test implicit dataset behavior for one vs many R objects."""
         single = mod.coerce_r_result(
@@ -128,7 +141,6 @@ class TestRHelpers:
             format_name='RDS',
             pandas=pandas_stub,
         )
-        assert single == {'a': 1}
 
         many = mod.coerce_r_result(
             {'a': {'x': 1}, 'b': [1, 2, 3]},
@@ -137,7 +149,8 @@ class TestRHelpers:
             format_name='RDA',
             pandas=pandas_stub,
         )
-        assert many == {'a': {'x': 1}, 'b': {'value': [1, 2, 3]}}
+        actual = single if case_name == 'single' else many
+        assert actual == expected
 
     def test_list_r_dataset_keys(self) -> None:
         """Test dataset key listing behavior."""

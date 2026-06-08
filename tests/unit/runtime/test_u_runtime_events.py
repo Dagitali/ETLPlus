@@ -54,7 +54,21 @@ def serialized_event(_codec: object, _event: object) -> str:
 class TestRuntimeEvents:
     """Unit tests for structured runtime event helpers."""
 
-    def test_build_preserves_additive_command_specific_fields(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('config_path', 'pipeline.yml', id='config-path'),
+            pytest.param('continue_on_fail', False, id='continue-on-fail'),
+            pytest.param('pipeline_name', 'customer-sync', id='pipeline-name'),
+            pytest.param('result_status', 'success', id='result-status'),
+            pytest.param('run_all', True, id='run-all'),
+        ],
+    )
+    def test_build_preserves_additive_command_specific_fields(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """
         Test that stable base fields coexist with additive command-specific
         context.
@@ -71,11 +85,7 @@ class TestRuntimeEvents:
         )
 
         assert STRUCTURED_EVENT_BASE_FIELDS.issubset(event)
-        assert event['config_path'] == 'pipeline.yml'
-        assert event['continue_on_fail'] is False
-        assert event['pipeline_name'] == 'customer-sync'
-        assert event['result_status'] == 'success'
-        assert event['run_all'] is True
+        assert event[field] == expected
 
     @pytest.mark.parametrize(
         ('kwargs', 'expected_extra'),

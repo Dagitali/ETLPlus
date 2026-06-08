@@ -49,7 +49,8 @@ class TestSQLiteHistoryStore:
         assert {'meta', 'runs'} <= tables
         assert 'job_runs' in tables
         assert schema_version is not None
-        assert schema_version[0] == str(store_mod.HISTORY_SCHEMA_VERSION)
+        (schema_version_value,) = schema_version
+        assert schema_version_value == str(store_mod.HISTORY_SCHEMA_VERSION)
 
     def test_persists_job_run_records(
         self,
@@ -63,7 +64,8 @@ class TestSQLiteHistoryStore:
 
         store.record_job_run(sample_job_run_record)
 
-        assert list(store.iter_job_runs()) == [sample_job_run_record.to_payload()]
+        (job_run,) = store.iter_job_runs()
+        assert job_run == sample_job_run_record.to_payload()
 
     def test_round_trips_started_record(
         self,
@@ -77,7 +79,8 @@ class TestSQLiteHistoryStore:
 
         store.record_run_started(sample_record)
 
-        assert list(store.iter_records()) == [sqlite_run_row(sample_record)]
+        (run_record,) = store.iter_records()
+        assert run_record == sqlite_run_row(sample_record)
 
     def test_updates_finished_record(
         self,
@@ -94,12 +97,11 @@ class TestSQLiteHistoryStore:
         store.record_run_started(sample_record)
         store.record_run_finished(sample_completion)
 
-        assert list(store.iter_records()) == [
-            sqlite_run_row(
-                sample_record,
-                status='succeeded',
-                finished_at='2026-03-23T00:00:05Z',
-                duration_ms=5000,
-                result_summary={'rows': 10},
-            ),
-        ]
+        (run_record,) = store.iter_records()
+        assert run_record == sqlite_run_row(
+            sample_record,
+            status='succeeded',
+            finished_at='2026-03-23T00:00:05Z',
+            duration_ms=5000,
+            result_summary={'rows': 10},
+        )

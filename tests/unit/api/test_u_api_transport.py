@@ -159,70 +159,66 @@ class TestBuildHttpAdapter:
         else:
             assert getattr(mr, 'total', None) == 5
 
-    def test_retry_coercion_lists(self) -> None:
+    @pytest.mark.parametrize(
+        ('retry_config', 'fallback_totals', 'expected_methods', 'expected_statuses'),
+        [
+            pytest.param(
+                {
+                    'total': 2,
+                    'backoff_factor': 0.1,
+                    'allowed_methods': ['get', 'POST'],
+                    'status_forcelist': [429, 500],
+                },
+                (0, 2),
+                {'GET', 'POST'},
+                {429, 500},
+                id='lists',
+            ),
+            pytest.param(
+                {
+                    'total': 1,
+                    'allowed_methods': {'get', 'post', 'PUT'},
+                    'status_forcelist': {502, 503},
+                },
+                (0, 1),
+                {'GET', 'POST', 'PUT'},
+                {502, 503},
+                id='sets',
+            ),
+        ],
+    )
+    def test_retry_coercion_collections(
+        self,
+        retry_config: dict[str, object],
+        fallback_totals: tuple[int, int],
+        expected_methods: set[str],
+        expected_statuses: set[int],
+    ) -> None:
         """
-        Test list-input handling for ``allowed_methods`` and
+        Test collection-input handling for ``allowed_methods`` and
         ``status_forcelist``.
         """
         cfg = {
             'pool_connections': 2,
             'pool_maxsize': 2,
             'pool_block': False,
-            'max_retries': {
-                'total': 2,
-                'backoff_factor': 0.1,
-                'allowed_methods': ['get', 'POST'],
-                'status_forcelist': [429, 500],
-            },
+            'max_retries': retry_config,
         }
         adapter = build_http_adapter(cfg)
         mr = adapter.max_retries
         if isinstance(mr, int):
             # Environment without urllib3 Retry available; nothing to assert
             # here about mapping details.
-            assert mr in (0, 2)
-            return
-
-        am = getattr(mr, 'allowed_methods', None)
-        sf = getattr(mr, 'status_forcelist', None)
-
-        # allowed_methods should include provided methods (normalized upper).
-        assert am is not None
-        assert {m.upper() for m in am} == {'GET', 'POST'}
-
-        # status_forcelist should include provided statuses.
-        assert sf is not None
-        assert set(sf) == {429, 500}
-
-    def test_retry_coercion_sets(self) -> None:
-        """
-        Test set and frozenset handling for ``allowed_methods`` and
-        ``status_forcelist``.
-        """
-        # Provide sets to exercise set and frozenset handling in mapping.
-        cfg = {
-            'pool_connections': 2,
-            'pool_maxsize': 2,
-            'pool_block': False,
-            'max_retries': {
-                'total': 1,
-                'allowed_methods': {'get', 'post', 'PUT'},
-                'status_forcelist': {502, 503},
-            },
-        }
-        adapter = build_http_adapter(cfg)
-        mr = adapter.max_retries
-        if isinstance(mr, int):
-            assert mr in (0, 1)
+            assert mr in fallback_totals
             return
 
         am = getattr(mr, 'allowed_methods', None)
         sf = getattr(mr, 'status_forcelist', None)
 
         assert am is not None
-        assert {m.upper() for m in am} == {'GET', 'POST', 'PUT'}
+        assert {m.upper() for m in am} == expected_methods
         assert sf is not None
-        assert set(sf) == {502, 503}
+        assert set(sf) == expected_statuses
 
     def test_retry_mapping_falls_back_to_total_on_builder_error(
         self,

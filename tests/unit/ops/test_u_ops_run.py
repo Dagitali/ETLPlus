@@ -196,8 +196,9 @@ class TestRun:
         assert DummyClient.instances
         assert paginate_calls[0]['endpoint_key'] == 'users'
         assert paginate_calls[0]['params'] == {'limit': 5}
-        assert load_calls[0][1]['url'] == 'https://sink.example.com'
-        assert load_calls[0][1]['method'] == 'put'
+        ((_, load_env),) = load_calls
+        assert load_env['url'] == 'https://sink.example.com'
+        assert load_env['method'] == 'put'
         assert result == {'ok': True}
 
     def test_database_source_branch(
@@ -508,12 +509,14 @@ class TestRun:
 
         result = run_mod.run('file_job')
 
-        assert extract_calls[0][0] == 'file'
-        assert extract_calls[0][1] == '/tmp/input.json'
+        ((source_type, extract_target, *_extract_options),) = extract_calls
+        assert source_type == 'file'
+        assert extract_target == '/tmp/input.json'
         assert transform_calls
         assert stages == ['before_transform', 'after_transform']
-        assert load_calls[0][1] == 'file'
-        assert load_calls[0][2] == '/tmp/output.json'
+        ((_data, connector, target, _options),) = load_calls
+        assert connector == 'file'
+        assert target == '/tmp/output.json'
         assert result == {'status': 'ok'}
 
     def test_run_all_executes_jobs_in_topological_order(
@@ -1868,7 +1871,19 @@ class TestRunInternals:
             == expected
         )
 
-    def test_job_retry_settings_accepts_mapping_retry_config(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('enabled', True, id='enabled'),
+            pytest.param('max_attempts', 3, id='max-attempts'),
+            pytest.param('backoff_seconds', pytest.approx(1.25), id='backoff'),
+        ],
+    )
+    def test_job_retry_settings_accepts_mapping_retry_config(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """
         Test that retry settings read mapping-style retry configuration values.
         """
@@ -1881,9 +1896,7 @@ class TestRunInternals:
             ),
         )
 
-        assert settings.enabled is True
-        assert settings.max_attempts == 3
-        assert settings.backoff_seconds == pytest.approx(1.25)
+        assert getattr(settings, field_name) == expected
 
     def test_maybe_sleep_for_retry_sleeps_for_positive_backoff(
         self,
@@ -2241,8 +2254,7 @@ class TestRunInternals:
         assert call_order == ['seed']
         assert result['status'] == 'failed'
         assert result['failed_jobs'] == ['seed']
-        assert len(result['executed_jobs']) == 1
-        failed_job = result['executed_jobs'][0]
+        (failed_job,) = result['executed_jobs']
         assert failed_job['duration_ms'] == 5
         assert failed_job['error_message'] == 'boom'
         assert failed_job['error_type'] == 'ValueError'
@@ -2252,8 +2264,24 @@ class TestRunInternals:
         assert isinstance(failed_job['started_at'], str)
         assert isinstance(failed_job['finished_at'], str)
 
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('final_job', 'seed', id='final-job'),
+            pytest.param('final_result', {'rows': 1}, id='final-result'),
+            pytest.param(
+                'final_result_status',
+                'success',
+                id='final-result-status',
+            ),
+            pytest.param('retried_job_count', 'absent', id='retried-job-count'),
+            pytest.param('total_retry_count', 'absent', id='total-retry-count'),
+        ],
+    )
     def test_run_plan_tracker_result_collects_final_fields_across_rows(
         self,
+        field_name: str,
+        expected: object,
     ) -> None:
         """
         Test that final job and status can be discovered from distinct rows.
@@ -2281,13 +2309,30 @@ class TestRunInternals:
 
         result = tracker.result()
 
-        assert result['final_job'] == 'seed'
-        assert result['final_result'] == {'rows': 1}
-        assert result['final_result_status'] == 'success'
-        assert 'retried_job_count' not in result
-        assert 'total_retry_count' not in result
+        if expected == 'absent':
+            assert field_name not in result
+        else:
+            assert result[field_name] == expected
 
-    def test_run_plan_tracker_result_ignores_non_mapping_rows(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('status', 'success', id='status'),
+            pytest.param('final_job', 'seed', id='final-job'),
+            pytest.param(
+                'final_result_status',
+                'success',
+                id='final-result-status',
+            ),
+            pytest.param('retried_job_count', 1, id='retried-job-count'),
+            pytest.param('total_retry_count', 1, id='total-retry-count'),
+        ],
+    )
+    def test_run_plan_tracker_result_ignores_non_mapping_rows(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """
         Test that summary generation skips any non-mapping executed rows
         defensively.
@@ -2317,11 +2362,7 @@ class TestRunInternals:
 
         result = tracker.result()
 
-        assert result['status'] == 'success'
-        assert result['final_job'] == 'seed'
-        assert result['final_result_status'] == 'success'
-        assert result['retried_job_count'] == 1
-        assert result['total_retry_count'] == 1
+        assert result[field_name] == expected
 
     def test_run_treats_missing_transform_registry_as_noop(
         self,
@@ -2459,7 +2500,20 @@ class TestRunInternals:
             'rules': {'id': {'required': True}},
         }
 
-    def test_validation_config_ignores_non_mapping_rulesets(self) -> None:
+    @pytest.mark.parametrize(
+        ('field', 'expected'),
+        [
+            pytest.param('enabled', True, id='enabled'),
+            pytest.param('rules', {}, id='rules'),
+            pytest.param('severity', 'error', id='severity'),
+            pytest.param('phase', 'before_transform', id='phase'),
+        ],
+    )
+    def test_validation_config_ignores_non_mapping_rulesets(
+        self,
+        field: str,
+        expected: object,
+    ) -> None:
         """Job validation config should degrade cleanly for invalid ruleset shapes."""
         job = SimpleNamespace(
             validate=SimpleNamespace(
@@ -2472,10 +2526,7 @@ class TestRunInternals:
 
         settings = run_mod._JobValidationConfig.from_job(job, cfg)
 
-        assert settings.enabled is True
-        assert settings.rules == {}
-        assert settings.severity == 'error'
-        assert settings.phase == 'before_transform'
+        assert getattr(settings, field) == expected
 
 
 class TestRunPipeline:
