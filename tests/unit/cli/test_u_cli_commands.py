@@ -181,14 +181,15 @@ class TestCommandsInternalHelpers:
         positional_name: str | None,
     ) -> None:
         """Required CLI values should fail through Typer usage errors."""
-        with pytest.raises(typer.Exit) as exc_info:
+        with pytest.raises(
+            typer.Exit,
+            check=lambda exc: exc.exit_code == 2,
+        ):
             helpers_mod.CommandHelperPolicy.require_value(
                 value,
                 message="Missing required argument 'SOURCE'.",
                 positional_name=positional_name,
             )
-
-        assert exc_info.value.exit_code == 2
 
     def test_resolve_resource_normalizes_type_and_format(self) -> None:
         """Shared resource resolution should normalize type and format hints."""
@@ -976,9 +977,11 @@ class TestCommandsMissingInputs:
     ) -> None:
         """Commands should emit friendly usage errors for invalid inputs."""
         command = getattr(commands_mod, command_name)
-        with pytest.raises(typer.Exit) as exc:
+        with pytest.raises(
+            typer.Exit,
+            check=lambda exc: exc.exit_code == 2,
+        ):
             command(typer_ctx_factory(), **kwargs)
-        assert exc.value.exit_code == 2
         assert_stderr_contains(expected_message)
 
 
