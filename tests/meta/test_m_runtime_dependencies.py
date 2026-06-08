@@ -10,6 +10,8 @@ import ast
 import sys
 from pathlib import Path
 
+import pytest
+
 from tests.meta.pytest_meta_support import PYPROJECT_PATH
 from tests.meta.pytest_meta_support import canonical_requirement_name
 from tests.meta.pytest_meta_support import normalized_text
@@ -32,6 +34,18 @@ RUNTIME_IMPORT_DISTRIBUTIONS = {
     'click': 'click',
     'typer': 'typer',
 }
+RELEASE_NOTES_TEMPLATE_SNIPPETS = (
+    '`pyproject.toml`',
+    'canonical package metadata source',
+    'built distribution artifacts',
+)
+RELEASE_WORKFLOW_DOC_SNIPPETS = (
+    'build source and wheel distributions with `python -m build`',
+    'audit release artifacts and validate them with `twine check`',
+    'smoke-test supported installer paths against the built wheel',
+    'smoke-test packaged behavior against the built wheel',
+    'publish to pypi through trusted publishing',
+)
 
 
 # SECTION: INTERNAL FUNCTIONS =============================================== #
@@ -67,6 +81,21 @@ def _snapshot_dependency_names() -> set[str]:
     section = text.split(marker, maxsplit=1)[1].split('## ', maxsplit=1)[0]
     block = section.split('```text', maxsplit=1)[1].split('```', maxsplit=1)[0]
     return {line.strip() for line in block.splitlines() if line.strip()}
+
+
+# SECTION: FIXTURES ========================================================= #
+
+
+@pytest.fixture(name='ci_cd_workflows_text', scope='module')
+def ci_cd_workflows_text_fixture() -> str:
+    """Return normalized CI/CD workflow documentation text."""
+    return normalized_text(read_text(CI_CD_WORKFLOWS_PATH))
+
+
+@pytest.fixture(name='release_notes_template_text', scope='module')
+def release_notes_template_text_fixture() -> str:
+    """Return normalized release-notes template text."""
+    return normalized_text(read_text(RELEASE_NOTES_TEMPLATE_PATH))
 
 
 # SECTION: TESTS ============================================================ #
@@ -108,38 +137,37 @@ class TestToolDependencyDeclarations:
         assert 'python-bootstrap: ".[sbom]"' not in workflow_text
         assert 'python -m pip install cyclonedx-bom' not in workflow_text
 
+    @pytest.mark.parametrize('snippet', RELEASE_NOTES_TEMPLATE_SNIPPETS)
     def test_release_notes_template_calls_out_lockfile_release_boundary(
         self,
+        release_notes_template_text: str,
+        snippet: str,
     ) -> None:
         """Test release notes keep lockfile changes framed as maintenance."""
-        release_notes_text = normalized_text(read_text(RELEASE_NOTES_TEMPLATE_PATH))
+        assert snippet in release_notes_template_text
 
-        assert '`pyproject.toml`' in release_notes_text
-        assert 'canonical package metadata source' in release_notes_text
-        assert 'built distribution artifacts' in release_notes_text
-
-    def test_release_workflow_docs_preserve_artifact_validation_path(self) -> None:
+    @pytest.mark.parametrize('snippet', RELEASE_WORKFLOW_DOC_SNIPPETS)
+    def test_release_workflow_docs_preserve_artifact_validation_path(
+        self,
+        ci_cd_workflows_text: str,
+        snippet: str,
+    ) -> None:
         """Test workflow docs keep release validation responsibilities explicit."""
-        ci_cd_text = normalized_text(read_text(CI_CD_WORKFLOWS_PATH))
+        assert snippet in ci_cd_workflows_text
 
-        expected_snippets = (
-            'build source and wheel distributions with `python -m build`',
-            'audit release artifacts and validate them with `twine check`',
-            'smoke-test supported installer paths against the built wheel',
-            'smoke-test packaged behavior against the built wheel',
-            'publish to pypi through trusted publishing',
-        )
-
-        assert all(snippet in ci_cd_text for snippet in expected_snippets)
-
-    def test_uv_lockfile_gate_is_documented_for_required_checks(self) -> None:
+    def test_uv_lockfile_gate_is_documented_for_required_checks(
+        self,
+        ci_cd_workflows_text: str,
+    ) -> None:
         """Test PR lockfile gate stays reflected in workflow and branch docs."""
         pr_workflow_text = read_text(PR_WORKFLOW_PATH)
-        ci_cd_text = normalized_text(read_text(CI_CD_WORKFLOWS_PATH))
         branch_protection_text = read_text(BRANCH_PROTECTION_PATH)
 
         assert 'name: Check uv lockfile' in pr_workflow_text
         assert 'run: uv lock --check' in pr_workflow_text
-        assert 'committed `uv.lock` freshness against `pyproject.toml`' in ci_cd_text
-        assert '- `check uv lockfile`' in ci_cd_text
+        assert (
+            'committed `uv.lock` freshness against `pyproject.toml`'
+            in ci_cd_workflows_text
+        )
+        assert '- `check uv lockfile`' in ci_cd_workflows_text
         assert '- `Check uv lockfile`' in branch_protection_text
