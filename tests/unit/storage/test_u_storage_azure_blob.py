@@ -13,6 +13,7 @@ from etlplus.storage import StorageLocation
 from etlplus.storage import _azure_blob as azure_blob_mod
 
 from .pytest_storage_support import FakeContentSettings
+from .pytest_storage_support import assert_upload_payload
 from .pytest_storage_support import clear_azure_storage_env
 
 # SECTION: PRAGMAS ========================================================== #
@@ -190,13 +191,7 @@ class TestAzureBlobStorageBackend:
         with backend.open(location, 'wb', **kwargs) as handle:
             handle.write(b'payload')
 
-        assert uploads[0]['data'] == b'payload'
-        assert uploads[0]['overwrite'] is True
-        if content_type:
-            assert isinstance(uploads[0]['content_settings'], FakeContentSettings)
-            assert uploads[0]['content_settings'].content_type == content_type
-        else:
-            assert 'content_settings' not in uploads[0]
+        assert_upload_payload(uploads, content_type=content_type)
 
     def test_service_client_derives_account_url_from_https_authority(
         self,
