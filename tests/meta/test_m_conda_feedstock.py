@@ -220,31 +220,6 @@ class TestCondaFeedstockGuardrails:
         assert 'sha256: ' + ('a' * 64) in rendered
         assert '    - dagitali-maintainer' in rendered
 
-    def test_recipe_run_requirements_match_base_pyproject_dependencies(
-        self,
-    ) -> None:
-        """
-        Test that conda run requirements stay aligned with the broad PyPI base.
-        """
-        pyproject = read_toml(PYPROJECT_PATH)
-        recipe_text = read_text(CONDA_RECIPE_PATH)
-
-        python_requirement = f'python {pyproject["project"]["requires-python"]}'
-        expected = {
-            _normalized_requirement_line(python_requirement),
-            *{
-                _conda_runtime_requirement(requirement)
-                for requirement in pyproject['project']['dependencies']
-            },
-        }
-
-        observed = {
-            _normalized_requirement_line(requirement)
-            for requirement in _conda_run_requirement_specs(recipe_text)
-        }
-
-        assert observed == expected
-
     def test_recipe_render_helper_rejects_invalid_release_sha256(
         self,
         tmp_path: Path,
@@ -282,25 +257,30 @@ class TestCondaFeedstockGuardrails:
         assert '  url: https://pypi.org/' not in rendered
         assert '  sha256: ' not in rendered
 
-    def test_recipe_tracks_base_pyproject_dependencies(self) -> None:
+    def test_recipe_run_requirements_match_base_pyproject_dependencies(
+        self,
+    ) -> None:
         """
-        Test that the candidate conda recipe includes the base runtime dependency set.
+        Test that conda run requirements stay aligned with the broad PyPI base.
         """
         pyproject = read_toml(PYPROJECT_PATH)
         recipe_text = read_text(CONDA_RECIPE_PATH)
 
-        pyproject_names = {
-            _CONDA_NAME_MAP.get(name, name)
-            for requirement in pyproject['project']['dependencies']
-            for name in [canonical_requirement_name(requirement)]
+        python_requirement = f'python {pyproject["project"]["requires-python"]}'
+        expected = {
+            _normalized_requirement_line(python_requirement),
+            *{
+                _conda_runtime_requirement(requirement)
+                for requirement in pyproject['project']['dependencies']
+            },
         }
 
-        recipe_names = {
-            canonical_requirement_name(requirement)
+        observed = {
+            _normalized_requirement_line(requirement)
             for requirement in _conda_run_requirement_specs(recipe_text)
         }
 
-        assert pyproject_names <= recipe_names
+        assert observed == expected
 
     def test_status_docs_do_not_regress_to_pending_support_gate(self) -> None:
         """Test conda docs no longer describe completed validation as pending."""
