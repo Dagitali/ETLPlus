@@ -105,20 +105,6 @@ jobs: []
 # SECTION: FIXTURES ========================================================= #
 
 
-@pytest.fixture(name='connector_path_lookup')
-def connector_path_lookup_fixture(
-    pipeline_multi_cfg: Config,
-) -> Callable[[str, str], str | None]:
-    """Provide a helper to fetch connector paths by collection/name."""
-
-    def _lookup(collection: str, name: str) -> str | None:
-        container = getattr(pipeline_multi_cfg, collection)
-        connector = next(item for item in container if item.name == name)
-        return getattr(connector, 'path', None)
-
-    return _lookup
-
-
 @pytest.fixture(name='pipeline_multi_cfg')
 def pipeline_multi_cfg_fixture(
     pipeline_builder: Callable[..., Config],
@@ -540,13 +526,15 @@ schedules:
         collection: str,
         name: str,
         expected_path: str,
-        connector_path_lookup: Callable[[str, str], str | None],
+        pipeline_multi_cfg: Config,
     ) -> None:
         """
         Test that :class:`Config` correctly handles multiple sources, targets,
         and missing variables during substitution.
         """
-        path = connector_path_lookup(collection, name)
+        container = getattr(pipeline_multi_cfg, collection)
+        connector = next(item for item in container if item.name == name)
+        path = getattr(connector, 'path', None)
         assert path == expected_path
 
     def test_table_schemas_are_parsed(
