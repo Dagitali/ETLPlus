@@ -18,6 +18,15 @@ from etlplus.storage import StorageLocation
 # SECTION: FUNCTIONS ======================================================== #
 
 
+def assert_cli_success(
+    code: int,
+    err: str,
+) -> None:
+    """Assert one CLI invocation completed successfully without STDERR."""
+    assert code == 0
+    assert err.strip() == ''
+
+
 def history_table_counts(history_db: Path) -> tuple[int, int]:
     """Return run and job row counts from one SQLite history database."""
     with sqlite3.connect(history_db) as conn:
