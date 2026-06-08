@@ -224,7 +224,18 @@ class TestIoHelpers:
         table = RecordsFrameStub([{'id': 1}, {'id': 2}])
         assert mod.records_from_table(table) == [{'id': 1}, {'id': 2}]
 
-    def test_stringify_value(self) -> None:
+    @pytest.mark.parametrize(
+        ('value', 'expected'),
+        [
+            pytest.param(None, '', id='none'),
+            pytest.param(12, '12', id='number'),
+            pytest.param('abc', 'abc', id='string'),
+        ],
+    )
+    def test_stringify_value(
+        self,
+        value: object,
+        expected: str,
+    ) -> None:
         """Test scalar stringification rules."""
-        for value, expected in ((None, ''), (12, '12'), ('abc', 'abc')):
-            assert mod.stringify_value(value) == expected
+        assert mod.stringify_value(value) == expected
