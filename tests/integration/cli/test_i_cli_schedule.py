@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from etlplus.cli._handlers import schedule as schedule_handler_mod
+from tests.integration.cli.pytest_cli_integration_support import assert_cli_success
 from tests.integration.cli.pytest_cli_integration_support import history_table_counts
 from tests.integration.cli.pytest_cli_integration_support import parse_jsonl_event_lines
 
@@ -129,8 +130,7 @@ class TestCliScheduleRunPending:
         )
 
         assert first_code == 0
-        assert second_code == 0
-        assert second_err == ''
+        assert_cli_success(second_code, second_err)
         first_payload = parse_json_output(first_out)
         second_payload = parse_json_output(second_out)
         assert first_payload['dispatched_count'] == 2
@@ -225,8 +225,7 @@ class TestCliScheduleRunPending:
             ('schedule', '--config', str(config_path), '--run-pending'),
         )
 
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload['completed_count'] == 0
         assert payload['pending_runs'] == [
