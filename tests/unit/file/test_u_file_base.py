@@ -360,17 +360,39 @@ _OPTION_HELPER_CASES = (
 class TestBaseAbcContracts:
     """Unit tests for abstract base class contracts."""
 
-    def test_at_returns_path_bound_facade(self) -> None:
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('type', BoundFileHandler, id='type'),
+            pytest.param('handler', 'handler', id='handler'),
+            pytest.param('path', Path('ignored.csv'), id='path'),
+            pytest.param('read', [{'id': 1}], id='read'),
+            pytest.param('write', 2, id='write'),
+        ],
+    )
+    def test_at_returns_path_bound_facade(
+        self,
+        check_name: str,
+        expected: object,
+    ) -> None:
         """Test that ``at(path)`` returns a bound callable handler facade."""
         handler = _DelimitedStub()
 
         bound = handler.at('ignored.csv')
 
-        assert isinstance(bound, BoundFileHandler)
-        assert bound.handler is handler
-        assert bound.path == Path('ignored.csv')
-        assert bound.read() == [{'id': 1}]
-        assert bound.write([{'id': 1}, {'id': 2}]) == 2
+        match check_name:
+            case 'type':
+                assert isinstance(bound, expected)
+            case 'handler':
+                assert bound.handler is handler
+            case 'path':
+                assert bound.path == expected
+            case 'read':
+                assert bound.read() == expected
+            case 'write':
+                assert bound.write([{'id': 1}, {'id': 2}]) == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
 
     def test_at_supports_remote_uri_reads(
         self,

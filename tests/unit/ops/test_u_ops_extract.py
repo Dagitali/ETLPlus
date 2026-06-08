@@ -487,9 +487,18 @@ class TestExtractFromApi:
         assert result == [{'id': 1}]
         assert paginate_calls[0]['sleep_seconds'] == 0.0
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('result', [{'id': 1}], id='result'),
+            pytest.param('sleep-seconds', 0.0, id='sleep-seconds'),
+        ],
+    )
     def test_use_client_defaults_parser_none_sleep_seconds(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Client extraction should defensively default parser ``None`` results."""
         paginate_calls: list[dict[str, Any]] = []
@@ -527,8 +536,12 @@ class TestExtractFromApi:
             use_client=True,
         )
 
-        assert result == [{'id': 1}]
-        assert paginate_calls[0]['sleep_seconds'] == 0.0
+        actual = (
+            result
+            if check_name == 'result'
+            else paginate_calls[0]['sleep_seconds']
+        )
+        assert actual == expected
 
     def test_use_client_with_direct_url_path(
         self,
@@ -973,7 +986,21 @@ class TestExtractFromFile:
 class TestExtractHelpers:
     """Unit tests for internal extract option coercion helpers."""
 
-    def test_coerce_read_options_stringifies_optional_identifiers(self) -> None:
+    @pytest.mark.parametrize(
+        ('field_name', 'expected'),
+        [
+            pytest.param('encoding', 'utf-16', id='encoding'),
+            pytest.param('table', '123', id='table'),
+            pytest.param('dataset', '456', id='dataset'),
+            pytest.param('inner_name', '789', id='inner-name'),
+            pytest.param('extras', {'delimiter': '|'}, id='extras'),
+        ],
+    )
+    def test_coerce_read_options_stringifies_optional_identifiers(
+        self,
+        field_name: str,
+        expected: object,
+    ) -> None:
         """Test that read-option identifiers are coerced to strings."""
         options = extract_mod._coerce_read_options(
             {
@@ -986,8 +1013,4 @@ class TestExtractHelpers:
         )
 
         assert options is not None
-        assert options.encoding == 'utf-16'
-        assert options.table == '123'
-        assert options.dataset == '456'
-        assert options.inner_name == '789'
-        assert options.extras == {'delimiter': '|'}
+        assert getattr(options, field_name) == expected

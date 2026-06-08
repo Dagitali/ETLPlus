@@ -86,9 +86,21 @@ class TestCoreDispatchHelpers:
                 filename=filename,
             )
 
+    @pytest.mark.parametrize(
+        ('check_name', 'expected'),
+        [
+            pytest.param('count', 7, id='count'),
+            pytest.param('payload', b'written', id='payload'),
+            pytest.param('fmt', FileFormat.JSON, id='fmt'),
+            pytest.param('path-suffix', 'nested/output.json', id='path-suffix'),
+            pytest.param('data', {'x': 1}, id='data'),
+        ],
+    )
     def test_write_payload_with_core_returns_count_and_bytes(
         self,
         monkeypatch,
+        check_name: str,
+        expected: object,
     ) -> None:
         """Test that write payload routing through core File wrapper."""
         seen: dict[str, Any] = {}
@@ -118,8 +130,16 @@ class TestCoreDispatchHelpers:
             filename='nested/output.json',
         )
 
-        assert count == 7
-        assert payload == b'written'
-        assert seen['fmt'] is FileFormat.JSON
-        assert seen['path'].as_posix().endswith('nested/output.json')
-        assert seen['data'] == {'x': 1}
+        match check_name:
+            case 'count':
+                assert count == expected
+            case 'payload':
+                assert payload == expected
+            case 'fmt':
+                assert seen['fmt'] is expected
+            case 'path-suffix':
+                assert seen['path'].as_posix().endswith(str(expected))
+            case 'data':
+                assert seen['data'] == expected
+            case _:
+                pytest.fail(f'unhandled check: {check_name}')
