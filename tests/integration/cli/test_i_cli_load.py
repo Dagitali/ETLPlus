@@ -15,6 +15,7 @@ import pytest
 from etlplus.file import File
 from etlplus.file import FileFormat
 from tests.integration.pytest_integration_support import REMOTE_STORAGE_ENV_CASES
+from tests.pytest_shared_support import assert_cli_success
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.integration.cli.pytest_cli_integration_support import (
@@ -57,8 +58,7 @@ class TestCliLoad:
         code, out, err = cli_invoke(
             ('load', str(out_path), '--target-type', 'file'),
         )
-        assert code == 0
-        assert err.strip() == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload.get('status') == 'success'
         assert out_path.exists()
@@ -86,8 +86,7 @@ class TestCliLoad:
             ('load', target.uri, '--target-type', 'file'),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload.get('status') == 'success'
         assert payload.get('message') == f'Data loaded to {target.uri}'
@@ -110,8 +109,7 @@ class TestCliLoad:
             ('load', target_uri, '--target-type', 'file'),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload.get('status') == 'success'
         assert payload.get('message') == f'Data loaded to {target_uri}'

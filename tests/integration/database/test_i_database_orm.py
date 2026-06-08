@@ -39,41 +39,38 @@ class _IntegrationBase(DeclarativeBase):
 # SECTION: TESTS ============================================================ #
 
 
-class TestDatabaseOrm:
-    """Integration tests for dynamic ORM model behavior."""
+def test_build_model_create_table_and_roundtrip_row() -> None:
+    """
+    Test dynamically building a model, creating the table, and round-tripping
+    1 row.
+    """
+    table_spec = TableSpec.model_validate(
+        {
+            'name': 'widgets',
+            'columns': [
+                {'name': 'id', 'type': 'INT', 'nullable': False},
+                {'name': 'name', 'type': 'VARCHAR(64)', 'nullable': False},
+            ],
+            'primary_key': {'columns': ['id']},
+        },
+    )
+    registry = build_models([table_spec], base=_IntegrationBase)
+    widgets_model = cast(Any, registry['widgets'])
 
-    def test_build_model_create_table_and_roundtrip_row(self) -> None:
-        """
-        Test dynamically building a model, creating the table, and round-tripping
-        1 row.
-        """
-        table_spec = TableSpec.model_validate(
-            {
-                'name': 'widgets',
-                'columns': [
-                    {'name': 'id', 'type': 'INT', 'nullable': False},
-                    {'name': 'name', 'type': 'VARCHAR(64)', 'nullable': False},
-                ],
-                'primary_key': {'columns': ['id']},
-            },
-        )
-        registry = build_models([table_spec], base=_IntegrationBase)
-        widgets_model = cast(Any, registry['widgets'])
+    engine = make_engine('sqlite+pysqlite:///:memory:')
+    _IntegrationBase.metadata.create_all(engine)
+    session_factory = sessionmaker(
+        bind=engine,
+        autoflush=False,
+        autocommit=False,
+    )
 
-        engine = make_engine('sqlite+pysqlite:///:memory:')
-        _IntegrationBase.metadata.create_all(engine)
-        session_factory = sessionmaker(
-            bind=engine,
-            autoflush=False,
-            autocommit=False,
-        )
+    with session_factory() as db_session:
+        db_session.add(widgets_model(id=1, name='alpha'))
+        db_session.commit()
 
-        with session_factory() as db_session:
-            db_session.add(widgets_model(id=1, name='alpha'))
-            db_session.commit()
-
-        with session_factory() as db_session:
-            row = db_session.get(widgets_model, 1)
-            assert row is not None
-            assert row.id == 1
-            assert row.name == 'alpha'
+    with session_factory() as db_session:
+        row = db_session.get(widgets_model, 1)
+        assert row is not None
+        assert row.id == 1
+        assert row.name == 'alpha'

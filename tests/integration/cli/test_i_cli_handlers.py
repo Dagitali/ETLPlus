@@ -33,7 +33,6 @@ HANDLER_SMOKE_CASES = (
         run_mod,
         'run_handler',
         {'config': 'pipeline.yml', 'job': 'job1', 'pretty': True},
-        ('config', 'job', 'pretty'),
         id='run-handler-smoke',
     ),
     pytest.param(
@@ -44,7 +43,6 @@ HANDLER_SMOKE_CASES = (
             'operations': '{"select": ["id"]}',
             'pretty': True,
         },
-        ('source', 'operations', 'pretty'),
         id='transform-handler-smoke',
     ),
     pytest.param(
@@ -55,7 +53,6 @@ HANDLER_SMOKE_CASES = (
             'rules': '{"required": ["id"]}',
             'pretty': True,
         },
-        ('source', 'rules', 'pretty'),
         id='validate-handler-smoke',
     ),
 )
@@ -64,7 +61,7 @@ HANDLER_SMOKE_CASES = (
 
 
 @pytest.mark.parametrize(
-    ('module', 'attr', 'kwargs', 'expected_keys'),
+    ('module', 'attr', 'kwargs'),
     HANDLER_SMOKE_CASES,
 )
 def test_handler_smoke(
@@ -72,7 +69,6 @@ def test_handler_smoke(
     module: ModuleType,
     attr: str,
     kwargs: dict[str, str | bool],
-    expected_keys: tuple[str, ...],
 ) -> None:
     """
     Test that CLI handlers accept kwargs and call underlying logic.

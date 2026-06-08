@@ -26,35 +26,31 @@ from etlplus import Config
 # SECTION: TESTS ============================================================ #
 
 
-class TestConfigLoad:
-    """Integration tests for configuration loading."""
+@pytest.mark.parametrize(
+    'substitute',
+    (
+        pytest.param(False, id='raw-env-placeholders'),
+        pytest.param(True, id='resolved-env-placeholders'),
+    ),
+)
+def test_load_repo_pipeline_yaml(
+    substitute: bool,
+) -> None:
+    """
+    Test configuration loading with optional environment substitution.
+    """
 
-    @pytest.mark.parametrize(
-        'substitute',
-        (
-            pytest.param(False, id='raw-env-placeholders'),
-            pytest.param(True, id='resolved-env-placeholders'),
-        ),
+    # Ensure the configuration file parses under current models.
+    cfg = Config.from_yaml(
+        'examples/configs/pipeline.yml',
+        substitute=substitute,
     )
-    def test_load_repo_pipeline_yaml(
-        self,
-        substitute: bool,
-    ) -> None:
-        """
-        Test configuration loading with optional environment substitution.
-        """
+    assert isinstance(cfg, Config)
 
-        # Ensure the configuration file parses under current models.
-        cfg = Config.from_yaml(
-            'examples/configs/pipeline.yml',
-            substitute=substitute,
-        )
-        assert isinstance(cfg, Config)
+    # Basic sanity checks on REST API modeling.
+    assert 'github' in cfg.apis
+    gh = cfg.apis['github']
+    assert 'org_repos' in gh.endpoints
 
-        # Basic sanity checks on REST API modeling.
-        assert 'github' in cfg.apis
-        gh = cfg.apis['github']
-        assert 'org_repos' in gh.endpoints
-
-        # Profiles modeled if present (mapping proxies acceptable).
-        assert isinstance(getattr(gh, 'profiles', {}), Mapping)
+    # Profiles modeled if present (mapping proxies acceptable).
+    assert isinstance(getattr(gh, 'profiles', {}), Mapping)

@@ -56,28 +56,24 @@ RATE_LIMIT_SLEEP_CASES = (
 # SECTION: TESTS ============================================================ #
 
 
-class TestRunProfileRateLimitDefaults:
-    """Integration tests for profile-level rate limit defaults."""
+@pytest.mark.parametrize(
+    ('rate_cfg', 'forced_sleep', 'expected_sleep'),
+    RATE_LIMIT_SLEEP_CASES,
+)
+def test_profile_rate_limit_sleep_propagation(
+    pipeline_cfg_factory: PipelineCfgFactory,
+    fake_endpoint_client: FakeEndpointClients,
+    run_patched: RunPatched,
+    rate_cfg: RateLimitConfig | None,
+    forced_sleep: float | None,
+    expected_sleep: float,
+) -> None:
+    """Test propagation of profile-level rate-limit sleep settings."""
+    cfg = pipeline_cfg_factory(rate_limit_defaults=rate_cfg)
 
-    @pytest.mark.parametrize(
-        ('rate_cfg', 'forced_sleep', 'expected_sleep'),
-        RATE_LIMIT_SLEEP_CASES,
-    )
-    def test_profile_rate_limit_sleep_propagation(
-        self,
-        pipeline_cfg_factory: PipelineCfgFactory,
-        fake_endpoint_client: FakeEndpointClients,
-        run_patched: RunPatched,
-        rate_cfg: RateLimitConfig | None,
-        forced_sleep: float | None,
-        expected_sleep: float,
-    ) -> None:
-        """Test propagation of profile-level rate-limit sleep settings."""
-        cfg = pipeline_cfg_factory(rate_limit_defaults=rate_cfg)
+    fake_client, created = fake_endpoint_client
+    result = run_patched(cfg, fake_client, sleep_seconds=forced_sleep)
 
-        fake_client, created = fake_endpoint_client
-        result = run_patched(cfg, fake_client, sleep_seconds=forced_sleep)
-
-        assert result.get('status') == 'ok'
-        assert created, 'Expected client to be constructed'
-        assert created[0].seen.get('sleep_seconds') == expected_sleep
+    assert result.get('status') == 'ok'
+    assert created, 'Expected client to be constructed'
+    assert created[0].seen.get('sleep_seconds') == expected_sleep

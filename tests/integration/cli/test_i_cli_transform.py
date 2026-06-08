@@ -14,6 +14,7 @@ import pytest
 from etlplus.file import File
 from etlplus.file import FileFormat
 from tests.integration.pytest_integration_support import REMOTE_STORAGE_ENV_CASES
+from tests.pytest_shared_support import assert_cli_success
 
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.integration.cli.pytest_cli_integration_support import (
@@ -63,8 +64,7 @@ class TestCliTransform:
         code, out, err = cli_invoke(
             ('transform', '--operations', operations_json, '-', '-'),
         )
-        assert code == 0
-        assert err.strip() == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload == _project_ids(sample_records)
 
@@ -90,8 +90,7 @@ class TestCliTransform:
             ('transform', '--operations', operations_json, '-', target.uri),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        assert_cli_success(code, err)
         assert out.strip() == f'Data transformed and saved to {target.uri}'
         assert File(target.uri, FileFormat.JSON).read() == _project_ids(
             sample_records,
@@ -120,8 +119,7 @@ class TestCliTransform:
             ),
         )
 
-        assert code == 0
-        assert err.strip() == ''
+        assert_cli_success(code, err)
         assert out.strip() == f'Data transformed and saved to {target_uri}'
         assert remote_storage_harness.read_json(target_uri) == _project_ids(
             sample_records,

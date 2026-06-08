@@ -18,14 +18,12 @@ from etlplus.file.base import ScientificDatasetFileHandlerABC
 from etlplus.file.base import SingleDatasetScientificFileHandlerABC
 from etlplus.file.stub import StubFileHandlerABC
 from tests.integration.file.pytest_smoke_file_contracts import (
-    SMOKE_ROUNDTRIP_EXCEPTION_MODULES,
+    FILE_SMOKE_EXCEPTION_CASES,
 )
 from tests.integration.file.pytest_smoke_file_contracts import (
-    SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES,
+    FILE_SMOKE_EXCEPTION_OVERRIDES,
 )
-from tests.integration.file.pytest_smoke_file_contracts import (
-    SMOKE_ROUNDTRIP_OVERRIDE_ATTRS,
-)
+from tests.integration.file.pytest_smoke_file_contracts import FILE_SMOKE_OVERRIDE_ATTRS
 from tests.meta.pytest_meta_support import markdown_table_rows
 from tests.meta.pytest_meta_support import read_lines
 from tests.meta.pytest_meta_support import regex_matches
@@ -63,7 +61,7 @@ _MATRIX_ROW_PATTERN = re.compile(
     r'`?(?P<status>[^`|]+)`? \|$',
 )
 _OVERRIDE_ATTR_PATTERN = re.compile(
-    r'\b(?:' + '|'.join(sorted(SMOKE_ROUNDTRIP_OVERRIDE_ATTRS)) + r')\b',
+    r'\b(?:' + '|'.join(sorted(FILE_SMOKE_OVERRIDE_ATTRS)) + r')\b',
 )
 
 type MatrixRow = tuple[str, str, str, str]
@@ -172,14 +170,14 @@ def _parse_integration_exception_rows(path: Path) -> dict[str, str]:
     for row in markdown_table_rows(path):
         if len(row) < 2:
             continue
-        module_cell, override_text = row[0], row[1]
-        if not module_cell.startswith('`test_i_file_'):
+        case_cell, override_text = row[0], row[1]
+        if not case_cell.startswith('`'):
             continue
-        if not module_cell.endswith('.py`'):
+        case_name = case_cell.strip('`')
+        if case_name not in FILE_SMOKE_EXCEPTION_CASES:
             continue
-        module_name = module_cell.strip('`')
-        assert module_name not in rows
-        rows[module_name] = override_text
+        assert case_name not in rows
+        rows[case_name] = override_text
     return rows
 
 
@@ -230,9 +228,9 @@ class TestIntegrationFileReadmeGuardrail:
     def test_exception_table_matches_smoke_contract_constants(self) -> None:
         """Test that documented exception rows match code constants."""
         rows = _parse_integration_exception_rows(_INTEGRATION_FILE_README_PATH)
-        assert set(rows) == SMOKE_ROUNDTRIP_EXCEPTION_MODULES
+        assert set(rows) == FILE_SMOKE_EXCEPTION_CASES
         observed_attrs = {
             module_name: _override_attrs_from_text(override_text)
             for module_name, override_text in rows.items()
         }
-        assert observed_attrs == SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES
+        assert observed_attrs == FILE_SMOKE_EXCEPTION_OVERRIDES

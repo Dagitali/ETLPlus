@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from tests.pytest_shared_support import assert_cli_success
+
 if TYPE_CHECKING:  # pragma: no cover - typing helpers only
     from tests.pytest_shared_support import CliInvoke
     from tests.pytest_shared_support import JsonOutputParser
@@ -57,8 +59,7 @@ class TestCliInit:
         project_dir = tmp_path / 'starter-project'
 
         code, out, err = cli_invoke(('init', str(project_dir)))
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         payload = parse_json_output(out)
         assert payload['status'] == 'ok'
         assert (project_dir / 'pipeline.yml').is_file()
@@ -68,8 +69,7 @@ class TestCliInit:
         code, out, err = cli_invoke(
             ('run', '--config', 'pipeline.yml', '--job', payload['job']),
         )
-        assert code == 0
-        assert err == ''
+        assert_cli_success(code, err)
         run_payload = parse_json_output(out)
         assert run_payload['status'] == 'ok'
         assert (project_dir / 'temp' / 'customers.json').is_file()

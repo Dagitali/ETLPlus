@@ -6,96 +6,24 @@ Guardrails for integration file-smoke contract conventions.
 
 from __future__ import annotations
 
-import ast
-from pathlib import Path
-
 import pytest
 
+from etlplus.file import FileFormat
+from etlplus.file import _registry as mod
+from etlplus.file.base import ReadOnlyFileHandlerABC
+from etlplus.file.stub import StubFileHandlerABC
+from tests.integration.file.pytest_smoke_file_contracts import FILE_SMOKE_CASES
 from tests.integration.file.pytest_smoke_file_contracts import (
-    SMOKE_ROUNDTRIP_EXCEPTION_MODULES,
+    FILE_SMOKE_EXCEPTION_CASES,
 )
 from tests.integration.file.pytest_smoke_file_contracts import (
-    SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES,
+    FILE_SMOKE_EXCEPTION_OVERRIDES,
 )
-from tests.integration.file.pytest_smoke_file_contracts import (
-    SMOKE_ROUNDTRIP_OVERRIDE_ATTRS,
-)
-from tests.pytest_shared_support import REPO_ROOT
+from tests.integration.file.pytest_smoke_file_contracts import FileSmokeCase
 
 # SECTION: PRAGMAS ========================================================== #
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
-
-# SECTION: INTERNAL CONSTANTS =============================================== #
-
-
-_INTEGRATION_FILE_ROOT = REPO_ROOT / 'tests' / 'integration' / 'file'
-_INTEGRATION_FILE_PATTERN = 'test_i_file_*.py'
-
-type ContractClassesByPath = dict[Path, list[ast.ClassDef]]
-
-
-# SECTION: INTERNAL FUNCTIONS =============================================== #
-
-
-def _class_base_name(node: ast.expr) -> str | None:
-    """Return one class-base symbol name."""
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute):
-        return node.attr
-    return None
-
-
-def _is_contract_test_class(class_node: ast.ClassDef) -> bool:
-    """Return whether one class inherits ``SmokeRoundtripModuleContract``."""
-    return any(
-        _class_base_name(base) == 'SmokeRoundtripModuleContract'
-        for base in class_node.bases
-    )
-
-
-def _class_assigned_names(class_node: ast.ClassDef) -> set[str]:
-    """Return assigned class attribute names for one class body."""
-    assigned: set[str] = set()
-    for node in class_node.body:
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    assigned.add(target.id)
-        elif isinstance(node, ast.AnnAssign) and isinstance(
-            node.target,
-            ast.Name,
-        ):
-            assigned.add(node.target.id)
-    return assigned
-
-
-def _contract_classes(path: Path) -> list[ast.ClassDef]:
-    """Return contract test classes from one integration test module."""
-    tree = ast.parse(path.read_text(encoding='utf-8'))
-    return [
-        node
-        for node in tree.body
-        if (
-            isinstance(node, ast.ClassDef)
-            and node.name.startswith('Test')
-            and _is_contract_test_class(node)
-        )
-    ]
-
-
-# SECTION: FIXTURES ========================================================= #
-
-
-@pytest.fixture(name='contract_classes_by_path', scope='module')
-def contract_classes_by_path_fixture() -> ContractClassesByPath:
-    """Return parsed contract classes for integration file smoke tests."""
-    return {
-        path: _contract_classes(path)
-        for path in sorted(_INTEGRATION_FILE_ROOT.glob(_INTEGRATION_FILE_PATTERN))
-    }
-
 
 # SECTION: TESTS ============================================================ #
 
@@ -103,57 +31,39 @@ def contract_classes_by_path_fixture() -> ContractClassesByPath:
 class TestIntegrationFileSmokeConventions:
     """Guardrails for integration file-smoke contract symmetry."""
 
-    def test_all_modules_use_smoke_roundtrip_contract(
-        self,
-        contract_classes_by_path: ContractClassesByPath,
-    ) -> None:
-        """Test each integration file module uses one contract test class."""
-        missing_contract = sorted(
-            path.name
-            for path, contract_classes in contract_classes_by_path.items()
-            if not contract_classes
-        )
-        assert not missing_contract, (
-            'Integration file tests without SmokeRoundtripModuleContract:\n- '
-            + '\n- '.join(missing_contract)
-        )
-
-    def test_each_module_has_exactly_one_contract_test_class(
-        self,
-        contract_classes_by_path: ContractClassesByPath,
-    ) -> None:
-        """Test each integration file module defining one contract class."""
-        offenders = sorted(
-            f'{path.name}: {len(contract_classes)}'
-            for path, contract_classes in contract_classes_by_path.items()
-            if len(contract_classes) != 1
-        )
-        assert not offenders, (
-            'Integration file modules must define exactly one contract '
-            'test class:\n- ' + '\n- '.join(offenders)
-        )
-
-    def test_only_documented_modules_use_override_attributes(
-        self,
-        contract_classes_by_path: ContractClassesByPath,
-    ) -> None:
-        """Test only documented exception modules using override attrs."""
-        overrides_by_module = {
-            path.name: set().union(
-                *(
-                    _class_assigned_names(class_node) & SMOKE_ROUNDTRIP_OVERRIDE_ATTRS
-                    for class_node in contract_classes
-                ),
-            )
-            for path, contract_classes in contract_classes_by_path.items()
+    def test_file_format_names_match_smoke_case_names(self) -> None:
+        """Test that smoke case names stay aligned with ``FileFormat`` values."""
+        assert {case.module_name for case in FILE_SMOKE_CASES} <= {
+            file_format.value for file_format in FileFormat
         }
-        observed_exception_modules = {
-            module_name for module_name, attrs in overrides_by_module.items() if attrs
-        }
-        assert observed_exception_modules == SMOKE_ROUNDTRIP_EXCEPTION_MODULES
 
-        for module_name, attrs in overrides_by_module.items():
-            if module_name in SMOKE_ROUNDTRIP_EXCEPTION_MODULES:
-                assert attrs == SMOKE_ROUNDTRIP_EXCEPTION_OVERRIDES[module_name]
-            else:
-                assert not attrs
+    @pytest.mark.parametrize(
+        'case',
+        [pytest.param(case, id=case.id) for case in FILE_SMOKE_CASES],
+    )
+    def test_only_documented_cases_use_structural_overrides(
+        self,
+        case: FileSmokeCase,
+    ) -> None:
+        """Test that structural path/error overrides stay documented."""
+        attrs = case.override_attrs()
+        if case.module_name in FILE_SMOKE_EXCEPTION_CASES:
+            assert attrs == FILE_SMOKE_EXCEPTION_OVERRIDES[case.module_name]
+        else:
+            assert not attrs
+
+    def test_read_only_handlers_expect_write_errors(self) -> None:
+        """Test that read-only smoke cases assert the expected write failure."""
+        read_only_formats = {
+            file_format.value
+            for file_format in mod._HANDLER_CLASS_SPECS
+            if issubclass(mod.get_handler_class(file_format), ReadOnlyFileHandlerABC)
+            and not issubclass(mod.get_handler_class(file_format), StubFileHandlerABC)
+        }
+        observed = {
+            case.module_name
+            for case in FILE_SMOKE_CASES
+            if case.expect_write_error is not None
+        }
+
+        assert observed == read_only_formats

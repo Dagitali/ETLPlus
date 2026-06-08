@@ -255,6 +255,15 @@ SNOWFLAKE_CASE = CLOUD_DATABASE_PROVIDER_CASES['snowflake']
 # SECTIONS: FUNCTIONS ======================================================= #
 
 
+def assert_cli_success(
+    code: int,
+    err: str,
+) -> None:
+    """Assert one CLI invocation completed successfully without STDERR."""
+    assert code == 0
+    assert err.strip() == ''
+
+
 def coerce_cli_args(
     cli_args: tuple[str | Sequence[str], ...],
 ) -> tuple[str, ...]:
