@@ -35,6 +35,7 @@ import etlplus.cli._handlers.schedule as schedule_handler_mod
 from etlplus.cli._commands._state import CliState
 from etlplus.file import FileFormat
 
+from ..pytest_export_contracts import assert_package_exports
 from .conftest import AssertCapturedText
 from .conftest import InvokeCli
 from .conftest import StubHandler
@@ -45,7 +46,15 @@ from .conftest import strip_ansi
 
 # pylint: disable=import-outside-toplevel,protected-access,unused-argument
 
-# SECTION: HELPERS ========================================================== #
+# SECTION: CONSTANTS ======================================================== #
+
+
+HELPER_EXPORTS: tuple[tuple[str, object], ...] = (
+    ('CommandHelperPolicy', helpers_mod.CommandHelperPolicy),
+)
+
+
+# SECTION: INTERNAL FUNCTIONS =============================================== #
 
 
 def _raise_bad_parameter(message: str) -> Never:
@@ -61,9 +70,10 @@ class TestCommandsInternalHelpers:
 
     def test_helpers_export_intentional_public_api(self) -> None:
         """Command helpers should expose only the intended public surface."""
-        assert helpers_mod.__all__ == [
-            'CommandHelperPolicy',
-        ]
+        assert_package_exports(
+            package_module=helpers_mod,
+            expected_exports=HELPER_EXPORTS,
+        )
 
     def test_call_handler_injects_requested_state_fields(self) -> None:
         """Shared handler dispatch should merge selected CLI state fields."""
