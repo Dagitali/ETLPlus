@@ -48,7 +48,7 @@ inputs:
     description: Python version to install via actions/setup-python
     required: false
     default: '3.13'
-  python-bootstrap:
+  pip-install:
     description: Arguments passed to "python -m pip install" for build dependencies
     required: false
     default: 'build twine'
@@ -63,7 +63,7 @@ runs:
     - uses: ./.github/actions/python-bootstrap
       with:
         python-version: ${{ inputs.python-version }}
-        pip-install: ${{ inputs.python-bootstrap }}
+        pip-install: ${{ inputs.pip-install }}
 
     - uses: ./.github/actions/build-and-verify-dist
       with:
