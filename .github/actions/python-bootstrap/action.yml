@@ -65,6 +65,8 @@ runs:
         PIP_VERSION: ${{ inputs.pip-version }}
         UPGRADE_PIP: ${{ inputs.upgrade-pip }}
       run: |
+        set -euo pipefail
+
         if [[ -n "$PIP_VERSION" ]]; then
           python -m pip install "pip==$PIP_VERSION"
           exit 0
@@ -86,6 +88,8 @@ runs:
     - name: Show Python environment
       shell: bash
       run: |
+        set -euo pipefail
+
         python --version
         python -m pip --version
 
@@ -94,6 +98,9 @@ runs:
       env:
         PIP_INSTALL_ARGS: ${{ inputs.pip-install }}
       run: |
+        set -euo pipefail
+        set -f
+
         pip_install_args="$PIP_INSTALL_ARGS"
         if [[ -z "$pip_install_args" ]]; then
           echo 'Skipping dependency installation.'
