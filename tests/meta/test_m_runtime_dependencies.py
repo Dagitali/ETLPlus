@@ -125,7 +125,7 @@ class TestToolDependencyDeclarations:
         """Test SBOM generation isolates the pinned tool from runtime deps."""
         workflow_text = read_text(SBOM_WORKFLOW_PATH)
 
-        assert 'python-bootstrap: "."' in workflow_text
+        assert 'pip-install: "."' in workflow_text
         assert "CYCLONEDX_BOM_VERSION: '7.2.2'" in workflow_text
         assert '-m pip install "cyclonedx-bom==${CYCLONEDX_BOM_VERSION}"' in (
             workflow_text
