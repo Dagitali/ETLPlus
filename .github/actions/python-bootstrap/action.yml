@@ -14,8 +14,6 @@
 # Maintainer Notes
 # - External GitHub Actions are pinned to full commit SHAs to reduce supply-
 #   chain risk.
-# - `python-bootstrap` is retained as a deprecated input alias for existing
-#   callers. Prefer `pip-install` in new usage.
 #
 # References
 # - GitHub composite action guide: https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
@@ -34,13 +32,6 @@ inputs:
   python-version:
     description: Python version to install via actions/setup-python
     required: true
-
-  python-bootstrap:
-    description: >-
-      Deprecated alias for pip-install. Arguments passed to "python -m pip
-      install" when pip-install is unset.
-    required: false
-    default: ''
 
   pip-version:
     description: Exact pip version to install instead of upgrading to latest.
@@ -101,19 +92,9 @@ runs:
     - name: Install dependencies
       shell: bash
       env:
-        LEGACY_PIP_INSTALL_ARGS: ${{ inputs.python-bootstrap }}
         PIP_INSTALL_ARGS: ${{ inputs.pip-install }}
       run: |
-        if [[ -n "$PIP_INSTALL_ARGS" && -n "$LEGACY_PIP_INSTALL_ARGS" ]]; then
-          echo 'Set only one of pip-install or deprecated python-bootstrap.' >&2
-          exit 2
-        fi
-
         pip_install_args="$PIP_INSTALL_ARGS"
-        if [[ -z "$pip_install_args" ]]; then
-          pip_install_args="$LEGACY_PIP_INSTALL_ARGS"
-        fi
-
         if [[ -z "$pip_install_args" ]]; then
           echo 'Skipping dependency installation.'
           exit 0
