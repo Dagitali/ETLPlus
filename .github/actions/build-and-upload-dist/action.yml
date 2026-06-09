@@ -49,7 +49,7 @@ inputs:
     required: false
     default: '3.13'
   python-bootstrap:
-    description: Arguments passed to "pip install" for build dependencies
+    description: Arguments passed to "python -m pip install" for build dependencies
     required: false
     default: 'build twine'
   artifact-wheel:
@@ -63,7 +63,7 @@ runs:
     - uses: ./.github/actions/python-bootstrap
       with:
         python-version: ${{ inputs.python-version }}
-        python-bootstrap: ${{ inputs.python-bootstrap }}
+        pip-install: ${{ inputs.python-bootstrap }}
 
     - uses: ./.github/actions/build-and-verify-dist
       with:

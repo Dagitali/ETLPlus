@@ -14,6 +14,8 @@
 # Maintainer Notes
 # - External GitHub Actions are pinned to full commit SHAs to reduce supply-
 #   chain risk.
+# - `python-bootstrap` is retained as a deprecated input alias for existing
+#   callers. Prefer `pip-install` in new usage.
 #
 # References
 # - GitHub composite action guide: https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
