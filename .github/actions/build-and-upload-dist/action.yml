@@ -60,7 +60,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: ./.github/actions/python-bootstrap
+    - uses: Dagitali/python-bootstrap@59ee536ff38521ef34f135b64557194bb0762078  # Pinned v0.1.1
       with:
         python-version: ${{ inputs.python-version }}
         pip-install: ${{ inputs.pip-install }}

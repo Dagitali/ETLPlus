@@ -13,8 +13,9 @@
 # Maintainer Notes
 # - Workflow jobs must check out the repository before invoking this local
 #   action.
-# - This action intentionally composes `python-bootstrap` and `sphinx-build`
-#   so workflow files can focus on orchestration rather than step wiring.
+# - This action intentionally composes the shared `Dagitali/python-bootstrap`
+#   action and the local `sphinx-build` action so workflow files can focus on
+#   orchestration rather than step wiring.
 #
 # References
 # - GitHub composite action guide: https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
@@ -43,7 +44,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: ./.github/actions/python-bootstrap
+    - uses: Dagitali/python-bootstrap@59ee536ff38521ef34f135b64557194bb0762078  # Pinned v0.1.1
       with:
         python-version: ${{ inputs.python-version }}
         pip-install: ${{ inputs.pip-install }}
