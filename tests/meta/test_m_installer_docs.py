@@ -31,6 +31,9 @@ type InstallerStep = tuple[str, str]
 RELEASE_CHECKLIST_PATH = REPO_ROOT / 'RELEASE-CHECKLIST.md'
 COMPATIBILITY_PATH = REPO_ROOT / 'docs/source/getting-started/compatibility.md'
 
+BUILD_AND_UPLOAD_DIST_ACTION_PATH = (
+    REPO_ROOT / '.github/actions/build-and-upload-dist/action.yml'
+)
 CI_WORKFLOW_PATH = REPO_ROOT / '.github/workflows/ci.yml'
 INSTALLER_SMOKE_ACTION_PATH = REPO_ROOT / '.github/actions/installer-smoke/action.yml'
 
@@ -53,19 +56,19 @@ CONDA_STATUS_SNIPPETS = (
     'published',
 )
 PIP_VENV_PATH_SNIPPETS = (
+    'VENV_PATH: ${{ inputs.venv-path }}',
     'if [[ "${RUNNER_OS}" == "Windows" ]]; then',
-    'venv_python="${{ inputs.venv-path }}/Scripts/python.exe"',
-    'etlplus_bin="${{ inputs.venv-path }}/Scripts/etlplus.exe"',
-    'venv_python="${{ inputs.venv-path }}/bin/python"',
-    'etlplus_bin="${{ inputs.venv-path }}/bin/etlplus"',
+    'venv_bin="${VENV_PATH}/Scripts"',
+    'venv_python="${venv_bin}/python.exe"',
+    'venv_bin="${VENV_PATH}/bin"',
+    'venv_python="${venv_bin}/python"',
+    'run_smoke_commands "$venv_bin"',
 )
 TOOL_INSTALLER_BIN_SNIPPETS = (
-    'PIPX_BIN_DIR="${RUNNER_TEMP}/etlplus-pipx-bin"',
-    'UV_TOOL_BIN_DIR="${RUNNER_TEMP}/etlplus-uv-bin"',
-    'etlplus_bin="${PIPX_BIN_DIR}/etlplus"',
-    'etlplus_bin="${PIPX_BIN_DIR}/etlplus.exe"',
-    'etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus"',
-    'etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus.exe"',
+    'PIPX_BIN_DIR="${RUNNER_TEMP}/installer-smoke-pipx-bin"',
+    'UV_TOOL_BIN_DIR="${RUNNER_TEMP}/installer-smoke-uv-bin"',
+    'run_smoke_commands "$PIPX_BIN_DIR"',
+    'run_smoke_commands "$UV_TOOL_BIN_DIR"',
 )
 STABLE_CLI_SURFACE_ARGS = (
     '--version',
@@ -84,21 +87,21 @@ INSTALLER_CONTRACTS = (
     pytest.param(
         (
             'pip install etlplus',
-            re.compile(r'-m pip install \$\{\{ inputs\.artifact-wheel \}\}'),
+            re.compile(r'-m pip install \$ARTIFACT_WHEEL'),
         ),
         id='pip',
     ),
     pytest.param(
         (
             'pipx install etlplus',
-            re.compile(r'-m pipx install \$\{\{ inputs\.artifact-wheel \}\}'),
+            re.compile(r'-m pipx install \$ARTIFACT_WHEEL'),
         ),
         id='pipx',
     ),
     pytest.param(
         (
             'uv tool install etlplus',
-            re.compile(r'uv tool install --force \$\{\{ inputs\.artifact-wheel \}\}'),
+            re.compile(r'uv tool install --force \$ARTIFACT_WHEEL'),
         ),
         id='uv',
     ),
@@ -173,30 +176,55 @@ def test_cross_platform_smoke_checks_cli_help_surfaces(snippet: str) -> None:
     assert snippet in workflow_text
 
 
-@pytest.mark.parametrize(
-    ('step_name', 'expected_bin', 'cli_args'),
-    INSTALLER_SMOKE_SURFACE_CASES,
-)
+@pytest.mark.parametrize('cli_args', STABLE_CLI_SURFACE_ARGS)
 def test_installer_smoke_checks_stable_cli_surfaces(
-    installer_smoke_steps: tuple[InstallerStep, ...],
-    step_name: str,
-    expected_bin: str,
+    installer_smoke_action_text: str,
     cli_args: str,
 ) -> None:
-    """Test each installer verifies stable CLI version and help surfaces."""
-    scripts_by_name = dict(installer_smoke_steps)
-    script = scripts_by_name[step_name]
+    """Test ETLPlus release smoke preserves stable CLI version and help surfaces."""
+    build_action: dict[str, Any] = read_yaml(BUILD_AND_UPLOAD_DIST_ACTION_PATH)
+    smoke_commands = build_action['inputs']['smoke-commands']['default']
+    build_installer_step = next(
+        step
+        for step in build_action['runs']['steps']
+        if step.get('uses') == './.github/actions/installer-smoke'
+    )
 
-    assert f'{expected_bin} {cli_args}' in script
+    assert f'etlplus {cli_args}' in smoke_commands
+    assert (
+        build_installer_step['with']['smoke-commands'] == '${{ inputs.smoke-commands }}'
+    )
+    assert 'run_smoke_commands' in installer_smoke_action_text
+    assert 'eval "$smoke_command"' in installer_smoke_action_text
 
 
 def test_installer_smoke_keeps_expected_supported_installer_steps(
-    installer_smoke_steps: tuple[InstallerStep, ...],
+    installer_smoke_action_text: str,
 ) -> None:
     """Test release smoke continues to cover all supported installer paths."""
-    step_names = [name for name, _script in installer_smoke_steps]
+    build_action: dict[str, Any] = read_yaml(BUILD_AND_UPLOAD_DIST_ACTION_PATH)
+    installer_action: dict[str, Any] = read_yaml(INSTALLER_SMOKE_ACTION_PATH)
 
-    assert step_names == [name for name, _expected_bin in SUPPORTED_INSTALLER_STEPS]
+    build_inputs = build_action['inputs']
+    installer_inputs = installer_action['inputs']
+    build_installer_step = next(
+        step
+        for step in build_action['runs']['steps']
+        if step.get('uses') == './.github/actions/installer-smoke'
+    )
+
+    assert installer_inputs['installer-smoke-installers']['default'] == 'pip,pipx,uv'
+    assert build_inputs['installer-smoke-installers']['default'] == 'pip,pipx,uv'
+    assert (
+        build_installer_step['with']['installer-smoke-installers']
+        == '${{ inputs.installer-smoke-installers }}'
+    )
+
+    for installer in ('pip', 'pipx', 'uv'):
+        assert f'if [[ "$installer_list" == *",{installer},"* ]]' in (
+            installer_smoke_action_text
+        )
+    assert 'pip|pipx|uv)' in installer_smoke_action_text
 
 
 @pytest.mark.parametrize('snippet', PIP_VENV_PATH_SNIPPETS)
@@ -216,8 +244,8 @@ def test_installer_smoke_uses_explicit_tool_installer_entrypoint_paths(
     """
     Test that tool-installer smoke checks do not rely on ambient PATH state.
     """
-    assert '$HOME/.local/bin/etlplus' not in installer_smoke_action_text
-    assert 'command -v etlplus' not in installer_smoke_action_text
+    assert '$HOME/.local/bin' not in installer_smoke_action_text
+    assert 'command -v' not in installer_smoke_action_text
     assert snippet in installer_smoke_action_text
 
 
@@ -239,4 +267,5 @@ def test_supported_installer_commands_are_documented_and_smoke_tested(
 
     assert docs_command in readme_text
     assert docs_command in compatibility_text
+    assert 'ARTIFACT_WHEEL: ${{ inputs.artifact-wheel }}' in installer_smoke_action_text
     assert smoke_pattern.search(installer_smoke_action_text) is not None
