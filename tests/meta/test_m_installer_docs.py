@@ -56,11 +56,13 @@ CONDA_STATUS_SNIPPETS = (
     'published',
 )
 PIP_VENV_PATH_SNIPPETS = (
+    'VENV_PATH: ${{ inputs.venv-path }}',
     'if [[ "${RUNNER_OS}" == "Windows" ]]; then',
-    'venv_python="${{ inputs.venv-path }}/Scripts/python.exe"',
-    'etlplus_bin="${{ inputs.venv-path }}/Scripts/etlplus.exe"',
-    'venv_python="${{ inputs.venv-path }}/bin/python"',
-    'etlplus_bin="${{ inputs.venv-path }}/bin/etlplus"',
+    'venv_bin="${VENV_PATH}/Scripts"',
+    'venv_python="${venv_bin}/python.exe"',
+    'venv_bin="${VENV_PATH}/bin"',
+    'venv_python="${venv_bin}/python"',
+    'run_smoke_commands "$venv_bin"',
 )
 TOOL_INSTALLER_BIN_SNIPPETS = (
     'PIPX_BIN_DIR="${RUNNER_TEMP}/etlplus-pipx-bin"',
