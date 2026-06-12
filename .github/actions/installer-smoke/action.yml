@@ -6,9 +6,9 @@
 # Composite GitHub Action for supported installer smoke testing.
 #
 # Responsibilities
-# - Install the built ETLPlus wheel artifact through supported package installers.
-# - Verify the installed console script through the same user-facing commands
-#   documented for each installer path.
+# - Install a built wheel artifact through selected supported package
+#   installers.
+# - Verify caller-provided smoke commands against the installed command.
 #
 # Maintainer Notes
 # - This action is intentionally package-artifact oriented. It should run after
@@ -26,14 +26,32 @@
 name: Smoke-Test Supported Installers
 
 description: >-
-  Installs a built ETLPlus wheel artifact with pip, pipx, and uv tool install,
-  then verifies the CLI entrypoint with version and help commands.
+  Installs a built wheel artifact with selected Python installers, then
+  verifies the installed command with caller-provided smoke commands.
 
 inputs:
   artifact-wheel:
     description: Glob or path for the built wheel artifact passed to supported installers
     required: false
     default: dist/*.whl
+  command-name:
+    description: Command expected to be available on PATH after installing the wheel artifact
+    required: true
+  installer-smoke-installers:
+    description: 'Comma-separated installers to smoke-test: pip,pipx,uv'
+    required: false
+    default: pip,pipx,uv
+  package-name:
+    description: >-
+      Distribution package name used for installer cleanup when needed. Defaults
+      to command-name when unset.
+    required: false
+    default: ''
+  smoke-commands:
+    description: >-
+      Newline-separated commands run after each installer path. Commands run
+      with the installer bin directory on PATH.
+    required: true
   venv-path:
     description: Path to the temporary virtual environment used for pip smoke testing
     required: false
@@ -42,57 +60,93 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Smoke-test pip wheel install
+    - name: Smoke-test selected installers
       shell: bash
+      env:
+        ARTIFACT_WHEEL: ${{ inputs.artifact-wheel }}
+        COMMAND_NAME: ${{ inputs.command-name }}
+        INSTALLERS: ${{ inputs.installer-smoke-installers }}
+        PACKAGE_NAME: ${{ inputs.package-name }}
+        SMOKE_COMMANDS: ${{ inputs.smoke-commands }}
+        VENV_PATH: ${{ inputs.venv-path }}
       run: |
-        python -m venv "${{ inputs.venv-path }}"
-        if [[ "${RUNNER_OS}" == "Windows" ]]; then
-          venv_python="${{ inputs.venv-path }}/Scripts/python.exe"
-          etlplus_bin="${{ inputs.venv-path }}/Scripts/etlplus.exe"
-        else
-          venv_python="${{ inputs.venv-path }}/bin/python"
-          etlplus_bin="${{ inputs.venv-path }}/bin/etlplus"
-        fi
-        "$venv_python" -m pip install --upgrade pip
-        "$venv_python" -m pip install ${{ inputs.artifact-wheel }}
-        "$etlplus_bin" --version
-        "$etlplus_bin" --help
-        "$etlplus_bin" check --help
-        "$etlplus_bin" ui --help
+        set -euo pipefail
 
-    - name: Smoke-test pipx wheel install
-      shell: bash
-      run: |
-        export PIPX_HOME="${RUNNER_TEMP}/etlplus-pipx-home"
-        export PIPX_BIN_DIR="${RUNNER_TEMP}/etlplus-pipx-bin"
-        mkdir -p "$PIPX_HOME" "$PIPX_BIN_DIR"
-        python -m pip install --upgrade pipx
-        python -m pipx install ${{ inputs.artifact-wheel }}
-        if [[ "${RUNNER_OS}" == "Windows" ]]; then
-          etlplus_bin="${PIPX_BIN_DIR}/etlplus.exe"
-        else
-          etlplus_bin="${PIPX_BIN_DIR}/etlplus"
+        if [[ -z "$COMMAND_NAME" ]]; then
+          echo 'command-name is required.' >&2
+          exit 2
         fi
-        "$etlplus_bin" --version
-        "$etlplus_bin" --help
-        "$etlplus_bin" check --help
-        "$etlplus_bin" ui --help
-        python -m pipx uninstall etlplus
+        if [[ -z "$SMOKE_COMMANDS" ]]; then
+          echo 'smoke-commands is required.' >&2
+          exit 2
+        fi
 
-    - name: Smoke-test uv tool wheel install
-      shell: bash
-      run: |
-        export UV_TOOL_DIR="${RUNNER_TEMP}/etlplus-uv-tools"
-        export UV_TOOL_BIN_DIR="${RUNNER_TEMP}/etlplus-uv-bin"
-        mkdir -p "$UV_TOOL_DIR" "$UV_TOOL_BIN_DIR"
-        python -m pip install --upgrade uv
-        uv tool install --force ${{ inputs.artifact-wheel }}
-        if [[ "${RUNNER_OS}" == "Windows" ]]; then
-          etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus.exe"
-        else
-          etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus"
+        package_name="${PACKAGE_NAME:-$COMMAND_NAME}"
+        normalized_installers="${INSTALLERS//[[:space:]]/}"
+        if [[ -z "$normalized_installers" ]]; then
+          echo 'installer-smoke-installers must include at least one installer.' >&2
+          exit 2
         fi
-        "$etlplus_bin" --version
-        "$etlplus_bin" --help
-        "$etlplus_bin" check --help
-        "$etlplus_bin" ui --help
+
+        IFS=',' read -r -a requested_installers <<< "$normalized_installers"
+        for installer in "${requested_installers[@]}"; do
+          case "$installer" in
+            pip|pipx|uv)
+              ;;
+            *)
+              echo "Unsupported installer: $installer" >&2
+              exit 2
+              ;;
+          esac
+        done
+
+        installer_list=",${normalized_installers},"
+
+        run_smoke_commands() {
+          local original_path
+          local smoke_command
+          original_path="$PATH"
+          export PATH="$1:$original_path"
+          while IFS= read -r smoke_command; do
+            if [[ -n "$smoke_command" ]]; then
+              eval "$smoke_command"
+            fi
+          done <<< "$SMOKE_COMMANDS"
+          export PATH="$original_path"
+        }
+
+        if [[ "$installer_list" == *",pip,"* ]]; then
+          echo 'Smoke-testing pip wheel install.'
+          python -m venv "$VENV_PATH"
+          if [[ "${RUNNER_OS}" == "Windows" ]]; then
+            venv_bin="${VENV_PATH}/Scripts"
+            venv_python="${venv_bin}/python.exe"
+          else
+            venv_bin="${VENV_PATH}/bin"
+            venv_python="${venv_bin}/python"
+          fi
+          "$venv_python" -m pip install --upgrade pip
+          "$venv_python" -m pip install $ARTIFACT_WHEEL
+          run_smoke_commands "$venv_bin"
+        fi
+
+        if [[ "$installer_list" == *",pipx,"* ]]; then
+          echo 'Smoke-testing pipx wheel install.'
+          export PIPX_HOME="${RUNNER_TEMP}/installer-smoke-pipx-home"
+          export PIPX_BIN_DIR="${RUNNER_TEMP}/installer-smoke-pipx-bin"
+          mkdir -p "$PIPX_HOME" "$PIPX_BIN_DIR"
+          python -m pip install --upgrade pipx
+          python -m pipx install $ARTIFACT_WHEEL
+          run_smoke_commands "$PIPX_BIN_DIR"
+          python -m pipx uninstall "$package_name"
+        fi
+
+        if [[ "$installer_list" == *",uv,"* ]]; then
+          echo 'Smoke-testing uv tool wheel install.'
+          export UV_TOOL_DIR="${RUNNER_TEMP}/installer-smoke-uv-tools"
+          export UV_TOOL_BIN_DIR="${RUNNER_TEMP}/installer-smoke-uv-bin"
+          mkdir -p "$UV_TOOL_DIR" "$UV_TOOL_BIN_DIR"
+          python -m pip install --upgrade uv
+          uv tool install --force $ARTIFACT_WHEEL
+          run_smoke_commands "$UV_TOOL_BIN_DIR"
+        fi

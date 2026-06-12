@@ -56,6 +56,26 @@ inputs:
     description: Glob or path for the built wheel artifact used by smoke tests
     required: false
     default: dist/*.whl
+  command-name:
+    description: Command expected to be available on PATH after installing the wheel artifact
+    required: false
+    default: etlplus
+  installer-smoke-installers:
+    description: 'Comma-separated installers to smoke-test: pip,pipx,uv'
+    required: false
+    default: pip,pipx,uv
+  package-name:
+    description: Distribution package name used for installer cleanup
+    required: false
+    default: etlplus
+  smoke-commands:
+    description: Newline-separated commands run by supported installer smoke tests
+    required: false
+    default: |
+      etlplus --version
+      etlplus --help
+      etlplus check --help
+      etlplus ui --help
 
 runs:
   using: composite
@@ -72,6 +92,10 @@ runs:
     - uses: ./.github/actions/installer-smoke
       with:
         artifact-wheel: ${{ inputs.artifact-wheel }}
+        command-name: ${{ inputs.command-name }}
+        installer-smoke-installers: ${{ inputs.installer-smoke-installers }}
+        package-name: ${{ inputs.package-name }}
+        smoke-commands: ${{ inputs.smoke-commands }}
 
     - uses: ./.github/actions/wheel-smoke
       with:
