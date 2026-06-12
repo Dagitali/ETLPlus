@@ -31,6 +31,9 @@ type InstallerStep = tuple[str, str]
 RELEASE_CHECKLIST_PATH = REPO_ROOT / 'RELEASE-CHECKLIST.md'
 COMPATIBILITY_PATH = REPO_ROOT / 'docs/source/getting-started/compatibility.md'
 
+BUILD_AND_UPLOAD_DIST_ACTION_PATH = (
+    REPO_ROOT / '.github/actions/build-and-upload-dist/action.yml'
+)
 CI_WORKFLOW_PATH = REPO_ROOT / '.github/workflows/ci.yml'
 INSTALLER_SMOKE_ACTION_PATH = REPO_ROOT / '.github/actions/installer-smoke/action.yml'
 
@@ -191,12 +194,32 @@ def test_installer_smoke_checks_stable_cli_surfaces(
 
 
 def test_installer_smoke_keeps_expected_supported_installer_steps(
-    installer_smoke_steps: tuple[InstallerStep, ...],
+    installer_smoke_action_text: str,
 ) -> None:
     """Test release smoke continues to cover all supported installer paths."""
-    step_names = [name for name, _script in installer_smoke_steps]
+    build_action: dict[str, Any] = read_yaml(BUILD_AND_UPLOAD_DIST_ACTION_PATH)
+    installer_action: dict[str, Any] = read_yaml(INSTALLER_SMOKE_ACTION_PATH)
 
-    assert step_names == [name for name, _expected_bin in SUPPORTED_INSTALLER_STEPS]
+    build_inputs = build_action['inputs']
+    installer_inputs = installer_action['inputs']
+    build_installer_step = next(
+        step
+        for step in build_action['runs']['steps']
+        if step.get('uses') == './.github/actions/installer-smoke'
+    )
+
+    assert installer_inputs['installer-smoke-installers']['default'] == 'pip,pipx,uv'
+    assert build_inputs['installer-smoke-installers']['default'] == 'pip,pipx,uv'
+    assert (
+        build_installer_step['with']['installer-smoke-installers']
+        == '${{ inputs.installer-smoke-installers }}'
+    )
+
+    for installer in ('pip', 'pipx', 'uv'):
+        assert f'if [[ "$installer_list" == *",{installer},"* ]]' in (
+            installer_smoke_action_text
+        )
+    assert 'pip|pipx|uv)' in installer_smoke_action_text
 
 
 @pytest.mark.parametrize('snippet', PIP_VENV_PATH_SNIPPETS)
