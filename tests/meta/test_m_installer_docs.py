@@ -87,21 +87,21 @@ INSTALLER_CONTRACTS = (
     pytest.param(
         (
             'pip install etlplus',
-            re.compile(r'-m pip install \$\{\{ inputs\.artifact-wheel \}\}'),
+            re.compile(r'-m pip install \$ARTIFACT_WHEEL'),
         ),
         id='pip',
     ),
     pytest.param(
         (
             'pipx install etlplus',
-            re.compile(r'-m pipx install \$\{\{ inputs\.artifact-wheel \}\}'),
+            re.compile(r'-m pipx install \$ARTIFACT_WHEEL'),
         ),
         id='pipx',
     ),
     pytest.param(
         (
             'uv tool install etlplus',
-            re.compile(r'uv tool install --force \$\{\{ inputs\.artifact-wheel \}\}'),
+            re.compile(r'uv tool install --force \$ARTIFACT_WHEEL'),
         ),
         id='uv',
     ),
@@ -267,4 +267,5 @@ def test_supported_installer_commands_are_documented_and_smoke_tested(
 
     assert docs_command in readme_text
     assert docs_command in compatibility_text
+    assert 'ARTIFACT_WHEEL: ${{ inputs.artifact-wheel }}' in installer_smoke_action_text
     assert smoke_pattern.search(installer_smoke_action_text) is not None
