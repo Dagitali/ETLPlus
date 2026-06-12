@@ -65,12 +65,10 @@ PIP_VENV_PATH_SNIPPETS = (
     'run_smoke_commands "$venv_bin"',
 )
 TOOL_INSTALLER_BIN_SNIPPETS = (
-    'PIPX_BIN_DIR="${RUNNER_TEMP}/etlplus-pipx-bin"',
-    'UV_TOOL_BIN_DIR="${RUNNER_TEMP}/etlplus-uv-bin"',
-    'etlplus_bin="${PIPX_BIN_DIR}/etlplus"',
-    'etlplus_bin="${PIPX_BIN_DIR}/etlplus.exe"',
-    'etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus"',
-    'etlplus_bin="${UV_TOOL_BIN_DIR}/etlplus.exe"',
+    'PIPX_BIN_DIR="${RUNNER_TEMP}/installer-smoke-pipx-bin"',
+    'UV_TOOL_BIN_DIR="${RUNNER_TEMP}/installer-smoke-uv-bin"',
+    'run_smoke_commands "$PIPX_BIN_DIR"',
+    'run_smoke_commands "$UV_TOOL_BIN_DIR"',
 )
 STABLE_CLI_SURFACE_ARGS = (
     '--version',
@@ -246,8 +244,8 @@ def test_installer_smoke_uses_explicit_tool_installer_entrypoint_paths(
     """
     Test that tool-installer smoke checks do not rely on ambient PATH state.
     """
-    assert '$HOME/.local/bin/etlplus' not in installer_smoke_action_text
-    assert 'command -v etlplus' not in installer_smoke_action_text
+    assert '$HOME/.local/bin' not in installer_smoke_action_text
+    assert 'command -v' not in installer_smoke_action_text
     assert snippet in installer_smoke_action_text
 
 
