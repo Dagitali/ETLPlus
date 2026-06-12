@@ -176,21 +176,26 @@ def test_cross_platform_smoke_checks_cli_help_surfaces(snippet: str) -> None:
     assert snippet in workflow_text
 
 
-@pytest.mark.parametrize(
-    ('step_name', 'expected_bin', 'cli_args'),
-    INSTALLER_SMOKE_SURFACE_CASES,
-)
+@pytest.mark.parametrize('cli_args', STABLE_CLI_SURFACE_ARGS)
 def test_installer_smoke_checks_stable_cli_surfaces(
-    installer_smoke_steps: tuple[InstallerStep, ...],
-    step_name: str,
-    expected_bin: str,
+    installer_smoke_action_text: str,
     cli_args: str,
 ) -> None:
-    """Test each installer verifies stable CLI version and help surfaces."""
-    scripts_by_name = dict(installer_smoke_steps)
-    script = scripts_by_name[step_name]
+    """Test ETLPlus release smoke preserves stable CLI version and help surfaces."""
+    build_action: dict[str, Any] = read_yaml(BUILD_AND_UPLOAD_DIST_ACTION_PATH)
+    smoke_commands = build_action['inputs']['smoke-commands']['default']
+    build_installer_step = next(
+        step
+        for step in build_action['runs']['steps']
+        if step.get('uses') == './.github/actions/installer-smoke'
+    )
 
-    assert f'{expected_bin} {cli_args}' in script
+    assert f'etlplus {cli_args}' in smoke_commands
+    assert (
+        build_installer_step['with']['smoke-commands'] == '${{ inputs.smoke-commands }}'
+    )
+    assert 'run_smoke_commands' in installer_smoke_action_text
+    assert 'eval "$smoke_command"' in installer_smoke_action_text
 
 
 def test_installer_smoke_keeps_expected_supported_installer_steps(
