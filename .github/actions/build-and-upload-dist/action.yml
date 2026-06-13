@@ -89,7 +89,7 @@ runs:
       with:
         dist-glob: ${{ inputs.dist-glob }}
 
-    - uses: ./.github/actions/installer-smoke
+    - uses: Dagitali/python-installer-smoke@25e584bb42ea30f99dbef0fed0ff4077d4f1ae36  # Pinned v0.1.1
       with:
         artifact-wheel: ${{ inputs.artifact-wheel }}
         command-name: ${{ inputs.command-name }}
