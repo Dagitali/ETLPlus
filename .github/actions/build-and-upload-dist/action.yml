@@ -56,6 +56,10 @@ inputs:
     description: Glob or path for the built wheel artifact used by smoke tests
     required: false
     default: dist/*.whl
+  release-artifact-audit-command:
+    description: Command used to audit built distribution artifacts
+    required: false
+    default: python tools/check_release_artifacts.py dist/*
   command-name:
     description: Command expected to be available on PATH after installing the wheel artifact
     required: false
@@ -88,6 +92,7 @@ runs:
     - uses: ./.github/actions/build-and-verify-dist
       with:
         dist-glob: ${{ inputs.dist-glob }}
+        release-artifact-audit-command: ${{ inputs.release-artifact-audit-command }}
 
     - uses: Dagitali/python-installer-smoke@25e584bb42ea30f99dbef0fed0ff4077d4f1ae36  # Pinned v0.1.1
       with:
