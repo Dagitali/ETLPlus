@@ -52,6 +52,10 @@ inputs:
     description: Arguments passed to "python -m pip install" for build dependencies
     required: false
     default: 'build twine'
+  build-command:
+    description: Command used to build source and wheel distributions
+    required: false
+    default: python -m build
   artifact-wheel:
     description: Glob or path for the built wheel artifact used by smoke tests
     required: false
@@ -60,6 +64,10 @@ inputs:
     description: Command used to audit built distribution artifacts
     required: false
     default: python tools/check_release_artifacts.py dist/*
+  twine-check:
+    description: Run "python -m twine check" against selected distributions
+    required: false
+    default: 'true'
   command-name:
     description: Command expected to be available on PATH after installing the wheel artifact
     required: false
@@ -89,10 +97,49 @@ runs:
         python-version: ${{ inputs.python-version }}
         pip-install: ${{ inputs.pip-install }}
 
-    - uses: ./.github/actions/build-and-verify-dist
-      with:
-        dist-glob: ${{ inputs.dist-glob }}
-        release-artifact-audit-command: ${{ inputs.release-artifact-audit-command }}
+    - name: Build distributions
+      shell: bash
+      env:
+        BUILD_COMMAND: ${{ inputs.build-command }}
+      run: |
+        set -euo pipefail
+
+        eval "$BUILD_COMMAND"
+
+    - name: Audit distributions
+      shell: bash
+      env:
+        RELEASE_ARTIFACT_AUDIT_COMMAND: ${{ inputs.release-artifact-audit-command }}
+      run: |
+        set -euo pipefail
+
+        if [[ -z "$RELEASE_ARTIFACT_AUDIT_COMMAND" ]]; then
+          echo 'Skipping release artifact audit.'
+          exit 0
+        fi
+
+        eval "$RELEASE_ARTIFACT_AUDIT_COMMAND"
+
+    - name: Validate distributions
+      shell: bash
+      env:
+        DIST_GLOB: ${{ inputs.dist-glob }}
+        TWINE_CHECK: ${{ inputs.twine-check }}
+      run: |
+        set -euo pipefail
+
+        case "$TWINE_CHECK" in
+          true)
+            python -m twine check $DIST_GLOB
+            ;;
+          false)
+            echo 'Skipping twine check.'
+            ;;
+          *)
+            echo 'twine-check must be "true" or "false".' >&2
+            exit 2
+            ;;
+        esac
 
     - uses: Dagitali/python-installer-smoke@25e584bb42ea30f99dbef0fed0ff4077d4f1ae36  # Pinned v0.1.1
       with:
