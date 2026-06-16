@@ -7,7 +7,8 @@
 #
 # Responsibilities
 # - Route a workflow step to one Python project lifecycle phase.
-# - Reuse local lifecycle actions where they already centralize behavior.
+# - Reuse shared actions and lifecycle helper scripts where they centralize
+#   behavior.
 # - Keep workflow-level topology, permissions, matrices, and environments in
 #   the calling workflow.
 #
@@ -92,6 +93,22 @@ inputs:
     description: Sphinx builder used by the docs phase.
     required: false
     default: 'html'
+  docs-source-dir:
+    description: Sphinx source directory used by the docs phase.
+    required: false
+    default: docs/source
+  docs-build-dir:
+    description: Sphinx build output root used by the docs phase.
+    required: false
+    default: docs/build
+  docs-doctree-dir:
+    description: Sphinx doctree output root used by the docs phase.
+    required: false
+    default: docs/build/doctrees
+  docs-generated-api-dir:
+    description: Generated API docs directory cleaned before the docs phase when present.
+    required: false
+    default: docs/source/api/generated
   docs-pip-install:
     description: Arguments passed to python-bootstrap's pip-install input for docs dependencies.
     required: false
@@ -212,7 +229,7 @@ outputs:
     value: ${{ inputs.wheel-glob }}
   docs-output-dir:
     description: Built documentation output directory.
-    value: docs/build/${{ inputs.docs-builder }}
+    value: ${{ inputs.docs-build-dir }}/${{ inputs.docs-builder }}
   sbom-path:
     description: Generated SBOM path.
     value: ${{ inputs.sbom-output-file }}
@@ -234,89 +251,45 @@ runs:
         COMMAND_NAME: ${{ inputs.command-name }}
         SMOKE_COMMANDS: ${{ inputs.smoke-commands }}
       run: |
+        bash "${GITHUB_ACTION_PATH}/scripts/validate-inputs.sh"
+
+    - name: Resolve bootstrap inputs
+      id: bootstrap-inputs
+      shell: bash
+      env:
+        BUILD_PIP_INSTALL: ${{ inputs.build-pip-install }}
+        DOCS_PIP_INSTALL: ${{ inputs.docs-pip-install }}
+        PHASE: ${{ inputs.phase }}
+        PIP_INSTALL: ${{ inputs.pip-install }}
+      run: |
         set -euo pipefail
 
+        bootstrap=true
+        pip_install="$PIP_INSTALL"
+
         case "$PHASE" in
-          bootstrap|lint|format-check|test|typecheck|doclint|docs|sbom|security|build|build-upload|upload-dist|download-dist|wheel-smoke|installer-smoke|deploy)
+          build|build-upload)
+            pip_install="$BUILD_PIP_INSTALL"
             ;;
-          *)
-            echo "Unsupported lifecycle phase: $PHASE" >&2
-            exit 2
+          docs)
+            pip_install="$DOCS_PIP_INSTALL"
+            ;;
+          upload-dist|download-dist)
+            bootstrap=false
             ;;
         esac
 
-        for boolean_input in \
-          "skip-artifact-upload=$SKIP_ARTIFACT_UPLOAD" \
-          "skip-installer-smoke=$SKIP_INSTALLER_SMOKE" \
-          "skip-wheel-smoke=$SKIP_WHEEL_SMOKE"; do
-          case "${boolean_input#*=}" in
-            true|false)
-              ;;
-            *)
-              echo "${boolean_input%%=*} must be \"true\" or \"false\"." >&2
-              exit 2
-              ;;
-          esac
-        done
-
-        wheel_smoke_required=false
-        if [[ "$PHASE" == 'wheel-smoke' ]]; then
-          wheel_smoke_required=true
-        elif [[ "$PHASE" == 'build-upload' && "$SKIP_WHEEL_SMOKE" != 'true' ]]; then
-          wheel_smoke_required=true
-        fi
-
-        if [[ "$wheel_smoke_required" == 'true' ]]; then
-          if [[ -z "$BEHAVIOR_SMOKE_COMMAND" ]]; then
-            echo 'behavior-smoke-command is required unless skip-wheel-smoke is "true".' >&2
-            exit 2
-          fi
-        fi
-
-        installer_smoke_required=false
-        if [[ "$PHASE" == 'installer-smoke' ]]; then
-          installer_smoke_required=true
-        elif [[ "$PHASE" == 'build-upload' && "$SKIP_INSTALLER_SMOKE" != 'true' ]]; then
-          installer_smoke_required=true
-        fi
-
-        if [[ "$installer_smoke_required" == 'true' ]]; then
-          if [[ -z "$COMMAND_NAME" ]]; then
-            echo 'command-name is required unless skip-installer-smoke is "true".' >&2
-            exit 2
-          fi
-          if [[ -z "$SMOKE_COMMANDS" ]]; then
-            echo 'smoke-commands is required unless skip-installer-smoke is "true".' >&2
-            exit 2
-          fi
-        fi
+        {
+          echo "bootstrap=$bootstrap"
+          echo "pip_install=$pip_install"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Bootstrap Python
-      if: >-
-        inputs.phase == 'bootstrap' ||
-        inputs.phase == 'lint' ||
-        inputs.phase == 'format-check' ||
-        inputs.phase == 'test' ||
-        inputs.phase == 'typecheck' ||
-        inputs.phase == 'doclint' ||
-        inputs.phase == 'sbom' ||
-        inputs.phase == 'security' ||
-        inputs.phase == 'wheel-smoke' ||
-        inputs.phase == 'installer-smoke' ||
-        inputs.phase == 'deploy'
+      if: steps.bootstrap-inputs.outputs.bootstrap == 'true'
       uses: Dagitali/python-bootstrap@59ee536ff38521ef34f135b64557194bb0762078  # Pinned v0.1.1
       with:
         python-version: ${{ inputs.python-version }}
-        pip-install: ${{ inputs.pip-install }}
-        pip-version: ${{ inputs.pip-version }}
-        upgrade-pip: ${{ inputs.upgrade-pip }}
-
-    - name: Bootstrap build dependencies
-      if: inputs.phase == 'build' || inputs.phase == 'build-upload'
-      uses: Dagitali/python-bootstrap@59ee536ff38521ef34f135b64557194bb0762078  # Pinned v0.1.1
-      with:
-        python-version: ${{ inputs.python-version }}
-        pip-install: ${{ inputs.build-pip-install }}
+        pip-install: ${{ steps.bootstrap-inputs.outputs.pip_install }}
         pip-version: ${{ inputs.pip-version }}
         upgrade-pip: ${{ inputs.upgrade-pip }}
 
@@ -389,11 +362,18 @@ runs:
 
     - name: Build docs
       if: inputs.phase == 'docs'
-      uses: ./.github/actions/build-docs-target
-      with:
-        builder: ${{ inputs.docs-builder }}
-        python-version: ${{ inputs.python-version }}
-        pip-install: ${{ inputs.docs-pip-install }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        DOCS_BUILDER: ${{ inputs.docs-builder }}
+        DOCS_BUILD_DIR: ${{ inputs.docs-build-dir }}
+        DOCS_DOCTREE_DIR: ${{ inputs.docs-doctree-dir }}
+        DOCS_GENERATED_API_DIR: ${{ inputs.docs-generated-api-dir }}
+        DOCS_SOURCE_DIR: ${{ inputs.docs-source-dir }}
+      run: |
+        set -euo pipefail
+
+        bash "${GITHUB_ACTION_PATH}/scripts/build-docs.sh"
 
     - name: Generate SBOM
       if: inputs.phase == 'sbom'
