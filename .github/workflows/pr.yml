@@ -243,7 +243,8 @@ jobs:
     permissions: *permissions_read
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
-      - uses: ./.github/actions/build-docs-target
+      - uses: ./.github/actions/python-project-lifecycle
         with:
+          phase: docs
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
-          builder: ${{ matrix.builder }}
+          docs-builder: ${{ matrix.builder }}
