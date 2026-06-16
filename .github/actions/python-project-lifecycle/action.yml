@@ -199,7 +199,10 @@ outputs:
     description: Resolved pip version.
     value: ${{ steps.lifecycle-outputs.outputs.pip-version }}
   dist-path:
-    description: Distribution artifact directory.
+    description: Distribution artifact path or glob used for upload and validation.
+    value: ${{ inputs.dist-glob }}
+  artifact-path:
+    description: Destination path used when downloading distribution artifacts.
     value: ${{ inputs.artifact-path }}
   artifact-name:
     description: Uploaded or downloaded artifact name.
@@ -256,14 +259,28 @@ runs:
           esac
         done
 
-        if [[ "$PHASE" == 'build-upload' && "$SKIP_WHEEL_SMOKE" != 'true' ]]; then
+        wheel_smoke_required=false
+        if [[ "$PHASE" == 'wheel-smoke' ]]; then
+          wheel_smoke_required=true
+        elif [[ "$PHASE" == 'build-upload' && "$SKIP_WHEEL_SMOKE" != 'true' ]]; then
+          wheel_smoke_required=true
+        fi
+
+        if [[ "$wheel_smoke_required" == 'true' ]]; then
           if [[ -z "$BEHAVIOR_SMOKE_COMMAND" ]]; then
             echo 'behavior-smoke-command is required unless skip-wheel-smoke is "true".' >&2
             exit 2
           fi
         fi
 
-        if [[ "$PHASE" == 'build-upload' && "$SKIP_INSTALLER_SMOKE" != 'true' ]]; then
+        installer_smoke_required=false
+        if [[ "$PHASE" == 'installer-smoke' ]]; then
+          installer_smoke_required=true
+        elif [[ "$PHASE" == 'build-upload' && "$SKIP_INSTALLER_SMOKE" != 'true' ]]; then
+          installer_smoke_required=true
+        fi
+
+        if [[ "$installer_smoke_required" == 'true' ]]; then
           if [[ -z "$COMMAND_NAME" ]]; then
             echo 'command-name is required unless skip-installer-smoke is "true".' >&2
             exit 2
@@ -419,14 +436,6 @@ runs:
 
         bash "${GITHUB_ACTION_PATH}/scripts/build-distributions.sh"
 
-    - name: Upload distributions
-      if: inputs.phase == 'upload-dist'
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # Pinned v7.0.1
-      with:
-        name: ${{ inputs.artifact-name }}
-        path: ${{ inputs.dist-glob }}
-        if-no-files-found: error
-
     - name: Download distributions
       if: inputs.phase == 'download-dist'
       uses: ./.github/actions/download-dist-artifacts
@@ -462,8 +471,10 @@ runs:
         smoke-commands: ${{ inputs.smoke-commands }}
         venv-path: ${{ inputs.smoke-venv-path }}
 
-    - name: Upload built distributions
-      if: inputs.phase == 'build-upload' && inputs.skip-artifact-upload != 'true'
+    - name: Upload distributions
+      if: >-
+        inputs.phase == 'upload-dist' ||
+        (inputs.phase == 'build-upload' && inputs.skip-artifact-upload != 'true')
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # Pinned v7.0.1
       with:
         name: ${{ inputs.artifact-name }}
