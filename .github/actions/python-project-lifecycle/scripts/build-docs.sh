@@ -14,8 +14,8 @@
 #
 # Maintainer Notes
 # - This script is executed by the `python-project-lifecycle` composite action.
-# - Keep docs paths configurable so the lifecycle action can be reused outside
-#   ETLPlus without depending on a local docs action.
+# - Keep docs paths configurable so the lifecycle action can eventually be
+#   reused outside this repository without depending on a local docs action.
 #
 # References
 # - Sphinx documentation: https://www.sphinx-doc.org/
