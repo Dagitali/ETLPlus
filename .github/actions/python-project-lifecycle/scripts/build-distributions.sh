@@ -14,9 +14,9 @@
 #
 # Maintainer Notes
 # - This script is executed by the `python-project-lifecycle` composite action.
-# - Keep release workflows aligned with `RELEASE-CHECKLIST.md`: distribution
-#   builds, artifact audits, and twine validation should stay enabled unless
-#   the release checklist explicitly changes.
+# - Caller release workflows should keep distribution builds, artifact audits,
+#   and twine validation enabled unless their release policy intentionally
+#   changes.
 #
 # References
 # - Python packaging build frontend: https://build.pypa.io/
