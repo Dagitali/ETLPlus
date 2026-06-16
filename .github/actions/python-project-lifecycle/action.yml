@@ -93,7 +93,7 @@ inputs:
     required: false
     default: 'html'
   docs-pip-install:
-    description: Arguments passed to python-bootstrap for docs dependencies.
+    description: Arguments passed to python-bootstrap's pip-install input for docs dependencies.
     required: false
     default: '-e .[docs]'
 
@@ -110,7 +110,7 @@ inputs:
     required: false
     default: 'true'
   build-pip-install:
-    description: Arguments passed to python-bootstrap for build dependencies.
+    description: Arguments passed to python-bootstrap's pip-install input for build dependencies.
     required: false
     default: 'build twine'
   skip-installer-smoke:
@@ -227,6 +227,9 @@ runs:
         SKIP_ARTIFACT_UPLOAD: ${{ inputs.skip-artifact-upload }}
         SKIP_INSTALLER_SMOKE: ${{ inputs.skip-installer-smoke }}
         SKIP_WHEEL_SMOKE: ${{ inputs.skip-wheel-smoke }}
+        BEHAVIOR_SMOKE_COMMAND: ${{ inputs.behavior-smoke-command }}
+        COMMAND_NAME: ${{ inputs.command-name }}
+        SMOKE_COMMANDS: ${{ inputs.smoke-commands }}
       run: |
         set -euo pipefail
 
@@ -252,6 +255,24 @@ runs:
               ;;
           esac
         done
+
+        if [[ "$PHASE" == 'build-upload' && "$SKIP_WHEEL_SMOKE" != 'true' ]]; then
+          if [[ -z "$BEHAVIOR_SMOKE_COMMAND" ]]; then
+            echo 'behavior-smoke-command is required unless skip-wheel-smoke is "true".' >&2
+            exit 2
+          fi
+        fi
+
+        if [[ "$PHASE" == 'build-upload' && "$SKIP_INSTALLER_SMOKE" != 'true' ]]; then
+          if [[ -z "$COMMAND_NAME" ]]; then
+            echo 'command-name is required unless skip-installer-smoke is "true".' >&2
+            exit 2
+          fi
+          if [[ -z "$SMOKE_COMMANDS" ]]; then
+            echo 'smoke-commands is required unless skip-installer-smoke is "true".' >&2
+            exit 2
+          fi
+        fi
 
     - name: Bootstrap Python
       if: >-
@@ -299,16 +320,13 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
-        FORMAT_CHECK_COMMAND: ${{ inputs.format-check-command }}
+        COMMAND_INPUT_NAME: format-check-command
+        COMMAND_VALUE: ${{ inputs.format-check-command }}
+        PHASE: ${{ inputs.phase }}
       run: |
         set -euo pipefail
 
-        if [[ -z "$FORMAT_CHECK_COMMAND" ]]; then
-          echo 'format-check-command is required for the format-check phase.' >&2
-          exit 2
-        fi
-
-        eval "$FORMAT_CHECK_COMMAND"
+        bash "${GITHUB_ACTION_PATH}/scripts/run-command.sh"
 
     - name: Run tests
       if: inputs.phase == 'test'
@@ -331,27 +349,26 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
-        TYPECHECK_COMMAND: ${{ inputs.typecheck-command }}
+        COMMAND_INPUT_NAME: typecheck-command
+        COMMAND_VALUE: ${{ inputs.typecheck-command }}
+        PHASE: ${{ inputs.phase }}
       run: |
         set -euo pipefail
 
-        eval "$TYPECHECK_COMMAND"
+        bash "${GITHUB_ACTION_PATH}/scripts/run-command.sh"
 
     - name: Doclint
       if: inputs.phase == 'doclint'
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
-        DOCLINT_COMMAND: ${{ inputs.doclint-command }}
+        COMMAND_INPUT_NAME: doclint-command
+        COMMAND_VALUE: ${{ inputs.doclint-command }}
+        PHASE: ${{ inputs.phase }}
       run: |
         set -euo pipefail
 
-        if [[ -z "$DOCLINT_COMMAND" ]]; then
-          echo 'doclint-command is required for the doclint phase.' >&2
-          exit 2
-        fi
-
-        eval "$DOCLINT_COMMAND"
+        bash "${GITHUB_ACTION_PATH}/scripts/run-command.sh"
 
     - name: Build docs
       if: inputs.phase == 'docs'
@@ -380,16 +397,13 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
-        SECURITY_COMMAND: ${{ inputs.security-command }}
+        COMMAND_INPUT_NAME: security-command
+        COMMAND_VALUE: ${{ inputs.security-command }}
+        PHASE: ${{ inputs.phase }}
       run: |
         set -euo pipefail
 
-        if [[ -z "$SECURITY_COMMAND" ]]; then
-          echo 'security-command is required for the security phase.' >&2
-          exit 2
-        fi
-
-        eval "$SECURITY_COMMAND"
+        bash "${GITHUB_ACTION_PATH}/scripts/run-command.sh"
 
     - name: Build distributions
       if: inputs.phase == 'build' || inputs.phase == 'build-upload'
@@ -461,16 +475,13 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
-        DEPLOY_COMMAND: ${{ inputs.deploy-command }}
+        COMMAND_INPUT_NAME: deploy-command
+        COMMAND_VALUE: ${{ inputs.deploy-command }}
+        PHASE: ${{ inputs.phase }}
       run: |
         set -euo pipefail
 
-        if [[ -z "$DEPLOY_COMMAND" ]]; then
-          echo 'deploy-command is required for the deploy phase.' >&2
-          exit 2
-        fi
-
-        eval "$DEPLOY_COMMAND"
+        bash "${GITHUB_ACTION_PATH}/scripts/run-command.sh"
 
     - name: Capture lifecycle outputs
       id: lifecycle-outputs
