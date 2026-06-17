@@ -77,7 +77,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
-      - uses: ./.github/actions/python-project-lifecycle
+      - uses: Dagitali/python-project-lifecycle@3830839be6caca98cacca702c5aa38805c4fb516  # Pinned v0.1.2
         with:
           phase: docs
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
@@ -112,13 +112,14 @@ jobs:
     permissions: *permissions_read
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # Pinned v6.0.3
-      - uses: ./.github/actions/python-project-lifecycle
+      - uses: Dagitali/python-project-lifecycle@3830839be6caca98cacca702c5aa38805c4fb516  # Pinned v0.1.2
         with:
           phase: build-upload
           python-version: ${{ env.DEFAULT_PYTHON_VERSION }}
           release-artifact-audit-command: python tools/check_release_artifacts.py dist/*
           behavior-smoke-command: '{python} tools/smoke_test_schema_validation.py {python}'
           command-name: etlplus
+          installer-smoke-installers: pip,pipx,uv
           package-name: etlplus
           smoke-commands: |
             etlplus --version
