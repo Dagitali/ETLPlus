@@ -122,18 +122,19 @@ class TestToolDependencyDeclarations:
     """Meta tests for CI tool dependency declarations."""
 
     def test_sbom_workflow_installs_pinned_isolated_tool(self) -> None:
-        """Test SBOM generation isolates the pinned tool from runtime deps."""
+        """Test SBOM generation delegates pinned tool isolation to lifecycle action."""
         workflow_text = read_text(SBOM_WORKFLOW_PATH)
 
+        assert (
+            'Dagitali/python-project-lifecycle@3830839be6caca98cacca702c5aa38805c4fb516'
+            in workflow_text
+        )
+        assert 'phase: sbom' in workflow_text
         assert 'pip-install: "."' in workflow_text
         assert "CYCLONEDX_BOM_VERSION: '7.2.2'" in workflow_text
-        assert '-m pip install "cyclonedx-bom==${CYCLONEDX_BOM_VERSION}"' in (
-            workflow_text
-        )
-        assert 'cyclonedx-bom-venv/bin/cyclonedx-py' in workflow_text
-        assert 'environment "$(python -c \'import sys; print(sys.executable)\')"' in (
-            workflow_text
-        )
+        assert 'sbom-tool-version: ${{ env.CYCLONEDX_BOM_VERSION }}' in workflow_text
+        assert 'sbom-output-file: sbom.json' in workflow_text
+        assert 'sbom-output-format: JSON' in workflow_text
         assert 'python-bootstrap: ".[sbom]"' not in workflow_text
         assert 'python -m pip install cyclonedx-bom' not in workflow_text
 
