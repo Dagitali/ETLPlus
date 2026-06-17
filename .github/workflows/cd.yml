@@ -65,6 +65,7 @@ jobs:
           release-artifact-audit-command: python tools/check_release_artifacts.py dist/*
           behavior-smoke-command: '{python} tools/smoke_test_schema_validation.py {python}'
           command-name: etlplus
+          installer-smoke-installers: pip,pipx,uv
           package-name: etlplus
           smoke-commands: |
             etlplus --version
