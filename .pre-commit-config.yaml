@@ -64,7 +64,7 @@ repos:
 
   # Conventional commits / branch naming
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.16.3
+    rev: v4.19.2
     hooks:
       - id: commitizen
         stages: [commit-msg]
@@ -118,7 +118,7 @@ repos:
 
   # Markdown: Table of Contents updates
   - repo: https://github.com/frnmst/md-toc
-    rev: 9.0.0
+    rev: 9.1.0
     hooks:
       - id: md-toc
 
@@ -130,7 +130,7 @@ repos:
       - id: add-trailing-comma
 
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
+    rev: v3.22.0
     hooks:
       - id: pyupgrade
         args: [--py313-plus]
@@ -147,7 +147,7 @@ repos:
 
   # Python: authoritative linting, import ordering, and pyupgrade-style rules
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.17
+    rev: v0.17.0
     hooks:
       - id: ruff
         # Ruff will:
@@ -170,7 +170,7 @@ repos:
 
   # Python: type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.1.0
+    rev: v2.4.0
     hooks:
       - id: mypy
         stages: [manual]
